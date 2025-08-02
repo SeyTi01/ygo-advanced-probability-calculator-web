@@ -7,8 +7,17 @@
 <div class="container">
     <div class="d-flex align-items-center mb-4">
         <h3 class="mb-0 me-3">Probability Calculator</h3>
+        <div class="d-flex align-items-center me-3">
+            <label for="handSize" class="me-2 mb-0">Hand Size:</label>
+            <input type="number"
+                   id="handSize"
+                   class="form-control"
+                   style="width: 80px;"
+                   @bind="handSize"
+                   min="1"/>
+        </div>
         <button class="btn btn-primary">
-            <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="d-none" id="fileInput" />
+            <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="d-none" id="fileInput"/>
             <label for="fileInput" class="m-0" style="cursor: pointer;">Import Deck</label>
         </button>
     </div>
@@ -221,45 +230,33 @@
 
     <div class="mb-4">
         <h4>Calculate Probability</h4>
-        <div class="row g-3 align-items-center mb-3">
-            <div class="col-2">
-                <label for="handSize" class="col-form-label">Hand Size:</label>
-            </div>
-            <div class="col-2">
-                <input type="number"
-                       id="handSize"
-                       class="form-control"
-                       @bind="handSize"
-                       min="1"/>
-            </div>
-            <div class="col-3">
-                <button class="btn btn-primary"
-                        @onclick="Calculate"
-                        disabled="@(isCalculating || !CanCalculate)">
-                    @if (isCalculating) {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        <span class="ms-1">Calculating...</span>
-                    }
-                    else {
-                        <span>Calculate</span>
-                    }
-                </button>
-            </div>
+        <div class="col-3">
+            <button class="btn btn-primary"
+                    @onclick="Calculate"
+                    disabled="@(isCalculating || !CanCalculate)">
+                @if (isCalculating) {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span class="ms-1">Calculating...</span>
+                }
+                else {
+                    <span>Calculate</span>
+                }
+            </button>
         </div>
-
-        @if (errorMessage is not null) {
-            <div class="alert alert-danger" role="alert">
-                @errorMessage
-            </div>
-        }
-
-        @if (probability is not null) {
-            <div class="alert alert-primary" role="alert">
-                <h5>Results:</h5>
-                <p class="mb-0">Probability: @(probability.Value.ToString("P2"))</p>
-            </div>
-        }
     </div>
+
+    @if (errorMessage is not null) {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
+        </div>
+    }
+
+    @if (probability is not null) {
+        <div class="alert alert-primary" role="alert">
+            <h5>Results:</h5>
+            <p class="mb-0">Probability: @(probability.Value.ToString("P2"))</p>
+        </div>
+    }
 </div>
 
 @code {
