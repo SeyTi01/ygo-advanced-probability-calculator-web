@@ -65,7 +65,7 @@
     </div>
 
     <div class="mb-4">
-        <h4>Cards (@cards.Sum(c => c.Copies))</h4>
+        <h4>Deck (@cards.Sum(c => c.Copies))</h4>
         @if (cardError is not null) {
             <div class="alert alert-danger mb-2" role="alert">
                 @cardError
