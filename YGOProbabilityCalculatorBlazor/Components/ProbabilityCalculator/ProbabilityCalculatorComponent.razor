@@ -1,0 +1,59 @@
+@using YGOProbabilityCalculatorBlazor.Models
+
+<div class="container">
+    <h3>Probability Calculator</h3>
+
+    <div class="mb-4">
+        <h4>Categories</h4>
+        <div class="row">
+            <div class="col-3">
+                <input @bind="newCategoryName" class="form-control" placeholder="Category name"/>
+            </div>
+            <div class="col-2">
+                <input @bind="newCategoryMin" type="number" class="form-control" placeholder="Min"/>
+            </div>
+            <div class="col-2">
+                <input @bind="newCategoryMax" type="number" class="form-control" placeholder="Max"/>
+            </div>
+            <div class="col-2">
+                <button class="btn btn-primary" @onclick="AddCategory">Add Category</button>
+            </div>
+        </div>
+        <div class="mt-2">
+            @foreach (var category in categories) {
+                <span class="badge bg-secondary me-2">
+                    @category.Name (@category.MinCount-@category.MaxCount)
+                    <button type="button" class="btn-close btn-close-white" aria-label="Close"
+                            @onclick="() => RemoveCategory(category)"></button>
+                </span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string newCategoryName = "";
+    private int newCategoryMin;
+    private int newCategoryMax;
+
+    private readonly List<Category> categories = [];
+
+    private void AddCategory() {
+        if (string.IsNullOrWhiteSpace(newCategoryName)) return;
+
+        try {
+            var category = new Category(newCategoryName, newCategoryMin, newCategoryMax);
+            categories.Add(category);
+            newCategoryName = "";
+            newCategoryMin = 0;
+            newCategoryMax = 0;
+        }
+        catch (ArgumentException) {
+            // Handle invalid input
+        }
+    }
+
+    private void RemoveCategory(Category category) {
+        categories.Remove(category);
+    }
+}
