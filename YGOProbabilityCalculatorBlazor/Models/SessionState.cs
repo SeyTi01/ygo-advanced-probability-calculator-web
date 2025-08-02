@@ -1,6 +1,6 @@
 namespace YGOProbabilityCalculatorBlazor.Models;
 
-public class CalculatorSession {
+public class SessionState {
     public List<CategoryBase> Categories { get; init; } = [];
     public List<Card> Cards { get; init; } = [];
     public List<Combo> Combos { get; init; } = [];
