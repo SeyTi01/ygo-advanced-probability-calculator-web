@@ -4,56 +4,151 @@
     <h3>Probability Calculator</h3>
 
     <div class="mb-4">
-        <h4>Categories</h4>
+        <h4>Category Definitions</h4>
         <div class="row">
-            <div class="col-3">
+            <div class="col-4">
                 <input @bind="newCategoryName" class="form-control" placeholder="Category name"/>
             </div>
             <div class="col-2">
-                <input @bind="newCategoryMin" type="number" class="form-control" placeholder="Min"/>
-            </div>
-            <div class="col-2">
-                <input @bind="newCategoryMax" type="number" class="form-control" placeholder="Max"/>
-            </div>
-            <div class="col-2">
-                <button class="btn btn-primary" @onclick="AddCategory">Add Category</button>
+                <button class="btn btn-primary" @onclick="AddCategoryBase">Add Category</button>
             </div>
         </div>
         <div class="mt-2">
-            @foreach (var category in categories) {
+            @foreach (var category in categoryBases) {
                 <span class="badge bg-secondary me-2">
-                    @category.Name (@category.MinCount-@category.MaxCount)
+                    @category.Name
                     <button type="button" class="btn-close btn-close-white" aria-label="Close"
-                            @onclick="() => RemoveCategory(category)"></button>
+                            @onclick="() => RemoveCategoryBase(category)"></button>
                 </span>
             }
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <h4>Combos</h4>
+        <div class="accordion" id="combosAccordion">
+            @foreach (var (combo, index) in combos.Select((c, i) => (c, i))) {
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button @(index == activeComboIndex ? "" : "collapsed")" 
+                                type="button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#combo@(index)"
+                                @onclick="() => activeComboIndex = index">
+                            Combo @(index + 1)
+                        </button>
+                    </h2>
+                    <div id="combo@(index)" 
+                         class="accordion-collapse collapse @(index == activeComboIndex ? "show" : "")"
+                         data-bs-parent="#combosAccordion">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col-4">
+                                    <select class="form-select" @bind="selectedCategoryBase">
+                                        <option value="">Select category...</option>
+                                        @foreach (var cat in categoryBases) {
+                                            <option value="@cat.Name">@cat.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-2">
+                                    <input @bind="newComboMin" type="number" class="form-control" placeholder="Min"/>
+                                </div>
+                                <div class="col-2">
+                                    <input @bind="newComboMax" type="number" class="form-control" placeholder="Max"/>
+                                </div>
+                                <div class="col-2">
+                                    <button class="btn btn-primary" 
+                                            @onclick="() => AddCategoryToCombo(index)">
+                                        Add to Combo
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                @foreach (var comboCategory in combo.Categories) {
+                                    <span class="badge bg-info me-2">
+                                        @comboCategory.BaseCategory.Name (@comboCategory.MinCount-@comboCategory.MaxCount)
+                                        <button type="button" 
+                                                class="btn-close btn-close-white" 
+                                                aria-label="Close"
+                                                @onclick="() => RemoveCategoryFromCombo(index, comboCategory)">
+                                        </button>
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="mt-3">
+            <button class="btn btn-primary" @onclick="AddNewCombo">Add New Combo</button>
         </div>
     </div>
 </div>
 
 @code {
     private string newCategoryName = "";
-    private int newCategoryMin;
-    private int newCategoryMax;
+    private readonly List<CategoryBase> categoryBases = [];
+    private readonly List<Combo> combos = [];
+    private int activeComboIndex = -1;
+    
+    private string selectedCategoryBase = "";
+    private int newComboMin;
+    private int newComboMax;
 
-    private readonly List<Category> categories = [];
-
-    private void AddCategory() {
+    private void AddCategoryBase() {
         if (string.IsNullOrWhiteSpace(newCategoryName)) return;
 
         try {
-            var category = new Category(newCategoryName, newCategoryMin, newCategoryMax);
-            categories.Add(category);
+            var categoryBase = new CategoryBase(newCategoryName);
+            categoryBases.Add(categoryBase);
             newCategoryName = "";
-            newCategoryMin = 0;
-            newCategoryMax = 0;
         }
         catch (ArgumentException) {
             // Handle invalid input
         }
     }
 
-    private void RemoveCategory(Category category) {
-        categories.Remove(category);
+    private void RemoveCategoryBase(CategoryBase category) {
+        if (!combos.Any(c => c.Categories.Any(cc => cc.BaseCategory == category))) {
+            categoryBases.Remove(category);
+        }
+    }
+
+    private void AddNewCombo() {
+        combos.Add(new Combo([]));
+        activeComboIndex = combos.Count - 1;
+    }
+
+    private void AddCategoryToCombo(int comboIndex) {
+        if (string.IsNullOrEmpty(selectedCategoryBase)) return;
+        
+        var categoryBase = categoryBases.FirstOrDefault(c => c.Name == selectedCategoryBase);
+        if (categoryBase == null) return;
+
+        try {
+            var comboCategory = new ComboCategory(categoryBase, newComboMin, newComboMax);
+            var combo = combos[comboIndex];
+            
+            var existingIndex = combo.Categories.FindIndex(c => c.BaseCategory.Name == categoryBase.Name);
+            if (existingIndex >= 0) {
+                combo.Categories[existingIndex] = comboCategory;
+            }
+            else {
+                combo.Categories.Add(comboCategory);
+            }
+
+            selectedCategoryBase = "";
+            newComboMin = 0;
+            newComboMax = 0;
+        }
+        catch (ArgumentException) {
+            // Handle invalid input
+        }
+    }
+
+    private void RemoveCategoryFromCombo(int comboIndex, ComboCategory category) {
+        combos[comboIndex].Categories.Remove(category);
     }
 }

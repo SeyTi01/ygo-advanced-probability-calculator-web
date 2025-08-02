@@ -1,5 +1,5 @@
 namespace YGOProbabilityCalculatorBlazor.Models;
 
-public class Combo(IEnumerable<Category> categories) {
-    public List<Category> Categories { get; } = categories.ToList();
+public class Combo(IEnumerable<ComboCategory> categories) {
+    public List<ComboCategory> Categories { get; } = categories.ToList();
 }
