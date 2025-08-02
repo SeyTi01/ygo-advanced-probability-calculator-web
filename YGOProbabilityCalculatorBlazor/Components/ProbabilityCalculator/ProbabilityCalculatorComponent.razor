@@ -415,7 +415,7 @@
             }
 
             var oldCard = cards[cardIndex];
-            cards[cardIndex] = new Card(oldCard.Categories, copies);
+            cards[cardIndex] = oldCard.WithCopies(copies);
             cardError = null;
         }
         catch (ArgumentException ex) {
@@ -425,11 +425,7 @@
 
     private void UpdateCardName(int cardIndex, string? name) {
         var oldCard = cards[cardIndex];
-        cards[cardIndex] = new Card(
-            oldCard.Categories,
-            oldCard.Copies,
-            name
-        );
+        cards[cardIndex] = oldCard.WithName(name);
     }
 
     private void AddCategoryToCard(int cardIndex) {
@@ -451,21 +447,14 @@
             return;
         }
 
-        cards[cardIndex] = new Card(
-            oldCard.Categories.Concat([categoryBase]),
-            oldCard.Copies
-        );
-
+        cards[cardIndex] = oldCard.WithCategories(oldCard.Categories.Concat([categoryBase]));
         cardEditStates[cardIndex].SelectedCategory = "";
         cardError = null;
     }
 
     private void RemoveCategoryFromCard(int cardIndex, CategoryBase category) {
         var oldCard = cards[cardIndex];
-        cards[cardIndex] = new Card(
-            oldCard.Categories.Where(c => c != category),
-            oldCard.Copies
-        );
+        cards[cardIndex] = oldCard.WithCategories(oldCard.Categories.Where(c => c != category));
     }
 
     private void AddNewCombo() {
@@ -611,7 +600,7 @@
             errorMessage = $"Failed to load session: {ex.Message}";
         }
     }
-    
+
     private async Task SaveCurrentSession() {
         var fileName = $"calculator_session_{DateTime.Now:yyyyMMdd_HHmmss}.json";
         await SaveSession(fileName);
