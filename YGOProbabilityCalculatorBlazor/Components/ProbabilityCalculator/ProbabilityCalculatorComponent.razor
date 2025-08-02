@@ -562,7 +562,7 @@
 
     private async Task SaveSession(string fileName) {
         try {
-            var session = new CalculatorSession {
+            var session = new SessionState {
                 Categories = categoryBases,
                 Cards = cards,
                 Combos = combos,
@@ -573,38 +573,6 @@
         }
         catch (Exception ex) {
             errorMessage = $"Failed to save session: {ex.Message}";
-        }
-    }
-
-    private async Task LoadSession(string fileName) {
-        try {
-            var session = await _sessionService.LoadSessionAsync(fileName);
-
-            categoryBases.Clear();
-            categoryBases.AddRange(session.Categories);
-
-            cards.Clear();
-            cards.AddRange(session.Cards);
-
-            combos.Clear();
-            combos.AddRange(session.Combos);
-
-            handSize = session.HandSize;
-
-            cardEditStates.Clear();
-            for (var i = 0; i < cards.Count; i++) {
-                cardEditStates.Add(new CardEditState());
-            }
-
-            comboEditStates.Clear();
-            for (var i = 0; i < combos.Count; i++) {
-                comboEditStates.Add(new ComboEditState());
-            }
-
-            errorMessage = null;
-        }
-        catch (Exception ex) {
-            errorMessage = $"Failed to load session: {ex.Message}";
         }
     }
 
