@@ -251,6 +251,7 @@
 </div>
 
 @code {
+
     private record CardEditState {
         public string SelectedCategory { get; set; } = "";
     }
@@ -345,12 +346,18 @@
         if (string.IsNullOrWhiteSpace(newCategoryName)) return;
 
         try {
+            if (categoryBases.Any(c => c.Name.Equals(newCategoryName, StringComparison.OrdinalIgnoreCase))) {
+                errorMessage = "A category with this name already exists.";
+                return;
+            }
+
             var categoryBase = new CategoryBase(newCategoryName);
             categoryBases.Add(categoryBase);
             newCategoryName = "";
+            errorMessage = null;
         }
         catch (ArgumentException) {
-            // Handle invalid input
+            errorMessage = "Category name cannot be empty.";
         }
     }
 
@@ -496,4 +503,5 @@
         cts.Cancel();
         cts.Dispose();
     }
+
 }
