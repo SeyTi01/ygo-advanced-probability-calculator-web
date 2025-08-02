@@ -1,5 +1,24 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
 
-<main>
-    @Body
-</main>
+<div class="page">
+    <main>
+        <div class="top-row px-4">
+            <h3 class="flex-grow-1 mb-0">Yu-Gi-Oh! Advanced Probability Calculator</h3>
+            @if (IsHelpPage) {
+                <a href="/" class="btn btn-outline-primary">Back</a>
+            }
+            else {
+                <a href="/how-to-use" class="btn btn-outline-primary">Help</a>
+            }
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private bool IsHelpPage => NavigationManager.Uri.EndsWith("/how-to-use", StringComparison.OrdinalIgnoreCase);
+}

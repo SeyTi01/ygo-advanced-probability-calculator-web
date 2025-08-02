@@ -1,0 +1,57 @@
+@page "/how-to-use"
+
+<div class="container mt-4">
+    <section class="mb-4">
+        <h2>Why This Tool?</h2>
+        <p>Regular hypergeometric calculation tools have limitations when it comes to calculating probabilities for decks that involve multiple ways to combo via 2-card and 3-card combos, since starters are conditional and overlap in their uses.</p>
+        <p>This tool addresses that by using the inclusion-exclusion principle to calculate the exact probability of opening playable hands over any number of possible combos in full deck lists (as long as they don't involve random mills or draws).</p>
+    </section>
+
+    <section class="mb-4">
+        <h2>How It Works</h2>
+        <ol>
+            <li><strong>Create Categories:</strong> Define categories that represent different card functions (e.g., "Starter", "Extender", "X", "CombosWithX").</li>
+            <li><strong>Assign Categories:</strong> Each card can be assigned any number of categories based on its functions.</li>
+            <li><strong>Define Your Combos:</strong> Specify which combinations of categories make your deck work.</li>
+            <li><strong>Set Requirements:</strong> For each category and combo, you can set the minimum/maximum number of cards needed.</li>
+            <li><strong>Get Results:</strong> The tool calculates the probability of opening any of your defined combos.</li>
+        </ol>
+    </section>
+
+    <section class="mb-4">
+        <h2>Example: Fiendsmith Bystial Deck</h2>
+        <p>This example illustrates how to calculate the likelihood of opening a Fiendsmith play by either a one-card starter or by assembling a 2-card "Moon of the Closed Heaven" combo.</p>
+        
+        <h3>Category Definitions</h3>
+        <ul>
+            <li><strong>1 Card Starter:</strong> Any single card that independently initiates a Fiendsmith combo.</li>
+            <li><strong>Bystial:</strong> Any "Bystial" monster that can summon itself.</li>
+            <li><strong>Lubellion:</strong> Specifically "The Bystial Lubellion".</li>
+            <li><strong>Normal Summon:</strong> Any monster that can be Normal Summoned (e.g., Ash Blossom & Joyous Spring).</li>
+            <li><strong>L/D Normal Summon:</strong> Any LIGHT or DARK monster that can be Normal Summoned and sent to the GY via Almiraj (e.g., Effect Veiler).</li>
+        </ul>
+
+        <h3>Combo Definitions</h3>
+        <ul>
+            <li><strong>1-Card Combo:</strong> Requires <em>any</em> card with the "1 Card Starter" tag.</li>
+            <li><strong>Moon Combo 1:</strong> Requires <em>both</em> the "Lubellion" tag <em>and</em> the "Normal Summon" tag in the opening hand.</li>
+            <li><strong>Moon Combo 2:</strong> Requires <em>both</em> the "Bystial" tag <em>and</em> the "L/D Normal Summon" tag in the opening hand.</li>
+        </ul>
+
+        <p>After tagging all cards appropriately, this configuration will calculate the exact probability of opening a Fiendsmith play in a given deck list.</p>
+    </section>
+
+    <section class="mb-4">
+        <h2>Additional Features</h2>
+        <ul>
+            <li>Import decks from .ydk files</li>
+            <li>Save and load sessions</li>
+        </ul>
+    </section>
+
+    <section class="mb-4">
+        <h2>Optimization Tips</h2>
+        <p>For further optimization, you could define categories like "Handtrap" or "Brick", then require all of your combos to open at least one "Handtrap"-tagged card while opening zero "Brick"-tagged cards.</p>
+        <p>This can help determine optimal deck sizes and engine ratios.</p>
+    </section>
+</div>
