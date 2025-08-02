@@ -31,6 +31,11 @@
                 <button class="btn btn-primary" @onclick="AddCategoryBase">Add Category</button>
             </div>
         </div>
+        @if (categoryError is not null) {
+            <div class="alert alert-danger mt-2" role="alert">
+                @categoryError
+            </div>
+        }
         <div class="mt-2">
             @foreach (var category in categoryBases) {
                 <span class="badge bg-secondary me-2">
@@ -44,6 +49,11 @@
 
     <div class="mb-4">
         <h4>Cards</h4>
+        @if (cardError is not null) {
+            <div class="alert alert-danger mb-2" role="alert">
+                @cardError
+            </div>
+        }
         <div class="accordion" id="cardsAccordion">
             @foreach (var (card, index) in cards.Select((c, i) => (c, i))) {
                 <div class="accordion-item">
@@ -130,6 +140,11 @@
 
     <div class="mb-4">
         <h4>Combos</h4>
+        @if (comboError is not null) {
+            <div class="alert alert-danger mb-2" role="alert">
+                @comboError
+            </div>
+        }
         <div class="accordion" id="combosAccordion">
             @foreach (var (combo, index) in combos.Select((c, i) => (c, i))) {
                 <div class="accordion-item">
@@ -251,7 +266,6 @@
 </div>
 
 @code {
-
     private record CardEditState {
         public string SelectedCategory { get; set; } = "";
     }
@@ -261,6 +275,10 @@
         public int MinCount { get; set; }
         public int MaxCount { get; set; }
     }
+
+    private string? categoryError;
+    private string? cardError;
+    private string? comboError;
 
     private string newCategoryName = "";
     private readonly List<CategoryBase> categoryBases = [];
@@ -343,21 +361,24 @@
     }
 
     private void AddCategoryBase() {
-        if (string.IsNullOrWhiteSpace(newCategoryName)) return;
+        if (string.IsNullOrWhiteSpace(newCategoryName)) {
+            categoryError = "Category name cannot be empty.";
+            return;
+        }
 
         try {
             if (categoryBases.Any(c => c.Name.Equals(newCategoryName, StringComparison.OrdinalIgnoreCase))) {
-                errorMessage = "A category with this name already exists.";
+                categoryError = "A category with this name already exists.";
                 return;
             }
 
             var categoryBase = new CategoryBase(newCategoryName);
             categoryBases.Add(categoryBase);
             newCategoryName = "";
-            errorMessage = null;
+            categoryError = null;
         }
-        catch (ArgumentException) {
-            errorMessage = "Category name cannot be empty.";
+        catch (ArgumentException ex) {
+            categoryError = ex.Message;
         }
     }
 
@@ -384,9 +405,19 @@
     }
 
     private void UpdateCardCopies(int cardIndex, int copies) {
-        if (copies < 1) copies = 1;
-        var oldCard = cards[cardIndex];
-        cards[cardIndex] = new Card(oldCard.Categories, copies);
+        try {
+            if (copies < 1) {
+                cardError = "Number of copies must be at least 1.";
+                return;
+            }
+
+            var oldCard = cards[cardIndex];
+            cards[cardIndex] = new Card(oldCard.Categories, copies);
+            cardError = null;
+        }
+        catch (ArgumentException ex) {
+            cardError = ex.Message;
+        }
     }
 
     private void UpdateCardName(int cardIndex, string? name) {
@@ -400,20 +431,30 @@
 
     private void AddCategoryToCard(int cardIndex) {
         var selectedCategory = cardEditStates[cardIndex].SelectedCategory;
-        if (string.IsNullOrEmpty(selectedCategory)) return;
-
-        var categoryBase = categoryBases.FirstOrDefault(c => c.Name == selectedCategory);
-        if (categoryBase == null) return;
-
-        var oldCard = cards[cardIndex];
-        if (!oldCard.Categories.Contains(categoryBase)) {
-            cards[cardIndex] = new Card(
-                oldCard.Categories.Concat([categoryBase]),
-                oldCard.Copies
-            );
+        if (string.IsNullOrEmpty(selectedCategory)) {
+            cardError = "Please select a category to add.";
+            return;
         }
 
+        var categoryBase = categoryBases.FirstOrDefault(c => c.Name == selectedCategory);
+        if (categoryBase == null) {
+            cardError = "Selected category not found.";
+            return;
+        }
+
+        var oldCard = cards[cardIndex];
+        if (oldCard.Categories.Contains(categoryBase)) {
+            cardError = "This category is already added to the card.";
+            return;
+        }
+
+        cards[cardIndex] = new Card(
+            oldCard.Categories.Concat([categoryBase]),
+            oldCard.Copies
+        );
+
         cardEditStates[cardIndex].SelectedCategory = "";
+        cardError = null;
     }
 
     private void RemoveCategoryFromCard(int cardIndex, CategoryBase category) {
@@ -441,12 +482,28 @@
 
     private void AddCategoryToCombo(int comboIndex) {
         var state = comboEditStates[comboIndex];
-        if (string.IsNullOrEmpty(state.SelectedCategory)) return;
+        if (string.IsNullOrEmpty(state.SelectedCategory)) {
+            comboError = "Please select a category to add.";
+            return;
+        }
 
         var categoryBase = categoryBases.FirstOrDefault(c => c.Name == state.SelectedCategory);
-        if (categoryBase == null) return;
+        if (categoryBase == null) {
+            comboError = "Selected category not found.";
+            return;
+        }
 
         try {
+            if (state.MinCount < 0) {
+                comboError = "Minimum count cannot be negative.";
+                return;
+            }
+
+            if (state.MaxCount < state.MinCount) {
+                comboError = "Maximum count cannot be less than minimum count.";
+                return;
+            }
+
             var comboCategory = new ComboCategory(categoryBase, state.MinCount, state.MaxCount);
             var combo = combos[comboIndex];
 
@@ -461,9 +518,10 @@
             state.SelectedCategory = "";
             state.MinCount = 0;
             state.MaxCount = 0;
+            comboError = null;
         }
-        catch (ArgumentException) {
-            // Handle invalid input
+        catch (ArgumentException ex) {
+            comboError = ex.Message;
         }
     }
 
@@ -503,5 +561,4 @@
         cts.Cancel();
         cts.Dispose();
     }
-
 }
