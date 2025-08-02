@@ -14,3 +14,9 @@
 .accordion-button:focus {
     box-shadow: none;
 }
+
+.results-section {
+    border-top: 2px solid #dee2e6;
+    padding-top: 2rem;
+    margin-top: 2rem;
+}
