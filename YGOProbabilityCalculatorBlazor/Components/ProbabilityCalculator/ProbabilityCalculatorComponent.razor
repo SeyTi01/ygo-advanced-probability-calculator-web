@@ -25,20 +25,88 @@
     </div>
 
     <div class="mb-4">
+        <h4>Cards</h4>
+        <div class="accordion" id="cardsAccordion">
+            @foreach (var (card, index) in cards.Select((c, i) => (c, i))) {
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button @(index == activeCardIndex ? "" : "collapsed")"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#card@(index)">
+                            Card @(index + 1) (@card.Copies copies)
+                            @if (card.Categories.Any()) {
+                                <span class="ms-2">-</span>
+                                @foreach (var cat in card.Categories) {
+                                    <span class="badge bg-info ms-1">@cat.Name</span>
+                                }
+                            }
+                        </button>
+                    </h2>
+                    <div id="card@(index)"
+                         class="accordion-collapse collapse @(index == activeCardIndex ? "show" : "")"
+                         data-bs-parent="#cardsAccordion">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <input type="number"
+                                           class="form-control"
+                                           placeholder="Copies"
+                                           min="1"
+                                           value="@card.Copies"
+                                           @onchange="@(e => UpdateCardCopies(index, int.Parse(e.Value?.ToString() ?? "1")))"/>
+                                </div>
+                                <div class="col-4">
+                                    <select class="form-select" @bind="selectedCardCategory">
+                                        <option value="">Add category...</option>
+                                        @foreach (var cat in categoryBases.Where(c => !card.Categories.Contains(c))) {
+                                            <option value="@cat.Name">@cat.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-2">
+                                    <button class="btn btn-primary"
+                                            @onclick="() => AddCategoryToCard(index)">
+                                        Add Category
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                @foreach (var category in card.Categories) {
+                                    <span class="badge bg-info me-2">
+                                        @category.Name
+                                        <button type="button"
+                                                class="btn-close btn-close-white"
+                                                aria-label="Close"
+                                                @onclick="() => RemoveCategoryFromCard(index, category)">
+                                        </button>
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="mt-3">
+            <button class="btn btn-primary" @onclick="AddNewCard">Add New Card</button>
+        </div>
+    </div>
+
+    <div class="mb-4">
         <h4>Combos</h4>
         <div class="accordion" id="combosAccordion">
             @foreach (var (combo, index) in combos.Select((c, i) => (c, i))) {
                 <div class="accordion-item">
                     <h2 class="accordion-header">
-                        <button class="accordion-button @(index == activeComboIndex ? "" : "collapsed")" 
-                                type="button" 
-                                data-bs-toggle="collapse" 
-                                data-bs-target="#combo@(index)"
-                                @onclick="() => activeComboIndex = index">
+                        <button class="accordion-button @(index == activeComboIndex ? "" : "collapsed")"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#combo@(index)">
                             Combo @(index + 1)
                         </button>
                     </h2>
-                    <div id="combo@(index)" 
+                    <div id="combo@(index)"
                          class="accordion-collapse collapse @(index == activeComboIndex ? "show" : "")"
                          data-bs-parent="#combosAccordion">
                         <div class="accordion-body">
@@ -58,7 +126,7 @@
                                     <input @bind="newComboMax" type="number" class="form-control" placeholder="Max"/>
                                 </div>
                                 <div class="col-2">
-                                    <button class="btn btn-primary" 
+                                    <button class="btn btn-primary"
                                             @onclick="() => AddCategoryToCombo(index)">
                                         Add to Combo
                                     </button>
@@ -68,8 +136,8 @@
                                 @foreach (var comboCategory in combo.Categories) {
                                     <span class="badge bg-info me-2">
                                         @comboCategory.BaseCategory.Name (@comboCategory.MinCount-@comboCategory.MaxCount)
-                                        <button type="button" 
-                                                class="btn-close btn-close-white" 
+                                        <button type="button"
+                                                class="btn-close btn-close-white"
                                                 aria-label="Close"
                                                 @onclick="() => RemoveCategoryFromCombo(index, comboCategory)">
                                         </button>
@@ -90,12 +158,17 @@
 @code {
     private string newCategoryName = "";
     private readonly List<CategoryBase> categoryBases = [];
+    private readonly List<Card> cards = [];
     private readonly List<Combo> combos = [];
+
     private int activeComboIndex = -1;
-    
+    private int activeCardIndex = -1;
+
     private string selectedCategoryBase = "";
     private int newComboMin;
     private int newComboMax;
+
+    private string selectedCardCategory = "";
 
     private void AddCategoryBase() {
         if (string.IsNullOrWhiteSpace(newCategoryName)) return;
@@ -111,9 +184,46 @@
     }
 
     private void RemoveCategoryBase(CategoryBase category) {
-        if (!combos.Any(c => c.Categories.Any(cc => cc.BaseCategory == category))) {
+        if (!combos.Any(c => c.Categories.Any(cc => cc.BaseCategory == category)) &&
+            !cards.Any(c => c.Categories.Contains(category))) {
             categoryBases.Remove(category);
         }
+    }
+
+    private void AddNewCard() {
+        cards.Add(new Card([], 1));
+        activeCardIndex = cards.Count - 1;
+    }
+
+    private void UpdateCardCopies(int cardIndex, int copies) {
+        if (copies < 1) copies = 1;
+        var oldCard = cards[cardIndex];
+        cards[cardIndex] = new Card(oldCard.Categories, copies);
+    }
+
+    private void AddCategoryToCard(int cardIndex) {
+        if (string.IsNullOrEmpty(selectedCardCategory)) return;
+
+        var categoryBase = categoryBases.FirstOrDefault(c => c.Name == selectedCardCategory);
+        if (categoryBase == null) return;
+
+        var oldCard = cards[cardIndex];
+        if (!oldCard.Categories.Contains(categoryBase)) {
+            cards[cardIndex] = new Card(
+                oldCard.Categories.Concat([categoryBase]),
+                oldCard.Copies
+            );
+        }
+
+        selectedCardCategory = "";
+    }
+
+    private void RemoveCategoryFromCard(int cardIndex, CategoryBase category) {
+        var oldCard = cards[cardIndex];
+        cards[cardIndex] = new Card(
+            oldCard.Categories.Where(c => c != category),
+            oldCard.Copies
+        );
     }
 
     private void AddNewCombo() {
@@ -123,14 +233,14 @@
 
     private void AddCategoryToCombo(int comboIndex) {
         if (string.IsNullOrEmpty(selectedCategoryBase)) return;
-        
+
         var categoryBase = categoryBases.FirstOrDefault(c => c.Name == selectedCategoryBase);
         if (categoryBase == null) return;
 
         try {
             var comboCategory = new ComboCategory(categoryBase, newComboMin, newComboMax);
             var combo = combos[comboIndex];
-            
+
             var existingIndex = combo.Categories.FindIndex(c => c.BaseCategory.Name == categoryBase.Name);
             if (existingIndex >= 0) {
                 combo.Categories[existingIndex] = comboCategory;
