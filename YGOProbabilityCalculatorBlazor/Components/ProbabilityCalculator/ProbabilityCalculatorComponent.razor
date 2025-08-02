@@ -1,9 +1,25 @@
 @using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Services.DeckImport
 @using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator
 @implements IDisposable
+@inject DeckImportService _deckImportService
 
 <div class="container">
     <h3>Probability Calculator</h3>
+
+    <div class="mb-4">
+        <div class="row">
+            <div class="col-6">
+                <h4>Deck Import</h4>
+                <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="form-control"/>
+                @if (importError is not null) {
+                    <div class="alert alert-danger mt-2" role="alert">
+                        @importError
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
 
     <div class="mb-4">
         <h4>Category Definitions</h4>
@@ -258,6 +274,7 @@
     private int handSize = 5;
     private bool isCalculating;
     private string? errorMessage;
+    private string? importError;
     private double? probability;
     private readonly CancellationTokenSource cts = new();
 
@@ -425,6 +442,34 @@
         }
     }
 
+    private async Task ImportDeckAsync(InputFileChangeEventArgs e) {
+        try {
+            importError = null;
+            var file = e.File;
+            var tempPath = Path.GetTempFileName();
+
+            await using (var stream = file.OpenReadStream(maxAllowedSize: 1024 * 1024)) // 1MB max
+            await using (var fileStream = File.Create(tempPath)) {
+                await stream.CopyToAsync(fileStream);
+            }
+
+            var importedCards = await _deckImportService.ImportDeckFromYdkAsync(tempPath);
+
+            cards.Clear();
+            cards.AddRange(importedCards);
+
+            cardEditStates.Clear();
+            for (var i = 0; i < cards.Count; i++) {
+                cardEditStates.Add(new CardEditState());
+            }
+
+            File.Delete(tempPath);
+        }
+        catch (Exception ex) {
+            importError = $"Failed to import deck: {ex.Message}";
+        }
+    }
+
     private void RemoveCategoryFromCombo(int comboIndex, ComboCategory category) {
         combos[comboIndex].Categories.Remove(category);
     }
@@ -433,5 +478,4 @@
         cts.Cancel();
         cts.Dispose();
     }
-
 }
