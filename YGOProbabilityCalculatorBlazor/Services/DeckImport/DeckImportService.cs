@@ -3,9 +3,9 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 
-public class DeckImportService(ICardInfoService cardInfoService) {
+public class DeckImportService(ICardInfoService cardInfoService, IFileService fileService) {
     public async Task<List<Card>> ImportDeckFromYdkAsync(string filePath) {
-        var lines = await File.ReadAllLinesAsync(filePath);
+        var lines = await fileService.ReadAllLinesAsync(filePath);
         var cardCounts = new Dictionary<int, int>();
         var cards = new List<Card>();
 
