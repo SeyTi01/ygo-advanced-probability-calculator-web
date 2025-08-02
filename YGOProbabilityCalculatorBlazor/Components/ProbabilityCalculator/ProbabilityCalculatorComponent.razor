@@ -37,7 +37,13 @@
                                 data-bs-toggle="collapse"
                                 data-bs-target="#card@(index)"
                                 @onclick="() => SetActiveCard(index)">
-                            Card @(index + 1) (@card.Copies copies)
+                            @if (string.IsNullOrEmpty(card.Name)) {
+                                <span>Card @(index + 1)</span>
+                            }
+                            else {
+                                <span>@card.Name</span>
+                            }
+                            <span class="ms-2">(@card.Copies copies)</span>
                             @if (card.Categories.Any()) {
                                 <span class="ms-2">-</span>
                                 @foreach (var cat in card.Categories) {
@@ -54,6 +60,13 @@
                          data-bs-parent="#cardsAccordion">
                         <div class="accordion-body">
                             <div class="row mb-3">
+                                <div class="col-4">
+                                    <input type="text"
+                                           class="form-control"
+                                           placeholder="Card name"
+                                           value="@card.Name"
+                                           @onchange="@(e => UpdateCardName(index, e.Value?.ToString()))"/>
+                                </div>
                                 <div class="col-2">
                                     <input type="number"
                                            class="form-control"
@@ -222,7 +235,6 @@
 </div>
 
 @code {
-
     private record CardEditState {
         public string SelectedCategory { get; set; } = "";
     }
@@ -335,6 +347,15 @@
         cards[cardIndex] = new Card(oldCard.Categories, copies);
     }
 
+    private void UpdateCardName(int cardIndex, string? name) {
+        var oldCard = cards[cardIndex];
+        cards[cardIndex] = new Card(
+            oldCard.Categories,
+            oldCard.Copies,
+            name
+        );
+    }
+
     private void AddCategoryToCard(int cardIndex) {
         var selectedCategory = cardEditStates[cardIndex].SelectedCategory;
         if (string.IsNullOrEmpty(selectedCategory)) return;
@@ -412,4 +433,5 @@
         cts.Cancel();
         cts.Dispose();
     }
+
 }
