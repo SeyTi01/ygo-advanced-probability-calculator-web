@@ -21,7 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Services\" />
+      <ProjectReference Include="..\YGOProbabilityCalculatorBlazor\YGOProbabilityCalculatorBlazor.csproj" />
     </ItemGroup>
 
 </Project>
