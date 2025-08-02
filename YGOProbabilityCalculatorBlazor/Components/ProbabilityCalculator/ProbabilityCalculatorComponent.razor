@@ -52,7 +52,7 @@
                                 type="button"
                                 data-bs-toggle="collapse"
                                 data-bs-target="#card@(index)"
-                                @onclick="() => SetActiveCard(index)">
+                                @onclick="() => ToggleCard(index)">
                             @if (string.IsNullOrEmpty(card.Name)) {
                                 <span>Card @(index + 1)</span>
                             }
@@ -73,7 +73,7 @@
                     </h2>
                     <div id="card@(index)"
                          class="accordion-collapse collapse @(index == activeCardIndex ? "show" : "")"
-                         data-bs-parent="#cardsAccordion">
+                         data-parent="">
                         <div class="accordion-body">
                             <div class="row mb-3">
                                 <div class="col-4">
@@ -138,7 +138,7 @@
                                 type="button"
                                 data-bs-toggle="collapse"
                                 data-bs-target="#combo@(index)"
-                                @onclick="() => SetActiveCombo(index)">
+                                @onclick="() => ToggleCombo(index)">
                             Combo @(index + 1)
                             @if (combo.Categories.Any()) {
                                 <span class="ms-2">-</span>
@@ -155,7 +155,7 @@
                     </h2>
                     <div id="combo@(index)"
                          class="accordion-collapse collapse @(index == activeComboIndex ? "show" : "")"
-                         data-bs-parent="#combosAccordion">
+                         data-parent="">
                         <div class="accordion-body">
                             <div class="row mb-3">
                                 <div class="col-4">
@@ -285,10 +285,28 @@
         combos.Count > 0 &&
         combos.All(c => c.Categories.Count > 0);
 
+    private void ToggleCard(int index) {
+        if (activeCardIndex == index) {
+            activeCardIndex = -1;
+        }
+        else {
+            SetActiveCard(index);
+        }
+    }
+
     private void SetActiveCard(int index) {
         activeCardIndex = index;
         while (cardEditStates.Count <= index) {
             cardEditStates.Add(new CardEditState());
+        }
+    }
+
+    private void ToggleCombo(int index) {
+        if (activeComboIndex == index) {
+            activeComboIndex = -1;
+        }
+        else {
+            SetActiveCombo(index);
         }
     }
 
