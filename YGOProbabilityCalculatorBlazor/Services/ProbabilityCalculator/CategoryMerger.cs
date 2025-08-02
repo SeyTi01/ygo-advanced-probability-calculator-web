@@ -1,6 +1,6 @@
 using YGOProbabilityCalculatorBlazor.Models;
 
-namespace YGOProbabilityCalculatorBlazor.Services;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 public static class CategoryMerger {
     public static IEnumerable<Category> MergeComboCategories(IEnumerable<Combo> combos, int mask) {

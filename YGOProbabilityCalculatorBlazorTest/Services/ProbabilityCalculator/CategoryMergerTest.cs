@@ -1,7 +1,7 @@
 using YGOProbabilityCalculatorBlazor.Models;
-using YGOProbabilityCalculatorBlazor.Services;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-namespace YGOProbabilityCalculatorBlazorTest.Services;
+namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture]
 public class CategoryMergerTest {
