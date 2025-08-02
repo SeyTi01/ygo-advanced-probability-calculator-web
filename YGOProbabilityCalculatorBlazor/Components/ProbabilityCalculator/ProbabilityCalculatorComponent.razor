@@ -169,7 +169,12 @@
                                 data-bs-toggle="collapse"
                                 data-bs-target="#combo@(index)"
                                 @onclick="() => ToggleCombo(index)">
-                            Combo @(index + 1)
+                            @if (string.IsNullOrEmpty(combo.Name)) {
+                                <span>Combo @(index + 1)</span>
+                            }
+                            else {
+                                <span>@combo.Name</span>
+                            }
                             @if (combo.Categories.Any()) {
                                 <span class="ms-2">-</span>
                                 @foreach (var cat in combo.Categories) {
@@ -187,6 +192,15 @@
                          class="accordion-collapse collapse @(index == activeComboIndex ? "show" : "")"
                          data-parent="">
                         <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col-4">
+                                    <input type="text"
+                                           class="form-control"
+                                           placeholder="Combo name"
+                                           value="@combo.Name"
+                                           @onchange="@(e => UpdateComboName(index, e.Value?.ToString()))"/>
+                                </div>
+                            </div>
                             <div class="row mb-3">
                                 <div class="col-4">
                                     <select class="form-select" @bind="comboEditStates[index].SelectedCategory">
@@ -470,6 +484,11 @@
         if (activeComboIndex >= combos.Count) {
             activeComboIndex = combos.Count - 1;
         }
+    }
+
+    private void UpdateComboName(int comboIndex, string? name) {
+        var oldCombo = combos[comboIndex];
+        combos[comboIndex] = new Combo(oldCombo.Categories, name);
     }
 
     private void AddCategoryToCombo(int comboIndex) {

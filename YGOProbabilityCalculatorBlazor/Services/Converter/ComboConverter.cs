@@ -13,13 +13,24 @@ public class ComboConverter : JsonConverter<Combo> {
             root.GetProperty("Categories").GetRawText(),
             options) ?? [];
 
-        return new Combo(categories);
+        var name = root.TryGetProperty("Name", out var nameProperty)
+            ? nameProperty.GetString()
+            : null;
+
+        return new Combo(categories, name);
     }
 
     public override void Write(Utf8JsonWriter writer, Combo value, JsonSerializerOptions options) {
         writer.WriteStartObject();
+
         writer.WritePropertyName("Categories");
         JsonSerializer.Serialize(writer, value.Categories, options);
+
+        if (value.Name is not null) {
+            writer.WritePropertyName("Name");
+            writer.WriteStringValue(value.Name);
+        }
+
         writer.WriteEndObject();
     }
 }
