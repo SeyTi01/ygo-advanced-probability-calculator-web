@@ -1,7 +1,7 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 
-namespace YGOProbabilityCalculatorBlazor.Services;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 public static class ProbabilityCalculator {
     public static double CalculateProbabilityRange(
