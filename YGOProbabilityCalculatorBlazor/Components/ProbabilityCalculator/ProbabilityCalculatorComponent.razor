@@ -270,7 +270,7 @@
 
     private record ComboEditState {
         public string SelectedCategory { get; set; } = "";
-        public int MinCount { get; set; }
+        public int MinCount { get; set; } = 1;
         public int MaxCount { get; set; }
     }
 
@@ -465,7 +465,7 @@
 
     private void AddNewCombo() {
         combos.Add(new Combo([]));
-        comboEditStates.Add(new ComboEditState());
+        comboEditStates.Add(new ComboEditState { MaxCount = handSize });
         SetActiveCombo(combos.Count - 1);
     }
 
