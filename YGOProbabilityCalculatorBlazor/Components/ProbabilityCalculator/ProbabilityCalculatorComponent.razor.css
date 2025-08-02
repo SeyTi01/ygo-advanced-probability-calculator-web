@@ -10,3 +10,7 @@
 .form-group {
     margin-bottom: 1rem;
 }
+
+.accordion-button:focus {
+    box-shadow: none;
+}
