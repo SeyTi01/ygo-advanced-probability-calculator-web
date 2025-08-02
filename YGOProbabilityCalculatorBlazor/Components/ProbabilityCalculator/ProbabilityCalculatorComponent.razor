@@ -228,10 +228,9 @@
         </div>
     </div>
 
-    <div class="mb-4">
-        <h4>Calculate Probability</h4>
+    <div class="results-section">
         <div class="col-3">
-            <button class="btn btn-primary"
+            <button class="btn btn-primary btn-lg w-100"
                     @onclick="Calculate"
                     disabled="@(isCalculating || !CanCalculate)">
                 @if (isCalculating) {
@@ -243,20 +242,20 @@
                 }
             </button>
         </div>
+
+        @if (errorMessage is not null) {
+            <div class="alert alert-danger mt-3" role="alert">
+                @errorMessage
+            </div>
+        }
+
+        @if (probability is not null) {
+            <div class="alert alert-primary mt-3" role="alert">
+                <h5>Results:</h5>
+                <p class="mb-0">Probability: @(probability.Value.ToString("P2"))</p>
+            </div>
+        }
     </div>
-
-    @if (errorMessage is not null) {
-        <div class="alert alert-danger" role="alert">
-            @errorMessage
-        </div>
-    }
-
-    @if (probability is not null) {
-        <div class="alert alert-primary" role="alert">
-            <h5>Results:</h5>
-            <p class="mb-0">Probability: @(probability.Value.ToString("P2"))</p>
-        </div>
-    }
 </div>
 
 @code {
