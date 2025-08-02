@@ -611,21 +611,39 @@
     private async Task LoadSessionFile(InputFileChangeEventArgs e) {
         try {
             var file = e.File;
-            var tempPath = Path.GetTempFileName();
+            using var streamReader = new StreamReader(file.OpenReadStream());
+            var fileContent = await streamReader.ReadToEndAsync();
 
-            await using (var stream = file.OpenReadStream(maxAllowedSize: 1024 * 1024)) // 1MB max
-            await using (var fileStream = File.Create(tempPath)) {
-                await stream.CopyToAsync(fileStream);
+            var session = await _sessionService.LoadSessionAsync(fileContent);
+
+            categoryBases.Clear();
+            categoryBases.AddRange(session.Categories);
+
+            cards.Clear();
+            cards.AddRange(session.Cards);
+
+            combos.Clear();
+            combos.AddRange(session.Combos);
+
+            handSize = session.HandSize;
+
+            cardEditStates.Clear();
+            for (var i = 0; i < cards.Count; i++) {
+                cardEditStates.Add(new CardEditState());
             }
 
-            await LoadSession(tempPath);
-            File.Delete(tempPath);
+            comboEditStates.Clear();
+            for (var i = 0; i < combos.Count; i++) {
+                comboEditStates.Add(new ComboEditState());
+            }
+
+            errorMessage = null;
         }
         catch (Exception ex) {
             errorMessage = $"Failed to load session: {ex.Message}";
         }
     }
-
+    
     private async Task SaveCurrentSession() {
         var fileName = $"calculator_session_{DateTime.Now:yyyyMMdd_HHmmss}.json";
         await SaveSession(fileName);
