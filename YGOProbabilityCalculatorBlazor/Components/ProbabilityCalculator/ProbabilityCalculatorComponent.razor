@@ -1,8 +1,10 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.DeckImport
+@using YGOProbabilityCalculatorBlazor.Services.Interface
 @using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator
 @implements IDisposable
 @inject DeckImportService _deckImportService
+@inject ISessionService _sessionService
 
 <div class="container">
     <div class="d-flex align-items-center mb-4">
@@ -19,6 +21,13 @@
         <button class="btn btn-primary">
             <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="d-none" id="fileInput"/>
             <label for="fileInput" class="m-0" style="cursor: pointer;">Import Deck</label>
+        </button>
+        <button class="btn btn-secondary ms-2" @onclick="SaveCurrentSession">
+            Save Session
+        </button>
+        <button class="btn btn-secondary ms-2">
+            <InputFile OnChange="@LoadSessionFile" accept=".json" class="d-none" id="sessionFileInput"/>
+            <label for="sessionFileInput" class="m-0" style="cursor: pointer;">Load Session</label>
         </button>
     </div>
     @if (importError is not null) {
@@ -549,6 +558,77 @@
 
     private void RemoveCategoryFromCombo(int comboIndex, ComboCategory category) {
         combos[comboIndex].Categories.Remove(category);
+    }
+
+    private async Task SaveSession(string fileName) {
+        try {
+            var session = new CalculatorSession {
+                Categories = categoryBases,
+                Cards = cards,
+                Combos = combos,
+                HandSize = handSize
+            };
+
+            await _sessionService.SaveSessionAsync(session, fileName);
+        }
+        catch (Exception ex) {
+            errorMessage = $"Failed to save session: {ex.Message}";
+        }
+    }
+
+    private async Task LoadSession(string fileName) {
+        try {
+            var session = await _sessionService.LoadSessionAsync(fileName);
+
+            categoryBases.Clear();
+            categoryBases.AddRange(session.Categories);
+
+            cards.Clear();
+            cards.AddRange(session.Cards);
+
+            combos.Clear();
+            combos.AddRange(session.Combos);
+
+            handSize = session.HandSize;
+
+            cardEditStates.Clear();
+            for (var i = 0; i < cards.Count; i++) {
+                cardEditStates.Add(new CardEditState());
+            }
+
+            comboEditStates.Clear();
+            for (var i = 0; i < combos.Count; i++) {
+                comboEditStates.Add(new ComboEditState());
+            }
+
+            errorMessage = null;
+        }
+        catch (Exception ex) {
+            errorMessage = $"Failed to load session: {ex.Message}";
+        }
+    }
+
+    private async Task LoadSessionFile(InputFileChangeEventArgs e) {
+        try {
+            var file = e.File;
+            var tempPath = Path.GetTempFileName();
+
+            await using (var stream = file.OpenReadStream(maxAllowedSize: 1024 * 1024)) // 1MB max
+            await using (var fileStream = File.Create(tempPath)) {
+                await stream.CopyToAsync(fileStream);
+            }
+
+            await LoadSession(tempPath);
+            File.Delete(tempPath);
+        }
+        catch (Exception ex) {
+            errorMessage = $"Failed to load session: {ex.Message}";
+        }
+    }
+
+    private async Task SaveCurrentSession() {
+        var fileName = $"calculator_session_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+        await SaveSession(fileName);
     }
 
     void IDisposable.Dispose() {
