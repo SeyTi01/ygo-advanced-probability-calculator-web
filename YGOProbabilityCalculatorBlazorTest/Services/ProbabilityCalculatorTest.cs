@@ -9,13 +9,13 @@ public class ProbabilityCalculatorTest {
 
     [Test]
     public void AllCategoriesMaxZero() {
-        var categoryA = new Category("A", 0, 0);
+        var categoryA = new CategoryBase("A");
         var deck = new List<Card> {
             new([categoryA], 2),
             new([], 2)
         };
 
-        var categories = new[] { categoryA };
+        var categories = new[] { new Category("A", 0, 0) };
 
         var probability = ProbabilityCalculator.CalculateProbabilityRange(deck, categories, 2);
 
@@ -26,9 +26,9 @@ public class ProbabilityCalculatorTest {
     public void MultipleRangedCategories_ZeroToThree_ShouldBe100Percent() {
         const int handSize = 5;
 
-        var categoryA = new Category("A", 0, handSize);
-        var categoryB = new Category("B", 0, handSize);
-        var categoryC = new Category("C", 0, handSize);
+        var categoryA = new CategoryBase("A");
+        var categoryB = new CategoryBase("B");
+        var categoryC = new CategoryBase("C");
 
         var deck = new List<Card> {
             new([categoryA, categoryB], 3),
@@ -41,7 +41,11 @@ public class ProbabilityCalculatorTest {
             new([], 20)
         };
 
-        var categories = new[] { categoryA, categoryB, categoryC };
+        var categories = new[] {
+            new Category("A", 0, handSize),
+            new Category("B", 0, handSize),
+            new Category("C", 0, handSize)
+        };
 
         var probability = ProbabilityCalculator.CalculateProbabilityRange(deck, categories, handSize);
         Assert.That(probability, Is.EqualTo(1.0).Within(Tolerance));
@@ -49,8 +53,8 @@ public class ProbabilityCalculatorTest {
 
     [Test]
     public void CalculateProbabilityForCombos_SubsetScenario_EqualsSingleComboProbability() {
-        var categoryA = new Category("A", 1, 1);
-        var categoryB = new Category("B", 1, 1);
+        var categoryA = new CategoryBase("A");
+        var categoryB = new CategoryBase("B");
 
         var deck = new List<Card> {
             new([categoryA]),
@@ -63,10 +67,13 @@ public class ProbabilityCalculatorTest {
 
         const int handSize = 2;
 
-        var comboA = new Combo([categoryA]);
-        var comboAb = new Combo([categoryA, categoryB]);
+        var comboA = new Combo([new ComboCategory(categoryA, 1, 1)]);
+        var comboAb = new Combo([
+            new ComboCategory(categoryA, 1, 1),
+            new ComboCategory(categoryB, 1, 1)
+        ]);
 
-        var categories = new[] { categoryA };
+        var categories = new[] { new Category("A", 1, 1) };
 
         var singleProb = ProbabilityCalculator.CalculateProbabilityRange(deck, categories, handSize);
         var comboProb = ProbabilityCalculator.CalculateProbabilityForCombos(deck, [comboA, comboAb], handSize);
@@ -76,9 +83,9 @@ public class ProbabilityCalculatorTest {
 
     [Test]
     public void CalculateProbabilityForCombos_ExampleScenario_CalculatedCorrectly() {
-        var categoryA = new Category("A", 1, 1);
-        var categoryB = new Category("B", 1, 1);
-        var categoryC = new Category("C", 1, 1);
+        var categoryA = new CategoryBase("A");
+        var categoryB = new CategoryBase("B");
+        var categoryC = new CategoryBase("C");
 
         var cards = new List<Card> {
             new([categoryA]),
@@ -87,8 +94,11 @@ public class ProbabilityCalculatorTest {
             new([])
         };
 
-        var combo1 = new Combo([categoryA]);
-        var combo2 = new Combo([categoryB, categoryC]);
+        var combo1 = new Combo([new ComboCategory(categoryA, 1, 1)]);
+        var combo2 = new Combo([
+            new ComboCategory(categoryB, 1, 1),
+            new ComboCategory(categoryC, 1, 1)
+        ]);
 
         var probability = ProbabilityCalculator.CalculateProbabilityForCombos(cards, [combo1, combo2], 2);
         Assert.That(probability, Is.EqualTo(0.5 + 1.0 / 6.0).Within(Tolerance));
@@ -96,8 +106,8 @@ public class ProbabilityCalculatorTest {
 
     [Test]
     public void ExactRangeRequirements_CalculateCorrectProbability() {
-        var starter = new Category("starter", 1, 1);
-        var extender = new Category("extender", 1, 1);
+        var starter = new CategoryBase("starter");
+        var extender = new CategoryBase("extender");
 
         var deck = new List<Card> {
             new([starter], 2),
@@ -105,7 +115,10 @@ public class ProbabilityCalculatorTest {
             new([starter, extender])
         };
 
-        var requirements = new[] { starter, extender };
+        var requirements = new[] {
+            new Category("starter", 1, 1),
+            new Category("extender", 1, 1)
+        };
 
         var probability = ProbabilityCalculator.CalculateProbabilityRange(deck, requirements, 2);
         Assert.That(probability, Is.EqualTo(5.0 / 6.0).Within(Tolerance));
@@ -115,14 +128,14 @@ public class ProbabilityCalculatorTest {
     public void MinGreaterThanOneRequirements_CalculatedCorrectly() {
         const int handSize = 3;
 
-        var starter = new Category("starter", 2, handSize);
+        var starter = new CategoryBase("starter");
 
         var deck = new List<Card> {
             new([starter], 3),
             new([], 2)
         };
 
-        var requirements = new[] { starter };
+        var requirements = new[] { new Category("starter", 2, handSize) };
 
         var probability = ProbabilityCalculator.CalculateProbabilityRange(deck, requirements, handSize);
         Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));
@@ -132,9 +145,9 @@ public class ProbabilityCalculatorTest {
     public void OverlapThreeCategories_CalculatedCorrectly() {
         const int handSize = 3;
 
-        var starter = new Category("starter", 1, handSize);
-        var extender = new Category("extender", 1, handSize);
-        var combo = new Category("combo", 1, handSize);
+        var starter = new CategoryBase("starter");
+        var extender = new CategoryBase("extender");
+        var combo = new CategoryBase("combo");
 
         var deck = new List<Card> {
             new([starter]),
@@ -144,7 +157,11 @@ public class ProbabilityCalculatorTest {
             new([])
         };
 
-        var categories = new[] { starter, extender, combo };
+        var categories = new[] {
+            new Category("starter", 1, handSize),
+            new Category("extender", 1, handSize),
+            new Category("combo", 1, handSize)
+        };
 
         var probability = ProbabilityCalculator.CalculateProbabilityRange(deck, categories, handSize);
         Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));

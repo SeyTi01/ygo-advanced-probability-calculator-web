@@ -7,14 +7,18 @@ namespace YGOProbabilityCalculatorBlazorTest.Services;
 public class CategoryMergerTest {
     [Test]
     public void MergeCombos_WithOverlappingCategories_MergesCorrectly() {
+        var catA = new CategoryBase("A");
+        var catB = new CategoryBase("B");
+        var catC = new CategoryBase("C");
+
         var combo1 = new Combo([
-            new Category("A", 1, 4),
-            new Category("B", 2, 3)
+            new ComboCategory(catA, 1, 4),
+            new ComboCategory(catB, 2, 3)
         ]);
 
         var combo2 = new Combo([
-            new Category("A", 2, 5),
-            new Category("C", 1, 2)
+            new ComboCategory(catA, 2, 5),
+            new ComboCategory(catC, 1, 2)
         ]);
 
         var result = CategoryMerger.MergeComboCategories([combo1, combo2], 0b11).ToList();
@@ -38,9 +42,11 @@ public class CategoryMergerTest {
 
     [Test]
     public void MergeCombos_WithMask_OnlyMergesSelectedCombos() {
-        var combo1 = new Combo([new Category("A", 1, 4)]);
-        var combo2 = new Combo([new Category("A", 2, 5)]);
-        var combo3 = new Combo([new Category("A", 3, 6)]);
+        var catA = new CategoryBase("A");
+
+        var combo1 = new Combo([new ComboCategory(catA, 1, 4)]);
+        var combo2 = new Combo([new ComboCategory(catA, 2, 5)]);
+        var combo3 = new Combo([new ComboCategory(catA, 3, 6)]);
 
         var result = CategoryMerger.MergeComboCategories([combo1, combo2, combo3], 0b101)
             .Single();
