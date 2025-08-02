@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -22,10 +23,11 @@ public class CardInfoServiceTests {
         _fileServiceMock.Setup(x => x.ReadAllTextAsync(It.IsAny<string>()))
             .ReturnsAsync("{}");
 
-        _serializerMock.Setup(x => x.Deserialize<Dictionary<int, string>>(It.IsAny<string>()))
+        _serializerMock.Setup(x =>
+                x.Deserialize<Dictionary<int, string>>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
             .Returns(_testCache);
 
-        _serializerMock.Setup(x => x.Serialize(It.IsAny<Dictionary<int, string>>()))
+        _serializerMock.Setup(x => x.Serialize(It.IsAny<Dictionary<int, string>>(), It.IsAny<JsonSerializerOptions>()))
             .Returns("{}");
 
         _cardInfoService = new CardInfoService(_fileServiceMock.Object, _serializerMock.Object);
@@ -53,13 +55,16 @@ public class CardInfoServiceTests {
     [Test]
     public void Constructor_EmptyCache_InitiatesFetchAllCards() {
         var emptyCache = new Dictionary<int, string>();
-        _serializerMock.Setup(x => x.Deserialize<Dictionary<int, string>>(It.IsAny<string>()))
+        _serializerMock.Setup(x =>
+                x.Deserialize<Dictionary<int, string>>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
             .Returns(emptyCache);
 
         var service = new CardInfoService(_fileServiceMock.Object, _serializerMock.Object);
 
         _fileServiceMock.Verify(x => x.ReadAllTextAsync(It.IsAny<string>()), Times.AtLeastOnce);
-        _serializerMock.Verify(x => x.Deserialize<Dictionary<int, string>>(It.IsAny<string>()), Times.AtLeastOnce);
+        _serializerMock.Verify(
+            x => x.Deserialize<Dictionary<int, string>>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()),
+            Times.AtLeastOnce);
     }
 
     [Test]
