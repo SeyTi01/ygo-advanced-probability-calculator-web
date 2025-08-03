@@ -1,5 +1,6 @@
-using System.Text.Json;
+using System.Net;
 using Moq;
+using Moq.Protected;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 
@@ -7,30 +8,30 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
 [TestFixture]
 public class CardInfoServiceTests {
-    private Mock<IFileService> _fileServiceMock;
-    private Mock<ISerializer> _serializerMock;
+    private Mock<ILocalStorageService> _localStorageMock;
+    private Mock<HttpMessageHandler> _httpMessageHandlerMock;
     private CardInfoService _cardInfoService;
     private Dictionary<int, string> _testCache;
+    private HttpClient _httpClient;
 
     [SetUp]
     public void Setup() {
-        _fileServiceMock = new Mock<IFileService>();
-        _serializerMock = new Mock<ISerializer>();
+        _localStorageMock = new Mock<ILocalStorageService>();
+        _httpMessageHandlerMock = new Mock<HttpMessageHandler>();
         _testCache = new Dictionary<int, string> {
             { 1234, "Blue-Eyes White Dragon" }
         };
 
-        _fileServiceMock.Setup(x => x.ReadAllTextAsync(It.IsAny<string>()))
-            .ReturnsAsync("{}");
+        _localStorageMock.Setup(x => x.GetItemAsync<Dictionary<int, string>>("cardCache"))
+            .ReturnsAsync(_testCache);
 
-        _serializerMock.Setup(x =>
-                x.Deserialize<Dictionary<int, string>>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
-            .Returns(_testCache);
+        _httpClient = new HttpClient(_httpMessageHandlerMock.Object);
+        _cardInfoService = new CardInfoService(_localStorageMock.Object, _httpClient);
+    }
 
-        _serializerMock.Setup(x => x.Serialize(It.IsAny<Dictionary<int, string>>(), It.IsAny<JsonSerializerOptions>()))
-            .Returns("{}");
-
-        _cardInfoService = new CardInfoService(_fileServiceMock.Object, _serializerMock.Object);
+    [TearDown]
+    public void TearDown() {
+        _httpClient.Dispose();
     }
 
     [Test]
@@ -47,6 +48,8 @@ public class CardInfoServiceTests {
     public async Task GetCardNameAsync_NonExistentCard_ReturnsIdAsString() {
         const int cardId = 9999;
 
+        SetupHttpMockResponse("{\"data\": []}");
+
         var result = await _cardInfoService.GetCardNameAsync(cardId);
 
         Assert.That(result, Is.EqualTo(cardId.ToString()));
@@ -54,26 +57,58 @@ public class CardInfoServiceTests {
 
     [Test]
     public void Constructor_EmptyCache_InitiatesFetchAllCards() {
-        var emptyCache = new Dictionary<int, string>();
-        _serializerMock.Setup(x =>
-                x.Deserialize<Dictionary<int, string>>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
-            .Returns(emptyCache);
+        _localStorageMock.Reset();
 
-        var service = new CardInfoService(_fileServiceMock.Object, _serializerMock.Object);
+        _localStorageMock.Setup(x => x.GetItemAsync<Dictionary<int, string>>("cardCache"))
+            .ReturnsAsync(new Dictionary<int, string>());
 
-        _fileServiceMock.Verify(x => x.ReadAllTextAsync(It.IsAny<string>()), Times.AtLeastOnce);
-        _serializerMock.Verify(
-            x => x.Deserialize<Dictionary<int, string>>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()),
-            Times.AtLeastOnce);
+        SetupHttpMockResponse("{\"data\": [{\"id\": 5678, \"name\": \"Dark Magician\"}]}");
+
+        var service = new CardInfoService(_localStorageMock.Object, _httpClient);
+
+        _localStorageMock.Verify(x => x.GetItemAsync<Dictionary<int, string>>("cardCache"), Times.Exactly(2));
     }
 
     [Test]
     public void Constructor_LoadCacheFailure_CreatesEmptyCache() {
-        _fileServiceMock.Setup(x => x.ReadAllTextAsync(It.IsAny<string>()))
-            .ThrowsAsync(new IOException());
+        _localStorageMock.Setup(x => x.GetItemAsync<Dictionary<int, string>>("cardCache"))
+            .ThrowsAsync(new Exception());
 
-        var service = new CardInfoService(_fileServiceMock.Object, _serializerMock.Object);
+        var service = new CardInfoService(_localStorageMock.Object, _httpClient);
 
         Assert.DoesNotThrowAsync(async () => await service.GetCardNameAsync(1234));
+    }
+
+    [Test]
+    public async Task SaveCache_OnNewCard_CallsSetItemAsync() {
+        const int cardId = 5678;
+        const string cardName = "Dark Magician";
+
+        _localStorageMock.Setup(x => x.GetItemAsync<Dictionary<int, string>>("cardCache"))
+            .ReturnsAsync(new Dictionary<int, string>());
+
+        SetupHttpMockResponse($"{{\"data\": [{{\"id\": {cardId}, \"name\": \"{cardName}\"}}]}}");
+
+        var service = new CardInfoService(_localStorageMock.Object, _httpClient);
+        await service.GetCardNameAsync(cardId);
+
+        _localStorageMock.Verify(x => x.SetItemAsync(
+            "cardCache",
+            It.Is<Dictionary<int, string>>(d => d.ContainsKey(cardId) && d[cardId] == cardName)
+        ), Times.Once);
+    }
+
+    private void SetupHttpMockResponse(string content) {
+        _httpMessageHandlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(content)
+            });
     }
 }

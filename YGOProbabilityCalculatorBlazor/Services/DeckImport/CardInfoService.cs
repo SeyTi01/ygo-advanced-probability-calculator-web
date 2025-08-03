@@ -6,17 +6,16 @@ namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 public class CardInfoService : ICardInfoService {
     private const string BulkApiUrl = "https://db.ygoprodeck.com/api/v7/cardinfo.php";
     private const string SingleApiTemplate = "https://db.ygoprodeck.com/api/v7/cardinfo.php?id={0}";
-    private const string CacheFileName = "cardcache.json";
+    private const string CacheKey = "cardCache";
 
-    private readonly HttpClient _httpClient = new();
+    private readonly HttpClient _httpClient;
     private readonly Dictionary<int, string> _cache;
-    private readonly IFileService _fileService;
-    private readonly ISerializer _serializer;
+    private readonly ILocalStorageService _localStorage;
 
-    public CardInfoService(IFileService fileService, ISerializer serializer) {
-        _fileService = fileService;
-        _serializer = serializer;
-        _cache = LoadCache();
+    public CardInfoService(ILocalStorageService localStorage, HttpClient? httpClient = null) {
+        _localStorage = localStorage;
+        _httpClient = httpClient ?? new HttpClient();
+        _cache = LoadCache().GetAwaiter().GetResult();
 
         if (_cache.Count == 0)
             _ = FetchAllCardsAsync();
@@ -78,23 +77,19 @@ public class CardInfoService : ICardInfoService {
         }
     }
 
-    private Dictionary<int, string> LoadCache() {
+    private async Task<Dictionary<int, string>> LoadCache() {
         try {
-            var json = _fileService.ReadAllTextAsync(CacheFileName).GetAwaiter().GetResult();
-            return _serializer.Deserialize<Dictionary<int, string>>(json)
-                   ?? new Dictionary<int, string>();
+            var cache = await _localStorage.GetItemAsync<Dictionary<int, string>>(CacheKey);
+            return cache ?? new Dictionary<int, string>();
         }
         catch {
-            // ignored
+            return new Dictionary<int, string>();
         }
-
-        return new Dictionary<int, string>();
     }
 
     private async Task SaveCacheAsync() {
         try {
-            var json = _serializer.Serialize(_cache);
-            await _fileService.WriteAllTextAsync(CacheFileName, json);
+            await _localStorage.SetItemAsync(CacheKey, _cache);
         }
         catch {
             // ignored
