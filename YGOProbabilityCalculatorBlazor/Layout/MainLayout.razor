@@ -9,7 +9,7 @@
                 <a href="/" class="btn btn-outline-primary">Back</a>
             }
             else {
-                <a href="/how-to-use" class="btn btn-outline-primary">Help</a>
+                <a href="/help" class="btn btn-outline-primary">Help</a>
             }
         </div>
 
@@ -20,5 +20,5 @@
 </div>
 
 @code {
-    private bool IsHelpPage => NavigationManager.Uri.EndsWith("/how-to-use", StringComparison.OrdinalIgnoreCase);
+    private bool IsHelpPage => NavigationManager.Uri.EndsWith("/help", StringComparison.OrdinalIgnoreCase);
 }
