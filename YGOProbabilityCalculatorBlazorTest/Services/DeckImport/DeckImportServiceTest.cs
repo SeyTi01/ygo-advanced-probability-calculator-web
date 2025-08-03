@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Forms;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -18,7 +19,8 @@ public class DeckImportServiceTest {
 
     [Test]
     public async Task ImportDeckFromYdkAsync_ValidFile_ReturnsCorrectCards() {
-        _fileServiceMock.Setup(x => x.ReadAllLinesAsync(It.IsAny<string>()))
+        var mockFile = new Mock<IBrowserFile>();
+        _fileServiceMock.Setup(x => x.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
             .ReturnsAsync([
                 "#main",
                 "12345",
@@ -33,7 +35,7 @@ public class DeckImportServiceTest {
         _cardInfoServiceMock.Setup(x => x.GetCardNameAsync(67890))
             .ReturnsAsync("Test Card 2");
 
-        var result = await _service.ImportDeckFromYdkAsync("dummy.ydk");
+        var result = await _service.ImportDeckFromYdkAsync(mockFile.Object);
 
         Assert.That(result, Has.Count.EqualTo(2));
 
@@ -52,7 +54,8 @@ public class DeckImportServiceTest {
 
     [Test]
     public async Task ImportDeckFromYdkAsync_CardInfoServiceFails_CreatesCardAnyway() {
-        _fileServiceMock.Setup(x => x.ReadAllLinesAsync(It.IsAny<string>()))
+        var mockFile = new Mock<IBrowserFile>();
+        _fileServiceMock.Setup(x => x.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
             .ReturnsAsync([
                 "#main",
                 "12345"
@@ -61,7 +64,7 @@ public class DeckImportServiceTest {
         _cardInfoServiceMock.Setup(x => x.GetCardNameAsync(12345))
             .ThrowsAsync(new Exception("API failure"));
 
-        var result = await _service.ImportDeckFromYdkAsync("dummy.ydk");
+        var result = await _service.ImportDeckFromYdkAsync(mockFile.Object);
 
         Assert.That(result, Has.Count.EqualTo(1));
         var card = result[0];
@@ -73,7 +76,8 @@ public class DeckImportServiceTest {
 
     [Test]
     public async Task ImportDeckFromYdkAsync_InvalidCardId_SkipsInvalidLines() {
-        _fileServiceMock.Setup(x => x.ReadAllLinesAsync(It.IsAny<string>()))
+        var mockFile = new Mock<IBrowserFile>();
+        _fileServiceMock.Setup(x => x.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
             .ReturnsAsync([
                 "#main",
                 "invalid",
@@ -84,7 +88,7 @@ public class DeckImportServiceTest {
         _cardInfoServiceMock.Setup(x => x.GetCardNameAsync(12345))
             .ReturnsAsync("Test Card");
 
-        var result = await _service.ImportDeckFromYdkAsync("dummy.ydk");
+        var result = await _service.ImportDeckFromYdkAsync(mockFile.Object);
 
         Assert.That(result, Has.Count.EqualTo(1));
         var card = result[0];
@@ -95,11 +99,12 @@ public class DeckImportServiceTest {
     }
 
     [Test]
-    public void ImportDeckFromYdkAsync_FileNotFound_ThrowsFileNotFoundException() {
-        _fileServiceMock.Setup(x => x.ReadAllLinesAsync(It.IsAny<string>()))
-            .ThrowsAsync(new FileNotFoundException());
+    public void ImportDeckFromYdkAsync_FileServiceThrows_ThrowsException() {
+        var mockFile = new Mock<IBrowserFile>();
+        _fileServiceMock.Setup(x => x.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
+            .ThrowsAsync(new Exception("File read error"));
 
-        Assert.ThrowsAsync<FileNotFoundException>(async () =>
-            await _service.ImportDeckFromYdkAsync("nonexistent.ydk"));
+        Assert.ThrowsAsync<Exception>(async () =>
+            await _service.ImportDeckFromYdkAsync(mockFile.Object));
     }
 }

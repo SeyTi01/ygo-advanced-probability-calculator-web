@@ -9,19 +9,27 @@ public class CardInfoService : ICardInfoService {
     private const string CacheKey = "cardCache";
 
     private readonly HttpClient _httpClient;
-    private readonly Dictionary<int, string> _cache;
+    private Dictionary<int, string> _cache;
     private readonly ILocalStorageService _localStorage;
+    private readonly Task _initializeTask;
 
     public CardInfoService(ILocalStorageService localStorage, HttpClient? httpClient = null) {
         _localStorage = localStorage;
         _httpClient = httpClient ?? new HttpClient();
-        _cache = LoadCache().GetAwaiter().GetResult();
+        _cache = new Dictionary<int, string>();
+        _initializeTask = InitializeAsync();
+    }
 
-        if (_cache.Count == 0)
-            _ = FetchAllCardsAsync();
+    private async Task InitializeAsync() {
+        _cache = await LoadCache();
+        if (_cache.Count == 0) {
+            await FetchAllCardsAsync();
+        }
     }
 
     public async Task<string> GetCardNameAsync(int id) {
+        await _initializeTask;
+
         if (_cache.TryGetValue(id, out var name))
             return name;
 

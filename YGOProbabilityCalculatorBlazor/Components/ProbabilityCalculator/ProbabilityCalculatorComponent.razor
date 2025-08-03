@@ -542,15 +542,7 @@
     private async Task ImportDeckAsync(InputFileChangeEventArgs e) {
         try {
             importError = null;
-            var file = e.File;
-            var tempPath = Path.GetTempFileName();
-
-            await using (var stream = file.OpenReadStream(maxAllowedSize: 1024 * 1024)) // 1MB max
-            await using (var fileStream = File.Create(tempPath)) {
-                await stream.CopyToAsync(fileStream);
-            }
-
-            var importedCards = await _deckImportService.ImportDeckFromYdkAsync(tempPath);
+            var importedCards = await _deckImportService.ImportDeckFromYdkAsync(e.File);
 
             cards.Clear();
             cards.AddRange(importedCards);
@@ -559,8 +551,6 @@
             for (var i = 0; i < cards.Count; i++) {
                 cardEditStates.Add(new CardEditState());
             }
-
-            File.Delete(tempPath);
         }
         catch (Exception ex) {
             importError = $"Failed to import deck: {ex.Message}";

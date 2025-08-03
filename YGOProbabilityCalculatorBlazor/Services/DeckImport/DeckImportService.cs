@@ -1,11 +1,12 @@
+using Microsoft.AspNetCore.Components.Forms;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 
 public class DeckImportService(ICardInfoService cardInfoService, IFileService fileService) {
-    public async Task<List<Card>> ImportDeckFromYdkAsync(string filePath) {
-        var lines = await fileService.ReadAllLinesAsync(filePath);
+    public async Task<List<Card>> ImportDeckFromYdkAsync(IBrowserFile file) {
+        var lines = await fileService.ReadAllLinesAsync(file);
         var cardCounts = new Dictionary<int, int>();
         var cards = new List<Card>();
 

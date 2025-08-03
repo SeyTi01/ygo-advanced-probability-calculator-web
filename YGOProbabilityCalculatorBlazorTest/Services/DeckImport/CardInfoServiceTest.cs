@@ -66,7 +66,7 @@ public class CardInfoServiceTests {
 
         var service = new CardInfoService(_localStorageMock.Object, _httpClient);
 
-        _localStorageMock.Verify(x => x.GetItemAsync<Dictionary<int, string>>("cardCache"), Times.Exactly(2));
+        _localStorageMock.Verify(x => x.GetItemAsync<Dictionary<int, string>>("cardCache"), Times.Exactly(1));
     }
 
     [Test]
