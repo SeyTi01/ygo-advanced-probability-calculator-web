@@ -5,6 +5,7 @@
 @implements IDisposable
 @inject DeckImportService _deckImportService
 @inject ISessionService _sessionService
+@inject IPendingSessionService _pendingSessionService
 
 <div class="container">
     <div class="d-flex mb-3">
@@ -20,7 +21,7 @@
             <label for="sessionFileInput" class="m-0" style="cursor: pointer;">Load Session</label>
         </button>
     </div>
-    
+
     <div class="mb-4">
         <div class="d-flex align-items-center">
             <label for="handSize" class="me-2 mb-0">Hand Size:</label>
@@ -625,6 +626,40 @@
     private async Task SaveCurrentSession() {
         var fileName = $"calculator_session_{DateTime.Now:yyyyMMdd_HHmmss}.json";
         await SaveSession(fileName);
+    }
+
+    protected override void OnInitialized() {
+        if (_pendingSessionService.PendingSession is { } session) {
+            try {
+                categoryBases.Clear();
+                categoryBases.AddRange(session.Categories);
+
+                cards.Clear();
+                cards.AddRange(session.Cards);
+
+                combos.Clear();
+                combos.AddRange(session.Combos);
+
+                handSize = session.HandSize;
+
+                cardEditStates.Clear();
+                for (var i = 0; i < cards.Count; i++) {
+                    cardEditStates.Add(new CardEditState());
+                }
+
+                comboEditStates.Clear();
+                for (var i = 0; i < combos.Count; i++) {
+                    comboEditStates.Add(new ComboEditState());
+                }
+
+                _pendingSessionService.PendingSession = null;
+            }
+            catch (Exception ex) {
+                errorMessage = $"Failed to load example session: {ex.Message}";
+            }
+        }
+
+        base.OnInitialized();
     }
 
     void IDisposable.Dispose() {

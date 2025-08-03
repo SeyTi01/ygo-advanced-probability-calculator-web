@@ -16,5 +16,6 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ICardInfoService, CardInfoService>();
 builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<ISerializer, JsonSerializer>();
+builder.Services.AddScoped<IPendingSessionService, PendingSessionService>();
 
 await builder.Build().RunAsync();
