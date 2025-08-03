@@ -1,6 +1,6 @@
 # Yu-Gi-Oh! Advanced Probability Calculator
 
-A probability calculator for Yu-Gi-Oh! deck building that focuses on complex card combinations and interactions. Available [here](https://ygo-calculator.pages.dev/).
+A probability calculator for Yu-Gi-Oh! deck building that focuses on complex card combinations and interactions. Try it [here](https://ygo-calculator.pages.dev/).
 
 ## Why This Tool?
 
@@ -34,6 +34,8 @@ This example illustrates how to calculate the likelihood of opening a Fiendsmith
 - **Moon Combo 2**: Requires *both* the `Bystial` tag *and* the `L/D Normal Summon` tag in the opening hand.
 
 After tagging all cards appropriately, this configuration will calculate the exact probability of opening a Fiendsmith play in a given deck list.
+
+![Screenshot](YGOProbabilityCalculatorBlazor/Assets/readme_screenshot.png)
 
 For further optimization, you could define categories like `Handtrap` or `Brick`, then require all of your combos to open at least one `Handtrap`-tagged card while opening zero `Brick`-tagged cards.  
 This can help determine optimal deck sizes and engine ratios.
