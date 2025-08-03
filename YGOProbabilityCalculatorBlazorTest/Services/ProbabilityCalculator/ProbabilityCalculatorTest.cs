@@ -17,7 +17,7 @@ public class ProbabilityCalculatorTest {
 
         var categories = new[] { new Category("A", 0, 0) };
 
-        var probability = CalcServices.CalculateProbabilityRange(deck, categories, 2);
+        var probability = CalcServices.CalculateProbabilityForCategories(deck, categories, 2);
 
         Assert.That(probability, Is.EqualTo(1.0 / 6.0).Within(Tolerance));
     }
@@ -47,7 +47,7 @@ public class ProbabilityCalculatorTest {
             new Category("C", 0, handSize)
         };
 
-        var probability = CalcServices.CalculateProbabilityRange(deck, categories, handSize);
+        var probability = CalcServices.CalculateProbabilityForCategories(deck, categories, handSize);
         Assert.That(probability, Is.EqualTo(1.0).Within(Tolerance));
     }
 
@@ -75,7 +75,7 @@ public class ProbabilityCalculatorTest {
 
         var categories = new[] { new Category("A", 1, 1) };
 
-        var singleProb = CalcServices.CalculateProbabilityRange(deck, categories, handSize);
+        var singleProb = CalcServices.CalculateProbabilityForCategories(deck, categories, handSize);
         var comboProb = CalcServices.CalculateProbabilityForCombos(deck, [comboA, comboAb], handSize);
 
         Assert.That(comboProb, Is.EqualTo(singleProb).Within(Tolerance));
@@ -120,7 +120,7 @@ public class ProbabilityCalculatorTest {
             new Category("extender", 1, 1)
         };
 
-        var probability = CalcServices.CalculateProbabilityRange(deck, requirements, 2);
+        var probability = CalcServices.CalculateProbabilityForCategories(deck, requirements, 2);
         Assert.That(probability, Is.EqualTo(5.0 / 6.0).Within(Tolerance));
     }
 
@@ -137,7 +137,7 @@ public class ProbabilityCalculatorTest {
 
         var requirements = new[] { new Category("starter", 2, handSize) };
 
-        var probability = CalcServices.CalculateProbabilityRange(deck, requirements, handSize);
+        var probability = CalcServices.CalculateProbabilityForCategories(deck, requirements, handSize);
         Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));
     }
 
@@ -163,7 +163,7 @@ public class ProbabilityCalculatorTest {
             new Category("combo", 1, handSize)
         };
 
-        var probability = CalcServices.CalculateProbabilityRange(deck, categories, handSize);
+        var probability = CalcServices.CalculateProbabilityForCategories(deck, categories, handSize);
         Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));
     }
 }

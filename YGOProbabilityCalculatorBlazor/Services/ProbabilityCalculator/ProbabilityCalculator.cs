@@ -4,7 +4,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 public static class ProbabilityCalculator {
-    public static double CalculateProbabilityRange(
+    public static double CalculateProbabilityForCategories(
         IEnumerable<Card> deck,
         IEnumerable<Category> categories,
         int handSize,
@@ -47,7 +47,7 @@ public static class ProbabilityCalculator {
             var mergedCategories =
                 CategoryMerger.MergeComboCategories(comboList, mask);
 
-            var p = CalculateProbabilityRange(
+            var p = CalculateProbabilityForCategories(
                 deckList,
                 mergedCategories,
                 handSize,
