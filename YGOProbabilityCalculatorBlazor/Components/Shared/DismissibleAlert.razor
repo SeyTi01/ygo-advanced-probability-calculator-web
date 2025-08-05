@@ -1,0 +1,19 @@
+<div class="alert alert-@Type" role="alert">
+    @Message
+    <button type="button"
+            class="btn-close float-end"
+            aria-label="Close"
+            @onclick="OnDismiss">
+    </button>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Message { get; set; } = "";
+
+    [Parameter]
+    public string Type { get; set; } = "danger";
+
+    [Parameter, EditorRequired]
+    public EventCallback OnDismiss { get; set; }
+}
