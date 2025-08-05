@@ -2,6 +2,7 @@
 @using YGOProbabilityCalculatorBlazor.Services.DeckImport
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator
+@using YGOProbabilityCalculatorBlazor.Components.Shared
 @implements IDisposable
 @inject DeckImportService _deckImportService
 @inject ISessionService _sessionService
@@ -34,9 +35,7 @@
         </div>
     </div>
     @if (importError is not null) {
-        <div class="alert alert-danger mt-2" role="alert">
-            @importError
-        </div>
+        <DismissibleAlert Message="@importError" OnDismiss="@(() => importError = null)"/>
     }
 
     <div class="mb-4">
@@ -50,9 +49,7 @@
             </div>
         </div>
         @if (categoryError is not null) {
-            <div class="alert alert-danger mt-2" role="alert">
-                @categoryError
-            </div>
+            <DismissibleAlert Message="@categoryError" OnDismiss="@(() => categoryError = null)"/>
         }
         <div class="mt-2">
             @foreach (var category in categoryBases) {
@@ -68,9 +65,7 @@
     <div class="mb-4">
         <h4>Deck (@cards.Sum(c => c.Copies))</h4>
         @if (cardError is not null) {
-            <div class="alert alert-danger mb-2" role="alert">
-                @cardError
-            </div>
+            <DismissibleAlert Message="@cardError" OnDismiss="@(() => cardError = null)"/>
         }
         <div class="accordion" id="cardsAccordion">
             @foreach (var (card, index) in cards.Select((c, i) => (c, i))) {
@@ -159,9 +154,7 @@
     <div class="mb-4">
         <h4>Combos</h4>
         @if (comboError is not null) {
-            <div class="alert alert-danger mb-2" role="alert">
-                @comboError
-            </div>
+            <DismissibleAlert Message="@comboError" OnDismiss="@(() => comboError = null)"/>
         }
         <div class="accordion" id="combosAccordion">
             @foreach (var (combo, index) in combos.Select((c, i) => (c, i))) {
@@ -270,9 +263,7 @@
         </div>
 
         @if (errorMessage is not null) {
-            <div class="alert alert-danger mt-3" role="alert">
-                @errorMessage
-            </div>
+            <DismissibleAlert Message="@errorMessage" OnDismiss="@(() => errorMessage = null)"/>
         }
 
         @if (probability is not null) {
