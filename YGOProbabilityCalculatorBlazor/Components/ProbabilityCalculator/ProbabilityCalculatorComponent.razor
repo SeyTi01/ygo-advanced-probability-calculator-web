@@ -41,7 +41,13 @@
         <h4>Categories</h4>
         <div class="row">
             <div class="col-4">
-                <input @bind="newCategoryName" class="form-control" placeholder="Category name"/>
+                <input @bind="newCategoryName"
+                       @bind:event="oninput"
+                       @onkeyup="@(e => {
+                                     if (e.Key == "Enter") AddCategoryBase();
+                                 })"
+                       class="form-control"
+                       placeholder="Category name"/>
             </div>
             <div class="col-2">
                 <button class="btn btn-primary" @onclick="AddCategoryBase">Add Category</button>
