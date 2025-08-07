@@ -81,7 +81,7 @@
                             else {
                                 <span>@card.Name</span>
                             }
-                            <span class="ms-2">(@card.Copies copies)</span>
+                            <span class="ms-2">(@card.Copies)</span>
                             @if (card.Categories.Any()) {
                                 <span class="ms-2">-</span>
                                 @foreach (var cat in card.Categories) {
@@ -99,14 +99,18 @@
                         <div class="accordion-body">
                             <div class="row mb-3">
                                 <div class="col-4">
+                                    <label for="cardName@(index)" class="form-label">Name</label>
                                     <input type="text"
+                                           id="cardName@(index)"
                                            class="form-control"
                                            placeholder="Card name"
                                            value="@card.Name"
                                            @onchange="@(e => UpdateCardName(index, e.Value?.ToString()))"/>
                                 </div>
                                 <div class="col-2">
+                                    <label for="cardCopies@(index)" class="form-label">Copies</label>
                                     <input type="number"
+                                           id="cardCopies@(index)"
                                            class="form-control"
                                            placeholder="Copies"
                                            min="1"
@@ -114,7 +118,10 @@
                                            @onchange="@(e => UpdateCardCopies(index, int.Parse(e.Value?.ToString() ?? "1")))"/>
                                 </div>
                                 <div class="col-4">
-                                    <select class="form-select" @bind="cardEditStates[index].SelectedCategory">
+                                    <label for="cardCategory@(index)" class="form-label">Category</label>
+                                    <select id="cardCategory@(index)"
+                                            class="form-select"
+                                            @bind="cardEditStates[index].SelectedCategory">
                                         <option value="">Add category...</option>
                                         @foreach (var cat in categoryBases.Where(c => !card.Categories.Contains(c))) {
                                             <option value="@cat.Name">@cat.Name</option>
@@ -122,7 +129,8 @@
                                     </select>
                                 </div>
                                 <div class="col-2">
-                                    <button class="btn btn-primary"
+                                    <label class="form-label invisible">Action</label>
+                                    <button class="btn btn-primary w-100"
                                             @onclick="() => AddCategoryToCard(index)">
                                         Add Category
                                     </button>
@@ -189,7 +197,9 @@
                         <div class="accordion-body">
                             <div class="row mb-3">
                                 <div class="col-4">
+                                    <label for="comboName@(index)" class="form-label">Name</label>
                                     <input type="text"
+                                           id="comboName@(index)"
                                            class="form-control"
                                            placeholder="Combo name"
                                            value="@combo.Name"
@@ -198,7 +208,10 @@
                             </div>
                             <div class="row mb-3">
                                 <div class="col-4">
-                                    <select class="form-select" @bind="comboEditStates[index].SelectedCategory">
+                                    <label for="category@(index)" class="form-label">Category</label>
+                                    <select id="category@(index)"
+                                            class="form-select"
+                                            @bind="comboEditStates[index].SelectedCategory">
                                         <option value="">Select category...</option>
                                         @foreach (var cat in categoryBases) {
                                             <option value="@cat.Name">@cat.Name</option>
@@ -206,19 +219,24 @@
                                     </select>
                                 </div>
                                 <div class="col-2">
+                                    <label for="minCount@(index)" class="form-label">Min</label>
                                     <input @bind="comboEditStates[index].MinCount"
+                                           id="minCount@(index)"
                                            type="number"
                                            class="form-control"
                                            placeholder="Min"/>
                                 </div>
                                 <div class="col-2">
+                                    <label for="maxCount@(index)" class="form-label">Max</label>
                                     <input @bind="comboEditStates[index].MaxCount"
+                                           id="maxCount@(index)"
                                            type="number"
                                            class="form-control"
                                            placeholder="Max"/>
                                 </div>
                                 <div class="col-2">
-                                    <button class="btn btn-primary"
+                                    <label class="form-label invisible">Action</label>
+                                    <button class="btn btn-primary w-100"
                                             @onclick="() => AddCategoryToCombo(index)">
                                         Add to Combo
                                     </button>
