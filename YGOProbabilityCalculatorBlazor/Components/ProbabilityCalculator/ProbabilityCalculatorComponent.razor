@@ -1,7 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using YGOProbabilityCalculatorBlazor.Components.Shared
-@implements IDisposable
 @inject IDeckImportService _deckImportService
 @inject ISessionService _sessionService
 @inject IPendingSessionService _pendingSessionService
@@ -329,7 +328,6 @@
     private string? errorMessage;
     private string? importError;
     private double? probability;
-    private readonly CancellationTokenSource cts = new();
 
     private bool CanCalculate =>
         cards.Count > 0 &&
@@ -382,9 +380,8 @@
             probability = await Task.Run(() => _probabilityCalculator.CalculateProbabilityForCombos(
                 cards,
                 combos,
-                handSize,
-                cts.Token
-            ), cts.Token);
+                handSize
+            ));
         }
         catch (OperationCanceledException) {
             errorMessage = "Calculation was cancelled.";
@@ -664,11 +661,6 @@
         }
 
         base.OnInitialized();
-    }
-
-    void IDisposable.Dispose() {
-        cts.Cancel();
-        cts.Dispose();
     }
 
 }
