@@ -356,7 +356,7 @@
             probability = null;
             StateHasChanged();
 
-            probability = await Task.Run(() => ProbabilityCalculator.CalculateProbabilityForCombos(
+            probability = await Task.Run(() => ProbabilityCalculatorService.CalculateProbabilityForCombos(
                 cards,
                 combos,
                 handSize,
