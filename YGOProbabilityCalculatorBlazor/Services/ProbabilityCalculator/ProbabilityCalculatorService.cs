@@ -1,10 +1,38 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-public static class ProbabilityCalculatorService {
-    public static double CalculateProbabilityForCategories(
+public class ProbabilityCalculatorService : IProbabilityCalculatorService {
+    public double CalculateProbabilityForCombos(
+        IEnumerable<Card> deck,
+        IEnumerable<Combo> combos,
+        int handSize,
+        CancellationToken cancellationToken = default) {
+        var deckList = deck.ToList();
+        var comboList = combos.ToList();
+        double result = 0;
+
+        for (var mask = 1; mask < 1 << comboList.Count; mask++) {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var mergedCategories =
+                CategoryMerger.MergeComboCategories(comboList, mask);
+
+            var p = CalculateProbabilityForCategories(
+                deckList,
+                mergedCategories,
+                handSize,
+                cancellationToken);
+
+            result += ApplyInclusionExclusionSign(p, mask);
+        }
+
+        return result;
+    }
+
+    public double CalculateProbabilityForCategories(
         IEnumerable<Card> deck,
         IEnumerable<Category> categories,
         int handSize,
@@ -30,33 +58,6 @@ public static class ProbabilityCalculatorService {
         var totalWays = (double)ComputeBinomial(deckCards.Count, handSize);
 
         return successfulWays / totalWays;
-    }
-
-    public static double CalculateProbabilityForCombos(
-        IEnumerable<Card> deck,
-        IEnumerable<Combo> combos,
-        int handSize,
-        CancellationToken cancellationToken = default) {
-        var deckList = deck.ToList();
-        var comboList = combos.ToList();
-        double result = 0;
-
-        for (var mask = 1; mask < 1 << comboList.Count; mask++) {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var mergedCategories =
-                CategoryMerger.MergeComboCategories(comboList, mask);
-
-            var p = CalculateProbabilityForCategories(
-                deckList,
-                mergedCategories,
-                handSize,
-                cancellationToken);
-
-            result += ApplyInclusionExclusionSign(p, mask);
-        }
-
-        return result;
     }
 
     private static (int[] MinCounts, int[] MaxCounts) ExtractCategoryArrays(

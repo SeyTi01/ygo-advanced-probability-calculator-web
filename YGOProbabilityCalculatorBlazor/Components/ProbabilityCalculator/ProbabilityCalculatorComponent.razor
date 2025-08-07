@@ -1,11 +1,11 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.Interface
-@using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 @implements IDisposable
 @inject IDeckImportService _deckImportService
 @inject ISessionService _sessionService
 @inject IPendingSessionService _pendingSessionService
+@inject IProbabilityCalculatorService _probabilityCalculator
 
 <div class="container">
     <div class="d-flex mb-3">
@@ -355,7 +355,7 @@
             probability = null;
             StateHasChanged();
 
-            probability = await Task.Run(() => ProbabilityCalculatorService.CalculateProbabilityForCombos(
+            probability = await Task.Run(() => _probabilityCalculator.CalculateProbabilityForCombos(
                 cards,
                 combos,
                 handSize,

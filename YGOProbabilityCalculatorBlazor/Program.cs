@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using YGOProbabilityCalculatorBlazor;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Shared;
 
@@ -18,5 +19,6 @@ builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<ISerializer, JsonSerializer>();
 builder.Services.AddScoped<IPendingSessionService, PendingSessionService>();
 builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
+builder.Services.AddScoped<IProbabilityCalculatorService, ProbabilityCalculatorService>();
 
 await builder.Build().RunAsync();
