@@ -1,5 +1,6 @@
 @page "/help"
 @using YGOProbabilityCalculatorBlazor.Services.Interface
+@using YGOProbabilityCalculatorBlazor.Constants
 @inject NavigationManager NavigationManager
 @inject ISessionService _sessionService
 @inject IFileService _fileService
@@ -7,7 +8,7 @@
 
 <div class="container mt-4">
     <section class="mb-4">
-        <h2>Yu-Gi-Oh! Advanced Probability Calculator</h2>
+        <h2>Yu-Gi-Oh! Advanced Probability Calculator <small class="text-muted">v@(ProjectConstants.Version)</small></h2>
         <p>This is a deck-building tool that calculates the <strong>exact probability</strong> of opening playable hands in Yu-Gi-Oh!, 
             even for complex 2- and 3-card combo setups.</p>
     </section>
