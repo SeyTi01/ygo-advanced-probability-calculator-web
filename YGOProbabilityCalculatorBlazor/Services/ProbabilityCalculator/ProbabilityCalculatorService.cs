@@ -3,7 +3,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-public static class ProbabilityCalculator {
+public static class ProbabilityCalculatorService {
     public static double CalculateProbabilityForCategories(
         IEnumerable<Card> deck,
         IEnumerable<Category> categories,
