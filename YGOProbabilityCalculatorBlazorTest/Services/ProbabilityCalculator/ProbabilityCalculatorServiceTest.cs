@@ -6,6 +6,12 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 [TestFixture]
 public class ProbabilityCalculatorServiceTest {
     private const double Tolerance = 1e-12;
+    private ProbabilityCalculatorService _probabilityCalculator;
+
+    [SetUp]
+    public void Setup() {
+        _probabilityCalculator = new ProbabilityCalculatorService();
+    }
 
     [Test]
     public void AllCategoriesMaxZero() {
@@ -17,7 +23,7 @@ public class ProbabilityCalculatorServiceTest {
 
         var categories = new[] { new Category("A", 0, 0) };
 
-        var probability = ProbabilityCalculatorService.CalculateProbabilityForCategories(deck, categories, 2);
+        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, categories, 2);
 
         Assert.That(probability, Is.EqualTo(1.0 / 6.0).Within(Tolerance));
     }
@@ -47,7 +53,7 @@ public class ProbabilityCalculatorServiceTest {
             new Category("C", 0, handSize)
         };
 
-        var probability = ProbabilityCalculatorService.CalculateProbabilityForCategories(deck, categories, handSize);
+        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, categories, handSize);
         Assert.That(probability, Is.EqualTo(1.0).Within(Tolerance));
     }
 
@@ -75,8 +81,8 @@ public class ProbabilityCalculatorServiceTest {
 
         var categories = new[] { new Category("A", 1, 1) };
 
-        var singleProb = ProbabilityCalculatorService.CalculateProbabilityForCategories(deck, categories, handSize);
-        var comboProb = ProbabilityCalculatorService.CalculateProbabilityForCombos(deck, [comboA, comboAb], handSize);
+        var singleProb = _probabilityCalculator.CalculateProbabilityForCategories(deck, categories, handSize);
+        var comboProb = _probabilityCalculator.CalculateProbabilityForCombos(deck, [comboA, comboAb], handSize);
 
         Assert.That(comboProb, Is.EqualTo(singleProb).Within(Tolerance));
     }
@@ -100,7 +106,7 @@ public class ProbabilityCalculatorServiceTest {
             new ComboCategory(categoryC, 1, 1)
         ]);
 
-        var probability = ProbabilityCalculatorService.CalculateProbabilityForCombos(cards, [combo1, combo2], 2);
+        var probability = _probabilityCalculator.CalculateProbabilityForCombos(cards, [combo1, combo2], 2);
         Assert.That(probability, Is.EqualTo(0.5 + 1.0 / 6.0).Within(Tolerance));
     }
 
@@ -120,7 +126,7 @@ public class ProbabilityCalculatorServiceTest {
             new Category("extender", 1, 1)
         };
 
-        var probability = ProbabilityCalculatorService.CalculateProbabilityForCategories(deck, requirements, 2);
+        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, requirements, 2);
         Assert.That(probability, Is.EqualTo(5.0 / 6.0).Within(Tolerance));
     }
 
@@ -137,7 +143,7 @@ public class ProbabilityCalculatorServiceTest {
 
         var requirements = new[] { new Category("starter", 2, handSize) };
 
-        var probability = ProbabilityCalculatorService.CalculateProbabilityForCategories(deck, requirements, handSize);
+        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, requirements, handSize);
         Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));
     }
 
@@ -163,7 +169,7 @@ public class ProbabilityCalculatorServiceTest {
             new Category("combo", 1, handSize)
         };
 
-        var probability = ProbabilityCalculatorService.CalculateProbabilityForCategories(deck, categories, handSize);
+        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, categories, handSize);
         Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));
     }
 }
