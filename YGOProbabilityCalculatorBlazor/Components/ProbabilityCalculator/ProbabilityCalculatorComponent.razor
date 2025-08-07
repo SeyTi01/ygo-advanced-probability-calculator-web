@@ -1,10 +1,9 @@
 @using YGOProbabilityCalculatorBlazor.Models
-@using YGOProbabilityCalculatorBlazor.Services.DeckImport
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 @implements IDisposable
-@inject DeckImportService _deckImportService
+@inject IDeckImportService _deckImportService
 @inject ISessionService _sessionService
 @inject IPendingSessionService _pendingSessionService
 
