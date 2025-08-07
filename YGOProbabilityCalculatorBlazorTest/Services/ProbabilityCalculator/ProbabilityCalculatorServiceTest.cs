@@ -21,9 +21,8 @@ public class ProbabilityCalculatorServiceTest {
             new([], 2)
         };
 
-        var categories = new[] { new Category("A", 0, 0) };
-
-        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, categories, 2);
+        var combo = new Combo([new ComboCategory(categoryA, 0, 0)]);
+        var probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], 2);
 
         Assert.That(probability, Is.EqualTo(1.0 / 6.0).Within(Tolerance));
     }
@@ -47,13 +46,13 @@ public class ProbabilityCalculatorServiceTest {
             new([], 20)
         };
 
-        var categories = new[] {
-            new Category("A", 0, handSize),
-            new Category("B", 0, handSize),
-            new Category("C", 0, handSize)
-        };
+        var combo = new Combo([
+            new ComboCategory(categoryA, 0, handSize),
+            new ComboCategory(categoryB, 0, handSize),
+            new ComboCategory(categoryC, 0, handSize)
+        ]);
 
-        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, categories, handSize);
+        var probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], handSize);
         Assert.That(probability, Is.EqualTo(1.0).Within(Tolerance));
     }
 
@@ -79,12 +78,10 @@ public class ProbabilityCalculatorServiceTest {
             new ComboCategory(categoryB, 1, 1)
         ]);
 
-        var categories = new[] { new Category("A", 1, 1) };
+        var probA = _probabilityCalculator.CalculateProbabilityForCombos(deck, [comboA], handSize);
+        var probBoth = _probabilityCalculator.CalculateProbabilityForCombos(deck, [comboA, comboAb], handSize);
 
-        var singleProb = _probabilityCalculator.CalculateProbabilityForCategories(deck, categories, handSize);
-        var comboProb = _probabilityCalculator.CalculateProbabilityForCombos(deck, [comboA, comboAb], handSize);
-
-        Assert.That(comboProb, Is.EqualTo(singleProb).Within(Tolerance));
+        Assert.That(probBoth, Is.EqualTo(probA).Within(Tolerance));
     }
 
     [Test]
@@ -112,21 +109,21 @@ public class ProbabilityCalculatorServiceTest {
 
     [Test]
     public void ExactRangeRequirements_CalculateCorrectProbability() {
-        var starter = new CategoryBase("starter");
-        var extender = new CategoryBase("extender");
+        var starterCat = new CategoryBase("starter");
+        var extenderCat = new CategoryBase("extender");
 
         var deck = new List<Card> {
-            new([starter], 2),
-            new([extender]),
-            new([starter, extender])
+            new([starterCat], 2),
+            new([extenderCat]),
+            new([starterCat, extenderCat])
         };
 
-        var requirements = new[] {
-            new Category("starter", 1, 1),
-            new Category("extender", 1, 1)
-        };
+        var combo = new Combo([
+            new ComboCategory(starterCat, 1, 1),
+            new ComboCategory(extenderCat, 1, 1)
+        ]);
 
-        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, requirements, 2);
+        var probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], 2);
         Assert.That(probability, Is.EqualTo(5.0 / 6.0).Within(Tolerance));
     }
 
@@ -134,16 +131,16 @@ public class ProbabilityCalculatorServiceTest {
     public void MinGreaterThanOneRequirements_CalculatedCorrectly() {
         const int handSize = 3;
 
-        var starter = new CategoryBase("starter");
+        var starterCat = new CategoryBase("starter");
 
         var deck = new List<Card> {
-            new([starter], 3),
+            new([starterCat], 3),
             new([], 2)
         };
 
-        var requirements = new[] { new Category("starter", 2, handSize) };
+        var combo = new Combo([new ComboCategory(starterCat, 2, handSize)]);
 
-        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, requirements, handSize);
+        var probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], handSize);
         Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));
     }
 
@@ -151,25 +148,25 @@ public class ProbabilityCalculatorServiceTest {
     public void OverlapThreeCategories_CalculatedCorrectly() {
         const int handSize = 3;
 
-        var starter = new CategoryBase("starter");
-        var extender = new CategoryBase("extender");
-        var combo = new CategoryBase("combo");
+        var starterCat = new CategoryBase("starter");
+        var extenderCat = new CategoryBase("extender");
+        var comboCat = new CategoryBase("combo");
 
         var deck = new List<Card> {
-            new([starter]),
-            new([extender]),
-            new([combo]),
-            new([starter, extender, combo]),
+            new([starterCat]),
+            new([extenderCat]),
+            new([comboCat]),
+            new([starterCat, extenderCat, comboCat]),
             new([])
         };
 
-        var categories = new[] {
-            new Category("starter", 1, handSize),
-            new Category("extender", 1, handSize),
-            new Category("combo", 1, handSize)
-        };
+        var combo = new Combo([
+            new ComboCategory(starterCat, 1, handSize),
+            new ComboCategory(extenderCat, 1, handSize),
+            new ComboCategory(comboCat, 1, handSize)
+        ]);
 
-        var probability = _probabilityCalculator.CalculateProbabilityForCategories(deck, categories, handSize);
+        var probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], handSize);
         Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));
     }
 }
