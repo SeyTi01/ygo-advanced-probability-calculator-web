@@ -1,0 +1,94 @@
+@using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Components.Shared
+
+<div class="mb-4">
+    <h4>Categories</h4>
+    <div class="row">
+        <div class="col-4">
+            <input @bind="newCategoryName"
+                   @bind:event="oninput"
+                   @onkeyup="@(e => {
+                                 if (e.Key == "Enter") AddCategoryBase();
+                             })"
+                   class="form-control"
+                   placeholder="Category name"/>
+        </div>
+        <div class="col-2">
+            <button class="btn btn-primary" @onclick="AddCategoryBase">Add Category</button>
+        </div>
+    </div>
+
+    @if (categoryError is not null) {
+        <DismissibleAlert Message="@categoryError" OnDismiss="@(() => categoryError = null)"/>
+    }
+
+    <div class="mt-2">
+        @foreach (var category in CategoryBases) {
+            <span class="badge bg-secondary me-2">
+                @category.Name
+                <button type="button" class="btn-close btn-close-white" aria-label="Close"
+                        @onclick="() => RemoveCategoryBase(category)"></button>
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+
+    [Parameter] public required List<CategoryBase> CategoryBases { get; set; }
+    [Parameter] public required IEnumerable<object> Cards { get; set; } = [];
+    [Parameter] public required IEnumerable<object> Combos { get; set; } = [];
+
+    private string? newCategoryName;
+    private string? categoryError;
+
+    private void AddCategoryBase() {
+        if (string.IsNullOrWhiteSpace(newCategoryName)) {
+            categoryError = "Category name cannot be empty.";
+            return;
+        }
+
+        try {
+            if (CategoryBases.Any(c => c.Name.Equals(newCategoryName, StringComparison.OrdinalIgnoreCase))) {
+                categoryError = "A category with this name already exists.";
+                return;
+            }
+
+            var categoryBase = new CategoryBase(newCategoryName);
+            CategoryBases.Add(categoryBase);
+
+            newCategoryName = string.Empty;
+            categoryError = null;
+        }
+        catch (ArgumentException ex) {
+            categoryError = ex.Message;
+        }
+    }
+
+    private void RemoveCategoryBase(CategoryBase category) {
+        var usedInCombos = Combos.Any(c => {
+            dynamic dc = c;
+            try {
+                return ((IEnumerable<dynamic>)dc.Categories).Any(cc => cc.BaseCategory == category);
+            }
+            catch {
+                return false;
+            }
+        });
+
+        var usedInCards = Cards.Any(card => {
+            dynamic d = card;
+            try {
+                return ((IEnumerable<CategoryBase>)d.Categories).Contains(category);
+            }
+            catch {
+                return false;
+            }
+        });
+
+        if (!usedInCombos && !usedInCards) {
+            CategoryBases.Remove(category);
+        }
+    }
+
+}
