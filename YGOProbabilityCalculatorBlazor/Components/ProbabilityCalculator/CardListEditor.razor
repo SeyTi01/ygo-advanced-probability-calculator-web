@@ -1,0 +1,31 @@
+@using YGOProbabilityCalculatorBlazor.Models
+
+<div class="accordion" id="cardsAccordion">
+    @for (var index = 0; index < Cards.Count; index++) {
+        <CardEditor
+            Index="index"
+            Card="Cards[index]"
+            CategoryBases="CategoryBases"
+            ActiveCardIndex="ActiveCardIndex"
+            ActiveCardIndexChanged="ActiveCardIndexChanged"
+            OnReplaceCard="OnReplaceCard"
+            OnRemoveCard="OnRemoveCard"
+        />
+    }
+</div>
+
+<div class="mt-3">
+    <button class="btn btn-primary" @onclick="() => OnAddNewCard.InvokeAsync()">Add New Card</button>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
+    [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+
+    [Parameter] public int ActiveCardIndex { get; set; } = -1;
+    [Parameter] public EventCallback<int> ActiveCardIndexChanged { get; set; }
+
+    [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
+    [Parameter] public EventCallback OnAddNewCard { get; set; }
+}

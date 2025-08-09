@@ -1,0 +1,126 @@
+@using YGOProbabilityCalculatorBlazor.Models
+
+<div class="accordion-item" @key="Index">
+    <h2 class="accordion-header d-flex">
+        <button class="accordion-button flex-grow-1 @(Index == ActiveCardIndex ? "" : "collapsed")"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#card@(Index)"
+                @onclick="ToggleCard">
+            <span>@(string.IsNullOrWhiteSpace(Card.Name) ? $"Card {Index + 1}" : Card.Name)</span>
+            <span class="ms-2">(@Card.Copies)</span>
+
+            @if (Card.Categories.Any()) {
+                <span class="ms-2">-</span>
+                @foreach (var cat in Card.Categories) {
+                    <span class="badge bg-info ms-1">@cat.Name</span>
+                }
+            }
+        </button>
+
+        <button class="btn btn-danger" title="Remove card" @onclick="() => OnRemoveCard.InvokeAsync(Index)">
+            <i class="bi bi-trash"></i>
+        </button>
+    </h2>
+
+    <div id="card@(Index)" class="accordion-collapse collapse @(Index == ActiveCardIndex ? "show" : "")">
+        <div class="accordion-body">
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label">Name</label>
+                    <input class="form-control"
+                           value="@(Card.Name ?? string.Empty)"
+                           @oninput="e => Rename(e.Value?.ToString())"/>
+                </div>
+                <div class="col-3">
+                    <label class="form-label">Copies</label>
+                    <input class="form-control" type="number" min="0" max="3"
+                           value="@Card.Copies"
+                           @oninput="e => ChangeCopies(ToInt(e.Value))"/>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-8">
+                    <label class="form-label">Add Category</label>
+                    <select class="form-select"
+                            value="@selectedCategory"
+                            @onchange="e => selectedCategory = e.Value?.ToString() ?? string.Empty">
+                        <option value="">Select category…</option>
+                        @foreach (var cb in CategoryBases) {
+                            <option value="@cb.Name">@cb.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" @onclick="AddCategory">Add</button>
+                </div>
+            </div>
+
+            <div>
+                @foreach (var cat in Card.Categories) {
+                    <span class="badge bg-info me-2">
+                        @cat.Name
+                        <button type="button"
+                                class="btn-close btn-close-white ms-1"
+                                aria-label="Remove"
+                                @onclick="() => RemoveCategory(cat.Name)">
+                        </button>
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Index { get; set; }
+    [Parameter] public Card Card { get; set; } = null!;
+    [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+
+    [Parameter] public int ActiveCardIndex { get; set; }
+    [Parameter] public EventCallback<int> ActiveCardIndexChanged { get; set; }
+
+    [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
+
+    private string selectedCategory = string.Empty;
+
+    private void ToggleCard() {
+        var next = ActiveCardIndex == Index ? -1 : Index;
+        ActiveCardIndexChanged.InvokeAsync(next);
+    }
+
+    private Task Rename(string? name) {
+        var newCard = Card.WithName(string.IsNullOrWhiteSpace(name) ? null : name);
+        return OnReplaceCard.InvokeAsync((Index, newCard));
+    }
+
+    private Task ChangeCopies(int copies) {
+        copies = Math.Clamp(copies, 0, 3);
+        var newCard = Card.WithCopies(copies);
+        return OnReplaceCard.InvokeAsync((Index, newCard));
+    }
+
+    private Task AddCategory() {
+        if (string.IsNullOrWhiteSpace(selectedCategory)) return Task.CompletedTask;
+
+        var chosen = CategoryBases.FirstOrDefault(c => c.Name == selectedCategory);
+        if (chosen is null || Card.Categories.Any(c => c.Name == chosen.Name)) return Task.CompletedTask;
+
+        var newCats = Card.Categories.Concat([chosen]).ToList();
+        var newCard = Card.WithCategories(newCats);
+        selectedCategory = string.Empty;
+        return OnReplaceCard.InvokeAsync((Index, newCard));
+    }
+
+    private Task RemoveCategory(string categoryName) {
+        var newCats = Card.Categories.Where(c => c.Name != categoryName).ToList();
+        var newCard = Card.WithCategories(newCats);
+        return OnReplaceCard.InvokeAsync((Index, newCard));
+    }
+
+    private static int ToInt(object? v) =>
+        int.TryParse(v?.ToString(), out var i) ? i : 0;
+
+}
