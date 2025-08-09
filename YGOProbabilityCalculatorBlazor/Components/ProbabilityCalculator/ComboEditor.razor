@@ -1,0 +1,173 @@
+@using YGOProbabilityCalculatorBlazor.Models
+
+<div class="accordion-item" @key="Index">
+    <h2 class="accordion-header d-flex">
+        <button class="accordion-button flex-grow-1 @(Index == ActiveComboIndex ? "" : "collapsed")"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#combo@(Index)"
+                @onclick="ToggleCombo">
+            <span>@(string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name)</span>
+
+            @if (Combo.Categories.Any()) {
+                <span class="ms-2">-</span>
+                @foreach (var cc in HeaderCategories) {
+                    <span class="badge bg-info ms-1">
+                        @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
+                    </span>
+                }
+
+                @if (HiddenHeaderCategoriesCount > 0) {
+                    <span class="badge bg-secondary ms-1">+@HiddenHeaderCategoriesCount more</span>
+                }
+            }
+            else {
+                <span class="text-muted ms-2">(no categories)</span>
+            }
+        </button>
+
+        <button class="btn btn-danger" title="Remove combo" @onclick="() => OnRemoveCombo.InvokeAsync(Index)">
+            <i class="bi bi-trash"></i>
+        </button>
+    </h2>
+
+    <div id="combo@(Index)" class="accordion-collapse collapse @(Index == ActiveComboIndex ? "show" : "")">
+        <div class="accordion-body">
+            <div class="row mb-3">
+                <div class="col-8">
+                    <label class="form-label">Name</label>
+                    <input class="form-control"
+                           value="@(Combo.Name ?? string.Empty)"
+                           @oninput="e => Rename(e.Value?.ToString())"/>
+                </div>
+            </div>
+
+            <div class="row g-2 align-items-end mb-3">
+                <div class="col-6">
+                    <label class="form-label">Add Category</label>
+                    <select class="form-select"
+                            value="@selectedCategory"
+                            @onchange="e => OnSelectCategory(e.Value?.ToString())">
+                        <option value="">Select category…</option>
+                        @foreach (var cb in CategoryBases) {
+                            <option value="@cb.Name">@cb.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-2">
+                    <label class="form-label">Min</label>
+                    <input class="form-control" type="number" min="0"
+                           value="@minCount"
+                           @oninput="e => minCount = ToInt(e.Value)"/>
+                </div>
+                <div class="col-2">
+                    <label class="form-label">Max</label>
+                    <input class="form-control" type="number" min="0"
+                           value="@maxCount"
+                           @oninput="e => maxCount = ToInt(e.Value)"/>
+                </div>
+                <div class="col-2">
+                    <button class="btn btn-primary w-100" @onclick="AddCategory">Add</button>
+                </div>
+            </div>
+
+            <div>
+                @if (Combo.Categories.Count == 0) {
+                    <em>No categories yet.</em>
+                }
+                else {
+                    @foreach (var cc in Combo.Categories) {
+                        <span class="badge bg-info me-2">
+                            @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
+                            <button type="button"
+                                    class="btn-close btn-close-white ms-1"
+                                    aria-label="Remove"
+                                    @onclick="() => RemoveCategory(cc.BaseCategory.Name)">
+                            </button>
+                        </span>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Index { get; set; }
+    [Parameter] public Combo Combo { get; set; } = null!;
+    [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+
+    [Parameter] public int ActiveComboIndex { get; set; }
+    [Parameter] public EventCallback<int> ActiveComboIndexChanged { get; set; }
+
+    [Parameter] public EventCallback<(int Index, Combo NewCombo)> OnReplaceCombo { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveCombo { get; set; }
+
+    [Parameter] public int HandSize { get; set; } = 5;
+
+    private const int MaxHeaderBadges = 6;
+    private string selectedCategory = string.Empty;
+    private int minCount = 1;
+    private int maxCount = 1;
+
+    private IEnumerable<ComboCategory> HeaderCategories => Combo.Categories.Take(MaxHeaderBadges);
+    private int HiddenHeaderCategoriesCount => Math.Max(0, Combo.Categories.Count - MaxHeaderBadges);
+
+    private void ToggleCombo() {
+        var next = ActiveComboIndex == Index ? -1 : Index;
+        ActiveComboIndexChanged.InvokeAsync(next);
+    }
+
+    private Task Rename(string? name) {
+        var newCombo = Combo.WithName(string.IsNullOrWhiteSpace(name) ? null : name);
+        return OnReplaceCombo.InvokeAsync((Index, newCombo));
+    }
+
+    private Task AddCategory() {
+        if (string.IsNullOrWhiteSpace(selectedCategory))
+            return Task.CompletedTask;
+
+        if (minCount < 0) minCount = 0;
+        if (maxCount < minCount) maxCount = minCount;
+
+        var baseCat = CategoryBases.FirstOrDefault(c => c.Name == selectedCategory);
+        if (baseCat is null || Combo.Categories.Any(c => c.BaseCategory.Name == baseCat.Name))
+            return Task.CompletedTask;
+
+        var newCats = Combo.Categories.Concat([new ComboCategory(baseCat, minCount, maxCount)]).ToList();
+        var newCombo = Combo.WithCategories(newCats);
+
+        selectedCategory = string.Empty;
+        ResetEditorDefaults();
+
+        return OnReplaceCombo.InvokeAsync((Index, newCombo));
+    }
+
+    private Task RemoveCategory(string categoryName) {
+        var newCats = Combo.Categories.Where(c => c.BaseCategory.Name != categoryName).ToList();
+        var newCombo = Combo.WithCategories(newCats);
+        return OnReplaceCombo.InvokeAsync((Index, newCombo));
+    }
+
+    private void OnSelectCategory(string? value) {
+        selectedCategory = value ?? string.Empty;
+    }
+
+    private static int ToInt(object? v) =>
+        int.TryParse(v?.ToString(), out var i) ? i : 0;
+
+    private void ResetEditorDefaults() {
+        minCount = 1;
+        maxCount = HandSize;
+    }
+
+    protected override void OnInitialized() {
+        ResetEditorDefaults();
+    }
+
+    protected override void OnParametersSet() {
+        if (maxCount < minCount) maxCount = minCount;
+        if (maxCount == 0) maxCount = HandSize;
+    }
+
+}
