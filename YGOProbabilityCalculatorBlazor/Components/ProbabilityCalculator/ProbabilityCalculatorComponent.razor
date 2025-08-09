@@ -52,22 +52,16 @@
         OnAddNewCard="AddNewCard"
     />
 
-    <div class="mb-4">
-        <h4>Combos</h4>
-        @if (comboError is not null) {
-            <DismissibleAlert Message="@comboError" OnDismiss="@(() => comboError = null)"/>
-        }
-        <ComboListEditor
-            Combos="combos"
-            CategoryBases="categoryBases"
-            ActiveComboIndex="activeComboIndex"
-            ActiveComboIndexChanged="@(i => activeComboIndex = i)"
-            OnReplaceCombo="ReplaceCombo"
-            OnRemoveCombo="@(i => RemoveCombo(i))"
-            OnAddNewCombo="AddNewCombo"
-            HandSize="handSize"
-        />
-    </div>
+    <ComboListEditor
+        Combos="combos"
+        CategoryBases="categoryBases"
+        ActiveComboIndex="activeComboIndex"
+        ActiveComboIndexChanged="@(i => activeComboIndex = i)"
+        OnReplaceCombo="ReplaceCombo"
+        OnRemoveCombo="@(i => RemoveCombo(i))"
+        OnAddNewCombo="AddNewCombo"
+        HandSize="handSize"
+    />
 
     <div class="results-section">
         <div class="col-3">
@@ -98,8 +92,6 @@
 </div>
 
 @code {
-
-    private string? comboError;
 
     private readonly List<CategoryBase> categoryBases = [];
     private readonly List<Card> cards = [];
