@@ -37,6 +37,20 @@
         document.body.removeChild(link);
     }
 </script>
+<script>
+    (function () {
+        const setMode = (mode) => {
+            document.body.classList.toggle('input-mode-mouse', mode === 'mouse');
+            document.body.classList.toggle('input-mode-keyboard', mode === 'keyboard');
+        };
+        setMode('mouse');
+
+        window.addEventListener('mousedown', () => setMode('mouse'), true);
+        window.addEventListener('keydown', e => {
+            if (!e.metaKey && !e.altKey && !e.ctrlKey) setMode('keyboard');
+        }, true);
+    })();
+</script>
 </body>
 
 </html>
