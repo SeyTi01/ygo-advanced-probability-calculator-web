@@ -71,96 +71,15 @@
         @if (cardError is not null) {
             <DismissibleAlert Message="@cardError" OnDismiss="@(() => cardError = null)"/>
         }
-        <div class="accordion" id="cardsAccordion">
-            @foreach (var (card, index) in cards.Select((c, i) => (c, i))) {
-                <div class="accordion-item">
-                    <h2 class="accordion-header d-flex">
-                        <button class="accordion-button flex-grow-1 @(index == activeCardIndex ? "" : "collapsed")"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#card@(index)"
-                                @onclick="() => ToggleCard(index)">
-                            @if (string.IsNullOrEmpty(card.Name)) {
-                                <span>Card @(index + 1)</span>
-                            }
-                            else {
-                                <span>@card.Name</span>
-                            }
-                            <span class="ms-2">(@card.Copies)</span>
-                            @if (card.Categories.Any()) {
-                                <span class="ms-2">-</span>
-                                @foreach (var cat in card.Categories) {
-                                    <span class="badge bg-info ms-1">@cat.Name</span>
-                                }
-                            }
-                        </button>
-                        <button class="btn btn-danger" @onclick="() => RemoveCard(index)">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </h2>
-                    <div id="card@(index)"
-                         class="accordion-collapse collapse @(index == activeCardIndex ? "show" : "")"
-                         data-parent="">
-                        <div class="accordion-body">
-                            <div class="row mb-3">
-                                <div class="col-4">
-                                    <label for="cardName@(index)" class="form-label">Name</label>
-                                    <input type="text"
-                                           id="cardName@(index)"
-                                           class="form-control"
-                                           placeholder="Card name"
-                                           value="@card.Name"
-                                           @onchange="@(e => UpdateCardName(index, e.Value?.ToString()))"/>
-                                </div>
-                                <div class="col-2">
-                                    <label for="cardCopies@(index)" class="form-label">Copies</label>
-                                    <input type="number"
-                                           id="cardCopies@(index)"
-                                           class="form-control"
-                                           placeholder="Copies"
-                                           min="1"
-                                           value="@card.Copies"
-                                           @onchange="@(e => UpdateCardCopies(index, int.Parse(e.Value?.ToString() ?? "1")))"/>
-                                </div>
-                                <div class="col-4">
-                                    <label for="cardCategory@(index)" class="form-label">Category</label>
-                                    <select id="cardCategory@(index)"
-                                            class="form-select"
-                                            @bind="cardEditStates[index].SelectedCategory">
-                                        <option value="">Add category...</option>
-                                        @foreach (var cat in categoryBases.Where(c => !card.Categories.Contains(c))) {
-                                            <option value="@cat.Name">@cat.Name</option>
-                                        }
-                                    </select>
-                                </div>
-                                <div class="col-2">
-                                    <label class="form-label invisible">Action</label>
-                                    <button class="btn btn-primary w-100"
-                                            @onclick="() => AddCategoryToCard(index)">
-                                        Add Category
-                                    </button>
-                                </div>
-                            </div>
-                            <div>
-                                @foreach (var category in card.Categories) {
-                                    <span class="badge bg-info me-2">
-                                        @category.Name
-                                        <button type="button"
-                                                class="btn-close btn-close-white"
-                                                aria-label="Close"
-                                                @onclick="() => RemoveCategoryFromCard(index, category)">
-                                        </button>
-                                    </span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
-        <div class="mt-3">
-            <button class="btn btn-primary" @onclick="AddNewCard">Add New Card</button>
-        </div>
+        <CardListEditor
+            Cards="cards"
+            CategoryBases="categoryBases"
+            ActiveCardIndex="activeCardIndex"
+            ActiveCardIndexChanged="@(i => activeCardIndex = i)"
+            OnReplaceCard="ReplaceCard"
+            OnRemoveCard="@(i => RemoveCard(i))"
+            OnAddNewCard="AddNewCard"
+        />
     </div>
 
     <div class="mb-4">
@@ -299,10 +218,6 @@
 
 @code {
 
-    private record CardEditState {
-        public string SelectedCategory { get; set; } = "";
-    }
-
     private record ComboEditState {
         public string SelectedCategory { get; set; } = "";
         public int MinCount { get; set; } = 1;
@@ -317,7 +232,6 @@
     private readonly List<CategoryBase> categoryBases = [];
     private readonly List<Card> cards = [];
     private readonly List<Combo> combos = [];
-    private readonly List<CardEditState> cardEditStates = [];
     private readonly List<ComboEditState> comboEditStates = [];
 
     private int activeComboIndex = -1;
@@ -336,20 +250,23 @@
         combos.Count > 0 &&
         combos.All(c => c.Categories.Count > 0);
 
-    private void ToggleCard(int index) {
-        if (activeCardIndex == index) {
-            activeCardIndex = -1;
-        }
-        else {
-            SetActiveCard(index);
-        }
+    private Task ReplaceCard((int Index, Card NewCard) payload) {
+        var (i, newCard) = payload;
+        cards[i] = newCard;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    private void SetActiveCard(int index) {
-        activeCardIndex = index;
-        while (cardEditStates.Count <= index) {
-            cardEditStates.Add(new CardEditState());
-        }
+    private void RemoveCard(int index) {
+        if (index < 0 || index >= cards.Count) return;
+        cards.RemoveAt(index);
+        if (activeCardIndex == index) activeCardIndex = -1;
+        else if (activeCardIndex > index) activeCardIndex--;
+    }
+
+    private void AddNewCard() {
+        cards.Add(new Card([]));
+        activeCardIndex = cards.Count - 1;
     }
 
     private void ToggleCombo(int index) {
@@ -418,71 +335,6 @@
             !cards.Any(c => c.Categories.Contains(category))) {
             categoryBases.Remove(category);
         }
-    }
-
-    private void AddNewCard() {
-        cards.Add(new Card([]));
-        cardEditStates.Add(new CardEditState());
-        SetActiveCard(cards.Count - 1);
-    }
-
-    private void RemoveCard(int index) {
-        if (index < 0 || index >= cards.Count) return;
-        cards.RemoveAt(index);
-        cardEditStates.RemoveAt(index);
-        if (activeCardIndex >= cards.Count) {
-            activeCardIndex = cards.Count - 1;
-        }
-    }
-
-    private void UpdateCardCopies(int cardIndex, int copies) {
-        try {
-            if (copies < 1) {
-                cardError = "Number of copies must be at least 1.";
-                return;
-            }
-
-            var oldCard = cards[cardIndex];
-            cards[cardIndex] = oldCard.WithCopies(copies);
-            cardError = null;
-        }
-        catch (ArgumentException ex) {
-            cardError = ex.Message;
-        }
-    }
-
-    private void UpdateCardName(int cardIndex, string? name) {
-        var oldCard = cards[cardIndex];
-        cards[cardIndex] = oldCard.WithName(name);
-    }
-
-    private void AddCategoryToCard(int cardIndex) {
-        var selectedCategory = cardEditStates[cardIndex].SelectedCategory;
-        if (string.IsNullOrEmpty(selectedCategory)) {
-            cardError = "Please select a category to add.";
-            return;
-        }
-
-        var categoryBase = categoryBases.FirstOrDefault(c => c.Name == selectedCategory);
-        if (categoryBase == null) {
-            cardError = "Selected category not found.";
-            return;
-        }
-
-        var oldCard = cards[cardIndex];
-        if (oldCard.Categories.Contains(categoryBase)) {
-            cardError = "This category is already added to the card.";
-            return;
-        }
-
-        cards[cardIndex] = oldCard.WithCategories(oldCard.Categories.Concat([categoryBase]));
-        cardEditStates[cardIndex].SelectedCategory = "";
-        cardError = null;
-    }
-
-    private void RemoveCategoryFromCard(int cardIndex, CategoryBase category) {
-        var oldCard = cards[cardIndex];
-        cards[cardIndex] = oldCard.WithCategories(oldCard.Categories.Where(c => c != category));
     }
 
     private void AddNewCombo() {
@@ -557,11 +409,6 @@
 
             cards.Clear();
             cards.AddRange(importedCards);
-
-            cardEditStates.Clear();
-            for (var i = 0; i < cards.Count; i++) {
-                cardEditStates.Add(new CardEditState());
-            }
         }
         catch (Exception ex) {
             importError = $"Failed to import deck: {ex.Message}";
@@ -607,11 +454,6 @@
 
             handSize = session.HandSize;
 
-            cardEditStates.Clear();
-            for (var i = 0; i < cards.Count; i++) {
-                cardEditStates.Add(new CardEditState());
-            }
-
             comboEditStates.Clear();
             for (var i = 0; i < combos.Count; i++) {
                 comboEditStates.Add(new ComboEditState());
@@ -642,11 +484,6 @@
                 combos.AddRange(session.Combos);
 
                 handSize = session.HandSize;
-
-                cardEditStates.Clear();
-                for (var i = 0; i < cards.Count; i++) {
-                    cardEditStates.Add(new CardEditState());
-                }
 
                 comboEditStates.Clear();
                 for (var i = 0; i < combos.Count; i++) {
