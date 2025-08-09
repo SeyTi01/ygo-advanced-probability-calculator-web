@@ -1,0 +1,33 @@
+@using YGOProbabilityCalculatorBlazor.Models
+
+<div class="accordion" id="combosAccordion">
+    @for (var index = 0; index < Combos.Count; index++) {
+        <ComboEditor
+            Index="index"
+            Combo="Combos[index]"
+            CategoryBases="CategoryBases"
+            ActiveComboIndex="ActiveComboIndex"
+            ActiveComboIndexChanged="ActiveComboIndexChanged"
+            OnReplaceCombo="OnReplaceCombo"
+            OnRemoveCombo="OnRemoveCombo"
+            HandSize="HandSize"
+        />
+    }
+</div>
+
+<div class="mt-3">
+    <button class="btn btn-primary" @onclick="() => OnAddNewCombo.InvokeAsync()">Add New Combo</button>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];
+    [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+
+    [Parameter] public int HandSize { get; set; } = 5;
+    [Parameter] public int ActiveComboIndex { get; set; } = -1;
+    [Parameter] public EventCallback<int> ActiveComboIndexChanged { get; set; }
+
+    [Parameter] public EventCallback<(int Index, Combo NewCombo)> OnReplaceCombo { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveCombo { get; set; }
+    [Parameter] public EventCallback OnAddNewCombo { get; set; }
+}
