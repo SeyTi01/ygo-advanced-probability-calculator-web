@@ -1,21 +1,28 @@
 @using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<div class="accordion" id="cardsAccordion">
-    @for (var index = 0; index < Cards.Count; index++) {
-        <CardEditor
-            Index="index"
-            Card="Cards[index]"
-            CategoryBases="CategoryBases"
-            ActiveCardIndex="ActiveCardIndex"
-            ActiveCardIndexChanged="ActiveCardIndexChanged"
-            OnReplaceCard="OnReplaceCard"
-            OnRemoveCard="OnRemoveCard"
-        />
+<div class="mb-4">
+    <h4>Deck (@Cards.Sum(c => c.Copies))</h4>
+    @if (cardError is not null) {
+        <DismissibleAlert Message="@cardError" OnDismiss="@(() => cardError = null)"/>
     }
-</div>
+    <div class="accordion" id="cardsAccordion">
+        @for (var index = 0; index < Cards.Count; index++) {
+            <CardEditor
+                Index="index"
+                Card="Cards[index]"
+                CategoryBases="CategoryBases"
+                ActiveCardIndex="ActiveCardIndex"
+                ActiveCardIndexChanged="ActiveCardIndexChanged"
+                OnReplaceCard="OnReplaceCard"
+                OnRemoveCard="OnRemoveCard"
+            />
+        }
+    </div>
 
-<div class="mt-3">
-    <button class="btn btn-primary" @onclick="() => OnAddNewCard.InvokeAsync()">Add New Card</button>
+    <div class="mt-3">
+        <button class="btn btn-primary" @onclick="() => OnAddNewCard.InvokeAsync()">Add New Card</button>
+    </div>
 </div>
 
 @code {
@@ -28,4 +35,6 @@
     [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
     [Parameter] public EventCallback OnAddNewCard { get; set; }
+
+    private string? cardError;
 }
