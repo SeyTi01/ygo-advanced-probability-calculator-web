@@ -1,22 +1,29 @@
 @using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<div class="accordion" id="combosAccordion">
-    @for (var index = 0; index < Combos.Count; index++) {
-        <ComboEditor
-            Index="index"
-            Combo="Combos[index]"
-            CategoryBases="CategoryBases"
-            ActiveComboIndex="ActiveComboIndex"
-            ActiveComboIndexChanged="ActiveComboIndexChanged"
-            OnReplaceCombo="OnReplaceCombo"
-            OnRemoveCombo="OnRemoveCombo"
-            HandSize="HandSize"
-        />
+<div class="mb-4">
+    <h4>Combos</h4>
+    @if (comboError is not null) {
+        <DismissibleAlert Message="@comboError" OnDismiss="@(() => comboError = null)"/>
     }
-</div>
+    <div class="accordion" id="combosAccordion">
+        @for (var index = 0; index < Combos.Count; index++) {
+            <ComboEditor
+                Index="index"
+                Combo="Combos[index]"
+                CategoryBases="CategoryBases"
+                ActiveComboIndex="ActiveComboIndex"
+                ActiveComboIndexChanged="ActiveComboIndexChanged"
+                OnReplaceCombo="OnReplaceCombo"
+                OnRemoveCombo="OnRemoveCombo"
+                HandSize="HandSize"
+            />
+        }
+    </div>
 
-<div class="mt-3">
-    <button class="btn btn-primary" @onclick="() => OnAddNewCombo.InvokeAsync()">Add New Combo</button>
+    <div class="mt-3">
+        <button class="btn btn-primary" @onclick="() => OnAddNewCombo.InvokeAsync()">Add New Combo</button>
+    </div>
 </div>
 
 @code {
@@ -30,4 +37,6 @@
     [Parameter] public EventCallback<(int Index, Combo NewCombo)> OnReplaceCombo { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCombo { get; set; }
     [Parameter] public EventCallback OnAddNewCombo { get; set; }
+
+    private string? comboError;
 }
