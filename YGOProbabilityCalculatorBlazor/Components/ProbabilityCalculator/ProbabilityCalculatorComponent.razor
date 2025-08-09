@@ -36,35 +36,11 @@
         <DismissibleAlert Message="@importError" OnDismiss="@(() => importError = null)"/>
     }
 
-    <div class="mb-4">
-        <h4>Categories</h4>
-        <div class="row">
-            <div class="col-4">
-                <input @bind="newCategoryName"
-                       @bind:event="oninput"
-                       @onkeyup="@(e => {
-                                     if (e.Key == "Enter") AddCategoryBase();
-                                 })"
-                       class="form-control"
-                       placeholder="Category name"/>
-            </div>
-            <div class="col-2">
-                <button class="btn btn-primary" @onclick="AddCategoryBase">Add Category</button>
-            </div>
-        </div>
-        @if (categoryError is not null) {
-            <DismissibleAlert Message="@categoryError" OnDismiss="@(() => categoryError = null)"/>
-        }
-        <div class="mt-2">
-            @foreach (var category in categoryBases) {
-                <span class="badge bg-secondary me-2">
-                    @category.Name
-                    <button type="button" class="btn-close btn-close-white" aria-label="Close"
-                            @onclick="() => RemoveCategoryBase(category)"></button>
-                </span>
-            }
-        </div>
-    </div>
+    <CategoryListEditor
+        CategoryBases="categoryBases"
+        Combos="combos"
+        Cards="cards"
+    />
 
     <div class="mb-4">
         <h4>Deck (@cards.Sum(c => c.Copies))</h4>
@@ -129,11 +105,9 @@
 
 @code {
 
-    private string? categoryError;
     private string? cardError;
     private string? comboError;
 
-    private string newCategoryName = "";
     private readonly List<CategoryBase> categoryBases = [];
     private readonly List<Card> cards = [];
     private readonly List<Combo> combos = [];
@@ -212,35 +186,6 @@
         }
         finally {
             isCalculating = false;
-        }
-    }
-
-    private void AddCategoryBase() {
-        if (string.IsNullOrWhiteSpace(newCategoryName)) {
-            categoryError = "Category name cannot be empty.";
-            return;
-        }
-
-        try {
-            if (categoryBases.Any(c => c.Name.Equals(newCategoryName, StringComparison.OrdinalIgnoreCase))) {
-                categoryError = "A category with this name already exists.";
-                return;
-            }
-
-            var categoryBase = new CategoryBase(newCategoryName);
-            categoryBases.Add(categoryBase);
-            newCategoryName = "";
-            categoryError = null;
-        }
-        catch (ArgumentException ex) {
-            categoryError = ex.Message;
-        }
-    }
-
-    private void RemoveCategoryBase(CategoryBase category) {
-        if (!combos.Any(c => c.Categories.Any(cc => cc.BaseCategory == category)) &&
-            !cards.Any(c => c.Categories.Contains(category))) {
-            categoryBases.Remove(category);
         }
     }
 
