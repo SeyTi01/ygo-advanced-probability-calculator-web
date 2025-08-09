@@ -42,21 +42,15 @@
         Cards="cards"
     />
 
-    <div class="mb-4">
-        <h4>Deck (@cards.Sum(c => c.Copies))</h4>
-        @if (cardError is not null) {
-            <DismissibleAlert Message="@cardError" OnDismiss="@(() => cardError = null)"/>
-        }
-        <CardListEditor
-            Cards="cards"
-            CategoryBases="categoryBases"
-            ActiveCardIndex="activeCardIndex"
-            ActiveCardIndexChanged="@(i => activeCardIndex = i)"
-            OnReplaceCard="ReplaceCard"
-            OnRemoveCard="@(i => RemoveCard(i))"
-            OnAddNewCard="AddNewCard"
-        />
-    </div>
+    <CardListEditor
+        Cards="cards"
+        CategoryBases="categoryBases"
+        ActiveCardIndex="activeCardIndex"
+        ActiveCardIndexChanged="@(i => activeCardIndex = i)"
+        OnReplaceCard="ReplaceCard"
+        OnRemoveCard="@(i => RemoveCard(i))"
+        OnAddNewCard="AddNewCard"
+    />
 
     <div class="mb-4">
         <h4>Combos</h4>
@@ -105,7 +99,6 @@
 
 @code {
 
-    private string? cardError;
     private string? comboError;
 
     private readonly List<CategoryBase> categoryBases = [];
