@@ -54,6 +54,8 @@ There is no GitHub Actions CI workflow. Run relevant tests locally and report th
 ## Contribution workflow and boundaries
 
 - Start from an up-to-date `dev` branch. Read the issue, relevant dependencies, applicable agent instructions, and recent code before editing.
+- Before the first push, review local commits. If an unpushed commit merely corrects or refines an earlier unpushed commit for the same logical change, amend or squash them into one coherent commit. Keep independently meaningful changes in separate commits, grouped by purpose rather than by pull request or file.
+  Never amend, rebase, or squash already-pushed commits or force-push for cosmetic cleanup. If you cannot confidently establish that a commit is unpushed, preserve it.
 - Keep each change and pull request focused; add the most relevant regression tests and run the solution-level checks for substantial changes.
 - Create a feature branch and open a pull request targeting `dev`. Never push directly to protected branches or merge a pull request.
 - In the pull request, report commands and pass/fail results, manual checks, and any limits on verification. Put verification results in the pull request discussion, not in an extra report file.
