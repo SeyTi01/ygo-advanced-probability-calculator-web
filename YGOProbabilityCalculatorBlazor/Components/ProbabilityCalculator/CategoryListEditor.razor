@@ -26,8 +26,31 @@
     <div class="mt-2">
         @foreach (var category in CategoryBases) {
             <span class="badge bg-secondary me-2">
-                @category.Name
-                <button type="button" class="btn-close btn-close-white" aria-label="@($"Remove category {category.Name}")"
+                @if (ReferenceEquals(editingCategory, category)) {
+                    <input class="form-control form-control-sm d-inline-block"
+                           style="width: 12rem;"
+                           aria-label="@($"New name for category {category.Name}")"
+                           @bind="editingCategoryName"
+                           @bind:event="oninput"
+                           @onkeydown="HandleRenameKeyDown"/>
+                    <button type="button" class="btn btn-sm btn-success ms-1"
+                            aria-label="Save category name"
+                            @onclick="SaveCategoryName">Save</button>
+                    <button type="button" class="btn btn-sm btn-light ms-1"
+                            aria-label="Cancel category rename"
+                            @onclick="CancelCategoryRename">Cancel</button>
+                }
+                else {
+                    @category.Name
+                    <button type="button" class="btn btn-sm text-white p-0 ms-1"
+                            aria-label="@($"Rename category {category.Name}")"
+                            title="Rename category"
+                            @onclick="() => BeginCategoryRename(category)">
+                        Rename
+                    </button>
+                }
+                <button type="button" class="btn-close btn-close-white"
+                        aria-label="@($"Remove category {category.Name}")"
                         @onclick="() => RemoveCategoryBase(category)"></button>
             </span>
         }
@@ -41,9 +64,12 @@
     [Parameter] public required IEnumerable<Combo> Combos { get; set; } = [];
 
     [Parameter] public EventCallback OnCategoriesChanged { get; set; }
+    [Parameter] public EventCallback<(CategoryBase OldCategory, CategoryBase NewCategory)> OnRenameCategory { get; set; }
 
     private string? newCategoryName;
     private string? categoryError;
+    private CategoryBase? editingCategory;
+    private string? editingCategoryName;
 
     private async Task AddCategoryBase() {
         if (string.IsNullOrWhiteSpace(newCategoryName)) {
@@ -77,7 +103,47 @@
             return;
         }
         CategoryBases.Remove(category);
+        if (ReferenceEquals(editingCategory, category)) CancelCategoryRename();
         categoryError = null;
         await OnCategoriesChanged.InvokeAsync();
+    }
+
+    private void BeginCategoryRename(CategoryBase category) {
+        editingCategory = category;
+        editingCategoryName = category.Name;
+        categoryError = null;
+    }
+
+    private void CancelCategoryRename() {
+        editingCategory = null;
+        editingCategoryName = null;
+        categoryError = null;
+    }
+
+    private async Task SaveCategoryName() {
+        if (editingCategory is null) return;
+
+        if (string.IsNullOrWhiteSpace(editingCategoryName)) {
+            categoryError = "Category name cannot be empty.";
+            return;
+        }
+
+        if (CategoryBases.Any(c => !ReferenceEquals(c, editingCategory) &&
+                                   c.Name.Equals(editingCategoryName, StringComparison.OrdinalIgnoreCase))) {
+            categoryError = "A category with this name already exists.";
+            return;
+        }
+
+        var oldCategory = editingCategory;
+        var newCategory = new CategoryBase(editingCategoryName);
+        await OnRenameCategory.InvokeAsync((oldCategory, newCategory));
+        CancelCategoryRename();
+        await OnCategoriesChanged.InvokeAsync();
+    }
+
+    private Task HandleRenameKeyDown(KeyboardEventArgs e) {
+        if (e.Key == "Enter") return SaveCategoryName();
+        if (e.Key == "Escape") CancelCategoryRename();
+        return Task.CompletedTask;
     }
 }
