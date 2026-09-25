@@ -124,7 +124,8 @@ public class ProbabilityCalculatorServiceTest {
         ]);
 
         var probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], 2);
-        Assert.That(probability, Is.EqualTo(5.0 / 6.0).Within(Tolerance));
+        // Only the two starter-only + extender-only hands meet both exact-one limits.
+        Assert.That(probability, Is.EqualTo(2.0 / 6.0).Within(Tolerance));
     }
 
     [Test]

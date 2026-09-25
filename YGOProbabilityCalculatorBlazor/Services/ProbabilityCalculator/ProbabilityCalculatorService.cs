@@ -11,6 +11,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         for (var mask = 1; mask < 1 << combos.Count; mask++) {
             var selectedCombos = GetSelectedCombos(combos, mask);
             var mergedCategories = MergeComboCategories(selectedCombos);
+            // Contradictory constraints describe an empty intersection, not invalid input.
+            if (mergedCategories is null) continue;
             var subsetProbability = CalculateProbabilityForCategories(deck, mergedCategories, handSize);
 
             totalProbability += ApplyInclusionExclusionSign(subsetProbability, mask);
@@ -51,16 +53,16 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         return combos.Where((_, i) => (mask & (1 << i)) != 0).ToList();
     }
 
-    private static List<Category> MergeComboCategories(List<Combo> selectedCombos) {
-        return selectedCombos
-            .SelectMany(combo => combo.Categories)
-            .GroupBy(cc => cc.BaseCategory.Name)
-            .Select(g => new Category(
-                g.Key,
-                g.Max(cc => cc.MinCount),
-                g.Min(cc => cc.MaxCount)
-            ))
-            .ToList();
+    private static List<Category>? MergeComboCategories(List<Combo> selectedCombos) {
+        var categories = new List<Category>();
+        foreach (var group in selectedCombos.SelectMany(combo => combo.Categories)
+                     .GroupBy(cc => cc.BaseCategory.Name)) {
+            var min = group.Max(cc => cc.MinCount);
+            var max = group.Min(cc => cc.MaxCount);
+            if (min > max) return null;
+            categories.Add(new Category(group.Key, min, max));
+        }
+        return categories;
     }
 
     private static int BuildCardMask(Card card, List<Category> categories) {
@@ -105,12 +107,14 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                 if (draw > 0) {
                     for (var i = 0; i < maxCounts.Length; i++) {
                         if ((patternMask & (1 << i)) != 0) {
-                            newCounts[i] = maxCounts[i] == 0
-                                ? newCounts[i] + draw
-                                : Math.Min(newCounts[i] + draw, maxCounts[i]);
+                            newCounts[i] += draw;
                         }
                     }
                 }
+
+                // Counts only increase as groups are drawn. Once above a maximum,
+                // this hand cannot satisfy the constraints; never clamp it into range.
+                if (newCounts.Where((count, i) => count > maxCounts[i]).Any()) continue;
 
                 var key = new StateKey(newDrawn, newCounts);
                 var increment = ways * binom;
