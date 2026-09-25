@@ -43,12 +43,14 @@ public class DeckImportServiceTest {
         Assert.Multiple(() => {
             Assert.That(firstCard.Copies, Is.EqualTo(2));
             Assert.That(firstCard.Categories, Is.Empty);
+            Assert.That(firstCard.Active, Is.True);
         });
 
         var secondCard = result.First(x => x.Copies == 1);
         Assert.Multiple(() => {
             Assert.That(secondCard.Copies, Is.EqualTo(1));
             Assert.That(secondCard.Categories, Is.Empty);
+            Assert.That(secondCard.Active, Is.True);
         });
     }
 
