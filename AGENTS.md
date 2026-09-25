@@ -13,7 +13,7 @@ Use these instructions when changing this repository. Read [README.md](README.md
 
 ## Local development and verification
 
-The solution targets `.NET 9` (`net9.0`); the README identifies C# 13. Install the .NET 9 SDK. Run commands from the repository root:
+The solution's projects target `.NET 9` (`net9.0`); the README identifies C# 13. Install the .NET 9 SDK. Run commands from the repository root:
 
 ```sh
 dotnet restore YGOProbabilityCalculatorBlazor.sln
@@ -41,7 +41,7 @@ There is no GitHub Actions CI workflow. Run relevant tests locally and report th
 - A card may belong to multiple categories. A drawn copy counts once toward every category assigned to that card.
 - Each combo requires all of its category constraints; success means at least one combo matches. Preserve inclusive minimum and maximum bounds and count overlapping combos only once.
 - A `0/0` constraint is valid. Do not clamp, discard, or silently change valid constraints.
-- When changing calculation behavior, add targeted cases to `YGOProbabilityCalculatorTest/Services/ProbabilityCalculator/` only if that path exists; the current test project path is `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/`. Prefer the existing `SmallDeckOracleTest`, which enumerates physical hands and evaluates constraints independently of the production aggregation algorithm.
+- When changing calculation behavior, add targeted cases to `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/`. Prefer the existing `SmallDeckOracleTest`, which enumerates physical hands and evaluates constraints independently of the production aggregation algorithm.
 - Keep oracle expectations independent of the implementation under test. Verify expected values with exhaustive enumeration or another actual calculation tool; never select numbers by intuition or memory. Cover overlapping memberships/combos and boundary constraints when relevant.
 
 ## Editor state and compatibility
