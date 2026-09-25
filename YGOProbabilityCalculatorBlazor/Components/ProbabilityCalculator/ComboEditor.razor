@@ -8,7 +8,7 @@
                 aria-expanded="@(Index == ActiveComboIndex ? "true" : "false")"
                 aria-controls="combo@(Index)"
                 @onclick="ToggleCombo">
-            <span>@(string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name)</span>
+            <span>@ComboDisplayName</span>
 
             @if (Combo.Categories.Any()) {
                 <span class="ms-2">-</span>
@@ -30,11 +30,12 @@
             }
         </button>
 
-        <div class="form-check d-flex align-items-center mx-3 mb-0 flex-shrink-0">
+        <div class="form-check d-flex align-items-center mx-2 mb-0 flex-shrink-0">
             <input id="comboActive@(Index)" class="form-check-input" type="checkbox"
                    checked="@Combo.Active"
+                   aria-label="@ActiveToggleLabel"
+                   title="@ActiveToggleTitle"
                    @onchange="e => ChangeActive(e.Value)"/>
-            <label class="form-check-label ms-2" for="comboActive@(Index)">Active</label>
         </div>
 
         <button class="btn btn-danger" title="Remove combo" @onclick="() => OnRemoveCombo.InvokeAsync(Index)">
@@ -127,6 +128,9 @@
     private string maxCount = "1";
     private int previousHandSize;
     private int previousCategoryRenameVersion;
+    private string ComboDisplayName => string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name;
+    private string ActiveToggleLabel => $"Active combo {ComboDisplayName}";
+    private string ActiveToggleTitle => $"Toggle {ComboDisplayName} active state";
     private bool HasSelectedConstraint => Combo.Categories.Any(c => c.BaseCategory.Name == selectedCategory);
 
     private IEnumerable<ComboCategory> HeaderCategories => Combo.Categories.Take(MaxHeaderBadges);
