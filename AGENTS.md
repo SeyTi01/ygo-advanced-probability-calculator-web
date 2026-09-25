@@ -4,11 +4,11 @@ Use these instructions when changing this repository. Read [README.md](README.md
 
 ## Project map
 
-- The .NET 9 Blazor WebAssembly app is in `YGOProbabilityCalculatorBlazor/`; `Pages/Index.razor` renders the main calculator.
-- `Services/ProbabilityCalculator/ProbabilityCalculatorService.cs` implements the probability calculation.
-- `Models/` contains cards, categories, combo constraints, and session state.
-- `Components/ProbabilityCalculator/` contains the calculator and its card, category, and combo editors. `EditorKeys.cs` supports stable editor identity.
-- Import and persistence code lives in `Services/DeckImport/`, `Services/Session/`, and `Services/Converter/`.
+- The .NET 9 Blazor WebAssembly app is in `YGOProbabilityCalculatorBlazor/`; `YGOProbabilityCalculatorBlazor/Pages/Index.razor` renders the main calculator.
+- `YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/ProbabilityCalculatorService.cs` implements the probability calculation.
+- `YGOProbabilityCalculatorBlazor/Models/` contains cards, categories, combo constraints, and session state.
+- `YGOProbabilityCalculatorBlazor/Components/ProbabilityCalculator/` contains the calculator and its card, category, and combo editors. `YGOProbabilityCalculatorBlazor/Components/ProbabilityCalculator/EditorKeys.cs` supports stable editor identity.
+- Import and persistence code lives in `YGOProbabilityCalculatorBlazor/Services/DeckImport/`, `YGOProbabilityCalculatorBlazor/Services/Session/`, and `YGOProbabilityCalculatorBlazor/Services/Converter/`.
 - The test project is `YGOProbabilityCalculatorBlazorTest/`. It contains bUnit editor tests and focused service tests.
 
 ## Local development and verification
@@ -41,7 +41,7 @@ There is no GitHub Actions CI workflow. Run relevant tests locally and report th
 - A card may belong to multiple categories. A drawn copy counts once toward every category assigned to that card.
 - Each combo requires all of its category constraints; success means at least one combo matches. Preserve inclusive minimum and maximum bounds and count overlapping combos only once.
 - A `0/0` constraint is valid. Do not clamp, discard, or silently change valid constraints.
-- When changing calculation behavior, add targeted cases to `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/`. Prefer the existing `SmallDeckOracleTest`, which enumerates physical hands and evaluates constraints independently of the production aggregation algorithm.
+- When changing calculation behavior, add targeted cases to `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/`. Prefer the existing `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/SmallDeckOracleTest.cs`, which enumerates physical hands and evaluates constraints independently of the production aggregation algorithm.
 - Keep oracle expectations independent of the implementation under test. Verify expected values with exhaustive enumeration or another actual calculation tool; never select numbers by intuition or memory. Cover overlapping memberships/combos and boundary constraints when relevant.
 
 ## Editor state and compatibility
@@ -49,7 +49,7 @@ There is no GitHub Actions CI workflow. Run relevant tests locally and report th
 - Preserve each card and combo editor's draft and active state through edits, list removal/reordering, session loading, and deck import. The list editors use `EditorKeys<T>` and Blazor `@key` to carry UI identity across model replacement; preserve this behavior.
 - Do not overwrite an in-progress draft when a parent value changes. In particular, hand-size changes may update untouched defaults but must not alter user-entered or saved constraints.
 - Add bUnit interaction tests in `YGOProbabilityCalculatorBlazorTest/Components/CalculatorEditorTest.cs` for editor behavior changes.
-- Preserve existing saved-session JSON and `.ydk` import behavior unless the issue explicitly changes it. For persistence or import changes, add focused coverage under `Services/Session/`, `Services/Converter/`, or `Services/DeckImport/` as appropriate.
+- Preserve existing saved-session JSON and `.ydk` import behavior unless the issue explicitly changes it. For persistence or import changes, add focused coverage under `YGOProbabilityCalculatorBlazorTest/Services/Session/`, `YGOProbabilityCalculatorBlazorTest/Services/Converter/`, or `YGOProbabilityCalculatorBlazorTest/Services/DeckImport/` as appropriate.
 
 ## Contribution workflow and boundaries
 
