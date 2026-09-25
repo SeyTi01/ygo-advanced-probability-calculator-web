@@ -16,6 +16,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public class ActiveEntriesEditorTest {
     private TestContext context = null!;
+    private Mock<IDeckImportService> deckImportService = null!;
     private readonly CategoryBase a = new("A");
     private readonly CategoryBase b = new("B");
 
@@ -27,7 +28,8 @@ public class ActiveEntriesEditorTest {
         context.Services.AddSingleton<ISerializer, JsonSerializer>();
         context.Services.AddSingleton<ISessionService, SessionService>();
         context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
-        context.Services.AddSingleton<IDeckImportService>(Mock.Of<IDeckImportService>());
+        deckImportService = new Mock<IDeckImportService>();
+        context.Services.AddSingleton(deckImportService.Object);
     }
 
     [TearDown]
@@ -62,6 +64,61 @@ public class ActiveEntriesEditorTest {
     }
 
     [Test]
+    public void ActiveCheckboxesHaveAccessibleNamesWithoutVisibleLabels() {
+        var cut = Render(Session(
+            [new([a], 2, "A copies", active: false)],
+            [new([new(a, 1, 2)], "Exactly one A", active: false)]));
+        var card = cut.FindComponent<CardEditor>();
+        var combo = cut.FindComponent<ComboEditor>();
+
+        Assert.That(card.Find("#cardActive0").GetAttribute("aria-label"), Is.EqualTo("Active card A copies"));
+        Assert.That(card.Find("#cardActive0").GetAttribute("title"), Is.EqualTo("Toggle A copies active state"));
+        Assert.That(card.FindAll("label[for='cardActive0']"), Is.Empty);
+        Assert.That(card.Find(".form-check").TextContent.Trim(), Is.Empty);
+
+        Assert.That(combo.Find("#comboActive0").GetAttribute("aria-label"), Is.EqualTo("Active combo Exactly one A"));
+        Assert.That(combo.Find("#comboActive0").GetAttribute("title"), Is.EqualTo("Toggle Exactly one A active state"));
+        Assert.That(combo.FindAll("label[for='comboActive0']"), Is.Empty);
+        Assert.That(combo.Find(".form-check").TextContent.Trim(), Is.Empty);
+    }
+
+    [Test]
+    public void DeckCounterUsesOnlyActiveCopiesAndUpdatesAfterToggleAndEdit() {
+        var cut = Render(Session(
+            [new([], 3, "Active card"), new([], 4, "Inactive card", active: false)],
+            []));
+        var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
+
+        Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (3)"));
+
+        cut.Find("#cardActive0").Change(false);
+        Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
+
+        cut.Find("#cardActive1").Change(true);
+        Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (4)"));
+
+        cut.Find("#cardCopies1").Input("6");
+        Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (6)"));
+
+        cut.Find("#cardActive1").Change(false);
+        cut.Find("#cardCopies1").Input("2");
+        Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
+    }
+
+    [Test]
+    public void ImportingDeckUpdatesTheActiveCopyCounter() {
+        var cut = Render(Session([new([], 2, "Existing card")], []));
+        var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
+        deckImportService
+            .Setup(service => service.ImportDeckFromYdkAsync(It.IsAny<IBrowserFile>()))
+            .ReturnsAsync([new([], 3, "Imported card"), new([], 5, "Second imported card")]);
+
+        cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n1\n2", "deck.ydk"));
+
+        cut.WaitForAssertion(() => Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (8)")));
+    }
+
+    [Test]
     public void InactiveCardCopiesLeaveTheEffectivePopulationAndCanBeRestored() {
         var cut = Render(Session(
             [new([a], 2, "A copies"), new([], 2, "Uncategorized copies")],
@@ -69,7 +126,7 @@ public class ActiveEntriesEditorTest {
         var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
 
         AssertProbability(cut, 5.0 / 6.0);
-        Assert.That(deckHeading.TextContent, Does.Contain("4 active / 4 total copies"));
+        Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (4)"));
 
         var card = cut.FindComponent<CardEditor>();
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
@@ -78,8 +135,10 @@ public class ActiveEntriesEditorTest {
         Assert.That(card.Find("#cardActive0").HasAttribute("checked"), Is.False);
         Assert.That(card.Find(".accordion-item").ClassList.Contains("entry-inactive"), Is.True);
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Inactive"));
+        Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"),
+            "toggling the checkbox must not expand or collapse the editor");
         Assert.That(cut.FindAll(".alert-primary"), Is.Empty, "changing the effective deck must clear the previous result");
-        Assert.That(deckHeading.TextContent, Does.Contain("2 active / 4 total copies"));
+        Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (2)"));
         AssertProbability(cut, 0.0);
 
         card.Find("#cardActive0").Change(true);
@@ -187,8 +246,11 @@ public class ActiveEntriesEditorTest {
         var cut = Render(Session(
             [new([a], 2, "Card")],
             [new([new(a, 1, 2)], "Combo")]));
+        var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
+        Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (2)"));
         cut.Find("#cardActive0").Change(false);
         cut.Find("#comboActive0").Change(false);
+        Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
         cut.FindAll("button").Single(button => button.TextContent.Trim() == "Save Session").Click();
 
         var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
@@ -203,6 +265,7 @@ public class ActiveEntriesEditorTest {
         cut.WaitForAssertion(() => {
             Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.False);
             Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.False);
+            Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
         });
 
         const string legacyJson = """
@@ -212,6 +275,7 @@ public class ActiveEntriesEditorTest {
         cut.WaitForAssertion(() => {
             Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.True);
             Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.True);
+            Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (2)"));
         });
     }
 
