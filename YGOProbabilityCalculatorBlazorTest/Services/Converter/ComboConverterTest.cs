@@ -30,7 +30,7 @@ public class ComboConverterTests {
         var json = JsonSerializer.Serialize(combo, _options);
 
         const string expectedJson =
-            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\"},\"MinCount\":1,\"MaxCount\":3}]}";
+            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\"},\"MinCount\":1,\"MaxCount\":3}],\"Active\":true}";
         Assert.That(json, Is.EqualTo(expectedJson));
     }
 
@@ -43,7 +43,7 @@ public class ComboConverterTests {
         var json = JsonSerializer.Serialize(combo, _options);
 
         const string expectedJson =
-            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\"},\"MinCount\":1,\"MaxCount\":3}],\"Name\":\"Test Combo\"}";
+            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\"},\"MinCount\":1,\"MaxCount\":3}],\"Name\":\"Test Combo\",\"Active\":true}";
         Assert.That(json, Is.EqualTo(expectedJson));
     }
 
