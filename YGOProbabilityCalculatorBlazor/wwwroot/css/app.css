@@ -117,6 +117,15 @@ code {
     font-style: italic;
 }
 
+.entry-editor-header {
+    padding-inline-end: 0.5rem;
+}
+
+.entry-editor-active-checkbox {
+    float: none;
+    margin: 0;
+}
+
 body.input-mode-mouse *:focus {
     outline: none !important;
     box-shadow: none !important;
