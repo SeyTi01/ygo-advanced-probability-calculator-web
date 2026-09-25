@@ -38,6 +38,7 @@
 
     <CategoryListEditor @key="sessionVersion"
         OnCategoriesChanged="StateHasChanged"
+        OnRenameCategory="RenameCategoryBase"
         CategoryBases="categoryBases"
         Combos="combos"
         Cards="cards"
@@ -46,6 +47,7 @@
     <CardListEditor
         Cards="cards"
         CategoryBases="categoryBases"
+        CategoryRename="categoryRename"
         ActiveCardIndex="activeCardIndex"
         ActiveCardIndexChanged="@(i => activeCardIndex = i)"
         OnReplaceCard="ReplaceCard"
@@ -56,6 +58,7 @@
     <ComboListEditor
         Combos="combos"
         CategoryBases="categoryBases"
+        CategoryRename="categoryRename"
         ActiveComboIndex="activeComboIndex"
         ActiveComboIndexChanged="@(i => activeComboIndex = i)"
         OnReplaceCombo="ReplaceCombo"
@@ -102,6 +105,8 @@
     private int activeCardIndex = -1;
 
     private int sessionVersion;
+    private int categoryRenameVersion;
+    private CategoryRenameNotice? categoryRename;
     private int handSize = 5;
     private bool isCalculating;
     private string? errorMessage;
@@ -151,6 +156,36 @@
     private void AddNewCombo() {
         combos.Add(new Combo(new List<ComboCategory>()));
         activeComboIndex = combos.Count - 1;
+    }
+
+    private Task RenameCategoryBase((CategoryBase OldCategory, CategoryBase NewCategory) payload) {
+        var (oldCategory, newCategory) = payload;
+        var categoryIndex = categoryBases.FindIndex(category => ReferenceEquals(category, oldCategory));
+        if (categoryIndex < 0) return Task.CompletedTask;
+
+        categoryBases[categoryIndex] = newCategory;
+
+        foreach (var card in cards) {
+            for (var i = 0; i < card.Categories.Count; i++) {
+                if (card.Categories[i].Name.Equals(oldCategory.Name, StringComparison.Ordinal))
+                    card.Categories[i] = newCategory;
+            }
+        }
+
+        foreach (var combo in combos) {
+            for (var i = 0; i < combo.Categories.Count; i++) {
+                var constraint = combo.Categories[i];
+                if (constraint.BaseCategory.Name.Equals(oldCategory.Name, StringComparison.Ordinal)) {
+                    combo.Categories[i] = new ComboCategory(
+                        newCategory,
+                        constraint.MinCount,
+                        constraint.MaxCount);
+                }
+            }
+        }
+
+        categoryRename = new CategoryRenameNotice(++categoryRenameVersion, oldCategory.Name, newCategory.Name);
+        return Task.CompletedTask;
     }
 
     private async Task Calculate() {

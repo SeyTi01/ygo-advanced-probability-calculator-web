@@ -8,6 +8,7 @@
                 Index="index"
                 Combo="Combos[index]"
                 CategoryBases="CategoryBases"
+                CategoryRename="CategoryRename"
                 ActiveComboIndex="ActiveComboIndex"
                 ActiveComboIndexChanged="ActiveComboIndexChanged"
                 OnReplaceCombo="ReplaceCombo"
@@ -25,6 +26,7 @@
 @code {
     [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
     [Parameter] public int HandSize { get; set; } = 5;
     [Parameter] public int ActiveComboIndex { get; set; } = -1;

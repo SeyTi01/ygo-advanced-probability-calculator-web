@@ -100,6 +100,7 @@
     [Parameter] public int Index { get; set; }
     [Parameter] public Combo Combo { get; set; } = null!;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
     [Parameter] public int ActiveComboIndex { get; set; }
     [Parameter] public EventCallback<int> ActiveComboIndexChanged { get; set; }
@@ -115,6 +116,7 @@
     private string minCount = "1";
     private string maxCount = "1";
     private int previousHandSize;
+    private int previousCategoryRenameVersion;
     private bool HasSelectedConstraint => Combo.Categories.Any(c => c.BaseCategory.Name == selectedCategory);
 
     private IEnumerable<ComboCategory> HeaderCategories => Combo.Categories.Take(MaxHeaderBadges);
@@ -191,6 +193,12 @@
     }
 
     protected override void OnParametersSet() {
+        if (CategoryRename is { } rename && rename.Version != previousCategoryRenameVersion) {
+            if (selectedCategory.Equals(rename.OldName, StringComparison.Ordinal))
+                selectedCategory = rename.NewName;
+            previousCategoryRenameVersion = rename.Version;
+        }
+
         // Only update untouched defaults. A draft (including zero) is user input.
         if (HandSize != previousHandSize && selectedCategory.Length == 0 &&
             minCount == "1" && maxCount == previousHandSize.ToString()) {
