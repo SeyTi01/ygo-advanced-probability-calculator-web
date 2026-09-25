@@ -1,11 +1,12 @@
 @using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<div class="accordion-item" @key="Index">
+<div class="accordion-item">
     <h2 class="accordion-header d-flex">
         <button class="accordion-button flex-grow-1 @(Index == ActiveCardIndex ? "" : "collapsed")"
                 type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#card@(Index)"
+                aria-expanded="@(Index == ActiveCardIndex ? "true" : "false")"
+                aria-controls="card@(Index)"
                 @onclick="ToggleCard">
             <span>@(string.IsNullOrWhiteSpace(Card.Name) ? $"Card {Index + 1}" : Card.Name)</span>
             <span class="ms-2">(@Card.Copies)</span>
@@ -25,25 +26,28 @@
 
     <div id="card@(Index)" class="accordion-collapse collapse @(Index == ActiveCardIndex ? "show" : "")">
         <div class="accordion-body">
+            @if (error is not null) {
+                <DismissibleAlert Message="@error" OnDismiss="@(() => error = null)"/>
+            }
             <div class="row mb-3">
                 <div class="col-6">
-                    <label class="form-label">Name</label>
-                    <input class="form-control"
+                    <label for="cardName@(Index)" class="form-label">Name</label>
+                    <input id="cardName@(Index)" class="form-control"
                            value="@(Card.Name ?? string.Empty)"
                            @oninput="e => Rename(e.Value?.ToString())"/>
                 </div>
                 <div class="col-3">
-                    <label class="form-label">Copies</label>
-                    <input class="form-control" type="number" min="0" max="3"
+                    <label for="cardCopies@(Index)" class="form-label">Copies</label>
+                    <input id="cardCopies@(Index)" class="form-control" type="number" min="1"
                            value="@Card.Copies"
-                           @oninput="e => ChangeCopies(ToInt(e.Value))"/>
+                           @oninput="e => ChangeCopies(e.Value)"/>
                 </div>
             </div>
 
             <div class="row mb-3">
                 <div class="col-8">
-                    <label class="form-label">Add Category</label>
-                    <select class="form-select"
+                    <label for="cardCategory@(Index)" class="form-label">Category</label>
+                    <select id="cardCategory@(Index)" class="form-select"
                             value="@selectedCategory"
                             @onchange="e => selectedCategory = e.Value?.ToString() ?? string.Empty">
                         <option value="">Select category…</option>
@@ -84,11 +88,12 @@
     [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
 
+    private string? error;
     private string selectedCategory = string.Empty;
 
-    private void ToggleCard() {
+    private Task ToggleCard() {
         var next = ActiveCardIndex == Index ? -1 : Index;
-        ActiveCardIndexChanged.InvokeAsync(next);
+        return ActiveCardIndexChanged.InvokeAsync(next);
     }
 
     private Task Rename(string? name) {
@@ -96,17 +101,32 @@
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
-    private Task ChangeCopies(int copies) {
-        copies = Math.Clamp(copies, 0, 3);
+    private Task ChangeCopies(object? value) {
+        if (!int.TryParse(value?.ToString(), out var copies) || copies < 1) {
+            error = "Number of copies must be at least 1.";
+            return Task.CompletedTask;
+        }
+        error = null;
         var newCard = Card.WithCopies(copies);
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
     private Task AddCategory() {
-        if (string.IsNullOrWhiteSpace(selectedCategory)) return Task.CompletedTask;
+        if (string.IsNullOrWhiteSpace(selectedCategory)) {
+            error = "Please select a category to add.";
+            return Task.CompletedTask;
+        }
 
         var chosen = CategoryBases.FirstOrDefault(c => c.Name == selectedCategory);
-        if (chosen is null || Card.Categories.Any(c => c.Name == chosen.Name)) return Task.CompletedTask;
+        if (chosen is null) {
+            error = "Selected category not found.";
+            return Task.CompletedTask;
+        }
+        if (Card.Categories.Any(c => c.Name == chosen.Name)) {
+            error = "This category is already added to the card.";
+            return Task.CompletedTask;
+        }
+        error = null;
 
         var newCats = Card.Categories.Concat([chosen]).ToList();
         var newCard = Card.WithCategories(newCats);
@@ -120,7 +140,5 @@
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
-    private static int ToInt(object? v) =>
-        int.TryParse(v?.ToString(), out var i) ? i : 0;
 
 }

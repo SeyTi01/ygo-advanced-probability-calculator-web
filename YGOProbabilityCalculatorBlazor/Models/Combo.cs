@@ -9,13 +9,6 @@ public class Combo(IEnumerable<ComboCategory> categories, string? name = null) {
     public Combo WithCategories(IEnumerable<ComboCategory> categories) {
         ArgumentNullException.ThrowIfNull(categories);
 
-        var list = categories.ToList();
-
-        list = list
-            .GroupBy(c => c.BaseCategory.Name)
-            .Select(g => g.Last())
-            .ToList();
-
-        return new Combo(list, Name);
+        return new Combo(categories, Name);
     }
 }
