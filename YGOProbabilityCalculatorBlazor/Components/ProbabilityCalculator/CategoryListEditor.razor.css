@@ -7,6 +7,10 @@
     vertical-align: middle;
 }
 
+.category-validation-alert ::deep .alert {
+    margin-bottom: 0;
+}
+
 .category-name-trigger {
     min-width: 0;
     max-width: 100%;
