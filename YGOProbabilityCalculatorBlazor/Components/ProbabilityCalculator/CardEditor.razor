@@ -30,8 +30,11 @@
                    @onchange="e => ChangeActive(e.Value)"/>
         </div>
 
-        <button class="btn btn-danger align-self-center" title="Remove card" @onclick="() => OnRemoveCard.InvokeAsync(Index)">
-            <i class="bi bi-trash"></i>
+        <button class="btn btn-danger align-self-center" type="button" aria-label="Remove card" title="Remove card" @onclick="() => OnRemoveCard.InvokeAsync(Index)">
+            <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
+                <path d="M6 2h4l1 1h3v1H2V3h3l1-1zM4 5h8l-.7 9H4.7z"/>
+                <path d="M6 6h1v6H6zm3 0h1v6H9z" fill="var(--bs-danger)"/>
+            </svg>
         </button>
     </h2>
 
