@@ -81,6 +81,7 @@
     [Parameter] public int Index { get; set; }
     [Parameter] public Card Card { get; set; } = null!;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
     [Parameter] public int ActiveCardIndex { get; set; }
     [Parameter] public EventCallback<int> ActiveCardIndexChanged { get; set; }
@@ -90,6 +91,7 @@
 
     private string? error;
     private string selectedCategory = string.Empty;
+    private int previousCategoryRenameVersion;
 
     private Task ToggleCard() {
         var next = ActiveCardIndex == Index ? -1 : Index;
@@ -140,5 +142,13 @@
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
+    protected override void OnParametersSet() {
+        if (CategoryRename is not { } rename || rename.Version == previousCategoryRenameVersion) return;
+
+        if (selectedCategory.Equals(rename.OldName, StringComparison.Ordinal))
+            selectedCategory = rename.NewName;
+
+        previousCategoryRenameVersion = rename.Version;
+    }
 
 }
