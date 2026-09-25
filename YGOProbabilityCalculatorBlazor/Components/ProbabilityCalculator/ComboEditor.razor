@@ -1,11 +1,12 @@
 @using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<div class="accordion-item" @key="Index">
+<div class="accordion-item">
     <h2 class="accordion-header d-flex">
         <button class="accordion-button flex-grow-1 @(Index == ActiveComboIndex ? "" : "collapsed")"
                 type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#combo@(Index)"
+                aria-expanded="@(Index == ActiveComboIndex ? "true" : "false")"
+                aria-controls="combo@(Index)"
                 @onclick="ToggleCombo">
             <span>@(string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name)</span>
 
@@ -33,10 +34,13 @@
 
     <div id="combo@(Index)" class="accordion-collapse collapse @(Index == ActiveComboIndex ? "show" : "")">
         <div class="accordion-body">
+            @if (error is not null) {
+                <DismissibleAlert Message="@error" OnDismiss="@(() => error = null)"/>
+            }
             <div class="row mb-3">
                 <div class="col-8">
-                    <label class="form-label">Name</label>
-                    <input class="form-control"
+                    <label for="comboName@(Index)" class="form-label">Name</label>
+                    <input id="comboName@(Index)" class="form-control"
                            value="@(Combo.Name ?? string.Empty)"
                            @oninput="e => Rename(e.Value?.ToString())"/>
                 </div>
@@ -44,8 +48,8 @@
 
             <div class="row g-2 align-items-end mb-3">
                 <div class="col-6">
-                    <label class="form-label">Add Category</label>
-                    <select class="form-select"
+                    <label for="comboCategory@(Index)" class="form-label">Category</label>
+                    <select id="comboCategory@(Index)" class="form-select"
                             value="@selectedCategory"
                             @onchange="e => OnSelectCategory(e.Value?.ToString())">
                         <option value="">Select category…</option>
@@ -55,19 +59,19 @@
                     </select>
                 </div>
                 <div class="col-2">
-                    <label class="form-label">Min</label>
-                    <input class="form-control" type="number" min="0"
+                    <label for="minCount@(Index)" class="form-label">Min</label>
+                    <input id="minCount@(Index)" class="form-control" type="number" min="0"
                            value="@minCount"
-                           @oninput="e => minCount = ToInt(e.Value)"/>
+                           @oninput="e => minCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
                 <div class="col-2">
-                    <label class="form-label">Max</label>
-                    <input class="form-control" type="number" min="0"
+                    <label for="maxCount@(Index)" class="form-label">Max</label>
+                    <input id="maxCount@(Index)" class="form-control" type="number" min="0"
                            value="@maxCount"
-                           @oninput="e => maxCount = ToInt(e.Value)"/>
+                           @oninput="e => maxCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
                 <div class="col-2">
-                    <button class="btn btn-primary w-100" @onclick="AddCategory">Add</button>
+                    <button class="btn btn-primary w-100" @onclick="AddCategory">@(HasSelectedConstraint ? "Update" : "Add")</button>
                 </div>
             </div>
 
@@ -82,7 +86,7 @@
                             <button type="button"
                                     class="btn-close btn-close-white ms-1"
                                     aria-label="Remove"
-                                    @onclick="() => RemoveCategory(cc.BaseCategory.Name)">
+                                    @onclick="() => RemoveCategory(cc)">
                             </button>
                         </span>
                     }
@@ -106,16 +110,19 @@
     [Parameter] public int HandSize { get; set; } = 5;
 
     private const int MaxHeaderBadges = 6;
+    private string? error;
     private string selectedCategory = string.Empty;
-    private int minCount = 1;
-    private int maxCount = 1;
+    private string minCount = "1";
+    private string maxCount = "1";
+    private int previousHandSize;
+    private bool HasSelectedConstraint => Combo.Categories.Any(c => c.BaseCategory.Name == selectedCategory);
 
     private IEnumerable<ComboCategory> HeaderCategories => Combo.Categories.Take(MaxHeaderBadges);
     private int HiddenHeaderCategoriesCount => Math.Max(0, Combo.Categories.Count - MaxHeaderBadges);
 
-    private void ToggleCombo() {
+    private Task ToggleCombo() {
         var next = ActiveComboIndex == Index ? -1 : Index;
-        ActiveComboIndexChanged.InvokeAsync(next);
+        return ActiveComboIndexChanged.InvokeAsync(next);
     }
 
     private Task Rename(string? name) {
@@ -124,50 +131,71 @@
     }
 
     private Task AddCategory() {
-        if (string.IsNullOrWhiteSpace(selectedCategory))
+        if (string.IsNullOrWhiteSpace(selectedCategory)) {
+            error = "Please select a category to add.";
             return Task.CompletedTask;
-
-        if (minCount < 0) minCount = 0;
-        if (maxCount < minCount) maxCount = minCount;
-
+        }
         var baseCat = CategoryBases.FirstOrDefault(c => c.Name == selectedCategory);
-        if (baseCat is null || Combo.Categories.Any(c => c.BaseCategory.Name == baseCat.Name))
+        if (baseCat is null) {
+            error = "Selected category not found.";
             return Task.CompletedTask;
+        }
+        if (!int.TryParse(minCount, out var min) || min < 0) {
+            error = "Minimum count must be a non-negative whole number.";
+            return Task.CompletedTask;
+        }
+        if (!int.TryParse(maxCount, out var max) || max < min) {
+            error = "Maximum count must be a whole number at least equal to minimum count.";
+            return Task.CompletedTask;
+        }
+        var newCats = Combo.Categories.ToList();
+        var existing = newCats.FindIndex(c => c.BaseCategory.Name == baseCat.Name);
+        var constraint = new ComboCategory(baseCat, min, max);
+        if (existing >= 0) newCats[existing] = constraint;
+        else newCats.Add(constraint);
 
-        var newCats = Combo.Categories.Concat([new ComboCategory(baseCat, minCount, maxCount)]).ToList();
         var newCombo = Combo.WithCategories(newCats);
-
         selectedCategory = string.Empty;
+        error = null;
         ResetEditorDefaults();
-
         return OnReplaceCombo.InvokeAsync((Index, newCombo));
     }
 
-    private Task RemoveCategory(string categoryName) {
-        var newCats = Combo.Categories.Where(c => c.BaseCategory.Name != categoryName).ToList();
+    private Task RemoveCategory(ComboCategory category) {
+        var newCats = Combo.Categories.Where(c => c != category).ToList();
         var newCombo = Combo.WithCategories(newCats);
         return OnReplaceCombo.InvokeAsync((Index, newCombo));
     }
 
     private void OnSelectCategory(string? value) {
         selectedCategory = value ?? string.Empty;
+        error = null;
+        var existing = Combo.Categories.FirstOrDefault(c => c.BaseCategory.Name == selectedCategory);
+        if (existing is not null) {
+            minCount = existing.MinCount.ToString();
+            maxCount = existing.MaxCount.ToString();
+        }
+        else {
+            ResetEditorDefaults();
+        }
     }
 
-    private static int ToInt(object? v) =>
-        int.TryParse(v?.ToString(), out var i) ? i : 0;
-
     private void ResetEditorDefaults() {
-        minCount = 1;
-        maxCount = HandSize;
+        minCount = "1";
+        maxCount = HandSize.ToString();
     }
 
     protected override void OnInitialized() {
         ResetEditorDefaults();
+        previousHandSize = HandSize;
     }
 
     protected override void OnParametersSet() {
-        if (maxCount < minCount) maxCount = minCount;
-        if (maxCount == 0) maxCount = HandSize;
+        // Only update untouched defaults. A draft (including zero) is user input.
+        if (HandSize != previousHandSize && selectedCategory.Length == 0 &&
+            minCount == "1" && maxCount == previousHandSize.ToString()) {
+            ResetEditorDefaults();
+        }
+        previousHandSize = HandSize;
     }
-
 }

@@ -7,10 +7,11 @@
         <div class="col-4">
             <input @bind="newCategoryName"
                    @bind:event="oninput"
-                   @onkeyup="@(e => {
-                                 if (e.Key == "Enter") AddCategoryBase();
+                   @onkeyup="@(async e => {
+                                 if (e.Key == "Enter") await AddCategoryBase();
                              })"
                    class="form-control"
+                   aria-label="Category name"
                    placeholder="Category name"/>
         </div>
         <div class="col-2">
@@ -26,7 +27,7 @@
         @foreach (var category in CategoryBases) {
             <span class="badge bg-secondary me-2">
                 @category.Name
-                <button type="button" class="btn-close btn-close-white" aria-label="Close"
+                <button type="button" class="btn-close btn-close-white" aria-label="@($"Remove category {category.Name}")"
                         @onclick="() => RemoveCategoryBase(category)"></button>
             </span>
         }
@@ -36,13 +37,15 @@
 @code {
 
     [Parameter] public required List<CategoryBase> CategoryBases { get; set; }
-    [Parameter] public required IEnumerable<object> Cards { get; set; } = [];
-    [Parameter] public required IEnumerable<object> Combos { get; set; } = [];
+    [Parameter] public required IEnumerable<Card> Cards { get; set; } = [];
+    [Parameter] public required IEnumerable<Combo> Combos { get; set; } = [];
+
+    [Parameter] public EventCallback OnCategoriesChanged { get; set; }
 
     private string? newCategoryName;
     private string? categoryError;
 
-    private void AddCategoryBase() {
+    private async Task AddCategoryBase() {
         if (string.IsNullOrWhiteSpace(newCategoryName)) {
             categoryError = "Category name cannot be empty.";
             return;
@@ -59,36 +62,22 @@
 
             newCategoryName = string.Empty;
             categoryError = null;
+            await OnCategoriesChanged.InvokeAsync();
         }
         catch (ArgumentException ex) {
             categoryError = ex.Message;
         }
     }
 
-    private void RemoveCategoryBase(CategoryBase category) {
-        var usedInCombos = Combos.Any(c => {
-            dynamic dc = c;
-            try {
-                return ((IEnumerable<dynamic>)dc.Categories).Any(cc => cc.BaseCategory == category);
-            }
-            catch {
-                return false;
-            }
-        });
-
-        var usedInCards = Cards.Any(card => {
-            dynamic d = card;
-            try {
-                return ((IEnumerable<CategoryBase>)d.Categories).Contains(category);
-            }
-            catch {
-                return false;
-            }
-        });
-
-        if (!usedInCombos && !usedInCards) {
-            CategoryBases.Remove(category);
+    private async Task RemoveCategoryBase(CategoryBase category) {
+        var usedInCombos = Combos.Any(c => c.Categories.Any(cc => cc.BaseCategory == category));
+        var usedInCards = Cards.Any(c => c.Categories.Contains(category));
+        if (usedInCombos || usedInCards) {
+            categoryError = "This category is still used by a card or combo.";
+            return;
         }
+        CategoryBases.Remove(category);
+        categoryError = null;
+        await OnCategoriesChanged.InvokeAsync();
     }
-
 }
