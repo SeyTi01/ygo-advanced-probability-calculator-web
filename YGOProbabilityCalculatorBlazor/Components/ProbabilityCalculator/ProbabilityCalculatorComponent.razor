@@ -29,6 +29,7 @@
                    class="form-control"
                    style="width: 80px;"
                    @bind="handSize"
+                   @bind:after="OnHandSizeChanged"
                    min="1"/>
         </div>
     </div>
@@ -82,6 +83,10 @@
             </button>
         </div>
 
+        @if (CalculationUnavailableMessage is { } unavailableMessage) {
+            <p class="form-text mt-2" role="status" aria-live="polite">@unavailableMessage</p>
+        }
+
         @if (errorMessage is not null) {
             <DismissibleAlert Message="@errorMessage" OnDismiss="@(() => errorMessage = null)"/>
         }
@@ -109,20 +114,36 @@
     private CategoryRenameNotice? categoryRename;
     private int handSize = 5;
     private bool isCalculating;
+    private long calculationVersion;
     private string? errorMessage;
     private string? importError;
     private double? probability;
 
-    private bool CanCalculate =>
-        cards.Count > 0 &&
-        handSize > 0 &&
-        handSize <= cards.Sum(c => c.Copies) &&
-        combos.Count > 0 &&
-        combos.All(c => c.Categories.Count > 0);
+    private int ActiveCardCount => cards.Count(card => card.Active);
+    private int ActiveCardCopies => cards.Where(card => card.Active).Sum(card => card.Copies);
+    private int ActiveComboCount => combos.Count(combo => combo.Active);
+
+    private string? CalculationUnavailableMessage {
+        get {
+            if (handSize < 1) return "Hand size must be at least 1.";
+            if (ActiveCardCount == 0) return "Activate at least one card to calculate.";
+            if (cards.Any(card => card.Active && card.Copies < 1))
+                return "Each active card must have at least one copy, or be deactivated.";
+            if (ActiveCardCopies < handSize)
+                return $"The active deck has {ActiveCardCopies} copies, fewer than the hand size of {handSize}.";
+            if (ActiveComboCount == 0) return "Activate at least one combo to calculate.";
+            if (combos.Any(combo => combo.Active && combo.Categories.Count == 0))
+                return "Complete or deactivate every incomplete active combo before calculating.";
+            return null;
+        }
+    }
+
+    private bool CanCalculate => CalculationUnavailableMessage is null;
 
     private Task ReplaceCard((int Index, Card NewCard) payload) {
         var (i, newCard) = payload;
         cards[i] = newCard;
+        InvalidateCalculation();
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -130,18 +151,21 @@
     private void RemoveCard(int index) {
         if (index < 0 || index >= cards.Count) return;
         cards.RemoveAt(index);
+        InvalidateCalculation();
         if (activeCardIndex == index) activeCardIndex = -1;
         else if (activeCardIndex > index) activeCardIndex--;
     }
 
     private void AddNewCard() {
         cards.Add(new Card([]));
+        InvalidateCalculation();
         activeCardIndex = cards.Count - 1;
     }
 
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
         var (i, newCombo) = payload;
         combos[i] = newCombo;
+        InvalidateCalculation();
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -149,12 +173,14 @@
     private void RemoveCombo(int index) {
         if (index < 0 || index >= combos.Count) return;
         combos.RemoveAt(index);
+        InvalidateCalculation();
         if (activeComboIndex == index) activeComboIndex = -1;
         else if (activeComboIndex > index) activeComboIndex--;
     }
 
     private void AddNewCombo() {
         combos.Add(new Combo(new List<ComboCategory>()));
+        InvalidateCalculation();
         activeComboIndex = combos.Count - 1;
     }
 
@@ -191,20 +217,28 @@
     private async Task Calculate() {
         if (!CanCalculate) return;
 
+        var requestVersion = calculationVersion;
+        var activeCards = cards.Where(card => card.Active).ToList();
+        var activeCombos = combos.Where(combo => combo.Active).ToList();
+        var requestedHandSize = handSize;
+
         try {
             isCalculating = true;
             errorMessage = null;
             probability = null;
             StateHasChanged();
 
-            probability = await Task.Run(() => _probabilityCalculator.CalculateProbabilityForCombos(
-                cards,
-                combos,
-                handSize
+            var result = await Task.Run(() => _probabilityCalculator.CalculateProbabilityForCombos(
+                activeCards,
+                activeCombos,
+                requestedHandSize
             ));
+            if (requestVersion == calculationVersion)
+                probability = result;
         }
         catch (OperationCanceledException) {
-            errorMessage = "Calculation was cancelled.";
+            if (requestVersion == calculationVersion)
+                errorMessage = "Calculation was cancelled.";
         }
         finally {
             isCalculating = false;
@@ -218,8 +252,8 @@
 
             cards.Clear();
             cards.AddRange(importedCards);
+            InvalidateCalculation();
             activeCardIndex = -1;
-            probability = null;
         }
         catch (Exception ex) {
             importError = $"Failed to import deck: {ex.Message}";
@@ -262,7 +296,7 @@
             handSize = session.HandSize;
             activeCardIndex = -1;
             activeComboIndex = -1;
-            probability = null;
+            InvalidateCalculation();
             sessionVersion++;
 
             errorMessage = null;
@@ -275,6 +309,14 @@
     private async Task SaveCurrentSession() {
         var fileName = $"calculator_session_{DateTime.Now:yyyyMMdd_HHmmss}.json";
         await SaveSession(fileName);
+    }
+
+    private void OnHandSizeChanged() => InvalidateCalculation();
+
+    private void InvalidateCalculation() {
+        calculationVersion++;
+        probability = null;
+        errorMessage = null;
     }
 
     protected override void OnInitialized() {

@@ -1,7 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<div class="accordion-item">
+<div class="accordion-item @(Card.Active ? "" : "entry-inactive")">
     <h2 class="accordion-header d-flex">
         <button class="accordion-button flex-grow-1 @(Index == ActiveCardIndex ? "" : "collapsed")"
                 type="button"
@@ -17,7 +17,17 @@
                     <span class="badge bg-info ms-1">@cat.Name</span>
                 }
             }
+            @if (!Card.Active) {
+                <span class="badge text-bg-secondary ms-2">Inactive</span>
+            }
         </button>
+
+        <div class="form-check d-flex align-items-center mx-3 mb-0 flex-shrink-0">
+            <input id="cardActive@(Index)" class="form-check-input" type="checkbox"
+                   checked="@Card.Active"
+                   @onchange="e => ChangeActive(e.Value)"/>
+            <label class="form-check-label ms-2" for="cardActive@(Index)">Active</label>
+        </div>
 
         <button class="btn btn-danger" title="Remove card" @onclick="() => OnRemoveCard.InvokeAsync(Index)">
             <i class="bi bi-trash"></i>
@@ -101,6 +111,11 @@
     private Task Rename(string? name) {
         var newCard = Card.WithName(string.IsNullOrWhiteSpace(name) ? null : name);
         return OnReplaceCard.InvokeAsync((Index, newCard));
+    }
+
+    private Task ChangeActive(object? value) {
+        if (!bool.TryParse(value?.ToString(), out var active)) return Task.CompletedTask;
+        return OnReplaceCard.InvokeAsync((Index, Card.WithActive(active)));
     }
 
     private Task ChangeCopies(object? value) {

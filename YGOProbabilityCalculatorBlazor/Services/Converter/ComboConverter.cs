@@ -16,8 +16,12 @@ public class ComboConverter : JsonConverter<Combo> {
         var name = root.TryGetProperty("Name", out var nameProperty)
             ? nameProperty.GetString()
             : null;
+        // Older session files predate Active; keep their entries enabled.
+        var active = root.TryGetProperty("Active", out var activeProperty)
+            ? activeProperty.GetBoolean()
+            : true;
 
-        return new Combo(categories, name);
+        return new Combo(categories, name, active);
     }
 
     public override void Write(Utf8JsonWriter writer, Combo value, JsonSerializerOptions options) {
@@ -31,6 +35,7 @@ public class ComboConverter : JsonConverter<Combo> {
             writer.WriteStringValue(value.Name);
         }
 
+        writer.WriteBoolean("Active", value.Active);
         writer.WriteEndObject();
     }
 }
