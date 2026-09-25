@@ -109,6 +109,14 @@ code {
     text-align: start;
 }
 
+.entry-inactive {
+    border-style: dashed;
+}
+
+.entry-inactive > .accordion-header > .accordion-button {
+    font-style: italic;
+}
+
 body.input-mode-mouse *:focus {
     outline: none !important;
     box-shadow: none !important;

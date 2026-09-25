@@ -1,7 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<div class="accordion-item">
+<div class="accordion-item @(Combo.Active ? "" : "entry-inactive")">
     <h2 class="accordion-header d-flex">
         <button class="accordion-button flex-grow-1 @(Index == ActiveComboIndex ? "" : "collapsed")"
                 type="button"
@@ -25,7 +25,17 @@
             else {
                 <span class="text-muted ms-2">(no categories)</span>
             }
+            @if (!Combo.Active) {
+                <span class="badge text-bg-secondary ms-2">Inactive</span>
+            }
         </button>
+
+        <div class="form-check d-flex align-items-center mx-3 mb-0 flex-shrink-0">
+            <input id="comboActive@(Index)" class="form-check-input" type="checkbox"
+                   checked="@Combo.Active"
+                   @onchange="e => ChangeActive(e.Value)"/>
+            <label class="form-check-label ms-2" for="comboActive@(Index)">Active</label>
+        </div>
 
         <button class="btn btn-danger" title="Remove combo" @onclick="() => OnRemoveCombo.InvokeAsync(Index)">
             <i class="bi bi-trash"></i>
@@ -130,6 +140,11 @@
     private Task Rename(string? name) {
         var newCombo = Combo.WithName(string.IsNullOrWhiteSpace(name) ? null : name);
         return OnReplaceCombo.InvokeAsync((Index, newCombo));
+    }
+
+    private Task ChangeActive(object? value) {
+        if (!bool.TryParse(value?.ToString(), out var active)) return Task.CompletedTask;
+        return OnReplaceCombo.InvokeAsync((Index, Combo.WithActive(active)));
     }
 
     private Task AddCategory() {

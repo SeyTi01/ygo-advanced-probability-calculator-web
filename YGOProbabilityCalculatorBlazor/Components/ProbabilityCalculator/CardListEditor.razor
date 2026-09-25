@@ -1,7 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 
 <div class="mb-4">
-    <h4>Deck (@Cards.Sum(c => c.Copies))</h4>
+    <h4>Deck (@ActiveCopies active / @Cards.Sum(c => c.Copies) total copies)</h4>
     <div class="accordion" id="cardsAccordion">
         @for (var index = 0; index < Cards.Count; index++) {
             <CardEditor @key="editorKeys[Cards[index]]"
@@ -35,6 +35,7 @@
     [Parameter] public EventCallback OnAddNewCard { get; set; }
 
     private readonly EditorKeys<Card> editorKeys = new();
+    private int ActiveCopies => Cards.Where(card => card.Active).Sum(card => card.Copies);
 
     protected override void OnParametersSet() => editorKeys.Synchronize(Cards);
 
