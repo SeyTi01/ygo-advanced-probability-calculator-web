@@ -34,6 +34,8 @@ Run the app locally with `dotnet run --project YGOProbabilityCalculatorBlazor/YG
 dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 ```
 
+At the start of implementation or test work, run `dotnet --info` and check that required restore, build, and test commands are available before substantial work. If .NET 9 is missing, try a reasonable nonprivileged bootstrap where permitted. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
+
 There is no GitHub Actions CI workflow. Run relevant tests locally and report the exact commands and outcomes in the pull request. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
 
 ## Probability correctness
@@ -49,13 +51,16 @@ There is no GitHub Actions CI workflow. Run relevant tests locally and report th
 - Preserve each card and combo editor's draft and active state through edits, list removal/reordering, session loading, and deck import. The list editors use `EditorKeys<T>` and Blazor `@key` to carry UI identity across model replacement; preserve this behavior.
 - Do not overwrite an in-progress draft when a parent value changes. In particular, hand-size changes may update untouched defaults but must not alter user-entered or saved constraints.
 - Add bUnit interaction tests in `YGOProbabilityCalculatorBlazorTest/Components/CalculatorEditorTest.cs` for editor behavior changes.
+- For user-facing component changes, preserve established density, spacing, colors, badge/counter presentation, and icon conventions unless a redesign is requested. Avoid redundant labels or extra detail in compact controls; icon-only controls need accessible names, consistent hover titles/tooltips, keyboard access, and reasonable click targets. Add focused bUnit interaction tests when useful and inspect rendered UI or a preview at practical viewport sizes when tooling permits; report visual-check limits separately from test results.
 - Preserve existing saved-session JSON and `.ydk` import behavior unless the issue explicitly changes it. For persistence or import changes, add focused coverage under `YGOProbabilityCalculatorBlazorTest/Services/Session/`, `YGOProbabilityCalculatorBlazorTest/Services/Converter/`, or `YGOProbabilityCalculatorBlazorTest/Services/DeckImport/` as appropriate.
 
 ## Contribution workflow and boundaries
 
 - Start from an up-to-date `dev` branch. Read the issue, relevant dependencies, applicable agent instructions, and recent code before editing.
+- Before finalizing a pull request, refresh `dev` and check recent or concurrent changes for overlap. Integrate them without losing behavior, then rerun affected tests and the full suite when feasible.
 - Before the first push, review local commits. If an unpushed commit merely corrects or refines an earlier unpushed commit for the same logical change, amend or squash them into one coherent commit. Keep independently meaningful changes in separate commits, grouped by purpose rather than by pull request or file.
-  Never amend, rebase, or squash already-pushed commits or force-push for cosmetic cleanup. If you cannot confidently establish that a commit is unpushed, preserve it.
+  Never amend or squash already-pushed commits, or rewrite published history for cosmetic cleanup. Rebase an already-pushed branch only for an explicitly authorized integration; record the expected remote SHA and use `--force-with-lease`.
+- An authenticated GitHub plugin may be used as a push fallback only when that specific remote operation is authorized. Recheck the exact remote SHA immediately before updating, verify the intended commit and tree were published, and abort if the remote changed unexpectedly. Never use unconditional force or infer CLI Git authentication from plugin access.
 - Keep each change and pull request focused; add the most relevant regression tests and run the solution-level checks for substantial changes.
 - Create a feature branch and open a pull request targeting `dev`. Never push directly to protected branches or merge a pull request.
 - In the pull request, report commands and pass/fail results, manual checks, and any limits on verification. Put verification results in the pull request discussion, not in an extra report file.
