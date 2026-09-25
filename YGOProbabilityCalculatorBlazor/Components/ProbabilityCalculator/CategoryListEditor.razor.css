@@ -1,0 +1,79 @@
+.category-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    max-width: 100%;
+    padding: 0.15rem 0.25rem;
+    vertical-align: middle;
+}
+
+.category-name-trigger {
+    min-width: 0;
+    max-width: 100%;
+    padding: 0.1rem 0.15rem;
+    margin: 0;
+    border: 0;
+    border-radius: 0.15rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: inherit;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+.category-name-trigger:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+}
+
+.category-rename-input {
+    flex: 1 1 7rem;
+    width: clamp(4rem, 35vw, 12rem);
+    min-width: 4rem;
+    max-width: 12rem;
+}
+
+.category-icon-button {
+    display: inline-grid;
+    flex: 0 0 1.75rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 0.25rem;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+}
+
+.category-icon-button:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.category-action-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.category-delete-button {
+    flex: 0 0 2rem;
+    box-sizing: border-box;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    margin: 0 0 0 0.1rem;
+    border: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 0;
+    background-position: center;
+    background-size: 0.75rem 0.75rem;
+    opacity: 0.9;
+}
+
+.category-delete-button:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+    opacity: 1;
+}

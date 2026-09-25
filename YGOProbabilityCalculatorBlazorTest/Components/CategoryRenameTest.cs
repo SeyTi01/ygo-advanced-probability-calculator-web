@@ -123,6 +123,9 @@ public class CategoryRenameTest {
         var cut = Render(SessionWithOverlappingReferences());
         BeginRename(cut, "Old");
 
+        AssertIconButton(cut, "Save category name");
+        AssertIconButton(cut, "Cancel category rename");
+
         cut.Find("[aria-label='New name for category Old']").Input("  ");
         Button(cut, "Save category name").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
@@ -142,6 +145,42 @@ public class CategoryRenameTest {
         Button(cut, "Save category name").Click();
         Assert.That(cut.FindAll("[aria-label='Rename category old']"), Has.Count.EqualTo(1));
         Assert.That(cut.FindAll("[aria-label='Rename category Other']"), Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void CategoryNameStartsRenameAndDeleteCrossRemainsASeparateAction() {
+        var cut = Render(SessionWithOverlappingReferences());
+        var categoryName = cut.Find("[aria-label='Rename category Old']");
+        Assert.That(categoryName.TextContent.Trim(), Is.EqualTo("Old"));
+        Assert.That(cut.FindAll("button").Any(button => button.TextContent.Trim() == "Rename"), Is.False);
+
+        cut.Find("[aria-label='Remove category Old']").Click();
+        Assert.That(cut.FindAll("[aria-label='New name for category Old']"), Is.Empty);
+        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
+
+        categoryName = cut.Find("[aria-label='Rename category Old']");
+        categoryName.Click();
+        Assert.That(cut.Find("[aria-label='New name for category Old']"), Is.Not.Null);
+        AssertIconButton(cut, "Save category name");
+        AssertIconButton(cut, "Cancel category rename");
+        Assert.That(cut.Find("[aria-label='Remove category Old']"), Is.Not.Null);
+    }
+
+    [Test]
+    public void EnterSavesAndEscapeReturnsToTheCategoryNameTrigger() {
+        var cut = Render(SessionWithOverlappingReferences());
+        BeginRename(cut, "Old");
+        var input = cut.Find("[aria-label='New name for category Old']");
+        input.Input("Saved");
+        input.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+        Assert.That(cut.Find("[aria-label='Rename category Saved']").TextContent.Trim(), Is.EqualTo("Saved"));
+
+        cut.Find("[aria-label='Rename category Other']").Click();
+        cut.Find("[aria-label='New name for category Other']").Input("Discarded");
+        cut.Find("[aria-label='New name for category Other']")
+            .KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
+        Assert.That(cut.Find("[aria-label='Rename category Other']").TextContent.Trim(), Is.EqualTo("Other"));
+        Assert.That(cut.FindAll("[aria-label='New name for category Other']"), Is.Empty);
     }
 
     [Test]
@@ -190,6 +229,13 @@ public class CategoryRenameTest {
     private static IElement Button(IRenderedFragment cut, string accessibleName) =>
         cut.FindAll("button").Single(button =>
             button.GetAttribute("aria-label") == accessibleName || button.TextContent.Trim() == accessibleName);
+
+    private static void AssertIconButton(IRenderedFragment cut, string accessibleName) {
+        var button = Button(cut, accessibleName);
+        Assert.That(button.TextContent.Trim(), Is.Empty);
+        Assert.That(button.GetAttribute("title"), Is.EqualTo(accessibleName));
+        Assert.That(button.QuerySelector("svg[aria-hidden='true']"), Is.Not.Null);
+    }
 
     private static void LoadSession(IRenderedComponent<ProbabilityCalculatorComponent> cut, string json) {
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "session.json"));
