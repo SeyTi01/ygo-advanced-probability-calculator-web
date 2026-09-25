@@ -8,6 +8,7 @@
                 Index="index"
                 Card="Cards[index]"
                 CategoryBases="CategoryBases"
+                CategoryRename="CategoryRename"
                 ActiveCardIndex="ActiveCardIndex"
                 ActiveCardIndexChanged="ActiveCardIndexChanged"
                 OnReplaceCard="ReplaceCard"
@@ -24,6 +25,7 @@
 @code {
     [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
     [Parameter] public int ActiveCardIndex { get; set; } = -1;
     [Parameter] public EventCallback<int> ActiveCardIndexChanged { get; set; }
