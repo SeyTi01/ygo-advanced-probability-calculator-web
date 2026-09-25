@@ -8,6 +8,7 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Shared;
+using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 using TestContext = Bunit.TestContext;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
@@ -45,6 +46,15 @@ public class ActiveEntriesEditorTest {
     };
 
     private static void AssertProbability(IRenderedComponent<ProbabilityCalculatorComponent> cut, double value) {
+        var activeCards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
+            .Where(card => card.Active).ToList();
+        var activeCombos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
+            .Where(combo => combo.Active).ToList();
+        var handSize = int.Parse(cut.Find("#handSize").GetAttribute("value") ?? "5");
+        var oracleValue = SmallDeckOracleTest.EnumerateProbability(activeCards, activeCombos, handSize);
+        Assert.That(value, Is.EqualTo(oracleValue).Within(1e-12),
+            "expected probability must match independent physical-hand enumeration");
+
         cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").Click();
         cut.WaitForAssertion(() => Assert.That(
             cut.Find(".alert-primary").TextContent,
@@ -56,9 +66,10 @@ public class ActiveEntriesEditorTest {
         var cut = Render(Session(
             [new([a], 2, "A copies"), new([], 2, "Uncategorized copies")],
             [new([new(a, 1, 2)], "At least one A")]));
+        var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
 
         AssertProbability(cut, 5.0 / 6.0);
-        Assert.That(cut.Find("h4").TextContent, Does.Contain("2 active / 4 total copies"));
+        Assert.That(deckHeading.TextContent, Does.Contain("4 active / 4 total copies"));
 
         var card = cut.FindComponent<CardEditor>();
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
@@ -68,7 +79,7 @@ public class ActiveEntriesEditorTest {
         Assert.That(card.Find(".accordion-item").ClassList.Contains("entry-inactive"), Is.True);
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Inactive"));
         Assert.That(cut.FindAll(".alert-primary"), Is.Empty, "changing the effective deck must clear the previous result");
-        Assert.That(cut.Find("h4").TextContent, Does.Contain("2 active / 4 total copies"));
+        Assert.That(deckHeading.TextContent, Does.Contain("2 active / 4 total copies"));
         AssertProbability(cut, 0.0);
 
         card.Find("#cardActive0").Change(true);
@@ -202,6 +213,37 @@ public class ActiveEntriesEditorTest {
             Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.True);
             Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.True);
         });
+    }
+
+    [Test]
+    public void CategoryRenamePreservesInactiveEntriesAndSelectedEditorDrafts() {
+        var cut = Render(Session(
+            [new([a], 2, "Disabled A", active: false)],
+            [new([new(a, 1, 1)], "Disabled A combo", active: false)]));
+        var card = cut.FindComponent<CardEditor>();
+        var combo = cut.FindComponent<ComboEditor>();
+
+        card.Find(".accordion-button").Click();
+        combo.Find(".accordion-button").Click();
+        card.Find("select").Change("A");
+        combo.Find("select").Change("A");
+        combo.Find("#minCount0").Input("0");
+        combo.Find("#maxCount0").Input("0");
+
+        cut.Find("[aria-label='Rename category A']").Click();
+        cut.Find("[aria-label='New name for category A']").Input("Renamed A");
+        cut.Find("[aria-label='Save category name']").Click();
+
+        Assert.That(card.Find("#cardActive0").HasAttribute("checked"), Is.False);
+        Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Inactive").And.Contain("Renamed A"));
+        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("Renamed A"));
+        Assert.That(combo.Find("#comboActive0").HasAttribute("checked"), Is.False);
+        Assert.That(combo.Find(".accordion-button").TextContent, Does.Contain("Inactive").And.Contain("Renamed A"));
+        Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("Renamed A"));
+        Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
     }
 
     [Test]
