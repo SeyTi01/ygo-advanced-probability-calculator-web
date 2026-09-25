@@ -157,6 +157,8 @@ public class CategoryRenameTest {
         cut.Find("[aria-label='Remove category Old']").Click();
         Assert.That(cut.FindAll("[aria-label='New name for category Old']"), Is.Empty);
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
+        Assert.That(cut.Find("[aria-label='Remove category Old']").GetAttribute("title"),
+            Is.EqualTo("Remove category Old"));
 
         categoryName = cut.Find("[aria-label='Rename category Old']");
         categoryName.Click();
