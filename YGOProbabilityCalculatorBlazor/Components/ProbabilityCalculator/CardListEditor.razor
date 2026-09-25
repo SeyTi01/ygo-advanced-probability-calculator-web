@@ -1,20 +1,16 @@
 @using YGOProbabilityCalculatorBlazor.Models
-@using YGOProbabilityCalculatorBlazor.Components.Shared
 
 <div class="mb-4">
     <h4>Deck (@Cards.Sum(c => c.Copies))</h4>
-    @if (cardError is not null) {
-        <DismissibleAlert Message="@cardError" OnDismiss="@(() => cardError = null)"/>
-    }
     <div class="accordion" id="cardsAccordion">
         @for (var index = 0; index < Cards.Count; index++) {
-            <CardEditor
+            <CardEditor @key="editorKeys[Cards[index]]"
                 Index="index"
                 Card="Cards[index]"
                 CategoryBases="CategoryBases"
                 ActiveCardIndex="ActiveCardIndex"
                 ActiveCardIndexChanged="ActiveCardIndexChanged"
-                OnReplaceCard="OnReplaceCard"
+                OnReplaceCard="ReplaceCard"
                 OnRemoveCard="OnRemoveCard"
             />
         }
@@ -36,5 +32,12 @@
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
     [Parameter] public EventCallback OnAddNewCard { get; set; }
 
-    private string? cardError;
+    private readonly EditorKeys<Card> editorKeys = new();
+
+    protected override void OnParametersSet() => editorKeys.Synchronize(Cards);
+
+    private Task ReplaceCard((int Index, Card NewCard) payload) {
+        editorKeys.Replace(Cards[payload.Index], payload.NewCard);
+        return OnReplaceCard.InvokeAsync(payload);
+    }
 }

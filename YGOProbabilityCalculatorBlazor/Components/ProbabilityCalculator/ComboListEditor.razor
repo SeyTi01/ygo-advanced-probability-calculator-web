@@ -1,20 +1,16 @@
 @using YGOProbabilityCalculatorBlazor.Models
-@using YGOProbabilityCalculatorBlazor.Components.Shared
 
 <div class="mb-4">
     <h4>Combos</h4>
-    @if (comboError is not null) {
-        <DismissibleAlert Message="@comboError" OnDismiss="@(() => comboError = null)"/>
-    }
     <div class="accordion" id="combosAccordion">
         @for (var index = 0; index < Combos.Count; index++) {
-            <ComboEditor
+            <ComboEditor @key="editorKeys[Combos[index]]"
                 Index="index"
                 Combo="Combos[index]"
                 CategoryBases="CategoryBases"
                 ActiveComboIndex="ActiveComboIndex"
                 ActiveComboIndexChanged="ActiveComboIndexChanged"
-                OnReplaceCombo="OnReplaceCombo"
+                OnReplaceCombo="ReplaceCombo"
                 OnRemoveCombo="OnRemoveCombo"
                 HandSize="HandSize"
             />
@@ -38,5 +34,12 @@
     [Parameter] public EventCallback<int> OnRemoveCombo { get; set; }
     [Parameter] public EventCallback OnAddNewCombo { get; set; }
 
-    private string? comboError;
+    private readonly EditorKeys<Combo> editorKeys = new();
+
+    protected override void OnParametersSet() => editorKeys.Synchronize(Combos);
+
+    private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
+        editorKeys.Replace(Combos[payload.Index], payload.NewCombo);
+        return OnReplaceCombo.InvokeAsync(payload);
+    }
 }
