@@ -25,31 +25,45 @@
 
     <div class="mt-2">
         @foreach (var category in CategoryBases) {
-            <span class="badge bg-secondary me-2">
+            <span class="badge bg-secondary me-2 category-chip">
                 @if (ReferenceEquals(editingCategory, category)) {
-                    <input class="form-control form-control-sm d-inline-block"
-                           style="width: 12rem;"
+                    <input @ref="renameInputReference"
+                           class="form-control form-control-sm category-rename-input"
                            aria-label="@($"New name for category {category.Name}")"
                            @bind="editingCategoryName"
                            @bind:event="oninput"
                            @onkeydown="HandleRenameKeyDown"/>
-                    <button type="button" class="btn btn-sm btn-success ms-1"
+                    <button type="button" class="category-icon-button"
                             aria-label="Save category name"
-                            @onclick="SaveCategoryName">Save</button>
-                    <button type="button" class="btn btn-sm btn-light ms-1"
+                            title="Save category name"
+                            @onclick="SaveCategoryName">
+                        <svg class="category-action-icon" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2.5"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </button>
+                    <button type="button" class="category-icon-button"
                             aria-label="Cancel category rename"
-                            @onclick="CancelCategoryRename">Cancel</button>
-                }
-                else {
-                    @category.Name
-                    <button type="button" class="btn btn-sm text-white p-0 ms-1"
-                            aria-label="@($"Rename category {category.Name}")"
-                            title="Rename category"
-                            @onclick="() => BeginCategoryRename(category)">
-                        Rename
+                            title="Cancel category rename"
+                            @onclick="CancelCategoryRename">
+                        <svg class="category-action-icon" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="1 4 1 10 7 10"></polyline>
+                            <path d="M3.51 15a9 9 0 1 0 .85-7.5L1 10"></path>
+                        </svg>
                     </button>
                 }
-                <button type="button" class="btn-close btn-close-white"
+                else {
+                    <button @ref="categoryNameButtonReferences[category.Name]"
+                            type="button"
+                            class="category-name-trigger"
+                            aria-label="@($"Rename category {category.Name}")"
+                            title="Rename category"
+                            @onclick="() => BeginCategoryRename(category)">@category.Name</button>
+                }
+                <button type="button" class="btn-close btn-close-white category-delete-button"
                         aria-label="@($"Remove category {category.Name}")"
                         @onclick="() => RemoveCategoryBase(category)"></button>
             </span>
@@ -70,6 +84,10 @@
     private string? categoryError;
     private CategoryBase? editingCategory;
     private string? editingCategoryName;
+    private ElementReference renameInputReference;
+    private readonly Dictionary<string, ElementReference> categoryNameButtonReferences = new(StringComparer.Ordinal);
+    private bool focusRenameInput;
+    private string? pendingCategoryNameFocus;
 
     private async Task AddCategoryBase() {
         if (string.IsNullOrWhiteSpace(newCategoryName)) {
@@ -112,9 +130,16 @@
         editingCategory = category;
         editingCategoryName = category.Name;
         categoryError = null;
+        pendingCategoryNameFocus = null;
+        focusRenameInput = true;
     }
 
     private void CancelCategoryRename() {
+        pendingCategoryNameFocus = editingCategory?.Name;
+        ClearCategoryRename();
+    }
+
+    private void ClearCategoryRename() {
         editingCategory = null;
         editingCategoryName = null;
         categoryError = null;
@@ -137,8 +162,22 @@
         var oldCategory = editingCategory;
         var newCategory = new CategoryBase(editingCategoryName);
         await OnRenameCategory.InvokeAsync((oldCategory, newCategory));
-        CancelCategoryRename();
+        pendingCategoryNameFocus = newCategory.Name;
+        ClearCategoryRename();
         await OnCategoriesChanged.InvokeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (focusRenameInput) {
+            focusRenameInput = false;
+            await renameInputReference.FocusAsync();
+            return;
+        }
+
+        if (pendingCategoryNameFocus is { } name && categoryNameButtonReferences.TryGetValue(name, out var button)) {
+            pendingCategoryNameFocus = null;
+            await button.FocusAsync();
+        }
     }
 
     private Task HandleRenameKeyDown(KeyboardEventArgs e) {
