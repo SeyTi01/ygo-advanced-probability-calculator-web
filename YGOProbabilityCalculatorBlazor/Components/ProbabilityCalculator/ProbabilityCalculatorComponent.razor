@@ -36,7 +36,8 @@
         <DismissibleAlert Message="@importError" OnDismiss="@(() => importError = null)"/>
     }
 
-    <CategoryListEditor
+    <CategoryListEditor @key="sessionVersion"
+        OnCategoriesChanged="StateHasChanged"
         CategoryBases="categoryBases"
         Combos="combos"
         Cards="cards"
@@ -100,6 +101,7 @@
     private int activeComboIndex = -1;
     private int activeCardIndex = -1;
 
+    private int sessionVersion;
     private int handSize = 5;
     private bool isCalculating;
     private string? errorMessage;
@@ -181,6 +183,8 @@
 
             cards.Clear();
             cards.AddRange(importedCards);
+            activeCardIndex = -1;
+            probability = null;
         }
         catch (Exception ex) {
             importError = $"Failed to import deck: {ex.Message}";
@@ -221,6 +225,10 @@
             combos.AddRange(session.Combos);
 
             handSize = session.HandSize;
+            activeCardIndex = -1;
+            activeComboIndex = -1;
+            probability = null;
+            sessionVersion++;
 
             errorMessage = null;
         }
