@@ -27,7 +27,7 @@
 
     <div class="mt-2">
         @foreach (var category in CategoryBases) {
-            <span class="badge bg-secondary me-2 category-chip">
+            <span class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
                 @if (ReferenceEquals(editingCategory, category)) {
                     <input @ref="renameInputReference"
                            class="form-control form-control-sm category-rename-input"
@@ -64,7 +64,7 @@
                             title="Rename category"
                             @onclick="() => BeginCategoryRename(category)">@category.Name</button>
                 }
-                <button type="button" class="btn-close btn-close-white category-delete-button"
+                <button type="button" class="btn-close category-delete-button"
                         aria-label="@($"Remove category {category.Name}")"
                         title="@($"Remove category {category.Name}")"
                         @onclick="() => RemoveCategoryBase(category)"></button>
@@ -76,6 +76,7 @@
 @code {
 
     [Parameter] public required List<CategoryBase> CategoryBases { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public required IEnumerable<Card> Cards { get; set; } = [];
     [Parameter] public required IEnumerable<Combo> Combos { get; set; } = [];
 
