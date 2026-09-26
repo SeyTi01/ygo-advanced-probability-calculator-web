@@ -48,6 +48,101 @@ public class CalculatorEditorTest {
     };
 
     [Test]
+    public void CategoryColorsStayConsistentAcrossViewsThroughRenameAndUnrelatedDeletion() {
+        var categoryA = new CategoryBase("A");
+        var categoryB = new CategoryBase("B");
+        var categoryC = new CategoryBase("C");
+        var session = new SessionState {
+            Categories = [categoryA, categoryB, categoryC],
+            Cards = [new([categoryA, categoryC], 3, "Card")],
+            Combos = [new([new(categoryA, 1, 3), new(categoryC, 1, 3)], "Combo")],
+            HandSize = 3
+        };
+
+        var cut = Render(session);
+        var categoryList = cut.FindComponent<CategoryListEditor>();
+        var card = cut.FindComponent<CardEditor>();
+        var combo = cut.FindComponent<ComboEditor>();
+        var colorA = CategoryColorClass(categoryList, ".category-chip", "A");
+        var colorC = CategoryColorClass(categoryList, ".category-chip", "C");
+
+        Assert.That(colorA, Is.Not.EqualTo(colorC));
+        Assert.That(CategoryColorClass(card, ".accordion-button .category-tag", "A"), Is.EqualTo(colorA));
+        Assert.That(CategoryColorClass(card, ".accordion-body .category-tag", "A"), Is.EqualTo(colorA));
+        Assert.That(CategoryColorClass(combo, ".accordion-button .category-tag", "A"), Is.EqualTo(colorA));
+        Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", "A"), Is.EqualTo(colorA));
+        Assert.That(CategoryColorClass(card, ".accordion-button .category-tag", "C"), Is.EqualTo(colorC));
+        Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", "C"), Is.EqualTo(colorC));
+
+        cut.Find("[aria-label='Rename category A']").Click();
+        cut.Find("[aria-label='New name for category A']").Input("Renamed");
+        cut.Find("[aria-label='Save category name']").Click();
+
+        Assert.That(CategoryColorClass(categoryList, ".category-chip", "Renamed"), Is.EqualTo(colorA));
+        Assert.That(CategoryColorClass(card, ".accordion-button .category-tag", "Renamed"), Is.EqualTo(colorA));
+        Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", "Renamed"), Is.EqualTo(colorA));
+        Assert.That(CategoryColorClass(categoryList, ".category-chip", "C"), Is.EqualTo(colorC));
+
+        cut.Find("[aria-label='Remove category B']").Click();
+        Assert.That(CategoryColorClass(categoryList, ".category-chip", "Renamed"), Is.EqualTo(colorA));
+        Assert.That(CategoryColorClass(categoryList, ".category-chip", "C"), Is.EqualTo(colorC));
+        Assert.That(CategoryColorClass(card, ".accordion-body .category-tag", "C"), Is.EqualTo(colorC));
+        Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", "C"), Is.EqualTo(colorC));
+
+        cut.Find("[placeholder='Category name']").Input("D");
+        Button(cut, "Add Category").Click();
+        var colorD = CategoryColorClass(categoryList, ".category-chip", "D");
+        Assert.That(colorD, Is.Not.EqualTo(colorA).And.Not.EqualTo(colorC));
+    }
+
+    [Test]
+    public void CategoryColorsRoundTripAndLegacySessionsReceiveDistinctAssignments() {
+        var cut = Render(Session());
+        var categories = cut.FindComponent<CategoryListEditor>();
+        var firstColor = CategoryColorClass(categories, ".category-chip", "A");
+        var secondColor = CategoryColorClass(categories, ".category-chip", "B");
+        Assert.That(firstColor, Is.Not.EqualTo(secondColor));
+
+        Button(cut, "Save Session").Click();
+        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        using (var document = System.Text.Json.JsonDocument.Parse(savedJson)) {
+            var savedColors = document.RootElement.GetProperty("CategoryColorIndices");
+            Assert.That(savedColors.GetProperty("A").GetInt32(), Is.Not.EqualTo(savedColors.GetProperty("B").GetInt32()));
+        }
+
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(savedJson, "session.json"));
+        cut.WaitForAssertion(() => {
+            var loadedCategories = cut.FindComponent<CategoryListEditor>();
+            Assert.That(CategoryColorClass(loadedCategories, ".category-chip", "A"), Is.EqualTo(firstColor));
+            Assert.That(CategoryColorClass(loadedCategories, ".category-chip", "B"), Is.EqualTo(secondColor));
+            Assert.That(CategoryColorClass(cut.FindComponent<CardEditor>(), ".accordion-body .category-tag", "A"), Is.EqualTo(firstColor));
+            Assert.That(CategoryColorClass(cut.FindComponents<ComboEditor>()[1], ".accordion-body .category-tag", "B"), Is.EqualTo(secondColor));
+        });
+
+        const string legacySession = """
+            {
+              "Categories": [{ "Name": "Legacy A" }, { "Name": "Legacy B" }],
+              "Cards": [],
+              "Combos": [],
+              "HandSize": 5
+            }
+            """;
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(legacySession, "legacy-session.json"));
+        cut.WaitForAssertion(() => {
+            var legacyCategories = cut.FindComponent<CategoryListEditor>();
+            var legacyAColor = CategoryColorClass(legacyCategories, ".category-chip", "Legacy A");
+            var legacyBColor = CategoryColorClass(legacyCategories, ".category-chip", "Legacy B");
+            Assert.That(legacyAColor, Is.Not.EqualTo(legacyBColor));
+        });
+    }
+
+    private static string CategoryColorClass(IRenderedFragment fragment, string selector, string categoryName) =>
+        fragment.FindAll(selector)
+            .Single(element => element.TextContent.Trim().StartsWith(categoryName, StringComparison.Ordinal))
+            .ClassList.Single(className => className.StartsWith("category-color-", StringComparison.Ordinal));
+
+    [Test]
     public void CategoriesRefreshSiblingSelectorsAndRejectEmptyDuplicateOrUsedNames() {
         var cut = Render();
         Button(cut, "Add New Card").Click();

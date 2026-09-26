@@ -13,7 +13,7 @@
             @if (Combo.Categories.Any()) {
                 <span class="ms-2">-</span>
                 @foreach (var cc in HeaderCategories) {
-                    <span class="badge bg-info ms-1">
+                    <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cc.BaseCategory.Name, CategoryColorIndices)">
                         @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
                     </span>
                 }
@@ -95,11 +95,12 @@
                 }
                 else {
                     @foreach (var cc in Combo.Categories) {
-                        <span class="badge bg-info me-2">
+                        <span class="badge me-2 category-tag @CategoryColorPalette.GetCssClass(cc.BaseCategory.Name, CategoryColorIndices)">
                             @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
                             <button type="button"
-                                    class="btn-close btn-close-white ms-1"
-                                    aria-label="Remove"
+                                    class="btn-close category-remove-button ms-1"
+                                    aria-label="@($"Remove category {cc.BaseCategory.Name} from combo {ComboDisplayName}")"
+                                    title="@($"Remove category {cc.BaseCategory.Name} from combo {ComboDisplayName}")"
                                     @onclick="() => RemoveCategory(cc)">
                             </button>
                         </span>
@@ -114,6 +115,7 @@
     [Parameter] public int Index { get; set; }
     [Parameter] public Combo Combo { get; set; } = null!;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
     [Parameter] public int ActiveComboIndex { get; set; }

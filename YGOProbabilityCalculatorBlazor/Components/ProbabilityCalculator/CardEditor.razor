@@ -14,7 +14,7 @@
             @if (Card.Categories.Any()) {
                 <span class="ms-2">-</span>
                 @foreach (var cat in Card.Categories) {
-                    <span class="badge bg-info ms-1">@cat.Name</span>
+                    <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">@cat.Name</span>
                 }
             }
             @if (!Card.Active) {
@@ -77,11 +77,12 @@
 
             <div>
                 @foreach (var cat in Card.Categories) {
-                    <span class="badge bg-info me-2">
+                    <span class="badge me-2 category-tag @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">
                         @cat.Name
                         <button type="button"
-                                class="btn-close btn-close-white ms-1"
-                                aria-label="Remove"
+                                class="btn-close category-remove-button ms-1"
+                                aria-label="@($"Remove category {cat.Name} from card {CardDisplayName}")"
+                                title="@($"Remove category {cat.Name} from card {CardDisplayName}")"
                                 @onclick="() => RemoveCategory(cat.Name)">
                         </button>
                     </span>
@@ -95,6 +96,7 @@
     [Parameter] public int Index { get; set; }
     [Parameter] public Card Card { get; set; } = null!;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
     [Parameter] public int ActiveCardIndex { get; set; }
