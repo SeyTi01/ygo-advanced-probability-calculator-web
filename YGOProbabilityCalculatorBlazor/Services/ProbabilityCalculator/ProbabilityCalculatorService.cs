@@ -21,6 +21,20 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         return totalProbability;
     }
 
+    public ProbabilityCalculationResult CalculateProbabilityResults(List<Card> deck, List<Combo> combos, int handSize) {
+        var totalProbability = CalculateProbabilityForCombos(deck, combos, handSize);
+        var comboProbabilities = combos.Select((combo, index) => {
+            var categories = MergeComboCategories([combo]);
+            var probability = categories is null
+                ? 0.0
+                : CalculateProbabilityForCategories(deck, categories, handSize);
+
+            return new ComboProbabilityResult(index, combo.Name, probability);
+        }).ToList();
+
+        return new ProbabilityCalculationResult(totalProbability, comboProbabilities.AsReadOnly());
+    }
+
     private static double CalculateProbabilityForCategories(List<Card> deckCards, List<Category> categories, int handSize) {
         var expandedDeck = ExpandDeck(deckCards);
         var minCounts = categories.Select(c => c.MinCount).ToArray();
