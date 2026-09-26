@@ -58,9 +58,21 @@ public class ActiveEntriesEditorTest {
             "expected probability must match independent physical-hand enumeration");
 
         cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(
-            cut.Find(".alert-primary").TextContent,
-            Does.Contain(value.ToString("P2"))));
+        cut.WaitForAssertion(() => {
+            var result = cut.Find(".probability-results");
+            Assert.That(result.TextContent, Does.Contain(value.ToString("P2")));
+
+            var comboRows = result.QuerySelectorAll(".combo-probability-item");
+            Assert.That(comboRows.Length, Is.EqualTo(activeCombos.Count));
+            for (var index = 0; index < activeCombos.Count; index++) {
+                var combo = activeCombos[index];
+                var expectedStandalone = SmallDeckOracleTest.EnumerateProbability(activeCards, [combo], handSize);
+                var displayName = string.IsNullOrWhiteSpace(combo.Name) ? $"Unnamed combo {index + 1}" : combo.Name;
+                Assert.That(comboRows[index].TextContent, Does.Contain(displayName));
+                Assert.That(comboRows[index].QuerySelector("strong")!.TextContent,
+                    Is.EqualTo(expectedStandalone.ToString("P2")));
+            }
+        });
     }
 
     [Test]

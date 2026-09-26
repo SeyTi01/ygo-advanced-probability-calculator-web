@@ -17,7 +17,10 @@ public class SmallDeckOracleTest {
         yield return Case("overlapping combos", deck, [new([new(A, 1, 3)]), new([new(B, 1, 3)])], 3);
         yield return Case("subset combos", deck, [new([new(A, 1, 2)]), new([new(A, 1, 2), new(B, 1, 2)])], 2);
         yield return Case("disjoint ranges", deck, [new([new(A, 0, 0)]), new([new(A, 2, 2)])], 2);
-        yield return Case("duplicate combos", deck, [new([new(A, 1, 2)]), new([new(A, 1, 2)])], 2);
+        yield return Case("duplicate combos", deck, [
+            new([new(A, 1, 2)], "Same name"),
+            new([new(A, 1, 2)], "Same name")
+        ], 2);
         yield return Case("minimum above available copies", deck, [new([new(C, 2, 3)])], 3);
         yield return Case("unconstrained combo", deck, [new([])], 3);
         yield return Case("no combos", deck, [], 2);
@@ -32,6 +35,48 @@ public class SmallDeckOracleTest {
         var expected = EnumerateProbability(deck, combos, handSize);
         var actual = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, handSize);
         Assert.That(actual, Is.EqualTo(expected).Within(1e-12));
+    }
+
+    [TestCaseSource(nameof(Cases))]
+    public void TotalAndStandaloneResultsMatchEveryPhysicalHand(List<Card> deck, List<Combo> combos, int handSize) {
+        var expectedTotal = EnumerateProbability(deck, combos, handSize);
+        var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, handSize);
+
+        Assert.That(result.TotalProbability, Is.EqualTo(expectedTotal).Within(1e-12));
+        Assert.That(result.ComboProbabilities, Has.Count.EqualTo(combos.Count));
+        for (var index = 0; index < combos.Count; index++) {
+            var comboResult = result.ComboProbabilities[index];
+            Assert.That(comboResult.ComboIndex, Is.EqualTo(index));
+            Assert.That(comboResult.ComboName, Is.EqualTo(combos[index].Name));
+            Assert.That(comboResult.Probability,
+                Is.EqualTo(EnumerateProbability(deck, [combos[index]], handSize)).Within(1e-12),
+                $"Standalone result for combo at index {index}");
+        }
+    }
+
+    [Test]
+    public void OverlappingComboResultsRemainSeparateFromTheirUnion() {
+        var deck = new List<Card> {
+            new([A], 2), new([B], 2), new([A, B]), new([], 2)
+        };
+        var combos = new List<Combo> {
+            new([new(A, 1, 2)], "Duplicate"),
+            new([new(B, 1, 2)], "Duplicate")
+        };
+        const int handSize = 2;
+
+        var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, handSize);
+        var expectedTotal = EnumerateProbability(deck, combos, handSize);
+        var expectedStandalone = combos
+            .Select(combo => EnumerateProbability(deck, [combo], handSize))
+            .ToArray();
+
+        Assert.That(result.TotalProbability, Is.EqualTo(expectedTotal).Within(1e-12));
+        Assert.That(result.ComboProbabilities.Select(combo => combo.Probability),
+            Is.EqualTo(expectedStandalone).Within(1e-12));
+        Assert.That(result.TotalProbability, Is.LessThan(expectedStandalone.Sum()));
+        Assert.That(result.ComboProbabilities.Select(combo => combo.ComboName),
+            Is.EqualTo(new[] { "Duplicate", "Duplicate" }));
     }
 
     [Test]

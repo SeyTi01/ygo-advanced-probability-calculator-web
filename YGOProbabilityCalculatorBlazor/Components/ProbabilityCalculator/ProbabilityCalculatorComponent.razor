@@ -72,7 +72,7 @@
     />
 
     <div class="results-section">
-        <div class="col-3">
+        <div class="col-12 col-sm-4 col-md-3">
             <button class="btn btn-primary btn-lg w-100"
                     @onclick="Calculate"
                     disabled="@(isCalculating || !CanCalculate)">
@@ -94,11 +94,27 @@
             <DismissibleAlert Message="@errorMessage" OnDismiss="@(() => errorMessage = null)"/>
         }
 
-        @if (probability is not null) {
-            <div class="alert alert-primary mt-3" role="alert">
-                <h5>Results:</h5>
-                <p class="mb-0">Probability: @(probability.Value.ToString("P2"))</p>
-            </div>
+        @if (calculationResult is { } result) {
+            <section class="alert alert-primary mt-3 probability-results"
+                     role="region"
+                     aria-labelledby="probabilityResultsHeading"
+                     aria-live="polite">
+                <h5 id="probabilityResultsHeading">Results</h5>
+                <p class="probability-total">
+                    Any active combo: <strong>@result.TotalProbability.ToString("P2")</strong>
+                </p>
+                <h6>Individual combo probabilities</h6>
+                <ol class="combo-probability-list">
+                    @foreach (var comboResult in result.ComboProbabilities) {
+                        <li class="combo-probability-item">
+                            <div class="combo-probability-row">
+                                <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
+                                <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
+                            </div>
+                        </li>
+                    }
+                </ol>
+            </section>
         }
     </div>
 </div>
@@ -121,7 +137,7 @@
     private long calculationVersion;
     private string? errorMessage;
     private string? importError;
-    private double? probability;
+    private ProbabilityCalculationResult? calculationResult;
 
     private int ActiveCardCount => cards.Count(card => card.Active);
     private int ActiveCardCopies => cards.Where(card => card.Active).Sum(card => card.Copies);
@@ -143,6 +159,11 @@
     }
 
     private bool CanCalculate => CalculationUnavailableMessage is null;
+
+    private static string ComboResultDisplayName(ComboProbabilityResult result) =>
+        string.IsNullOrWhiteSpace(result.ComboName)
+            ? $"Unnamed combo {result.ComboIndex + 1}"
+            : result.ComboName;
 
     private Task ReplaceCard((int Index, Card NewCard) payload) {
         var (i, newCard) = payload;
@@ -223,6 +244,7 @@
 
     private void HandleCategoriesChanged() {
         ReconcileCategoryColorIndices();
+        OnCategoriesChanged();
         StateHasChanged();
     }
 
@@ -272,16 +294,16 @@
         try {
             isCalculating = true;
             errorMessage = null;
-            probability = null;
+            calculationResult = null;
             StateHasChanged();
 
-            var result = await Task.Run(() => _probabilityCalculator.CalculateProbabilityForCombos(
+            var result = await Task.Run(() => _probabilityCalculator.CalculateProbabilityResults(
                 activeCards,
                 activeCombos,
                 requestedHandSize
             ));
             if (requestVersion == calculationVersion)
-                probability = result;
+                calculationResult = result;
         }
         catch (OperationCanceledException) {
             if (requestVersion == calculationVersion)
@@ -362,9 +384,11 @@
 
     private void OnHandSizeChanged() => InvalidateCalculation();
 
+    private void OnCategoriesChanged() => InvalidateCalculation();
+
     private void InvalidateCalculation() {
         calculationVersion++;
-        probability = null;
+        calculationResult = null;
         errorMessage = null;
     }
 
