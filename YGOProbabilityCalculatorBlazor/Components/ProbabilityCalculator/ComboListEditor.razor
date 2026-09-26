@@ -8,6 +8,7 @@
                 Index="index"
                 Combo="Combos[index]"
                 CategoryBases="CategoryBases"
+                CategoryColorIndices="CategoryColorIndices"
                 CategoryRename="CategoryRename"
                 ActiveComboIndex="ActiveComboIndex"
                 ActiveComboIndexChanged="ActiveComboIndexChanged"
@@ -26,6 +27,7 @@
 @code {
     [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
     [Parameter] public int HandSize { get; set; } = 5;
