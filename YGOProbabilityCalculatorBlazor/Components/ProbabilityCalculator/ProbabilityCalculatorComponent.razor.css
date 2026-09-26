@@ -22,8 +22,15 @@
 }
 
 .probability-total {
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
+    border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.3);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+.probability-total-value {
+    font-size: 1.1em;
 }
 
 .combo-probability-list {
