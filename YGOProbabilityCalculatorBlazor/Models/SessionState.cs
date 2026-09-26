@@ -5,4 +5,5 @@ public class SessionState {
     public List<Card> Cards { get; init; } = [];
     public List<Combo> Combos { get; init; } = [];
     public int HandSize { get; init; }
+    public Dictionary<string, int> CategoryColorIndices { get; init; } = new(StringComparer.Ordinal);
 }

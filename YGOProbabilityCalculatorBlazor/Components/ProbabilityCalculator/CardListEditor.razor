@@ -8,6 +8,7 @@
                 Index="index"
                 Card="Cards[index]"
                 CategoryBases="CategoryBases"
+                CategoryColorIndices="CategoryColorIndices"
                 CategoryRename="CategoryRename"
                 ActiveCardIndex="ActiveCardIndex"
                 ActiveCardIndexChanged="ActiveCardIndexChanged"
@@ -25,6 +26,7 @@
 @code {
     [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
     [Parameter] public int ActiveCardIndex { get; set; } = -1;

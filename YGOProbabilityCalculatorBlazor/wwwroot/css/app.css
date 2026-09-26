@@ -145,3 +145,93 @@ body.input-mode-keyboard *:focus-visible {
     outline: none;
     box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
+
+.category-tag {
+    --bs-badge-color: var(--category-text);
+    color: var(--category-text);
+    background-color: var(--category-background);
+    border: 1px solid var(--category-border);
+    font-weight: 600;
+}
+
+.category-color-0 {
+    --category-background: #dbeafe;
+    --category-text: #1e3a8a;
+    --category-border: #93c5fd;
+}
+
+.category-color-1 {
+    --category-background: #ffedd5;
+    --category-text: #7c2d12;
+    --category-border: #fdba74;
+}
+
+.category-color-2 {
+    --category-background: #dcfce7;
+    --category-text: #14532d;
+    --category-border: #86efac;
+}
+
+.category-color-3 {
+    --category-background: #ede9fe;
+    --category-text: #4c1d95;
+    --category-border: #c4b5fd;
+}
+
+.category-color-4 {
+    --category-background: #fee2e2;
+    --category-text: #7f1d1d;
+    --category-border: #fca5a5;
+}
+
+.category-color-5 {
+    --category-background: #cffafe;
+    --category-text: #164e63;
+    --category-border: #67e8f9;
+}
+
+.category-color-6 {
+    --category-background: #fef3c7;
+    --category-text: #713f12;
+    --category-border: #fcd34d;
+}
+
+.category-color-7 {
+    --category-background: #fce7f3;
+    --category-text: #831843;
+    --category-border: #f9a8d4;
+}
+
+.category-color-8 {
+    --category-background: #ecfccb;
+    --category-text: #365314;
+    --category-border: #bef264;
+}
+
+.category-color-9 {
+    --category-background: #e2e8f0;
+    --category-text: #1e293b;
+    --category-border: #94a3b8;
+}
+
+.category-color-10 {
+    --category-background: #ccfbf1;
+    --category-text: #134e4a;
+    --category-border: #5eead4;
+}
+
+.category-color-11 {
+    --category-background: #fae8ff;
+    --category-text: #701a75;
+    --category-border: #e879f9;
+}
+
+.category-tag .category-remove-button {
+    flex: 0 0 auto;
+    opacity: 0.72;
+}
+
+.category-tag .category-remove-button:hover,
+.category-tag .category-remove-button:focus-visible {
+    opacity: 1;
+}
