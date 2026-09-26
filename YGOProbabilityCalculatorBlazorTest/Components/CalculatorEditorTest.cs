@@ -400,10 +400,18 @@ public class CalculatorEditorTest {
         cut.WaitForAssertion(() => {
             var result = cut.Find(".probability-results");
             Assert.That(result.GetAttribute("aria-live"), Is.EqualTo("polite"));
-            Assert.That(result.QuerySelector(".probability-total")!.TextContent, Does.Contain(expectedTotal.ToString("P2")));
+            var totalRow = result.QuerySelector(".probability-total")!;
+            Assert.That(totalRow.ClassList.Contains("combo-probability-row"), Is.True);
+            Assert.That(totalRow.ParentElement!.ClassList.Contains("probability-results"), Is.True,
+                "the summary row must sit outside the numbered combo list");
+            Assert.That(totalRow.QuerySelector(".combo-probability-name")!.TextContent.Trim(),
+                Is.EqualTo("Any active combo"));
+            Assert.That(totalRow.QuerySelector(".combo-probability-value")!.TextContent,
+                Is.EqualTo(expectedTotal.ToString("P2")));
 
             var rows = result.QuerySelectorAll(".combo-probability-item");
             Assert.That(rows.Length, Is.EqualTo(3));
+            Assert.That(rows.All(row => row.QuerySelector(".combo-probability-row") is not null), Is.True);
             Assert.That(rows.Select(row => row.QuerySelector(".combo-probability-name")!.TextContent),
                 Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
             for (var index = 0; index < rows.Length; index++) {
