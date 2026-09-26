@@ -100,9 +100,10 @@
                      aria-labelledby="probabilityResultsHeading"
                      aria-live="polite">
                 <h5 id="probabilityResultsHeading">Results</h5>
-                <p class="probability-total">
-                    Any active combo: <strong>@result.TotalProbability.ToString("P2")</strong>
-                </p>
+                <div class="combo-probability-row probability-total">
+                    <span class="combo-probability-name">Any active combo</span>
+                    <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
+                </div>
                 <h6>Individual combo probabilities</h6>
                 <ol class="combo-probability-list">
                     @foreach (var comboResult in result.ComboProbabilities) {
