@@ -10,6 +10,7 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Shared;
+using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 using TestContext = Bunit.TestContext;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
@@ -327,6 +328,8 @@ public class CalculatorEditorTest {
         var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         Assert.That(json, Does.Contain("\"MaxCount\": 0"));
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1)));
         var combo = cut.FindComponent<ComboEditor>();
         combo.Find("select").Change("B");
         combo.Find("#minCount0").Input("2");
@@ -339,6 +342,7 @@ public class CalculatorEditorTest {
             Assert.That(loaded.Find("#minCount0").GetAttribute("value"), Is.EqualTo("1"));
             Assert.That(loaded.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
             Assert.That(cut.Find("[placeholder='Category name']").GetAttribute("value"), Is.Null.Or.Empty);
+            Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         });
         Button(cut, "Calculate").Click();
         cut.WaitForAssertion(() => Assert.That(cut.Find(".alert-primary").TextContent, Does.Contain((1.0 / 6).ToString("P2"))));
@@ -356,10 +360,15 @@ public class CalculatorEditorTest {
         context.Services.AddSingleton(cardInfo.Object);
         context.Services.AddSingleton<IDeckImportService, DeckImportService>();
         var cut = Render(Session());
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1)));
         cut.FindComponents<CardEditor>()[0].Find("select").Change("B");
         cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
         cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n123\n123\n#extra\n456", "deck.ydk"));
-        cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1)));
+        cut.WaitForAssertion(() => {
+            Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
+            Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        });
         var card = cut.FindComponent<CardEditor>();
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Imported").And.Contain("(2)"));
         Assert.That(card.Find("select").GetAttribute("value"), Is.Null.Or.Empty);
@@ -367,5 +376,106 @@ public class CalculatorEditorTest {
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         cut.Find("#handSize").Change("3");
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
+    }
+
+    [Test]
+    public void ResultsShowStandaloneProbabilitiesInOrderForDuplicateAndUnnamedCombos() {
+        var session = new SessionState {
+            Categories = [a, b],
+            Cards = [new([a], 2, "A copies"), new([b], 2, "B copies")],
+            Combos = [
+                new([new(a, 1, 1)], "Duplicate"),
+                new([new(a, 1, 1)], "Duplicate"),
+                new([new(b, 0, 0)])
+            ],
+            HandSize = 2
+        };
+        var cut = Render(session);
+        var expectedTotal = SmallDeckOracleTest.EnumerateProbability(session.Cards, session.Combos, session.HandSize);
+        var expectedStandalone = session.Combos
+            .Select(combo => SmallDeckOracleTest.EnumerateProbability(session.Cards, [combo], session.HandSize))
+            .ToArray();
+
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => {
+            var result = cut.Find(".probability-results");
+            Assert.That(result.GetAttribute("aria-live"), Is.EqualTo("polite"));
+            Assert.That(result.QuerySelector(".probability-total")!.TextContent, Does.Contain(expectedTotal.ToString("P2")));
+
+            var rows = result.QuerySelectorAll(".combo-probability-item");
+            Assert.That(rows.Length, Is.EqualTo(3));
+            Assert.That(rows.Select(row => row.QuerySelector(".combo-probability-name")!.TextContent),
+                Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
+            for (var index = 0; index < rows.Length; index++) {
+                Assert.That(rows[index].QuerySelector(".combo-probability-value")!.TextContent,
+                    Is.EqualTo(expectedStandalone[index].ToString("P2")));
+            }
+        });
+    }
+
+    [Test]
+    public void CategoryRenameInvalidatesAndRecalculatesTheWholeResultSet() {
+        var cut = Render(Session());
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1)));
+
+        cut.Find("[aria-label='Rename category A']").Click();
+        cut.Find("[aria-label='New name for category A']").Input("Renamed A");
+        cut.Find("[aria-label='Save category name']").Click();
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+
+        var cards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
+            .Where(card => card.Active).ToList();
+        var combos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
+            .Where(combo => combo.Active).ToList();
+        var expected = SmallDeckOracleTest.EnumerateProbability(cards, combos, 2);
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => Assert.That(
+            cut.Find(".probability-total").TextContent,
+            Does.Contain(expected.ToString("P2"))));
+    }
+
+    [Test]
+    public void InputChangeDuringCalculationCannotRestoreStaleTotalOrComboRows() {
+        var delayedCalculator = new DelayedProbabilityCalculator();
+        context.Services.AddSingleton<IProbabilityCalculatorService>(delayedCalculator);
+        var cut = Render(Session());
+
+        Button(cut, "Calculate").Click();
+        try {
+            Assert.That(delayedCalculator.Started.Wait(TimeSpan.FromSeconds(5)), Is.True,
+                "the test calculator should begin before inputs change");
+            cut.Find("#handSize").Change("3");
+            Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        }
+        finally {
+            delayedCalculator.Continue.Set();
+        }
+
+        Assert.That(delayedCalculator.Finished.Wait(TimeSpan.FromSeconds(5)), Is.True,
+            "the stale calculation should finish");
+        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Is.Empty));
+    }
+
+    private sealed class DelayedProbabilityCalculator : IProbabilityCalculatorService {
+        public ManualResetEventSlim Started { get; } = new(false);
+        public ManualResetEventSlim Continue { get; } = new(false);
+        public ManualResetEventSlim Finished { get; } = new(false);
+
+        public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) => 0.75;
+
+        public ProbabilityCalculationResult CalculateProbabilityResults(List<Card> deck, List<Combo> combos, int handSize) {
+            Started.Set();
+            try {
+                if (!Continue.Wait(TimeSpan.FromSeconds(10)))
+                    throw new TimeoutException("The test did not release the delayed calculation.");
+                return new ProbabilityCalculationResult(
+                    0.75,
+                    [new ComboProbabilityResult(0, "Stale combo", 0.5)]);
+            }
+            finally {
+                Finished.Set();
+            }
+        }
     }
 }
