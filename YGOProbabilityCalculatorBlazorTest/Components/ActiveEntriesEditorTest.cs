@@ -75,6 +75,12 @@ public class ActiveEntriesEditorTest {
         });
     }
 
+    private static void AssertPreviousResult(IRenderedComponent<ProbabilityCalculatorComponent> cut) {
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+        Assert.That(cut.Find(".probability-result-status").TextContent.Trim(),
+            Is.EqualTo("Previous result · inputs changed"));
+    }
+
     [Test]
     public void ActiveCheckboxesHaveAccessibleNamesWithoutVisibleLabels() {
         var cut = Render(Session(
@@ -153,12 +159,12 @@ public class ActiveEntriesEditorTest {
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Inactive"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"),
             "toggling the checkbox must not expand or collapse the editor");
-        Assert.That(cut.FindAll(".alert-primary"), Is.Empty, "changing the effective deck must clear the previous result");
+        AssertPreviousResult(cut);
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (2)"));
         AssertProbability(cut, 0.0);
 
         card.Find("#cardActive0").Change(true);
-        Assert.That(cut.FindAll(".alert-primary"), Is.Empty);
+        AssertPreviousResult(cut);
         AssertProbability(cut, 5.0 / 6.0);
     }
 
@@ -177,7 +183,7 @@ public class ActiveEntriesEditorTest {
         AssertProbability(cut, 5.0 / 6.0);
 
         cut.FindComponents<ComboEditor>()[0].Find("#comboActive0").Change(false);
-        Assert.That(cut.FindAll(".alert-primary"), Is.Empty);
+        AssertPreviousResult(cut);
         AssertProbability(cut, 0.5);
 
         cut.FindComponents<ComboEditor>()[0].Find("#comboActive0").Change(true);
