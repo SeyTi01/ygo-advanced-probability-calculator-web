@@ -1,13 +1,101 @@
-.combo-group-new-name {
-    max-width: 16rem;
-    min-width: 8rem;
+.combo-group-validation-alert ::deep .alert {
+    margin-bottom: 0;
 }
 
-.combo-group-editor {
-    max-width: 30rem;
+.combo-group-chip {
+    --category-background: var(--bs-secondary-bg);
+    --category-text: var(--bs-body-color);
+    --category-border: var(--bs-border-color);
+    --category-action-hover: var(--bs-tertiary-bg);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    max-width: 100%;
+    padding: 0.15rem 0.25rem;
+    vertical-align: middle;
+    white-space: normal;
 }
 
-.combo-group-name {
-    flex: 1 1 8rem;
+.category-name-trigger {
     min-width: 0;
+    max-width: 100%;
+    padding: 0.1rem 0.15rem;
+    margin: 0;
+    border: 0;
+    border-radius: 0.15rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: inherit;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+.category-name-trigger:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+}
+
+.category-rename-input {
+    flex: 1 1 7rem;
+    width: clamp(4rem, 35vw, 12rem);
+    min-width: 4rem;
+    max-width: 12rem;
+}
+
+.category-icon-button {
+    display: inline-grid;
+    flex: 0 0 1.75rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--category-border);
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--category-text);
+    cursor: pointer;
+}
+
+.category-icon-button:hover {
+    background: var(--category-action-hover);
+}
+
+.category-action-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.category-delete-button {
+    flex: 0 0 2rem;
+    box-sizing: border-box;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    margin: 0 0 0 0.1rem;
+    border: 0;
+    border-left: 1px solid var(--category-border);
+    border-radius: 0;
+    background-position: center;
+    background-size: 0.75rem 0.75rem;
+    filter: none;
+    opacity: 0.72;
+}
+
+.category-delete-button:hover {
+    background-color: var(--category-action-hover);
+    opacity: 1;
+}
+
+.combo-group-count {
+    flex: 0 0 auto;
+    opacity: 0.75;
+    font-size: 0.75em;
+}
+
+.combo-group-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
 }
