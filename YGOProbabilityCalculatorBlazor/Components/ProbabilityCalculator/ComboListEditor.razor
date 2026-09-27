@@ -21,10 +21,9 @@
                 <DismissibleAlert Message="@groupError" OnDismiss="@(() => groupError = null)" />
             </div>
         }
-        <div class="mt-2 combo-group-list">
+        <div class="mt-2">
             @foreach (var group in ComboGroups) {
-                var comboCount = Combos.Count(combo => combo.GroupId == group.Id);
-                <span class="badge category-chip category-tag combo-group-chip" @key="group.Id">
+                <span class="badge me-2 category-chip category-tag combo-group-chip" @key="group.Id">
                     @if (editingGroupId == group.Id) {
                         <input @ref="groupRenameInputReference"
                                class="form-control form-control-sm category-rename-input"
@@ -58,8 +57,6 @@
                                 title="@($"Rename group {group.Name}")"
                                 @onclick="() => BeginGroupRename(group)">@group.Name</button>
                     }
-                    <span class="combo-group-count"
-                          title="@($"{comboCount} combos assigned")">@comboCount</span>
                     <button type="button" class="btn-close category-delete-button"
                             aria-label="@($"Remove group {group.Name}")"
                             title="@($"Remove group {group.Name}")"
