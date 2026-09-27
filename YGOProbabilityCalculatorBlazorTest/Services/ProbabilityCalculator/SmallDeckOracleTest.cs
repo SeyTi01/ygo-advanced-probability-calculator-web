@@ -25,6 +25,98 @@ public class SmallDeckOracleTest {
         yield return Case("unconstrained combo", deck, [new([])], 3);
         yield return Case("no combos", deck, [], 2);
         yield return Case("whole deck", deck, [new([new(A, 3, 3), new(B, 3, 3)])], 7);
+        yield return Case("repeated names and constraints", [new([A, new("A")], 2), new([B]), new([])],
+            [new([new(A, 1, 2), new(new("A"), 0, 1)])], 2);
+        yield return Case("contradictory repeated constraints", deck,
+            [new([new(A, 0, 0), new(new("A"), 1, 2)])], 2);
+        yield return Case("empty hand with zero bounds", deck, [new([new(A, 0, 0)])], 0);
+        yield return Case("empty deck and unconstrained combo", [], [new([])], 0);
+    }
+
+    [TestCase(32)]
+    [TestCase(33)]
+    [TestCase(65)]
+    public void CategoryPositionsRemainDistinct(int categoryCount) {
+        var categories = Enumerable.Range(0, categoryCount).Select(i => new CategoryBase($"C{i}")).ToArray();
+        List<Card> deck = [new([categories[0]]), new([categories[^1]])];
+        List<Combo> combos = [new(categories.Select((category, index) =>
+            new ComboCategory(category, index == 0 ? 1 : 0, index == 0 ? 1 : 0)))];
+        TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, 1);
+    }
+
+    [Test]
+    public void IntersectionCanIntroduceMoreThan32Categories() {
+        var categories = Enumerable.Range(0, 33).Select(i => new CategoryBase($"C{i}")).ToArray();
+        List<Card> deck = [new([categories[0]]), new([categories[32]]), new([])];
+        List<Combo> combos = [
+            new(categories.Take(16).Select((category, index) => new ComboCategory(category, index == 0 ? 1 : 0, index == 0 ? 1 : 0))),
+            new(categories.Skip(16).Select(category => new ComboCategory(category, 0, 0)))
+        ];
+        TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, 1);
+    }
+
+    [TestCase(31)]
+    [TestCase(32)]
+    [TestCase(33)]
+    [TestCase(64)]
+    public void TooManyCombosAreRejectedInsteadOfReturningAnIncorrectProbability(int comboCount) {
+        List<Card> deck = [new([A]), new([])];
+        var combos = Enumerable.Range(0, comboCount).Select(_ => new Combo(new[] { new ComboCategory(A, 1, 1) })).ToList();
+        // Physical enumeration (and Wolfram) gives 1/2; a false zero must not be
+        // presented as a result while larger union calculations are unsupported.
+        var service = new ProbabilityCalculatorService();
+        Assert.Throws<ArgumentOutOfRangeException>(() => service.CalculateProbabilityForCombos(deck, combos, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => service.CalculateProbabilityResults(deck, combos, 1));
+    }
+
+    [Test]
+    public void FortyCardDeckWithManyMembershipPatterns() {
+        var categories = Enumerable.Range(0, 5).Select(i => new CategoryBase($"C{i}")).ToArray();
+        var deck = Enumerable.Range(0, 20).Select(pattern =>
+            new Card(categories.Where((_, index) => (pattern & (1 << index)) != 0), 2)).ToList();
+        List<Combo> combos = [new(categories.Select(category => new ComboCategory(category, 0, 5)))];
+        var allocated = GC.GetAllocatedBytesForCurrentThread();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var probability = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 5);
+        timer.Stop();
+        var allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocated;
+        TestContext.Out.WriteLine($"40 cards / 20 patterns / hand 5: {timer.Elapsed.TotalMilliseconds:F1} ms, {allocatedBytes:N0} allocated bytes");
+        Assert.That(probability, Is.EqualTo(1).Within(1e-12));
+        // Generous regression budget: about 9.5 MB with equivalent states merged,
+        // versus 62.7 MB when array reference equality prevents merging. No timing gate.
+        Assert.That(allocatedBytes, Is.LessThan(32 * 1024 * 1024));
+
+        // Of these 40 copies, A-only / B-only / both / neither = 12 / 8 / 8 / 12
+        // for A=C0, B=C2. Wolfram: Sum[C(12,a) C(12,5-a),a=1..2]/C(40,5).
+        combos = [new(categories.Select((category, index) => new ComboCategory(category,
+            index == 0 ? 1 : 0, index == 0 ? 2 : index == 2 ? 0 : 5)))];
+        probability = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 5);
+        Assert.That(probability, Is.EqualTo(1705.0 / 54834.0).Within(1e-12));
+    }
+
+    [Test]
+    public void RenamingReorderingAndSplittingCopiesPreserveResults() {
+        List<Card> deck = [new([A], 2), new([A, B]), new([B], 2), new([])];
+        List<Combo> combos = [new([new(A, 1, 1)]), new([new(B, 0, 0)]), new([new(A, 1, 2), new(B, 1, 1)])];
+        var expected = EnumerateProbability(deck, combos, 2);
+        var service = new ProbabilityCalculatorService();
+        var renamed = new Dictionary<string, CategoryBase> { ["A"] = new("Renamed A"), ["B"] = new("Renamed B") };
+        var splitDeck = deck.AsEnumerable().Reverse().SelectMany(card => Enumerable.Range(0, card.Copies)
+            .Select(_ => new Card(card.Categories.AsEnumerable().Reverse().Select(category => renamed[category.Name])))).ToList();
+        var changedCombos = combos.AsEnumerable().Reverse().Select(combo => new Combo(
+            combo.Categories.AsEnumerable().Reverse().Select(constraint => new ComboCategory(
+                renamed[constraint.BaseCategory.Name], constraint.MinCount, constraint.MaxCount)), groupId: "g")).ToList();
+        Assert.That(service.CalculateProbabilityForCombos(splitDeck, changedCombos, 2), Is.EqualTo(expected).Within(1e-12));
+        // Adding a duplicate or a subset must not enlarge the union.
+        changedCombos.Add(changedCombos[0]);
+        changedCombos.Add(new Combo([new(renamed["A"], 1, 1), new(renamed["B"], 1, 1)]));
+        var result = service.CalculateProbabilityResults(splitDeck, changedCombos, 2, [new("g", "Renamed group")]);
+        Assert.That(result.TotalProbability, Is.EqualTo(expected).Within(1e-12));
+        Assert.That(result.GroupProbabilities![0].Probability, Is.EqualTo(expected).Within(1e-12));
+        changedCombos.Add(new Combo([new(renamed["A"], 0, 0)]));
+        var enlarged = service.CalculateProbabilityForCombos(splitDeck, changedCombos, 2);
+        Assert.That(enlarged, Is.GreaterThanOrEqualTo(expected - 1e-12));
+        Assert.That(enlarged, Is.EqualTo(EnumerateProbability(splitDeck, changedCombos, 2)).Within(1e-12));
     }
 
     private static TestCaseData Case(string name, List<Card> deck, List<Combo> combos, int size) =>
@@ -138,6 +230,17 @@ public class SmallDeckOracleTest {
             var actual = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, handSize);
             Assert.That(actual, Is.EqualTo(EnumerateProbability(deck, combos, handSize)).Within(1e-12),
                 $"Seed 120925, sample {sample}, hand size {handSize}");
+            // Keep the original random inputs; vary grouping without changing the generator.
+            var grouped = combos.Select((combo, index) => combo.WithGroup(index % 3 == 2 ? null : $"g{index % 2}")).ToList();
+            var groups = new List<ComboGroup> { new("g0", "First"), new("g1", "Second"), new("empty", "Empty") };
+            var results = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, grouped, handSize, groups);
+            Assert.That(results.TotalProbability, Is.EqualTo(actual).Within(1e-12));
+            for (var index = 0; index < combos.Count; index++)
+                Assert.That(results.ComboProbabilities[index].Probability,
+                    Is.EqualTo(EnumerateProbability(deck, [combos[index]], handSize)).Within(1e-12));
+            foreach (var group in results.GroupProbabilities!)
+                Assert.That(group.Probability, Is.EqualTo(EnumerateProbability(deck,
+                    grouped.Where(combo => combo.GroupId == group.GroupId).ToList(), handSize)).Within(1e-12));
         }
     }
 
