@@ -82,6 +82,45 @@ public class CalculatorEditorTest {
     }
 
     [Test]
+    public void ComboHeaderKeepsVisibleBadgesAndAccessibleControlsDistinct() {
+        var categories = Enumerable.Range(1, 7)
+            .Select(index => new CategoryBase($"Long Category {index}"))
+            .ToList();
+        const string comboName = "A Long Combo Name For Mobile";
+        var combo = new Combo(categories.Select(category => new ComboCategory(category, 1, 5)).ToList(), comboName);
+        var cut = Render(new SessionState {
+            Categories = categories,
+            Cards = [],
+            Combos = [combo],
+            HandSize = 5
+        });
+        var editor = cut.FindComponent<ComboEditor>();
+        var header = editor.Find(".combo-editor-header");
+        var accordionButton = header.QuerySelector("button.accordion-button");
+
+        Assert.That(accordionButton, Is.Not.Null);
+        Assert.That(accordionButton!.GetAttribute("aria-controls"), Is.EqualTo("combo0"));
+        Assert.That(accordionButton.GetAttribute("aria-expanded"), Is.EqualTo("false"));
+        Assert.That(accordionButton.TextContent, Does.Contain(comboName));
+        Assert.That(accordionButton.QuerySelectorAll(".combo-header-content .category-tag").Length, Is.EqualTo(6));
+        Assert.That(accordionButton.QuerySelector(".combo-header-content .badge.bg-secondary")?.TextContent, Is.EqualTo("+1 more"));
+        Assert.That(accordionButton.TextContent, Does.Contain("Long Category 1 (1–5)"));
+
+        var actionButtons = header.QuerySelectorAll("button");
+        var activeToggle = header.QuerySelector("input.entry-editor-active-checkbox");
+        var removeButton = header.QuerySelector("button[aria-label='Remove combo']");
+        Assert.That(actionButtons.Length, Is.EqualTo(2));
+        Assert.That(activeToggle?.GetAttribute("aria-label"), Is.EqualTo($"Active combo {comboName}"));
+        Assert.That(activeToggle?.GetAttribute("title"), Is.EqualTo($"Toggle {comboName} active state"));
+        Assert.That(removeButton?.GetAttribute("title"), Is.EqualTo("Remove combo"));
+
+        accordionButton.Click();
+        Assert.That(editor.Find(".combo-editor-header .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        editor.Find(".combo-editor-header .accordion-button").Click();
+        Assert.That(editor.Find(".combo-editor-header .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
+    }
+
+    [Test]
     public void CategoryColorsStayConsistentAcrossViewsThroughRenameAndUnrelatedDeletion() {
         var categoryA = new CategoryBase("A");
         var categoryB = new CategoryBase("B");

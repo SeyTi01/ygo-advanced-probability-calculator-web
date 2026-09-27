@@ -1,33 +1,35 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<div class="accordion-item @(Combo.Active ? "" : "entry-inactive")">
-    <h2 class="accordion-header d-flex entry-editor-header">
+<div class="accordion-item combo-editor @(Combo.Active ? "" : "entry-inactive")">
+    <h2 class="accordion-header d-flex entry-editor-header combo-editor-header">
         <button class="accordion-button flex-grow-1 @(Index == ActiveComboIndex ? "" : "collapsed")"
                 type="button"
                 aria-expanded="@(Index == ActiveComboIndex ? "true" : "false")"
                 aria-controls="combo@(Index)"
                 @onclick="ToggleCombo">
-            <span>@ComboDisplayName</span>
+            <span class="combo-header-content">
+                <span class="combo-header-name">@ComboDisplayName</span>
 
-            @if (Combo.Categories.Any()) {
-                <span class="ms-2">-</span>
-                @foreach (var cc in HeaderCategories) {
-                    <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cc.BaseCategory.Name, CategoryColorIndices)">
-                        @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
-                    </span>
-                }
+                @if (Combo.Categories.Any()) {
+                    <span class="ms-2">-</span>
+                    @foreach (var cc in HeaderCategories) {
+                        <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cc.BaseCategory.Name, CategoryColorIndices)">
+                            @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
+                        </span>
+                    }
 
-                @if (HiddenHeaderCategoriesCount > 0) {
-                    <span class="badge bg-secondary ms-1">+@HiddenHeaderCategoriesCount more</span>
+                    @if (HiddenHeaderCategoriesCount > 0) {
+                        <span class="badge bg-secondary ms-1">+@HiddenHeaderCategoriesCount more</span>
+                    }
                 }
-            }
-            else {
-                <span class="text-muted ms-2">(no categories)</span>
-            }
-            @if (!Combo.Active) {
-                <span class="badge text-bg-secondary ms-2">Inactive</span>
-            }
+                else {
+                    <span class="text-muted ms-2">(no categories)</span>
+                }
+                @if (!Combo.Active) {
+                    <span class="badge text-bg-secondary ms-2">Inactive</span>
+                }
+            </span>
         </button>
 
         <div class="d-flex align-items-center mx-2 mb-0 flex-shrink-0 entry-editor-active-toggle">
@@ -38,7 +40,7 @@
                    @onchange="e => ChangeActive(e.Value)"/>
         </div>
 
-        <button class="btn btn-danger align-self-center" type="button" aria-label="Remove combo" title="Remove combo" @onclick="() => OnRemoveCombo.InvokeAsync(Index)">
+        <button class="btn btn-danger align-self-center flex-shrink-0" type="button" aria-label="Remove combo" title="Remove combo" @onclick="() => OnRemoveCombo.InvokeAsync(Index)">
             <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
                 <path d="M6 2h4l1 1h3v1H2V3h3l1-1zM4 5h8l-.7 9H4.7z"/>
                 <path d="M6 6h1v6H6zm3 0h1v6H9z" fill="var(--bs-danger)"/>
