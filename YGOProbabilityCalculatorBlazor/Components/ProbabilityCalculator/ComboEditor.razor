@@ -89,6 +89,21 @@
                 </div>
             </div>
 
+            <div class="row mb-3">
+                <div class="col-8 col-sm-5">
+                    <label for="comboGroup@(Index)" class="form-label">Group</label>
+                    <select id="comboGroup@(Index)" class="form-select"
+                            aria-label="@($"Group for {ComboDisplayName}")"
+                            value="@Combo.GroupId"
+                            @onchange="e => AssignGroup(e.Value?.ToString())">
+                        <option value="">Ungrouped</option>
+                        @foreach (var group in ComboGroups) {
+                            <option value="@group.Id">@group.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
             <div>
                 @if (Combo.Categories.Count == 0) {
                     <em>No categories yet.</em>
@@ -115,6 +130,7 @@
     [Parameter] public int Index { get; set; }
     [Parameter] public Combo Combo { get; set; } = null!;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlyList<ComboGroup> ComboGroups { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
@@ -155,6 +171,9 @@
         if (!bool.TryParse(value?.ToString(), out var active)) return Task.CompletedTask;
         return OnReplaceCombo.InvokeAsync((Index, Combo.WithActive(active)));
     }
+
+    private Task AssignGroup(string? groupId) =>
+        OnReplaceCombo.InvokeAsync((Index, Combo.WithGroup(string.IsNullOrEmpty(groupId) ? null : groupId)));
 
     private Task AddCategory() {
         if (string.IsNullOrWhiteSpace(selectedCategory)) {
