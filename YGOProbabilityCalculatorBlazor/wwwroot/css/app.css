@@ -150,6 +150,26 @@ code {
     padding-inline-end: 0.5rem;
 }
 
+.combo-editor-header > .accordion-button {
+    min-width: 0;
+}
+
+.combo-header-content {
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    align-items: center;
+    min-width: 0;
+}
+
+.combo-header-name,
+.combo-editor-header .category-tag,
+.combo-editor .accordion-body .category-tag {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
 .entry-editor-active-checkbox {
     float: none;
     margin: 0;
