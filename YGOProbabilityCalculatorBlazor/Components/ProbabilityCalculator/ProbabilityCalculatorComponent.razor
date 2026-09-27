@@ -60,6 +60,7 @@
 
     <ComboListEditor
         Combos="combos"
+        ComboGroups="comboGroups"
         CategoryBases="categoryBases"
         CategoryColorIndices="categoryColorIndices"
         CategoryRename="categoryRename"
@@ -68,6 +69,9 @@
         OnReplaceCombo="ReplaceCombo"
         OnRemoveCombo="@(i => RemoveCombo(i))"
         OnAddNewCombo="AddNewCombo"
+        OnAddGroup="AddGroup"
+        OnRenameGroup="RenameGroup"
+        OnRemoveGroup="RemoveGroup"
         HandSize="handSize"
     />
 
@@ -104,12 +108,28 @@
                     <span class="combo-probability-name">Any active combo</span>
                     <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
                 </div>
+                @if (result.GroupProbabilities is { Count: > 0 } groupResults) {
+                    <h6>Group probabilities</h6>
+                    <div class="probability-groups">
+                        @foreach (var group in groupResults) {
+                            <div class="combo-probability-row probability-group">
+                                <span class="combo-probability-name">@group.GroupName <small class="text-body-secondary">(@group.ActiveComboCount active)</small></span>
+                                <strong class="combo-probability-value">@group.Probability.ToString("P2")</strong>
+                            </div>
+                        }
+                    </div>
+                }
                 <h6>Individual combo probabilities</h6>
                 <ol class="combo-probability-list">
                     @foreach (var comboResult in result.ComboProbabilities) {
                         <li class="combo-probability-item">
                             <div class="combo-probability-row">
-                                <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
+                                <span class="combo-probability-name">
+                                    @ComboResultDisplayName(comboResult)
+                                    @if (result.GroupProbabilities?.FirstOrDefault(group => group.GroupId == comboResult.GroupId) is { } group) {
+                                        <small class="text-body-secondary ms-1">· @group.GroupName</small>
+                                    }
+                                </span>
                                 <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
                             </div>
                         </li>
@@ -125,6 +145,7 @@
     private readonly List<CategoryBase> categoryBases = [];
     private readonly List<Card> cards = [];
     private readonly List<Combo> combos = [];
+    private readonly List<ComboGroup> comboGroups = [];
     private readonly Dictionary<string, int> categoryColorIndices = new(StringComparer.Ordinal);
 
     private int activeComboIndex = -1;
@@ -210,6 +231,28 @@
         activeComboIndex = combos.Count - 1;
     }
 
+    private void AddGroup(string name) {
+        comboGroups.Add(new ComboGroup(Guid.NewGuid().ToString("N"), name));
+        InvalidateCalculation();
+        StateHasChanged();
+    }
+
+    private void RenameGroup((string Id, string Name) payload) {
+        var index = comboGroups.FindIndex(group => group.Id == payload.Id);
+        if (index < 0) return;
+        comboGroups[index] = comboGroups[index] with { Name = payload.Name };
+        InvalidateCalculation();
+        StateHasChanged();
+    }
+
+    private void RemoveGroup(string id) {
+        if (comboGroups.RemoveAll(group => group.Id == id) == 0) return;
+        foreach (var combo in combos.Where(combo => combo.GroupId == id))
+            combo.GroupId = null;
+        InvalidateCalculation();
+        StateHasChanged();
+    }
+
     private Task RenameCategoryBase((CategoryBase OldCategory, CategoryBase NewCategory) payload) {
         var (oldCategory, newCategory) = payload;
         var categoryIndex = categoryBases.FindIndex(category => ReferenceEquals(category, oldCategory));
@@ -290,6 +333,7 @@
         var requestVersion = calculationVersion;
         var activeCards = cards.Where(card => card.Active).ToList();
         var activeCombos = combos.Where(combo => combo.Active).ToList();
+        var requestedGroups = comboGroups.ToList();
         var requestedHandSize = handSize;
 
         try {
@@ -301,7 +345,8 @@
             var result = await Task.Run(() => _probabilityCalculator.CalculateProbabilityResults(
                 activeCards,
                 activeCombos,
-                requestedHandSize
+                requestedHandSize,
+                requestedGroups
             ));
             if (requestVersion == calculationVersion)
                 calculationResult = result;
@@ -336,6 +381,7 @@
                 Categories = categoryBases,
                 Cards = cards,
                 Combos = combos,
+                ComboGroups = comboGroups,
                 HandSize = handSize,
                 CategoryColorIndices = new(categoryColorIndices, StringComparer.Ordinal)
             };
@@ -363,6 +409,8 @@
 
             combos.Clear();
             combos.AddRange(session.Combos);
+            comboGroups.Clear();
+            comboGroups.AddRange(session.ComboGroups ?? []);
 
             RestoreCategoryColorIndices(session);
             handSize = session.HandSize;
@@ -404,6 +452,8 @@
 
                 combos.Clear();
                 combos.AddRange(session.Combos);
+                comboGroups.Clear();
+                comboGroups.AddRange(session.ComboGroups ?? []);
 
                 RestoreCategoryColorIndices(session);
                 handSize = session.HandSize;
