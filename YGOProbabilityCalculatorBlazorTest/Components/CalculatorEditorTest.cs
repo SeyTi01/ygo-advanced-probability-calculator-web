@@ -422,6 +422,48 @@ public class CalculatorEditorTest {
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SessionLoadClearsPreviousResultsAndDiscardsInFlightCompletion(bool failCalculation) {
+        var calculator = new SequencedProbabilityCalculator(
+            new ProbabilityCalculationResult(0.9, [new ComboProbabilityResult(0, "Old session", 0.8)]),
+            failSecond: failCalculation);
+        context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
+        var cut = Render(Session());
+        Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
+
+        Button(cut, "Calculate").Click();
+        cut.WaitForElement(".probability-results");
+        Button(cut, "Calculate").Click();
+        try {
+            Assert.That(calculator.SecondStarted.Wait(TimeSpan.FromSeconds(5)), Is.True);
+            const string nextSession = """
+                {
+                  "Categories": [{"Name":"Loaded"}],
+                  "Cards": [{"Categories":[{"Name":"Loaded"}],"Copies":3,"Name":"Loaded card"}],
+                  "Combos": [{"Categories":[{"BaseCategory":{"Name":"Loaded"},"MinCount":0,"MaxCount":0}],"Name":"Loaded combo"}],
+                  "HandSize": 1
+                }
+                """;
+            cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(nextSession, "next.json"));
+            cut.WaitForAssertion(() => {
+                Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+                Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("1"));
+                Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Loaded card"));
+                Assert.That(cut.FindComponent<ComboEditor>().Instance.Combo.Name, Is.EqualTo("Loaded combo"));
+            });
+        }
+        finally {
+            calculator.ContinueSecond.Set();
+        }
+
+        cut.WaitForAssertion(() => {
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+            Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+            Assert.That(cut.FindAll("[role=alert]"), Is.Empty);
+        });
+    }
+
     [Test]
     public void ResultsShowStandaloneProbabilitiesInOrderForDuplicateAndUnnamedCombos() {
         var session = new SessionState {
