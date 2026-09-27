@@ -202,4 +202,37 @@ public class ProbabilityCalculatorServiceTest {
         Assert.That(actual, Is.EqualTo(667.0 / 1976.0).Within(Tolerance));
         Assert.That(double.IsFinite(actual) && actual is >= 0 and <= 1, Is.True);
     }
+    [TestCase(40, 5, 159775.0, 219336.0)]
+    [TestCase(40, 6, 2793563.0, 3838380.0)]
+    [TestCase(60, 5, 467720.0, 682689.0)]
+    [TestCase(60, 6, 35492613.0, 50063860.0)]
+    public void RealisticOverlappingUnionsMatchIndependentWolframSums(int n, int h, double numerator, double denominator) {
+        CategoryBase a = new("A"), b = new("B"), c = new("C"), d = new("D");
+        List<Card> deck = [
+            new([a], 9), new([b], 6), new([a, b], 3), new([b, c], 4),
+            new([c], 3), new([d], 2), new([], n - 27)
+        ];
+        List<Combo> combos = [
+            new([new(a, 1, 2), new(d, 0, 0)]),
+            new([new(b, 2, h), new(c, 1, h)]),
+            new([new(a, 0, 0), new(c, 2, 3)]),
+            new([new(b, 0, 0), new(c, 1, 2)])
+        ];
+        // Wolfram independently enumerated seven pattern-count tuples summing to h,
+        // tested the OR predicate directly and weighted each by Product[Binomial[n_i,k_i]].
+        var expected = numerator / denominator;
+        Assert.That(_probabilityCalculator.CalculateProbabilityForCombos(deck, combos, h),
+            Is.EqualTo(expected).Within(expected * Tolerance));
+    }
+
+    [Test]
+    public void ThirtyRepeatedRareEventsRemainNonzero() {
+        CategoryBase a = new("A");
+        List<Card> deck = [new([a], 30), new([], 30)];
+        var combos = Enumerable.Range(0, 30).Select(_ => new Combo([new(a, 30, 30)])).ToList();
+        var expected = 1.0 / 118264581564861424.0; // Re-evaluated with Wolfram: 1/Binomial[60,30].
+        var result = _probabilityCalculator.CalculateProbabilityResults(deck, combos, 30);
+        Assert.That(result.TotalProbability, Is.EqualTo(expected).Within(expected * Tolerance));
+        Assert.That(result.ComboProbabilities.All(c => Math.Abs(c.Probability / expected - 1) < Tolerance), Is.True);
+    }
 }

@@ -357,6 +357,10 @@
             if (requestVersion == calculationVersion)
                 errorMessage = "Calculation was cancelled.";
         }
+        catch (ProbabilityCalculationLimitException ex) {
+            if (requestVersion == calculationVersion)
+                errorMessage = ex.Message;
+        }
         finally {
             isCalculating = false;
         }
