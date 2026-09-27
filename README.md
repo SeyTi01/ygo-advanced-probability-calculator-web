@@ -10,11 +10,11 @@ Try it [here](https://ygo-calculator.pages.dev/).
 2. **Assign Categories to Cards**  
    A card can belong to multiple categories.
 3. **Define Combos**  
-   Each combo is a combination of required categories (e.g., `Lubellion + Normal Summon`).
+   Each combo is a combination of required categories (e.g., `Lubellion + Normal Summon`). Combos can also be organized into named groups.
 4. **Set Constraints**  
    Define per-category min/max requirements.
 5. **Calculate**  
-   Get exact probabilities for opening **any** of the defined combos in your deck.
+   Get exact probabilities for **any active combo**, each named group, and each individual combo.
 
 ## Example: Fiendsmith Bystial Deck
 
@@ -36,7 +36,7 @@ However, if the Bystial was drawn normally, the normal summonable hand trap need
 ### 2. Combo Definitions
 
 - **1-Card Combo**: Requires *any* card with the `1 Card Starter` tag.
-- **Moon Combo 1**: Requires *both* the `Lubellion` tag *and* the `Normal Summon` tag in the opening hand.
+- **Moon Combo**: Requires *both* the `Lubellion` tag *and* the `Normal Summon` tag in the opening hand.
 - **Moon Combo 2**: Requires *both* the `Bystial` tag *and* the `L/D Normal Summon` tag in the opening hand.
 
 After tagging all cards appropriately, this configuration will calculate the exact probability of opening a Fiendsmith play in the given deck list.
@@ -48,8 +48,9 @@ This can help determine optimal deck sizes and engine ratios.
 
 ## Additional Features
 
-- Import decks from `.ydk` files.
-- Save and load sessions.
+- Temporarily deactivate cards and combos while editing a deck.
+- Use color-coded categories and light, dark, or system themes.
+- Import decks from `.ydk` files and save or load sessions.
 
 ## Technical Stack
 
