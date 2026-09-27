@@ -1,10 +1,22 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <div class="page">
     <main>
         <div class="top-row px-4">
             <h3 class="flex-grow-1 mb-0">Yu-Gi-Oh! Advanced Probability Calculator</h3>
+            <label class="visually-hidden" for="theme-preference">Color theme preference</label>
+            <select id="theme-preference"
+                    class="form-select form-select-sm theme-select"
+                    aria-label="Color theme preference"
+                    title="Color theme preference"
+                    value="@ThemePreference"
+                    @onchange="ChangeThemePreference">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+            </select>
             @if (IsHelpPage) {
                 <a href="/" class="btn btn-outline-primary">Back</a>
             }
@@ -21,4 +33,38 @@
 
 @code {
     private bool IsHelpPage => NavigationManager.Uri.EndsWith("/help", StringComparison.OrdinalIgnoreCase);
+    private string ThemePreference { get; set; } = "system";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender) return;
+
+        try {
+            var preference = NormalizeThemePreference(await JSRuntime.InvokeAsync<string>("ygoTheme.getPreference"));
+            if (ThemePreference != preference) {
+                ThemePreference = preference;
+                StateHasChanged();
+            }
+        }
+        catch (JSException) {
+            // Theme initialization is optional; a storage or interop failure must not stop the calculator.
+        }
+    }
+
+    private async Task ChangeThemePreference(ChangeEventArgs args) {
+        var preference = NormalizeThemePreference(args.Value?.ToString());
+        ThemePreference = preference;
+
+        try {
+            await JSRuntime.InvokeVoidAsync("ygoTheme.setPreference", preference);
+        }
+        catch (JSException) {
+            // Keep the control usable if browser storage or JavaScript interop is unavailable.
+        }
+    }
+
+    private static string NormalizeThemePreference(string? preference) => preference?.ToLowerInvariant() switch {
+        "light" => "light",
+        "dark" => "dark",
+        _ => "system"
+    };
 }

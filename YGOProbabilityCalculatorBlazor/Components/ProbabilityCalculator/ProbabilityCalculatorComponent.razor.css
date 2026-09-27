@@ -16,7 +16,7 @@
 }
 
 .results-section {
-    border-top: 2px solid #dee2e6;
+    border-top: 2px solid var(--bs-border-color);
     padding-top: 2rem;
     margin-top: 2rem;
 }
