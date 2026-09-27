@@ -41,6 +41,7 @@ function createThemeRuntime({ savedPreference = null, prefersDark = false, stora
 
     const documentElement = {
         dataset: {},
+        style: {},
         setAttribute(name, value) {
             if (name === "data-bs-theme") this.dataset.bsTheme = value;
         }
@@ -64,16 +65,24 @@ test("uses the operating system preference when no choice is saved", () => {
 
     assert.equal(runtime.api.getPreference(), "system");
     assert.equal(runtime.documentElement.dataset.bsTheme, "dark");
+    assert.equal(runtime.documentElement.style.colorScheme, "dark");
 
     runtime.mediaQuery.change(false);
     assert.equal(runtime.documentElement.dataset.bsTheme, "light");
+    assert.equal(runtime.documentElement.style.colorScheme, "light");
 });
 
 test("restores a valid saved theme before the page styles load", () => {
-    const runtime = createThemeRuntime({ savedPreference: "dark" });
+    const runtime = createThemeRuntime({ savedPreference: "dark", prefersDark: false });
 
     assert.equal(runtime.api.getPreference(), "dark");
     assert.equal(runtime.documentElement.dataset.bsTheme, "dark");
+    assert.equal(runtime.documentElement.style.colorScheme, "dark");
+
+    const lightRuntime = createThemeRuntime({ savedPreference: "light", prefersDark: true });
+    assert.equal(lightRuntime.api.getPreference(), "light");
+    assert.equal(lightRuntime.documentElement.dataset.bsTheme, "light");
+    assert.equal(lightRuntime.documentElement.style.colorScheme, "light");
 });
 
 test("ignores malformed saved values and returns to system mode", () => {
@@ -90,13 +99,32 @@ test("persists explicit choices and removes the override when system mode is sel
     runtime.api.setPreference("light");
     assert.equal(runtime.values.get(storageKey), "light");
     assert.equal(runtime.documentElement.dataset.bsTheme, "light");
+    assert.equal(runtime.documentElement.style.colorScheme, "light");
 
     runtime.api.setPreference("system");
     assert.equal(runtime.values.has(storageKey), false);
     assert.equal(runtime.documentElement.dataset.bsTheme, "dark");
+    assert.equal(runtime.documentElement.style.colorScheme, "dark");
 
     runtime.mediaQuery.change(false);
     assert.equal(runtime.documentElement.dataset.bsTheme, "light");
+    assert.equal(runtime.documentElement.style.colorScheme, "light");
+});
+
+test("updates native-control color scheme immediately across explicit theme switches", () => {
+    const runtime = createThemeRuntime({ prefersDark: false });
+
+    runtime.api.setPreference("dark");
+    assert.equal(runtime.documentElement.dataset.bsTheme, "dark");
+    assert.equal(runtime.documentElement.style.colorScheme, "dark");
+
+    runtime.api.setPreference("light");
+    assert.equal(runtime.documentElement.dataset.bsTheme, "light");
+    assert.equal(runtime.documentElement.style.colorScheme, "light");
+
+    runtime.api.setPreference("dark");
+    assert.equal(runtime.documentElement.dataset.bsTheme, "dark");
+    assert.equal(runtime.documentElement.style.colorScheme, "dark");
 });
 
 test("does not fail when storage is blocked", () => {
@@ -105,6 +133,7 @@ test("does not fail when storage is blocked", () => {
     assert.equal(runtime.api.getPreference(), "system");
     runtime.api.setPreference("dark");
     assert.equal(runtime.documentElement.dataset.bsTheme, "dark");
+    assert.equal(runtime.documentElement.style.colorScheme, "dark");
 });
 
 test("defaults to light if system preference detection is unavailable", () => {

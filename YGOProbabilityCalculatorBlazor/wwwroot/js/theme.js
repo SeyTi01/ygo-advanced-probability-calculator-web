@@ -43,6 +43,7 @@
             ? (systemPrefersDark ? "dark" : "light")
             : preference;
 
+        document.documentElement.style.colorScheme = theme;
         document.documentElement.setAttribute("data-bs-theme", theme);
     };
 
