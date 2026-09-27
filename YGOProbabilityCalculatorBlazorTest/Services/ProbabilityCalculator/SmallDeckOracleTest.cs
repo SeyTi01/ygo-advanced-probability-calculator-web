@@ -98,8 +98,7 @@ public class SmallDeckOracleTest {
         probability = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 5);
         Assert.That(probability, Is.EqualTo(1705.0 / 54834.0).Within(1e-12));
 
-        // The universal event above now skips DP. Keep a genuinely constrained
-        // distribution under the original allocation budget to protect state merging.
+        // The universal event skips DP; this constrained case protects state merging.
         combos = [new(categories.Select(category => new ComboCategory(category, 1, 4)))];
         allocated = GC.GetAllocatedBytesForCurrentThread();
         probability = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 5);
@@ -245,7 +244,6 @@ public class SmallDeckOracleTest {
             var actual = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, handSize);
             Assert.That(actual, Is.EqualTo(EnumerateProbability(deck, combos, handSize)).Within(1e-12),
                 $"Seed 120925, sample {sample}, hand size {handSize}");
-            // Keep the original random inputs; vary grouping without changing the generator.
             var grouped = combos.Select((combo, index) => combo.WithGroup(index % 3 == 2 ? null : $"g{index % 2}")).ToList();
             var groups = new List<ComboGroup> { new("g0", "First"), new("g1", "Second"), new("empty", "Empty") };
             var results = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, grouped, handSize, groups);
