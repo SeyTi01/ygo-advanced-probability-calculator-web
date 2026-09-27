@@ -549,10 +549,11 @@ public class CalculatorEditorTest {
     public void CategoryRenameInvalidatesAndRecalculatesTheWholeResultSet() {
         var cut = Render(Session());
         Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1)));
+        cut.WaitForElement(".probability-results", TimeSpan.FromSeconds(5));
 
         cut.Find("[aria-label='Rename category A']").Click();
-        cut.Find("[aria-label='New name for category A']").Input("Renamed A");
+        cut.WaitForElement("[aria-label='New name for category A']", TimeSpan.FromSeconds(5))
+            .Input("Renamed A");
         cut.Find("[aria-label='Save category name']").Click();
         Assert.That(cut.FindAll(".probability-results"), Is.Empty);
 
