@@ -6,6 +6,12 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 public class ProbabilityCalculatorService : IProbabilityCalculatorService {
     public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) {
+        // The subset loop uses a signed 32-bit mask. Larger inputs used to wrap
+        // the loop bound and silently return zero (or ignore some combos).
+        if (combos.Count > IProbabilityCalculatorService.MaxComboCount)
+            throw new ArgumentOutOfRangeException(nameof(combos),
+                $"Calculation supports at most {IProbabilityCalculatorService.MaxComboCount} combos.");
+
         double totalProbability = 0;
 
         for (var mask = 1; mask < 1 << combos.Count; mask++) {
@@ -90,18 +96,18 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         return categories;
     }
 
-    private static int BuildCardMask(Card card, List<Category> categories) {
-        var mask = 0;
+    private static BigInteger BuildCardMask(Card card, List<Category> categories) {
+        var mask = BigInteger.Zero;
         for (var i = 0; i < categories.Count; i++) {
             if (card.Categories.Any(c => c.Name == categories[i].Name))
-                mask |= 1 << i;
+                mask |= BigInteger.One << i;
         }
 
         return mask;
     }
 
     private static Dictionary<StateKey, double> ComputeDistribution(
-        Dictionary<int, int> cardMasks,
+        Dictionary<BigInteger, int> cardMasks,
         int[] maxCounts,
         int handSize) {
         var states = new Dictionary<StateKey, double> {
@@ -117,7 +123,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
 
     private static Dictionary<StateKey, double> Convolve(
         Dictionary<StateKey, double> states,
-        int patternMask,
+        BigInteger patternMask,
         int groupSize,
         int[] maxCounts,
         int handSize) {
@@ -131,7 +137,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
 
                 if (draw > 0) {
                     for (var i = 0; i < maxCounts.Length; i++) {
-                        if ((patternMask & (1 << i)) != 0) {
+                        if ((patternMask & (BigInteger.One << i)) != 0) {
                             newCounts[i] += draw;
                         }
                     }
@@ -172,5 +178,17 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             : -probability;
     }
 
-    private sealed record StateKey(int DrawnCards, int[] CategoryCounts);
+    // Arrays in records otherwise compare by reference, leaving equivalent
+    // partial hands as separate states. Counts are never mutated after insertion.
+    private sealed record StateKey(int DrawnCards, int[] CategoryCounts) {
+        public bool Equals(StateKey? other) => other is not null &&
+            DrawnCards == other.DrawnCards && CategoryCounts.AsSpan().SequenceEqual(other.CategoryCounts);
+
+        public override int GetHashCode() {
+            var hash = new HashCode();
+            hash.Add(DrawnCards);
+            foreach (var count in CategoryCounts) hash.Add(count);
+            return hash.ToHashCode();
+        }
+    }
 }
