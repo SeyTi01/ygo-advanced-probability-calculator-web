@@ -21,7 +21,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         return totalProbability;
     }
 
-    public ProbabilityCalculationResult CalculateProbabilityResults(List<Card> deck, List<Combo> combos, int handSize) {
+    public ProbabilityCalculationResult CalculateProbabilityResults(
+        List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
         var totalProbability = CalculateProbabilityForCombos(deck, combos, handSize);
         var comboProbabilities = combos.Select((combo, index) => {
             var categories = MergeComboCategories([combo]);
@@ -29,10 +30,20 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                 ? 0.0
                 : CalculateProbabilityForCategories(deck, categories, handSize);
 
-            return new ComboProbabilityResult(index, combo.Name, probability);
+            return new ComboProbabilityResult(index, combo.Name, probability, combo.GroupId);
         }).ToList();
 
-        return new ProbabilityCalculationResult(totalProbability, comboProbabilities.AsReadOnly());
+        var groupProbabilities = (groups ?? [])
+            .Select(group => {
+                var members = combos.Where(combo => combo.GroupId == group.Id).ToList();
+                return new GroupProbabilityResult(
+                    group.Id, group.Name,
+                    members.Count == 0 ? 0 : CalculateProbabilityForCombos(deck, members, handSize),
+                    members.Count);
+            }).ToList();
+
+        return new ProbabilityCalculationResult(
+            totalProbability, comboProbabilities.AsReadOnly(), groupProbabilities.AsReadOnly());
     }
 
     private static double CalculateProbabilityForCategories(List<Card> deckCards, List<Category> categories, int handSize) {

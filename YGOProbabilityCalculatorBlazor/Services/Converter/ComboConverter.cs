@@ -20,8 +20,11 @@ public class ComboConverter : JsonConverter<Combo> {
         var active = root.TryGetProperty("Active", out var activeProperty)
             ? activeProperty.GetBoolean()
             : true;
+        var groupId = root.TryGetProperty("GroupId", out var groupProperty)
+            ? groupProperty.GetString()
+            : null;
 
-        return new Combo(categories, name, active);
+        return new Combo(categories, name, active, groupId);
     }
 
     public override void Write(Utf8JsonWriter writer, Combo value, JsonSerializerOptions options) {
@@ -36,6 +39,8 @@ public class ComboConverter : JsonConverter<Combo> {
         }
 
         writer.WriteBoolean("Active", value.Active);
+        if (value.GroupId is not null)
+            writer.WriteString("GroupId", value.GroupId);
         writer.WriteEndObject();
     }
 }
