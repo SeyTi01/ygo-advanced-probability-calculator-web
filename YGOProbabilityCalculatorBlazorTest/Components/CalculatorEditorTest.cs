@@ -509,6 +509,9 @@ public class CalculatorEditorTest {
         var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
         cut.Find("#comboGroup0").Change(groupId);
         cut.Find("#comboGroup1").Change(groupId);
+        var groupChip = cut.Find(".combo-group-chip");
+        Assert.That(groupChip.ClassList.Contains("me-2"), Is.True);
+        Assert.That(groupChip.TextContent.Trim(), Is.EqualTo("Tier 1"));
 
         Button(cut, "Calculate").Click();
         cut.WaitForAssertion(() => {
