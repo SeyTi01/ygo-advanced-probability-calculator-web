@@ -1,31 +1,72 @@
 @using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Components.Shared
 
 <div class="mb-4">
     <h4>Combos</h4>
     <div class="mb-3">
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-            <strong>Combo groups</strong>
-            <input class="form-control form-control-sm combo-group-new-name" type="text"
-                   aria-label="New combo group name" placeholder="Group name"
-                   value="@newGroupName" @oninput="e => newGroupName = e.Value?.ToString() ?? string.Empty" />
-            <button class="btn btn-outline-primary btn-sm" type="button" @onclick="AddGroup">Add group</button>
+        <h5 class="h6 mb-2">Groups</h5>
+        <div class="row">
+            <div class="col-4">
+                <input class="form-control" type="text"
+                       aria-label="New combo group name" placeholder="Group name"
+                       @bind="newGroupName" @bind:event="oninput"
+                       @onkeyup="HandleAddGroupKeyUp" />
+            </div>
+            <div class="col-2">
+                <button class="btn btn-primary" type="button" aria-label="Add combo group" @onclick="AddGroup">Add</button>
+            </div>
         </div>
         @if (groupError is not null) {
-            <div class="text-danger small mb-2" role="alert">@groupError</div>
-        }
-        @foreach (var group in ComboGroups) {
-            <div class="d-flex align-items-center gap-2 mb-1 combo-group-editor" @key="group.Id">
-                <input class="form-control form-control-sm combo-group-name" type="text" value="@group.Name"
-                       aria-label="@($"Rename group {group.Name}")"
-                       title="@($"Rename group {group.Name}")"
-                       @onchange="e => RenameGroup(group, e.Value?.ToString())" />
-                <span class="badge text-bg-secondary">@Combos.Count(combo => combo.GroupId == group.Id)</span>
-                <button class="btn btn-outline-danger btn-sm" type="button"
-                        aria-label="@($"Remove group {group.Name}")"
-                        title="@($"Remove group {group.Name}")"
-                        @onclick="() => OnRemoveGroup.InvokeAsync(group.Id)">Remove</button>
+            <div class="mt-2 combo-group-validation-alert">
+                <DismissibleAlert Message="@groupError" OnDismiss="@(() => groupError = null)" />
             </div>
         }
+        <div class="mt-2 combo-group-list">
+            @foreach (var group in ComboGroups) {
+                var comboCount = Combos.Count(combo => combo.GroupId == group.Id);
+                <span class="badge category-chip category-tag combo-group-chip" @key="group.Id">
+                    @if (editingGroupId == group.Id) {
+                        <input @ref="groupRenameInputReference"
+                               class="form-control form-control-sm category-rename-input"
+                               aria-label="@($"New name for group {group.Name}")"
+                               @bind="editingGroupName"
+                               @bind:event="oninput"
+                               @onkeydown="HandleGroupRenameKeyDown" />
+                        <button type="button" class="category-icon-button"
+                                aria-label="Save group name" title="Save group name"
+                                @onclick="SaveGroupName">
+                            <svg class="category-action-icon" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </button>
+                        <button type="button" class="category-icon-button"
+                                aria-label="Cancel group rename" title="Cancel group rename"
+                                @onclick="CancelGroupRename">
+                            <svg class="category-action-icon" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M19 12H5m0 0 7-7m-7 7 7 7"></path>
+                            </svg>
+                        </button>
+                    }
+                    else {
+                        <button @ref="groupNameButtonReferences[group.Id]"
+                                type="button" class="category-name-trigger"
+                                aria-label="@($"Rename group {group.Name}")"
+                                title="@($"Rename group {group.Name}")"
+                                @onclick="() => BeginGroupRename(group)">@group.Name</button>
+                    }
+                    <span class="combo-group-count"
+                          title="@($"{comboCount} combos assigned")">@comboCount</span>
+                    <button type="button" class="btn-close category-delete-button"
+                            aria-label="@($"Remove group {group.Name}")"
+                            title="@($"Remove group {group.Name}")"
+                            @onclick="() => RemoveGroup(group)"></button>
+                </span>
+            }
+        </div>
     </div>
     <div class="accordion" id="combosAccordion">
         @for (var index = 0; index < Combos.Count; index++) {
@@ -69,10 +110,20 @@
     [Parameter] public EventCallback<string> OnRemoveGroup { get; set; }
 
     private readonly EditorKeys<Combo> editorKeys = new();
+    private readonly Dictionary<string, ElementReference> groupNameButtonReferences = new(StringComparer.Ordinal);
     private string newGroupName = string.Empty;
     private string? groupError;
+    private string? editingGroupId;
+    private string? editingGroupName;
+    private ElementReference groupRenameInputReference;
+    private bool focusGroupRenameInput;
+    private string? pendingGroupNameFocus;
 
-    protected override void OnParametersSet() => editorKeys.Synchronize(Combos);
+    protected override void OnParametersSet() {
+        editorKeys.Synchronize(Combos);
+        if (editingGroupId is { } id && !ComboGroups.Any(group => group.Id == id))
+            ClearGroupRename();
+    }
 
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
         editorKeys.Replace(Combos[payload.Index], payload.NewCombo);
@@ -87,12 +138,54 @@
         groupError = null;
     }
 
-    private Task RenameGroup(ComboGroup group, string? value) {
-        var name = value?.Trim() ?? string.Empty;
-        if (name == group.Name) return Task.CompletedTask;
-        if (!ValidateName(name, group.Id)) return Task.CompletedTask;
+    private Task HandleAddGroupKeyUp(KeyboardEventArgs e) =>
+        e.Key == "Enter" ? AddGroup() : Task.CompletedTask;
+
+    private void BeginGroupRename(ComboGroup group) {
+        editingGroupId = group.Id;
+        editingGroupName = group.Name;
         groupError = null;
-        return OnRenameGroup.InvokeAsync((group.Id, name));
+        pendingGroupNameFocus = null;
+        focusGroupRenameInput = true;
+    }
+
+    private async Task SaveGroupName() {
+        if (editingGroupId is not { } id) return;
+        var name = editingGroupName?.Trim() ?? string.Empty;
+        if (!ValidateName(name, id)) return;
+        var group = ComboGroups.FirstOrDefault(item => item.Id == id);
+        if (group is null) {
+            ClearGroupRename();
+            return;
+        }
+
+        groupError = null;
+        if (!string.Equals(name, group.Name, StringComparison.Ordinal))
+            await OnRenameGroup.InvokeAsync((id, name));
+        pendingGroupNameFocus = id;
+        ClearGroupRename();
+    }
+
+    private void CancelGroupRename() {
+        pendingGroupNameFocus = editingGroupId;
+        ClearGroupRename();
+    }
+
+    private void ClearGroupRename() {
+        editingGroupId = null;
+        editingGroupName = null;
+        focusGroupRenameInput = false;
+    }
+
+    private Task HandleGroupRenameKeyDown(KeyboardEventArgs e) {
+        if (e.Key == "Enter") return SaveGroupName();
+        if (e.Key == "Escape") CancelGroupRename();
+        return Task.CompletedTask;
+    }
+
+    private async Task RemoveGroup(ComboGroup group) {
+        if (editingGroupId == group.Id) ClearGroupRename();
+        await OnRemoveGroup.InvokeAsync(group.Id);
     }
 
     private bool ValidateName(string name, string? excludingId = null) {
@@ -103,5 +196,18 @@
                 ? "A group with that name already exists."
                 : null;
         return groupError is null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (focusGroupRenameInput) {
+            focusGroupRenameInput = false;
+            await groupRenameInputReference.FocusAsync();
+            return;
+        }
+
+        if (pendingGroupNameFocus is { } id && groupNameButtonReferences.TryGetValue(id, out var button)) {
+            pendingGroupNameFocus = null;
+            await button.FocusAsync();
+        }
     }
 }

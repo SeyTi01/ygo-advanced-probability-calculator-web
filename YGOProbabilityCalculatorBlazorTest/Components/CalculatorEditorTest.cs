@@ -43,6 +43,13 @@ public class CalculatorEditorTest {
     private static IElement Button(IRenderedFragment fragment, string text) =>
         fragment.FindAll("button").Single(element => element.TextContent.Trim() == text);
 
+    private static void RenameGroupWithEnter(IRenderedFragment fragment, string oldName, string newName) {
+        fragment.Find($"[aria-label='Rename group {oldName}']").Click();
+        var input = fragment.Find($"[aria-label='New name for group {oldName}']");
+        input.Input(newName);
+        input.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+    }
+
     private SessionState Session() => new() {
         Categories = [a, b], Cards = [new([a], 2, "First"), new([b], 2, "Second")],
         Combos = [new([new(a, 1, 2)], "First combo"), new([new(b, 1, 2)], "Second combo")], HandSize = 2
@@ -361,7 +368,7 @@ public class CalculatorEditorTest {
         context.Services.AddSingleton<IDeckImportService, DeckImportService>();
         var cut = Render(Session());
         cut.Find("[aria-label='New combo group name']").Input("Tier 1");
-        Button(cut, "Add group").Click();
+        cut.Find("[aria-label='Add combo group']").Click();
         var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
         cut.Find("#comboGroup0").Change(groupId);
         Button(cut, "Calculate").Click();
@@ -374,7 +381,7 @@ public class CalculatorEditorTest {
             Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         });
         var card = cut.FindComponent<CardEditor>();
-        Assert.That(cut.FindAll(".combo-group-editor"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.GroupId, Is.EqualTo(groupId));
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Imported").And.Contain("(2)"));
         Assert.That(card.Find("select").GetAttribute("value"), Is.Null.Or.Empty);
@@ -428,46 +435,66 @@ public class CalculatorEditorTest {
     }
 
     [Test]
-    public void ComboGroupsCanBeCreatedRenamedAssignedAndRemovedWithoutLosingComboDrafts() {
+    public void ComboGroupsUseCategoryStyleInlineEditingAndKeepAssignmentsAndComboDrafts() {
         var cut = Render(Session());
         var first = cut.FindComponents<ComboEditor>()[0];
         first.Find("#comboCategory0").Change("B");
         first.Find("#minCount0").Input("0");
         first.Find("#maxCount0").Input("0");
 
-        Button(cut, "Add group").Click();
+        cut.Find("[aria-label='Add combo group']").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
         cut.Find("[aria-label='New combo group name']").Input("Tier 1");
-        Button(cut, "Add group").Click();
+        cut.Find("[aria-label='New combo group name']")
+            .KeyUp(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+        Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
         cut.Find("[aria-label='New combo group name']").Input("tier 1");
-        Button(cut, "Add group").Click();
+        cut.Find("[aria-label='New combo group name']")
+            .KeyUp(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("already exists"));
-        var group = cut.Find(".combo-group-editor");
-        var groupId = group.QuerySelector("input")!.GetAttribute("value");
-        Assert.That(groupId, Is.EqualTo("Tier 1"));
-        first.Find("#comboGroup0").Change(
-            first.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!);
-        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
-        Assert.That(first.Instance.Combo.GroupId, Is.Not.Null);
-
-        cut.Find("[aria-label='Rename group Tier 1']").Change("Tier One");
-        Assert.That(first.Instance.Combo.GroupId,
-            Is.EqualTo(cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")));
-        Assert.That(cut.Find("#comboGroup0").TextContent, Does.Contain("Tier One"));
+        var groupId = first.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
+        first.Find("#comboGroup0").Change(groupId);
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.Find("[aria-label='New combo group name']").Input("Tier 2");
-        Button(cut, "Add group").Click();
+        cut.Find("[aria-label='New combo group name']")
+            .KeyUp(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
         var secondId = cut.FindAll("#comboGroup0 option:not([value=''])")[1].GetAttribute("value")!;
+
+        cut.Find("[aria-label='Rename group Tier 1']").Click();
+        context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 1);
+        cut.Find("[aria-label='New name for group Tier 1']").Input("");
+        cut.Find("[aria-label='Save group name']").Click();
+        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
+        cut.Find("[aria-label='New name for group Tier 1']").Input("tier 2");
+        cut.Find("[aria-label='Save group name']").Click();
+        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("already exists"));
+        cut.Find("[aria-label='New name for group Tier 1']").Input("Tier One");
+        cut.Find("[aria-label='New name for group Tier 1']")
+            .KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+        context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 2);
+        Assert.That(cut.Find("[aria-label='Rename group Tier One']").TextContent, Is.EqualTo("Tier One"));
+        Assert.That(first.Instance.Combo.GroupId,
+            Is.EqualTo(groupId));
+        Assert.That(cut.Find("#comboGroup0").TextContent, Does.Contain("Tier One"));
+        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+
+        cut.Find("[aria-label='Rename group Tier 2']").Click();
+        var secondRename = cut.Find("[aria-label='New name for group Tier 2']");
+        secondRename.Input("Discarded");
+        secondRename.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
+        context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 4);
+        Assert.That(cut.Find("[aria-label='Rename group Tier 2']").TextContent, Is.EqualTo("Tier 2"));
+
         cut.Find("#comboGroup0").Change(secondId);
         Assert.That(first.Instance.Combo.GroupId, Is.EqualTo(secondId));
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.Find("[aria-label='Remove group Tier One']").Click();
-        Assert.That(cut.FindAll(".combo-group-editor"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
         Assert.That(first.Instance.Combo.GroupId, Is.EqualTo(secondId));
         cut.Find("[aria-label='Remove group Tier 2']").Click();
-        Assert.That(cut.FindAll(".combo-group-editor"), Is.Empty);
+        Assert.That(cut.FindAll(".combo-group-chip"), Is.Empty);
         Assert.That(first.Instance.Combo.GroupId, Is.Null);
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(2));
@@ -478,7 +505,7 @@ public class CalculatorEditorTest {
         var session = Session();
         var cut = Render(session);
         cut.Find("[aria-label='New combo group name']").Input("Tier 1");
-        Button(cut, "Add group").Click();
+        cut.Find("[aria-label='Add combo group']").Click();
         var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
         cut.Find("#comboGroup0").Change(groupId);
         cut.Find("#comboGroup1").Change(groupId);
@@ -493,7 +520,7 @@ public class CalculatorEditorTest {
             Assert.That(result.QuerySelectorAll(".combo-probability-item").Length, Is.EqualTo(2));
         });
 
-        cut.Find("[aria-label='Rename group Tier 1']").Change("Tier One");
+        RenameGroupWithEnter(cut, "Tier 1", "Tier One");
         Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         Button(cut, "Calculate").Click();
         cut.WaitForAssertion(() => Assert.That(cut.Find(".probability-group").TextContent, Does.Contain("Tier One")));
@@ -518,7 +545,7 @@ public class CalculatorEditorTest {
     public void GroupMembershipAndInactiveStateRoundTripWhileLegacySessionsRemainUngrouped() {
         var cut = Render(Session());
         cut.Find("[aria-label='New combo group name']").Input("Tier 1");
-        Button(cut, "Add group").Click();
+        cut.Find("[aria-label='Add combo group']").Click();
         var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
         cut.Find("#comboGroup0").Change(groupId);
         cut.Find("#comboActive0").Change(false);
@@ -529,7 +556,7 @@ public class CalculatorEditorTest {
 
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "groups.json"));
         cut.WaitForAssertion(() => {
-            Assert.That(cut.FindAll(".combo-group-editor"), Has.Count.EqualTo(1));
+            Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
             Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.GroupId, Is.EqualTo(groupId));
             Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.Active, Is.False);
         });
@@ -539,7 +566,7 @@ public class CalculatorEditorTest {
             """;
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(legacy, "legacy.json"));
         cut.WaitForAssertion(() => {
-            Assert.That(cut.FindAll(".combo-group-editor"), Is.Empty);
+            Assert.That(cut.FindAll(".combo-group-chip"), Is.Empty);
             Assert.That(cut.FindComponent<ComboEditor>().Instance.Combo.GroupId, Is.Null);
             Assert.That(cut.FindComponent<ComboEditor>().Instance.Combo.Active, Is.True);
         });
