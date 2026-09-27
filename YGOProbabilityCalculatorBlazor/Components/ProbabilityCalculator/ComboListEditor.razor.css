@@ -87,15 +87,3 @@
     background-color: var(--category-action-hover);
     opacity: 1;
 }
-
-.combo-group-count {
-    flex: 0 0 auto;
-    opacity: 0.75;
-    font-size: 0.75em;
-}
-
-.combo-group-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-}
