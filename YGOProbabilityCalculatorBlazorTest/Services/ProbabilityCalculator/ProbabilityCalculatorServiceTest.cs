@@ -28,7 +28,7 @@ public class ProbabilityCalculatorServiceTest {
     }
 
     [Test]
-    public void MultipleRangedCategories_ZeroToThree_ShouldBe100Percent() {
+    public void MultipleRangedCategories_ZeroToHandSize_ShouldBe100Percent() {
         const int handSize = 5;
 
         var categoryA = new CategoryBase("A");
@@ -169,5 +169,37 @@ public class ProbabilityCalculatorServiceTest {
 
         var probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], handSize);
         Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));
+    }
+
+    [Test]
+    public void SixtyCardDeckMatchesExactHypergeometricFractions() {
+        var a = new CategoryBase("A");
+        // Exact Wolfram evaluations: 1-C(57,5)/C(60,5),
+        // C(30,15)^2/C(60,30), and 1/C(60,30), respectively.
+        AssertProbability([new([a], 3), new([], 57)], new([new(a, 1, 5)]), 5, 1597.0 / 6844.0);
+        AssertProbability([new([a], 30), new([], 30)], new([new(a, 15, 15)]), 30, 4655852362800.0 / 22884013460693.0);
+        AssertProbability([new([a], 30), new([], 30)], new([new(a, 30, 30)]), 30, 1.0 / 118264581564861424.0);
+
+        void AssertProbability(List<Card> deck, Combo combo, int handSize, double expected) {
+            var actual = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], handSize);
+            // Relative tolerance matters for the ~8.46e-18 rare event; an absolute
+            // 1e-12 tolerance would incorrectly accept zero.
+            Assert.That(actual, Is.EqualTo(expected).Within(expected * Tolerance));
+            Assert.That(double.IsFinite(actual) && actual is >= 0 and <= 1, Is.True);
+        }
+    }
+
+    [TestCase(8)]
+    [TestCase(16)]
+    public void RepeatedOverlappingEventsDoNotAccumulateMaterialCancellationError(int comboCount) {
+        var a = new CategoryBase("A");
+        List<Card> deck = [new([a], 3), new([], 37)];
+        var combos = Enumerable.Range(0, comboCount).Select(_ => new Combo(new[] { new ComboCategory(a, 1, 5) })).ToList();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var actual = _probabilityCalculator.CalculateProbabilityForCombos(deck, combos, 5);
+        TestContext.Out.WriteLine($"40 cards / {comboCount} duplicate combos: {timer.Elapsed.TotalMilliseconds:F1} ms; error {actual - 667.0 / 1976.0:E3}");
+        // Wolfram: 1-C(37,5)/C(40,5), irrespective of duplicate count.
+        Assert.That(actual, Is.EqualTo(667.0 / 1976.0).Within(Tolerance));
+        Assert.That(double.IsFinite(actual) && actual is >= 0 and <= 1, Is.True);
     }
 }
