@@ -640,7 +640,27 @@ public class CalculatorEditorTest {
         cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Is.Empty));
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ResourceLimitIsExplainedUnlessInputsHaveChanged(bool changeInputs) {
+        var calculator = new DelayedProbabilityCalculator { ExceedLimit = true };
+        context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
+        var cut = Render(Session());
+        Button(cut, "Calculate").Click();
+        try {
+            Assert.That(calculator.Started.Wait(TimeSpan.FromSeconds(5)), Is.True);
+            if (changeInputs) cut.Find("#handSize").Change("3");
+        }
+        finally { calculator.Continue.Set(); }
+        cut.WaitForAssertion(() => {
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+            Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+            Assert.That(cut.Markup.Contains("Calculation stopped"), Is.EqualTo(!changeInputs));
+        });
+    }
+
     private sealed class DelayedProbabilityCalculator : IProbabilityCalculatorService {
+        public bool ExceedLimit { get; init; }
         public ManualResetEventSlim Started { get; } = new(false);
         public ManualResetEventSlim Continue { get; } = new(false);
         public ManualResetEventSlim Finished { get; } = new(false);
@@ -653,6 +673,7 @@ public class CalculatorEditorTest {
             try {
                 if (!Continue.Wait(TimeSpan.FromSeconds(10)))
                     throw new TimeoutException("The test did not release the delayed calculation.");
+                if (ExceedLimit) throw new ProbabilityCalculationLimitException();
                 return new ProbabilityCalculationResult(
                     0.75,
                     [new ComboProbabilityResult(0, "Stale combo", 0.5)]);
