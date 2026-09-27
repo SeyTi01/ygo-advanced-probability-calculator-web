@@ -2,12 +2,38 @@
 
 <div class="mb-4">
     <h4>Combos</h4>
+    <div class="mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <strong>Combo groups</strong>
+            <input class="form-control form-control-sm combo-group-new-name" type="text"
+                   aria-label="New combo group name" placeholder="Group name"
+                   value="@newGroupName" @oninput="e => newGroupName = e.Value?.ToString() ?? string.Empty" />
+            <button class="btn btn-outline-primary btn-sm" type="button" @onclick="AddGroup">Add group</button>
+        </div>
+        @if (groupError is not null) {
+            <div class="text-danger small mb-2" role="alert">@groupError</div>
+        }
+        @foreach (var group in ComboGroups) {
+            <div class="d-flex align-items-center gap-2 mb-1 combo-group-editor" @key="group.Id">
+                <input class="form-control form-control-sm combo-group-name" type="text" value="@group.Name"
+                       aria-label="@($"Rename group {group.Name}")"
+                       title="@($"Rename group {group.Name}")"
+                       @onchange="e => RenameGroup(group, e.Value?.ToString())" />
+                <span class="badge text-bg-secondary">@Combos.Count(combo => combo.GroupId == group.Id)</span>
+                <button class="btn btn-outline-danger btn-sm" type="button"
+                        aria-label="@($"Remove group {group.Name}")"
+                        title="@($"Remove group {group.Name}")"
+                        @onclick="() => OnRemoveGroup.InvokeAsync(group.Id)">Remove</button>
+            </div>
+        }
+    </div>
     <div class="accordion" id="combosAccordion">
         @for (var index = 0; index < Combos.Count; index++) {
             <ComboEditor @key="editorKeys[Combos[index]]"
                 Index="index"
                 Combo="Combos[index]"
                 CategoryBases="CategoryBases"
+                ComboGroups="ComboGroups"
                 CategoryColorIndices="CategoryColorIndices"
                 CategoryRename="CategoryRename"
                 ActiveComboIndex="ActiveComboIndex"
@@ -26,6 +52,7 @@
 
 @code {
     [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];
+    [Parameter] public IReadOnlyList<ComboGroup> ComboGroups { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
@@ -37,13 +64,44 @@
     [Parameter] public EventCallback<(int Index, Combo NewCombo)> OnReplaceCombo { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCombo { get; set; }
     [Parameter] public EventCallback OnAddNewCombo { get; set; }
+    [Parameter] public EventCallback<string> OnAddGroup { get; set; }
+    [Parameter] public EventCallback<(string Id, string Name)> OnRenameGroup { get; set; }
+    [Parameter] public EventCallback<string> OnRemoveGroup { get; set; }
 
     private readonly EditorKeys<Combo> editorKeys = new();
+    private string newGroupName = string.Empty;
+    private string? groupError;
 
     protected override void OnParametersSet() => editorKeys.Synchronize(Combos);
 
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
         editorKeys.Replace(Combos[payload.Index], payload.NewCombo);
         return OnReplaceCombo.InvokeAsync(payload);
+    }
+
+    private async Task AddGroup() {
+        var name = newGroupName.Trim();
+        if (!ValidateName(name)) return;
+        await OnAddGroup.InvokeAsync(name);
+        newGroupName = string.Empty;
+        groupError = null;
+    }
+
+    private Task RenameGroup(ComboGroup group, string? value) {
+        var name = value?.Trim() ?? string.Empty;
+        if (name == group.Name) return Task.CompletedTask;
+        if (!ValidateName(name, group.Id)) return Task.CompletedTask;
+        groupError = null;
+        return OnRenameGroup.InvokeAsync((group.Id, name));
+    }
+
+    private bool ValidateName(string name, string? excludingId = null) {
+        groupError = string.IsNullOrWhiteSpace(name)
+            ? "Group name cannot be empty."
+            : ComboGroups.Any(group => group.Id != excludingId &&
+                string.Equals(group.Name, name, StringComparison.OrdinalIgnoreCase))
+                ? "A group with that name already exists."
+                : null;
+        return groupError is null;
     }
 }

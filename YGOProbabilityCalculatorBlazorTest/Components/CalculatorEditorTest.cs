@@ -360,6 +360,10 @@ public class CalculatorEditorTest {
         context.Services.AddSingleton(cardInfo.Object);
         context.Services.AddSingleton<IDeckImportService, DeckImportService>();
         var cut = Render(Session());
+        cut.Find("[aria-label='New combo group name']").Input("Tier 1");
+        Button(cut, "Add group").Click();
+        var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
+        cut.Find("#comboGroup0").Change(groupId);
         Button(cut, "Calculate").Click();
         cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1)));
         cut.FindComponents<CardEditor>()[0].Find("select").Change("B");
@@ -370,6 +374,8 @@ public class CalculatorEditorTest {
             Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         });
         var card = cut.FindComponent<CardEditor>();
+        Assert.That(cut.FindAll(".combo-group-editor"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.GroupId, Is.EqualTo(groupId));
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Imported").And.Contain("(2)"));
         Assert.That(card.Find("select").GetAttribute("value"), Is.Null.Or.Empty);
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
@@ -418,6 +424,124 @@ public class CalculatorEditorTest {
                 Assert.That(rows[index].QuerySelector(".combo-probability-value")!.TextContent,
                     Is.EqualTo(expectedStandalone[index].ToString("P2")));
             }
+        });
+    }
+
+    [Test]
+    public void ComboGroupsCanBeCreatedRenamedAssignedAndRemovedWithoutLosingComboDrafts() {
+        var cut = Render(Session());
+        var first = cut.FindComponents<ComboEditor>()[0];
+        first.Find("#comboCategory0").Change("B");
+        first.Find("#minCount0").Input("0");
+        first.Find("#maxCount0").Input("0");
+
+        Button(cut, "Add group").Click();
+        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
+        cut.Find("[aria-label='New combo group name']").Input("Tier 1");
+        Button(cut, "Add group").Click();
+        cut.Find("[aria-label='New combo group name']").Input("tier 1");
+        Button(cut, "Add group").Click();
+        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("already exists"));
+        var group = cut.Find(".combo-group-editor");
+        var groupId = group.QuerySelector("input")!.GetAttribute("value");
+        Assert.That(groupId, Is.EqualTo("Tier 1"));
+        first.Find("#comboGroup0").Change(
+            first.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!);
+        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(first.Instance.Combo.GroupId, Is.Not.Null);
+
+        cut.Find("[aria-label='Rename group Tier 1']").Change("Tier One");
+        Assert.That(first.Instance.Combo.GroupId,
+            Is.EqualTo(cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")));
+        Assert.That(cut.Find("#comboGroup0").TextContent, Does.Contain("Tier One"));
+        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+
+        cut.Find("[aria-label='New combo group name']").Input("Tier 2");
+        Button(cut, "Add group").Click();
+        var secondId = cut.FindAll("#comboGroup0 option:not([value=''])")[1].GetAttribute("value")!;
+        cut.Find("#comboGroup0").Change(secondId);
+        Assert.That(first.Instance.Combo.GroupId, Is.EqualTo(secondId));
+        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+
+        cut.Find("[aria-label='Remove group Tier One']").Click();
+        Assert.That(cut.FindAll(".combo-group-editor"), Has.Count.EqualTo(1));
+        Assert.That(first.Instance.Combo.GroupId, Is.EqualTo(secondId));
+        cut.Find("[aria-label='Remove group Tier 2']").Click();
+        Assert.That(cut.FindAll(".combo-group-editor"), Is.Empty);
+        Assert.That(first.Instance.Combo.GroupId, Is.Null);
+        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void GroupResultsUseActiveMembersAndAllGroupChangesInvalidateResults() {
+        var session = Session();
+        var cut = Render(session);
+        cut.Find("[aria-label='New combo group name']").Input("Tier 1");
+        Button(cut, "Add group").Click();
+        var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
+        cut.Find("#comboGroup0").Change(groupId);
+        cut.Find("#comboGroup1").Change(groupId);
+
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => {
+            var result = cut.Find(".probability-results");
+            var active = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo).ToList();
+            var expected = SmallDeckOracleTest.EnumerateProbability(session.Cards, active, 2);
+            Assert.That(result.QuerySelector(".probability-group .combo-probability-value")!.TextContent,
+                Is.EqualTo(expected.ToString("P2")));
+            Assert.That(result.QuerySelectorAll(".combo-probability-item").Length, Is.EqualTo(2));
+        });
+
+        cut.Find("[aria-label='Rename group Tier 1']").Change("Tier One");
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => Assert.That(cut.Find(".probability-group").TextContent, Does.Contain("Tier One")));
+        cut.Find("#comboActive1").Change(false);
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => {
+            var first = cut.FindComponents<ComboEditor>()[0].Instance.Combo;
+            var expected = SmallDeckOracleTest.EnumerateProbability(session.Cards, [first], 2);
+            Assert.That(cut.Find(".probability-group .combo-probability-value").TextContent,
+                Is.EqualTo(expected.ToString("P2")));
+            Assert.That(cut.FindAll(".combo-probability-item"), Has.Count.EqualTo(1));
+        });
+        cut.Find("#comboGroup0").Change("");
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => Assert.That(
+            cut.Find(".probability-group .combo-probability-value").TextContent, Is.EqualTo(0.0.ToString("P2"))));
+    }
+
+    [Test]
+    public void GroupMembershipAndInactiveStateRoundTripWhileLegacySessionsRemainUngrouped() {
+        var cut = Render(Session());
+        cut.Find("[aria-label='New combo group name']").Input("Tier 1");
+        Button(cut, "Add group").Click();
+        var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
+        cut.Find("#comboGroup0").Change(groupId);
+        cut.Find("#comboActive0").Change(false);
+        Button(cut, "Save Session").Click();
+        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        Assert.That(json, Does.Contain("\"ComboGroups\"").And.Contain("\"GroupId\""));
+
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "groups.json"));
+        cut.WaitForAssertion(() => {
+            Assert.That(cut.FindAll(".combo-group-editor"), Has.Count.EqualTo(1));
+            Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.GroupId, Is.EqualTo(groupId));
+            Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.Active, Is.False);
+        });
+
+        const string legacy = """
+            {"Categories":[{"Name":"A"}],"Cards":[],"Combos":[{"Categories":[],"Name":"Legacy"}],"HandSize":5}
+            """;
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(legacy, "legacy.json"));
+        cut.WaitForAssertion(() => {
+            Assert.That(cut.FindAll(".combo-group-editor"), Is.Empty);
+            Assert.That(cut.FindComponent<ComboEditor>().Instance.Combo.GroupId, Is.Null);
+            Assert.That(cut.FindComponent<ComboEditor>().Instance.Combo.Active, Is.True);
         });
     }
 
@@ -472,7 +596,8 @@ public class CalculatorEditorTest {
 
         public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) => 0.75;
 
-        public ProbabilityCalculationResult CalculateProbabilityResults(List<Card> deck, List<Combo> combos, int handSize) {
+        public ProbabilityCalculationResult CalculateProbabilityResults(
+            List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
             Started.Set();
             try {
                 if (!Continue.Wait(TimeSpan.FromSeconds(10)))
