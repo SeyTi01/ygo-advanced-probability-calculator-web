@@ -420,25 +420,11 @@
 
             var session = await _sessionService.LoadSessionAsync(fileContent);
 
-            categoryBases.Clear();
-            categoryBases.AddRange(session.Categories);
-
-            cards.Clear();
-            cards.AddRange(session.Cards);
-
-            combos.Clear();
-            combos.AddRange(session.Combos);
-            comboGroups.Clear();
-            comboGroups.AddRange(session.ComboGroups ?? []);
-
-            RestoreCategoryColorIndices(session);
-            handSize = session.HandSize;
+            RestoreSessionData(session);
             activeCardIndex = -1;
             activeComboIndex = -1;
             InvalidateCalculation(clearPreviousResult: true);
             sessionVersion++;
-
-            errorMessage = null;
         }
         catch (Exception ex) {
             errorMessage = $"Failed to load session: {ex.Message}";
@@ -448,6 +434,22 @@
     private async Task SaveCurrentSession() {
         var fileName = $"calculator_session_{DateTime.Now:yyyyMMdd_HHmmss}.json";
         await SaveSession(fileName);
+    }
+
+    private void RestoreSessionData(SessionState session) {
+        categoryBases.Clear();
+        categoryBases.AddRange(session.Categories);
+
+        cards.Clear();
+        cards.AddRange(session.Cards);
+
+        combos.Clear();
+        combos.AddRange(session.Combos);
+        comboGroups.Clear();
+        comboGroups.AddRange(session.ComboGroups ?? []);
+
+        RestoreCategoryColorIndices(session);
+        handSize = session.HandSize;
     }
 
     private void OnHandSizeChanged() => InvalidateCalculation();
@@ -469,19 +471,7 @@
     protected override void OnInitialized() {
         if (_pendingSessionService.PendingSession is { } session) {
             try {
-                categoryBases.Clear();
-                categoryBases.AddRange(session.Categories);
-
-                cards.Clear();
-                cards.AddRange(session.Cards);
-
-                combos.Clear();
-                combos.AddRange(session.Combos);
-                comboGroups.Clear();
-                comboGroups.AddRange(session.ComboGroups ?? []);
-
-                RestoreCategoryColorIndices(session);
-                handSize = session.HandSize;
+                RestoreSessionData(session);
 
                 _pendingSessionService.PendingSession = null;
             }
