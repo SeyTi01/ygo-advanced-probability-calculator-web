@@ -98,7 +98,7 @@ public class CalculatorEditorTest {
         Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", "C"), Is.EqualTo(colorC));
 
         cut.Find("[placeholder='Category name']").Input("D");
-        Button(cut, "Add Category").Click();
+        cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
         var colorD = CategoryColorClass(categoryList, ".category-chip", "D");
         Assert.That(colorD, Is.Not.EqualTo(colorA).And.Not.EqualTo(colorC));
     }
@@ -155,13 +155,13 @@ public class CalculatorEditorTest {
         var cut = Render();
         Button(cut, "Add New Card").Click();
         Button(cut, "Add New Combo").Click();
-        Button(cut, "Add Category").Click();
+        cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
         cut.Find("[placeholder='Category name']").Input("A");
-        Button(cut, "Add Category").Click();
+        cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
         Assert.That(cut.FindAll("select option[value=A]"), Has.Count.EqualTo(2));
         cut.Find("[placeholder='Category name']").Input("a");
-        Button(cut, "Add Category").Click();
+        cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("already exists"));
         var card = cut.FindComponent<CardEditor>();
         card.Find("select").Change("A");
