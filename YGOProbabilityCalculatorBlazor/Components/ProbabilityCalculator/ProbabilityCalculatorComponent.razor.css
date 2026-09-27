@@ -43,8 +43,9 @@
 }
 
 .combo-probability-list {
+    list-style: none;
     margin-bottom: 0;
-    padding-left: 1.5rem;
+    padding-left: 0;
 }
 
 .combo-probability-item {
