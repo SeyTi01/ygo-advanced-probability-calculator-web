@@ -56,6 +56,26 @@ public class CalculatorEditorTest {
     };
 
     [Test]
+    public void TooManyActiveCombosExplainTheLimitAndInactiveCombosDoNotCount() {
+        var session = Session();
+        session.Combos.Clear();
+        session.Combos.AddRange(Enumerable.Range(0, 31)
+            .Select(_ => new Combo(new[] { new ComboCategory(a, 1, 2) })));
+        var cut = Render(session);
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Markup, Does.Contain("at most 30 active combos"));
+        cut.Find("#comboActive30").Change(false);
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        for (var index = 1; index < 30; index++) cut.Find($"#comboActive{index}").Change(false);
+        Button(cut, "Calculate").Click();
+        var expected = SmallDeckOracleTest.EnumerateProbability(session.Cards, [session.Combos[0]], session.HandSize);
+        cut.WaitForAssertion(() => {
+            Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(expected.ToString("P2")));
+            Assert.That(cut.FindAll(".combo-probability-item"), Has.Count.EqualTo(1));
+        });
+    }
+
+    [Test]
     public void CategoryColorsStayConsistentAcrossViewsThroughRenameAndUnrelatedDeletion() {
         var categoryA = new CategoryBase("A");
         var categoryB = new CategoryBase("B");
