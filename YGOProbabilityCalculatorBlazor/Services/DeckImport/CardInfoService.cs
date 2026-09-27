@@ -59,7 +59,7 @@ public class CardInfoService : ICardInfoService {
             }
         }
         catch {
-            // ignored
+            // A failed bulk lookup falls back to per-card requests.
         }
     }
 
@@ -81,7 +81,7 @@ public class CardInfoService : ICardInfoService {
             }
         }
         catch {
-            // ignored
+            // Keep imports usable by falling back to the numeric card ID.
         }
     }
 
@@ -100,7 +100,7 @@ public class CardInfoService : ICardInfoService {
             await _localStorage.SetItemAsync(CacheKey, _cache);
         }
         catch {
-            // ignored
+            // The in-memory cache remains usable when browser storage fails.
         }
     }
 }
