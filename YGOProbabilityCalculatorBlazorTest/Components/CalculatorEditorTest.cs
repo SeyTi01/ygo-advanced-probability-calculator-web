@@ -43,6 +43,12 @@ public class CalculatorEditorTest {
     private static IElement Button(IRenderedFragment fragment, string text) =>
         fragment.FindAll("button").Single(element => element.TextContent.Trim() == text);
 
+    private static void AssertPreviousResult(IRenderedFragment fragment) {
+        Assert.That(fragment.FindAll(".probability-results"), Has.Count.EqualTo(1));
+        Assert.That(fragment.Find(".probability-result-status").TextContent.Trim(),
+            Is.EqualTo("Previous result · inputs changed"));
+    }
+
     private static void RenameGroupWithEnter(IRenderedFragment fragment, string oldName, string newName) {
         fragment.Find($"[aria-label='Rename group {oldName}']").Click();
         var input = fragment.Find($"[aria-label='New name for group {oldName}']");
@@ -381,6 +387,11 @@ public class CalculatorEditorTest {
     [Test]
     public void DeckImportReplacesRowsWithoutReusingDraftsAndUpdatesCalculationEligibility() {
         // Exercise the real YDK parser; only the external card-name lookup is stubbed.
+        context.Services.AddSingleton<IProbabilityCalculatorService>(
+            new SequencedProbabilityCalculator(
+                new ProbabilityCalculationResult(
+                    0.75,
+                    [new ComboProbabilityResult(0, "Unused result", 0.6)])));
         context.Services.AddSingleton<IFileService, FileService>();
         var cardInfo = new Mock<ICardInfoService>();
         cardInfo.Setup(x => x.GetCardNameAsync(123)).ReturnsAsync("Imported");
@@ -533,6 +544,7 @@ public class CalculatorEditorTest {
         Assert.That(groupChip.ClassList.Contains("me-2"), Is.True);
         Assert.That(groupChip.TextContent.Trim(), Is.EqualTo("Tier 1"));
 
+        RenameGroupWithEnter(cut, "Tier 1", "Tier One");
         Button(cut, "Calculate").Click();
         cut.WaitForAssertion(() => {
             var result = cut.Find(".probability-results");
@@ -541,14 +553,15 @@ public class CalculatorEditorTest {
             Assert.That(result.QuerySelector(".probability-group .combo-probability-value")!.TextContent,
                 Is.EqualTo(expected.ToString("P2")));
             Assert.That(result.QuerySelectorAll(".combo-probability-item").Length, Is.EqualTo(2));
+            Assert.That(result.QuerySelector(".probability-group")!.TextContent, Does.Contain("Tier One"));
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         });
 
-        RenameGroupWithEnter(cut, "Tier 1", "Tier One");
-        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(cut.Find(".probability-group").TextContent, Does.Contain("Tier One")));
-        cut.Find("#comboActive1").Change(false);
-        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        var secondComboEditor = cut.FindComponents<ComboEditor>()[1];
+        secondComboEditor.Find("#comboActive1").Change(false);
+        Assert.That(secondComboEditor.Find("#comboActive1").HasAttribute("checked"), Is.False);
+        Assert.That(secondComboEditor.Instance.Combo.Active, Is.False);
+        AssertPreviousResult(cut);
         Button(cut, "Calculate").Click();
         cut.WaitForAssertion(() => {
             var first = cut.FindComponents<ComboEditor>()[0].Instance.Combo;
@@ -556,12 +569,14 @@ public class CalculatorEditorTest {
             Assert.That(cut.Find(".probability-group .combo-probability-value").TextContent,
                 Is.EqualTo(expected.ToString("P2")));
             Assert.That(cut.FindAll(".combo-probability-item"), Has.Count.EqualTo(1));
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         });
         cut.Find("#comboGroup0").Change("");
-        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        AssertPreviousResult(cut);
         Button(cut, "Calculate").Click();
         cut.WaitForAssertion(() => Assert.That(
             cut.Find(".probability-group .combo-probability-value").TextContent, Is.EqualTo(0.0.ToString("P2"))));
+        cut.WaitForAssertion(() => Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False));
     }
 
     [Test]
@@ -605,7 +620,7 @@ public class CalculatorEditorTest {
         cut.WaitForElement("[aria-label='New name for category A']", TimeSpan.FromSeconds(5))
             .Input("Renamed A");
         cut.Find("[aria-label='Save category name']").Click();
-        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        AssertPreviousResult(cut);
 
         var cards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
             .Where(card => card.Active).ToList();
@@ -616,6 +631,114 @@ public class CalculatorEditorTest {
         cut.WaitForAssertion(() => Assert.That(
             cut.Find(".probability-total").TextContent,
             Does.Contain(expected.ToString("P2"))));
+        Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
+    }
+
+    [Test]
+    public void ResultsRemainVisibleAndAreReplacedOnlyWhenRecalculationSucceeds() {
+        var calculator = new SequencedProbabilityCalculator(
+            new ProbabilityCalculationResult(
+                0.75,
+                [new ComboProbabilityResult(0, "Updated combo", 0.6)]));
+        context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
+        var cut = Render(Session());
+
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => {
+            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+            Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Original combo"));
+        });
+
+        cut.Find("#handSize").Change("3");
+        AssertPreviousResult(cut);
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+        Assert.That(calculator.CallCount, Is.EqualTo(1), "input edits must not calculate automatically");
+
+        Button(cut, "Calculate").Click();
+        try {
+            Assert.That(calculator.SecondStarted.Wait(TimeSpan.FromSeconds(5)), Is.True,
+                "the second calculation should be pending");
+            Assert.That(cut.Find(".results-section button").HasAttribute("disabled"), Is.True);
+            AssertPreviousResult(cut);
+            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+        }
+        finally {
+            calculator.ContinueSecond.Set();
+        }
+
+        cut.WaitForAssertion(() => {
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.75.ToString("P2")));
+            Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Updated combo"));
+            Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
+        });
+    }
+
+    [Test]
+    public void InvalidatedInFlightCalculationCannotReplaceThePreviousResult() {
+        var calculator = new SequencedProbabilityCalculator(
+            new ProbabilityCalculationResult(
+                0.9,
+                [new ComboProbabilityResult(0, "Stale completion", 0.8)]));
+        context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
+        var cut = Render(Session());
+
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() =>
+            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2"))));
+
+        Button(cut, "Calculate").Click();
+        try {
+            Assert.That(calculator.SecondStarted.Wait(TimeSpan.FromSeconds(5)), Is.True,
+                "the in-flight calculation should start before inputs change");
+            cut.Find("#handSize").Change("3");
+            AssertPreviousResult(cut);
+            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+        }
+        finally {
+            calculator.ContinueSecond.Set();
+        }
+
+        cut.WaitForAssertion(() => {
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+            AssertPreviousResult(cut);
+            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+            Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Original combo"));
+            Assert.That(cut.Markup, Does.Not.Contain("Stale completion"));
+        });
+    }
+
+    [Test]
+    public void CalculationErrorKeepsOldNumbersMarkedAsPreviousInputs() {
+        var calculator = new SequencedProbabilityCalculator(
+            new ProbabilityCalculationResult(
+                0.9,
+                [new ComboProbabilityResult(0, "Unused result", 0.8)]),
+            failSecond: true);
+        context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
+        var cut = Render(Session());
+
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() =>
+            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2"))));
+        cut.Find("#handSize").Change("3");
+        AssertPreviousResult(cut);
+
+        Button(cut, "Calculate").Click();
+        try {
+            Assert.That(calculator.SecondStarted.Wait(TimeSpan.FromSeconds(5)), Is.True,
+                "the failing calculation should start");
+        }
+        finally {
+            calculator.ContinueSecond.Set();
+        }
+
+        cut.WaitForAssertion(() => {
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+            AssertPreviousResult(cut);
+            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+            Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("Calculation failed: expected test failure"));
+        });
     }
 
     [Test]
@@ -681,6 +804,36 @@ public class CalculatorEditorTest {
             finally {
                 Finished.Set();
             }
+        }
+    }
+
+    private sealed class SequencedProbabilityCalculator(
+        ProbabilityCalculationResult secondResult,
+        bool failSecond = false) : IProbabilityCalculatorService {
+        private int callCount;
+
+        public ManualResetEventSlim SecondStarted { get; } = new(false);
+        public ManualResetEventSlim ContinueSecond { get; } = new(false);
+        public int CallCount => Volatile.Read(ref callCount);
+
+        public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) => 0.75;
+
+        public ProbabilityCalculationResult CalculateProbabilityResults(
+            List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
+            var call = Interlocked.Increment(ref callCount);
+            if (call == 1) {
+                return new ProbabilityCalculationResult(
+                    0.25,
+                    [new ComboProbabilityResult(0, "Original combo", 0.2)]);
+            }
+
+            SecondStarted.Set();
+            if (!ContinueSecond.Wait(TimeSpan.FromSeconds(10)))
+                throw new TimeoutException("The test did not release the second calculation.");
+            if (failSecond)
+                throw new InvalidOperationException("expected test failure");
+
+            return secondResult;
         }
     }
 }
