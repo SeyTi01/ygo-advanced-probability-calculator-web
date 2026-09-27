@@ -3,7 +3,8 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazor.Services.Interface;
 
 public interface IProbabilityCalculatorService {
-    // Mask safety bound, not a performance guarantee: union work is exponential.
+    // Compatibility ceiling, not a performance guarantee. Work/storage budgets
+    // can throw ProbabilityCalculationLimitException even below this count.
     public const int MaxComboCount = 30;
 
     // Callers select active inputs. The service evaluates every supplied entry.

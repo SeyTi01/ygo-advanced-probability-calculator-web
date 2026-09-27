@@ -15,6 +15,11 @@ public class SmallDeckOracleTest {
         yield return Case("zero maximum", deck, [new([new(A, 0, 0)])], 2);
         yield return Case("overlapping categories", deck, [new([new(A, 1, 2), new(B, 1, 2)])], 3);
         yield return Case("overlapping combos", deck, [new([new(A, 1, 3)]), new([new(B, 1, 3)])], 3);
+        yield return Case("shared intersection with coefficient minus two", deck, [
+            new([new(A, 1, 3), new(B, 1, 3)]),
+            new([new(A, 1, 3), new(C, 1, 3)]),
+            new([new(B, 1, 3), new(C, 1, 3)])
+        ], 3);
         yield return Case("subset combos", deck, [new([new(A, 1, 2)]), new([new(A, 1, 2), new(B, 1, 2)])], 2);
         yield return Case("disjoint ranges", deck, [new([new(A, 0, 0)]), new([new(A, 2, 2)])], 2);
         yield return Case("duplicate combos", deck, [
@@ -92,6 +97,16 @@ public class SmallDeckOracleTest {
             index == 0 ? 1 : 0, index == 0 ? 2 : index == 2 ? 0 : 5)))];
         probability = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 5);
         Assert.That(probability, Is.EqualTo(1705.0 / 54834.0).Within(1e-12));
+
+        // The universal event above now skips DP. Keep a genuinely constrained
+        // distribution under the original allocation budget to protect state merging.
+        combos = [new(categories.Select(category => new ComboCategory(category, 1, 4)))];
+        allocated = GC.GetAllocatedBytesForCurrentThread();
+        probability = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 5);
+        allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocated;
+        // Wolfram enumerated 346528 successful labeled hands out of C(40,5)=658008.
+        Assert.That(probability, Is.EqualTo(3332.0 / 6327.0).Within(1e-12));
+        Assert.That(allocatedBytes, Is.LessThan(32 * 1024 * 1024));
     }
 
     [Test]
@@ -244,6 +259,105 @@ public class SmallDeckOracleTest {
         }
     }
 
+    [Test]
+    public void ThirtyEquivalentEventsPreserveEveryResultAndGroupIdentity() {
+        List<Card> deck = [new([A], 2), new([B]), new([A, B]), new([C]), new([], 2)];
+        var combos = Enumerable.Range(0, 30).Select(i => new Combo(i % 2 == 0
+            ? new ComboCategory[] { new(A, 1, 3), new(B, 0, 0), new(A, 0, 1), new(C, 0, 99) }
+            : [new(B, 0, 0), new(A, 1, 1)], $"Combo {i}", i % 4 != 0,
+            i % 3 == 2 ? null : $"g{i % 2}")).ToList();
+        List<ComboGroup> groups = [new("g0", "First"), new("g1", "Second"), new("empty", "Empty")];
+        var allocated = GC.GetAllocatedBytesForCurrentThread();
+        var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 3, groups);
+        var bytes = GC.GetAllocatedBytesForCurrentThread() - allocated;
+        // Also proves that direct callers evaluate inactive entries they supply.
+        Assert.That(result.ComboProbabilities, Has.Count.EqualTo(30));
+        Assert.That(result.TotalProbability, Is.EqualTo(EnumerateProbability(deck, combos, 3)).Within(1e-12));
+        for (var i = 0; i < combos.Count; i++) {
+            Assert.That(result.ComboProbabilities[i].ComboIndex, Is.EqualTo(i));
+            Assert.That(result.ComboProbabilities[i].ComboName, Is.EqualTo(combos[i].Name));
+            Assert.That(result.ComboProbabilities[i].GroupId, Is.EqualTo(combos[i].GroupId));
+            Assert.That(result.ComboProbabilities[i].Probability,
+                Is.EqualTo(EnumerateProbability(deck, [combos[i]], 3)).Within(1e-12));
+        }
+        foreach (var group in result.GroupProbabilities!) {
+            var members = combos.Where(c => c.GroupId == group.GroupId).ToList();
+            Assert.That(group.ActiveComboCount, Is.EqualTo(members.Count));
+            Assert.That(group.Probability, Is.EqualTo(EnumerateProbability(deck, members, 3)).Within(1e-12));
+        }
+        Assert.That(bytes, Is.LessThan(2 * 1024 * 1024), "Duplicate unions must not enumerate 2^30 subsets.");
+    }
+
+    [Test]
+    public void IntersectionsWithRepeatedAndNestedRangesMatchPhysicalHands() {
+        List<Card> deck = [new([A, B]), new([A, C]), new([B, C]), new([A]), new([B]), new([])];
+        List<Combo> combos = [
+            new([new(A, 1, 3), new(B, 0, 2)]),
+            new([new(B, 0, 1), new(A, 1, 2), new(A, 2, 3)]),
+            new([new(A, 0, 0), new(A, 1, 1)]),
+            new([new(C, 1, 2), new(B, 1, 3)]),
+            new([new(A, 0, 0), new(C, 0, 0)]),
+            new([new(A, 2, 2)]),
+            new([new(C, 0, 3), new(B, 0, 2), new(A, 1, 3)])
+        ];
+        for (var h = 1; h <= 4; h++) {
+            TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, h);
+            TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos.AsEnumerable().Reverse().ToList(), h);
+        }
+    }
+
+    [Test]
+    public void CachedProbabilitiesDoNotEscapeTheirRequest() {
+        var service = new ProbabilityCalculatorService();
+        List<Combo> combos = [new([new(A, 1, 1)])];
+        List<Card> first = [new([A]), new([])];
+        List<Card> second = [new([A], 2), new([])];
+        foreach (var deck in new[] { first, second, first })
+            foreach (var h in new[] { 1, 2 })
+                Assert.That(service.CalculateProbabilityResults(deck, combos, h).TotalProbability,
+                    Is.EqualTo(EnumerateProbability(deck, combos, h)).Within(1e-12));
+    }
+
+    [Test]
+    public void CacheCapacityDoesNotChangeUnionOrGroupResults() {
+        var categories = Enumerable.Range(0, 11).Select(i => new CategoryBase($"C{i}")).ToArray();
+        List<Card> deck = [new(categories), new([])];
+        // 2047 syntactically distinct intersections exceed the 1024-entry cache.
+        // On this deck all events coincide, independently checked by the hand oracle.
+        var combos = categories.Select(c => new Combo([new(c, 1, 1)], groupId: "g")).ToList();
+        var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 1, [new("g", "All")]);
+        var expected = EnumerateProbability(deck, combos, 1);
+        Assert.That(result.TotalProbability, Is.EqualTo(expected).Within(1e-12));
+        Assert.That(result.GroupProbabilities![0].Probability, Is.EqualTo(expected).Within(1e-12));
+    }
+
+    [Test]
+    public void DistinctIntersectionGrowthStopsWithAnExplicitResourceError() {
+        var categories = Enumerable.Range(0, 18).Select(i => new CategoryBase($"C{i}")).ToArray();
+        List<Card> deck = [new(categories, 3), new([], 37)];
+        var combos = categories.Select(c => new Combo([new(c, 1, 5)])).ToList();
+        var exception = Assert.Throws<YGOProbabilityCalculatorBlazor.Services.Interface.ProbabilityCalculationLimitException>(
+            () => new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5));
+        Assert.That(exception!.Message, Does.Contain("Calculation stopped"));
+    }
+
+    [Test]
+    public void UniversalEventShortCircuitsBeforeUnnecessaryIntersectionGrowth() {
+        var categories = Enumerable.Range(0, 18).Select(i => new CategoryBase($"C{i}")).ToArray();
+        List<Card> deck = [new(categories), new([])];
+        var combos = categories.Select(c => new Combo([new(c, 1, 1)])).ToList();
+        combos.Add(new Combo([new(A, 0, 99)]));
+        TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, 1);
+    }
+
+    [Test]
+    public void LargeDistributionStopsWithAnExplicitResourceError() {
+        var categories = Enumerable.Range(0, 18).Select(i => new CategoryBase($"C{i}")).ToArray();
+        var deck = categories.Select(c => new Card([c], 2)).ToList();
+        List<Combo> combos = [new(categories.Select(c => new ComboCategory(c, 0, 1)))];
+        Assert.Throws<YGOProbabilityCalculatorBlazor.Services.Interface.ProbabilityCalculationLimitException>(
+            () => new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 9));
+    }
     // Each physical copy has its own position. Visit each unordered hand exactly once;
     // directly evaluate OR-of-combos / AND-of-constraints, without masks, merging,
     // binomial coefficients, inclusion-exclusion, or production helper methods.
