@@ -6,7 +6,11 @@ namespace YGOProbabilityCalculatorBlazor.Services.Interface;
 /// </summary>
 public sealed record ProbabilityCalculationResult(
     double TotalProbability,
-    IReadOnlyList<ComboProbabilityResult> ComboProbabilities);
+    IReadOnlyList<ComboProbabilityResult> ComboProbabilities,
+    IReadOnlyList<GroupProbabilityResult>? GroupProbabilities = null);
+
+/// <summary>The union probability of the active combos assigned to a named group.</summary>
+public sealed record GroupProbabilityResult(string GroupId, string GroupName, double Probability, int ActiveComboCount);
 
 /// <summary>
 /// The standalone probability for a combo at a specific position in the calculator input.
@@ -14,4 +18,4 @@ public sealed record ProbabilityCalculationResult(
 /// <param name="ComboIndex">Zero-based position in the supplied combo list.</param>
 /// <param name="ComboName">The combo's optional display name.</param>
 /// <param name="Probability">Probability that this combo succeeds on its own.</param>
-public sealed record ComboProbabilityResult(int ComboIndex, string? ComboName, double Probability);
+public sealed record ComboProbabilityResult(int ComboIndex, string? ComboName, double Probability, string? GroupId = null);

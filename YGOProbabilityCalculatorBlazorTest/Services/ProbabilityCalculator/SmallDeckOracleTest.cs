@@ -80,6 +80,49 @@ public class SmallDeckOracleTest {
     }
 
     [Test]
+    public void GroupUnionsMatchPhysicalHandsAndDoNotChangeTheGlobalUnion() {
+        var deck = new List<Card> {
+            new([A], 2), new([B], 2), new([A, B]), new([])
+        };
+        var groups = new List<ComboGroup> {
+            new("tier-1", "Tier 1"), new("tier-2", "Tier 2"),
+            new("empty", "Empty")
+        };
+        var combos = new List<Combo> {
+            new([new(A, 1, 2)], "Duplicate", groupId: "tier-1"),
+            new([new(B, 1, 2)], "Duplicate", groupId: "tier-1"),
+            new([new(B, 1, 2)], "Duplicate", groupId: "tier-2"),
+            new([new(A, 0, 0)], groupId: "tier-2"),
+            new([new(A, 2, 2)], "Ungrouped"),
+            new([new(A, 0, 0)], "Inactive", false, "empty")
+        };
+        const int handSize = 2;
+        var active = combos.Where(combo => combo.Active).ToList();
+        var service = new ProbabilityCalculatorService();
+
+        var result = service.CalculateProbabilityResults(deck, active, handSize, groups);
+        var expectedTotal = EnumerateProbability(deck, active, handSize);
+        Assert.That(result.TotalProbability, Is.EqualTo(expectedTotal).Within(1e-12));
+        Assert.That(result.TotalProbability,
+            Is.EqualTo(service.CalculateProbabilityForCombos(
+                deck, active.Select(combo => combo.WithGroup(null)).ToList(), handSize)).Within(1e-12));
+
+        Assert.That(result.GroupProbabilities, Has.Count.EqualTo(3));
+        foreach (var group in groups) {
+            var members = active.Where(combo => combo.GroupId == group.Id).ToList();
+            var actual = result.GroupProbabilities!.Single(item => item.GroupId == group.Id);
+            var expected = EnumerateProbability(deck, members, handSize);
+            Assert.That(actual.GroupName, Is.EqualTo(group.Name));
+            Assert.That(actual.ActiveComboCount, Is.EqualTo(members.Count));
+            Assert.That(actual.Probability, Is.EqualTo(expected).Within(1e-12), group.Name);
+        }
+        Assert.That(result.GroupProbabilities![0].Probability,
+            Is.LessThan(result.ComboProbabilities[0].Probability + result.ComboProbabilities[1].Probability));
+        Assert.That(result.ComboProbabilities.Select(combo => combo.GroupId),
+            Is.EqualTo(active.Select(combo => combo.GroupId)));
+    }
+
+    [Test]
     public void SeededSmallDecksMatchEnumeration() {
         var random = new Random(120925);
         CategoryBase[] categories = [A, B, C];

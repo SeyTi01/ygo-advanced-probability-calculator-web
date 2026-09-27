@@ -76,4 +76,20 @@ public class ComboConverterTests {
             Assert.That(combo.Name, Is.Null);
         });
     }
+
+    [Test]
+    public void GroupMembershipAndInactiveStateRoundTripWithoutChangingLegacyJson() {
+        var combo = new Combo([], "Grouped", false, "stable-group-id");
+        var json = JsonSerializer.Serialize(combo, _options);
+        Assert.That(json, Does.Contain("\"GroupId\":\"stable-group-id\"").And.Contain("\"Active\":false"));
+        var loaded = JsonSerializer.Deserialize<Combo>(json, _options)!;
+        Assert.That(loaded.GroupId, Is.EqualTo("stable-group-id"));
+        Assert.That(loaded.Active, Is.False);
+        Assert.That(loaded.WithName("Renamed").GroupId, Is.EqualTo("stable-group-id"));
+        Assert.That(loaded.WithCategories([]).GroupId, Is.EqualTo("stable-group-id"));
+
+        var legacy = JsonSerializer.Deserialize<Combo>("{\"Categories\":[]}", _options)!;
+        Assert.That(legacy.GroupId, Is.Null);
+        Assert.That(legacy.Active, Is.True);
+    }
 }
