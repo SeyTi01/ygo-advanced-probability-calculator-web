@@ -358,10 +358,22 @@ public class SmallDeckOracleTest {
     }
 
     [Test]
-    public void DistinctIntersectionGrowthStopsWithAnExplicitResourceError() {
+    public void SingleSlotAlternativesNoLongerRequireExponentialIntersections() {
         var categories = Enumerable.Range(0, 18).Select(i => new CategoryBase($"C{i}")).ToArray();
         var deck = categories.Select(c => new Card([c])).Append(new Card([], 22)).ToList();
         var combos = categories.Select(c => new Combo([new(c, 1, 5)])).ToList();
+        // This used to exhaust the intersection map. Independently enumerate
+        // the same physical hands before changing its expected behavior.
+        var expected = EnumerateProbability(deck, combos, 5);
+        Assert.That(new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5).TotalProbability,
+            Is.EqualTo(expected).Within(1e-12));
+    }
+
+    [Test]
+    public void DistinctRestrictiveIntersectionGrowthStillStopsExplicitly() {
+        var categories = Enumerable.Range(0, 18).Select(i => new CategoryBase($"C{i}")).ToArray();
+        var deck = categories.Select(c => new Card([c])).Append(new Card([], 22)).ToList();
+        var combos = categories.Select(c => new Combo([new(c, 0, 0)])).ToList();
         var exception = Assert.Throws<YGOProbabilityCalculatorBlazor.Services.Interface.ProbabilityCalculationLimitException>(
             () => new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5));
         Assert.That(exception!.Message, Does.Contain("Calculation stopped"));
@@ -388,7 +400,7 @@ public class SmallDeckOracleTest {
     // count-vector DP or production helpers. Each position can be used once.
     internal static bool MatchesHand(IReadOnlyList<Card> hand, Combo combo) => HandPredicate(combo)(hand);
 
-    private static Func<IReadOnlyList<Card>, bool> HandPredicate(Combo combo) {
+    internal static Func<IReadOnlyList<Card>, bool> HandPredicate(Combo combo) {
         var roles = new List<(Func<Card, bool> Matches, int Min, int Max)>();
         foreach (var group in combo.Categories.GroupBy(c => c.BaseCategory.Name))
             roles.Add((card => card.Categories.Any(c => c.Name == group.Key),

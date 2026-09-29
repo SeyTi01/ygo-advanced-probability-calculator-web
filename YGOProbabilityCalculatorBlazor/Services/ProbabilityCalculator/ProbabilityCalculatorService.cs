@@ -44,7 +44,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
 
     private sealed class Calculation(List<Card> deck, int handSize) {
         private readonly WorkBudget budget = new();
-        private readonly Dictionary<Event, double> probabilities = new();
+        private readonly Dictionary<Event, BigInteger> counts = new();
         private int cachedConstraints;
         private BigInteger? totalWays;
 
@@ -68,12 +68,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             }
             if (constraints.Sum(c => (long)c.MinCount) > handSize) return null;
 
-            // Hall's matching condition with repeated slots: every subset of roles
-            // needs at least the sum of its minima in the UNION of eligible copies.
-            // Whole roles suffice: partial slots have the same neighbors and no
-            // greater demand. Upper bounds still count the entire hand.
-            var bounds = new Dictionary<BigInteger, (int Min, int Max)>();
-            var demands = new Dictionary<BigInteger, int> { [BigInteger.Zero] = 0 };
+            var roles = new List<CountBound>();
             foreach (var constraint in constraints) {
                 var eligible = BigInteger.Zero;
                 for (var i = 0; i < deck.Count; i++) {
@@ -83,6 +78,20 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                         : deck[i].Categories.Any(c => c.Name == constraint.Key.Value)))
                         eligible |= BigInteger.One << i;
                 }
+                roles.Add(new CountBound(eligible, constraint.MinCount, constraint.MaxCount));
+            }
+            return Compile(roles.ToArray());
+        }
+
+        private Event? Compile(CountBound[] roles) {
+            // Hall's matching condition with repeated slots: every subset of roles
+            // needs at least the sum of its minima in the UNION of eligible copies.
+            // Whole roles suffice: partial slots have the same neighbors and no
+            // greater demand. Upper bounds still count the entire hand.
+            var bounds = new Dictionary<BigInteger, (int Min, int Max)>();
+            var demands = new Dictionary<BigInteger, int> { [BigInteger.Zero] = 0 };
+            foreach (var constraint in roles) {
+                var eligible = constraint.EligibleRows;
                 if (!AddBound(eligible, constraint.MinCount, constraint.MaxCount)) return null;
                 if (constraint.MinCount == 0) continue;
                 foreach (var (subset, demand) in demands.ToArray()) {
@@ -96,7 +105,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             foreach (var (eligible, minimum) in demands)
                 if (!AddBound(eligible, minimum, handSize)) return null;
             return new Event(bounds.OrderBy(pair => pair.Key)
-                .Select(pair => new CountBound(pair.Key, pair.Value.Min, pair.Value.Max)).ToArray());
+                .Select(pair => new CountBound(pair.Key, pair.Value.Min, pair.Value.Max)).ToArray(),
+                roles.All(r => r.MaxCount == handSize) ? roles : null);
 
             bool AddBound(BigInteger eligible, int min, int max) {
                 budget.Spend(1 + eligible.GetBitLength() / 32);
@@ -117,8 +127,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             if (universal is not null) return Probability(universal);
             var terms = new Dictionary<Event, long>();
             long storedConstraints = 0;
-            foreach (var nextEvent in events.Where(e => e is not null).Distinct()) {
-                var current = nextEvent!;
+            foreach (var current in FactorAlternatives(events)) {
                 // Indicator identity: U OR E = U + E - U*E. Equal intersections
                 // combine integer coefficients before any floating-point evaluation.
                 // Nested events cancel here too; no independence assumption is used.
@@ -134,10 +143,53 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                     Add(terms, intersection, coefficient, ref storedConstraints);
             }
 
-            double probability = 0;
-            foreach (var (intersection, coefficient) in terms)
-                probability += coefficient * Probability(intersection);
-            return probability;
+            if (terms.Count == 0) return 0;
+            BigInteger successes = 0;
+            foreach (var (intersection, coefficient) in terms) {
+                var count = Count(intersection);
+                budget.Spend(1 + count.GetBitLength() / 64 + successes.GetBitLength() / 64);
+                successes += coefficient * count;
+            }
+            // Cancel signed inclusion-exclusion terms exactly, before conversion.
+            return (double)successes / (double)totalWays!.Value;
+        }
+
+        private List<Event> FactorAlternatives(List<Event?> events) {
+            var alternatives = events.OfType<Event>().Distinct().ToList();
+            for (var i = 0; i < alternatives.Count; i++) {
+                for (var j = i + 1; j < alternatives.Count; j++) {
+                    var first = alternatives[i].Roles;
+                    var second = alternatives[j].Roles;
+                    if (first is null || second is null || first.Length != second.Length) continue;
+                    // Multiset subtraction preserves separate slots even when a
+                    // direct card and a category have identical eligibility.
+                    var unmatched = second.ToList();
+                    var common = new List<CountBound>();
+                    CountBound? different = null;
+                    foreach (var role in first) {
+                        budget.Spend((long)(unmatched.Count + 1) * (1 + deck.Count / 32));
+                        var match = unmatched.IndexOf(role);
+                        if (match >= 0) { common.Add(role); unmatched.RemoveAt(match); }
+                        else if (different is null) different = role;
+                        else break;
+                    }
+                    if (common.Count != first.Length - 1 || unmatched.Count != 1 ||
+                        different is not { MinCount: 1 } left || unmatched[0].MinCount != 1) continue;
+
+                    // With no restrictive hand-wide maxima, C+A OR C+B is
+                    // C+(A union B) for ONE alternative slot: its assigned copy
+                    // belongs to at least one branch, with the same assignment
+                    // for C. The converse is immediate. This fails for demand>1
+                    // (copies could split across branches) or branch maxima.
+                    common.Add(new CountBound(left.EligibleRows | unmatched[0].EligibleRows, 1, handSize));
+                    alternatives[i] = Compile(common.ToArray())!;
+                    alternatives.RemoveAt(j);
+                    // A merge can expose another common-role pair anywhere.
+                    i = -1;
+                    break;
+                }
+            }
+            return alternatives;
         }
 
         private void Add(Dictionary<Event, long> terms, Event key, long coefficient, ref long storedConstraints) {
@@ -178,12 +230,42 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                     i++; j++;
                 }
             }
+            // A disjoint collection of eligible row sets consumes at least the
+            // sum of its hand-wide minima. A greedy collection is sufficient
+            // for a sound rejection; it need not find every impossible event.
+            // This is NOT matching roles across combos: intersected bounds
+            // already describe counts in the same hand.
+            var occupied = BigInteger.Zero;
+            long required = 0;
+            foreach (var bound in constraints) {
+                budget.Spend(1 + bound.EligibleRows.GetBitLength() / 32);
+                if (bound.MinCount == 0 || (occupied & bound.EligibleRows) != 0) continue;
+                occupied |= bound.EligibleRows;
+                required += bound.MinCount;
+                if (required > handSize) return null;
+            }
             return new Event(constraints.ToArray());
         }
 
         public double Probability(Event? predicate) {
             if (predicate is null) return 0;
-            if (probabilities.TryGetValue(predicate, out var cached)) return cached;
+            // Preserve the cheap universal event, including decks whose
+            // binomial denominator would exceed floating-point range.
+            if (predicate.Constraints.Length == 0) {
+                var deckSize = 0;
+                foreach (var card in deck) {
+                    budget.Spend(1);
+                    if (card.Copies < 0) throw new ArgumentOutOfRangeException(nameof(deck), "Copies cannot be negative.");
+                    deckSize = checked(deckSize + card.Copies);
+                }
+                return handSize < 0 || handSize > deckSize ? double.NaN : 1;
+            }
+            var successes = Count(predicate);
+            return (double)successes / (double)totalWays!.Value;
+        }
+
+        private BigInteger Count(Event predicate) {
+            if (counts.TryGetValue(predicate, out var cached)) return cached;
             var categories = predicate.Constraints;
             // Build one mask per card entry, not per physical copy. Adding Copies
             // preserves multiplicities while avoiding an expanded deck allocation.
@@ -203,14 +285,14 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                 WorkBudget.CheckStorage(cardMasks.Count, (long)cardMasks.Count * (categories.Length + 1));
             }
 
-            double result;
+            if (totalWays is null) {
+                budget.Spend(Math.Max(0, Math.Min(handSize, deckSize - handSize)) + 1L);
+                totalWays = ComputeBinomial(deckSize, handSize, budget);
+            }
+            BigInteger successes = 0;
             if (categories.Length == 0) {
-                result = handSize < 0 || handSize > deckSize ? double.NaN : 1;
+                successes = totalWays.Value;
             } else {
-                if (totalWays is null) {
-                    budget.Spend(Math.Max(0, Math.Min(handSize, deckSize - handSize)) + 1L);
-                    totalWays = ComputeBinomial(deckSize, handSize, budget);
-                }
                 // Keep combinatorial weights integral, including beyond 2^53.
                 var states = new Dictionary<StateKey, BigInteger> { [new(0, new int[categories.Length])] = 1 };
                 var remaining = new int[categories.Length];
@@ -224,21 +306,19 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                         if ((mask & (BigInteger.One << i)) != 0) remaining[i] -= count;
                     states = Convolve(states, mask, count, categories, remaining, remainingCards);
                 }
-                BigInteger successes = 0;
                 foreach (var (state, ways) in states) {
                     budget.Spend(categories.Length + 1L);
                     if (state.DrawnCards == handSize &&
                         !categories.Where((category, i) => state.CategoryCounts[i] < category.MinCount).Any())
                         successes += ways;
                 }
-                result = (double)successes / (double)totalWays.Value;
             }
             // A full cache only stops retaining entries; it never changes the result.
-            if (probabilities.Count < 1024 && cachedConstraints + categories.Length <= 16384) {
-                probabilities.Add(predicate, result);
+            if (counts.Count < 1024 && cachedConstraints + categories.Length <= 16384) {
+                counts.Add(predicate, successes);
                 cachedConstraints += categories.Length;
             }
-            return result;
+            return successes;
         }
 
         private Dictionary<StateKey, BigInteger> Convolve(
@@ -330,7 +410,9 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
 
     private readonly record struct CountBound(BigInteger EligibleRows, int MinCount, int MaxCount);
 
-    private sealed record Event(CountBound[] Constraints) {
+    // Roles are optional compilation metadata for safe OR factoring; event
+    // equality and cached counts depend only on the compiled hand-wide bounds.
+    private sealed record Event(CountBound[] Constraints, CountBound[]? Roles = null) {
         public bool Equals(Event? other) => other is not null &&
             Constraints.AsSpan().SequenceEqual(other.Constraints);
         public override int GetHashCode() {
