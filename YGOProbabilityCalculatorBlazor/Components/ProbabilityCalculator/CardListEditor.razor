@@ -14,6 +14,8 @@
                 ActiveCardIndexChanged="ActiveCardIndexChanged"
                 OnReplaceCard="ReplaceCard"
                 OnRemoveCard="OnRemoveCard"
+                Count="Cards.Count"
+                OnMove="OnMoveCard"
             />
         }
     </div>
@@ -35,6 +37,7 @@
     [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
     [Parameter] public EventCallback OnAddNewCard { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMoveCard { get; set; }
 
     private readonly EditorKeys<Card> editorKeys = new();
     private int ActiveCopies => Cards.Where(card => card.Active).Sum(card => card.Copies);

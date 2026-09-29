@@ -22,6 +22,7 @@
             }
         </button>
 
+        <ReorderControls Index="Index" Count="Count" ItemLabel="@($"card {CardDisplayName}, row {Index + 1}")" OnMove="OnMove" />
         <div class="d-flex align-items-center mx-2 mb-0 flex-shrink-0 entry-editor-active-toggle">
             <input id="cardActive@(Index)" class="form-check-input entry-editor-active-checkbox" type="checkbox"
                    checked="@Card.Active"
@@ -94,6 +95,8 @@
 
 @code {
     [Parameter] public int Index { get; set; }
+    [Parameter] public int Count { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
     [Parameter] public Card Card { get; set; } = null!;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);

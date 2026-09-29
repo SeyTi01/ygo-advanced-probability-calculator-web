@@ -9,6 +9,34 @@ public class SmallDeckOracleTest {
     private static readonly CategoryBase B = new("B");
     private static readonly CategoryBase C = new("C");
 
+    [Test]
+    public void DirectCardAndMixedRequirementsMatchPhysicalHandsAndGroups() {
+        var starter = new CategoryBase("Starter");
+        var first = new Card([starter], 2, "Starter");
+        var second = new Card([B], 2, "Same");
+        var third = new Card([B], 1, "Same");
+        List<Card> deck = [first, second, third, new([], 2)];
+        List<Combo> combos = [
+            new([], "Two cards", groupId: "g", cards: [new(first.Id, 1, 2), new(second.Id, 1, 1)]),
+            new([new(starter, 1, 2)], "Same physical card", groupId: "g", cards: [new(first.Id, 1, 2)]),
+            new([new(B, 1, 2)], "Mixed", cards: [new(third.Id, 0, 0)]),
+            new([], "Repeated range", cards: [new(first.Id, 0, 2), new(first.Id, 1, 1)]),
+            new([], "Contradiction", cards: [new(first.Id, 0, 0), new(first.Id, 1, 2)])
+        ];
+        foreach (var handSize in new[] { 1, 2, 3 }) {
+            TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, handSize);
+            var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, handSize,
+                [new("g", "Grouped")]);
+            Assert.That(result.GroupProbabilities![0].Probability,
+                Is.EqualTo(EnumerateProbability(deck, combos.Where(combo => combo.GroupId == "g").ToList(), handSize)).Within(1e-12));
+        }
+
+        var activeDeck = deck.Where(card => card != first).ToList();
+        TotalAndStandaloneResultsMatchEveryPhysicalHand(activeDeck, combos, 2);
+        Assert.That(first.WithName("Renamed").WithCopies(3).Id, Is.EqualTo(first.Id));
+        Assert.That(first.WithCategories([]).WithActive(false).Id, Is.EqualTo(first.Id));
+    }
+
     private static IEnumerable<TestCaseData> Cases() {
         List<Card> deck = [new([A], 2), new([B]), new([A, B]), new([B, C]), new([], 2)];
         yield return Case("positive maximum", deck, [new([new(A, 1, 1)])], 2);
@@ -103,8 +131,8 @@ public class SmallDeckOracleTest {
         allocated = GC.GetAllocatedBytesForCurrentThread();
         probability = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 5);
         allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocated;
-        // Wolfram enumerated 346528 successful labeled hands out of C(40,5)=658008.
-        Assert.That(probability, Is.EqualTo(3332.0 / 6327.0).Within(1e-12));
+        // Independent row-count enumeration with slot assignment: 248706 / C(40,5).
+        Assert.That(probability, Is.EqualTo(248706.0 / 658008.0).Within(1e-12));
         Assert.That(allocatedBytes, Is.LessThan(32 * 1024 * 1024));
     }
 
@@ -317,11 +345,11 @@ public class SmallDeckOracleTest {
     }
 
     [Test]
-    public void CacheCapacityDoesNotChangeUnionOrGroupResults() {
+    public void EquivalentEligibilityDoesNotChangeUnionOrGroupResults() {
         var categories = Enumerable.Range(0, 11).Select(i => new CategoryBase($"C{i}")).ToArray();
         List<Card> deck = [new(categories), new([])];
-        // 2047 syntactically distinct intersections exceed the 1024-entry cache.
-        // On this deck all events coincide, independently checked by the hand oracle.
+        // Different selectors with identical eligible rows canonicalize to the same
+        // event, independently checked by the physical-hand oracle.
         var combos = categories.Select(c => new Combo([new(c, 1, 1)], groupId: "g")).ToList();
         var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 1, [new("g", "All")]);
         var expected = EnumerateProbability(deck, combos, 1);
@@ -330,10 +358,22 @@ public class SmallDeckOracleTest {
     }
 
     [Test]
-    public void DistinctIntersectionGrowthStopsWithAnExplicitResourceError() {
+    public void SingleSlotAlternativesNoLongerRequireExponentialIntersections() {
         var categories = Enumerable.Range(0, 18).Select(i => new CategoryBase($"C{i}")).ToArray();
-        List<Card> deck = [new(categories, 3), new([], 37)];
+        var deck = categories.Select(c => new Card([c])).Append(new Card([], 22)).ToList();
         var combos = categories.Select(c => new Combo([new(c, 1, 5)])).ToList();
+        // This used to exhaust the intersection map. Independently enumerate
+        // the same physical hands before changing its expected behavior.
+        var expected = EnumerateProbability(deck, combos, 5);
+        Assert.That(new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5).TotalProbability,
+            Is.EqualTo(expected).Within(1e-12));
+    }
+
+    [Test]
+    public void DistinctRestrictiveIntersectionGrowthStillStopsExplicitly() {
+        var categories = Enumerable.Range(0, 18).Select(i => new CategoryBase($"C{i}")).ToArray();
+        var deck = categories.Select(c => new Card([c])).Append(new Card([], 22)).ToList();
+        var combos = categories.Select(c => new Combo([new(c, 0, 0)])).ToList();
         var exception = Assert.Throws<YGOProbabilityCalculatorBlazor.Services.Interface.ProbabilityCalculationLimitException>(
             () => new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5));
         Assert.That(exception!.Message, Does.Contain("Calculation stopped"));
@@ -356,10 +396,43 @@ public class SmallDeckOracleTest {
         Assert.Throws<YGOProbabilityCalculatorBlazor.Services.Interface.ProbabilityCalculationLimitException>(
             () => new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 9));
     }
+    // Independent exhaustive slot assignment, without Hall subsets, masks,
+    // count-vector DP or production helpers. Each position can be used once.
+    internal static bool MatchesHand(IReadOnlyList<Card> hand, Combo combo) => HandPredicate(combo)(hand);
+
+    internal static Func<IReadOnlyList<Card>, bool> HandPredicate(Combo combo) {
+        var roles = new List<(Func<Card, bool> Matches, int Min, int Max)>();
+        foreach (var group in combo.Categories.GroupBy(c => c.BaseCategory.Name))
+            roles.Add((card => card.Categories.Any(c => c.Name == group.Key),
+                group.Max(c => c.MinCount), group.Min(c => c.MaxCount)));
+        foreach (var group in combo.Cards.GroupBy(c => c.CardId))
+            roles.Add((card => card.Id == group.Key,
+                group.Max(c => c.MinCount), group.Min(c => c.MaxCount)));
+        var slots = roles.SelectMany(role => Enumerable.Repeat(role.Matches, role.Min)).ToArray();
+        return hand => {
+            if (roles.Any(role => role.Min > role.Max || hand.Count(role.Matches) > role.Max)) return false;
+            if (slots.Length > hand.Count) return false;
+            var used = new bool[hand.Count];
+            return Assign(0);
+
+            bool Assign(int slot) {
+                if (slot == slots.Length) return true;
+                for (var copy = 0; copy < hand.Count; copy++) {
+                    if (used[copy] || !slots[slot](hand[copy])) continue;
+                    used[copy] = true;
+                    if (Assign(slot + 1)) return true;
+                    used[copy] = false;
+                }
+                return false;
+            }
+        };
+    }
+
     // Each physical copy has its own position. Visit each unordered hand exactly once;
     // directly evaluate OR-of-combos / AND-of-constraints, without masks, merging,
     // binomial coefficients, inclusion-exclusion, or production helper methods.
     internal static double EnumerateProbability(List<Card> deck, List<Combo> combos, int handSize) {
+        var predicates = combos.Select(HandPredicate).ToArray();
         var copies = new List<Card>();
         foreach (var card in deck)
             for (var i = 0; i < card.Copies; i++) copies.Add(card);
@@ -372,11 +445,7 @@ public class SmallDeckOracleTest {
         void Visit(int start) {
             if (hand.Count == handSize) {
                 total++;
-                if (combos.Any(combo => combo.Categories.All(constraint => {
-                    var count = hand.Count(card => card.Categories.Any(category =>
-                        category.Name == constraint.BaseCategory.Name));
-                    return count >= constraint.MinCount && count <= constraint.MaxCount;
-                }))) successes++;
+                if (predicates.Any(predicate => predicate(hand))) successes++;
                 return;
             }
             for (var i = start; i <= copies.Count - (handSize - hand.Count); i++) {

@@ -1,0 +1,33 @@
+.reorder-controls {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.reorder-button {
+    display: inline-grid;
+    place-items: center;
+    width: 1.75rem;
+    min-height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0.2rem;
+    background: transparent;
+    color: inherit;
+    font-size: 0.65rem;
+    cursor: pointer;
+}
+
+.reorder-button:hover:not(:disabled) {
+    background: var(--bs-tertiary-bg);
+}
+
+.reorder-button:focus-visible {
+    outline: 2px solid var(--bs-focus-ring-color);
+    outline-offset: 1px;
+}
+
+.reorder-button:disabled {
+    opacity: 0.3;
+    cursor: default;
+}

@@ -11,12 +11,15 @@
             <span class="combo-header-content">
                 <span class="combo-header-name">@ComboDisplayName</span>
 
-                @if (Combo.Categories.Any()) {
+                @if (ConstraintCount > 0) {
                     <span class="ms-2">-</span>
                     @foreach (var cc in HeaderCategories) {
                         <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cc.BaseCategory.Name, CategoryColorIndices)">
                             @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
                         </span>
+                    }
+                    @foreach (var card in HeaderCards) {
+                        <span class="badge category-tag combo-card-tag ms-1">Card: @CardDisplayName(card.CardId) (@card.MinCount–@card.MaxCount)</span>
                     }
 
                     @if (HiddenHeaderCategoriesCount > 0) {
@@ -24,7 +27,7 @@
                     }
                 }
                 else {
-                    <span class="text-muted ms-2">(no categories)</span>
+                    <span class="text-muted ms-2">(no requirements)</span>
                 }
                 @if (!Combo.Active) {
                     <span class="badge text-bg-secondary ms-2">Inactive</span>
@@ -32,6 +35,7 @@
             </span>
         </button>
 
+        <ReorderControls Index="Index" Count="Count" ItemLabel="@($"combo {ComboDisplayName}, row {Index + 1}")" OnMove="OnMove" />
         <div class="d-flex align-items-center mx-2 mb-0 flex-shrink-0 entry-editor-active-toggle">
             <input id="comboActive@(Index)" class="form-check-input entry-editor-active-checkbox" type="checkbox"
                    checked="@Combo.Active"
@@ -53,6 +57,9 @@
             @if (error is not null) {
                 <DismissibleAlert Message="@error" OnDismiss="@(() => error = null)"/>
             }
+            @if (Combo.Cards.Any(card => !Cards.Any(row => row.Id == card.CardId))) {
+                <p class="text-danger" role="status">Missing card reference. Remove the missing requirement, then add another card if needed.</p>
+            }
             <div class="row mb-3">
                 <div class="col-8">
                     <label for="comboName@(Index)" class="form-label">Name</label>
@@ -63,31 +70,47 @@
             </div>
 
             <div class="row g-2 align-items-end mb-3">
-                <div class="col-6">
-                    <label for="comboCategory@(Index)" class="form-label">Category</label>
-                    <select id="comboCategory@(Index)" class="form-select"
-                            value="@selectedCategory"
-                            @onchange="e => OnSelectCategory(e.Value?.ToString())">
-                        <option value="">Select category…</option>
-                        @foreach (var cb in CategoryBases) {
-                            <option value="@cb.Name">@cb.Name</option>
-                        }
+                <div class="col-8 col-sm-4">
+                    @if (selectedKind == "Card") {
+                        <label for="comboCard@(Index)" class="form-label">Card</label>
+                        <select id="comboCard@(Index)" class="form-select" value="@selectedCardId" @onchange="e => OnSelectCard(e.Value?.ToString())">
+                            <option value="">Select card…</option>
+                            @foreach (var card in Cards) {
+                                <option value="@card.Id">@CardSelectionLabel(card.Id)</option>
+                            }
+                        </select>
+                    }
+                    else {
+                        <label for="comboCategory@(Index)" class="form-label">Category</label>
+                        <select id="comboCategory@(Index)" class="form-select" value="@selectedCategory" @onchange="e => OnSelectCategory(e.Value?.ToString())">
+                            <option value="">Select category…</option>
+                            @foreach (var cb in CategoryBases) {
+                                <option value="@cb.Name">@cb.Name</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="col-4 col-sm-2">
+                    <label for="constraintKind@(Index)" class="form-label">Type</label>
+                    <select id="constraintKind@(Index)" class="form-select" value="@selectedKind" @onchange="e => ChangeKind(e.Value?.ToString())">
+                        <option value="Category">Category</option>
+                        <option value="Card">Card</option>
                     </select>
                 </div>
-                <div class="col-2">
+                <div class="col-4 col-sm-2">
                     <label for="minCount@(Index)" class="form-label">Min</label>
                     <input id="minCount@(Index)" class="form-control" type="number" min="0"
                            value="@minCount"
                            @oninput="e => minCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
-                <div class="col-2">
+                <div class="col-4 col-sm-2">
                     <label for="maxCount@(Index)" class="form-label">Max</label>
                     <input id="maxCount@(Index)" class="form-control" type="number" min="0"
                            value="@maxCount"
                            @oninput="e => maxCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
-                <div class="col-2">
-                    <button class="btn btn-primary w-100" @onclick="AddCategory">@(HasSelectedConstraint ? "Update" : "Add")</button>
+                <div class="col-4 col-sm-2">
+                    <button class="btn btn-primary w-100" @onclick="AddConstraint">@(HasSelectedConstraint ? "Update" : "Add")</button>
                 </div>
             </div>
 
@@ -107,8 +130,8 @@
             </div>
 
             <div>
-                @if (Combo.Categories.Count == 0) {
-                    <em>No categories yet.</em>
+                @if (ConstraintCount == 0) {
+                    <em>No requirements yet.</em>
                 }
                 else {
                     @foreach (var cc in Combo.Categories) {
@@ -122,6 +145,16 @@
                             </button>
                         </span>
                     }
+                    @foreach (var card in Combo.Cards) {
+                        <span class="badge me-2 category-tag combo-card-tag @(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")"
+                              title="@card.CardId">
+                            Card: @CardDisplayName(card.CardId) (@card.MinCount–@card.MaxCount)
+                            <button type="button" class="btn-close category-remove-button ms-1"
+                                    aria-label="@($"Remove card {CardSelectionLabel(card.CardId)} from combo {ComboDisplayName}")"
+                                    title="@($"Remove card {CardDisplayName(card.CardId)} from combo {ComboDisplayName}")"
+                                    @onclick="() => RemoveCard(card)"></button>
+                        </span>
+                    }
                 }
             </div>
         </div>
@@ -130,7 +163,10 @@
 
 @code {
     [Parameter] public int Index { get; set; }
+    [Parameter] public int Count { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
     [Parameter] public Combo Combo { get; set; } = null!;
+    [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlyList<ComboGroup> ComboGroups { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -147,6 +183,8 @@
     private const int MaxHeaderBadges = 6;
     private string? error;
     private string selectedCategory = string.Empty;
+    private string selectedCardId = string.Empty;
+    private string selectedKind = "Category";
     private string minCount = "1";
     private string maxCount = "1";
     private int previousHandSize;
@@ -154,10 +192,30 @@
     private string ComboDisplayName => string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name;
     private string ActiveToggleLabel => $"Active combo {ComboDisplayName}";
     private string ActiveToggleTitle => $"Toggle {ComboDisplayName} active state";
-    private bool HasSelectedConstraint => Combo.Categories.Any(c => c.BaseCategory.Name == selectedCategory);
+    private bool HasSelectedConstraint => selectedKind == "Card"
+        ? Combo.Cards.Any(c => c.CardId == selectedCardId)
+        : Combo.Categories.Any(c => c.BaseCategory.Name == selectedCategory);
 
+    private int ConstraintCount => Combo.Categories.Count + Combo.Cards.Count;
     private IEnumerable<ComboCategory> HeaderCategories => Combo.Categories.Take(MaxHeaderBadges);
-    private int HiddenHeaderCategoriesCount => Math.Max(0, Combo.Categories.Count - MaxHeaderBadges);
+    private IEnumerable<ComboCard> HeaderCards => Combo.Cards.Take(Math.Max(0, MaxHeaderBadges - Combo.Categories.Count));
+    private int HiddenHeaderCategoriesCount => Math.Max(0, ConstraintCount - MaxHeaderBadges);
+
+    private string CardDisplayName(string cardId) {
+        var index = Cards.ToList().FindIndex(card => card.Id == cardId);
+        if (index < 0) return $"Missing card ({cardId[..Math.Min(8, cardId.Length)]})";
+        return string.IsNullOrWhiteSpace(Cards[index].Name) ? "Unnamed card" : Cards[index].Name;
+    }
+
+    private string CardSelectionLabel(string cardId) {
+        var index = Cards.ToList().FindIndex(card => card.Id == cardId);
+        return index < 0 ? CardDisplayName(cardId) : $"{CardDisplayName(cardId)} #{index + 1}";
+    }
+
+    private void ChangeKind(string? kind) {
+        selectedKind = kind == "Card" ? "Card" : "Category";
+        error = null;
+    }
 
     private Task ToggleCombo() {
         var next = ActiveComboIndex == Index ? -1 : Index;
@@ -177,7 +235,8 @@
     private Task AssignGroup(string? groupId) =>
         OnReplaceCombo.InvokeAsync((Index, Combo.WithGroup(string.IsNullOrEmpty(groupId) ? null : groupId)));
 
-    private Task AddCategory() {
+    private Task AddConstraint() {
+        if (selectedKind == "Card") return AddCard();
         if (string.IsNullOrWhiteSpace(selectedCategory)) {
             error = "Please select a category to add.";
             return Task.CompletedTask;
@@ -206,6 +265,44 @@
         error = null;
         ResetEditorDefaults();
         return OnReplaceCombo.InvokeAsync((Index, newCombo));
+    }
+
+    private Task AddCard() {
+        if (string.IsNullOrEmpty(selectedCardId) || !Cards.Any(card => card.Id == selectedCardId)) {
+            error = "Please select a card to add.";
+            return Task.CompletedTask;
+        }
+        if (!int.TryParse(minCount, out var min) || min < 0) {
+            error = "Minimum count must be a non-negative whole number.";
+            return Task.CompletedTask;
+        }
+        if (!int.TryParse(maxCount, out var max) || max < min) {
+            error = "Maximum count must be a whole number at least equal to minimum count.";
+            return Task.CompletedTask;
+        }
+        var newCards = Combo.Cards.ToList();
+        var existing = newCards.FindIndex(card => card.CardId == selectedCardId);
+        var constraint = new ComboCard(selectedCardId, min, max);
+        if (existing >= 0) newCards[existing] = constraint;
+        else newCards.Add(constraint);
+        selectedCardId = string.Empty;
+        error = null;
+        ResetEditorDefaults();
+        return OnReplaceCombo.InvokeAsync((Index, Combo.WithCards(newCards)));
+    }
+
+    private Task RemoveCard(ComboCard card) =>
+        OnReplaceCombo.InvokeAsync((Index, Combo.WithCards(Combo.Cards.Where(item => item != card))));
+
+    private void OnSelectCard(string? value) {
+        selectedCardId = value ?? string.Empty;
+        error = null;
+        var existing = Combo.Cards.FirstOrDefault(card => card.CardId == selectedCardId);
+        if (existing is not null) {
+            minCount = existing.MinCount.ToString();
+            maxCount = existing.MaxCount.ToString();
+        }
+        else ResetEditorDefaults();
     }
 
     private Task RemoveCategory(ComboCategory category) {
@@ -245,7 +342,7 @@
         }
 
         // Only update untouched defaults. A draft (including zero) is user input.
-        if (HandSize != previousHandSize && selectedCategory.Length == 0 &&
+        if (HandSize != previousHandSize && selectedCategory.Length == 0 && selectedCardId.Length == 0 &&
             minCount == "1" && maxCount == previousHandSize.ToString()) {
             ResetEditorDefaults();
         }
