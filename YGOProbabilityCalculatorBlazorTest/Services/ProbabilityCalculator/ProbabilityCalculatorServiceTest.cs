@@ -168,7 +168,9 @@ public class ProbabilityCalculatorServiceTest {
         ]);
 
         var probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], handSize);
-        Assert.That(probability, Is.EqualTo(7.0 / 10.0).Within(Tolerance));
+        // Exhaustive physical-hand slot assignment: the four 3-subsets of the
+        // four eligible copies pass; any hand containing the blank fails.
+        Assert.That(probability, Is.EqualTo(4.0 / 10.0).Within(Tolerance));
     }
 
     [Test]
@@ -202,11 +204,11 @@ public class ProbabilityCalculatorServiceTest {
         Assert.That(actual, Is.EqualTo(667.0 / 1976.0).Within(Tolerance));
         Assert.That(double.IsFinite(actual) && actual is >= 0 and <= 1, Is.True);
     }
-    [TestCase(40, 5, 159775.0, 219336.0)]
-    [TestCase(40, 6, 2793563.0, 3838380.0)]
-    [TestCase(60, 5, 467720.0, 682689.0)]
-    [TestCase(60, 6, 35492613.0, 50063860.0)]
-    public void RealisticOverlappingUnionsMatchIndependentWolframSums(int n, int h, double numerator, double denominator) {
+    [TestCase(40, 5, 444003.0, 658008.0)]
+    [TestCase(40, 6, 2556389.0, 3838380.0)]
+    [TestCase(60, 5, 3525478.0, 5461512.0)]
+    [TestCase(60, 6, 33228879.0, 50063860.0)]
+    public void RealisticOverlappingUnionsMatchIndependentAllocationCounts(int n, int h, double numerator, double denominator) {
         CategoryBase a = new("A"), b = new("B"), c = new("C"), d = new("D");
         List<Card> deck = [
             new([a], 9), new([b], 6), new([a, b], 3), new([b, c], 4),
@@ -218,8 +220,8 @@ public class ProbabilityCalculatorServiceTest {
             new([new(a, 0, 0), new(c, 2, 3)]),
             new([new(b, 0, 0), new(c, 1, 2)])
         ];
-        // Wolfram independently enumerated seven pattern-count tuples summing to h,
-        // tested the OR predicate directly and weighted each by Product[Binomial[n_i,k_i]].
+        // Independent enumeration of seven row-count tuples summing to h, with
+        // backtracking physical-slot assignment and product-of-binomial weights.
         var expected = numerator / denominator;
         Assert.That(_probabilityCalculator.CalculateProbabilityForCombos(deck, combos, h),
             Is.EqualTo(expected).Within(expected * Tolerance));

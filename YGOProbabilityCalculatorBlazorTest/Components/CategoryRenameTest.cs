@@ -124,7 +124,7 @@ public class CategoryRenameTest {
         BeginRename(cut, "Old");
 
         AssertIconButton(cut, "Save category name");
-        AssertIconButton(cut, "Cancel category rename");
+        AssertIconButton(cut, "Exit category edit mode");
 
         cut.Find("[aria-label='New name for category Old']").Input("  ");
         Button(cut, "Save category name").Click();
@@ -136,21 +136,21 @@ public class CategoryRenameTest {
         Assert.That(cut.Find("[aria-label='New name for category Old']"), Is.Not.Null);
 
         cut.Find("[aria-label='New name for category Old']").Input("Discarded");
-        Button(cut, "Cancel category rename").Click();
-        Assert.That(cut.FindAll("[aria-label='Rename category Old']"), Has.Count.EqualTo(1));
-        Assert.That(cut.FindAll("[aria-label='Rename category Discarded']"), Is.Empty);
+        Button(cut, "Exit category edit mode").Click();
+        Assert.That(cut.FindAll("[aria-label='Edit category Old']"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll("[aria-label='Edit category Discarded']"), Is.Empty);
 
         BeginRename(cut, "Old");
         cut.Find("[aria-label='New name for category Old']").Input("old");
         Button(cut, "Save category name").Click();
-        Assert.That(cut.FindAll("[aria-label='Rename category old']"), Has.Count.EqualTo(1));
-        Assert.That(cut.FindAll("[aria-label='Rename category Other']"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll("[aria-label='Edit category old']"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll("[aria-label='Edit category Other']"), Has.Count.EqualTo(1));
     }
 
     [Test]
     public void CategoryNameStartsRenameAndDeleteCrossRemainsASeparateAction() {
         var cut = Render(SessionWithOverlappingReferences());
-        var categoryName = cut.Find("[aria-label='Rename category Old']");
+        var categoryName = cut.Find("[aria-label='Edit category Old']");
         Assert.That(categoryName.TextContent.Trim(), Is.EqualTo("Old"));
         Assert.That(cut.FindAll("button").Any(button => button.TextContent.Trim() == "Rename"), Is.False);
 
@@ -160,11 +160,11 @@ public class CategoryRenameTest {
         Assert.That(cut.Find("[aria-label='Remove category Old']").GetAttribute("title"),
             Is.EqualTo("Remove category Old"));
 
-        categoryName = cut.Find("[aria-label='Rename category Old']");
+        categoryName = cut.Find("[aria-label='Edit category Old']");
         categoryName.Click();
         Assert.That(cut.Find("[aria-label='New name for category Old']"), Is.Not.Null);
         AssertIconButton(cut, "Save category name");
-        AssertIconButton(cut, "Cancel category rename");
+        AssertIconButton(cut, "Exit category edit mode");
         Assert.That(cut.Find("[aria-label='Remove category Old']"), Is.Not.Null);
     }
 
@@ -175,13 +175,13 @@ public class CategoryRenameTest {
         var input = cut.Find("[aria-label='New name for category Old']");
         input.Input("Saved");
         input.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
-        Assert.That(cut.Find("[aria-label='Rename category Saved']").TextContent.Trim(), Is.EqualTo("Saved"));
+        Assert.That(cut.Find("[aria-label='Edit category Saved']").TextContent.Trim(), Is.EqualTo("Saved"));
 
-        cut.Find("[aria-label='Rename category Other']").Click();
+        cut.Find("[aria-label='Edit category Other']").Click();
         cut.Find("[aria-label='New name for category Other']").Input("Discarded");
         cut.Find("[aria-label='New name for category Other']")
             .KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
-        Assert.That(cut.Find("[aria-label='Rename category Other']").TextContent.Trim(), Is.EqualTo("Other"));
+        Assert.That(cut.Find("[aria-label='Edit category Other']").TextContent.Trim(), Is.EqualTo("Other"));
         Assert.That(cut.FindAll("[aria-label='New name for category Other']"), Is.Empty);
     }
 
@@ -226,7 +226,7 @@ public class CategoryRenameTest {
     }
 
     private static void BeginRename(IRenderedFragment cut, string name) =>
-        cut.Find($"[aria-label='Rename category {name}']").Click();
+        cut.Find($"[aria-label='Edit category {name}']").Click();
 
     private static IElement Button(IRenderedFragment cut, string accessibleName) =>
         cut.FindAll("button").Single(button =>

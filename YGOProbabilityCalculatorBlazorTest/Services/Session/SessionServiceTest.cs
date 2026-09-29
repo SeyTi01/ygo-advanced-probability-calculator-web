@@ -105,4 +105,16 @@ public class SessionServiceTests {
             await _sessionService.LoadSessionAsync(fileContent));
         Assert.That(exception.Message, Is.EqualTo("Invalid session file format"));
     }
+
+    [Test]
+    public void LoadSessionAsync_RejectsDuplicateCardIds() {
+        var original = new Card([], 1, "First");
+        var duplicate = new Card([], 1, "Second", id: original.Id);
+        var session = new SessionState { Cards = [original, duplicate] };
+        _serializerMock.Setup(x => x.Deserialize<SessionState>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
+            .Returns(session);
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await _sessionService.LoadSessionAsync("{}"));
+        Assert.That(exception!.Message, Does.Contain("duplicate card IDs"));
+    }
 }

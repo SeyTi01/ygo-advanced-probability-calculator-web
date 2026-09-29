@@ -59,6 +59,8 @@ public class ActiveEntriesEditorTest {
 
         cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").Click();
         cut.WaitForAssertion(() => {
+            Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.False);
+            Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
             var result = cut.Find(".probability-results");
             Assert.That(result.TextContent, Does.Contain(value.ToString("P2")));
 
@@ -316,7 +318,7 @@ public class ActiveEntriesEditorTest {
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("0");
 
-        cut.Find("[aria-label='Rename category A']").Click();
+        cut.Find("[aria-label='Edit category A']").Click();
         cut.Find("[aria-label='New name for category A']").Input("Renamed A");
         cut.Find("[aria-label='Save category name']").Click();
 

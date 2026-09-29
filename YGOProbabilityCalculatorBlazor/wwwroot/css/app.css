@@ -142,6 +142,10 @@ code {
     border-style: dashed;
 }
 
+#cardsAccordion > .accordion-item:not(.entry-inactive):has(+ .accordion-item.entry-inactive) {
+    border-bottom-style: dashed;
+}
+
 .entry-inactive > .accordion-header > .accordion-button {
     font-style: italic;
 }
@@ -202,6 +206,18 @@ body.input-mode-keyboard *:focus-visible {
     background-color: var(--category-background);
     border: 1px solid var(--category-border);
     font-weight: 600;
+}
+
+.combo-card-tag {
+    --category-background: var(--bs-secondary-bg);
+    --category-text: var(--bs-body-color);
+    --category-border: var(--bs-border-color);
+}
+
+.combo-missing-card {
+    --category-background: var(--bs-danger-bg-subtle);
+    --category-text: var(--bs-danger-text-emphasis);
+    --category-border: var(--bs-danger-border-subtle);
 }
 
 .category-color-0 {

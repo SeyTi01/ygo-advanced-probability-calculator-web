@@ -26,8 +26,9 @@
     }
 
     <div class="mt-2">
-        @foreach (var category in CategoryBases) {
-            <span class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
+        @for (var index = 0; index < CategoryBases.Count; index++) {
+            var category = CategoryBases[index];
+            <span @key="category" class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
                 @if (ReferenceEquals(editingCategory, category)) {
                     <input @ref="renameInputReference"
                            class="form-control form-control-sm category-rename-input"
@@ -45,9 +46,10 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </button>
+                    <ReorderControls Horizontal="true" Index="index" Count="CategoryBases.Count" ItemLabel="@($"category {category.Name}")" OnMove="OnMoveCategory" />
                     <button type="button" class="category-icon-button"
-                            aria-label="Cancel category rename"
-                            title="Cancel category rename"
+                            aria-label="Exit category edit mode"
+                            title="Exit category edit mode"
                             @onclick="CancelCategoryRename">
                         <svg class="category-action-icon" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor" stroke-width="2.5"
@@ -60,8 +62,8 @@
                     <button @ref="categoryNameButtonReferences[category.Name]"
                             type="button"
                             class="category-name-trigger"
-                            aria-label="@($"Rename category {category.Name}")"
-                            title="Rename category"
+                            aria-label="@($"Edit category {category.Name}")"
+                            title="@($"Edit category {category.Name}")"
                             @onclick="() => BeginCategoryRename(category)">@category.Name</button>
                 }
                 <button type="button" class="btn-close category-delete-button"
@@ -81,6 +83,7 @@
     [Parameter] public required IEnumerable<Combo> Combos { get; set; } = [];
 
     [Parameter] public EventCallback OnCategoriesChanged { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMoveCategory { get; set; }
     [Parameter] public EventCallback<(CategoryBase OldCategory, CategoryBase NewCategory)> OnRenameCategory { get; set; }
 
     private string? newCategoryName;
