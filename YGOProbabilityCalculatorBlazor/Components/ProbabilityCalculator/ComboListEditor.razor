@@ -22,7 +22,8 @@
             </div>
         }
         <div class="mt-2">
-            @foreach (var group in ComboGroups) {
+            @for (var index = 0; index < ComboGroups.Count; index++) {
+                var group = ComboGroups[index];
                 <span class="badge me-2 category-chip category-tag combo-group-chip" @key="group.Id">
                     @if (editingGroupId == group.Id) {
                         <input @ref="groupRenameInputReference"
@@ -57,6 +58,7 @@
                                 title="@($"Rename group {group.Name}")"
                                 @onclick="() => BeginGroupRename(group)">@group.Name</button>
                     }
+                    <ReorderControls Index="index" Count="ComboGroups.Count" ItemLabel="@($"group {group.Name}")" OnMove="OnMoveGroup" />
                     <button type="button" class="btn-close category-delete-button"
                             aria-label="@($"Remove group {group.Name}")"
                             title="@($"Remove group {group.Name}")"
@@ -79,6 +81,8 @@
                 ActiveComboIndexChanged="ActiveComboIndexChanged"
                 OnReplaceCombo="ReplaceCombo"
                 OnRemoveCombo="OnRemoveCombo"
+                Count="Combos.Count"
+                OnMove="OnMoveCombo"
                 HandSize="HandSize"
             />
         }
@@ -107,6 +111,8 @@
     [Parameter] public EventCallback<string> OnAddGroup { get; set; }
     [Parameter] public EventCallback<(string Id, string Name)> OnRenameGroup { get; set; }
     [Parameter] public EventCallback<string> OnRemoveGroup { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMoveGroup { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMoveCombo { get; set; }
 
     private readonly EditorKeys<Combo> editorKeys = new();
     private readonly Dictionary<string, ElementReference> groupNameButtonReferences = new(StringComparer.Ordinal);

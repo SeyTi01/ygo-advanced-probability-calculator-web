@@ -1,0 +1,34 @@
+<span class="reorder-controls" role="group" aria-label="Reorder @ItemLabel">
+    <button @ref="upButton" type="button" class="reorder-button" disabled="@(Index == 0)"
+            aria-label="Move @ItemLabel up" title="Move @ItemLabel up"
+            @onclick="() => Move(-1)">▲</button>
+    <button @ref="downButton" type="button" class="reorder-button" disabled="@(Index >= Count - 1)"
+            aria-label="Move @ItemLabel down" title="Move @ItemLabel down"
+            @onclick="() => Move(1)">▼</button>
+</span>
+
+@code {
+    [Parameter] public int Index { get; set; }
+    [Parameter] public int Count { get; set; }
+    [Parameter] public string ItemLabel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
+
+    private ElementReference upButton;
+    private ElementReference downButton;
+    private int pendingFocus;
+
+    private async Task Move(int direction) {
+        var target = Index + direction;
+        if (target < 0 || target >= Count) return;
+        pendingFocus = direction;
+        await OnMove.InvokeAsync((Index, target));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (pendingFocus == 0) return;
+        var direction = pendingFocus;
+        pendingFocus = 0;
+        if (direction < 0) await (Index == 0 ? downButton : upButton).FocusAsync();
+        else await (Index >= Count - 1 ? upButton : downButton).FocusAsync();
+    }
+}

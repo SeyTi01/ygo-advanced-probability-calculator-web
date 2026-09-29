@@ -26,8 +26,9 @@
     }
 
     <div class="mt-2">
-        @foreach (var category in CategoryBases) {
-            <span class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
+        @for (var index = 0; index < CategoryBases.Count; index++) {
+            var category = CategoryBases[index];
+            <span @key="category" class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
                 @if (ReferenceEquals(editingCategory, category)) {
                     <input @ref="renameInputReference"
                            class="form-control form-control-sm category-rename-input"
@@ -64,6 +65,7 @@
                             title="Rename category"
                             @onclick="() => BeginCategoryRename(category)">@category.Name</button>
                 }
+                <ReorderControls Index="index" Count="CategoryBases.Count" ItemLabel="@($"category {category.Name}")" OnMove="OnMoveCategory" />
                 <button type="button" class="btn-close category-delete-button"
                         aria-label="@($"Remove category {category.Name}")"
                         title="@($"Remove category {category.Name}")"
@@ -81,6 +83,7 @@
     [Parameter] public required IEnumerable<Combo> Combos { get; set; } = [];
 
     [Parameter] public EventCallback OnCategoriesChanged { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMoveCategory { get; set; }
     [Parameter] public EventCallback<(CategoryBase OldCategory, CategoryBase NewCategory)> OnRenameCategory { get; set; }
 
     private string? newCategoryName;
