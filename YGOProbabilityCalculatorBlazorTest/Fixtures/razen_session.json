@@ -1,0 +1,321 @@
+{
+  "Categories": [
+    {
+      "Name": "Fire"
+    },
+    {
+      "Name": "Dark"
+    },
+    {
+      "Name": "Earth"
+    }
+  ],
+  "Cards": [
+    {
+      "Categories": [
+        {
+          "Name": "Earth"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Maxx \u0022C\u0022",
+      "Active": true,
+      "Id": "6791c7d39e9d41cda86fa8f59b6092a1"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Fire"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Ash Blossom \u0026 Joyous Spring",
+      "Active": true,
+      "Id": "70933e5990b54a2ca1ac75b0ace183db"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Vanquish Soul Dr. Mad Love",
+      "Active": true,
+      "Id": "a46c7692bd89479ebdd9430e0868a15f"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Fire"
+        }
+      ],
+      "Copies": 2,
+      "Name": "Vanquish Soul Razen",
+      "Active": true,
+      "Id": "55c145012b004e249542f334dbe278df"
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Mulcharmy Fuwalos",
+      "Active": true,
+      "Id": "782b979b7aa046dc80a57026c14c8f7c"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Fire"
+        }
+      ],
+      "Copies": 2,
+      "Name": "Vanquish Soul Jiaolong",
+      "Active": true,
+      "Id": "47af3086f26748fea509339d55c56651"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Earth"
+        }
+      ],
+      "Copies": 1,
+      "Name": "K9-04 Noroi",
+      "Active": true,
+      "Id": "66e19737b4814804a15981112e5e79df"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Earth"
+        }
+      ],
+      "Copies": 3,
+      "Name": "K9-17 Izuna",
+      "Active": true,
+      "Id": "65dbca786fcb404883a264676e08eb68"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 2,
+      "Name": "K9-66a Jokul",
+      "Active": true,
+      "Id": "21c07f55cd48470a9b4cfa777e905a7d"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 1,
+      "Name": "K9-66b Lantern",
+      "Active": true,
+      "Id": "97870450b661441f9a3d3fa26fd9a880"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Earth"
+        }
+      ],
+      "Copies": 1,
+      "Name": "K9-\u00D8\u00D8 Lupis",
+      "Active": true,
+      "Id": "32ec9714c37f446391eb0df57443dc0f"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Earth"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Vanquish Soul Hollie Sue",
+      "Active": true,
+      "Id": "74fc576402e64906853b667d299adaac"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Bystial Druiswurm",
+      "Active": true,
+      "Id": "fbf10b7775df44dab743db7413ee2d9c"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Bystial Magnamhut",
+      "Active": true,
+      "Id": "5881c34be587477b9e6c3c01f8bcca31"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 2,
+      "Name": "Vanquish Soul Heavy Borger",
+      "Active": true,
+      "Id": "93845904eb734ef0b243e0edd5b65939"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Fire"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Dogoran, the Mad Flame Kaiju",
+      "Active": true,
+      "Id": "c7abb909211148218b8bdf6848e99134"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Earth"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Vanquish Soul Caesar Valius",
+      "Active": true,
+      "Id": "a7a26174a628454db544725e9b0d2f6f"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Fire"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Reinforcement of the Army",
+      "Active": true,
+      "Id": "6d8f37220d024d25b41fb08fc1f188c9"
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "Triple Tactics Talent",
+      "Active": true,
+      "Id": "f5feca4301474add9ceba353d3d0081f"
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "Stake your Soul!",
+      "Active": true,
+      "Id": "d9db32f4514a4f2fb0d178efd3ef2c0b"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Earth"
+        },
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Chaotic Elements",
+      "Active": true,
+      "Id": "19fa41dff19d44cb88cf36334363b934"
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "Vanquish Soul, Start!",
+      "Active": true,
+      "Id": "486cc2ee687247ef866e66414ccf3bcd"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Earth"
+        },
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 2,
+      "Name": "\u0022A Case for K9\u0022",
+      "Active": true,
+      "Id": "db70c79f084e4de2a9ecb78599e4d8fd"
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "K9-X Forced Release",
+      "Active": true,
+      "Id": "75b6bf4293ef4909bf8e6730662d30cd"
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "Vanquish Soul Snow Devil",
+      "Active": true,
+      "Id": "c21f7c993a2b476da1d669d590b80a3c"
+    }
+  ],
+  "Combos": [
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "Fire"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Cards": [
+        {
+          "CardId": "55c145012b004e249542f334dbe278df",
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Razen \u002B Fire",
+      "Active": true
+    },
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "Dark"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Cards": [
+        {
+          "CardId": "55c145012b004e249542f334dbe278df",
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Razen \u002B Dark",
+      "Active": true
+    }
+  ],
+  "ComboGroups": [],
+  "HandSize": 5,
+  "CategoryColorIndices": {
+    "Fire": 0,
+    "Dark": 1,
+    "Earth": 2
+  }
+}
