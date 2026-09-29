@@ -44,6 +44,7 @@
         CategoryColorIndices="categoryColorIndices"
         Combos="combos"
         Cards="cards"
+        OnMoveCategory="MoveCategory"
     />
 
     <CardListEditor
@@ -56,10 +57,12 @@
         OnReplaceCard="ReplaceCard"
         OnRemoveCard="@(i => RemoveCard(i))"
         OnAddNewCard="AddNewCard"
+        OnMoveCard="MoveCard"
     />
 
     <ComboListEditor
         Combos="combos"
+        Cards="cards"
         ComboGroups="comboGroups"
         CategoryBases="categoryBases"
         CategoryColorIndices="categoryColorIndices"
@@ -72,6 +75,8 @@
         OnAddGroup="AddGroup"
         OnRenameGroup="RenameGroup"
         OnRemoveGroup="RemoveGroup"
+        OnMoveGroup="MoveGroup"
+        OnMoveCombo="MoveCombo"
         HandSize="handSize"
     />
 
@@ -176,6 +181,9 @@
     private string? CalculationUnavailableMessage {
         get {
             if (handSize < 1) return "Hand size must be at least 1.";
+            if (combos.Any(combo => combo.Active && combo.Cards.Any(requirement =>
+                cards.Count(card => card.Id == requirement.CardId) != 1)))
+                return "An active combo has a missing card reference. Repair or remove it, or deactivate the combo.";
             if (ActiveCardCount == 0) return "Activate at least one card to calculate.";
             if (cards.Any(card => card.Active && card.Copies < 1))
                 return "Each active card must have at least one copy, or be deactivated.";
@@ -184,7 +192,7 @@
             if (ActiveComboCount == 0) return "Activate at least one combo to calculate.";
             if (ActiveComboCount > IProbabilityCalculatorService.MaxComboCount)
                 return $"Calculate with at most {IProbabilityCalculatorService.MaxComboCount} active combos. Deactivate or remove extra combos.";
-            if (combos.Any(combo => combo.Active && combo.Categories.Count == 0))
+            if (combos.Any(combo => combo.Active && combo.Categories.Count == 0 && combo.Cards.Count == 0))
                 return "Complete or deactivate every incomplete active combo before calculating.";
             return null;
         }
@@ -203,6 +211,26 @@
         InvalidateCalculation();
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    private void MoveCategory((int From, int To) move) {
+        if (ListMove.TryMove(categoryBases, move.From, move.To)) InvalidateCalculation();
+    }
+
+    private void MoveCard((int From, int To) move) {
+        if (!ListMove.TryMove(cards, move.From, move.To)) return;
+        activeCardIndex = ListMove.AdjustActiveIndex(activeCardIndex, move.From, move.To);
+        InvalidateCalculation();
+    }
+
+    private void MoveCombo((int From, int To) move) {
+        if (!ListMove.TryMove(combos, move.From, move.To)) return;
+        activeComboIndex = ListMove.AdjustActiveIndex(activeComboIndex, move.From, move.To);
+        InvalidateCalculation();
+    }
+
+    private void MoveGroup((int From, int To) move) {
+        if (ListMove.TryMove(comboGroups, move.From, move.To)) InvalidateCalculation();
     }
 
     private void RemoveCard(int index) {
@@ -437,6 +465,8 @@
     }
 
     private void RestoreSessionData(SessionState session) {
+        if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
+            throw new InvalidOperationException("Session contains duplicate card IDs.");
         categoryBases.Clear();
         categoryBases.AddRange(session.Categories);
 
