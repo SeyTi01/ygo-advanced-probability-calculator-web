@@ -70,7 +70,7 @@ public class CalculatorEditorTest {
         var editor = cut.FindComponent<ComboEditor>();
         editor.Find(".accordion-button").Click();
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-        Assert.That(editor.Find(".combo-card-tag").TextContent, Does.Contain("Twin #1 (0–0)"));
+        Assert.That(editor.Find(".combo-card-tag").TextContent, Does.Contain("Card: Twin (0–0)"));
 
         editor.Find("#constraintKind0").Change("Card");
         Assert.That(editor.FindAll("#comboCard0 option").Select(option => option.TextContent.Trim()),
@@ -81,12 +81,12 @@ public class CalculatorEditorTest {
         editor.Find("#maxCount0").Input("1");
         Button(editor, "Update").Click();
         Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-card-tag").TextContent,
-            Does.Contain("Twin #1 (1–1)"));
+            Does.Contain("Card: Twin (1–1)"));
 
         cut.FindComponent<CardEditor>().Find(".accordion-button").Click();
         cut.FindComponent<CardEditor>().Find("#cardName0").Input("Renamed");
         Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-card-tag").TextContent,
-            Does.Contain("Renamed #1"));
+            Does.Contain("Card: Renamed (1–1)"));
         cut.FindComponent<CardEditor>().Find("[title='Remove card']").Click();
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Markup, Does.Contain("missing card reference"));
@@ -99,7 +99,7 @@ public class CalculatorEditorTest {
         Button(editor, "Add").Click();
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-card-tag").TextContent,
-            Does.Contain("Twin #1"));
+            Does.Contain("Card: Twin (1–1)"));
     }
 
     [Test]

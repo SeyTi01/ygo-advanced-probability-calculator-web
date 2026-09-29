@@ -19,7 +19,7 @@
                         </span>
                     }
                     @foreach (var card in HeaderCards) {
-                        <span class="badge category-tag combo-card-tag ms-1">Card: @CardLabel(card.CardId) (@card.MinCount–@card.MaxCount)</span>
+                        <span class="badge category-tag combo-card-tag ms-1">Card: @CardDisplayName(card.CardId) (@card.MinCount–@card.MaxCount)</span>
                     }
 
                     @if (HiddenHeaderCategoriesCount > 0) {
@@ -75,7 +75,7 @@
                         <select id="comboCard@(Index)" class="form-select" value="@selectedCardId" @onchange="e => OnSelectCard(e.Value?.ToString())">
                             <option value="">Select card…</option>
                             @foreach (var card in Cards) {
-                                <option value="@card.Id">@CardLabel(card.Id)</option>
+                                <option value="@card.Id">@CardSelectionLabel(card.Id)</option>
                             }
                         </select>
                     }
@@ -147,10 +147,10 @@
                     @foreach (var card in Combo.Cards) {
                         <span class="badge me-2 category-tag combo-card-tag @(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")"
                               title="@card.CardId">
-                            Card: @CardLabel(card.CardId) (@card.MinCount–@card.MaxCount)
+                            Card: @CardDisplayName(card.CardId) (@card.MinCount–@card.MaxCount)
                             <button type="button" class="btn-close category-remove-button ms-1"
-                                    aria-label="@($"Remove card {CardLabel(card.CardId)} from combo {ComboDisplayName}")"
-                                    title="@($"Remove card {CardLabel(card.CardId)} from combo {ComboDisplayName}")"
+                                    aria-label="@($"Remove card {CardSelectionLabel(card.CardId)} from combo {ComboDisplayName}")"
+                                    title="@($"Remove card {CardDisplayName(card.CardId)} from combo {ComboDisplayName}")"
                                     @onclick="() => RemoveCard(card)"></button>
                         </span>
                     }
@@ -198,10 +198,15 @@
     private IEnumerable<ComboCard> HeaderCards => Combo.Cards.Take(Math.Max(0, MaxHeaderBadges - Combo.Categories.Count));
     private int HiddenHeaderCategoriesCount => Math.Max(0, ConstraintCount - MaxHeaderBadges);
 
-    private string CardLabel(string cardId) {
+    private string CardDisplayName(string cardId) {
         var index = Cards.ToList().FindIndex(card => card.Id == cardId);
         if (index < 0) return $"Missing card ({cardId[..Math.Min(8, cardId.Length)]})";
-        return $"{(string.IsNullOrWhiteSpace(Cards[index].Name) ? "Unnamed card" : Cards[index].Name)} #{index + 1}";
+        return string.IsNullOrWhiteSpace(Cards[index].Name) ? "Unnamed card" : Cards[index].Name;
+    }
+
+    private string CardSelectionLabel(string cardId) {
+        var index = Cards.ToList().FindIndex(card => card.Id == cardId);
+        return index < 0 ? CardDisplayName(cardId) : $"{CardDisplayName(cardId)} #{index + 1}";
     }
 
     private void ChangeKind(string? kind) {
