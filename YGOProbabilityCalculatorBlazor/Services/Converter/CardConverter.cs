@@ -20,7 +20,13 @@ public class CardConverter : JsonConverter<Card> {
             ? activeProperty.GetBoolean()
             : true;
 
-        return new Card(categories, copies, name, active);
+        string? id = null;
+        if (root.TryGetProperty("Id", out var idProperty)) {
+            if (idProperty.ValueKind != JsonValueKind.String ||
+                string.IsNullOrWhiteSpace(id = idProperty.GetString()))
+                throw new JsonException("Card ID must be a non-empty string.");
+        }
+        return new Card(categories, copies, name, active, id);
     }
 
     public override void Write(Utf8JsonWriter writer, Card value, JsonSerializerOptions options) {
@@ -30,6 +36,7 @@ public class CardConverter : JsonConverter<Card> {
         writer.WriteNumber("Copies", value.Copies);
         writer.WriteString("Name", value.Name);
         writer.WriteBoolean("Active", value.Active);
+        writer.WriteString("Id", value.Id);
         writer.WriteEndObject();
     }
 }

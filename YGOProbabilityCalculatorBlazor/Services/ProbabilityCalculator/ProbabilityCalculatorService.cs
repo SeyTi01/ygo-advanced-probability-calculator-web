@@ -7,6 +7,7 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 public class ProbabilityCalculatorService : IProbabilityCalculatorService {
     public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) {
         ValidateComboCount(combos);
+        ValidateCardIds(deck);
         var calculation = new Calculation(deck, handSize);
         return calculation.Union(combos.Select(combo => calculation.Canonicalize(combo)).ToList());
     }
@@ -14,6 +15,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
     public ProbabilityCalculationResult CalculateProbabilityResults(
         List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
         ValidateComboCount(combos);
+        ValidateCardIds(deck);
         // Cache and work budget belong to this request, never to a service instance.
         var calculation = new Calculation(deck, handSize);
         var events = combos.Select(combo => calculation.Canonicalize(combo)).ToList();
@@ -35,6 +37,11 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                 $"Calculation supports at most {IProbabilityCalculatorService.MaxComboCount} combos.");
     }
 
+    private static void ValidateCardIds(List<Card> deck) {
+        if (deck.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != deck.Count)
+            throw new ArgumentException("Deck card IDs must be unique.", nameof(deck));
+    }
+
     private sealed class Calculation(List<Card> deck, int handSize) {
         private readonly WorkBudget budget = new();
         private readonly Dictionary<Event, double> probabilities = new();
@@ -42,17 +49,24 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         private BigInteger? totalWays;
 
         public Event? Canonicalize(Combo combo) {
-            budget.Spend(combo.Categories.Count + 1L);
-            var constraints = new List<Category>();
+            budget.Spend(combo.Categories.Count + combo.Cards.Count + 1L);
+            var constraints = new List<Requirement>();
             foreach (var group in combo.Categories.GroupBy(c => c.BaseCategory.Name, StringComparer.Ordinal)) {
                 var min = group.Max(c => c.MinCount);
                 var max = Math.Min(handSize, group.Min(c => c.MaxCount));
                 if (min > max) return null;
                 // Every category count is in [0, handSize], regardless of overlap.
                 if (min == 0 && max == handSize) continue;
-                constraints.Add(new Category(group.Key, min, max));
+                constraints.Add(new Requirement(new ConstraintKey(false, group.Key), min, max));
             }
-            return new Event(constraints.OrderBy(c => c.Name, StringComparer.Ordinal).ToArray());
+            foreach (var group in combo.Cards.GroupBy(c => c.CardId, StringComparer.Ordinal)) {
+                var min = group.Max(c => c.MinCount);
+                var max = Math.Min(handSize, group.Min(c => c.MaxCount));
+                if (min > max) return null;
+                if (min == 0 && max == handSize) continue;
+                constraints.Add(new Requirement(new ConstraintKey(true, group.Key), min, max));
+            }
+            return new Event(constraints.OrderBy(c => c.Key.IsCard).ThenBy(c => c.Key.Value, StringComparer.Ordinal).ToArray());
         }
 
         public double Union(List<Event?> events) {
@@ -100,21 +114,22 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
 
         private Event? Intersect(Event first, Event second) {
             budget.Spend(first.Constraints.Length + second.Constraints.Length + 1L);
-            var constraints = new List<Category>();
+            var constraints = new List<Requirement>();
             int i = 0, j = 0;
             while (i < first.Constraints.Length || j < second.Constraints.Length) {
                 if (i == first.Constraints.Length) { constraints.Add(second.Constraints[j++]); continue; }
                 if (j == second.Constraints.Length) { constraints.Add(first.Constraints[i++]); continue; }
                 var left = first.Constraints[i];
                 var right = second.Constraints[j];
-                var order = StringComparer.Ordinal.Compare(left.Name, right.Name);
+                var order = left.Key.IsCard.CompareTo(right.Key.IsCard);
+                if (order == 0) order = StringComparer.Ordinal.Compare(left.Key.Value, right.Key.Value);
                 if (order < 0) { constraints.Add(left); i++; }
                 else if (order > 0) { constraints.Add(right); j++; }
                 else {
                     var min = Math.Max(left.MinCount, right.MinCount);
                     var max = Math.Min(left.MaxCount, right.MaxCount);
                     if (min > max) return null;
-                    constraints.Add(new Category(left.Name, min, max));
+                    constraints.Add(new Requirement(left.Key, min, max));
                     i++; j++;
                 }
             }
@@ -136,7 +151,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                 budget.Spend((long)(categories.Length + 1) * (card.Categories.Count + 1));
                 var mask = BigInteger.Zero;
                 for (var i = 0; i < categories.Length; i++)
-                    if (card.Categories.Any(c => c.Name == categories[i].Name))
+                    if (categories[i].Key.IsCard ? card.Id == categories[i].Key.Value :
+                        card.Categories.Any(c => c.Name == categories[i].Key.Value))
                         mask |= BigInteger.One << i;
                 cardMasks[mask] = cardMasks.GetValueOrDefault(mask) + card.Copies;
                 WorkBudget.CheckStorage(cardMasks.Count, (long)cardMasks.Count * (categories.Length + 1));
@@ -171,7 +187,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
 
         private Dictionary<StateKey, double> Convolve(
-            Dictionary<StateKey, double> states, BigInteger pattern, int groupSize, Category[] categories) {
+            Dictionary<StateKey, double> states, BigInteger pattern, int groupSize, Requirement[] categories) {
             var next = new Dictionary<StateKey, double>();
             var indices = Enumerable.Range(0, categories.Length)
                 .Where(i => (pattern & (BigInteger.One << i)) != 0).ToArray();
@@ -233,7 +249,10 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         return result;
     }
 
-    private sealed record Event(Category[] Constraints) {
+    private readonly record struct ConstraintKey(bool IsCard, string Value);
+    private readonly record struct Requirement(ConstraintKey Key, int MinCount, int MaxCount);
+
+    private sealed record Event(Requirement[] Constraints) {
         public bool Equals(Event? other) => other is not null &&
             Constraints.AsSpan().SequenceEqual(other.Constraints);
         public override int GetHashCode() {

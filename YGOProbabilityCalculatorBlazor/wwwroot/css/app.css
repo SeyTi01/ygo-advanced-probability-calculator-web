@@ -204,6 +204,18 @@ body.input-mode-keyboard *:focus-visible {
     font-weight: 600;
 }
 
+.combo-card-tag {
+    --category-background: var(--bs-secondary-bg);
+    --category-text: var(--bs-body-color);
+    --category-border: var(--bs-border-color);
+}
+
+.combo-missing-card {
+    --category-background: var(--bs-danger-bg-subtle);
+    --category-text: var(--bs-danger-text-emphasis);
+    --category-border: var(--bs-danger-border-subtle);
+}
+
 .category-color-0 {
     --category-background: #dbeafe;
     --category-text: #1e3a8a;

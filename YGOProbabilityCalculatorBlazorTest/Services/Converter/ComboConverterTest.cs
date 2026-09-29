@@ -92,4 +92,18 @@ public class ComboConverterTests {
         Assert.That(legacy.GroupId, Is.Null);
         Assert.That(legacy.Active, Is.True);
     }
+
+    [Test]
+    public void MixedRequirementsRoundTripThroughAllReplacementOperations() {
+        var card = new Card([], 2, "Card");
+        var combo = new Combo([new(new CategoryBase("Role"), 0, 2)], "Mixed", true, "g",
+            [new(card.Id, 1, 2)]);
+        var loaded = JsonSerializer.Deserialize<Combo>(JsonSerializer.Serialize(combo, _options), _options)!;
+        Assert.That(loaded.Cards.Single().CardId, Is.EqualTo(card.Id));
+        Assert.That(loaded.Cards.Single().MinCount, Is.EqualTo(1));
+        Assert.That(loaded.Categories, Has.Count.EqualTo(1));
+        Assert.That(loaded.WithName("Other").WithActive(false).WithGroup(null).WithCategories([]).Cards,
+            Has.Count.EqualTo(1));
+        Assert.That(loaded.WithCards([]).Categories, Has.Count.EqualTo(1));
+    }
 }
