@@ -316,7 +316,7 @@ public class ActiveEntriesEditorTest {
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("0");
 
-        cut.Find("[aria-label='Rename category A']").Click();
+        cut.Find("[aria-label='Edit category A']").Click();
         cut.Find("[aria-label='New name for category A']").Input("Renamed A");
         cut.Find("[aria-label='Save category name']").Click();
 
