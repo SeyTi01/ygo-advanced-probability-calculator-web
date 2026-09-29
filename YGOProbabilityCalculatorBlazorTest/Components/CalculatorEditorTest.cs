@@ -284,7 +284,7 @@ public class CalculatorEditorTest {
     }
 
     [Test]
-    public void CardAndCategoryRequirementsCanShareOneDrawnCard() {
+    public void NewCardAndCategoryRequirementsCannotShareOneDrawnCard() {
         var role = new CategoryBase("Role");
         var card = new Card([role], 1, "Piece");
         var other = new Card([], 1, "Other");
@@ -351,6 +351,15 @@ public class CalculatorEditorTest {
             Assert.That(loadedCombo.GroupId, Is.EqualTo("g"));
             Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         });
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => {
+            Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(0.0.ToString("P2")));
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        });
+        cut.Find("#handSize").Change("2");
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => Assert.That(cut.Find(".probability-total").TextContent,
+            Does.Contain(1.0.ToString("P2"))));
     }
 
     [Test]

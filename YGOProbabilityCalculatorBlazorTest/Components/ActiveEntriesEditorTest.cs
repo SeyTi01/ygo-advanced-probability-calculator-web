@@ -59,6 +59,8 @@ public class ActiveEntriesEditorTest {
 
         cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").Click();
         cut.WaitForAssertion(() => {
+            Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.False);
+            Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
             var result = cut.Find(".probability-results");
             Assert.That(result.TextContent, Does.Contain(value.ToString("P2")));
 

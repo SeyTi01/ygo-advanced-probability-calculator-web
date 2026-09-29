@@ -18,11 +18,11 @@
         <ol>
             <li><strong>Create Categories:</strong> Tag card roles like "Starter", "Extender", "X", "CombosWithX", etc.</li>
             <li><strong>Assign Categories to Cards:</strong> Each card can belong to multiple categories.</li>
-            <li><strong>Define Combos:</strong> Each combo can require categories, specific deck cards, or both. Set inclusive minimum and maximum drawn-copy counts for each requirement. A drawn card counts toward its own card requirement and every category assigned to it.</li>
-            <li><strong>Set Constraints:</strong> Define per-category min/max requirements.</li>
+            <li><strong>Define Combos:</strong> Each combo can require categories, specific deck cards, or both. Each minimum needs distinct physical copies within that combo. Two copies of the same card can fill separate requirements; overlapping categories define which requirements a copy is eligible for.</li>
+            <li><strong>Set Constraints:</strong> Set inclusive minimum and maximum counts. Maximums count all matching copies in the hand, including copies used for other requirements. A 0/0 constraint forbids any matching copy.</li>
             <li><strong>Calculate:</strong> Get exact probabilities for opening <strong>any</strong> of the defined combos in your deck.</li>
         </ol>
-        <p>A single opening hand can satisfy multiple combos, so individual probabilities may overlap.
+        <p>A single opening hand can satisfy multiple combos, each evaluated independently using the same drawn copies, so individual probabilities may overlap.
             &quot;Any active combo&quot; counts each hand once when it satisfies at least one active combo, so adding the individual percentages may exceed the total.
             If the combos cannot overlap, their probabilities can sum to the total.
             You can organize combos into named groups; each group counts a hand once when it satisfies at least one active combo in that group.
