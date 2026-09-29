@@ -44,6 +44,7 @@
         CategoryColorIndices="categoryColorIndices"
         Combos="combos"
         Cards="cards"
+        OnMoveCategory="MoveCategory"
     />
 
     <CardListEditor
@@ -56,6 +57,7 @@
         OnReplaceCard="ReplaceCard"
         OnRemoveCard="@(i => RemoveCard(i))"
         OnAddNewCard="AddNewCard"
+        OnMoveCard="MoveCard"
     />
 
     <ComboListEditor
@@ -73,6 +75,8 @@
         OnAddGroup="AddGroup"
         OnRenameGroup="RenameGroup"
         OnRemoveGroup="RemoveGroup"
+        OnMoveGroup="MoveGroup"
+        OnMoveCombo="MoveCombo"
         HandSize="handSize"
     />
 
@@ -207,6 +211,26 @@
         InvalidateCalculation();
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    private void MoveCategory((int From, int To) move) {
+        if (ListMove.TryMove(categoryBases, move.From, move.To)) InvalidateCalculation();
+    }
+
+    private void MoveCard((int From, int To) move) {
+        if (!ListMove.TryMove(cards, move.From, move.To)) return;
+        activeCardIndex = ListMove.AdjustActiveIndex(activeCardIndex, move.From, move.To);
+        InvalidateCalculation();
+    }
+
+    private void MoveCombo((int From, int To) move) {
+        if (!ListMove.TryMove(combos, move.From, move.To)) return;
+        activeComboIndex = ListMove.AdjustActiveIndex(activeComboIndex, move.From, move.To);
+        InvalidateCalculation();
+    }
+
+    private void MoveGroup((int From, int To) move) {
+        if (ListMove.TryMove(comboGroups, move.From, move.To)) InvalidateCalculation();
     }
 
     private void RemoveCard(int index) {
