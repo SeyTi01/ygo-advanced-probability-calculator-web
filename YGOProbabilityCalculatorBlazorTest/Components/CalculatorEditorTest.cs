@@ -50,7 +50,7 @@ public class CalculatorEditorTest {
     }
 
     private static void RenameGroupWithEnter(IRenderedFragment fragment, string oldName, string newName) {
-        fragment.Find($"[aria-label='Rename group {oldName}']").Click();
+        fragment.Find($"[aria-label='Edit group {oldName}']").Click();
         var input = fragment.Find($"[aria-label='New name for group {oldName}']");
         input.Input(newName);
         input.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
@@ -74,19 +74,35 @@ public class CalculatorEditorTest {
         var cut = Render(new SessionState { Categories = [a, b, c], Cards = cards,
             Combos = combos, ComboGroups = groups, HandSize = 1 });
 
-        Assert.That(cut.Find("[aria-label='Move category A up']").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.FindComponent<CategoryListEditor>().FindAll(".category-chip .reorder-controls"), Is.Empty);
+        Assert.That(cut.FindComponent<ComboListEditor>().FindAll(".combo-group-chip .reorder-controls"), Is.Empty);
+        Assert.That(cut.Find("[aria-label='Move card Same, row 1 up']").TextContent, Is.EqualTo("▲"));
+        Assert.That(cut.Find("[aria-label='Move combo Same, row 1 up']").TextContent, Is.EqualTo("▲"));
         Assert.That(cut.Find("[aria-label='Move card Same, row 1 up']").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Find("[aria-label='Move combo Combo 3, row 3 down']").HasAttribute("disabled"), Is.True);
+        cut.Find("[aria-label='Edit category A']").Click();
+        Assert.That(cut.Find("[aria-label='Move category A left']").HasAttribute("disabled"), Is.True);
+        cut.Find("[aria-label='Edit group One']").Click();
+        Assert.That(cut.Find("[aria-label='Move group One left']").HasAttribute("disabled"), Is.True);
         Button(cut, "Calculate").Click();
         cut.WaitForElement(".probability-results");
         var totalBeforeMove = cut.Find(".probability-total-value").TextContent;
-        cut.Find("[aria-label='Move category A down']").Click();
+        Assert.That(cut.Find("[aria-label='Move category A left']").HasAttribute("disabled"), Is.True);
+        cut.Find("[aria-label='Move category A right']").Click();
         AssertPreviousResult(cut);
-        cut.Find("[aria-label='Move category A down']").Click();
-        cut.Find("[aria-label='Move category C up']").Click();
-        cut.Find("[aria-label='Move group One down']").Click();
-        cut.Find("[aria-label='Move group One down']").Click();
-        cut.Find("[aria-label='Move group Three up']").Click();
+        cut.Find("[aria-label='Move category A right']").Click();
+        cut.Find("[aria-label='Edit category C']").Click();
+        cut.Find("[aria-label='Move category C left']").Click();
+        cut.Find("[aria-label='Move group One right']").Click();
+        cut.Find("[aria-label='Move group One right']").Click();
+        cut.Find("[aria-label='Edit group Three']").Click();
+        cut.Find("[aria-label='Move group Three left']").Click();
+        Assert.That(cut.Find("[aria-label='Move category C right']").TextContent, Is.EqualTo("▶"));
+        Assert.That(cut.Find("[aria-label='Move group Three left']").TextContent, Is.EqualTo("◀"));
+        cut.Find("[aria-label='Edit category A']").Click();
+        Assert.That(cut.Find("[aria-label='Move category A right']").HasAttribute("disabled"), Is.True);
+        cut.Find("[aria-label='Edit group One']").Click();
+        Assert.That(cut.Find("[aria-label='Move group One right']").HasAttribute("disabled"), Is.True);
         cut.Find("[aria-label='Move card Same, row 1 down']").Click();
         cut.Find("[aria-label='Move card Same, row 2 down']").Click();
         cut.Find("[aria-label='Move card Card 2, row 2 up']").Click();
@@ -178,16 +194,26 @@ public class CalculatorEditorTest {
             ComboGroups = [new("g1", "One"), new("g2", "Two")], HandSize = 2
         };
         var cut = Render(session);
-        cut.Find("[aria-label='Rename category A']").Click();
+        cut.Find("[aria-label='Edit category A']").Click();
         cut.Find("[aria-label='New name for category A']").Input("Renamed");
-        cut.Find("[aria-label='Move category A down']").Click();
+        var categoryChip = cut.FindAll(".category-chip").Single(chip =>
+            chip.QuerySelector("[aria-label='New name for category A']") is not null);
+        Assert.That(categoryChip.QuerySelectorAll("button").Select(x => x.GetAttribute("aria-label")),
+            Is.EqualTo(new[] { "Save category name", "Move category A left", "Move category A right", "Exit category edit mode", "Remove category A" }));
+        cut.Find("[aria-label='Move category A right']").Click();
         Assert.That(cut.Find("[aria-label='New name for category A']").GetAttribute("value"), Is.EqualTo("Renamed"));
         cut.Find("[aria-label='Save category name']").Click();
-        cut.Find("[aria-label='Rename group One']").Click();
+        cut.Find("[aria-label='Edit group One']").Click();
         cut.Find("[aria-label='New name for group One']").Input("Updated");
-        cut.Find("[aria-label='Move group One down']").Click();
+        var groupChip = cut.FindAll(".combo-group-chip").Single(chip =>
+            chip.QuerySelector("[aria-label='New name for group One']") is not null);
+        Assert.That(groupChip.QuerySelectorAll("button").Select(x => x.GetAttribute("aria-label")),
+            Is.EqualTo(new[] { "Save group name", "Move group One left", "Move group One right", "Exit group edit mode", "Remove group One" }));
+        cut.Find("[aria-label='Move group One right']").Click();
         Assert.That(cut.Find("[aria-label='New name for group One']").GetAttribute("value"), Is.EqualTo("Updated"));
         cut.Find("[aria-label='Save group name']").Click();
+        Assert.That(cut.FindAll(".category-chip .reorder-controls"), Is.Empty);
+        Assert.That(cut.FindAll(".combo-group-chip .reorder-controls"), Is.Empty);
         cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
         cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").Click();
         Assert.That(cut.Find("#cardCategory0").QuerySelectorAll("option").Skip(1).Select(x => x.TextContent.Trim()),
@@ -196,6 +222,23 @@ public class CalculatorEditorTest {
             Is.EqualTo(new[] { "Two", "Updated" }));
         Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Categories.Single().Name, Is.EqualTo("Renamed"));
         Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.Categories.Single().BaseCategory.Name, Is.EqualTo("Renamed"));
+
+        cut.Find("[aria-label='Edit category B']").Click();
+        cut.Find("[aria-label='New name for category B']").Input("Discarded");
+        cut.Find("[aria-label='Move category B right']").Click();
+        cut.Find("[aria-label='New name for category B']")
+            .KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
+        Assert.That(cut.FindComponent<CategoryListEditor>().FindAll(".category-chip").Select(chip =>
+            chip.QuerySelector(".category-name-trigger")?.TextContent.Trim()), Is.EqualTo(new[] { "Renamed", "B" }));
+        Assert.That(cut.FindAll(".category-chip .reorder-controls"), Is.Empty);
+
+        cut.Find("[aria-label='Edit group Two']").Click();
+        cut.Find("[aria-label='New name for group Two']").Input("Discarded");
+        cut.Find("[aria-label='Move group Two right']").Click();
+        cut.Find("[aria-label='Exit group edit mode']").Click();
+        Assert.That(cut.FindAll(".combo-group-chip").Select(chip =>
+            chip.QuerySelector(".category-name-trigger")?.TextContent.Trim()), Is.EqualTo(new[] { "Updated", "Two" }));
+        Assert.That(cut.FindAll(".combo-group-chip .reorder-controls"), Is.Empty);
     }
 
     [Test]
@@ -397,7 +440,7 @@ public class CalculatorEditorTest {
         Assert.That(CategoryColorClass(card, ".accordion-button .category-tag", "C"), Is.EqualTo(colorC));
         Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", "C"), Is.EqualTo(colorC));
 
-        cut.Find("[aria-label='Rename category A']").Click();
+        cut.Find("[aria-label='Edit category A']").Click();
         cut.Find("[aria-label='New name for category A']").Input("Renamed");
         cut.Find("[aria-label='Save category name']").Click();
 
@@ -823,7 +866,7 @@ public class CalculatorEditorTest {
             .KeyUp(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
         var secondId = cut.FindAll("#comboGroup0 option:not([value=''])")[1].GetAttribute("value")!;
 
-        cut.Find("[aria-label='Rename group Tier 1']").Click();
+        cut.Find("[aria-label='Edit group Tier 1']").Click();
         context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 1);
         cut.Find("[aria-label='New name for group Tier 1']").Input("");
         cut.Find("[aria-label='Save group name']").Click();
@@ -835,18 +878,18 @@ public class CalculatorEditorTest {
         cut.Find("[aria-label='New name for group Tier 1']")
             .KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
         context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 2);
-        Assert.That(cut.Find("[aria-label='Rename group Tier One']").TextContent, Is.EqualTo("Tier One"));
+        Assert.That(cut.Find("[aria-label='Edit group Tier One']").TextContent, Is.EqualTo("Tier One"));
         Assert.That(first.Instance.Combo.GroupId,
             Is.EqualTo(groupId));
         Assert.That(cut.Find("#comboGroup0").TextContent, Does.Contain("Tier One"));
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
-        cut.Find("[aria-label='Rename group Tier 2']").Click();
+        cut.Find("[aria-label='Edit group Tier 2']").Click();
         var secondRename = cut.Find("[aria-label='New name for group Tier 2']");
         secondRename.Input("Discarded");
         secondRename.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
         context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 4);
-        Assert.That(cut.Find("[aria-label='Rename group Tier 2']").TextContent, Is.EqualTo("Tier 2"));
+        Assert.That(cut.Find("[aria-label='Edit group Tier 2']").TextContent, Is.EqualTo("Tier 2"));
 
         cut.Find("#comboGroup0").Change(secondId);
         Assert.That(first.Instance.Combo.GroupId, Is.EqualTo(secondId));
@@ -947,7 +990,7 @@ public class CalculatorEditorTest {
         Button(cut, "Calculate").Click();
         cut.WaitForElement(".probability-results", TimeSpan.FromSeconds(5));
 
-        cut.Find("[aria-label='Rename category A']").Click();
+        cut.Find("[aria-label='Edit category A']").Click();
         cut.WaitForElement("[aria-label='New name for category A']", TimeSpan.FromSeconds(5))
             .Input("Renamed A");
         cut.Find("[aria-label='Save category name']").Click();

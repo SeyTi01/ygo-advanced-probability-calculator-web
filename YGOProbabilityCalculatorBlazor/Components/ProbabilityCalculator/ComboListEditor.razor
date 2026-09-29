@@ -41,8 +41,9 @@
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </button>
+                        <ReorderControls Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@($"group {group.Name}")" OnMove="OnMoveGroup" />
                         <button type="button" class="category-icon-button"
-                                aria-label="Cancel group rename" title="Cancel group rename"
+                                aria-label="Exit group edit mode" title="Exit group edit mode"
                                 @onclick="CancelGroupRename">
                             <svg class="category-action-icon" viewBox="0 0 24 24"
                                  fill="none" stroke="currentColor" stroke-width="2.5"
@@ -54,11 +55,10 @@
                     else {
                         <button @ref="groupNameButtonReferences[group.Id]"
                                 type="button" class="category-name-trigger"
-                                aria-label="@($"Rename group {group.Name}")"
-                                title="@($"Rename group {group.Name}")"
+                                aria-label="@($"Edit group {group.Name}")"
+                                title="@($"Edit group {group.Name}")"
                                 @onclick="() => BeginGroupRename(group)">@group.Name</button>
                     }
-                    <ReorderControls Index="index" Count="ComboGroups.Count" ItemLabel="@($"group {group.Name}")" OnMove="OnMoveGroup" />
                     <button type="button" class="btn-close category-delete-button"
                             aria-label="@($"Remove group {group.Name}")"
                             title="@($"Remove group {group.Name}")"
