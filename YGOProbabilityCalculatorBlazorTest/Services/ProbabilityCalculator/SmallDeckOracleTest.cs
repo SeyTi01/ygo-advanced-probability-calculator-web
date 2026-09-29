@@ -9,6 +9,34 @@ public class SmallDeckOracleTest {
     private static readonly CategoryBase B = new("B");
     private static readonly CategoryBase C = new("C");
 
+    [Test]
+    public void DirectCardAndMixedRequirementsMatchPhysicalHandsAndGroups() {
+        var starter = new CategoryBase("Starter");
+        var first = new Card([starter], 2, "Starter");
+        var second = new Card([B], 2, "Same");
+        var third = new Card([B], 1, "Same");
+        List<Card> deck = [first, second, third, new([], 2)];
+        List<Combo> combos = [
+            new([], "Two cards", groupId: "g", cards: [new(first.Id, 1, 2), new(second.Id, 1, 1)]),
+            new([new(starter, 1, 2)], "Same physical card", groupId: "g", cards: [new(first.Id, 1, 2)]),
+            new([new(B, 1, 2)], "Mixed", cards: [new(third.Id, 0, 0)]),
+            new([], "Repeated range", cards: [new(first.Id, 0, 2), new(first.Id, 1, 1)]),
+            new([], "Contradiction", cards: [new(first.Id, 0, 0), new(first.Id, 1, 2)])
+        ];
+        foreach (var handSize in new[] { 1, 2, 3 }) {
+            TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, handSize);
+            var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, handSize,
+                [new("g", "Grouped")]);
+            Assert.That(result.GroupProbabilities![0].Probability,
+                Is.EqualTo(EnumerateProbability(deck, combos.Where(combo => combo.GroupId == "g").ToList(), handSize)).Within(1e-12));
+        }
+
+        var activeDeck = deck.Where(card => card != first).ToList();
+        TotalAndStandaloneResultsMatchEveryPhysicalHand(activeDeck, combos, 2);
+        Assert.That(first.WithName("Renamed").WithCopies(3).Id, Is.EqualTo(first.Id));
+        Assert.That(first.WithCategories([]).WithActive(false).Id, Is.EqualTo(first.Id));
+    }
+
     private static IEnumerable<TestCaseData> Cases() {
         List<Card> deck = [new([A], 2), new([B]), new([A, B]), new([B, C]), new([], 2)];
         yield return Case("positive maximum", deck, [new([new(A, 1, 1)])], 2);
@@ -375,6 +403,9 @@ public class SmallDeckOracleTest {
                 if (combos.Any(combo => combo.Categories.All(constraint => {
                     var count = hand.Count(card => card.Categories.Any(category =>
                         category.Name == constraint.BaseCategory.Name));
+                    return count >= constraint.MinCount && count <= constraint.MaxCount;
+                }) && combo.Cards.All(constraint => {
+                    var count = hand.Count(card => card.Id == constraint.CardId);
                     return count >= constraint.MinCount && count <= constraint.MaxCount;
                 }))) successes++;
                 return;

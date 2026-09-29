@@ -62,6 +62,117 @@ public class CalculatorEditorTest {
     };
 
     [Test]
+    public void CardOnlyComboCanBeEditedAndMissingReferenceBlocksCalculationUntilRemoved() {
+        var first = new Card([], 2, "Twin");
+        var second = new Card([], 2, "Twin");
+        var combo = new Combo([], "Direct", cards: [new(first.Id, 0, 0)]);
+        var cut = Render(new SessionState { Cards = [first, second], Combos = [combo], HandSize = 2 });
+        var editor = cut.FindComponent<ComboEditor>();
+        editor.Find(".accordion-button").Click();
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        Assert.That(editor.Find(".combo-card-tag").TextContent, Does.Contain("Twin #1 (0–0)"));
+
+        editor.Find("#constraintKind0").Change("Card");
+        Assert.That(editor.FindAll("#comboCard0 option").Select(option => option.TextContent.Trim()),
+            Does.Contain("Twin #2"));
+        editor.Find("#comboCard0").Change(first.Id);
+        Assert.That(Button(editor, "Update").TextContent.Trim(), Is.EqualTo("Update"));
+        editor.Find("#minCount0").Input("1");
+        editor.Find("#maxCount0").Input("1");
+        Button(editor, "Update").Click();
+        Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-card-tag").TextContent,
+            Does.Contain("Twin #1 (1–1)"));
+
+        cut.FindComponent<CardEditor>().Find(".accordion-button").Click();
+        cut.FindComponent<CardEditor>().Find("#cardName0").Input("Renamed");
+        Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-card-tag").TextContent,
+            Does.Contain("Renamed #1"));
+        cut.FindComponent<CardEditor>().Find("[title='Remove card']").Click();
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Markup, Does.Contain("missing card reference"));
+        Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-missing-card").TextContent,
+            Does.Contain("Missing card"));
+        cut.FindComponent<ComboEditor>().Find(".combo-missing-card button").Click();
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
+        editor = cut.FindComponent<ComboEditor>();
+        editor.Find("#comboCard0").Change(second.Id);
+        Button(editor, "Add").Click();
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-card-tag").TextContent,
+            Does.Contain("Twin #1"));
+    }
+
+    [Test]
+    public void CardAndCategoryRequirementsCanShareOneDrawnCard() {
+        var role = new CategoryBase("Role");
+        var card = new Card([role], 1, "Piece");
+        var other = new Card([], 1, "Other");
+        var cut = Render(new SessionState {
+            Categories = [role], Cards = [card, other], Combos = [new([], "Mixed")], HandSize = 1
+        });
+        var editor = cut.FindComponent<ComboEditor>();
+        editor.Find(".accordion-button").Click();
+        editor.Find("#comboCategory0").Change("Role");
+        Button(editor, "Add").Click();
+        editor.Find("#constraintKind0").Change("Card");
+        editor.Find("#comboCard0").Change(card.Id);
+        Button(editor, "Add").Click();
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => Assert.That(cut.Find(".probability-total").TextContent,
+            Does.Contain(SmallDeckOracleTest.EnumerateProbability([card, other],
+                [new([new(role, 1, 1)], cards: [new(card.Id, 1, 1)])], 1).ToString("P2"))));
+        Assert.That(editor.FindAll(".accordion-body .category-tag"), Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void ImportDoesNotRebindSameNamedCardAndMissingZeroBoundBlocksCalculation() {
+        var original = new Card([], 2, "Same");
+        var replacement = new Card([], 2, "Same");
+        var importer = new Mock<IDeckImportService>();
+        importer.Setup(service => service.ImportDeckFromYdkAsync(It.IsAny<IBrowserFile>()))
+            .ReturnsAsync([replacement]);
+        context.Services.AddSingleton(importer.Object);
+        var cut = Render(new SessionState {
+            Cards = [original], Combos = [new([], cards: [new(original.Id, 0, 0)])], HandSize = 1
+        });
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n123", "deck.ydk"));
+        cut.WaitForAssertion(() => {
+            Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Id, Is.EqualTo(replacement.Id));
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
+            Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-missing-card").TextContent,
+                Does.Contain("Missing card"));
+        });
+        cut.Find("#comboActive0").Change(false);
+        Assert.That(cut.Markup, Does.Not.Contain("An active combo has a missing card reference"));
+    }
+
+    [Test]
+    public void MixedComboSessionRoundTripKeepsCardIdentityAndGroup() {
+        var card = new Card([a], 2, "Piece");
+        var session = new SessionState {
+            Categories = [a], Cards = [card],
+            Combos = [new([new(a, 1, 2)], "Mixed", groupId: "g", cards: [new(card.Id, 1, 2)])],
+            ComboGroups = [new("g", "Group")], HandSize = 1
+        };
+        var cut = Render(session);
+        Button(cut, "Save Session").Click();
+        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        Assert.That(json, Does.Contain(card.Id).And.Contain("\"Cards\""));
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "mixed.json"));
+        cut.WaitForAssertion(() => {
+            var loadedCard = cut.FindComponent<CardEditor>().Instance.Card;
+            var loadedCombo = cut.FindComponent<ComboEditor>().Instance.Combo;
+            Assert.That(loadedCard.Id, Is.EqualTo(card.Id));
+            Assert.That(loadedCombo.Cards.Single().CardId, Is.EqualTo(card.Id));
+            Assert.That(loadedCombo.GroupId, Is.EqualTo("g"));
+            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        });
+    }
+
+    [Test]
     public void TooManyActiveCombosExplainTheLimitAndInactiveCombosDoNotCount() {
         var session = Session();
         session.Combos.Clear();
