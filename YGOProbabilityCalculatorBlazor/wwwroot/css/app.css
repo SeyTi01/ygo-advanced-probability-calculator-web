@@ -142,6 +142,10 @@ code {
     border-style: dashed;
 }
 
+#cardsAccordion > .accordion-item:not(.entry-inactive):has(+ .accordion-item.entry-inactive) {
+    border-bottom-style: dashed;
+}
+
 .entry-inactive > .accordion-header > .accordion-button {
     font-style: italic;
 }
