@@ -35,6 +35,7 @@
             </span>
         </button>
 
+        <ReorderControls Index="Index" Count="Count" ItemLabel="@($"combo {ComboDisplayName}, row {Index + 1}")" OnMove="OnMove" />
         <div class="d-flex align-items-center mx-2 mb-0 flex-shrink-0 entry-editor-active-toggle">
             <input id="comboActive@(Index)" class="form-check-input entry-editor-active-checkbox" type="checkbox"
                    checked="@Combo.Active"
@@ -162,6 +163,8 @@
 
 @code {
     [Parameter] public int Index { get; set; }
+    [Parameter] public int Count { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
     [Parameter] public Combo Combo { get; set; } = null!;
     [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];

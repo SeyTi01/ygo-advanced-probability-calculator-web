@@ -62,6 +62,143 @@ public class CalculatorEditorTest {
     };
 
     [Test]
+    public void ReorderControlsMoveAllFourListsAndKeepSessionOrderAndReferences() {
+        var c = new CategoryBase("C");
+        var cards = new List<Card> { new([a], 1, "Same"), new([b], 1, "Same"), new([c], 1, "") };
+        var groups = new List<ComboGroup> { new("g1", "One"), new("g2", "Two"), new("g3", "Three") };
+        var combos = new List<Combo> {
+            new([new(a, 1, 1)], "Same", groupId: "g1", cards: [new(cards[0].Id, 1, 1)]),
+            new([new(b, 1, 1)], "Same", groupId: "g2"),
+            new([new(c, 1, 1)], "", groupId: "g3")
+        };
+        var cut = Render(new SessionState { Categories = [a, b, c], Cards = cards,
+            Combos = combos, ComboGroups = groups, HandSize = 1 });
+
+        Assert.That(cut.Find("[aria-label='Move category A up']").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Find("[aria-label='Move card Same, row 1 up']").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Find("[aria-label='Move combo Combo 3, row 3 down']").HasAttribute("disabled"), Is.True);
+        Button(cut, "Calculate").Click();
+        cut.WaitForElement(".probability-results");
+        var totalBeforeMove = cut.Find(".probability-total-value").TextContent;
+        cut.Find("[aria-label='Move category A down']").Click();
+        AssertPreviousResult(cut);
+        cut.Find("[aria-label='Move category A down']").Click();
+        cut.Find("[aria-label='Move category C up']").Click();
+        cut.Find("[aria-label='Move group One down']").Click();
+        cut.Find("[aria-label='Move group One down']").Click();
+        cut.Find("[aria-label='Move group Three up']").Click();
+        cut.Find("[aria-label='Move card Same, row 1 down']").Click();
+        cut.Find("[aria-label='Move card Same, row 2 down']").Click();
+        cut.Find("[aria-label='Move card Card 2, row 2 up']").Click();
+        cut.Find("[aria-label='Move combo Same, row 1 down']").Click();
+        cut.Find("[aria-label='Move combo Same, row 2 down']").Click();
+        cut.Find("[aria-label='Move combo Combo 2, row 2 up']").Click();
+
+        Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Select(x => x.Name),
+            Is.EqualTo(new[] { "C", "B", "A" }));
+        Assert.That(cut.FindComponents<CardEditor>().Select(x => x.Instance.Card.Id),
+            Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id }));
+        Assert.That(cut.FindComponents<ComboEditor>().Select(x => x.Instance.Combo),
+            Is.EqualTo(new[] { combos[2], combos[1], combos[0] }));
+        Assert.That(cut.FindComponent<ComboListEditor>().Instance.ComboGroups.Select(x => x.Id),
+            Is.EqualTo(new[] { "g3", "g2", "g1" }));
+        Assert.That(cut.FindComponents<ComboEditor>()[2].Instance.Combo.Cards.Single().CardId, Is.EqualTo(cards[0].Id));
+        Assert.That(cut.FindComponents<ComboEditor>()[2].Instance.Combo.GroupId, Is.EqualTo("g1"));
+        Button(cut, "Calculate").Click();
+        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-result-status"), Is.Empty));
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(totalBeforeMove));
+        Assert.That(cut.FindAll(".probability-group .combo-probability-name").Select(x => x.TextContent.Trim().Split(' ')[0]),
+            Is.EqualTo(new[] { "Three", "Two", "One" }));
+        Assert.That(cut.FindAll(".combo-probability-item .combo-probability-name")[0].TextContent,
+            Does.Contain("Unnamed combo 1"));
+
+        Button(cut, "Save Session").Click();
+        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        using (var document = System.Text.Json.JsonDocument.Parse(json)) {
+            var root = document.RootElement;
+            Assert.That(root.GetProperty("Categories").EnumerateArray().Select(x => x.GetProperty("Name").GetString()),
+                Is.EqualTo(new[] { "C", "B", "A" }));
+            Assert.That(root.GetProperty("Cards").EnumerateArray().Select(x => x.GetProperty("Id").GetString()),
+                Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id }));
+            Assert.That(root.GetProperty("Combos").EnumerateArray().Select(x => x.GetProperty("Name").GetString()),
+                Is.EqualTo(new[] { "", "Same", "Same" }));
+            Assert.That(root.GetProperty("ComboGroups").EnumerateArray().Select(x => x.GetProperty("Id").GetString()),
+                Is.EqualTo(new[] { "g3", "g2", "g1" }));
+        }
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "ordered.json"));
+        cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>().Select(x => x.Instance.Card.Id),
+            Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id })));
+        Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Select(x => x.Name),
+            Is.EqualTo(new[] { "C", "B", "A" }));
+        Assert.That(cut.FindComponent<ComboListEditor>().Instance.ComboGroups.Select(x => x.Id),
+            Is.EqualTo(new[] { "g3", "g2", "g1" }));
+        Assert.That(cut.FindComponents<ComboEditor>().Select(x => x.Instance.Combo.GroupId),
+            Is.EqualTo(new[] { "g3", "g2", "g1" }));
+    }
+
+    [Test]
+    public void MovingExpandedEditorsKeepsDraftAndTargetsMovedItem() {
+        var session = Session();
+        session.Cards[1] = session.Cards[1].WithActive(false);
+        session.Combos[1] = session.Combos[1].WithActive(false);
+        var cut = Render(session);
+        cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
+        cut.FindComponents<CardEditor>()[0].Find("#cardCategory0").Change("B");
+        cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").Click();
+        cut.FindComponents<ComboEditor>()[0].Find("#comboCategory0").Change("B");
+        cut.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");
+
+        cut.Find("[aria-label='Move card First, row 1 down']").Click();
+        cut.Find("[aria-label='Move combo First combo, row 1 down']").Click();
+        Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.Name, Is.EqualTo("First"));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Find("#cardCategory1").GetAttribute("value"), Is.EqualTo("B"));
+        Assert.That(cut.FindComponents<ComboEditor>()[1].Instance.Combo.Name, Is.EqualTo("First combo"));
+        Assert.That(cut.FindComponents<ComboEditor>()[1].Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        Assert.That(cut.FindComponents<ComboEditor>()[1].Find("#minCount1").GetAttribute("value"), Is.EqualTo("0"));
+
+        cut.FindComponents<CardEditor>()[1].Find("#cardName1").Input("Moved card");
+        cut.FindComponents<ComboEditor>()[1].Find("#comboName1").Input("Moved combo");
+        Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.Name, Is.EqualTo("Moved card"));
+        Assert.That(cut.FindComponents<ComboEditor>()[1].Instance.Combo.Name, Is.EqualTo("Moved combo"));
+        Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Active, Is.False);
+        Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.Active, Is.False);
+        cut.FindComponents<CardEditor>()[1].Find("[title='Remove card']").Click();
+        cut.FindComponents<ComboEditor>()[1].Find("[title='Remove combo']").Click();
+        Assert.That(cut.FindComponents<CardEditor>().Single().Instance.Card.Name, Is.EqualTo("Second"));
+        Assert.That(cut.FindComponents<ComboEditor>().Single().Instance.Combo.Name, Is.EqualTo("Second combo"));
+    }
+
+    [Test]
+    public void ChipMovesKeepRenameDraftsAndDropdownOrder() {
+        var session = new SessionState {
+            Categories = [a, b], Cards = [new([a], 2, "First")],
+            Combos = [new([new(a, 1, 2)], "First combo")],
+            ComboGroups = [new("g1", "One"), new("g2", "Two")], HandSize = 2
+        };
+        var cut = Render(session);
+        cut.Find("[aria-label='Rename category A']").Click();
+        cut.Find("[aria-label='New name for category A']").Input("Renamed");
+        cut.Find("[aria-label='Move category A down']").Click();
+        Assert.That(cut.Find("[aria-label='New name for category A']").GetAttribute("value"), Is.EqualTo("Renamed"));
+        cut.Find("[aria-label='Save category name']").Click();
+        cut.Find("[aria-label='Rename group One']").Click();
+        cut.Find("[aria-label='New name for group One']").Input("Updated");
+        cut.Find("[aria-label='Move group One down']").Click();
+        Assert.That(cut.Find("[aria-label='New name for group One']").GetAttribute("value"), Is.EqualTo("Updated"));
+        cut.Find("[aria-label='Save group name']").Click();
+        cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
+        cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").Click();
+        Assert.That(cut.Find("#cardCategory0").QuerySelectorAll("option").Skip(1).Select(x => x.TextContent.Trim()),
+            Is.EqualTo(new[] { "B", "Renamed" }));
+        Assert.That(cut.Find("#comboGroup0").QuerySelectorAll("option").Skip(1).Select(x => x.TextContent.Trim()),
+            Is.EqualTo(new[] { "Two", "Updated" }));
+        Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Categories.Single().Name, Is.EqualTo("Renamed"));
+        Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.Categories.Single().BaseCategory.Name, Is.EqualTo("Renamed"));
+    }
+
+    [Test]
     public void CardOnlyComboCanBeEditedAndMissingReferenceBlocksCalculationUntilRemoved() {
         var first = new Card([], 2, "Twin");
         var second = new Card([], 2, "Twin");
@@ -96,6 +233,7 @@ public class CalculatorEditorTest {
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
         editor = cut.FindComponent<ComboEditor>();
         editor.Find("#comboCard0").Change(second.Id);
+        editor.Find("#maxCount0").Input("1");
         Button(editor, "Add").Click();
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-card-tag").TextContent,
@@ -220,7 +358,8 @@ public class CalculatorEditorTest {
         var actionButtons = header.QuerySelectorAll("button");
         var activeToggle = header.QuerySelector("input.entry-editor-active-checkbox");
         var removeButton = header.QuerySelector("button[aria-label='Remove combo']");
-        Assert.That(actionButtons.Length, Is.EqualTo(2));
+        Assert.That(actionButtons.Length, Is.EqualTo(4));
+        Assert.That(header.QuerySelectorAll(".reorder-controls button").Length, Is.EqualTo(2));
         Assert.That(activeToggle?.GetAttribute("aria-label"), Is.EqualTo($"Active combo {comboName}"));
         Assert.That(activeToggle?.GetAttribute("title"), Is.EqualTo($"Toggle {comboName} active state"));
         Assert.That(removeButton?.GetAttribute("title"), Is.EqualTo("Remove combo"));
@@ -734,7 +873,7 @@ public class CalculatorEditorTest {
         cut.Find("#comboGroup1").Change(groupId);
         var groupChip = cut.Find(".combo-group-chip");
         Assert.That(groupChip.ClassList.Contains("me-2"), Is.True);
-        Assert.That(groupChip.TextContent.Trim(), Is.EqualTo("Tier 1"));
+        Assert.That(groupChip.QuerySelector(".category-name-trigger")?.TextContent.Trim(), Is.EqualTo("Tier 1"));
 
         RenameGroupWithEnter(cut, "Tier 1", "Tier One");
         Button(cut, "Calculate").Click();
