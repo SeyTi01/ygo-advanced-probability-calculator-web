@@ -10,9 +10,9 @@ Try it [here](https://ygo-calculator.pages.dev/).
 2. **Assign Categories to Cards**  
    A card can belong to multiple categories.
 3. **Define Combos**  
-   Each combo is a combination of required categories (e.g., `Lubellion + Normal Summon`). Combos can also be organized into named groups.
+   Each combo requires categories, specific deck cards, or both (e.g., `Lubellion + Normal Summon`). Combos can also be organized into named groups.
 4. **Set Constraints**  
-   Define per-category min/max requirements.
+   Each minimum needs distinct physical card copies within that combo; two copies of the same card can fill separate requirements. Overlapping categories define eligibility. Maximums count all matching copies in the hand, including those used for other requirements; `0/0` forbids any matching copy. Separate combos can reuse the same drawn copies.
 5. **Calculate**  
    Get exact probabilities for **any active combo**, each named group, and each individual combo.
 

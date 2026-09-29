@@ -40,7 +40,7 @@ There is no GitHub Actions CI workflow. Run relevant tests locally and report th
 
 ## Probability correctness
 
-- A card may belong to multiple categories. A drawn copy counts once toward every category assigned to that card.
+- A card may belong to multiple categories. Each copy counts toward every matching hand-wide maximum, but can fill only one positive requirement within a combo. Positive category and direct-card minima need distinct physical copies; separate combos are evaluated independently.
 - Each combo requires all of its category constraints; success means at least one combo matches. Preserve inclusive minimum and maximum bounds and count overlapping combos only once.
 - A `0/0` constraint is valid. Do not clamp, discard, or silently change valid constraints.
 - When changing calculation behavior, add targeted cases to `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/`. Prefer the existing `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/SmallDeckOracleTest.cs`, which enumerates physical hands and evaluates constraints independently of the production aggregation algorithm.
