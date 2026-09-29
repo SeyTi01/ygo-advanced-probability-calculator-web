@@ -70,6 +70,7 @@
             <ComboEditor @key="editorKeys[Combos[index]]"
                 Index="index"
                 Combo="Combos[index]"
+                Cards="Cards"
                 CategoryBases="CategoryBases"
                 ComboGroups="ComboGroups"
                 CategoryColorIndices="CategoryColorIndices"
@@ -90,6 +91,7 @@
 
 @code {
     [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];
+    [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
     [Parameter] public IReadOnlyList<ComboGroup> ComboGroups { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);

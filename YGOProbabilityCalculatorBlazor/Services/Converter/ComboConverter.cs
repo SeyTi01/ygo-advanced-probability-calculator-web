@@ -12,6 +12,9 @@ public class ComboConverter : JsonConverter<Combo> {
         var categories = JsonSerializer.Deserialize<List<ComboCategory>>(
             root.GetProperty("Categories").GetRawText(),
             options) ?? [];
+        var cards = root.TryGetProperty("Cards", out var cardsProperty)
+            ? JsonSerializer.Deserialize<List<ComboCard>>(cardsProperty.GetRawText(), options) ?? []
+            : [];
 
         var name = root.TryGetProperty("Name", out var nameProperty)
             ? nameProperty.GetString()
@@ -24,7 +27,7 @@ public class ComboConverter : JsonConverter<Combo> {
             ? groupProperty.GetString()
             : null;
 
-        return new Combo(categories, name, active, groupId);
+        return new Combo(categories, name, active, groupId, cards);
     }
 
     public override void Write(Utf8JsonWriter writer, Combo value, JsonSerializerOptions options) {
@@ -32,6 +35,10 @@ public class ComboConverter : JsonConverter<Combo> {
 
         writer.WritePropertyName("Categories");
         JsonSerializer.Serialize(writer, value.Categories, options);
+        if (value.Cards.Count > 0) {
+            writer.WritePropertyName("Cards");
+            JsonSerializer.Serialize(writer, value.Cards, options);
+        }
 
         if (value.Name is not null) {
             writer.WritePropertyName("Name");

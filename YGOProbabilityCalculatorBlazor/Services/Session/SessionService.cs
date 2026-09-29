@@ -31,6 +31,9 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             if (session == null)
                 throw new InvalidOperationException("Failed to deserialize session data");
 
+            if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
+                throw new InvalidOperationException("Session contains duplicate card IDs.");
+
             return Task.FromResult(session);
         }
         catch (JsonException ex) {

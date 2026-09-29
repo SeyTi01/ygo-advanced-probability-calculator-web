@@ -60,6 +60,7 @@
 
     <ComboListEditor
         Combos="combos"
+        Cards="cards"
         ComboGroups="comboGroups"
         CategoryBases="categoryBases"
         CategoryColorIndices="categoryColorIndices"
@@ -176,6 +177,9 @@
     private string? CalculationUnavailableMessage {
         get {
             if (handSize < 1) return "Hand size must be at least 1.";
+            if (combos.Any(combo => combo.Active && combo.Cards.Any(requirement =>
+                cards.Count(card => card.Id == requirement.CardId) != 1)))
+                return "An active combo has a missing card reference. Repair or remove it, or deactivate the combo.";
             if (ActiveCardCount == 0) return "Activate at least one card to calculate.";
             if (cards.Any(card => card.Active && card.Copies < 1))
                 return "Each active card must have at least one copy, or be deactivated.";
@@ -184,7 +188,7 @@
             if (ActiveComboCount == 0) return "Activate at least one combo to calculate.";
             if (ActiveComboCount > IProbabilityCalculatorService.MaxComboCount)
                 return $"Calculate with at most {IProbabilityCalculatorService.MaxComboCount} active combos. Deactivate or remove extra combos.";
-            if (combos.Any(combo => combo.Active && combo.Categories.Count == 0))
+            if (combos.Any(combo => combo.Active && combo.Categories.Count == 0 && combo.Cards.Count == 0))
                 return "Complete or deactivate every incomplete active combo before calculating.";
             return null;
         }
@@ -437,6 +441,8 @@
     }
 
     private void RestoreSessionData(SessionState session) {
+        if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
+            throw new InvalidOperationException("Session contains duplicate card IDs.");
         categoryBases.Clear();
         categoryBases.AddRange(session.Categories);
 

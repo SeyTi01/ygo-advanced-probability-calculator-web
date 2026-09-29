@@ -24,7 +24,7 @@ public class CardConverterTests {
 
         var json = JsonSerializer.Serialize(card, _options);
 
-        const string expectedJson = "{\"Categories\":[{\"Name\":\"Category1\"}],\"Copies\":3,\"Name\":\"TestCard\",\"Active\":true}";
+        var expectedJson = $"{{\"Categories\":[{{\"Name\":\"Category1\"}}],\"Copies\":3,\"Name\":\"TestCard\",\"Active\":true,\"Id\":\"{card.Id}\"}}";
         Assert.That(json, Is.EqualTo(expectedJson));
     }
 
@@ -51,5 +51,19 @@ public class CardConverterTests {
 
         Assert.That(card, Is.Not.Null);
         Assert.That(card!.Categories, Is.Empty);
+    }
+
+    [Test]
+    public void CardIdentityRoundTripsAndLegacyCardsGetDifferentIds() {
+        var card = new Card([], 2, "Twin");
+        var loaded = JsonSerializer.Deserialize<Card>(JsonSerializer.Serialize(card, _options), _options)!;
+        Assert.That(loaded.Id, Is.EqualTo(card.Id));
+        Assert.That(loaded.WithName("Renamed").WithActive(false).Id, Is.EqualTo(card.Id));
+        const string legacy = "{\"Categories\":[],\"Copies\":1,\"Name\":\"Twin\"}";
+        var first = JsonSerializer.Deserialize<Card>(legacy, _options)!;
+        var second = JsonSerializer.Deserialize<Card>(legacy, _options)!;
+        Assert.That(first.Id, Is.Not.Empty.And.Not.EqualTo(second.Id));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Card>(
+            "{\"Categories\":[],\"Copies\":1,\"Name\":null,\"Id\":\"\"}", _options));
     }
 }
