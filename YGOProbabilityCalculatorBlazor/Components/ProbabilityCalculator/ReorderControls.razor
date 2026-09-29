@@ -1,21 +1,26 @@
 <span class="reorder-controls" role="group" aria-label="Reorder @ItemLabel">
     <button @ref="upButton" type="button" class="reorder-button" disabled="@(Index == 0)"
-            aria-label="Move @ItemLabel up" title="Move @ItemLabel up"
-            @onclick="() => Move(-1)">▲</button>
+            aria-label="Move @ItemLabel @PreviousDirection" title="Move @ItemLabel @PreviousDirection"
+            @onclick="() => Move(-1)">@PreviousGlyph</button>
     <button @ref="downButton" type="button" class="reorder-button" disabled="@(Index >= Count - 1)"
-            aria-label="Move @ItemLabel down" title="Move @ItemLabel down"
-            @onclick="() => Move(1)">▼</button>
+            aria-label="Move @ItemLabel @NextDirection" title="Move @ItemLabel @NextDirection"
+            @onclick="() => Move(1)">@NextGlyph</button>
 </span>
 
 @code {
     [Parameter] public int Index { get; set; }
     [Parameter] public int Count { get; set; }
     [Parameter] public string ItemLabel { get; set; } = string.Empty;
+    [Parameter] public bool Horizontal { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
 
     private ElementReference upButton;
     private ElementReference downButton;
     private int pendingFocus;
+    private string PreviousDirection => Horizontal ? "left" : "up";
+    private string NextDirection => Horizontal ? "right" : "down";
+    private string PreviousGlyph => Horizontal ? "◀" : "▲";
+    private string NextGlyph => Horizontal ? "▶" : "▼";
 
     private async Task Move(int direction) {
         var target = Index + direction;

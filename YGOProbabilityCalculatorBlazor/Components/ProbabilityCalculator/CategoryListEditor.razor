@@ -46,9 +46,10 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </button>
+                    <ReorderControls Horizontal="true" Index="index" Count="CategoryBases.Count" ItemLabel="@($"category {category.Name}")" OnMove="OnMoveCategory" />
                     <button type="button" class="category-icon-button"
-                            aria-label="Cancel category rename"
-                            title="Cancel category rename"
+                            aria-label="Exit category edit mode"
+                            title="Exit category edit mode"
                             @onclick="CancelCategoryRename">
                         <svg class="category-action-icon" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor" stroke-width="2.5"
@@ -61,11 +62,10 @@
                     <button @ref="categoryNameButtonReferences[category.Name]"
                             type="button"
                             class="category-name-trigger"
-                            aria-label="@($"Rename category {category.Name}")"
-                            title="Rename category"
+                            aria-label="@($"Edit category {category.Name}")"
+                            title="@($"Edit category {category.Name}")"
                             @onclick="() => BeginCategoryRename(category)">@category.Name</button>
                 }
-                <ReorderControls Index="index" Count="CategoryBases.Count" ItemLabel="@($"category {category.Name}")" OnMove="OnMoveCategory" />
                 <button type="button" class="btn-close category-delete-button"
                         aria-label="@($"Remove category {category.Name}")"
                         title="@($"Remove category {category.Name}")"
