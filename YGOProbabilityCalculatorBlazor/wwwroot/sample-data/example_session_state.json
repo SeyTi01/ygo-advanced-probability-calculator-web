@@ -1,166 +1,323 @@
 {
   "Categories": [
     {
-      "Name": "1 Card Starter"
+      "Name": "Fire"
     },
     {
-      "Name": "Lubellion"
+      "Name": "Dark"
     },
     {
-      "Name": "Normal Summon"
+      "Name": "Level 5"
     },
     {
-      "Name": "Bystial"
+      "Name": "VS Monster"
     },
     {
-      "Name": "L/D Normal Summon"
+      "Name": "VS Starter"
+    },
+    {
+      "Name": "K9 Starter"
     }
   ],
   "Cards": [
     {
-      "Categories": [
-        {
-          "Name": "1 Card Starter"
-        }
-      ],
+      "Categories": [],
       "Copies": 1,
-      "Name": "Fabled Lurrie"
+      "Name": "Maxx \u0022C\u0022",
+      "Active": true,
+      "Id": "6791c7d39e9d41cda86fa8f59b6092a1"
     },
     {
       "Categories": [
         {
-          "Name": "Normal Summon"
+          "Name": "Fire"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Ash Blossom \u0026 Joyous Spring",
+      "Active": true,
+      "Id": "70933e5990b54a2ca1ac75b0ace183db"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
         },
         {
-          "Name": "L/D Normal Summon"
+          "Name": "VS Monster"
         }
       ],
       "Copies": 3,
-      "Name": "Effect Veiler"
+      "Name": "Vanquish Soul Dr. Mad Love",
+      "Active": true,
+      "Id": "a46c7692bd89479ebdd9430e0868a15f"
     },
     {
       "Categories": [
         {
-          "Name": "Normal Summon"
+          "Name": "Fire"
+        },
+        {
+          "Name": "VS Monster"
+        },
+        {
+          "Name": "VS Starter"
         }
       ],
       "Copies": 2,
-      "Name": "Maxx \u0022C\u0022"
-    },
-    {
-      "Categories": [
-        {
-          "Name": "Normal Summon"
-        }
-      ],
-      "Copies": 3,
-      "Name": "Ash Blossom \u0026 Joyous Spring"
-    },
-    {
-      "Categories": [
-        {
-          "Name": "Normal Summon"
-        }
-      ],
-      "Copies": 2,
-      "Name": "Ghost Mourner \u0026 Moonlit Chill"
-    },
-    {
-      "Categories": [
-        {
-          "Name": "1 Card Starter"
-        }
-      ],
-      "Copies": 3,
-      "Name": "Lacrima the Crimson Tears"
+      "Name": "Vanquish Soul Razen",
+      "Active": true,
+      "Id": "55c145012b004e249542f334dbe278df"
     },
     {
       "Categories": [],
-      "Copies": 2,
-      "Name": "Artifact Lancea"
+      "Copies": 3,
+      "Name": "Mulcharmy Fuwalos",
+      "Active": true,
+      "Id": "782b979b7aa046dc80a57026c14c8f7c"
     },
     {
       "Categories": [
         {
-          "Name": "Bystial"
+          "Name": "Fire"
+        },
+        {
+          "Name": "Level 5"
+        },
+        {
+          "Name": "VS Monster"
         }
       ],
       "Copies": 2,
-      "Name": "Bystial Druiswurm"
+      "Name": "Vanquish Soul Jiaolong",
+      "Active": true,
+      "Id": "47af3086f26748fea509339d55c56651"
     },
     {
       "Categories": [
         {
-          "Name": "Bystial"
+          "Name": "Level 5"
+        },
+        {
+          "Name": "K9 Starter"
         }
       ],
       "Copies": 1,
-      "Name": "Bystial Magnamhut"
+      "Name": "K9-04 Noroi",
+      "Active": true,
+      "Id": "66e19737b4814804a15981112e5e79df"
     },
     {
       "Categories": [
         {
-          "Name": "Bystial"
+          "Name": "Level 5"
         }
       ],
-      "Copies": 1,
-      "Name": "Bystial Saronir"
+      "Copies": 3,
+      "Name": "K9-17 Izuna",
+      "Active": true,
+      "Id": "65dbca786fcb404883a264676e08eb68"
     },
     {
       "Categories": [
         {
-          "Name": "Bystial"
+          "Name": "Dark"
+        },
+        {
+          "Name": "Level 5"
+        },
+        {
+          "Name": "K9 Starter"
         }
       ],
       "Copies": 2,
-      "Name": "Bystial Baldrake"
+      "Name": "K9-66a Jokul",
+      "Active": true,
+      "Id": "21c07f55cd48470a9b4cfa777e905a7d"
     },
     {
       "Categories": [
         {
-          "Name": "1 Card Starter"
+          "Name": "Dark"
+        },
+        {
+          "Name": "Level 5"
+        }
+      ],
+      "Copies": 1,
+      "Name": "K9-66b Lantern",
+      "Active": true,
+      "Id": "97870450b661441f9a3d3fa26fd9a880"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Level 5"
+        }
+      ],
+      "Copies": 1,
+      "Name": "K9-\u00D8\u00D8 Lupis",
+      "Active": true,
+      "Id": "32ec9714c37f446391eb0df57443dc0f"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Level 5"
+        },
+        {
+          "Name": "VS Monster"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Vanquish Soul Hollie Sue",
+      "Active": true,
+      "Id": "74fc576402e64906853b667d299adaac"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Bystial Druiswurm",
+      "Active": true,
+      "Id": "fbf10b7775df44dab743db7413ee2d9c"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Bystial Magnamhut",
+      "Active": true,
+      "Id": "5881c34be587477b9e6c3c01f8bcca31"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        },
+        {
+          "Name": "VS Monster"
         }
       ],
       "Copies": 2,
-      "Name": "Fiendsmith Engraver"
-    },
-    {
-      "Categories": [],
-      "Copies": 3,
-      "Name": "Chaos Hunter"
-    },
-    {
-      "Categories": [],
-      "Copies": 3,
-      "Name": "Fantastical Dragon Phantazmay"
+      "Name": "Vanquish Soul Heavy Borger",
+      "Active": true,
+      "Id": "93845904eb734ef0b243e0edd5b65939"
     },
     {
       "Categories": [
         {
-          "Name": "Lubellion"
+          "Name": "Fire"
         }
       ],
-      "Copies": 3,
-      "Name": "The Bystial Lubellion"
-    },
-    {
-      "Categories": [],
-      "Copies": 3,
-      "Name": "Nibiru, the Primal Being"
+      "Copies": 1,
+      "Name": "Dogoran, the Mad Flame Kaiju",
+      "Active": true,
+      "Id": "c7abb909211148218b8bdf6848e99134"
     },
     {
       "Categories": [
         {
-          "Name": "1 Card Starter"
+          "Name": "VS Monster"
         }
       ],
-      "Copies": 3,
-      "Name": "Fiendsmith\u0027s Tract"
+      "Copies": 1,
+      "Name": "Vanquish Soul Caesar Valius",
+      "Active": true,
+      "Id": "a7a26174a628454db544725e9b0d2f6f"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Fire"
+        },
+        {
+          "Name": "VS Monster"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Reinforcement of the Army",
+      "Active": true,
+      "Id": "6d8f37220d024d25b41fb08fc1f188c9"
     },
     {
       "Categories": [],
       "Copies": 1,
-      "Name": "Branded Regained"
+      "Name": "Triple Tactics Talent",
+      "Active": true,
+      "Id": "f5feca4301474add9ceba353d3d0081f"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "VS Starter"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Stake your Soul!",
+      "Active": true,
+      "Id": "d9db32f4514a4f2fb0d178efd3ef2c0b"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        },
+        {
+          "Name": "Level 5"
+        },
+        {
+          "Name": "K9 Starter"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Chaotic Elements",
+      "Active": true,
+      "Id": "19fa41dff19d44cb88cf36334363b934"
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "Vanquish Soul, Start!",
+      "Active": true,
+      "Id": "486cc2ee687247ef866e66414ccf3bcd"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark"
+        },
+        {
+          "Name": "Level 5"
+        },
+        {
+          "Name": "K9 Starter"
+        }
+      ],
+      "Copies": 2,
+      "Name": "\u0022A Case for K9\u0022",
+      "Active": true,
+      "Id": "db70c79f084e4de2a9ecb78599e4d8fd"
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "K9-X Forced Release",
+      "Active": true,
+      "Id": "75b6bf4293ef4909bf8e6730662d30cd"
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "Vanquish Soul Snow Devil",
+      "Active": true,
+      "Id": "c21f7c993a2b476da1d669d590b80a3c"
     }
   ],
   "Combos": [
@@ -168,52 +325,202 @@
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "1 Card Starter"
-          },
-          "MinCount": 1,
-          "MaxCount": 5
-        }
-      ],
-      "Name": "1-Card Combo"
-    },
-    {
-      "Categories": [
-        {
-          "BaseCategory": {
-            "Name": "Lubellion"
+            "Name": "VS Starter"
           },
           "MinCount": 1,
           "MaxCount": 5
         },
         {
           "BaseCategory": {
-            "Name": "Normal Summon"
+            "Name": "Fire"
           },
           "MinCount": 1,
           "MaxCount": 5
         }
       ],
-      "Name": "Moon Combo"
+      "Name": "VS Starter \u002B Fire",
+      "Active": true
     },
     {
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "Bystial"
+            "Name": "VS Starter"
           },
           "MinCount": 1,
           "MaxCount": 5
         },
         {
           "BaseCategory": {
-            "Name": "L/D Normal Summon"
+            "Name": "Dark"
           },
           "MinCount": 1,
           "MaxCount": 5
         }
       ],
-      "Name": "Moon Combo 2"
+      "Name": "VS Starter \u002B Dark",
+      "Active": true
+    },
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "Fire"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Cards": [
+        {
+          "CardId": "a46c7692bd89479ebdd9430e0868a15f",
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Mad Love \u002B Fire",
+      "Active": true
+    },
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "Fire"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        },
+        {
+          "BaseCategory": {
+            "Name": "Dark"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Cards": [
+        {
+          "CardId": "74fc576402e64906853b667d299adaac",
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Sue \u002B Fire \u002B Dark",
+      "Active": true
+    },
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "K9 Starter"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        },
+        {
+          "BaseCategory": {
+            "Name": "Level 5"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "K9 Starter \u002B Lv. 5",
+      "Active": true
+    },
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "VS Monster"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Cards": [
+        {
+          "CardId": "74fc576402e64906853b667d299adaac",
+          "MinCount": 1,
+          "MaxCount": 5
+        },
+        {
+          "CardId": "486cc2ee687247ef866e66414ccf3bcd",
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Sue \u002B Start \u002B VS",
+      "Active": true
+    },
+    {
+      "Categories": [],
+      "Cards": [
+        {
+          "CardId": "55c145012b004e249542f334dbe278df",
+          "MinCount": 1,
+          "MaxCount": 5
+        },
+        {
+          "CardId": "74fc576402e64906853b667d299adaac",
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Razen \u002B Sue",
+      "Active": true
+    },
+    {
+      "Categories": [],
+      "Cards": [
+        {
+          "CardId": "66e19737b4814804a15981112e5e79df",
+          "MinCount": 1,
+          "MaxCount": 5
+        },
+        {
+          "CardId": "d9db32f4514a4f2fb0d178efd3ef2c0b",
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Noroi \u002B Stake",
+      "Active": true
+    },
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "Level 5"
+          },
+          "MinCount": 2,
+          "MaxCount": 5
+        }
+      ],
+      "Cards": [
+        {
+          "CardId": "65dbca786fcb404883a264676e08eb68",
+          "MinCount": 1,
+          "MaxCount": 5
+        },
+        {
+          "CardId": "74fc576402e64906853b667d299adaac",
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Izuna \u002B Sue \u002B 2 x Lv. 5",
+      "Active": true
     }
   ],
-  "HandSize": 5
+  "ComboGroups": [],
+  "HandSize": 5,
+  "CategoryColorIndices": {
+    "Fire": 0,
+    "Dark": 1,
+    "Level 5": 3,
+    "VS Monster": 4,
+    "VS Starter": 2,
+    "K9 Starter": 5
+  }
 }
