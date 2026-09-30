@@ -29,58 +29,67 @@
 
 <div class="container mt-4">
     <section class="mb-4">
-        <h2>Yu-Gi-Oh! Advanced Probability Calculator <small class="text-muted">v@(ProjectConstants.Version)</small></h2>
-        <p>This is a deck-building tool that calculates the <strong>exact probability</strong> of opening playable hands in Yu-Gi-Oh!, 
-            even for complex 2- and 3-card combo setups.</p>
+        <h1>Yu-Gi-Oh! Advanced Probability Calculator <small class="text-muted">v@(ProjectConstants.Version)</small></h1>
+        <p>Calculate the exact probability of opening one or more defined combo routes in your deck.</p>
+        <p>The calculator is built around three things: your deck, reusable card categories, and the combos you want to open.</p>
     </section>
 
     <section class="mb-4">
-        <h2>How It Works</h2>
+        <h2>Getting started</h2>
         <ol>
-            <li><strong>Create Categories:</strong> Tag card roles like "Starter", "Extender", "X", "CombosWithX", etc.</li>
-            <li><strong>Assign Categories to Cards:</strong> Each card can belong to multiple categories.</li>
-            <li><strong>Define Combos:</strong> Each combo can require categories, specific deck cards, or both. Each minimum needs distinct physical copies within that combo. Two copies of the same card can fill separate requirements; overlapping categories define which requirements a copy is eligible for.</li>
-            <li><strong>Set Constraints:</strong> Set inclusive minimum and maximum counts. Maximums count all matching copies in the hand, including copies used for other requirements. A 0/0 constraint forbids any matching copy.</li>
-            <li><strong>Calculate:</strong> Get exact probabilities for opening <strong>any</strong> of the defined combos in your deck.</li>
+            <li><strong>Enter your deck or import a <code>.ydk</code> file.</strong></li>
+            <li><strong>Create categories</strong> for card properties or roles you want to reuse across combos.</li>
+            <li><strong>Assign categories to cards.</strong> A card can belong to any number of categories.</li>
+            <li><strong>Create combos</strong> using categories, specific cards, or both.</li>
+            <li><strong>Set the required minimum and maximum counts.</strong></li>
+            <li><strong>Calculate</strong> to see the probability of each combo and the combined probability of opening any active combo.</li>
         </ol>
-        <p>A single opening hand can satisfy multiple combos, each evaluated independently using the same drawn copies, so individual probabilities may overlap.
-            &quot;Any active combo&quot; counts each hand once when it satisfies at least one active combo, so adding the individual percentages may exceed the total.
-            If the combos cannot overlap, their probabilities can sum to the total.
-            You can organize combos into named groups; each group counts a hand once when it satisfies at least one active combo in that group.
-            Group probabilities can overlap with each other and with ungrouped combos, so they should not be added to get the total.</p>
+        <p>You can save the complete setup as a session and load it again later.</p>
     </section>
 
     <section class="mb-4">
-        <h2>Example: Fiendsmith Bystial Deck</h2>
-        <p>This deck can access its main combo by summoning any LIGHT Fiend monster to fulfill the requirements for "Fiendsmith Requiem". 
-            That can be accomplished by opening a one-card starter or by assembling a 2-card combo that can summon "Moon of the Closed Heaven" 
-            using any two Effect Monsters.</p>
-        <p>The only way to summon additional effect monsters that are not LIGHT Fiends in this deck is by either using Bystials or 
-            Normal Summoning a hand trap. Bystials require a LIGHT or DARK monster in either GY to banish, and there are two ways this 
-            can be achieved on the first turn.</p>
-        <p>If the Bystial was added by sending "The Bystial Lubellion" to the GY, it can always be summoned, so it combos with every 
-            normal summonable hand trap. However, if the Bystial was drawn normally, the normal summonable hand trap needs to be a LIGHT 
-            or DARK attribute and fulfill the requirements to summon "Salamangreat Almiraj", so it can be sent to the GY and used for 
-            the summon of the Bystial.</p>
-
-        <h3>Category Definitions</h3>
+        <h2>Categories</h2>
+        <p>Categories are reusable labels for cards that can fulfill the same role.</p>
+        <p>For example, the included Vanquish Soul / K9 session uses:</p>
         <ul>
-            <li><strong>1 Card Starter:</strong> Any single card that independently initiates a Fiendsmith combo.</li>
-            <li><strong>Bystial:</strong> Any "Bystial" monster that can summon itself.</li>
-            <li><strong>Lubellion:</strong> Specifically "The Bystial Lubellion".</li>
-            <li><strong>Normal Summon:</strong> Any monster that can be Normal Summoned (e.g., Ash Blossom & Joyous Spring).</li>
-            <li><strong>L/D Normal Summon:</strong> Any LIGHT or DARK monster that can be Normal Summoned and sent to the GY by summoning "Salamangreat Almiraj" (e.g., Effect Veiler).</li>
+            <li><code>Fire</code></li>
+            <li><code>Dark</code></li>
+            <li><code>Level 5</code></li>
+            <li><code>VS Monster</code></li>
+            <li><code>VS Starter</code></li>
+            <li><code>K9 Starter</code></li>
         </ul>
+        <p>A card can belong to several categories at once. Vanquish Soul Razen, for example, is a <code>Fire</code> card, a <code>VS Monster</code>, and a <code>VS Starter</code>.</p>
+        <p>Categories make it possible to describe a route such as <code>K9 Starter + Lv. 5</code> once instead of creating a separate combo for every possible K9 starter.</p>
+    </section>
 
-        <h3>Combo Definitions</h3>
+    <section class="mb-4">
+        <h2>Combos and requirements</h2>
+        <p>A combo is satisfied when all of its requirements can be met by the opening hand.</p>
+        <p>Requirements can reference:</p>
         <ul>
-            <li><strong>1-Card Combo:</strong> Requires <em>any</em> card with the "1 Card Starter" tag.</li>
-            <li><strong>Moon Combo 1:</strong> Requires <em>both</em> the "Lubellion" tag <em>and</em> the "Normal Summon" tag in the opening hand.</li>
-            <li><strong>Moon Combo 2:</strong> Requires <em>both</em> the "Bystial" tag <em>and</em> the "L/D Normal Summon" tag in the opening hand.</li>
+            <li>a category,</li>
+            <li>a specific card,</li>
+            <li>or a mixture of both.</li>
         </ul>
+        <p>Each requirement also has a minimum and maximum count.</p>
+        <p>Separate positive requirements need separate physical card copies. For example, if a card belongs to both <code>VS Starter</code> and <code>Fire</code>, one copy cannot satisfy both parts of <code>VS Starter + Fire</code> by itself.</p>
+        <p>Maximums apply to all matching cards in the hand. Setting both the minimum and maximum to <code>0</code> can therefore be used to exclude a card or category from a combo entirely.</p>
+    </section>
 
-        <p>After tagging all cards appropriately, this configuration will calculate the exact probability of opening a Fiendsmith play in the given deck list.</p>
+    <section class="mb-4">
+        <h2>Reading the results</h2>
+        <p>Each active combo gets its own probability.</p>
+        <p>Because the same opening hand can satisfy several combos, those percentages may overlap and should not simply be added together.</p>
+        <p><strong>Any active combo</strong> is the exact probability that the opening hand satisfies at least one active combo. A hand that satisfies several routes is still counted only once.</p>
+        <p>Combos can also be placed into groups. A group result works the same way: it shows the probability of opening at least one active combo in that group.</p>
+    </section>
 
+    <section class="mb-4">
+        <h2>Example: Vanquish Soul / K9</h2>
+        <p>The included example models nine routes in a Vanquish Soul / K9 deck that either reach the full Vanquish Soul setup directly or can make Ripper + Saryuja as a bridge. Half boards are intentionally not counted.</p>
+        <p>With all nine routes active, the modeled probability of opening at least one of them is <strong>81.19%</strong>.</p>
+        <p>Use <strong>Try It with Example Data</strong> below to load the complete configuration into the calculator.</p>
         <div class="mt-3">
             <button class="btn btn-primary" @onclick="LoadExampleSession">Try It with Example Data</button>
             @if (!string.IsNullOrEmpty(errorMessage)) {
@@ -92,15 +101,15 @@
     </section>
 
     <section class="mb-4">
-        <h2>Optimization Tips</h2>
-        <p>For further optimization, you could define categories like "Handtrap" or "Brick", then require all of your combos 
-            to open at least one "Handtrap"-tagged card while opening zero "Brick"-tagged cards.</p>
-        <p>This can help determine optimal deck sizes and engine ratios.</p>
+        <h2>Experimenting with a deck</h2>
+        <p>Cards and combos can be temporarily deactivated without deleting them. This is useful for comparing deck choices or removing a route from the calculation.</p>
+        <p>You can also reorder cards, categories, combos, and combo groups to keep larger configurations readable.</p>
+        <p>When you want to keep a setup, save it as a session. Sessions preserve the deck, categories, combo definitions, ordering, and other calculator settings.</p>
     </section>
 
     <section class="mb-4">
         <h2>Credits</h2>
-        <p>Created by <a href="https://github.com/SeyTi01" target="_blank" rel="noopener noreferrer">SeyTi01</a></p>
+        <p>Created by <a href="https://github.com/SeyTi01" target="_blank" rel="noopener noreferrer">SeyTi01</a>.</p>
     </section>
 </div>
 

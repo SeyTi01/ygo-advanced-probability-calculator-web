@@ -1,58 +1,91 @@
 # Yu-Gi-Oh! Advanced Probability Calculator
 
-A deck-building tool that calculates the **exact probability** of opening playable hands in Yu-Gi-Oh!, even for complex 2- and 3-card combo setups.  
-Try it [here](https://ygo-calculator.pages.dev/).
+An exact opening-hand probability calculator for Yu-Gi-Oh! decks allowing overlapping card roles and multi-route combo lines.
 
-## How It Works
+It can model complex combo conditions while correctly accounting for hands that satisfy several combos at once.
 
-1. **Create Categories**  
-   Tag card roles like `Starter`, `Extender`, `X`, `CombosWithX`, etc.
-2. **Assign Categories to Cards**  
-   A card can belong to multiple categories.
-3. **Define Combos**  
-   Each combo requires categories, specific deck cards, or both (e.g., `Lubellion + Normal Summon`). Combos can also be organized into named groups.
-4. **Set Constraints**  
-   Each minimum needs distinct physical card copies within that combo; two copies of the same card can fill separate requirements. Overlapping categories define eligibility. Maximums count all matching copies in the hand, including those used for other requirements; `0/0` forbids any matching copy. Separate combos can reuse the same drawn copies.
-5. **Calculate**  
-   Get exact probabilities for **any active combo**, each named group, and each individual combo.
+**[Try the calculator](https://ygo-calculator.pages.dev/)**
 
-## Example: Fiendsmith Bystial Deck
+![Yu-Gi-Oh! Advanced Probability Calculator example](YGOProbabilityCalculatorBlazor/Assets/probability_calculator_example.png)
 
-This deck can access its main combo by summoning any LIGHT Fiend monster to fulfill the requirements for "Fiendsmith Requiem".  
-That can be accomplished by opening a one-card starter or by assembling a 2-card combo that can summon "Moon of the Closed Heaven" using any two Effect Monsters.  
-The only way to summon additional effect monsters that are not LIGHT Fiends in this deck is by either using Bystials or Normal Summoning a hand trap.  
-Bystials require a LIGHT or DARK monster in either GY to banish, and there are two ways this can be achieved on the first turn.  
-If the Bystial was added by sending "The Bystial Lubellion" to the GY, it can always be summoned, so it combos with every normal summonable hand trap.  
-However, if the Bystial was drawn normally, the normal summonable hand trap needs to be a LIGHT or DARK attribute and fulfill the requirements to summon "Salamangreat Almiraj", so it can be sent to the GY and used for the summon of the Bystial.
+## What it can model
 
-### 1. Category Definitions
+- **Reusable and overlapping card categories** — cards can belong to several roles at once, such as `Fire`, `Level 5`, `Starter`, or `Extender`.
+- **Exact unions of overlapping combo routes** — calculate the probability of opening any valid combo without double-counting hands that satisfy several routes, with optional grouping for related combo families.
 
-- **1 Card Starter**: Any single card that independently initiates a Fiendsmith combo.
-- **Bystial**: Any "Bystial" monster that can summon itself.
-- **Lubellion**: Specifically "The Bystial Lubellion".
-- **Normal Summon**: Any monster that can be Normal Summoned (e.g., Ash Blossom & Joyous Spring).
-- **L/D Normal Summon**: Any LIGHT or DARK monster that can be Normal Summoned and sent to the GY by summoning "Salamangreat Almiraj" (e.g., Effect Veiler).
+## Example: Vanquish Soul / K9
 
-### 2. Combo Definitions
+The included example uses a Vanquish Soul K9 deck and models nine different combo routes that either reach the full Vanquish Soul setup directly or can make Ripper + Saryuja as a bridge. Half boards are intentionally not counted.
 
-- **1-Card Combo**: Requires *any* card with the `1 Card Starter` tag.
-- **Moon Combo**: Requires *both* the `Lubellion` tag *and* the `Normal Summon` tag in the opening hand.
-- **Moon Combo 2**: Requires *both* the `Bystial` tag *and* the `L/D Normal Summon` tag in the opening hand.
+The configuration uses six categories:
 
-After tagging all cards appropriately, this configuration will calculate the exact probability of opening a Fiendsmith play in the given deck list.
+- `Fire`
+- `Dark`
+- `Level 5`
+- `VS Monster`
+- `VS Starter`
+- `K9 Starter`
 
-![Screenshot](YGOProbabilityCalculatorBlazor/Assets/readme_screenshot.png)
+Cards can belong to multiple categories. For example, Vanquish Soul Razen is both a `Fire` card, a `VS Monster`, and a `VS Starter`, while most of the K9 cards share the `K9 Starter` role.
 
-For further optimization, you could define categories like `Handtrap` or `Brick`, then require all of your combos to open at least one `Handtrap`-tagged card while opening zero `Brick`-tagged cards.  
-This can help determine optimal deck sizes and engine ratios.
+This allows equivalent routes to be expressed concisely.
 
-## Additional Features
+With all nine routes enabled, the example has an **81.19%** probability of opening at least one modeled full-combo hand.
 
-- Temporarily deactivate cards and combos while editing a deck.
-- Use color-coded categories and light, dark, or system themes.
-- Import decks from `.ydk` files and save or load sessions.
+## How to use it
 
-## Technical Stack
+1. **Import or enter your deck.**
+2. **Create categories** for reusable card properties or roles.
+3. **Assign categories to cards.** A card can belong to multiple categories.
+4. **Define combos** using categories, specific cards, or both.
+5. **Set minimum and maximum counts** for each requirement.
+6. **Calculate** to see the probability of each combo and the combined probability of opening any active combo.
 
-- Frontend: **Blazor WebAssembly** (.NET 9.0)
-- Language: **C# 13.0**
+Complete configurations can be saved as sessions and loaded again later.
+
+## How the calculation works
+
+The calculator uses exact combinatorial counting rather than simulation. Each combo is reduced to constraints over the physical cards that can satisfy it. Overlapping categories are normalized while still ensuring that separate positive requirements need separate card copies.
+
+Compatible alternatives can sometimes be factored into a simpler equivalent condition:
+
+```text
+(X AND A) OR (X AND B) = X AND (A OR B)
+```
+
+When several combos overlap, compatible constraints are merged, impossible intersections are discarded, and equivalent overlaps only need to be counted once.
+
+Because one opening hand can satisfy several combos, their probabilities cannot simply be added. The calculator uses inclusion-exclusion to avoid double-counting:
+
+```text
+P(A OR B) = P(A) + P(B) - P(A AND B)
+```
+
+The same principle extends to larger sets of combos.
+
+Cards that behave identically for the remaining conditions are grouped together, and exact combinatorial counts are used to determine how many opening hands succeed without checking every physical hand one by one.
+
+```text
+             matching opening hands
+P(success) = ------------------------
+              all possible opening hands
+```
+
+## Features
+
+- Require categories, individual cards, or both within a combo.
+- Set inclusive minimum and maximum counts for requirements.
+- Calculate individual combo probabilities, grouped probabilities, and the union of all active combos.
+- Organize related combos into named groups.
+- Import decks from `.ydk` files.
+- Save and load complete calculator sessions.
+- Temporarily deactivate cards and combos while testing changes.
+- Reorder cards, categories, combos, and combo groups.
+- Color-coded categories.
+- Light, dark, and system themes.
+
+## Technical stack
+
+- **Blazor WebAssembly**
+- **.NET 9**
+- **C# 13**
