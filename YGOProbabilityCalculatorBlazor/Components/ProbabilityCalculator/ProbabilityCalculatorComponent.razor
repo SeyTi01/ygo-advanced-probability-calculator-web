@@ -293,6 +293,7 @@
 
     private Task RenameCategoryBase((CategoryBase OldCategory, CategoryBase NewCategory) payload) {
         var (oldCategory, newCategory) = payload;
+        if (oldCategory.Source != CategorySource.User || newCategory.Source != CategorySource.User) return Task.CompletedTask;
         var categoryIndex = categoryBases.FindIndex(category => ReferenceEquals(category, oldCategory));
         if (categoryIndex < 0) return Task.CompletedTask;
 
@@ -303,7 +304,7 @@
 
         foreach (var card in cards) {
             for (var i = 0; i < card.Categories.Count; i++) {
-                if (card.Categories[i].Name.Equals(oldCategory.Name, StringComparison.Ordinal))
+                if (card.Categories[i].Identity.Equals(oldCategory.Identity, StringComparison.Ordinal))
                     card.Categories[i] = newCategory;
             }
         }
@@ -311,7 +312,7 @@
         foreach (var combo in combos) {
             for (var i = 0; i < combo.Categories.Count; i++) {
                 var constraint = combo.Categories[i];
-                if (constraint.BaseCategory.Name.Equals(oldCategory.Name, StringComparison.Ordinal)) {
+                if (constraint.BaseCategory.Identity.Equals(oldCategory.Identity, StringComparison.Ordinal)) {
                     combo.Categories[i] = new ComboCategory(
                         newCategory,
                         constraint.MinCount,
@@ -331,9 +332,9 @@
     }
 
     private void ReconcileCategoryColorIndices() {
-        var activeCategoryNames = categoryBases.Select(category => category.Name)
-            .Concat(cards.SelectMany(card => card.Categories).Select(category => category.Name))
-            .Concat(combos.SelectMany(combo => combo.Categories).Select(category => category.BaseCategory.Name))
+        var activeCategoryNames = categoryBases.Concat(cards.SelectMany(card => card.Categories))
+            .Concat(combos.SelectMany(combo => combo.Categories).Select(category => category.BaseCategory))
+            .Where(category => category.Source == CategorySource.User).Select(category => category.Name)
             .Distinct(StringComparer.Ordinal)
             .ToList();
         var activeNames = activeCategoryNames.ToHashSet(StringComparer.Ordinal);
@@ -468,7 +469,7 @@
         if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
             throw new InvalidOperationException("Session contains duplicate card IDs.");
         categoryBases.Clear();
-        categoryBases.AddRange(session.Categories);
+        categoryBases.AddRange(session.Categories.Where(category => category.Source == CategorySource.User));
 
         cards.Clear();
         cards.AddRange(session.Cards);

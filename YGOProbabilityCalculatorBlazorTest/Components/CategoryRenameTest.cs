@@ -78,8 +78,8 @@ public class CategoryRenameTest {
         var combo = cut.FindComponents<ComboEditor>()[0];
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
-        card.Find("select").Change("Old");
-        combo.Find("select").Change("Old");
+        card.Find("select").Change("user:Old");
+        combo.Find("select").Change("user:Old");
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("1");
 
@@ -89,8 +89,8 @@ public class CategoryRenameTest {
         Assert.That(cut.FindComponents<ComboEditor>()[0], Is.SameAs(combo));
         Assert.That(card.Instance.Card, Is.SameAs(originalCards[0]));
         Assert.That(combo.Instance.Combo, Is.SameAs(originalCombos[0]));
-        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("Renamed"));
-        Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("Renamed"));
+        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("user:Renamed"));
+        Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("user:Renamed"));
         Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("1"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
@@ -8,31 +9,48 @@ public class CardInfoService : ICardInfoService {
     private const string BulkApiUrl = "https://db.ygoprodeck.com/api/v7/cardinfo.php";
     private const string SingleApiTemplate = "https://db.ygoprodeck.com/api/v7/cardinfo.php?id={0}";
     private const string CacheKey = "cardCache";
-    private const int CacheSchemaVersion = 1;
+    private const int CacheSchemaVersion = 2;
     private static readonly TimeSpan CacheTimeToLive = TimeSpan.FromDays(7);
 
     private readonly HttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
     private readonly TimeProvider _timeProvider;
-    private readonly Task _initializeTask;
+    private readonly Lazy<Task> _initializeTask;
     private CardMetadataCache _cache = new();
+    private readonly SemaphoreSlim _singleLookupGate = new(1, 1);
+    private readonly HashSet<int> _singleLookups = [];
+
+    public async Task<CardInfo> GetCardInfoAsync(int id) {
+        await _initializeTask.Value;
+        await _singleLookupGate.WaitAsync();
+        try {
+            if (!_cache.Cards.TryGetValue(id, out var card) ||
+                (string.IsNullOrWhiteSpace(card.Type) && string.IsNullOrWhiteSpace(card.FrameType))) {
+                if (_singleLookups.Add(id)) await FetchSingleCardAsync(id);
+            }
+            return _cache.Cards.TryGetValue(id, out card) ? card :
+                new CardInfo { Id = id, Name = id.ToString(CultureInfo.InvariantCulture) };
+        }
+        finally { _singleLookupGate.Release(); }
+    }
 
     public CardInfoService(ILocalStorageService localStorage, HttpClient? httpClient = null, TimeProvider? timeProvider = null) {
         _localStorage = localStorage;
         _httpClient = httpClient ?? new HttpClient();
         _timeProvider = timeProvider ?? TimeProvider.System;
-        _initializeTask = InitializeAsync();
+        // Saved sessions already contain materialized memberships; only imports need the API/cache.
+        _initializeTask = new Lazy<Task>(InitializeAsync);
     }
 
     public async Task<string> GetCardNameAsync(int id) {
-        await _initializeTask;
+        await _initializeTask.Value;
+        await _singleLookupGate.WaitAsync();
+        try {
+            if (_cache.Cards.TryGetValue(id, out var cachedCard)) return cachedCard.Name;
+        }
+        finally { _singleLookupGate.Release(); }
 
-        if (_cache.Cards.TryGetValue(id, out var cachedCard))
-            return cachedCard.Name;
-
-        await FetchSingleCardAsync(id);
-
-        return _cache.Cards.TryGetValue(id, out cachedCard) ? cachedCard.Name : id.ToString(CultureInfo.InvariantCulture);
+        return (await GetCardInfoAsync(id)).Name;
     }
 
     private async Task InitializeAsync() {
@@ -44,7 +62,7 @@ public class CardInfoService : ICardInfoService {
     }
 
     private bool IsFresh(CardMetadataCache cache) {
-        if (cache.LastFullRefreshUtc is not { } lastRefresh)
+        if (cache.SchemaVersion != CacheSchemaVersion || cache.LastFullRefreshUtc is not { } lastRefresh)
             return false;
 
         var age = _timeProvider.GetUtcNow() - lastRefresh;
@@ -64,19 +82,10 @@ public class CardInfoService : ICardInfoService {
                 return;
             }
 
-            var cards = new Dictionary<int, CachedCardInfo>();
+            var cards = new Dictionary<int, CardInfo>();
             foreach (var item in data.EnumerateArray()) {
-                if (item.ValueKind != JsonValueKind.Object ||
-                    !TryGetProperty(item, "id", out var idProperty) ||
-                    !idProperty.TryGetInt32(out var id) ||
-                    !TryGetProperty(item, "name", out var nameProperty) ||
-                    nameProperty.ValueKind != JsonValueKind.String) {
-                    continue;
-                }
-
-                var name = nameProperty.GetString();
-                if (!string.IsNullOrWhiteSpace(name))
-                    cards[id] = new CachedCardInfo { Name = name };
+                var info = ReadCardInfo(item);
+                if (info is not null) cards[info.Id] = info;
             }
 
             // The full YGOPRODeck catalog should not be empty; keep stale entries if a response is incomplete.
@@ -105,12 +114,17 @@ public class CardInfoService : ICardInfoService {
 
             if (document.RootElement.ValueKind == JsonValueKind.Object &&
                 TryGetProperty(document.RootElement, "data", out var data) &&
-                data.ValueKind == JsonValueKind.Array && data.GetArrayLength() > 0 &&
-                TryGetProperty(data[0], "name", out var nameProperty) &&
-                nameProperty.ValueKind == JsonValueKind.String &&
-                !string.IsNullOrWhiteSpace(nameProperty.GetString())) {
-                _cache.Cards[id] = new CachedCardInfo { Name = nameProperty.GetString()! };
-                await SaveCacheAsync().ConfigureAwait(false);
+                data.ValueKind == JsonValueKind.Array) {
+                // The query passcode remains the cache identity, including alternate passcodes.
+                var info = data.EnumerateArray().Select(item => ReadCardInfo(item, id))
+                    .FirstOrDefault(card => card is not null);
+                if (info is not null) {
+                    _cache.Cards[id] = info;
+                    // Per-card enrichment is not a full catalog refresh.
+                    if (_cache.SchemaVersion != CacheSchemaVersion) _cache.LastFullRefreshUtc = null;
+                    _cache.SchemaVersion = CacheSchemaVersion;
+                    await SaveCacheAsync().ConfigureAwait(false);
+                }
             }
         }
         catch {
@@ -143,8 +157,9 @@ public class CardInfoService : ICardInfoService {
     private static bool TryReadVersionedCache(JsonElement root, out CardMetadataCache cache) {
         cache = new CardMetadataCache();
         if (!TryGetProperty(root, "schemaVersion", out var versionProperty) ||
+            versionProperty.ValueKind != JsonValueKind.Number ||
             !versionProperty.TryGetInt32(out var version) ||
-            version != CacheSchemaVersion ||
+            version is not (1 or CacheSchemaVersion) ||
             !TryGetProperty(root, "cards", out var cardsProperty) ||
             cardsProperty.ValueKind != JsonValueKind.Object) {
             return false;
@@ -158,7 +173,7 @@ public class CardInfoService : ICardInfoService {
             lastFullRefreshUtc = parsedTimestamp;
         }
 
-        var cards = new Dictionary<int, CachedCardInfo>();
+        var cards = new Dictionary<int, CardInfo>();
         foreach (var property in cardsProperty.EnumerateObject()) {
             if (!int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ||
                 property.Value.ValueKind != JsonValueKind.Object ||
@@ -171,7 +186,7 @@ public class CardInfoService : ICardInfoService {
             if (string.IsNullOrWhiteSpace(name))
                 return false;
 
-            cards[id] = new CachedCardInfo { Name = name };
+            cards[id] = version == 1 ? new CardInfo { Id = id, Name = name } : ReadCardInfo(property.Value, id)!;
         }
 
         if (cards.Count == 0)
@@ -186,7 +201,7 @@ public class CardInfoService : ICardInfoService {
     }
 
     private static bool TryReadLegacyCache(JsonElement root, out CardMetadataCache cache) {
-        var cards = new Dictionary<int, CachedCardInfo>();
+        var cards = new Dictionary<int, CardInfo>();
         foreach (var property in root.EnumerateObject()) {
             if (!int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ||
                 property.Value.ValueKind != JsonValueKind.String) {
@@ -196,11 +211,27 @@ public class CardInfoService : ICardInfoService {
 
             var name = property.Value.GetString();
             if (!string.IsNullOrWhiteSpace(name))
-                cards[id] = new CachedCardInfo { Name = name };
+                cards[id] = new CardInfo { Id = id, Name = name };
         }
 
-        cache = new CardMetadataCache { Cards = cards };
+        cache = new CardMetadataCache { SchemaVersion = 1, Cards = cards };
         return true;
+    }
+
+    private static CardInfo? ReadCardInfo(JsonElement item, int? cacheId = null) {
+        if (item.ValueKind != JsonValueKind.Object) return null;
+        var id = cacheId ?? Number("id");
+        var name = Text("name");
+        if (id is null || string.IsNullOrWhiteSpace(name)) return null;
+        return new CardInfo {
+            Id = id.Value, Name = name, Type = Text("type"), FrameType = Text("frameType"),
+            Race = Text("race"), Attribute = Text("attribute"), Level = Number("level"),
+            LinkVal = Number("linkval"), Scale = Number("scale"), Archetype = Text("archetype")
+        };
+        string? Text(string key) => TryGetProperty(item, key, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString() : null;
+        int? Number(string key) => TryGetProperty(item, key, out var value) && value.ValueKind == JsonValueKind.Number &&
+            value.TryGetInt32(out var number) ? number : null;
     }
 
     private static bool TryGetProperty(JsonElement element, string name, out JsonElement property) {
@@ -230,10 +261,6 @@ public class CardInfoService : ICardInfoService {
     private sealed class CardMetadataCache {
         public int SchemaVersion { get; set; } = CacheSchemaVersion;
         public DateTimeOffset? LastFullRefreshUtc { get; set; }
-        public Dictionary<int, CachedCardInfo> Cards { get; set; } = new();
-    }
-
-    private sealed class CachedCardInfo {
-        public string Name { get; set; } = string.Empty;
+        public Dictionary<int, CardInfo> Cards { get; set; } = new();
     }
 }
