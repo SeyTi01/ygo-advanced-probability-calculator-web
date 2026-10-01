@@ -1,0 +1,48 @@
+name: Full test suite
+
+run-name: Tests — ${{ github.ref_name }}
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Full test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET 10
+        id: setup-dotnet
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+          dotnet-quality: "ga"
+
+      - name: Pin SDK for this run
+        shell: bash
+        run: |
+          echo '{"sdk":{"version":"${{ steps.setup-dotnet.outputs.dotnet-version }}"}}' > global.json
+
+      - name: Show .NET environment
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore YGOProbabilityCalculatorBlazor.sln
+
+      - name: Build
+        run: dotnet build YGOProbabilityCalculatorBlazor.sln --no-restore
+
+      - name: Test
+        run: dotnet test YGOProbabilityCalculatorBlazor.sln --no-build --no-restore
