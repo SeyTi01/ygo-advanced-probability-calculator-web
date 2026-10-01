@@ -3,6 +3,7 @@
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 @inject IDeckImportService _deckImportService
 @inject ISessionService _sessionService
+@inject ILegacyCardMetadataEnricher _legacyMetadataEnricher
 @inject IPendingSessionService _pendingSessionService
 @inject IProbabilityCalculatorService _probabilityCalculator
 
@@ -449,7 +450,7 @@
 
             var session = await _sessionService.LoadSessionAsync(fileContent);
 
-            RestoreSessionData(session);
+            await RestoreSessionDataAsync(session);
             activeCardIndex = -1;
             activeComboIndex = -1;
             InvalidateCalculation(clearPreviousResult: true);
@@ -465,9 +466,10 @@
         await SaveSession(fileName);
     }
 
-    private void RestoreSessionData(SessionState session) {
+    private async Task RestoreSessionDataAsync(SessionState session) {
         if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
             throw new InvalidOperationException("Session contains duplicate card IDs.");
+        await _legacyMetadataEnricher.EnrichAsync(session);
         categoryBases.Clear();
         categoryBases.AddRange(session.Categories.Where(category => category.Source == CategorySource.User));
 
@@ -499,10 +501,10 @@
         errorMessage = null;
     }
 
-    protected override void OnInitialized() {
+    protected override async Task OnInitializedAsync() {
         if (_pendingSessionService.PendingSession is { } session) {
             try {
-                RestoreSessionData(session);
+                await RestoreSessionDataAsync(session);
 
                 _pendingSessionService.PendingSession = null;
             }
@@ -511,7 +513,7 @@
             }
         }
 
-        base.OnInitialized();
+        await base.OnInitializedAsync();
     }
 
 }
