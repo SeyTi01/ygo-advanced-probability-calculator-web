@@ -87,5 +87,5 @@ P(success) = ------------------------
 ## Technical stack
 
 - **Blazor WebAssembly**
-- **.NET 9**
-- **C# 13**
+- **.NET 10**
+- **C# 14**
