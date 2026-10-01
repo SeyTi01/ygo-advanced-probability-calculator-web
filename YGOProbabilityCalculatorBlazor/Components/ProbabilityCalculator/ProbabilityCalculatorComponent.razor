@@ -40,6 +40,7 @@
 
     <CategoryListEditor @key="sessionVersion"
         OnCategoriesChanged="HandleCategoriesChanged"
+        OnCategoryColorChanged="SetCategoryColor"
         OnRenameCategory="RenameCategoryBase"
         CategoryBases="categoryBases"
         CategoryColorIndices="categoryColorIndices"
@@ -333,6 +334,16 @@
         StateHasChanged();
     }
 
+    private Task SetCategoryColor((string CategoryName, int ColorIndex) change) {
+        if (!CategoryColorPalette.IsValidIndex(change.ColorIndex) ||
+            !categoryBases.Any(category => category.Source == CategorySource.User &&
+                category.Name.Equals(change.CategoryName, StringComparison.Ordinal)))
+            return Task.CompletedTask;
+
+        categoryColorIndices[change.CategoryName] = change.ColorIndex;
+        return Task.CompletedTask;
+    }
+
     private void ReconcileCategoryColorIndices() {
         var activeCategoryNames = categoryBases.Concat(cards.SelectMany(card => card.Categories))
             .Concat(combos.SelectMany(combo => combo.Categories).Select(category => category.BaseCategory))
@@ -345,12 +356,23 @@
             categoryColorIndices.Remove(staleName);
 
         var assignedIndices = new HashSet<int>();
+        var assignedCategoryCount = 0;
         foreach (var categoryName in activeCategoryNames) {
-            if (categoryColorIndices.TryGetValue(categoryName, out var existingIndex) &&
-                existingIndex >= 0 && assignedIndices.Add(existingIndex))
+            if (!categoryColorIndices.TryGetValue(categoryName, out var existingIndex) ||
+                !CategoryColorPalette.IsValidIndex(existingIndex))
                 continue;
 
-            var nextIndex = CategoryColorPalette.FirstAvailableIndex(assignedIndices);
+            // Existing palette choices are intentional even when categories share a color.
+            assignedIndices.Add(existingIndex);
+            assignedCategoryCount++;
+        }
+
+        foreach (var categoryName in activeCategoryNames) {
+            if (categoryColorIndices.TryGetValue(categoryName, out var existingIndex) &&
+                CategoryColorPalette.IsValidIndex(existingIndex))
+                continue;
+
+            var nextIndex = CategoryColorPalette.FirstAvailableIndex(assignedIndices, assignedCategoryCount++);
             categoryColorIndices[categoryName] = nextIndex;
             assignedIndices.Add(nextIndex);
         }
@@ -360,7 +382,7 @@
         categoryColorIndices.Clear();
         if (session.CategoryColorIndices is not null) {
             foreach (var (categoryName, colorIndex) in session.CategoryColorIndices) {
-                if (!string.IsNullOrWhiteSpace(categoryName) && colorIndex >= 0)
+                if (!string.IsNullOrWhiteSpace(categoryName) && CategoryColorPalette.IsValidIndex(colorIndex))
                     categoryColorIndices[categoryName] = colorIndex;
             }
         }
