@@ -77,7 +77,7 @@ P(success) = ------------------------
 - Set inclusive minimum and maximum counts for requirements.
 - Calculate individual combo probabilities, grouped probabilities, and the union of all active combos.
 - Organize related combos into named groups.
-- Import decks from `.ydk` files.
+- Import decks from `.ydk` files or YDKe deck codes.
 - Save and load complete calculator sessions.
 - Temporarily deactivate cards and combos while testing changes.
 - Reorder cards, categories, combos, and combo groups.

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using Microsoft.AspNetCore.Components.Forms;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
@@ -135,4 +136,116 @@ public class DeckImportServiceTest {
         _cardInfoServiceMock.Verify(x => x.GetCardInfoAsync(123), Times.Once);
         _cardInfoServiceMock.Verify(x => x.GetCardInfoAsync(789), Times.Never);
     }
+
+    [Test]
+    public async Task ImportDeckFromYdkeAsync_CanonicalFixtureImportsOnlyMainCardsWithMetadata() {
+        const string code = "ydke://o6lXBZyFNAI=!viOnAg==!7ydRAA==!";
+        var firstInfo = new CardInfo {
+            Id = 89631139, Name = "First main card", Type = "Effect Monster",
+            Race = "Warrior", Attribute = "DARK", Level = 4
+        };
+        var secondInfo = new CardInfo {
+            Id = 36996508, Name = "Second main card", Type = "Spell Card", Race = "Quick-Play"
+        };
+        _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(89631139)).ReturnsAsync(firstInfo);
+        _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(36996508)).ReturnsAsync(secondInfo);
+
+        var cards = await _service.ImportDeckFromYdkeAsync(code);
+
+        Assert.That(cards.Select(card => card.ExternalCardId), Is.EqualTo(new int?[] { 89631139, 36996508 }));
+        Assert.That(cards.Select(card => card.Copies), Is.EqualTo(new[] { 1, 1 }));
+        Assert.That(cards.Select(card => card.Name), Is.EqualTo(new[] { "First main card", "Second main card" }));
+        Assert.That(cards.Select(card => card.Categories.Select(category => category.Identity).ToArray()),
+            Is.EqualTo(new[] {
+                CardPropertyProvider.GetCategories(firstInfo).Select(category => category.Identity).ToArray(),
+                CardPropertyProvider.GetCategories(secondInfo).Select(category => category.Identity).ToArray()
+            }));
+        Assert.That(cards.All(card => card.Categories.All(category => category.Source == CategorySource.Metadata)), Is.True);
+        Assert.That(cards.All(card => card.ManualMetadataCategoryKeys.Count == 0), Is.True);
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(89631139), Times.Once);
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(36996508), Times.Once);
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(44508094), Times.Never);
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(5318639), Times.Never);
+    }
+
+    [Test]
+    public async Task ImportDeckFromYdkeAsync_CollapsesDuplicatesInFirstOccurrenceOrder() {
+        var code = BuildYdke([123, 456, 123, 789, 456], [999], [888]);
+        foreach (var id in new[] { 123, 456, 789 })
+            _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(id))
+                .ReturnsAsync(new CardInfo { Id = id, Name = $"Card {id}" });
+
+        var cards = await _service.ImportDeckFromYdkeAsync(code);
+
+        Assert.That(cards.Select(card => card.ExternalCardId), Is.EqualTo(new int?[] { 123, 456, 789 }));
+        Assert.That(cards.Select(card => card.Copies), Is.EqualTo(new[] { 2, 2, 1 }));
+        Assert.That(cards.Select(card => card.Name), Is.EqualTo(new[] { "Card 123", "Card 456", "Card 789" }));
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(123), Times.Once);
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(456), Times.Once);
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(789), Times.Once);
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(999), Times.Never);
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(888), Times.Never);
+    }
+
+    [Test]
+    public async Task ImportDeckFromYdkeAsync_CardInfoFailureUsesNumericFallback() {
+        _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(123))
+            .ThrowsAsync(new HttpRequestException("API unavailable"));
+
+        var cards = await _service.ImportDeckFromYdkeAsync(BuildYdke([123]));
+
+        Assert.That(cards, Has.Count.EqualTo(1));
+        Assert.Multiple(() => {
+            Assert.That(cards[0].Name, Is.EqualTo("123"));
+            Assert.That(cards[0].ExternalCardId, Is.EqualTo(123));
+            Assert.That(cards[0].Categories, Is.Empty);
+            Assert.That(cards[0].ManualMetadataCategoryKeys, Is.Empty);
+        });
+    }
+
+    [Test]
+    public void ImportDeckFromYdkeAsync_MalformedInputFailsBeforeCardLookup() {
+        Assert.ThrowsAsync<FormatException>(async () =>
+            await _service.ImportDeckFromYdkeAsync("ydke://o6lXBZyFNAI=!viOnAg==!*!")
+        );
+
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ImportDeckFromYdkAndYdkeAsync_EquivalentMainDecksProduceEquivalentCards() {
+        var ids = new[] { 123, 456, 123, 789, 456 };
+        _fileServiceMock.Setup(service => service.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
+            .ReturnsAsync(["#main", "123", "456", "123", "789", "456", "#extra", "999"]);
+        foreach (var id in new[] { 123, 456, 789 })
+            _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(id))
+                .ReturnsAsync(new CardInfo {
+                    Id = id, Name = $"Card {id}", Type = "Effect Monster",
+                    Race = "Warrior", Attribute = "EARTH", Level = 4
+                });
+
+        var ydkCards = await _service.ImportDeckFromYdkAsync(Mock.Of<IBrowserFile>());
+        var ydkeCards = await _service.ImportDeckFromYdkeAsync(BuildYdke([123, 456, 123, 789, 456], [999], [888]));
+
+        Assert.That(ydkeCards.Select(card => card.ExternalCardId), Is.EqualTo(ydkCards.Select(card => card.ExternalCardId)));
+        Assert.That(ydkeCards.Select(card => card.Copies), Is.EqualTo(ydkCards.Select(card => card.Copies)));
+        Assert.That(ydkeCards.Select(card => card.Name), Is.EqualTo(ydkCards.Select(card => card.Name)));
+        Assert.That(ydkeCards.Select(card => card.Active), Is.EqualTo(ydkCards.Select(card => card.Active)));
+        Assert.That(ydkeCards.All(card => card.ManualMetadataCategoryKeys.Count == 0), Is.True);
+        Assert.That(ydkCards.All(card => card.ManualMetadataCategoryKeys.Count == 0), Is.True);
+        for (var index = 0; index < ids.Distinct().Count(); index++)
+            Assert.That(ydkeCards[index].Categories.Select(category => category.Identity),
+                Is.EqualTo(ydkCards[index].Categories.Select(category => category.Identity)));
+    }
+
+    private static string BuildYdke(uint[] main, uint[]? extra = null, uint[]? side = null) =>
+        $"ydke://{Encode(main)}!{Encode(extra ?? Array.Empty<uint>())}!{Encode(side ?? Array.Empty<uint>())}!";
+
+    private static string Encode(uint[] ids) {
+        var bytes = new byte[ids.Length * sizeof(uint)];
+        for (var index = 0; index < ids.Length; index++)
+            BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(index * sizeof(uint), sizeof(uint)), ids[index]);
+        return Convert.ToBase64String(bytes);
+    }
+
 }
