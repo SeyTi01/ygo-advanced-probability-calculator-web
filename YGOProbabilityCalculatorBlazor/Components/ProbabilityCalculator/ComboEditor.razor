@@ -196,7 +196,8 @@
 
     private IReadOnlyList<CategoryBase> availableCategories = [];
     private string CategoryCssClass(CategoryBase category) => category.Source == CategorySource.Metadata
-        ? "text-bg-secondary" : CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices);
+        ? $"card-property-tag {CardPropertyColorPalette.GetCssClass(category)}"
+        : CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices);
     private const int MaxHeaderBadges = 6;
     private string? error;
     private string selectedCategory = string.Empty;

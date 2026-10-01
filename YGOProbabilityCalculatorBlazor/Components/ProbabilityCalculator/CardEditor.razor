@@ -17,7 +17,7 @@
                     <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">@cat.Name</span>
                 }
                 @foreach (var property in ManualProperties) {
-                    <span class="badge text-bg-secondary category-tag ms-1 manual-property-header-badge">@property.Name</span>
+                    <span class="badge category-tag card-property-tag ms-1 manual-property-header-badge @CardPropertyColorPalette.GetCssClass(property)">@property.Name</span>
                 }
             }
             @if (!Card.Active) {
@@ -108,7 +108,7 @@
                                 <div class="form-text mb-1">Detected from card data</div>
                                 <div class="d-flex flex-wrap">
                                     @foreach (var property in DetectedProperties) {
-                                        <span class="badge text-bg-secondary category-tag me-2 mb-1 detected-card-property">@property.Name</span>
+                                        <span class="badge category-tag card-property-tag me-2 mb-1 detected-card-property @CardPropertyColorPalette.GetCssClass(property)">@property.Name</span>
                                     }
                                 </div>
                             </div>
@@ -118,7 +118,7 @@
                                 <div class="form-text mb-1">Added manually</div>
                                 <div class="d-flex flex-wrap">
                                     @foreach (var property in ManualProperties) {
-                                        <span class="badge text-bg-secondary category-tag me-2 mb-1 manual-card-property">
+                                        <span class="badge category-tag card-property-tag me-2 mb-1 manual-card-property @CardPropertyColorPalette.GetCssClass(property)">
                                             @property.Name
                                             <button type="button" class="btn-close category-remove-button ms-1"
                                                     aria-label="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
@@ -237,4 +237,3 @@
     }
 
 }
-

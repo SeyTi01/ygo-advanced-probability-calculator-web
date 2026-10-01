@@ -58,6 +58,14 @@
                             <path d="M19 12H5m0 0 7-7m-7 7 7 7"></path>
                         </svg>
                     </button>
+                    <button type="button" class="category-icon-button category-color-picker-trigger"
+                            aria-label="@($"Choose color for category {category.Name}")"
+                            title="@($"Choose color for category {category.Name}")"
+                            aria-expanded="@(colorPickerExpanded ? "true" : "false")"
+                            aria-controls="@($"categoryColorPalette{index}")"
+                            @onclick="ToggleColorPicker">
+                        <span class="category-color-trigger-swatch @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)" aria-hidden="true"></span>
+                    </button>
                 }
                 else {
                     <button @ref="categoryNameButtonReferences[category.Name]"
@@ -72,6 +80,25 @@
                         title="@($"Remove category {category.Name}")"
                         @onclick="() => RemoveCategoryBase(category)"></button>
             </span>
+            @if (ReferenceEquals(editingCategory, category) && colorPickerExpanded) {
+                <div id="categoryColorPalette@(index)" class="category-color-palette mt-2" role="group"
+                     aria-label="@($"Choose a color for category {category.Name}")">
+                    @foreach (var color in CategoryColorPalette.Options) {
+                        var isSelected = SelectedColorIndex(category) == color.Index;
+                        <button type="button" class="category-color-swatch @color.CssClass"
+                                aria-label="@($"Set {category.Name} color to {color.Name}")"
+                                title="@($"Set {category.Name} color to {color.Name}")"
+                                aria-pressed="@(isSelected ? "true" : "false")"
+                                @onclick="() => ChangeCategoryColor(category, color.Index)">
+                            @if (isSelected) {
+                                <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                    <path d="m3 8 3.1 3.1L13 4.6"></path>
+                                </svg>
+                            }
+                        </button>
+                    }
+                </div>
+            }
         }
     </div>
 </div>
@@ -84,6 +111,7 @@
     [Parameter] public required IEnumerable<Combo> Combos { get; set; } = [];
 
     [Parameter] public EventCallback OnCategoriesChanged { get; set; }
+    [Parameter] public EventCallback<(string CategoryName, int ColorIndex)> OnCategoryColorChanged { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMoveCategory { get; set; }
     [Parameter] public EventCallback<(CategoryBase OldCategory, CategoryBase NewCategory)> OnRenameCategory { get; set; }
 
@@ -95,6 +123,22 @@
     private readonly Dictionary<string, ElementReference> categoryNameButtonReferences = new(StringComparer.Ordinal);
     private bool focusRenameInput;
     private string? pendingCategoryNameFocus;
+    private bool colorPickerExpanded;
+
+    private int SelectedColorIndex(CategoryBase category) =>
+        CategoryColorIndices.TryGetValue(category.Name, out var colorIndex) && CategoryColorPalette.IsValidIndex(colorIndex)
+            ? colorIndex
+            : 0;
+
+    private void ToggleColorPicker() => colorPickerExpanded = !colorPickerExpanded;
+
+    private Task ChangeCategoryColor(CategoryBase category, int colorIndex) {
+        if (category.Source != CategorySource.User || !CategoryColorPalette.IsValidIndex(colorIndex))
+            return Task.CompletedTask;
+
+        colorPickerExpanded = false;
+        return OnCategoryColorChanged.InvokeAsync((category.Name, colorIndex));
+    }
 
     private async Task AddCategoryBase() {
         if (string.IsNullOrWhiteSpace(newCategoryName)) {
@@ -136,6 +180,7 @@
     private void BeginCategoryRename(CategoryBase category) {
         editingCategory = category;
         editingCategoryName = category.Name;
+        colorPickerExpanded = false;
         categoryError = null;
         pendingCategoryNameFocus = null;
         focusRenameInput = true;
@@ -143,12 +188,14 @@
 
     private void CancelCategoryRename() {
         pendingCategoryNameFocus = editingCategory?.Name;
+        colorPickerExpanded = false;
         ClearCategoryRename();
     }
 
     private void ClearCategoryRename() {
         editingCategory = null;
         editingCategoryName = null;
+        colorPickerExpanded = false;
         categoryError = null;
     }
 
