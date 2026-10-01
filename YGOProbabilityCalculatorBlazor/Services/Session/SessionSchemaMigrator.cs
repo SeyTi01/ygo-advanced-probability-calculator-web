@@ -10,7 +10,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.Session;
 public sealed class SessionSchemaMigrator {
     private static readonly IReadOnlyDictionary<int, Action<JsonObject>> Migrations =
         new Dictionary<int, Action<JsonObject>> {
-            [0] = MigrateV0ToV1
+            [0] = MigrateV0ToV1,
+            [1] = MigrateV1ToV2
         };
 
     public string MigrateToCurrent(string json) {
@@ -62,6 +63,28 @@ public sealed class SessionSchemaMigrator {
     }
 
     private static void MigrateV0ToV1(JsonObject root) => SetSchemaVersion(root, 1);
+
+    private static void MigrateV1ToV2(JsonObject root) {
+        // Pre-v2 categories are always user definitions, at every persisted location.
+        foreach (var category in Array(root, "Categories")) Classify(category);
+        foreach (var card in Array(root, "Cards"))
+            foreach (var category in Array(card, "Categories")) Classify(category);
+        foreach (var combo in Array(root, "Combos"))
+            foreach (var constraint in Array(combo, "Categories")) Classify(Property(constraint, "BaseCategory"));
+        SetSchemaVersion(root, 2);
+
+        static void Classify(JsonNode? node) {
+            if (node is not JsonObject category) return;
+            foreach (var key in category.Select(p => p.Key).Where(key =>
+                key.Equals("Source", StringComparison.OrdinalIgnoreCase) ||
+                key.Equals("MetadataKey", StringComparison.OrdinalIgnoreCase)).ToArray()) category.Remove(key);
+            category["Source"] = "User";
+        }
+        static JsonNode? Property(JsonNode? node, string name) => node is JsonObject obj
+            ? obj.FirstOrDefault(p => p.Key.Equals(name, StringComparison.OrdinalIgnoreCase)).Value : null;
+        static IEnumerable<JsonNode?> Array(JsonNode? node, string name) =>
+            Property(node, name) is JsonArray array ? array : [];
+    }
 
     private static void SetSchemaVersion(JsonObject root, int version) {
         var propertyName = root.Select(property => property.Key)

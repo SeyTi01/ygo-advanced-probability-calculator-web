@@ -24,7 +24,7 @@ public class ComboCategoryConverterTests {
 
         var json = JsonSerializer.Serialize(comboCategory, _options);
 
-        const string expectedJson = "{\"BaseCategory\":{\"Name\":\"TestCategory\"},\"MinCount\":1,\"MaxCount\":3}";
+        const string expectedJson = "{\"BaseCategory\":{\"Name\":\"TestCategory\",\"Source\":\"User\"},\"MinCount\":1,\"MaxCount\":3}";
         Assert.That(json, Is.EqualTo(expectedJson));
     }
 
