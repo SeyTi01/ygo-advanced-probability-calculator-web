@@ -23,15 +23,15 @@ if (-not (Test-Path $solution)) {
 }
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    throw '.NET is not on PATH. Install the .NET 9 SDK, restart Codex, and retry: https://dotnet.microsoft.com/download/dotnet/9.0'
+    throw '.NET is not on PATH. Install the .NET 10 SDK, restart Codex, and retry: https://dotnet.microsoft.com/download/dotnet/10.0'
 }
 
 $sdks = @(& dotnet --list-sdks)
 if ($LASTEXITCODE -ne 0) {
     throw 'Unable to query installed .NET SDKs using dotnet --list-sdks.'
 }
-if (-not ($sdks | Where-Object { $_ -match '^9\.' })) {
-    throw ".NET 9 SDK is required; found: $($sdks -join ', '). Install it and restart Codex: https://dotnet.microsoft.com/download/dotnet/9.0"
+if (-not ($sdks | Where-Object { $_ -match '^10\.' })) {
+    throw ".NET 10 SDK is required; found: $($sdks -join ', '). Install it and restart Codex: https://dotnet.microsoft.com/download/dotnet/10.0"
 }
 
 Write-Host 'Using .NET installation:'
@@ -44,4 +44,4 @@ if ($LASTEXITCODE -ne 0) {
     throw 'NuGet restore failed. Resolve the reported error; for MSBuild node/socket issues, retry manually with -m:1.'
 }
 
-Write-Host 'Codex worktree setup complete: .NET 9 SDK verified and dependencies restored.'
+Write-Host 'Codex worktree setup complete: .NET 10 SDK verified and dependencies restored.'
