@@ -38,6 +38,21 @@ At the start of implementation or test work, run `dotnet --info` and check that 
 
 There is no GitHub Actions CI workflow. Run relevant tests locally and report the exact commands and outcomes in the pull request. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
 
+
+### Restricted sandbox: WebAssembly task-host failures
+
+In some restricted Linux/Work sandboxes, .NET 10 Blazor WebAssembly builds can fail with `MSB4216`/`MSB4027` or `SocketException (13): Permission denied` while MSBuild tries to start an out-of-process task host. A successful restore does not prove the app or tests build. First try the normal commands and the `-m:1`/node-reuse workaround above. If those still fail and a socket probe confirms Unix sockets are blocked while loopback TCP works, use the following verification-only workaround rather than declaring the suite un-runnable:
+
+- Use writable temporary `DOTNET_CLI_HOME` and `NUGET_PACKAGES` locations.
+- Disable MSBuild/node reuse and compiler/Razor build servers.
+- Create a temporary MSBuild targets file **outside the repository** that re-registers the unchanged official WebAssembly and ILLink tasks with the default in-process task factory by using `<UsingTask ... AssemblyFile="..." Override="true" />`.
+- For the current .NET 10 toolchain, the affected tasks are `GenerateWasmBootJson`, `ComputeWasmBuildAssets`, `ComputeWasmPublishAssets`, `ConvertDllsToWebCil`, `ComputeManagedAssemblies`, and `ILLink`. Resolve their DLL paths from the actually restored NuGet packages; do not hard-code an old package version.
+- Pass the temporary file with `-p:CustomBeforeMicrosoftCommonTargets=<path>` to build/publish. This must only change task process placement; do not skip targets or replace task assemblies.
+- After a successful build, run the normal full test suite with `--no-build`. For publish verification, inspect diagnostic logs to confirm the WebAssembly/ILLink tasks actually executed.
+- Never commit the temporary override file or sandbox-specific paths. Cloudflare/local builds do not require this workaround.
+
+The .NET 10 migration PR #46 contains one verified example of this workaround and the exact commands used. Prefer reproducing the technique with the currently restored SDK/package versions over copying its temporary paths verbatim.
+
 ## Probability correctness
 
 - A card may belong to multiple categories. Each copy counts toward every matching hand-wide maximum, but can fill only one positive requirement within a combo. Positive category and direct-card minima need distinct physical copies; separate combos are evaluated independently.
