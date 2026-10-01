@@ -390,3 +390,75 @@ body.input-mode-keyboard *:focus-visible {
 .category-tag .category-remove-button:focus-visible {
     opacity: 1;
 }
+
+.card-property-tag {
+    font-weight: 600;
+}
+
+.card-property-color-attribute-fire { --category-background: #fce4e4; --category-text: #762626; --category-border: #d38a8a; }
+.card-property-color-attribute-water { --category-background: #dceafa; --category-text: #12416b; --category-border: #79a9d3; }
+.card-property-color-attribute-wind { --category-background: #e1f2e2; --category-text: #24552a; --category-border: #85b88a; }
+.card-property-color-attribute-earth { --category-background: #f3e7d1; --category-text: #62451f; --category-border: #c1a16c; }
+.card-property-color-attribute-light { --category-background: #fff0b8; --category-text: #705000; --category-border: #c79a28; }
+.card-property-color-attribute-dark { --category-background: #eae0f6; --category-text: #4b2d71; --category-border: #ac91cf; }
+.card-property-color-attribute-divine { --category-background: #ffe0a0; --category-text: #653800; --category-border: #bf7f10; }
+.card-property-color-attribute { --category-background: #e8e8f0; --category-text: #3e4260; --category-border: #aaaec2; }
+.card-property-color-spell { --category-background: #dff1dd; --category-text: #22532c; --category-border: #87b489; }
+.card-property-color-trap { --category-background: #f6e0ec; --category-text: #6d234a; --category-border: #c17b9b; }
+.card-property-color-monster { --category-background: #f0e3cc; --category-text: #5e4722; --category-border: #b49a6e; }
+.card-property-color-normal { --category-background: #f5e7b8; --category-text: #634c00; --category-border: #bea246; }
+.card-property-color-effect { --category-background: #fbe1c7; --category-text: #773d0d; --category-border: #ce9560; }
+.card-property-color-ritual { --category-background: #dce9f8; --category-text: #174a78; --category-border: #719cc6; }
+.card-property-color-fusion { --category-background: #e9ddf7; --category-text: #513076; --category-border: #a48cc4; }
+.card-property-color-synchro { --category-background: #e6e9ee; --category-text: #364152; --category-border: #9ba4b2; }
+.card-property-color-xyz { --category-background: #48505d; --category-text: #f8fafc; --category-border: #222a35; }
+.card-property-color-monster-link { --category-background: #1e477a; --category-text: #ffffff; --category-border: #12345d; }
+.card-property-color-monster-trait { --category-background: #e9eef6; --category-text: #384d66; --category-border: #9aaac1; }
+.card-property-color-pendulum { --category-background: #d9f0ec; --category-text: #15574f; --category-border: #71a69b; }
+.card-property-color-level { --category-background: #fff0c2; --category-text: #674c00; --category-border: #c89a21; }
+.card-property-color-rank { --category-background: #3e4754; --category-text: #ffffff; --category-border: #202831; }
+.card-property-color-link-rating { --category-background: #dde9f8; --category-text: #204d7a; --category-border: #8aaed1; }
+.card-property-color-scale { --category-background: #d5f2f2; --category-text: #13545a; --category-border: #66afb4; }
+.card-property-color-monster-race { --category-background: #d6f0f0; --category-text: #145456; --category-border: #76acad; }
+.card-property-color-archetype { --category-background: #e7e3f6; --category-text: #473a75; --category-border: #a89bcf; }
+.card-property-color-generic { --category-background: #e8e4f0; --category-text: #4a405f; --category-border: #aea5c0; }
+
+.card-property-color-xyz .btn-close,
+.card-property-color-rank .btn-close,
+.card-property-color-monster-link .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-bs-theme="dark"] .card-property-color-attribute-fire { --category-background: #4c262b; --category-text: #ffe3e2; --category-border: #b9656b; }
+[data-bs-theme="dark"] .card-property-color-attribute-water { --category-background: #1e3a56; --category-text: #d5e9ff; --category-border: #5792c5; }
+[data-bs-theme="dark"] .card-property-color-attribute-wind { --category-background: #203e2d; --category-text: #daf1de; --category-border: #5b9c6a; }
+[data-bs-theme="dark"] .card-property-color-attribute-earth { --category-background: #49361f; --category-text: #f3ddba; --category-border: #a9824a; }
+[data-bs-theme="dark"] .card-property-color-attribute-light { --category-background: #4a3a12; --category-text: #fff1b8; --category-border: #c7a23e; }
+[data-bs-theme="dark"] .card-property-color-attribute-dark { --category-background: #392b4f; --category-text: #e9d8ff; --category-border: #9870c6; }
+[data-bs-theme="dark"] .card-property-color-attribute-divine { --category-background: #5a330a; --category-text: #ffe1a2; --category-border: #d09024; }
+[data-bs-theme="dark"] .card-property-color-attribute { --category-background: #343446; --category-text: #e5e5f3; --category-border: #8887aa; }
+[data-bs-theme="dark"] .card-property-color-spell { --category-background: #1e422c; --category-text: #d8f5dc; --category-border: #4f9b61; }
+[data-bs-theme="dark"] .card-property-color-trap { --category-background: #4a263a; --category-text: #ffe0f0; --category-border: #b96791; }
+[data-bs-theme="dark"] .card-property-color-monster { --category-background: #4a3a24; --category-text: #f5e5c8; --category-border: #b69a68; }
+[data-bs-theme="dark"] .card-property-color-normal { --category-background: #4c3e1c; --category-text: #fff1b9; --category-border: #bfa144; }
+[data-bs-theme="dark"] .card-property-color-effect { --category-background: #56351f; --category-text: #ffe0c2; --category-border: #c77b3d; }
+[data-bs-theme="dark"] .card-property-color-ritual { --category-background: #1d3c5c; --category-text: #dcebff; --category-border: #568dc0; }
+[data-bs-theme="dark"] .card-property-color-fusion { --category-background: #382850; --category-text: #f1e2ff; --category-border: #9d7ac3; }
+[data-bs-theme="dark"] .card-property-color-synchro { --category-background: #3d4552; --category-text: #f2f4f7; --category-border: #a6b0be; }
+[data-bs-theme="dark"] .card-property-color-xyz { --category-background: #323a45; --category-text: #f8fafc; --category-border: #8a99aa; }
+[data-bs-theme="dark"] .card-property-color-monster-link { --category-background: #18395f; --category-text: #e5f1ff; --category-border: #5191d4; }
+[data-bs-theme="dark"] .card-property-color-monster-trait { --category-background: #2b3a4f; --category-text: #e4ecf7; --category-border: #6f8bab; }
+[data-bs-theme="dark"] .card-property-color-pendulum { --category-background: #17433f; --category-text: #d4f7f2; --category-border: #4fa79b; }
+[data-bs-theme="dark"] .card-property-color-level { --category-background: #4a3b15; --category-text: #fff2bf; --category-border: #c7a540; }
+[data-bs-theme="dark"] .card-property-color-rank { --category-background: #343e4a; --category-text: #f1f4f7; --category-border: #94a1b0; }
+[data-bs-theme="dark"] .card-property-color-link-rating { --category-background: #193d62; --category-text: #ddeeff; --category-border: #73a8d8; }
+[data-bs-theme="dark"] .card-property-color-scale { --category-background: #174246; --category-text: #d8fafa; --category-border: #4da0aa; }
+[data-bs-theme="dark"] .card-property-color-monster-race { --category-background: #163d3f; --category-text: #d5f5f3; --category-border: #4d999a; }
+[data-bs-theme="dark"] .card-property-color-archetype { --category-background: #332c50; --category-text: #ece7ff; --category-border: #8d7cc0; }
+[data-bs-theme="dark"] .card-property-color-generic { --category-background: #3e344c; --category-text: #efe7ff; --category-border: #9a88b6; }
+
+[data-bs-theme="dark"] .card-property-color-xyz .btn-close,
+[data-bs-theme="dark"] .card-property-color-rank .btn-close,
+[data-bs-theme="dark"] .card-property-color-monster-link .btn-close {
+    filter: var(--bs-btn-close-filter);
+}
