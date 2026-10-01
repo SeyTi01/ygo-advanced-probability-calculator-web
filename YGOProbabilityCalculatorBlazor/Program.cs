@@ -17,6 +17,7 @@ public static class Program {
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
         builder.Services.AddScoped<IDeckImportService, DeckImportService>();
         builder.Services.AddScoped<ISessionService, SessionService>();
+        builder.Services.AddScoped<ILegacyCardMetadataEnricher, LegacyCardMetadataEnricher>();
         builder.Services.AddScoped<ICardInfoService, CardInfoService>();
         builder.Services.AddScoped<IFileService, FileService>();
         builder.Services.AddScoped<ISerializer, JsonSerializer>();

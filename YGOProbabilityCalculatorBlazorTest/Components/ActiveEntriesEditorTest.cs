@@ -27,6 +27,7 @@ public class ActiveEntriesEditorTest {
         context.Services.AddSingleton<IProbabilityCalculatorService, ProbabilityCalculatorService>();
         context.Services.AddSingleton<ISerializer, JsonSerializer>();
         context.Services.AddSingleton<ISessionService, SessionService>();
+        context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
         context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
         deckImportService = new Mock<IDeckImportService>();
         context.Services.AddSingleton(deckImportService.Object);

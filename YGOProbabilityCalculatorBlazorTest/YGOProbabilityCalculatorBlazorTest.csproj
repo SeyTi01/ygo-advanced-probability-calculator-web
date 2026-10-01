@@ -27,6 +27,7 @@
       <None Update="Fixtures\legacy_v1_2_example_session.json" CopyToOutputDirectory="PreserveNewest" />
       <None Update="Fixtures\razen_session.json" CopyToOutputDirectory="PreserveNewest" />
       <None Update="Fixtures\vsmodel.json" CopyToOutputDirectory="PreserveNewest" />
+      <None Include="..\YGOProbabilityCalculatorBlazor\wwwroot\sample-data\example_session_state.json" Link="Fixtures\example_session_state.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
 </Project>

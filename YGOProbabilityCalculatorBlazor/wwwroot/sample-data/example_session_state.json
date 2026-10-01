@@ -1,323 +1,1006 @@
 {
+  "SchemaVersion": 2,
   "Categories": [
     {
-      "Name": "Fire"
+      "Name": "Fire",
+      "Source": "User"
     },
     {
-      "Name": "Dark"
+      "Name": "Dark",
+      "Source": "User"
     },
     {
-      "Name": "Level 5"
+      "Name": "Level 5",
+      "Source": "User"
     },
     {
-      "Name": "VS Monster"
+      "Name": "VS Monster",
+      "Source": "User"
     },
     {
-      "Name": "VS Starter"
+      "Name": "VS Starter",
+      "Source": "User"
     },
     {
-      "Name": "K9 Starter"
+      "Name": "K9 Starter",
+      "Source": "User"
     }
   ],
   "Cards": [
     {
-      "Categories": [],
+      "Categories": [
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: EARTH",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:earth"
+        },
+        {
+          "Name": "Monster Type: Insect",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:insect"
+        },
+        {
+          "Name": "Level 2",
+          "Source": "Metadata",
+          "MetadataKey": "level:2"
+        },
+        {
+          "Name": "Archetype: \u0022C\u0022",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:%22c%22"
+        }
+      ],
       "Copies": 1,
       "Name": "Maxx \u0022C\u0022",
       "Active": true,
-      "Id": "6791c7d39e9d41cda86fa8f59b6092a1"
+      "Id": "6791c7d39e9d41cda86fa8f59b6092a1",
+      "ExternalCardId": 23434538
     },
     {
       "Categories": [
         {
-          "Name": "Fire"
+          "Name": "Fire",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Tuner Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:tuner"
+        },
+        {
+          "Name": "Attribute: FIRE",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:fire"
+        },
+        {
+          "Name": "Monster Type: Zombie",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:zombie"
+        },
+        {
+          "Name": "Level 3",
+          "Source": "Metadata",
+          "MetadataKey": "level:3"
         }
       ],
       "Copies": 3,
       "Name": "Ash Blossom \u0026 Joyous Spring",
       "Active": true,
-      "Id": "70933e5990b54a2ca1ac75b0ace183db"
+      "Id": "70933e5990b54a2ca1ac75b0ace183db",
+      "ExternalCardId": 14558127
     },
     {
       "Categories": [
         {
-          "Name": "Dark"
+          "Name": "Dark",
+          "Source": "User"
         },
         {
-          "Name": "VS Monster"
+          "Name": "VS Monster",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: DARK",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:dark"
+        },
+        {
+          "Name": "Monster Type: Fiend",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:fiend"
+        },
+        {
+          "Name": "Level 4",
+          "Source": "Metadata",
+          "MetadataKey": "level:4"
+        },
+        {
+          "Name": "Archetype: Vanquish Soul",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:vanquish%20soul"
         }
       ],
       "Copies": 3,
       "Name": "Vanquish Soul Dr. Mad Love",
       "Active": true,
-      "Id": "a46c7692bd89479ebdd9430e0868a15f"
+      "Id": "a46c7692bd89479ebdd9430e0868a15f",
+      "ExternalCardId": 29280200
     },
     {
       "Categories": [
         {
-          "Name": "Fire"
+          "Name": "Fire",
+          "Source": "User"
         },
         {
-          "Name": "VS Monster"
+          "Name": "VS Monster",
+          "Source": "User"
         },
         {
-          "Name": "VS Starter"
+          "Name": "VS Starter",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: FIRE",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:fire"
+        },
+        {
+          "Name": "Monster Type: Warrior",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:warrior"
+        },
+        {
+          "Name": "Level 4",
+          "Source": "Metadata",
+          "MetadataKey": "level:4"
+        },
+        {
+          "Name": "Archetype: Vanquish Soul",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:vanquish%20soul"
         }
       ],
       "Copies": 2,
       "Name": "Vanquish Soul Razen",
       "Active": true,
-      "Id": "55c145012b004e249542f334dbe278df"
-    },
-    {
-      "Categories": [],
-      "Copies": 3,
-      "Name": "Mulcharmy Fuwalos",
-      "Active": true,
-      "Id": "782b979b7aa046dc80a57026c14c8f7c"
+      "Id": "55c145012b004e249542f334dbe278df",
+      "ExternalCardId": 29302858
     },
     {
       "Categories": [
         {
-          "Name": "Fire"
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
         },
         {
-          "Name": "Level 5"
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
         },
         {
-          "Name": "VS Monster"
+          "Name": "Attribute: WIND",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:wind"
+        },
+        {
+          "Name": "Monster Type: Winged Beast",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:winged%20beast"
+        },
+        {
+          "Name": "Level 4",
+          "Source": "Metadata",
+          "MetadataKey": "level:4"
+        },
+        {
+          "Name": "Archetype: Mulcharmy",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:mulcharmy"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Mulcharmy Fuwalos",
+      "Active": true,
+      "Id": "782b979b7aa046dc80a57026c14c8f7c",
+      "ExternalCardId": 42141493
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Fire",
+          "Source": "User"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "User"
+        },
+        {
+          "Name": "VS Monster",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: FIRE",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:fire"
+        },
+        {
+          "Name": "Monster Type: Wyrm",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:wyrm"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "Metadata",
+          "MetadataKey": "level:5"
+        },
+        {
+          "Name": "Archetype: Vanquish Soul",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:vanquish%20soul"
         }
       ],
       "Copies": 2,
       "Name": "Vanquish Soul Jiaolong",
       "Active": true,
-      "Id": "47af3086f26748fea509339d55c56651"
+      "Id": "47af3086f26748fea509339d55c56651",
+      "ExternalCardId": 9091064
     },
     {
       "Categories": [
         {
-          "Name": "Level 5"
+          "Name": "Level 5",
+          "Source": "User"
         },
         {
-          "Name": "K9 Starter"
+          "Name": "K9 Starter",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: EARTH",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:earth"
+        },
+        {
+          "Name": "Monster Type: Machine",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:machine"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "Metadata",
+          "MetadataKey": "level:5"
+        },
+        {
+          "Name": "Archetype: K9",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:k9"
         }
       ],
       "Copies": 1,
       "Name": "K9-04 Noroi",
       "Active": true,
-      "Id": "66e19737b4814804a15981112e5e79df"
+      "Id": "66e19737b4814804a15981112e5e79df",
+      "ExternalCardId": 47960073
     },
     {
       "Categories": [
         {
-          "Name": "Level 5"
+          "Name": "Level 5",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: EARTH",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:earth"
+        },
+        {
+          "Name": "Monster Type: Warrior",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:warrior"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "Metadata",
+          "MetadataKey": "level:5"
+        },
+        {
+          "Name": "Archetype: K9",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:k9"
         }
       ],
       "Copies": 3,
       "Name": "K9-17 Izuna",
       "Active": true,
-      "Id": "65dbca786fcb404883a264676e08eb68"
+      "Id": "65dbca786fcb404883a264676e08eb68",
+      "ExternalCardId": 92248362
     },
     {
       "Categories": [
         {
-          "Name": "Dark"
+          "Name": "Dark",
+          "Source": "User"
         },
         {
-          "Name": "Level 5"
+          "Name": "Level 5",
+          "Source": "User"
         },
         {
-          "Name": "K9 Starter"
+          "Name": "K9 Starter",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: DARK",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:dark"
+        },
+        {
+          "Name": "Monster Type: Aqua",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:aqua"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "Metadata",
+          "MetadataKey": "level:5"
+        },
+        {
+          "Name": "Archetype: K9",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:k9"
         }
       ],
       "Copies": 2,
       "Name": "K9-66a Jokul",
       "Active": true,
-      "Id": "21c07f55cd48470a9b4cfa777e905a7d"
+      "Id": "21c07f55cd48470a9b4cfa777e905a7d",
+      "ExternalCardId": 28642461
     },
     {
       "Categories": [
         {
-          "Name": "Dark"
+          "Name": "Dark",
+          "Source": "User"
         },
         {
-          "Name": "Level 5"
+          "Name": "Level 5",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: DARK",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:dark"
+        },
+        {
+          "Name": "Monster Type: Pyro",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:pyro"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "Metadata",
+          "MetadataKey": "level:5"
+        },
+        {
+          "Name": "Archetype: K9",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:k9"
         }
       ],
       "Copies": 1,
       "Name": "K9-66b Lantern",
       "Active": true,
-      "Id": "97870450b661441f9a3d3fa26fd9a880"
+      "Id": "97870450b661441f9a3d3fa26fd9a880",
+      "ExternalCardId": 55031170
     },
     {
       "Categories": [
         {
-          "Name": "Level 5"
+          "Name": "Level 5",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: EARTH",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:earth"
+        },
+        {
+          "Name": "Monster Type: Beast-Warrior",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:beast-warrior"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "Metadata",
+          "MetadataKey": "level:5"
+        },
+        {
+          "Name": "Archetype: K9",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:k9"
         }
       ],
       "Copies": 1,
       "Name": "K9-\u00D8\u00D8 Lupis",
       "Active": true,
-      "Id": "32ec9714c37f446391eb0df57443dc0f"
+      "Id": "32ec9714c37f446391eb0df57443dc0f",
+      "ExternalCardId": 91025875
     },
     {
       "Categories": [
         {
-          "Name": "Level 5"
+          "Name": "Level 5",
+          "Source": "User"
         },
         {
-          "Name": "VS Monster"
+          "Name": "VS Monster",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: EARTH",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:earth"
+        },
+        {
+          "Name": "Monster Type: Psychic",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:psychic"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "Metadata",
+          "MetadataKey": "level:5"
+        },
+        {
+          "Name": "Archetype: Vanquish Soul",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:vanquish%20soul"
         }
       ],
       "Copies": 3,
       "Name": "Vanquish Soul Hollie Sue",
       "Active": true,
-      "Id": "74fc576402e64906853b667d299adaac"
+      "Id": "74fc576402e64906853b667d299adaac",
+      "ExternalCardId": 93156774
     },
     {
       "Categories": [
         {
-          "Name": "Dark"
+          "Name": "Dark",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: DARK",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:dark"
+        },
+        {
+          "Name": "Monster Type: Dragon",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:dragon"
+        },
+        {
+          "Name": "Level 6",
+          "Source": "Metadata",
+          "MetadataKey": "level:6"
+        },
+        {
+          "Name": "Archetype: Bystial",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:bystial"
         }
       ],
       "Copies": 1,
       "Name": "Bystial Druiswurm",
       "Active": true,
-      "Id": "fbf10b7775df44dab743db7413ee2d9c"
+      "Id": "fbf10b7775df44dab743db7413ee2d9c",
+      "ExternalCardId": 6637331
     },
     {
       "Categories": [
         {
-          "Name": "Dark"
+          "Name": "Dark",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: DARK",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:dark"
+        },
+        {
+          "Name": "Monster Type: Dragon",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:dragon"
+        },
+        {
+          "Name": "Level 6",
+          "Source": "Metadata",
+          "MetadataKey": "level:6"
+        },
+        {
+          "Name": "Archetype: Bystial",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:bystial"
         }
       ],
       "Copies": 1,
       "Name": "Bystial Magnamhut",
       "Active": true,
-      "Id": "5881c34be587477b9e6c3c01f8bcca31"
+      "Id": "5881c34be587477b9e6c3c01f8bcca31",
+      "ExternalCardId": 33854624
     },
     {
       "Categories": [
         {
-          "Name": "Dark"
+          "Name": "Dark",
+          "Source": "User"
         },
         {
-          "Name": "VS Monster"
+          "Name": "VS Monster",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: DARK",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:dark"
+        },
+        {
+          "Name": "Monster Type: Machine",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:machine"
+        },
+        {
+          "Name": "Level 7",
+          "Source": "Metadata",
+          "MetadataKey": "level:7"
+        },
+        {
+          "Name": "Archetype: Vanquish Soul",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:vanquish%20soul"
         }
       ],
       "Copies": 2,
       "Name": "Vanquish Soul Heavy Borger",
       "Active": true,
-      "Id": "93845904eb734ef0b243e0edd5b65939"
+      "Id": "93845904eb734ef0b243e0edd5b65939",
+      "ExternalCardId": 92895501
     },
     {
       "Categories": [
         {
-          "Name": "Fire"
+          "Name": "Fire",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: FIRE",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:fire"
+        },
+        {
+          "Name": "Monster Type: Dinosaur",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:dinosaur"
+        },
+        {
+          "Name": "Level 8",
+          "Source": "Metadata",
+          "MetadataKey": "level:8"
+        },
+        {
+          "Name": "Archetype: Kaiju",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:kaiju"
         }
       ],
       "Copies": 1,
       "Name": "Dogoran, the Mad Flame Kaiju",
       "Active": true,
-      "Id": "c7abb909211148218b8bdf6848e99134"
+      "Id": "c7abb909211148218b8bdf6848e99134",
+      "ExternalCardId": 93332803
     },
     {
       "Categories": [
         {
-          "Name": "VS Monster"
+          "Name": "VS Monster",
+          "Source": "User"
+        },
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        },
+        {
+          "Name": "Effect Monster",
+          "Source": "Metadata",
+          "MetadataKey": "monster-trait:effect"
+        },
+        {
+          "Name": "Attribute: EARTH",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:earth"
+        },
+        {
+          "Name": "Monster Type: Dragon",
+          "Source": "Metadata",
+          "MetadataKey": "monster-race:dragon"
+        },
+        {
+          "Name": "Level 8",
+          "Source": "Metadata",
+          "MetadataKey": "level:8"
+        },
+        {
+          "Name": "Archetype: Vanquish Soul",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:vanquish%20soul"
         }
       ],
       "Copies": 1,
       "Name": "Vanquish Soul Caesar Valius",
       "Active": true,
-      "Id": "a7a26174a628454db544725e9b0d2f6f"
+      "Id": "a7a26174a628454db544725e9b0d2f6f",
+      "ExternalCardId": 91073013
     },
     {
       "Categories": [
         {
-          "Name": "Fire"
+          "Name": "Fire",
+          "Source": "User"
         },
         {
-          "Name": "VS Monster"
+          "Name": "VS Monster",
+          "Source": "User"
+        },
+        {
+          "Name": "Spell",
+          "Source": "Metadata",
+          "MetadataKey": "kind:spell"
+        },
+        {
+          "Name": "Normal Spell",
+          "Source": "Metadata",
+          "MetadataKey": "spell-type:normal"
         }
       ],
       "Copies": 1,
       "Name": "Reinforcement of the Army",
       "Active": true,
-      "Id": "6d8f37220d024d25b41fb08fc1f188c9"
-    },
-    {
-      "Categories": [],
-      "Copies": 1,
-      "Name": "Triple Tactics Talent",
-      "Active": true,
-      "Id": "f5feca4301474add9ceba353d3d0081f"
+      "Id": "6d8f37220d024d25b41fb08fc1f188c9",
+      "ExternalCardId": 32807846
     },
     {
       "Categories": [
         {
-          "Name": "VS Starter"
+          "Name": "Spell",
+          "Source": "Metadata",
+          "MetadataKey": "kind:spell"
+        },
+        {
+          "Name": "Normal Spell",
+          "Source": "Metadata",
+          "MetadataKey": "spell-type:normal"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Triple Tactics Talent",
+      "Active": true,
+      "Id": "f5feca4301474add9ceba353d3d0081f",
+      "ExternalCardId": 25311006
+    },
+    {
+      "Categories": [
+        {
+          "Name": "VS Starter",
+          "Source": "User"
+        },
+        {
+          "Name": "Spell",
+          "Source": "Metadata",
+          "MetadataKey": "kind:spell"
+        },
+        {
+          "Name": "Normal Spell",
+          "Source": "Metadata",
+          "MetadataKey": "spell-type:normal"
+        },
+        {
+          "Name": "Archetype: Vanquish Soul",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:vanquish%20soul"
         }
       ],
       "Copies": 1,
       "Name": "Stake your Soul!",
       "Active": true,
-      "Id": "d9db32f4514a4f2fb0d178efd3ef2c0b"
+      "Id": "d9db32f4514a4f2fb0d178efd3ef2c0b",
+      "ExternalCardId": 54562327
     },
     {
       "Categories": [
         {
-          "Name": "Dark"
+          "Name": "Dark",
+          "Source": "User"
         },
         {
-          "Name": "Level 5"
+          "Name": "Level 5",
+          "Source": "User"
         },
         {
-          "Name": "K9 Starter"
+          "Name": "K9 Starter",
+          "Source": "User"
+        },
+        {
+          "Name": "Spell",
+          "Source": "Metadata",
+          "MetadataKey": "kind:spell"
+        },
+        {
+          "Name": "Normal Spell",
+          "Source": "Metadata",
+          "MetadataKey": "spell-type:normal"
         }
       ],
       "Copies": 1,
       "Name": "Chaotic Elements",
       "Active": true,
-      "Id": "19fa41dff19d44cb88cf36334363b934"
-    },
-    {
-      "Categories": [],
-      "Copies": 1,
-      "Name": "Vanquish Soul, Start!",
-      "Active": true,
-      "Id": "486cc2ee687247ef866e66414ccf3bcd"
+      "Id": "19fa41dff19d44cb88cf36334363b934",
+      "ExternalCardId": 92221402
     },
     {
       "Categories": [
         {
-          "Name": "Dark"
+          "Name": "Spell",
+          "Source": "Metadata",
+          "MetadataKey": "kind:spell"
         },
         {
-          "Name": "Level 5"
+          "Name": "Field Spell",
+          "Source": "Metadata",
+          "MetadataKey": "spell-type:field"
         },
         {
-          "Name": "K9 Starter"
+          "Name": "Archetype: Vanquish Soul",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:vanquish%20soul"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Vanquish Soul, Start!",
+      "Active": true,
+      "Id": "486cc2ee687247ef866e66414ccf3bcd",
+      "ExternalCardId": 35550352
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Dark",
+          "Source": "User"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "User"
+        },
+        {
+          "Name": "K9 Starter",
+          "Source": "User"
+        },
+        {
+          "Name": "Spell",
+          "Source": "Metadata",
+          "MetadataKey": "kind:spell"
+        },
+        {
+          "Name": "Continuous Spell",
+          "Source": "Metadata",
+          "MetadataKey": "spell-type:continuous"
+        },
+        {
+          "Name": "Archetype: K9",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:k9"
         }
       ],
       "Copies": 2,
       "Name": "\u0022A Case for K9\u0022",
       "Active": true,
-      "Id": "db70c79f084e4de2a9ecb78599e4d8fd"
+      "Id": "db70c79f084e4de2a9ecb78599e4d8fd",
+      "ExternalCardId": 80181649
     },
     {
-      "Categories": [],
+      "Categories": [
+        {
+          "Name": "Spell",
+          "Source": "Metadata",
+          "MetadataKey": "kind:spell"
+        },
+        {
+          "Name": "Quick-Play Spell",
+          "Source": "Metadata",
+          "MetadataKey": "spell-type:quick-play"
+        },
+        {
+          "Name": "Archetype: K9",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:k9"
+        }
+      ],
       "Copies": 1,
       "Name": "K9-X Forced Release",
       "Active": true,
-      "Id": "75b6bf4293ef4909bf8e6730662d30cd"
+      "Id": "75b6bf4293ef4909bf8e6730662d30cd",
+      "ExternalCardId": 53792930
     },
     {
-      "Categories": [],
+      "Categories": [
+        {
+          "Name": "Trap",
+          "Source": "Metadata",
+          "MetadataKey": "kind:trap"
+        },
+        {
+          "Name": "Normal Trap",
+          "Source": "Metadata",
+          "MetadataKey": "trap-type:normal"
+        },
+        {
+          "Name": "Archetype: Vanquish Soul",
+          "Source": "Metadata",
+          "MetadataKey": "archetype:vanquish%20soul"
+        }
+      ],
       "Copies": 1,
       "Name": "Vanquish Soul Snow Devil",
       "Active": true,
-      "Id": "c21f7c993a2b476da1d669d590b80a3c"
+      "Id": "c21f7c993a2b476da1d669d590b80a3c",
+      "ExternalCardId": 60883493
     }
   ],
   "Combos": [
@@ -325,14 +1008,16 @@
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "VS Starter"
+            "Name": "VS Starter",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
         },
         {
           "BaseCategory": {
-            "Name": "Fire"
+            "Name": "Fire",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
@@ -345,14 +1030,16 @@
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "VS Starter"
+            "Name": "VS Starter",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
         },
         {
           "BaseCategory": {
-            "Name": "Dark"
+            "Name": "Dark",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
@@ -365,7 +1052,8 @@
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "Fire"
+            "Name": "Fire",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
@@ -385,14 +1073,16 @@
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "Fire"
+            "Name": "Fire",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
         },
         {
           "BaseCategory": {
-            "Name": "Dark"
+            "Name": "Dark",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
@@ -412,14 +1102,16 @@
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "K9 Starter"
+            "Name": "K9 Starter",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
         },
         {
           "BaseCategory": {
-            "Name": "Level 5"
+            "Name": "Level 5",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
@@ -432,7 +1124,8 @@
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "VS Monster"
+            "Name": "VS Monster",
+            "Source": "User"
           },
           "MinCount": 1,
           "MaxCount": 5
@@ -491,7 +1184,8 @@
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "Level 5"
+            "Name": "Level 5",
+            "Source": "User"
           },
           "MinCount": 2,
           "MaxCount": 5

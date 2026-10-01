@@ -30,6 +30,11 @@ public class CalculatorEditorTest {
         context.Services.AddSingleton<ISessionService, SessionService>();
         context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
         context.Services.AddSingleton<IDeckImportService>(Mock.Of<IDeckImportService>());
+        var cardInfo = new Mock<ICardInfoService>();
+        cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(new Dictionary<string, CardInfo>(StringComparer.Ordinal));
+        context.Services.AddSingleton(cardInfo.Object);
+        context.Services.AddSingleton<ILegacyCardMetadataEnricher, LegacyCardMetadataEnricher>();
     }
 
     [TearDown]
@@ -62,6 +67,94 @@ public class CalculatorEditorTest {
         Categories = [a, b], Cards = [new([a], 2, "First"), new([b], 2, "Second")],
         Combos = [new([new(a, 1, 2)], "First combo"), new([new(b, 1, 2)], "Second combo")], HandSize = 2
     };
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ManualAndHelpPendingLegacySessionsAwaitEnrichmentAndSaveProperties(bool fromHelp) {
+        const string legacy = """
+            {"Categories":[{"Name":"Monster"}],
+             "Cards":[{"Id":"ash","Name":"Ash Blossom & Joyous Spring","Copies":2,"Active":true,"Categories":[{"Name":"Monster"}]},
+                      {"Id":"custom","Name":"My Custom Card","Copies":1,"Active":true,"Categories":[]}],
+             "Combos":[{"Name":"Existing route","Categories":[{"BaseCategory":{"Name":"Monster"},"MinCount":1,"MaxCount":1}]}],"HandSize":1}
+            """;
+        var release = new TaskCompletionSource<IReadOnlyDictionary<string, CardInfo>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cardInfo = new Mock<ICardInfoService>();
+        cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>())).Returns(release.Task);
+        context.Services.AddSingleton(cardInfo.Object);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut;
+        Task? upload = null;
+        if (fromHelp) {
+            var files = new Mock<IFileService>();
+            files.Setup(service => service.ReadAllTextAsync("sample-data/example_session_state.json")).ReturnsAsync(legacy);
+            context.Services.AddSingleton(files.Object);
+            var help = context.RenderComponent<YGOProbabilityCalculatorBlazor.Pages.Help>();
+            await Button(help, "Try It with Example Data").ClickAsync(new());
+            Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Not.Null);
+            cut = context.RenderComponent<ProbabilityCalculatorComponent>();
+        }
+        else {
+            cut = Render();
+            var file = new Mock<IBrowserFile>();
+            file.Setup(file => file.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+                .Returns(() => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(legacy)));
+            upload = cut.InvokeAsync(() => cut.FindComponents<InputFile>()[1].Instance.OnChange
+                .InvokeAsync(new InputFileChangeEventArgs([file.Object])));
+        }
+        cut.WaitForAssertion(() => cardInfo.Verify(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()), Times.Once));
+        Assert.That(cut.FindComponents<CardEditor>(), Is.Empty, "Restoration waits for the asynchronous best-effort step.");
+        await cut.InvokeAsync(() => release.SetResult(new Dictionary<string, CardInfo>(StringComparer.Ordinal) {
+            ["Ash Blossom & Joyous Spring"] = new() { Id = 14558127, Name = "Ash Blossom & Joyous Spring", Type = "Tuner Monster", Attribute = "FIRE", Race = "Zombie", Level = 3 }
+        }));
+        if (upload is not null) await upload;
+        cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(2)));
+        cardInfo.Verify(service => service.GetCardInfoByExactNamesAsync(It.Is<IEnumerable<string>>(names =>
+            names.SequenceEqual(new[] { "Ash Blossom & Joyous Spring", "My Custom Card" }))), Times.Once);
+        var cards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card).ToList();
+        Assert.That(cards[0].ExternalCardId, Is.EqualTo(14558127));
+        Assert.That(cards[1].ExternalCardId, Is.Null);
+        Assert.That(cards[1].Categories, Is.Empty);
+        Assert.That(cards.Select(card => card.Id), Is.EqualTo(new[] { "ash", "custom" }));
+        Assert.That(cut.FindComponent<CategoryListEditor>().FindAll(".category-chip").Select(chip => chip.TextContent.Trim()), Is.EqualTo(new[] { "Monster" }));
+        var combo = cut.FindComponent<ComboEditor>();
+        Assert.That(combo.FindAll("optgroup[label='Card properties'] option").Select(option => option.TextContent), Does.Contain("Tuner Monster"));
+        Assert.That(combo.Instance.Combo.Categories.Single().BaseCategory.Source, Is.EqualTo(CategorySource.User));
+        var expected = SmallDeckOracleTest.EnumerateProbability(cards, [combo.Instance.Combo], 1);
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(expected.ToString("P2")));
+        await Button(cut, "Save Session").ClickAsync(new());
+        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var saved = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        using var document = System.Text.Json.JsonDocument.Parse(saved);
+        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        Assert.That(document.RootElement.GetProperty("Cards")[0].GetProperty("ExternalCardId").GetInt32(), Is.EqualTo(14558127));
+        cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>())).ThrowsAsync(new HttpRequestException("Offline"));
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(saved, "saved.json"));
+        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Is.Empty));
+        cardInfo.Verify(service => service.GetCardInfoByExactNamesAsync(It.Is<IEnumerable<string>>(names =>
+            names.SequenceEqual(new[] { "My Custom Card" }))), Times.Once);
+        Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.ExternalCardId, Is.EqualTo(14558127));
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(expected.ToString("P2")));
+    }
+
+    [Test]
+    public async Task BundledHelpExampleTransfersSelfContainedPropertiesWithoutMetadataLookup() {
+        var source = await File.ReadAllTextAsync(Path.Combine(NUnit.Framework.TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json"));
+        var files = new Mock<IFileService>();
+        files.Setup(service => service.ReadAllTextAsync("sample-data/example_session_state.json")).ReturnsAsync(source);
+        var offline = new Mock<ICardInfoService>(MockBehavior.Strict);
+        context.Services.AddSingleton(files.Object);
+        context.Services.AddSingleton(offline.Object);
+        var help = context.RenderComponent<YGOProbabilityCalculatorBlazor.Pages.Help>();
+        await Button(help, "Try It with Example Data").ClickAsync(new());
+        var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
+        cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(25)));
+        Assert.That(cut.FindComponent<ComboEditor>().FindAll("optgroup[label='Card properties'] option").Select(option => option.TextContent),
+            Does.Contain("Monster").And.Contain("Quick-Play Spell"));
+        Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
+        offline.VerifyNoOtherCalls();
+    }
 
     [Test]
     public async Task CardPropertiesAreHiddenAndSameLabelRequirementsCanBeEditedIndependently() {
@@ -807,6 +900,8 @@ public class CalculatorEditorTest {
         context.Services.AddSingleton<IFileService, FileService>();
         var cardInfo = new Mock<ICardInfoService>();
         cardInfo.Setup(x => x.GetCardInfoAsync(123)).ReturnsAsync(new CardInfo { Id = 123, Name = "Imported" });
+        cardInfo.Setup(x => x.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(new Dictionary<string, CardInfo>());
         context.Services.AddSingleton(cardInfo.Object);
         context.Services.AddSingleton<IDeckImportService, DeckImportService>();
         var cut = Render(Session());
