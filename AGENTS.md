@@ -36,7 +36,7 @@ dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 
 At the start of implementation or test work, run `dotnet --info` and check that required restore, build, and test commands are available before substantial work. If .NET 10 is missing, try a reasonable nonprivileged bootstrap where permitted. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
-There is no GitHub Actions CI workflow. Run relevant tests locally and report the exact commands and outcomes in the pull request. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
+`.github/workflows/tests.yml` runs the full regular test suite on every branch push, including feature branches, `dev`, and `main`. CI complements rather than replaces local verification: run relevant tests locally before pushing and report the exact local commands and results in pull requests. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
 
 
 ### Restricted sandbox: WebAssembly task-host failures
@@ -79,5 +79,5 @@ The .NET 10 migration PR #46 contains one verified example of this workaround an
 - Keep each change and pull request focused; add the most relevant regression tests and run the solution-level checks for substantial changes.
 - Create a feature branch and open a pull request targeting `dev`. Never push directly to protected branches or merge a pull request.
 - In the pull request, report commands and pass/fail results, manual checks, and any limits on verification. Put verification results in the pull request discussion, not in an extra report file.
-- Do not add GitHub Actions, change Cloudflare deployment or branch policies, upgrade frameworks/dependencies, perform broad refactors, or add unrelated documentation unless explicitly requested. Do not intentionally trigger deployments or modify releases without authorization.
+- Do not modify GitHub Actions workflows unless the task explicitly requires it. Do not change Cloudflare deployment or branch policies, upgrade frameworks/dependencies, perform broad refactors, or add unrelated documentation unless explicitly requested. Do not intentionally trigger deployments or modify releases without authorization.
 - Do not claim that the hosted site represents a particular branch unless you have verified it.
