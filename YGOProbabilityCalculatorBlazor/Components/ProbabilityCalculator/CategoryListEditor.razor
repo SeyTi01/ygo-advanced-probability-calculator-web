@@ -28,6 +28,7 @@
     <div class="mt-2">
         @for (var index = 0; index < CategoryBases.Count; index++) {
             var category = CategoryBases[index];
+            if (category.Source != CategorySource.User) continue;
             <span @key="category" class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
                 @if (ReferenceEquals(editingCategory, category)) {
                     <input @ref="renameInputReference"
@@ -102,7 +103,7 @@
         }
 
         try {
-            if (CategoryBases.Any(c => c.Name.Equals(newCategoryName, StringComparison.OrdinalIgnoreCase))) {
+            if (CategoryBases.Any(c => c.Source == CategorySource.User && c.Name.Equals(newCategoryName, StringComparison.OrdinalIgnoreCase))) {
                 categoryError = "A category with this name already exists.";
                 return;
             }
@@ -120,8 +121,8 @@
     }
 
     private async Task RemoveCategoryBase(CategoryBase category) {
-        var usedInCombos = Combos.Any(c => c.Categories.Any(cc => cc.BaseCategory == category));
-        var usedInCards = Cards.Any(c => c.Categories.Contains(category));
+        var usedInCombos = Combos.Any(c => c.Categories.Any(cc => cc.BaseCategory.Identity == category.Identity));
+        var usedInCards = Cards.Any(c => c.Categories.Any(item => item.Identity == category.Identity));
         if (usedInCombos || usedInCards) {
             categoryError = "This category is still used by a card or combo.";
             return;
@@ -159,7 +160,7 @@
             return;
         }
 
-        if (CategoryBases.Any(c => !ReferenceEquals(c, editingCategory) &&
+        if (CategoryBases.Any(c => c.Source == CategorySource.User && !ReferenceEquals(c, editingCategory) &&
                                    c.Name.Equals(editingCategoryName, StringComparison.OrdinalIgnoreCase))) {
             categoryError = "A category with this name already exists.";
             return;

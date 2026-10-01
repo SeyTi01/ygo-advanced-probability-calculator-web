@@ -11,9 +11,9 @@
             <span>@CardDisplayName</span>
             <span class="ms-2">(@Card.Copies)</span>
 
-            @if (Card.Categories.Any()) {
+            @if (UserCategories.Any()) {
                 <span class="ms-2">-</span>
-                @foreach (var cat in Card.Categories) {
+                @foreach (var cat in UserCategories) {
                     <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">@cat.Name</span>
                 }
             }
@@ -66,8 +66,8 @@
                             value="@selectedCategory"
                             @onchange="e => selectedCategory = e.Value?.ToString() ?? string.Empty">
                         <option value="">Select category…</option>
-                        @foreach (var cb in CategoryBases) {
-                            <option value="@cb.Name">@cb.Name</option>
+                        @foreach (var cb in CategoryBases.Where(c => c.Source == CategorySource.User)) {
+                            <option value="@cb.Identity">@cb.Name</option>
                         }
                     </select>
                 </div>
@@ -77,14 +77,14 @@
             </div>
 
             <div>
-                @foreach (var cat in Card.Categories) {
+                @foreach (var cat in UserCategories) {
                     <span class="badge me-2 category-tag @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">
                         @cat.Name
                         <button type="button"
                                 class="btn-close category-remove-button ms-1"
                                 aria-label="@($"Remove category {cat.Name} from card {CardDisplayName}")"
                                 title="@($"Remove category {cat.Name} from card {CardDisplayName}")"
-                                @onclick="() => RemoveCategory(cat.Name)">
+                                @onclick="() => RemoveCategory(cat.Identity)">
                         </button>
                     </span>
                 }
@@ -108,6 +108,7 @@
     [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
 
+    private IEnumerable<CategoryBase> UserCategories => Card.Categories.Where(c => c.Source == CategorySource.User);
     private string? error;
     private string selectedCategory = string.Empty;
     private int previousCategoryRenameVersion;
@@ -146,12 +147,12 @@
             return Task.CompletedTask;
         }
 
-        var chosen = CategoryBases.FirstOrDefault(c => c.Name == selectedCategory);
+        var chosen = CategoryBases.FirstOrDefault(c => c.Source == CategorySource.User && c.Identity == selectedCategory);
         if (chosen is null) {
             error = "Selected category not found.";
             return Task.CompletedTask;
         }
-        if (Card.Categories.Any(c => c.Name == chosen.Name)) {
+        if (Card.Categories.Any(c => c.Identity == chosen.Identity)) {
             error = "This category is already added to the card.";
             return Task.CompletedTask;
         }
@@ -163,8 +164,8 @@
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
-    private Task RemoveCategory(string categoryName) {
-        var newCats = Card.Categories.Where(c => c.Name != categoryName).ToList();
+    private Task RemoveCategory(string categoryIdentity) {
+        var newCats = Card.Categories.Where(c => c.Identity != categoryIdentity).ToList();
         var newCard = Card.WithCategories(newCats);
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
@@ -172,8 +173,8 @@
     protected override void OnParametersSet() {
         if (CategoryRename is not { } rename || rename.Version == previousCategoryRenameVersion) return;
 
-        if (selectedCategory.Equals(rename.OldName, StringComparison.Ordinal))
-            selectedCategory = rename.NewName;
+        if (selectedCategory.Equals($"user:{rename.OldName}", StringComparison.Ordinal))
+            selectedCategory = $"user:{rename.NewName}";
 
         previousCategoryRenameVersion = rename.Version;
     }

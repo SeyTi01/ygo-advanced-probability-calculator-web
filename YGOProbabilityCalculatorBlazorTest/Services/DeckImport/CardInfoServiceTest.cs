@@ -3,12 +3,131 @@ using System.Net;
 using System.Text.Json;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
 [TestFixture]
 public class CardInfoServiceTests {
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 9, 0, 0, TimeSpan.Zero);
+
+    private const string RichCardJson = """
+        {"id":1234,"name":"Pendulum","type":"XYZ Pendulum Effect Monster","frameType":"xyz_pendulum",
+         "race":"Warrior","attribute":"FIRE","level":4,"linkval":2,"scale":8,"archetype":"Vanquish Soul",
+         "desc":"Not cached","card_prices":[{"price":"100"}],"card_images":[{"image_url":"not cached"}]}
+        """;
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task BulkAndSingleEndpointsParseTheSameReusableMetadata(bool single) {
+        var storage = new TestLocalStorage(single ? CreateCacheJson(Now, (5678, "Other")) : null);
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            "{\"data\":[" + RichCardJson + "]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        var info = await service.GetCardInfoAsync(1234);
+        Assert.That(info, Is.EqualTo(new CardInfo { Id = 1234, Name = "Pendulum", Type = "XYZ Pendulum Effect Monster",
+            FrameType = "xyz_pendulum", Race = "Warrior", Attribute = "FIRE", Level = 4, LinkVal = 2, Scale = 8, Archetype = "Vanquish Soul" }));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+        Assert.That(handler.Requests[0].EndsWith(single ? "?id=1234" : "cardinfo.php"), Is.True);
+        Assert.That(storage.RawCache, Does.Not.Contain("Not cached").And.Not.Contain("card_prices").And.Not.Contain("image_url"));
+        var nextHandler = HandlerWithStatus(HttpStatusCode.ServiceUnavailable);
+        using var nextClient = new HttpClient(nextHandler);
+        var next = new CardInfoService(storage, nextClient, new TestTimeProvider(Now));
+        Assert.That(await next.GetCardInfoAsync(1234), Is.EqualTo(info));
+        Assert.That(nextHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task FreshV1NameCacheRequiresMetadataRefreshAndUpgradesToV2() {
+        var storage = new TestLocalStorage(CreateV1CacheJson());
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            "{\"data\":[" + RichCardJson + "]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        Assert.That((await service.GetCardInfoAsync(1234)).Attribute, Is.EqualTo("FIRE"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+        AssertPersistedCache(storage.RawCache, Now, (1234, "Pendulum"));
+    }
+
+    [Test]
+    public async Task FailedV1RefreshRetainsCachedNameAndNeverInventsProperties() {
+        var original = CreateV1CacheJson();
+        var storage = new TestLocalStorage(original);
+        var handler = HandlerWithStatus(HttpStatusCode.ServiceUnavailable);
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        var info = await service.GetCardInfoAsync(1234);
+        Assert.That(info.Name, Is.EqualTo("Old name"));
+        Assert.That(info.Id, Is.EqualTo(1234));
+        Assert.That(CardPropertyProvider.GetCategories(info), Is.Empty);
+        Assert.That(storage.RawCache, Is.EqualTo(original));
+        Assert.That(await service.GetCardInfoAsync(1234), Is.EqualTo(info));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2), "One bulk attempt and one per-card attempt shared by later lookups.");
+    }
+
+    [Test]
+    public async Task PerCardV1EnrichmentDoesNotClaimAFullMetadataRefresh() {
+        var storage = new TestLocalStorage(CreateV1CacheJson());
+        var handler = new RecordingHttpMessageHandler((request, _) => Task.FromResult(
+            request.RequestUri!.Query.Length == 0 ? Response(HttpStatusCode.ServiceUnavailable, "{}")
+                : Response(HttpStatusCode.OK, "{\"data\":[" + RichCardJson + "]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        Assert.That((await service.GetCardInfoAsync(1234)).Scale, Is.EqualTo(8));
+        using var document = JsonDocument.Parse(storage.RawCache!);
+        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        Assert.That(document.RootElement.GetProperty("LastFullRefreshUtc").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(document.RootElement.GetProperty("Cards").GetProperty("5678").GetProperty("Name").GetString(), Is.EqualTo("Other old name"));
+        var nextHandler = HandlerWithBulk(200, (1234, "Current"));
+        using var nextClient = new HttpClient(nextHandler);
+        var nextService = new CardInfoService(storage, nextClient, new TestTimeProvider(Now));
+        Assert.That((await nextService.GetCardInfoAsync(1234)).Name, Is.EqualTo("Current"));
+        Assert.That(nextHandler.Requests, Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public async Task OptionalMalformedFieldsDoNotDiscardReliableNameOrType() {
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            "{\"data\":[{\"id\":\"bad\",\"name\":\"Skip\"},{\"id\":1234,\"name\":\"Spell\",\"type\":\"Spell Card\",\"race\":\"Quick-Play\",\"level\":\"bad\",\"scale\":{},\"attribute\":42}]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(new TestLocalStorage(null), client, new TestTimeProvider(Now));
+        var info = await service.GetCardInfoAsync(1234);
+        Assert.That(info.Name, Is.EqualTo("Spell"));
+        Assert.That(info.Level, Is.Null);
+        Assert.That(info.Attribute, Is.Null);
+        Assert.That(CardPropertyProvider.GetCategories(info).Select(c => c.Name), Is.EqualTo(new[] { "Spell", "Quick-Play Spell" }));
+    }
+
+    private static string CreateV1CacheJson() => JsonSerializer.Serialize(new {
+        SchemaVersion = 1, LastFullRefreshUtc = Now,
+        Cards = new Dictionary<string, object> { ["1234"] = new { Name = "Old name" }, ["5678"] = new { Name = "Other old name" } }
+    });
+
+    [Test]
+    public async Task ServiceConstructionDoesNotStartAnApiRequestForSavedSessions() {
+        var storage = new TestLocalStorage(null);
+        var handler = HandlerWithBulk(200, (1234, "Imported"));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        Assert.That(handler.Requests, Is.Empty);
+        Assert.That((await service.GetCardInfoAsync(1234)).Name, Is.EqualTo("Imported"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public async Task SingleCardLookupKeepsQueriedPasscodeAndReliableNameFallback() {
+        var storage = new TestLocalStorage(CreateCacheJson(Now, (5678, "Other")));
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            "{\"data\":[{\"id\":4321,\"name\":\"Alternate passcode\",\"type\":\"Normal Monster\"}]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        var info = await service.GetCardInfoAsync(1234);
+        Assert.That(info.Id, Is.EqualTo(1234));
+        Assert.That(info.Name, Is.EqualTo("Alternate passcode"));
+        Assert.That(await service.GetCardNameAsync(1234), Is.EqualTo(info.Name));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+    }
 
     [Test]
     public async Task FreshCurrentCache_ReturnsCachedNameWithoutBulkRequest() {
@@ -213,7 +332,7 @@ public class CardInfoServiceTests {
 
         using (var document = JsonDocument.Parse(storage.RawCache!)) {
             var root = document.RootElement;
-            Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(1));
+            Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
             Assert.That(root.GetProperty("LastFullRefreshUtc").ValueKind, Is.EqualTo(JsonValueKind.Null));
             Assert.That(root.GetProperty("Cards").GetProperty("1234").GetProperty("Name").GetString(), Is.EqualTo("Legacy Name"));
             Assert.That(root.GetProperty("Cards").GetProperty("5678").GetProperty("Name").GetString(), Is.EqualTo("New Card"));
@@ -301,16 +420,16 @@ public class CardInfoServiceTests {
 
     private static string CreateCacheJson(DateTimeOffset refreshedAt, params (int Id, string Name)[] cards) =>
         JsonSerializer.Serialize(new {
-            SchemaVersion = 1,
+            SchemaVersion = 2,
             LastFullRefreshUtc = refreshedAt,
-            Cards = cards.ToDictionary(card => card.Id.ToString(), card => new { Name = card.Name })
+            Cards = cards.ToDictionary(card => card.Id.ToString(), card => new { Id = card.Id, Name = card.Name, Type = "Effect Monster" })
         });
 
     private static void AssertPersistedCache(string? json, DateTimeOffset expectedTimestamp, params (int Id, string Name)[] expectedCards) {
         Assert.That(json, Is.Not.Null);
         using var document = JsonDocument.Parse(json!);
         var root = document.RootElement;
-        Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(1));
+        Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
         Assert.That(root.GetProperty("LastFullRefreshUtc").GetDateTimeOffset(), Is.EqualTo(expectedTimestamp));
         var cards = root.GetProperty("Cards");
         Assert.That(cards.EnumerateObject().Count(), Is.EqualTo(expectedCards.Length));
