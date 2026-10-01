@@ -1646,8 +1646,9 @@ public class CalculatorEditorTest {
 
     [Test]
     public async Task YdkeImportDisclosureCancelLeavesCurrentDeckUntouched() {
-        var initialCardIds = Session().Cards.Select(card => card.Id).ToArray();
-        var cut = Render(Session());
+        var session = Session();
+        var initialCardIds = session.Cards.Select(card => card.Id).ToArray();
+        var cut = Render(session);
 
         await Button(cut, "Import YDKe").ClickAsync(new());
         Assert.That(cut.Find("input#ydkeCodeInput").GetAttribute("aria-label"), Is.EqualTo("YDKe deck code"));
@@ -1655,7 +1656,7 @@ public class CalculatorEditorTest {
         await Button(cut, "Cancel").ClickAsync(new());
 
         Assert.That(cut.FindAll("input#ydkeCodeInput"), Is.Empty);
-        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id), Is.EqualTo(initialCardIds));
+        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id).ToArray(), Is.EqualTo(initialCardIds));
         Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
     }
 
@@ -1705,14 +1706,15 @@ public class CalculatorEditorTest {
         importer.Setup(service => service.ImportDeckFromYdkeAsync(validCode)).ReturnsAsync([replacement]);
         context.Services.AddSingleton(importer.Object);
 
-        var initialCardIds = Session().Cards.Select(card => card.Id).ToArray();
-        var cut = Render(Session());
+        var session = Session();
+        var initialCardIds = session.Cards.Select(card => card.Id).ToArray();
+        var cut = Render(session);
         await Button(cut, "Import YDKe").ClickAsync(new());
         await cut.Find("input#ydkeCodeInput").InputAsync(new() { Value = invalidCode });
         await Button(cut, "Import").ClickAsync(new());
 
         Assert.That(cut.Find("[role='alert']").TextContent, Does.Contain("Failed to import deck").And.Contain("ydke://"));
-        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id), Is.EqualTo(initialCardIds));
+        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id).ToArray(), Is.EqualTo(initialCardIds));
         Assert.That(cut.Find("input#ydkeCodeInput"), Is.Not.Null);
 
         await cut.Find("input#ydkeCodeInput").InputAsync(new() { Value = validCode });
