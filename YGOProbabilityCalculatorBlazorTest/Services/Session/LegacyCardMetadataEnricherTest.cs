@@ -148,6 +148,64 @@ public class LegacyCardMetadataEnricherTest {
         return service;
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ManualOnlyPropertiesAreEnrichedAndObjectiveOverlapBecomesReadOnly(bool overlapping) {
+        var property = overlapping
+            ? new CategoryBase("Attribute: FIRE", CategorySource.Metadata, "attribute:fire")
+            : new CategoryBase("Attribute: DARK", CategorySource.Metadata, "attribute:dark");
+        var user = new CategoryBase("Role");
+        var original = new Card([user], 3, Ash.Name, false, "legacy").WithManualMetadataCategory(property);
+        var session = new SessionState { Cards = [original] };
+        var service = MatchingService(Ash);
+        await new LegacyCardMetadataEnricher(service.Object).EnrichAsync(session);
+        service.Verify(s => s.GetCardInfoByExactNamesAsync(It.Is<IEnumerable<string>>(names => names.SequenceEqual(new[] { Ash.Name }))), Times.Once);
+        var enriched = session.Cards.Single();
+        Assert.That((enriched.Id, enriched.Name, enriched.Copies, enriched.Active),
+            Is.EqualTo((original.Id, original.Name, original.Copies, original.Active)));
+        Assert.That(enriched.ExternalCardId, Is.EqualTo(Ash.Id));
+        Assert.That(enriched.Categories, Does.Contain(user).And.Contain(property));
+        Assert.That(enriched.Categories.Select(c => c.Identity).Distinct().Count(), Is.EqualTo(enriched.Categories.Count));
+        Assert.That(enriched.ManualMetadataCategoryKeys.Contains(property.MetadataKey!), Is.EqualTo(!overlapping));
+        var removed = enriched.WithoutManualMetadataCategory(property.MetadataKey!);
+        Assert.That(removed.Categories.Contains(property), Is.EqualTo(overlapping));
+        Assert.That(removed.Categories.Select(c => c.Identity), Does.Contain("metadata:attribute:fire"));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task V2SaveLoadRetainsManualMembershipOfflineIncludingFailedEnrichment(bool externalId) {
+        var fire = new CategoryBase("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
+        var original = new Card([], 2, "Functional access", false, "manual", externalId ? 123 : null)
+            .WithManualMetadataCategory(fire);
+        var js = new CaptureJs();
+        var sessions = new SessionService(js, new Serializer());
+        await sessions.SaveSessionAsync(new SessionState { Cards = [original] }, "manual.json");
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(2));
+        using var saved = JsonDocument.Parse(js.Json);
+        Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        var loaded = await sessions.LoadSessionAsync(js.Json);
+        var offline = new Mock<ICardInfoService>(MockBehavior.Strict);
+        offline.Setup(s => s.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>())).ThrowsAsync(new HttpRequestException("Offline"));
+        await new LegacyCardMetadataEnricher(offline.Object).EnrichAsync(loaded);
+        var card = loaded.Cards.Single();
+        Assert.That(card.ManualMetadataCategoryKeys, Is.EquivalentTo(original.ManualMetadataCategoryKeys));
+        Assert.That(card.Categories, Is.EqualTo(original.Categories));
+        Assert.That((card.Id, card.ExternalCardId, card.Copies, card.Name, card.Active),
+            Is.EqualTo((original.Id, original.ExternalCardId, original.Copies, original.Name, original.Active)));
+        offline.Verify(s => s.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()), externalId ? Times.Never() : Times.Once());
+    }
+
+    [Test]
+    public async Task PreviewV2WithoutProvenanceLoadsWithNoManualProperties() {
+        var source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json"));
+        using var document = JsonDocument.Parse(source);
+        Assert.That(document.RootElement.GetProperty("Cards").EnumerateArray().All(c => !c.TryGetProperty("ManualMetadataCategoryKeys", out _)), Is.True);
+        var session = await new SessionService(new CaptureJs(), new Serializer()).LoadSessionAsync(source);
+        Assert.That(session.Cards.All(c => c.ManualMetadataCategoryKeys.Count == 0), Is.True);
+        Assert.That(session.Cards.All(c => c.Categories.Any(p => p.Source == CategorySource.Metadata)), Is.True);
+    }
+
     private sealed class CaptureJs : IJSRuntime {
         public string Json { get; private set; } = "";
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) {

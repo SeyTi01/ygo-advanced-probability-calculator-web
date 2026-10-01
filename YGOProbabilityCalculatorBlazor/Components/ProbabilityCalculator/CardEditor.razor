@@ -66,9 +66,16 @@
                             value="@selectedCategory"
                             @onchange="e => selectedCategory = e.Value?.ToString() ?? string.Empty">
                         <option value="">Select category…</option>
-                        @foreach (var cb in CategoryBases.Where(c => c.Source == CategorySource.User)) {
-                            <option value="@cb.Identity">@cb.Name</option>
-                        }
+                        <optgroup label="User categories">
+                            @foreach (var cb in CategoryBases.Where(c => c.Source == CategorySource.User)) {
+                                <option value="@cb.Identity">@cb.Name</option>
+                            }
+                        </optgroup>
+                        <optgroup label="Card properties">
+                            @foreach (var cb in CategoryBases.Where(c => c.Source == CategorySource.Metadata && !Card.Categories.Contains(c))) {
+                                <option value="@cb.Identity">@cb.Name</option>
+                            }
+                        </optgroup>
                     </select>
                 </div>
                 <div class="col-4 d-flex align-items-end">
@@ -89,6 +96,21 @@
                     </span>
                 }
             </div>
+            @if (ManualProperties.Any()) {
+                <div class="mt-2 added-card-properties">
+                    <div class="form-text mb-1">Added card properties</div>
+                    @foreach (var property in ManualProperties) {
+                        <span class="badge text-bg-secondary me-2 category-tag">
+                            @property.Name
+                            <button type="button" class="btn-close category-remove-button ms-1"
+                                    aria-label="@($"Remove added card property {property.Name} from card {CardDisplayName}")"
+                                    title="@($"Remove added card property {property.Name} from card {CardDisplayName}")"
+                                    @onclick="() => RemoveManualProperty(property.MetadataKey!)">
+                            </button>
+                        </span>
+                    }
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -109,6 +131,8 @@
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
 
     private IEnumerable<CategoryBase> UserCategories => Card.Categories.Where(c => c.Source == CategorySource.User);
+    private IEnumerable<CategoryBase> ManualProperties => Card.Categories.Where(c => c.Source == CategorySource.Metadata &&
+        Card.ManualMetadataCategoryKeys.Contains(c.MetadataKey!));
     private string? error;
     private string selectedCategory = string.Empty;
     private int previousCategoryRenameVersion;
@@ -147,7 +171,7 @@
             return Task.CompletedTask;
         }
 
-        var chosen = CategoryBases.FirstOrDefault(c => c.Source == CategorySource.User && c.Identity == selectedCategory);
+        var chosen = CategoryBases.FirstOrDefault(c => c.Identity == selectedCategory);
         if (chosen is null) {
             error = "Selected category not found.";
             return Task.CompletedTask;
@@ -158,17 +182,20 @@
         }
         error = null;
 
-        var newCats = Card.Categories.Concat([chosen]).ToList();
-        var newCard = Card.WithCategories(newCats);
+        var newCard = chosen.Source == CategorySource.Metadata
+            ? Card.WithManualMetadataCategory(chosen)
+            : Card.WithCategories(Card.Categories.Concat([chosen]));
         selectedCategory = string.Empty;
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
     private Task RemoveCategory(string categoryIdentity) {
-        var newCats = Card.Categories.Where(c => c.Identity != categoryIdentity).ToList();
+        var newCats = Card.Categories.Where(c => c.Source != CategorySource.User || c.Identity != categoryIdentity).ToList();
         var newCard = Card.WithCategories(newCats);
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
+
+    private Task RemoveManualProperty(string key) => OnReplaceCard.InvokeAsync((Index, Card.WithoutManualMetadataCategory(key)));
 
     protected override void OnParametersSet() {
         if (CategoryRename is not { } rename || rename.Version == previousCategoryRenameVersion) return;
