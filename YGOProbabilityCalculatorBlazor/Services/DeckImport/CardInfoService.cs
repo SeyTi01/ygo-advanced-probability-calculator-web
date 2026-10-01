@@ -16,6 +16,7 @@ public class CardInfoService : ICardInfoService {
     private readonly ILocalStorageService _localStorage;
     private readonly TimeProvider _timeProvider;
     private readonly Lazy<Task> _initializeTask;
+    private readonly Lazy<Task> _loadCacheTask;
     private CardMetadataCache _cache = new();
     private readonly SemaphoreSlim _singleLookupGate = new(1, 1);
     private readonly HashSet<int> _singleLookups = [];
@@ -38,7 +39,8 @@ public class CardInfoService : ICardInfoService {
         _localStorage = localStorage;
         _httpClient = httpClient ?? new HttpClient();
         _timeProvider = timeProvider ?? TimeProvider.System;
-        // Saved sessions already contain materialized memberships; only imports need the API/cache.
+        // Fully enriched sessions never need a lookup; legacy sessions can resolve exact names lazily.
+        _loadCacheTask = new Lazy<Task>(async () => _cache = await LoadCacheAsync());
         _initializeTask = new Lazy<Task>(InitializeAsync);
     }
 
@@ -54,11 +56,66 @@ public class CardInfoService : ICardInfoService {
     }
 
     private async Task InitializeAsync() {
-        _cache = await LoadCacheAsync();
-        if (IsFresh(_cache))
-            return;
+        await _loadCacheTask.Value;
+        await _singleLookupGate.WaitAsync();
+        try {
+            if (!IsFresh(_cache)) await FetchAllCardsAsync();
+        }
+        finally { _singleLookupGate.Release(); }
+    }
 
-        await FetchAllCardsAsync();
+    public async Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names) {
+        var requested = names.Where(name => !string.IsNullOrWhiteSpace(name)).Distinct(StringComparer.Ordinal).ToArray();
+        var resolved = new Dictionary<string, CardInfo>(StringComparer.Ordinal);
+        if (requested.Length == 0) return resolved;
+
+        await _loadCacheTask.Value;
+        await _singleLookupGate.WaitAsync();
+        try {
+            foreach (var name in requested) {
+                var matches = _cache.Cards.Values.Where(card => card.Name.Equals(name, StringComparison.Ordinal)).ToArray();
+                if (matches.Length == 1 && HasMetadata(matches[0])) resolved[name] = matches[0];
+            }
+
+            // Each unresolved name uses the exact endpoint. A bad/custom name cannot fail other lookups.
+            foreach (var name in requested.Where(name => !resolved.ContainsKey(name))) {
+                var info = await FetchExactNameAsync(name);
+                if (info is not null) resolved[name] = info;
+            }
+            return resolved;
+        }
+        finally { _singleLookupGate.Release(); }
+    }
+
+    private static bool HasMetadata(CardInfo info) => info.Id > 0 &&
+        (!string.IsNullOrWhiteSpace(info.Type) || !string.IsNullOrWhiteSpace(info.FrameType)) &&
+        CardPropertyProvider.GetCategories(info).Count > 0;
+
+    private async Task<CardInfo?> FetchExactNameAsync(string name) {
+        try {
+            using var response = await _httpClient.GetAsync($"{BulkApiUrl}?name={Uri.EscapeDataString(name)}").ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            await using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using var document = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !TryGetProperty(document.RootElement, "data", out var data) || data.ValueKind != JsonValueKind.Array)
+                return null;
+
+            var matches = data.EnumerateArray().Select(item => ReadCardInfo(item))
+                .Where(info => info is not null && info.Name.Equals(name, StringComparison.Ordinal)).ToArray();
+            if (matches.Length != 1 || !HasMetadata(matches[0]!)) return null;
+            var match = matches[0]!;
+            _cache.Cards[match.Id] = match;
+            // Exact-name enrichment also is not a full catalog refresh.
+            if (_cache.SchemaVersion != CacheSchemaVersion) _cache.LastFullRefreshUtc = null;
+            _cache.SchemaVersion = CacheSchemaVersion;
+            await SaveCacheAsync().ConfigureAwait(false);
+            return match;
+        }
+        catch {
+            // Valid legacy sessions remain loadable offline and when a name cannot be resolved.
+            return null;
+        }
     }
 
     private bool IsFresh(CardMetadataCache cache) {

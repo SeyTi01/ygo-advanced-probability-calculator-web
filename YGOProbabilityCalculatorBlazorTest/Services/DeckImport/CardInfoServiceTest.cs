@@ -17,6 +17,92 @@ public class CardInfoServiceTests {
          "desc":"Not cached","card_prices":[{"price":"100"}],"card_images":[{"image_url":"not cached"}]}
         """;
 
+    [Test]
+    public async Task ExactNamesReuseRichCacheIncludingStaleEntriesWithoutNetwork() {
+        var storage = new TestLocalStorage(CreateCacheJson(Now.AddDays(-10), (1234, "Exact")));
+        var handler = HandlerWithStatus(HttpStatusCode.ServiceUnavailable);
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        var result = await service.GetCardInfoByExactNamesAsync(["Exact", "Exact"]);
+        Assert.That(result["Exact"].Id, Is.EqualTo(1234));
+        Assert.That(handler.Requests, Is.Empty);
+        Assert.That(storage.WriteCount, Is.Zero);
+    }
+
+    [TestCase(1)]
+    [TestCase(2)]
+    public async Task ExactNamesEnrichIncompleteCacheDeduplicateEscapeAndPersist(int version) {
+        const string name = "Ash Blossom & Joyous Spring";
+        var storage = new TestLocalStorage(JsonSerializer.Serialize(new {
+            SchemaVersion = version, LastFullRefreshUtc = Now,
+            Cards = new Dictionary<int, object> { [14558127] = new { Name = name } }
+        }));
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            "{\"data\":[{\"id\":14558127,\"name\":\"Ash Blossom & Joyous Spring\",\"type\":\"Tuner Monster\",\"level\":3}]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        var result = await service.GetCardInfoByExactNamesAsync([name, name]);
+        Assert.That(result[name].Id, Is.EqualTo(14558127));
+        Assert.That(result[name].Type, Is.EqualTo("Tuner Monster"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+        Assert.That(Uri.UnescapeDataString(new Uri(handler.Requests.Single()).Query), Is.EqualTo("?name=" + name));
+        Assert.That(handler.Requests.Single(), Does.Not.Contain("fname=").And.Not.Contain("?id="));
+        using var document = JsonDocument.Parse(storage.RawCache!);
+        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        if (version == 1)
+            Assert.That(document.RootElement.GetProperty("LastFullRefreshUtc").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        var next = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        Assert.That((await next.GetCardInfoByExactNamesAsync([name]))[name], Is.EqualTo(result[name]));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+    }
+
+    [TestCase("{\"data\":[{\"id\":1,\"name\":\"exact\",\"type\":\"Spell Card\"}]}")]
+    [TestCase("{\"data\":[{\"id\":1,\"name\":\"Exact extra\",\"type\":\"Spell Card\"}]}")]
+    [TestCase("{\"data\":[{\"id\":1,\"name\":\"Exact\"}]}")]
+    [TestCase("{\"data\":[{\"id\":1,\"name\":\"Exact\",\"type\":\"Spell Card\"},{\"id\":2,\"name\":\"Exact\",\"type\":\"Spell Card\"}]}")]
+    [TestCase("{\"data\":[]}")]
+    [TestCase("{bad")]
+    public async Task ExactNamesRejectNonmatchingAmbiguousIncompleteOrInvalidResponses(string response) {
+        var storage = new TestLocalStorage(null);
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK, response)));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        Assert.That(await service.GetCardInfoByExactNamesAsync(["Exact", "Exact"]), Is.Empty);
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+        Assert.That(new Uri(handler.Requests.Single()).Query, Is.EqualTo("?name=Exact"));
+        Assert.That(storage.WriteCount, Is.Zero);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ExactNamesStorageFailuresDoNotLoseSuccessfulResolution(bool readFailure) {
+        var storage = new TestLocalStorage("{bad") { ThrowOnRead = readFailure, ThrowOnWrite = true };
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            "{\"data\":[" + RichCardJson + "]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        Assert.That((await service.GetCardInfoByExactNamesAsync(["Pendulum"]))["Pendulum"].Id, Is.EqualTo(1234));
+        Assert.That((await service.GetCardInfoByExactNamesAsync(["Pendulum"]))["Pendulum"].Type, Is.Not.Null);
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ExactNamesNetworkFailuresDoNotFailTheOtherNames(bool throws) {
+        var handler = new RecordingHttpMessageHandler((request, _) => {
+            if (request.RequestUri!.Query.Contains("Missing")) {
+                if (throws) throw new HttpRequestException("Offline");
+                return Task.FromResult(Response(HttpStatusCode.NotFound, "{}"));
+            }
+            return Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + RichCardJson + "]}"));
+        });
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(new TestLocalStorage(null), client, new TestTimeProvider(Now));
+        var result = await service.GetCardInfoByExactNamesAsync(["Missing", "Pendulum"]);
+        Assert.That(result.Keys, Is.EqualTo(new[] { "Pendulum" }));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task BulkAndSingleEndpointsParseTheSameReusableMetadata(bool single) {
