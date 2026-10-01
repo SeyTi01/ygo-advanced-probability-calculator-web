@@ -8,18 +8,42 @@
 @inject IProbabilityCalculatorService _probabilityCalculator
 
 <div class="container">
-    <div class="d-flex mb-3">
-        <button class="btn btn-primary me-2">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <button class="btn btn-primary">
             <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="d-none" id="fileInput"/>
             <label for="fileInput" class="m-0" style="cursor: pointer;">Import Deck</label>
         </button>
-        <button class="btn btn-secondary me-2" @onclick="SaveCurrentSession">
+        @if (!isYdkeImportOpen) {
+            <button type="button" class="btn btn-outline-primary" @onclick="OpenYdkeImport">
+                Import YDKe
+            </button>
+        }
+        <button class="btn btn-secondary" @onclick="SaveCurrentSession">
             Save Session
         </button>
         <button class="btn btn-secondary">
             <InputFile OnChange="@LoadSessionFile" accept=".json" class="d-none" id="sessionFileInput"/>
             <label for="sessionFileInput" class="m-0" style="cursor: pointer;">Load Session</label>
         </button>
+        @if (isYdkeImportOpen) {
+            <form class="ydke-import-form d-flex flex-wrap align-items-center gap-2 w-100"
+                  aria-label="YDKe deck import"
+                  @onsubmit="ImportYdkeAsync"
+                  @onsubmit:preventDefault="true">
+                <label for="ydkeCodeInput" class="visually-hidden">YDKe deck code</label>
+                <input id="ydkeCodeInput"
+                       class="form-control flex-grow-1"
+                       style="min-width: min(100%, 16rem); max-width: 40rem;"
+                       type="text"
+                       autocomplete="off"
+                       aria-label="YDKe deck code"
+                       placeholder="Paste ydke://..."
+                       @bind="ydkeCode"
+                       @bind:event="oninput"/>
+                <button type="submit" class="btn btn-primary">Import</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelYdkeImport">Cancel</button>
+            </form>
+        }
     </div>
 
     <div class="mb-4">
@@ -175,6 +199,8 @@
     private long calculationVersion;
     private string? errorMessage;
     private string? importError;
+    private bool isYdkeImportOpen;
+    private string ydkeCode = string.Empty;
     private ProbabilityCalculationResult? calculationResult;
     private bool calculationResultIsStale;
 
@@ -473,15 +499,43 @@
         try {
             importError = null;
             var importedCards = await _deckImportService.ImportDeckFromYdkAsync(e.File);
-
-            cards.Clear();
-            cards.AddRange(importedCards);
-            InvalidateCalculation(clearPreviousResult: true);
-            activeCardIndex = -1;
+            ReplaceImportedDeck(importedCards);
         }
         catch (Exception ex) {
             importError = $"Failed to import deck: {ex.Message}";
         }
+    }
+
+    private void OpenYdkeImport() {
+        importError = null;
+        ydkeCode = string.Empty;
+        isYdkeImportOpen = true;
+    }
+
+    private void CancelYdkeImport() {
+        importError = null;
+        ydkeCode = string.Empty;
+        isYdkeImportOpen = false;
+    }
+
+    private async Task ImportYdkeAsync() {
+        try {
+            importError = null;
+            var importedCards = await _deckImportService.ImportDeckFromYdkeAsync(ydkeCode);
+            ReplaceImportedDeck(importedCards);
+            ydkeCode = string.Empty;
+            isYdkeImportOpen = false;
+        }
+        catch (Exception ex) {
+            importError = $"Failed to import deck: {ex.Message}";
+        }
+    }
+
+    private void ReplaceImportedDeck(List<Card> importedCards) {
+        cards.Clear();
+        cards.AddRange(importedCards);
+        InvalidateCalculation(clearPreviousResult: true);
+        activeCardIndex = -1;
     }
 
     private async Task SaveSession(string fileName) {

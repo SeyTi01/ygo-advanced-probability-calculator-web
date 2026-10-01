@@ -1644,6 +1644,104 @@ public class CalculatorEditorTest {
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
     }
 
+    [Test]
+    public async Task YdkeImportDisclosureCancelLeavesCurrentDeckUntouched() {
+        var initialCardIds = Session().Cards.Select(card => card.Id).ToArray();
+        var cut = Render(Session());
+
+        await Button(cut, "Import YDKe").ClickAsync(new());
+        Assert.That(cut.Find("input#ydkeCodeInput").GetAttribute("aria-label"), Is.EqualTo("YDKe deck code"));
+        await cut.Find("input#ydkeCodeInput").InputAsync(new() { Value = "ydke://pending!!!" });
+        await Button(cut, "Cancel").ClickAsync(new());
+
+        Assert.That(cut.FindAll("input#ydkeCodeInput"), Is.Empty);
+        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id), Is.EqualTo(initialCardIds));
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+    }
+
+    [Test]
+    public async Task YdkeImportUsesImportServiceReplacesDeckAndClearsPreviousCalculation() {
+        const string code = "ydke://o6lXBZyFNAI=!viOnAg==!7ydRAA==!";
+        var replacement = new Card([], copies: 3, name: "Imported YDKe card", externalCardId: 89631139);
+        var importer = new Mock<IDeckImportService>();
+        importer.Setup(service => service.ImportDeckFromYdkeAsync(code)).ReturnsAsync([replacement]);
+        context.Services.AddSingleton(importer.Object);
+        context.Services.AddSingleton<IProbabilityCalculatorService>(
+            new SequencedProbabilityCalculator(
+                new ProbabilityCalculationResult(0.75, [new ComboProbabilityResult(0, "Unused result", 0.6)])));
+
+        var session = Session();
+        session.ComboGroups.Add(new("preserved-group", "Tier 1"));
+        session.Combos[0].GroupId = "preserved-group";
+        var cut = Render(session);
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+
+        await Button(cut, "Import YDKe").ClickAsync(new());
+        await cut.Find("input#ydkeCodeInput").InputAsync(new() { Value = code });
+        await Button(cut, "Import").ClickAsync(new());
+
+        importer.Verify(service => service.ImportDeckFromYdkeAsync(code), Times.Once);
+        Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
+        var imported = cut.FindComponent<CardEditor>().Instance.Card;
+        Assert.That(imported.Name, Is.EqualTo("Imported YDKe card"));
+        Assert.That(imported.ExternalCardId, Is.EqualTo(89631139));
+        Assert.That(imported.Copies, Is.EqualTo(3));
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(2));
+        Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.GroupId, Is.EqualTo("preserved-group"));
+        Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("2"));
+        Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public async Task YdkeImportFailureKeepsDeckAndCorrectedRetrySucceeds() {
+        const string invalidCode = "not a ydke code";
+        const string validCode = "ydke://o6lXBZyFNAI=!viOnAg==!7ydRAA==!";
+        var replacement = new Card([], copies: 2, name: "Recovered import", externalCardId: 36996508);
+        var importer = new Mock<IDeckImportService>();
+        importer.Setup(service => service.ImportDeckFromYdkeAsync(invalidCode))
+            .ThrowsAsync(new FormatException("YDKe code must start with 'ydke://'."));
+        importer.Setup(service => service.ImportDeckFromYdkeAsync(validCode)).ReturnsAsync([replacement]);
+        context.Services.AddSingleton(importer.Object);
+
+        var initialCardIds = Session().Cards.Select(card => card.Id).ToArray();
+        var cut = Render(Session());
+        await Button(cut, "Import YDKe").ClickAsync(new());
+        await cut.Find("input#ydkeCodeInput").InputAsync(new() { Value = invalidCode });
+        await Button(cut, "Import").ClickAsync(new());
+
+        Assert.That(cut.Find("[role='alert']").TextContent, Does.Contain("Failed to import deck").And.Contain("ydke://"));
+        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id), Is.EqualTo(initialCardIds));
+        Assert.That(cut.Find("input#ydkeCodeInput"), Is.Not.Null);
+
+        await cut.Find("input#ydkeCodeInput").InputAsync(new() { Value = validCode });
+        await Button(cut, "Import").ClickAsync(new());
+
+        importer.Verify(service => service.ImportDeckFromYdkeAsync(invalidCode), Times.Once);
+        importer.Verify(service => service.ImportDeckFromYdkeAsync(validCode), Times.Once);
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+        Assert.That(cut.FindComponents<CardEditor()], Has.Count.EqualTo(1));
+        Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Recovered import"));
+    }
+
+    [Test]
+    public async Task YdkeImportControlsAreLabeledAndUseKeyboardAccessibleFormSemantics() {
+        var cut = Render();
+
+        await Button(cut, "Import YDKe").ClickAsync(new());
+        var form = cut.Find("form.ydke-import-form");
+        var input = form.Find("input#ydkeCodeInput");
+
+        Assert.Multiple(() => {
+            Assert.That(input.GetAttribute("aria-label"), Is.EqualTo("YDKe deck code"));
+            Assert.That(cut.Find("label[for='ydkeCodeInput']").TextContent, Is.EqualTo("YDKe deck code"));
+            Assert.That(form.Find("button[type='submit']").TextContent.Trim(), Is.EqualTo("Import"));
+            Assert.That(form.Find("button[type='button']").TextContent.Trim(), Is.EqualTo("Cancel"));
+            Assert.That(cut.Find("input#fileInput").GetAttribute("accept"), Is.EqualTo(".ydk"));
+        });
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task SessionLoadClearsPreviousResultsAndDiscardsInFlightCompletion(bool failCalculation) {
