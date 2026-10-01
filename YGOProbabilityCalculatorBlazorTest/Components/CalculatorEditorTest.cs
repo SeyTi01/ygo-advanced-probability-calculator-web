@@ -64,6 +64,79 @@ public class CalculatorEditorTest {
     };
 
     [Test]
+    public async Task CardPropertiesAreHiddenAndSameLabelRequirementsCanBeEditedIndependently() {
+        var user = new CategoryBase("Spell");
+        var spell = new CategoryBase("Spell", CategorySource.Metadata, "kind:spell");
+        var quick = new CategoryBase("Quick-Play Spell", CategorySource.Metadata, "spell-type:quick-play");
+        var orphan = new CategoryBase("Monster", CategorySource.Metadata, "kind:monster");
+        var cut = Render(new SessionState {
+            Categories = [user, b], Cards = [new([spell, quick], 2, "Imported", externalCardId: 123)],
+            Combos = [new([new(orphan, 0, 0)]), new([])], HandSize = 1,
+            CategoryColorIndices = new() { ["Spell"] = 5, ["B"] = 2 }
+        });
+        var categories = cut.FindComponent<CategoryListEditor>();
+        Assert.That(categories.FindAll(".category-chip"), Has.Count.EqualTo(2));
+        var card = cut.FindComponent<CardEditor>();
+        Assert.That(card.FindAll(".category-tag"), Is.Empty);
+        Assert.That(card.FindAll("select option").Select(o => o.GetAttribute("value")), Is.EqualTo(new[] { "", "user:Spell", "user:B" }));
+        var combo = cut.FindComponents<ComboEditor>()[1];
+        Assert.That(combo.FindAll("optgroup").Select(g => g.GetAttribute("label")), Is.EqualTo(new[] { "User categories", "Card properties" }));
+        Assert.That(combo.FindAll("optgroup[label='Card properties'] option").Select(o => o.TextContent),
+            Is.EqualTo(new[] { "Monster", "Quick-Play Spell", "Spell" }));
+        Assert.That(combo.FindAll("option").Where(o => o.TextContent == "Spell").Select(o => o.GetAttribute("value")),
+            Is.EquivalentTo(new[] { "user:Spell", "metadata:kind:spell" }));
+
+        await combo.Find("#comboCategory1").ChangeAsync(new() { Value = spell.Identity });
+        await Button(combo, "Add").ClickAsync(new());
+        await combo.Find("#comboCategory1").ChangeAsync(new() { Value = user.Identity });
+        await Button(combo, "Add").ClickAsync(new());
+        Assert.That(combo.Instance.Combo.Categories.Select(c => c.BaseCategory.Source),
+            Is.EqualTo(new[] { CategorySource.Metadata, CategorySource.User }));
+        await combo.Find("#comboCategory1").ChangeAsync(new() { Value = spell.Identity });
+        await combo.Find("#minCount1").InputAsync(new() { Value = "0" });
+        await combo.Find("#maxCount1").InputAsync(new() { Value = "0" });
+        await Button(combo, "Update").ClickAsync(new());
+        Assert.That(combo.Instance.Combo.Categories[0].MaxCount, Is.Zero);
+        Assert.That(combo.Instance.Combo.Categories[1].MinCount, Is.EqualTo(1));
+
+        // A metadata membership does not prevent adding/removing a same-label user membership.
+        await card.Find("select").ChangeAsync(new() { Value = user.Identity });
+        await Button(card, "Add").ClickAsync(new());
+        Assert.That(card.Instance.Card.Categories, Has.Count.EqualTo(3));
+        await combo.Find("#comboCategory1").ChangeAsync(new() { Value = spell.Identity });
+        await categories.Find("[aria-label='Edit category Spell']").ClickAsync(new());
+        await categories.Find("[aria-label='New name for category Spell']").InputAsync(new() { Value = "Role" });
+        await categories.Find("[aria-label='Save category name']").ClickAsync(new());
+        Assert.That(combo.Find("#comboCategory1").GetAttribute("value"), Is.EqualTo(spell.Identity));
+        Assert.That(combo.Instance.Combo.Categories.Select(c => c.BaseCategory.Name), Is.EqualTo(new[] { "Spell", "Role" }));
+        Assert.That(card.Instance.Card.Categories[0], Is.EqualTo(spell));
+        Assert.That(card.Instance.Card.Categories[2].Name, Is.EqualTo("Role"));
+        await card.Find("[aria-label='Remove category Role from card Imported']").ClickAsync(new());
+        Assert.That(card.Instance.Card.Categories, Is.EqualTo(new[] { spell, quick }));
+        Assert.That(combo.FindAll(".accordion-body .text-bg-secondary"), Has.Count.EqualTo(1));
+        Assert.That(combo.FindAll(".accordion-body [class*='category-color-']"), Has.Count.EqualTo(1));
+
+        await combo.Find("[aria-label='Remove category Role from combo Combo 2']").ClickAsync(new());
+        await categories.Find("[aria-label='Remove category Role']").ClickAsync(new());
+        Assert.That(categories.FindAll(".category-chip"), Has.Count.EqualTo(1));
+        Assert.That(combo.Instance.Combo.Categories.Single().BaseCategory, Is.EqualTo(spell));
+        await cut.Find("[aria-label='Remove card']").ClickAsync(new());
+        Assert.That(combo.FindAll("optgroup[label='Card properties'] option").Select(o => o.GetAttribute("value")),
+            Is.EquivalentTo(new[] { orphan.Identity, spell.Identity }));
+        await combo.Find("#comboCategory1").ChangeAsync(new() { Value = spell.Identity });
+        Assert.That(Button(combo, "Update"), Is.Not.Null);
+    }
+
+    [Test]
+    public void CategoryEditorDoesNotExposeMetadataDefinitionsEvenIfSupplied() {
+        var property = new CategoryBase("Spell", CategorySource.Metadata, "kind:spell");
+        var cut = context.RenderComponent<CategoryListEditor>(p => p.Add(x => x.CategoryBases, [a, property])
+            .Add(x => x.Cards, []).Add(x => x.Combos, []));
+        Assert.That(cut.FindAll(".category-chip"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll("[aria-label='Edit category Spell']"), Is.Empty);
+    }
+
+    [Test]
     public async Task ReorderControlsMoveAllFourListsAndKeepSessionOrderAndReferences() {
         var c = new CategoryBase("C");
         var cards = new List<Card> { new([a], 1, "Same"), new([b], 1, "Same"), new([c], 1, "") };
@@ -162,16 +235,16 @@ public class CalculatorEditorTest {
         session.Combos[1] = session.Combos[1].WithActive(false);
         var cut = Render(session);
         cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
-        cut.FindComponents<CardEditor>()[0].Find("#cardCategory0").Change("B");
+        cut.FindComponents<CardEditor>()[0].Find("#cardCategory0").Change("user:B");
         cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").Click();
-        cut.FindComponents<ComboEditor>()[0].Find("#comboCategory0").Change("B");
+        cut.FindComponents<ComboEditor>()[0].Find("#comboCategory0").Change("user:B");
         cut.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");
 
         cut.Find("[aria-label='Move card First, row 1 down']").Click();
         cut.Find("[aria-label='Move combo First combo, row 1 down']").Click();
         Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.Name, Is.EqualTo("First"));
         Assert.That(cut.FindComponents<CardEditor>()[1].Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
-        Assert.That(cut.FindComponents<CardEditor>()[1].Find("#cardCategory1").GetAttribute("value"), Is.EqualTo("B"));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Find("#cardCategory1").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(cut.FindComponents<ComboEditor>()[1].Instance.Combo.Name, Is.EqualTo("First combo"));
         Assert.That(cut.FindComponents<ComboEditor>()[1].Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(cut.FindComponents<ComboEditor>()[1].Find("#minCount1").GetAttribute("value"), Is.EqualTo("0"));
@@ -295,7 +368,7 @@ public class CalculatorEditorTest {
         });
         var editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = "Role" });
+        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = "user:Role" });
         await Button(editor, "Add").ClickAsync(new());
         await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
         await editor.Find("#comboCard0").ChangeAsync(new() { Value = card.Id });
@@ -524,18 +597,18 @@ public class CalculatorEditorTest {
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
         cut.Find("[placeholder='Category name']").Input("A");
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
-        Assert.That(cut.FindAll("select option[value=A]"), Has.Count.EqualTo(2));
+        Assert.That(cut.FindAll("select option[value='user:A']"), Has.Count.EqualTo(2));
         cut.Find("[placeholder='Category name']").Input("a");
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("already exists"));
         var card = cut.FindComponent<CardEditor>();
-        card.Find("select").Change("A");
+        card.Find("select").Change("user:A");
         Button(card, "Add").Click();
         cut.Find("[aria-label='Remove category A']").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
         card.Find(".accordion-body .badge button").Click();
         cut.Find("[aria-label='Remove category A']").Click();
-        Assert.That(cut.FindAll("select option[value=A]"), Is.Empty);
+        Assert.That(cut.FindAll("select option[value='user:A']"), Is.Empty);
     }
 
     [Test]
@@ -547,7 +620,7 @@ public class CalculatorEditorTest {
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
         cut.FindComponents<ComboEditor>()[0].Find(".accordion-body .badge button").Click();
         cut.Find("[aria-label='Remove category A']").Click();
-        Assert.That(cut.FindAll("select option[value=A]"), Is.Empty);
+        Assert.That(cut.FindAll("select option[value='user:A']"), Is.Empty);
     }
 
     [Test]
@@ -561,16 +634,16 @@ public class CalculatorEditorTest {
             Assert.That(card.Find("[role=alert]").TextContent, Does.Contain("at least 1"));
             Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("(2)"));
         }
-        card.Find("select").Change("A");
+        card.Find("select").Change("user:A");
         Button(card, "Add").Click();
         Assert.That(card.Find("[role=alert]").TextContent, Does.Contain("already added"));
         card.Find("select").Change("missing");
         Button(card, "Add").Click();
         Assert.That(card.Find("[role=alert]").TextContent, Does.Contain("not found"));
-        card.Find("select").Change("B");
+        card.Find("select").Change("user:B");
         card.Find("input[type=number]").Input("6");
         card.Find("#cardName0").Input("Renamed");
-        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("B"));
+        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("user:B"));
         Button(card, "Add").Click();
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Renamed").And.Contain("(6)"));
         Assert.That(card.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
@@ -580,7 +653,7 @@ public class CalculatorEditorTest {
     public void ZeroMaximumSurvivesRenameParentRerenderAndHandSizeChangeAndCanBeUpdated() {
         var cut = Render(Session());
         var combo = cut.FindComponents<ComboEditor>()[0];
-        combo.Find("select").Change("A");
+        combo.Find("select").Change("user:A");
         Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("1"));
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("0");
@@ -591,7 +664,7 @@ public class CalculatorEditorTest {
         Button(combo, "Update").Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(1));
         Assert.That(combo.Find(".accordion-body .badge").TextContent, Does.Contain("A (0–0)"));
-        combo.Find("select").Change("A");
+        combo.Find("select").Change("user:A");
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         combo.Find("#maxCount0").Input("2");
         Button(combo, "Update").Click();
@@ -604,7 +677,7 @@ public class CalculatorEditorTest {
         var combo = cut.FindComponents<ComboEditor>()[0];
         Button(combo, "Add").Click();
         Assert.That(combo.Find("[role=alert]").TextContent, Does.Contain("select a category"));
-        combo.Find("select").Change("B");
+        combo.Find("select").Change("user:B");
         combo.Find("#minCount0").Input("-1");
         Button(combo, "Add").Click();
         Assert.That(combo.Find("[role=alert]").TextContent, Does.Contain("Minimum"));
@@ -620,7 +693,7 @@ public class CalculatorEditorTest {
         combo.Find("select").Change("");
         cut.Find("#handSize").Change("4");
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
-        combo.Find("select").Change("B");
+        combo.Find("select").Change("user:B");
         Button(combo, "Add").Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
     }
@@ -632,15 +705,15 @@ public class CalculatorEditorTest {
         var combo = cut.FindComponents<ComboEditor>()[1];
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
-        card.Find("select").Change("A");
-        combo.Find("select").Change("A");
+        card.Find("select").Change("user:A");
+        combo.Find("select").Change("user:A");
         combo.Find("#minCount1").Input("0");
         combo.Find("#maxCount1").Input("0");
         cut.FindComponents<CardEditor>()[0].Find("[title='Remove card']").Click();
         cut.FindComponents<ComboEditor>()[0].Find("[title='Remove combo']").Click();
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(1));
-        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("A"));
+        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("user:A"));
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
@@ -660,15 +733,15 @@ public class CalculatorEditorTest {
             .Add(x => x.CategoryBases, session.Categories));
         var combos = context.RenderComponent<ComboListEditor>(p => p.Add(x => x.Combos, session.Combos)
             .Add(x => x.CategoryBases, session.Categories));
-        cards.FindComponents<CardEditor>()[0].Find("select").Change("B");
-        combos.FindComponents<ComboEditor>()[0].Find("select").Change("B");
+        cards.FindComponents<CardEditor>()[0].Find("select").Change("user:B");
+        combos.FindComponents<ComboEditor>()[0].Find("select").Change("user:B");
         combos.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");
         combos.FindComponents<ComboEditor>()[0].Find("#maxCount0").Input("0");
         session.Cards.Reverse();
         session.Combos.Reverse();
         cards.SetParametersAndRender(p => p.Add(x => x.Cards, session.Cards));
         combos.SetParametersAndRender(p => p.Add(x => x.Combos, session.Combos));
-        Assert.That(cards.FindComponents<CardEditor>()[1].Find("select").GetAttribute("value"), Is.EqualTo("B"));
+        Assert.That(cards.FindComponents<CardEditor>()[1].Find("select").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(combos.FindComponents<ComboEditor>()[1].Find("#maxCount1").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(cards.FindComponents<CardEditor>()[0].Find("select").GetAttribute("value"), Is.Null.Or.Empty);
     }
@@ -703,7 +776,7 @@ public class CalculatorEditorTest {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
         var combo = cut.FindComponent<ComboEditor>();
-        await combo.Find("select").ChangeAsync(new() { Value = "B" });
+        await combo.Find("select").ChangeAsync(new() { Value = "user:B" });
         await combo.Find("#minCount0").InputAsync(new() { Value = "2" });
         await combo.Find(".accordion-button").ClickAsync(new());
         await cut.Find("[placeholder='Category name']").InputAsync(new() { Value = "Old draft" });
@@ -733,7 +806,7 @@ public class CalculatorEditorTest {
                     [new ComboProbabilityResult(0, "Unused result", 0.6)])));
         context.Services.AddSingleton<IFileService, FileService>();
         var cardInfo = new Mock<ICardInfoService>();
-        cardInfo.Setup(x => x.GetCardNameAsync(123)).ReturnsAsync("Imported");
+        cardInfo.Setup(x => x.GetCardInfoAsync(123)).ReturnsAsync(new CardInfo { Id = 123, Name = "Imported" });
         context.Services.AddSingleton(cardInfo.Object);
         context.Services.AddSingleton<IDeckImportService, DeckImportService>();
         var cut = Render(Session());
@@ -743,7 +816,7 @@ public class CalculatorEditorTest {
         await cut.Find("#comboGroup0").ChangeAsync(new() { Value = groupId });
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
-        await cut.FindComponents<CardEditor>()[0].Find("select").ChangeAsync(new() { Value = "B" });
+        await cut.FindComponents<CardEditor>()[0].Find("select").ChangeAsync(new() { Value = "user:B" });
         await cut.FindComponents<CardEditor>()[0].Find(".accordion-button").ClickAsync(new());
         cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n123\n123\n#extra\n456", "deck.ydk"));
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
@@ -847,7 +920,7 @@ public class CalculatorEditorTest {
     public void ComboGroupsUseCategoryStyleInlineEditingAndKeepAssignmentsAndComboDrafts() {
         var cut = Render(Session());
         var first = cut.FindComponents<ComboEditor>()[0];
-        first.Find("#comboCategory0").Change("B");
+        first.Find("#comboCategory0").Change("user:B");
         first.Find("#minCount0").Input("0");
         first.Find("#maxCount0").Input("0");
 

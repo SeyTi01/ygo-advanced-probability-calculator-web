@@ -14,7 +14,7 @@
                 @if (ConstraintCount > 0) {
                     <span class="ms-2">-</span>
                     @foreach (var cc in HeaderCategories) {
-                        <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cc.BaseCategory.Name, CategoryColorIndices)">
+                        <span class="badge category-tag ms-1 @CategoryCssClass(cc.BaseCategory)" title="@(cc.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
                             @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
                         </span>
                     }
@@ -84,8 +84,22 @@
                         <label for="comboCategory@(Index)" class="form-label">Category</label>
                         <select id="comboCategory@(Index)" class="form-select" value="@selectedCategory" @onchange="e => OnSelectCategory(e.Value?.ToString())">
                             <option value="">Select category…</option>
-                            @foreach (var cb in CategoryBases) {
-                                <option value="@cb.Name">@cb.Name</option>
+                            @if (availableCategories.Any(c => c.Source == CategorySource.Metadata)) {
+                                <optgroup label="User categories">
+                                    @foreach (var cb in availableCategories.Where(c => c.Source == CategorySource.User)) {
+                                        <option value="@cb.Identity">@cb.Name</option>
+                                    }
+                                </optgroup>
+                                <optgroup label="Card properties">
+                                    @foreach (var cb in availableCategories.Where(c => c.Source == CategorySource.Metadata)) {
+                                        <option value="@cb.Identity">@cb.Name</option>
+                                    }
+                                </optgroup>
+                            }
+                            else {
+                                @foreach (var cb in availableCategories) {
+                                    <option value="@cb.Identity">@cb.Name</option>
+                                }
                             }
                         </select>
                     }
@@ -135,7 +149,7 @@
                 }
                 else {
                     @foreach (var cc in Combo.Categories) {
-                        <span class="badge me-2 category-tag @CategoryColorPalette.GetCssClass(cc.BaseCategory.Name, CategoryColorIndices)">
+                        <span class="badge me-2 category-tag @CategoryCssClass(cc.BaseCategory)" title="@(cc.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
                             @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
                             <button type="button"
                                     class="btn-close category-remove-button ms-1"
@@ -180,6 +194,9 @@
 
     [Parameter] public int HandSize { get; set; } = 5;
 
+    private IReadOnlyList<CategoryBase> availableCategories = [];
+    private string CategoryCssClass(CategoryBase category) => category.Source == CategorySource.Metadata
+        ? "text-bg-secondary" : CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices);
     private const int MaxHeaderBadges = 6;
     private string? error;
     private string selectedCategory = string.Empty;
@@ -194,7 +211,7 @@
     private string ActiveToggleTitle => $"Toggle {ComboDisplayName} active state";
     private bool HasSelectedConstraint => selectedKind == "Card"
         ? Combo.Cards.Any(c => c.CardId == selectedCardId)
-        : Combo.Categories.Any(c => c.BaseCategory.Name == selectedCategory);
+        : Combo.Categories.Any(c => c.BaseCategory.Identity == selectedCategory);
 
     private int ConstraintCount => Combo.Categories.Count + Combo.Cards.Count;
     private IEnumerable<ComboCategory> HeaderCategories => Combo.Categories.Take(MaxHeaderBadges);
@@ -241,7 +258,7 @@
             error = "Please select a category to add.";
             return Task.CompletedTask;
         }
-        var baseCat = CategoryBases.FirstOrDefault(c => c.Name == selectedCategory);
+        var baseCat = availableCategories.FirstOrDefault(c => c.Identity == selectedCategory);
         if (baseCat is null) {
             error = "Selected category not found.";
             return Task.CompletedTask;
@@ -255,7 +272,7 @@
             return Task.CompletedTask;
         }
         var newCats = Combo.Categories.ToList();
-        var existing = newCats.FindIndex(c => c.BaseCategory.Name == baseCat.Name);
+        var existing = newCats.FindIndex(c => c.BaseCategory.Identity == baseCat.Identity);
         var constraint = new ComboCategory(baseCat, min, max);
         if (existing >= 0) newCats[existing] = constraint;
         else newCats.Add(constraint);
@@ -314,7 +331,7 @@
     private void OnSelectCategory(string? value) {
         selectedCategory = value ?? string.Empty;
         error = null;
-        var existing = Combo.Categories.FirstOrDefault(c => c.BaseCategory.Name == selectedCategory);
+        var existing = Combo.Categories.FirstOrDefault(c => c.BaseCategory.Identity == selectedCategory);
         if (existing is not null) {
             minCount = existing.MinCount.ToString();
             maxCount = existing.MaxCount.ToString();
@@ -335,9 +352,10 @@
     }
 
     protected override void OnParametersSet() {
+        availableCategories = CategoryCatalog.Build(CategoryBases, Cards, [Combo]);
         if (CategoryRename is { } rename && rename.Version != previousCategoryRenameVersion) {
-            if (selectedCategory.Equals(rename.OldName, StringComparison.Ordinal))
-                selectedCategory = rename.NewName;
+            if (selectedCategory.Equals($"user:{rename.OldName}", StringComparison.Ordinal))
+                selectedCategory = $"user:{rename.NewName}";
             previousCategoryRenameVersion = rename.Version;
         }
 

@@ -20,15 +20,15 @@ public class DeckImportService(ICardInfoService cardInfoService, IFileService fi
         }
 
         foreach (var (id, count) in cardCounts) {
-            string? cardName;
+            CardInfo info;
             try {
-                cardName = await cardInfoService.GetCardNameAsync(id);
+                info = await cardInfoService.GetCardInfoAsync(id);
             }
             catch {
-                cardName = id.ToString();
+                info = new CardInfo { Id = id, Name = id.ToString(System.Globalization.CultureInfo.InvariantCulture) };
             }
 
-            var card = new Card(new List<CategoryBase>(), count, cardName);
+            var card = new Card(CardPropertyProvider.GetCategories(info), count, info.Name, externalCardId: id);
             cards.Add(card);
         }
 
