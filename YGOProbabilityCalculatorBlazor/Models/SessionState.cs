@@ -1,7 +1,7 @@
 namespace YGOProbabilityCalculatorBlazor.Models;
 
 public class SessionState {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public List<CategoryBase> Categories { get; init; } = [];

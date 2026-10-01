@@ -6,6 +6,8 @@ using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 using RealJsonSerializer = YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
@@ -281,7 +283,7 @@ public class SessionServiceTests {
     }
 
     [Test]
-    public async Task LoadSessionAsync_CurrentVersionPayload_PreservesData() {
+    public async Task LoadSessionAsync_VersionOnePayload_MigratesAndPreservesData() {
         const string currentSessionJson = """
             {
               "SchemaVersion": 1,
@@ -305,14 +307,62 @@ public class SessionServiceTests {
         Assert.That(session.Combos[0].GroupId, Is.EqualTo("group-id"));
         Assert.That(session.ComboGroups[0].Name, Is.EqualTo("Main line"));
         Assert.That(session.CategoryColorIndices["Fire"], Is.EqualTo(3));
+        Assert.That(session.Categories.Concat(session.Cards.SelectMany(c => c.Categories))
+            .Concat(session.Combos.SelectMany(c => c.Categories).Select(c => c.BaseCategory))
+            .All(c => c.Source == CategorySource.User && c.MetadataKey is null), Is.True);
+    }
+
+    [Test]
+    public async Task MetadataSessionRoundTripsWithoutExternalLookupOrTopLevelPropertyDefinitions() {
+        var user = new CategoryBase("Spell");
+        var property = new CategoryBase("Spell", CategorySource.Metadata, "kind:spell");
+        var session = new SessionState {
+            Categories = [user], Cards = [new([user, property], 2, "Quick spell", externalCardId: 123)],
+            Combos = [new([new(user, 1, 2), new(property, 1, 2)], "Two copies")],
+            HandSize = 2, CategoryColorIndices = new() { ["Spell"] = 7 }
+        };
+        var runtime = new CapturingJsRuntime();
+        var service = new SessionService(runtime, new RealJsonSerializer());
+        await service.SaveSessionAsync(session, "metadata");
+        var loaded = await service.LoadSessionAsync(runtime.DownloadedJson);
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(2));
+        Assert.That(loaded.Categories, Is.EqualTo(new[] { user }));
+        Assert.That(loaded.Cards[0].Categories, Is.EqualTo(new[] { user, property }));
+        Assert.That(loaded.Cards[0].ExternalCardId, Is.EqualTo(123));
+        Assert.That(loaded.Cards[0].Id, Is.EqualTo(session.Cards[0].Id));
+        Assert.That(loaded.Combos[0].Categories.Select(c => c.BaseCategory), Is.EqualTo(new[] { user, property }));
+        Assert.That(loaded.CategoryColorIndices, Is.EqualTo(session.CategoryColorIndices));
+        Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(loaded.Cards, loaded.Combos, 2),
+            Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(session.Cards, session.Combos, 2)));
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    public void MigrationExplicitlyClassifiesAllPreV2CategoryLocations(int version) {
+        var json = $$$"""
+            { "SchemaVersion": {{{version}}}, "Categories": [{"Name":"Top", "Source":"Metadata", "MetadataKey":"spoof"}],
+              "Cards": [{"Categories":[{"Name":"On card"}]}],
+              "Combos": [{"Categories":[{"BaseCategory":{"Name":"On combo"}}]}] }
+            """;
+        var migrated = new SessionSchemaMigrator().MigrateToCurrent(json);
+        using var document = JsonDocument.Parse(migrated);
+        var root = document.RootElement;
+        Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        var locations = new[] { root.GetProperty("Categories")[0], root.GetProperty("Cards")[0].GetProperty("Categories")[0],
+            root.GetProperty("Combos")[0].GetProperty("Categories")[0].GetProperty("BaseCategory") };
+        foreach (var category in locations) {
+            Assert.That(category.GetProperty("Source").GetString(), Is.EqualTo("User"));
+            Assert.That(category.TryGetProperty("MetadataKey", out _), Is.False);
+        }
+        Assert.That(new SessionSchemaMigrator().MigrateToCurrent(migrated), Is.EqualTo(migrated));
     }
 
     [Test]
     public void LoadSessionAsync_FutureSchemaVersion_IsRejectedClearly() {
         var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await CreateRealSerializerSessionService().LoadSessionAsync("{ \"SchemaVersion\": 2 }"));
+            await CreateRealSerializerSessionService().LoadSessionAsync("{ \"SchemaVersion\": 3 }"));
 
-        Assert.That(exception!.Message, Does.Contain("Unsupported session schema version 2"));
+        Assert.That(exception!.Message, Does.Contain("Unsupported session schema version 3"));
     }
 
     [TestCase("{ \"SchemaVersion\": \"1\" }")]

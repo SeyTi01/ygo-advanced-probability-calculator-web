@@ -24,7 +24,7 @@ public class CardConverterTests {
 
         var json = JsonSerializer.Serialize(card, _options);
 
-        var expectedJson = $"{{\"Categories\":[{{\"Name\":\"Category1\"}}],\"Copies\":3,\"Name\":\"TestCard\",\"Active\":true,\"Id\":\"{card.Id}\"}}";
+        var expectedJson = $"{{\"Categories\":[{{\"Name\":\"Category1\",\"Source\":\"User\"}}],\"Copies\":3,\"Name\":\"TestCard\",\"Active\":true,\"Id\":\"{card.Id}\"}}";
         Assert.That(json, Is.EqualTo(expectedJson));
     }
 

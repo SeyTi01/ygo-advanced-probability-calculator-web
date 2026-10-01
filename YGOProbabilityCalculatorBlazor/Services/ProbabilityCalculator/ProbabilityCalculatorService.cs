@@ -51,7 +51,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         public Event? Canonicalize(Combo combo) {
             budget.Spend(combo.Categories.Count + combo.Cards.Count + 1L);
             var constraints = new List<Requirement>();
-            foreach (var group in combo.Categories.GroupBy(c => c.BaseCategory.Name, StringComparer.Ordinal)) {
+            foreach (var group in combo.Categories.GroupBy(c => c.BaseCategory.Identity, StringComparer.Ordinal)) {
                 var min = group.Max(c => c.MinCount);
                 var max = Math.Min(handSize, group.Min(c => c.MaxCount));
                 if (min > max) return null;
@@ -75,7 +75,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                     budget.Spend(deck[i].Categories.Count + 1L);
                     if (deck[i].Copies > 0 && (constraint.Key.IsCard
                         ? deck[i].Id == constraint.Key.Value
-                        : deck[i].Categories.Any(c => c.Name == constraint.Key.Value)))
+                        : deck[i].Categories.Any(c => c.Identity == constraint.Key.Value)))
                         eligible |= BigInteger.One << i;
                 }
                 roles.Add(new CountBound(eligible, constraint.MinCount, constraint.MaxCount));
