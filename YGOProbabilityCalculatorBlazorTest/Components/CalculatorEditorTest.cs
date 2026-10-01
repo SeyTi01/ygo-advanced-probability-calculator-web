@@ -1721,7 +1721,7 @@ public class CalculatorEditorTest {
         importer.Verify(service => service.ImportDeckFromYdkeAsync(invalidCode), Times.Once);
         importer.Verify(service => service.ImportDeckFromYdkeAsync(validCode), Times.Once);
         Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
-        Assert.That(cut.FindComponents<CardEditor()], Has.Count.EqualTo(1));
+        Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Recovered import"));
     }
 
