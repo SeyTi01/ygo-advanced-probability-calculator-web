@@ -1731,13 +1731,13 @@ public class CalculatorEditorTest {
 
         await Button(cut, "Import YDKe").ClickAsync(new());
         var form = cut.Find("form.ydke-import-form");
-        var input = form.Find("input#ydkeCodeInput");
+        var input = cut.Find("form.ydke-import-form input#ydkeCodeInput");
 
         Assert.Multiple(() => {
             Assert.That(input.GetAttribute("aria-label"), Is.EqualTo("YDKe deck code"));
             Assert.That(cut.Find("label[for='ydkeCodeInput']").TextContent, Is.EqualTo("YDKe deck code"));
-            Assert.That(form.Find("button[type='submit']").TextContent.Trim(), Is.EqualTo("Import"));
-            Assert.That(form.Find("button[type='button']").TextContent.Trim(), Is.EqualTo("Cancel"));
+            Assert.That(cut.Find("form.ydke-import-form button[type='submit']").TextContent.Trim(), Is.EqualTo("Import"));
+            Assert.That(cut.Find("form.ydke-import-form button[type='button']").TextContent.Trim(), Is.EqualTo("Cancel"));
             Assert.That(cut.Find("input#fileInput").GetAttribute("accept"), Is.EqualTo(".ydk"));
         });
     }
