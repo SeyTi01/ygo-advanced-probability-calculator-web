@@ -124,8 +124,79 @@ public class SessionServiceTests {
     }
 
     [Test]
-    public async Task LoadSessionAsync_UnversionedPersistedFixture_MigratesAndPreservesSessionData() {
-        var fileContent = await ReadPersistedSessionFixture();
+    public async Task LoadSessionAsync_HistoricalV1_2UnversionedFixture_MigratesAndPreservesLegacySession() {
+        // Unchanged bundled Fiendsmith/Bystial example from the v1.2.0 release.
+        var fileContent = await ReadSessionFixture("legacy_v1_2_example_session.json");
+        using var document = JsonDocument.Parse(fileContent);
+        var root = document.RootElement;
+        Assert.That(root.TryGetProperty(nameof(SessionState.SchemaVersion), out _), Is.False);
+        Assert.That(root.TryGetProperty("ComboGroups", out _), Is.False);
+        Assert.That(root.TryGetProperty("CategoryColorIndices", out _), Is.False);
+        foreach (var card in root.GetProperty("Cards").EnumerateArray()) {
+            Assert.That(card.TryGetProperty("Id", out _), Is.False);
+            Assert.That(card.TryGetProperty("Active", out _), Is.False);
+        }
+        foreach (var combo in root.GetProperty("Combos").EnumerateArray()) {
+            Assert.That(combo.TryGetProperty("Cards", out _), Is.False);
+            Assert.That(combo.TryGetProperty("Active", out _), Is.False);
+            Assert.That(combo.TryGetProperty("GroupId", out _), Is.False);
+        }
+
+        var session = await CreateRealSerializerSessionService().LoadSessionAsync(fileContent);
+
+        Assert.That(session.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
+        Assert.That(session.Categories.Select(category => category.Name), Is.EqualTo(new[] {
+            "1 Card Starter", "Lubellion", "Normal Summon", "Bystial", "L/D Normal Summon"
+        }));
+        Assert.That(session.Cards.Select(card =>
+            (card.Name, card.Copies, Categories: string.Join("|", card.Categories.Select(category => category.Name)))),
+            Is.EqualTo(new[] {
+                ("Fabled Lurrie", 1, "1 Card Starter"),
+                ("Effect Veiler", 3, "Normal Summon|L/D Normal Summon"),
+                ("Maxx \"C\"", 2, "Normal Summon"),
+                ("Ash Blossom & Joyous Spring", 3, "Normal Summon"),
+                ("Ghost Mourner & Moonlit Chill", 2, "Normal Summon"),
+                ("Lacrima the Crimson Tears", 3, "1 Card Starter"),
+                ("Artifact Lancea", 2, ""),
+                ("Bystial Druiswurm", 2, "Bystial"),
+                ("Bystial Magnamhut", 1, "Bystial"),
+                ("Bystial Saronir", 1, "Bystial"),
+                ("Bystial Baldrake", 2, "Bystial"),
+                ("Fiendsmith Engraver", 2, "1 Card Starter"),
+                ("Chaos Hunter", 3, ""),
+                ("Fantastical Dragon Phantazmay", 3, ""),
+                ("The Bystial Lubellion", 3, "Lubellion"),
+                ("Nibiru, the Primal Being", 3, ""),
+                ("Fiendsmith's Tract", 3, "1 Card Starter"),
+                ("Branded Regained", 1, "")
+            }));
+        Assert.That(session.Combos.Select(combo => combo.Name),
+            Is.EqualTo(new[] { "1-Card Combo", "Moon Combo", "Moon Combo 2" }));
+        Assert.That(session.Combos.Select(combo => combo.Categories.Count), Is.EqualTo(new[] { 1, 2, 2 }));
+        Assert.That(session.Combos.SelectMany(combo => combo.Categories.Select(category =>
+            (combo.Name, category.BaseCategory.Name, category.MinCount, category.MaxCount))),
+            Is.EqualTo(new[] {
+                ("1-Card Combo", "1 Card Starter", 1, 5),
+                ("Moon Combo", "Lubellion", 1, 5),
+                ("Moon Combo", "Normal Summon", 1, 5),
+                ("Moon Combo 2", "Bystial", 1, 5),
+                ("Moon Combo 2", "L/D Normal Summon", 1, 5)
+            }));
+        Assert.That(session.HandSize, Is.EqualTo(5));
+
+        Assert.That(session.Cards.All(card => card.Active), Is.True);
+        Assert.That(session.Combos.All(combo => combo.Active), Is.True);
+        Assert.That(session.Combos.All(combo => combo.Cards.Count == 0 && combo.GroupId == null), Is.True);
+        Assert.That(session.ComboGroups, Is.Empty);
+        Assert.That(session.CategoryColorIndices, Is.Empty);
+        Assert.That(session.Cards.All(card => Guid.TryParseExact(card.Id, "N", out var id) && id != Guid.Empty), Is.True);
+        Assert.That(session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count(),
+            Is.EqualTo(session.Cards.Count));
+    }
+
+    [Test]
+    public async Task LoadSessionAsync_CurrentEraUnversionedFixture_PreservesModernSessionData() {
+        var fileContent = await ReadSessionFixture("vsmodel.json");
         var root = JsonNode.Parse(fileContent)!.AsObject();
         Assert.That(root.ContainsKey(nameof(SessionState.SchemaVersion)), Is.False);
 
@@ -167,7 +238,7 @@ public class SessionServiceTests {
 
     [TestCase("razen_session.json")]
     [TestCase("vsmodel.json")]
-    public async Task LoadSessionAsync_ExistingUnversionedRepositoryFixturesStillLoad(string fixtureName) {
+    public async Task LoadSessionAsync_CurrentEraUnversionedRepositoryFixturesStillLoad(string fixtureName) {
         var fileContent = await File.ReadAllTextAsync(
             Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", fixtureName));
         using var document = JsonDocument.Parse(fileContent);
@@ -179,12 +250,13 @@ public class SessionServiceTests {
         Assert.That(session.Cards, Has.Count.EqualTo(25));
     }
 
-    [Test]
-    public async Task SaveSessionAsync_WritesCurrentVersionAndRoundTripsThroughRealSerializer() {
-        var fileContent = await ReadPersistedSessionFixture();
+    [TestCase("legacy_v1_2_example_session.json")]
+    [TestCase("vsmodel.json")]
+    public async Task SaveSessionAsync_WritesCurrentVersionAndRoundTripsThroughRealSerializer(string fixtureName) {
+        var fileContent = await ReadSessionFixture(fixtureName);
         var loadService = CreateRealSerializerSessionService();
-        var loadedLegacySession = await loadService.LoadSessionAsync(fileContent);
-        var sessionWithLegacyVersion = CopySession(loadedLegacySession, schemaVersion: 0);
+        var loadedSession = await loadService.LoadSessionAsync(fileContent);
+        var sessionWithLegacyVersion = CopySession(loadedSession, schemaVersion: 0);
         var jsRuntime = new CapturingJsRuntime();
         var saveService = new SessionService(jsRuntime, new RealJsonSerializer());
 
@@ -199,13 +271,13 @@ public class SessionServiceTests {
         var reloaded = await loadService.LoadSessionAsync(savedJson);
         Assert.That(reloaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(reloaded.Categories.Select(category => category.Name),
-            Is.EqualTo(loadedLegacySession.Categories.Select(category => category.Name)));
+            Is.EqualTo(loadedSession.Categories.Select(category => category.Name)));
         Assert.That(reloaded.Cards.Select(card => (card.Id, card.Name, card.Copies, card.Active)),
-            Is.EqualTo(loadedLegacySession.Cards.Select(card => (card.Id, card.Name, card.Copies, card.Active))));
+            Is.EqualTo(loadedSession.Cards.Select(card => (card.Id, card.Name, card.Copies, card.Active))));
         Assert.That(reloaded.Combos.Select(combo => (combo.Name, combo.GroupId, combo.Active)),
-            Is.EqualTo(loadedLegacySession.Combos.Select(combo => (combo.Name, combo.GroupId, combo.Active))));
-        Assert.That(reloaded.HandSize, Is.EqualTo(loadedLegacySession.HandSize));
-        Assert.That(reloaded.CategoryColorIndices, Is.EqualTo(loadedLegacySession.CategoryColorIndices));
+            Is.EqualTo(loadedSession.Combos.Select(combo => (combo.Name, combo.GroupId, combo.Active))));
+        Assert.That(reloaded.HandSize, Is.EqualTo(loadedSession.HandSize));
+        Assert.That(reloaded.CategoryColorIndices, Is.EqualTo(loadedSession.CategoryColorIndices));
     }
 
     [Test]
@@ -260,8 +332,8 @@ public class SessionServiceTests {
     }
 
     [Test]
-    public async Task LoadSessionAsync_UnversionedFixtureStillRejectsDuplicateCardIds() {
-        var root = JsonNode.Parse(await ReadPersistedSessionFixture())!.AsObject();
+    public async Task LoadSessionAsync_CurrentEraUnversionedFixtureStillRejectsDuplicateCardIds() {
+        var root = JsonNode.Parse(await ReadSessionFixture("vsmodel.json"))!.AsObject();
         var cards = root["Cards"]!.AsArray();
         cards.Add(cards[0]!.DeepClone());
 
@@ -271,8 +343,8 @@ public class SessionServiceTests {
         Assert.That(exception!.Message, Does.Contain("duplicate card IDs"));
     }
 
-    private static async Task<string> ReadPersistedSessionFixture() => await File.ReadAllTextAsync(
-        Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "vsmodel.json"));
+    private static async Task<string> ReadSessionFixture(string fixtureName) => await File.ReadAllTextAsync(
+        Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", fixtureName));
 
     private SessionService CreateRealSerializerSessionService() => new(_jsRuntimeMock.Object, new RealJsonSerializer());
 

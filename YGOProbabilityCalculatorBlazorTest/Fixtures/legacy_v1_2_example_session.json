@@ -1,0 +1,219 @@
+{
+  "Categories": [
+    {
+      "Name": "1 Card Starter"
+    },
+    {
+      "Name": "Lubellion"
+    },
+    {
+      "Name": "Normal Summon"
+    },
+    {
+      "Name": "Bystial"
+    },
+    {
+      "Name": "L/D Normal Summon"
+    }
+  ],
+  "Cards": [
+    {
+      "Categories": [
+        {
+          "Name": "1 Card Starter"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Fabled Lurrie"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Normal Summon"
+        },
+        {
+          "Name": "L/D Normal Summon"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Effect Veiler"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Normal Summon"
+        }
+      ],
+      "Copies": 2,
+      "Name": "Maxx \u0022C\u0022"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Normal Summon"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Ash Blossom \u0026 Joyous Spring"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Normal Summon"
+        }
+      ],
+      "Copies": 2,
+      "Name": "Ghost Mourner \u0026 Moonlit Chill"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "1 Card Starter"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Lacrima the Crimson Tears"
+    },
+    {
+      "Categories": [],
+      "Copies": 2,
+      "Name": "Artifact Lancea"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Bystial"
+        }
+      ],
+      "Copies": 2,
+      "Name": "Bystial Druiswurm"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Bystial"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Bystial Magnamhut"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Bystial"
+        }
+      ],
+      "Copies": 1,
+      "Name": "Bystial Saronir"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Bystial"
+        }
+      ],
+      "Copies": 2,
+      "Name": "Bystial Baldrake"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "1 Card Starter"
+        }
+      ],
+      "Copies": 2,
+      "Name": "Fiendsmith Engraver"
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Chaos Hunter"
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Fantastical Dragon Phantazmay"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Lubellion"
+        }
+      ],
+      "Copies": 3,
+      "Name": "The Bystial Lubellion"
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Nibiru, the Primal Being"
+    },
+    {
+      "Categories": [
+        {
+          "Name": "1 Card Starter"
+        }
+      ],
+      "Copies": 3,
+      "Name": "Fiendsmith\u0027s Tract"
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "Branded Regained"
+    }
+  ],
+  "Combos": [
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "1 Card Starter"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "1-Card Combo"
+    },
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "Lubellion"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        },
+        {
+          "BaseCategory": {
+            "Name": "Normal Summon"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Moon Combo"
+    },
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "Bystial"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        },
+        {
+          "BaseCategory": {
+            "Name": "L/D Normal Summon"
+          },
+          "MinCount": 1,
+          "MaxCount": 5
+        }
+      ],
+      "Name": "Moon Combo 2"
+    }
+  ],
+  "HandSize": 5
+}
