@@ -11,10 +11,13 @@
             <span>@CardDisplayName</span>
             <span class="ms-2">(@Card.Copies)</span>
 
-            @if (UserCategories.Any()) {
+            @if (UserCategories.Any() || ManualProperties.Any()) {
                 <span class="ms-2">-</span>
                 @foreach (var cat in UserCategories) {
                     <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">@cat.Name</span>
+                }
+                @foreach (var property in ManualProperties) {
+                    <span class="badge text-bg-secondary category-tag ms-1 manual-property-header-badge">@property.Name</span>
                 }
             }
             @if (!Card.Active) {
@@ -96,20 +99,39 @@
                     </span>
                 }
             </div>
-            @if (ManualProperties.Any()) {
-                <div class="mt-2 added-card-properties">
-                    <div class="form-text mb-1">Added card properties</div>
-                    @foreach (var property in ManualProperties) {
-                        <span class="badge text-bg-secondary me-2 category-tag">
-                            @property.Name
-                            <button type="button" class="btn-close category-remove-button ms-1"
-                                    aria-label="@($"Remove added card property {property.Name} from card {CardDisplayName}")"
-                                    title="@($"Remove added card property {property.Name} from card {CardDisplayName}")"
-                                    @onclick="() => RemoveManualProperty(property.MetadataKey!)">
-                            </button>
-                        </span>
-                    }
-                </div>
+            @if (EffectiveMetadataProperties.Length > 0) {
+                <details class="card-property-inspector mt-3">
+                    <summary class="small fw-semibold">Card properties (@EffectiveMetadataProperties.Length)</summary>
+                    <div class="mt-2">
+                        @if (DetectedProperties.Length > 0) {
+                            <div class="detected-card-properties mb-2">
+                                <div class="form-text mb-1">Detected from card data</div>
+                                <div class="d-flex flex-wrap">
+                                    @foreach (var property in DetectedProperties) {
+                                        <span class="badge text-bg-secondary category-tag me-2 mb-1 detected-card-property">@property.Name</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (ManualProperties.Length > 0) {
+                            <div class="manual-card-properties">
+                                <div class="form-text mb-1">Added manually</div>
+                                <div class="d-flex flex-wrap">
+                                    @foreach (var property in ManualProperties) {
+                                        <span class="badge text-bg-secondary category-tag me-2 mb-1 manual-card-property">
+                                            @property.Name
+                                            <button type="button" class="btn-close category-remove-button ms-1"
+                                                    aria-label="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
+                                                    title="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
+                                                    @onclick="() => RemoveManualProperty(property.MetadataKey!)">
+                                            </button>
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </details>
             }
         </div>
     </div>
@@ -130,9 +152,17 @@
     [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
 
-    private IEnumerable<CategoryBase> UserCategories => Card.Categories.Where(c => c.Source == CategorySource.User);
-    private IEnumerable<CategoryBase> ManualProperties => Card.Categories.Where(c => c.Source == CategorySource.Metadata &&
-        Card.ManualMetadataCategoryKeys.Contains(c.MetadataKey!));
+    private CategoryBase[] UserCategories => Card.Categories.Where(c => c.Source == CategorySource.User).ToArray();
+    private CategoryBase[] EffectiveMetadataProperties => Card.Categories
+        .Where(c => c.Source == CategorySource.Metadata)
+        .DistinctBy(c => c.Identity)
+        .ToArray();
+    private CategoryBase[] DetectedProperties => EffectiveMetadataProperties
+        .Where(c => !Card.ManualMetadataCategoryKeys.Contains(c.MetadataKey!))
+        .ToArray();
+    private CategoryBase[] ManualProperties => EffectiveMetadataProperties
+        .Where(c => Card.ManualMetadataCategoryKeys.Contains(c.MetadataKey!))
+        .ToArray();
     private string? error;
     private string selectedCategory = string.Empty;
     private int previousCategoryRenameVersion;
@@ -207,3 +237,4 @@
     }
 
 }
+
