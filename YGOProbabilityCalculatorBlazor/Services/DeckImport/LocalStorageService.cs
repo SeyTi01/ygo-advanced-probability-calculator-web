@@ -9,6 +9,9 @@ public class LocalStorageService(IJSRuntime jsRuntime, ISerializer serializer) :
         return serializer.Deserialize<T>(json);
     }
 
+    public async Task<string?> GetRawItemAsync(string key) =>
+        await jsRuntime.InvokeAsync<string?>("localStorage.getItem", key);
+
     public async Task SetItemAsync<T>(string key, T value) {
         var json = serializer.Serialize(value);
         await jsRuntime.InvokeVoidAsync("localStorage.setItem", key, json);
