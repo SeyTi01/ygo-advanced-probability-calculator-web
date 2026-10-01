@@ -1,0 +1,23 @@
+.entry-editor-header > .accordion-button {
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.entry-editor-header > .accordion-button > span {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+@media (max-width: 575.98px) {
+    .entry-editor-header {
+        flex-wrap: wrap;
+    }
+
+    .entry-editor-header > .accordion-button {
+        flex-basis: 100%;
+        width: auto;
+    }
+}
+
