@@ -28,7 +28,14 @@ public class CardConverter : JsonConverter<Card> {
         }
         var externalCardId = root.TryGetProperty("ExternalCardId", out var externalProperty) &&
             externalProperty.ValueKind != JsonValueKind.Null ? externalProperty.GetInt32() : (int?)null;
-        return new Card(categories, copies, name, active, id, externalCardId);
+        var manualKeys = root.TryGetProperty("ManualMetadataCategoryKeys", out var manualProperty)
+            ? JsonSerializer.Deserialize<List<string>>(manualProperty.GetRawText(), options)
+                ?? throw new JsonException("Manual card properties must be an array.")
+            : [];
+        try {
+            return new Card(categories, copies, name, active, id, externalCardId, manualKeys);
+        }
+        catch (ArgumentException ex) { throw new JsonException("Invalid manual card properties.", ex); }
     }
 
     public override void Write(Utf8JsonWriter writer, Card value, JsonSerializerOptions options) {
@@ -40,6 +47,8 @@ public class CardConverter : JsonConverter<Card> {
         writer.WriteBoolean("Active", value.Active);
         writer.WriteString("Id", value.Id);
         if (value.ExternalCardId is { } externalCardId) writer.WriteNumber("ExternalCardId", externalCardId);
+        writer.WritePropertyName("ManualMetadataCategoryKeys");
+        JsonSerializer.Serialize(writer, value.ManualMetadataCategoryKeys.Order(StringComparer.Ordinal), options);
         writer.WriteEndObject();
     }
 }

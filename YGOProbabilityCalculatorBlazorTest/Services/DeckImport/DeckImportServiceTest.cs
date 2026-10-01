@@ -129,6 +129,7 @@ public class DeckImportServiceTest {
         Assert.That(cards.Select(c => c.Copies), Is.EqualTo(new[] { 2, 1 }));
         Assert.That(cards[0].Categories.Select(c => c.Name), Is.EqualTo(new[] { "Spell", "Quick-Play Spell" }));
         Assert.That(cards[0].Categories.All(c => c.Source == CategorySource.Metadata), Is.True);
+        Assert.That(cards.All(c => c.ManualMetadataCategoryKeys.Count == 0), Is.True);
         Assert.That(cards[1].Categories, Is.Empty);
         Assert.That(cards[1].Name, Is.EqualTo("456"));
         _cardInfoServiceMock.Verify(x => x.GetCardInfoAsync(123), Times.Once);

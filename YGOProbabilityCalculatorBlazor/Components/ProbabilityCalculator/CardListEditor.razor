@@ -7,7 +7,7 @@
             <CardEditor @key="editorKeys[Cards[index]]"
                 Index="index"
                 Card="Cards[index]"
-                CategoryBases="CategoryBases"
+                CategoryBases="availableCategories"
                 CategoryColorIndices="CategoryColorIndices"
                 CategoryRename="CategoryRename"
                 ActiveCardIndex="ActiveCardIndex"
@@ -28,6 +28,7 @@
 @code {
     [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
@@ -40,9 +41,13 @@
     [Parameter] public EventCallback<(int From, int To)> OnMoveCard { get; set; }
 
     private readonly EditorKeys<Card> editorKeys = new();
+    private IReadOnlyList<CategoryBase> availableCategories = [];
     private int ActiveCopies => Cards.Where(card => card.Active).Sum(card => card.Copies);
 
-    protected override void OnParametersSet() => editorKeys.Synchronize(Cards);
+    protected override void OnParametersSet() {
+        editorKeys.Synchronize(Cards);
+        availableCategories = CategoryCatalog.Build(CategoryBases, Cards, Combos);
+    }
 
     private Task ReplaceCard((int Index, Card NewCard) payload) {
         editorKeys.Replace(Cards[payload.Index], payload.NewCard);

@@ -7,7 +7,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.Session;
 public class LegacyCardMetadataEnricher(ICardInfoService cardInfoService) : ILegacyCardMetadataEnricher {
     public async Task EnrichAsync(SessionState session) {
         var candidates = session.Cards.Where(card => card.ExternalCardId is null &&
-            !card.Categories.Any(category => category.Source == CategorySource.Metadata) &&
+            !card.Categories.Any(category => category.Source == CategorySource.Metadata &&
+                !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)) &&
             !string.IsNullOrWhiteSpace(card.Name)).ToArray();
         if (candidates.Length == 0) return;
 
@@ -27,10 +28,7 @@ public class LegacyCardMetadataEnricher(ICardInfoService cardInfoService) : ILeg
                 info.Id <= 0 || !string.Equals(info.Name, card.Name, StringComparison.Ordinal)) continue;
             var properties = CardPropertyProvider.GetCategories(info);
             if (properties.Count == 0) continue;
-            var categories = card.Categories.ToList();
-            var identities = categories.Select(category => category.Identity).ToHashSet(StringComparer.Ordinal);
-            categories.AddRange(properties.Where(property => identities.Add(property.Identity)));
-            session.Cards[i] = new Card(categories, card.Copies, card.Name, card.Active, card.Id, info.Id);
+            session.Cards[i] = card.WithObjectiveMetadata(properties, info.Id);
         }
     }
 }
