@@ -23,7 +23,9 @@ if (-not (Test-Path $solution)) {
 }
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    throw '.NET is not on PATH. Install the .NET 10 SDK, restart Codex, and retry: https://dotnet.microsoft.com/download/dotnet/10.0'
+    Write-Warning '.NET SDK is not available on PATH. Continue workspace setup; the agent must bootstrap a nonprivileged .NET 10 SDK before restore/build/test.'
+    Write-Host 'Codex worktree setup complete; dependency restore deferred until .NET 10 is bootstrapped.'
+    exit 0
 }
 
 $sdks = @(& dotnet --list-sdks)
@@ -31,7 +33,10 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Unable to query installed .NET SDKs using dotnet --list-sdks.'
 }
 if (-not ($sdks | Where-Object { $_ -match '^10\.' })) {
-    throw ".NET 10 SDK is required; found: $($sdks -join ', '). Install it and restart Codex: https://dotnet.microsoft.com/download/dotnet/10.0"
+    $sdkSummary = if ($sdks.Count -gt 0) { $sdks -join ', ' } else { 'no SDKs were reported' }
+    Write-Warning ".NET 10 SDK is not installed; found: $sdkSummary. Continue workspace setup; the agent must bootstrap a nonprivileged .NET 10 SDK before restore/build/test."
+    Write-Host 'Codex worktree setup complete; dependency restore deferred until .NET 10 is bootstrapped.'
+    exit 0
 }
 
 Write-Host 'Using .NET installation:'
