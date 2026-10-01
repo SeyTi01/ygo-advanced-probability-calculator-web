@@ -24,7 +24,7 @@ public class CardConverterTests {
 
         var json = JsonSerializer.Serialize(card, _options);
 
-        var expectedJson = $"{{\"Categories\":[{{\"Name\":\"Category1\",\"Source\":\"User\"}}],\"Copies\":3,\"Name\":\"TestCard\",\"Active\":true,\"Id\":\"{card.Id}\"}}";
+        var expectedJson = $"{{\"Categories\":[{{\"Name\":\"Category1\",\"Source\":\"User\"}}],\"Copies\":3,\"Name\":\"TestCard\",\"Active\":true,\"Id\":\"{card.Id}\",\"ManualMetadataCategoryKeys\":[]}}";
         Assert.That(json, Is.EqualTo(expectedJson));
     }
 
@@ -65,5 +65,45 @@ public class CardConverterTests {
         Assert.That(first.Id, Is.Not.Empty.And.Not.EqualTo(second.Id));
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Card>(
             "{\"Categories\":[],\"Copies\":1,\"Name\":null,\"Id\":\"\"}", _options));
+    }
+
+    [Test]
+    public void ManualPropertiesRoundTripAndMissingFieldMeansObjectiveMembership() {
+        var fire = new CategoryBase("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
+        var card = new Card([], 3, "ROTA", false, "rota", 32807846).WithManualMetadataCategory(fire);
+        var json = JsonSerializer.Serialize(card, _options);
+        var loaded = JsonSerializer.Deserialize<Card>(json, _options)!;
+        Assert.That(loaded.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { fire.MetadataKey }));
+        Assert.That(loaded.Categories, Is.EqualTo(card.Categories));
+        Assert.That((loaded.Id, loaded.ExternalCardId, loaded.Copies, loaded.Name, loaded.Active),
+            Is.EqualTo((card.Id, card.ExternalCardId, card.Copies, card.Name, card.Active)));
+        var previewV2 = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        previewV2.AsObject().Remove("ManualMetadataCategoryKeys");
+        var preview = JsonSerializer.Deserialize<Card>(previewV2.ToJsonString(), _options)!;
+        Assert.That(preview.ManualMetadataCategoryKeys, Is.Empty);
+        Assert.That(preview.WithoutManualMetadataCategory(fire.MetadataKey!).Categories, Does.Contain(fire));
+    }
+
+    [TestCase("null")]
+    [TestCase("\"attribute:fire\"")]
+    [TestCase("[null]")]
+    [TestCase("[\"\"]")]
+    [TestCase("[\"attribute:water\"]")]
+    [TestCase("[123]")]
+    public void MalformedManualPropertiesAreRejected(string keys) {
+        var json = """
+            {"Categories":[{"Name":"Attribute: FIRE","Source":"Metadata","MetadataKey":"attribute:fire"}],
+             "Copies":1,"Name":"ROTA","ManualMetadataCategoryKeys":
+            """ + keys + "}";
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Card>(json, _options));
+    }
+
+    [Test]
+    public void PersistedDuplicateManualKeysAreNormalized() {
+        var json = """
+            {"Categories":[{"Name":"Attribute: FIRE","Source":"Metadata","MetadataKey":"attribute:fire"}],
+             "Copies":1,"Name":"ROTA","ManualMetadataCategoryKeys":["attribute:fire","attribute:fire"]}
+            """;
+        Assert.That(JsonSerializer.Deserialize<Card>(json, _options)!.ManualMetadataCategoryKeys, Has.Count.EqualTo(1));
     }
 }

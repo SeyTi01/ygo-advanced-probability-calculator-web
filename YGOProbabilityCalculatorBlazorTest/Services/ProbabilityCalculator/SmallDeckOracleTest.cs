@@ -10,6 +10,50 @@ public class SmallDeckOracleTest {
     private static readonly CategoryBase C = new("C");
 
     [Test]
+    public void ManualAndObjectiveFireUseTheSamePhysicalCopySemantics() {
+        var fire = new CategoryBase("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
+        var spell = new CategoryBase("Spell", CategorySource.Metadata, "kind:spell");
+        var objective = new Card([fire], 2);
+        var rota = new Card([spell], 2).WithManualMetadataCategory(fire);
+        List<Card> deck = [objective, rota, new([], 2)];
+        List<Combo> combos = [new([new(fire, 1, 3)]), new([new(fire, 1, 3), new(spell, 1, 3)]),
+            new([new(fire, 1, 1)]), new([new(fire, 0, 0)]), new([new(fire, 1, 3)], cards: [new(rota.Id, 1, 3)])];
+        foreach (var size in new[] { 1, 2, 3 }) TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, size);
+        Assert.That(MatchesHand([rota], combos[0]), Is.True);
+        Assert.That(MatchesHand([objective], combos[0]), Is.True);
+        Assert.That(MatchesHand([rota], combos[1]), Is.False);
+        Assert.That(MatchesHand([rota, rota], combos[1]), Is.True);
+        var removed = rota.WithoutManualMetadataCategory(fire.MetadataKey!);
+        Assert.That(MatchesHand([removed], combos[0]), Is.False);
+        foreach (var size in new[] { 1, 2, 3 }) TotalAndStandaloneResultsMatchEveryPhysicalHand([objective, removed, deck[2]], combos, size);
+    }
+
+    [Test]
+    public async Task BundledRotaOverrideRecoversOriginalUserFireRoutes() {
+        var source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json"));
+        var session = await new YGOProbabilityCalculatorBlazor.Services.Session.SessionService(
+            Moq.Mock.Of<Microsoft.JSInterop.IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()).LoadSessionAsync(source);
+        var fire = session.Cards.SelectMany(c => c.Categories).First(c => c.Identity == "metadata:attribute:fire");
+        var rota = session.Cards.Single(c => c.Name == "Reinforcement of the Army");
+        Assert.That(rota.Categories.Select(c => c.Identity), Does.Contain("user:Fire").And.Not.Contain(fire.Identity));
+        var deck = session.Cards.Where(c => c.Active).ToList();
+        var manualDeck = deck.Select(c => c == rota ? c.WithManualMetadataCategory(fire) : c).ToList();
+        // Every physical card eligible for the old Fire role now has the same effective property.
+        Assert.That(manualDeck.Select(c => c.Categories.Any(p => p.Identity == fire.Identity)),
+            Is.EqualTo(deck.Select(c => c.Categories.Any(p => p.Identity == "user:Fire"))));
+        var propertyCombos = session.Combos.Select(combo => combo.WithCategories(combo.Categories.Select(c =>
+            c.BaseCategory.Identity == "user:Fire" ? new ComboCategory(fire, c.MinCount, c.MaxCount) : c))).ToList();
+        var engine = new ProbabilityCalculatorService();
+        var original = engine.CalculateProbabilityResults(deck, session.Combos, session.HandSize, session.ComboGroups);
+        var overridden = engine.CalculateProbabilityResults(manualDeck, propertyCombos, session.HandSize, session.ComboGroups);
+        var missing = engine.CalculateProbabilityResults(deck, propertyCombos, session.HandSize, session.ComboGroups);
+        Assert.That(overridden.TotalProbability, Is.EqualTo(original.TotalProbability));
+        Assert.That(overridden.ComboProbabilities.Select(c => c.Probability), Is.EqualTo(original.ComboProbabilities.Select(c => c.Probability)));
+        Assert.That(overridden.GroupProbabilities!.Select(g => g.Probability), Is.EqualTo(original.GroupProbabilities!.Select(g => g.Probability)));
+        Assert.That(missing.TotalProbability, Is.LessThan(original.TotalProbability));
+    }
+
+    [Test]
     public void SameLabelUserAndMetadataRequirementsRemainIndependent() {
         var user = new CategoryBase("Spell");
         var spell = new CategoryBase("Spell", CategorySource.Metadata, "kind:spell");
