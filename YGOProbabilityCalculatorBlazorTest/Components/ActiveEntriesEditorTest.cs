@@ -47,7 +47,7 @@ public class ActiveEntriesEditorTest {
         HandSize = handSize
     };
 
-    private static void AssertProbability(IRenderedComponent<ProbabilityCalculatorComponent> cut, double value) {
+    private static async Task AssertProbabilityAsync(IRenderedComponent<ProbabilityCalculatorComponent> cut, double value) {
         var activeCards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
             .Where(card => card.Active).ToList();
         var activeCombos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
@@ -57,24 +57,21 @@ public class ActiveEntriesEditorTest {
         Assert.That(value, Is.EqualTo(oracleValue).Within(1e-12),
             "expected probability must match independent physical-hand enumeration");
 
-        cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").Click();
-        cut.WaitForAssertion(() => {
-            Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.False);
-            Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
-            var result = cut.Find(".probability-results");
-            Assert.That(result.TextContent, Does.Contain(value.ToString("P2")));
-
-            var comboRows = result.QuerySelectorAll(".combo-probability-item");
-            Assert.That(comboRows.Length, Is.EqualTo(activeCombos.Count));
-            for (var index = 0; index < activeCombos.Count; index++) {
-                var combo = activeCombos[index];
-                var expectedStandalone = SmallDeckOracleTest.EnumerateProbability(activeCards, [combo], handSize);
-                var displayName = string.IsNullOrWhiteSpace(combo.Name) ? $"Unnamed combo {index + 1}" : combo.Name;
-                Assert.That(comboRows[index].TextContent, Does.Contain(displayName));
-                Assert.That(comboRows[index].QuerySelector("strong")!.TextContent,
-                    Is.EqualTo(expectedStandalone.ToString("P2")));
-            }
-        });
+        await cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
+        var result = cut.Find(".probability-results");
+        Assert.That(result.TextContent, Does.Contain(value.ToString("P2")));
+        var comboRows = result.QuerySelectorAll(".combo-probability-item");
+        Assert.That(comboRows.Length, Is.EqualTo(activeCombos.Count));
+        for (var index = 0; index < activeCombos.Count; index++) {
+            var combo = activeCombos[index];
+            var expectedStandalone = SmallDeckOracleTest.EnumerateProbability(activeCards, [combo], handSize);
+            var displayName = string.IsNullOrWhiteSpace(combo.Name) ? $"Unnamed combo {index + 1}" : combo.Name;
+            Assert.That(comboRows[index].TextContent, Does.Contain(displayName));
+            Assert.That(comboRows[index].QuerySelector("strong")!.TextContent,
+                Is.EqualTo(expectedStandalone.ToString("P2")));
+        }
     }
 
     private static void AssertPreviousResult(IRenderedComponent<ProbabilityCalculatorComponent> cut) {
@@ -143,18 +140,18 @@ public class ActiveEntriesEditorTest {
     }
 
     [Test]
-    public void InactiveCardCopiesLeaveTheEffectivePopulationAndCanBeRestored() {
+    public async Task InactiveCardCopiesLeaveTheEffectivePopulationAndCanBeRestored() {
         var cut = Render(Session(
             [new([a], 2, "A copies"), new([], 2, "Uncategorized copies")],
             [new([new(a, 1, 2)], "At least one A")]));
         var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
 
-        AssertProbability(cut, 5.0 / 6.0);
+        await AssertProbabilityAsync(cut, 5.0 / 6.0);
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (4)"));
 
         var card = cut.FindComponent<CardEditor>();
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
-        card.Find("#cardActive0").Change(false);
+        await card.Find("#cardActive0").ChangeAsync(new() { Value = false });
 
         Assert.That(card.Find("#cardActive0").HasAttribute("checked"), Is.False);
         Assert.That(card.Find(".accordion-item").ClassList.Contains("entry-inactive"), Is.True);
@@ -163,15 +160,15 @@ public class ActiveEntriesEditorTest {
             "toggling the checkbox must not expand or collapse the editor");
         AssertPreviousResult(cut);
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (2)"));
-        AssertProbability(cut, 0.0);
+        await AssertProbabilityAsync(cut, 0.0);
 
-        card.Find("#cardActive0").Change(true);
+        await card.Find("#cardActive0").ChangeAsync(new() { Value = true });
         AssertPreviousResult(cut);
-        AssertProbability(cut, 5.0 / 6.0);
+        await AssertProbabilityAsync(cut, 5.0 / 6.0);
     }
 
     [Test]
-    public void InactiveCombosAreRemovedFromTheUnionAndAnInactiveIncompleteComboDoesNotBlockCalculation() {
+    public async Task InactiveCombosAreRemovedFromTheUnionAndAnInactiveIncompleteComboDoesNotBlockCalculation() {
         var cut = Render(Session(
             [new([a], 2, "A"), new([b], 1, "B"), new([], 1, "Blank")],
             [new([new(a, 1, 1)], "Exactly one A"), new([new(b, 1, 1)], "Exactly one B"), new([], "Draft combo")]));
@@ -180,16 +177,16 @@ public class ActiveEntriesEditorTest {
         Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("incomplete active combo"));
 
         var incompleteCombo = cut.FindComponents<ComboEditor>()[2];
-        incompleteCombo.Find("#comboActive2").Change(false);
+        await incompleteCombo.Find("#comboActive2").ChangeAsync(new() { Value = false });
         Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.False);
-        AssertProbability(cut, 5.0 / 6.0);
+        await AssertProbabilityAsync(cut, 5.0 / 6.0);
 
-        cut.FindComponents<ComboEditor>()[0].Find("#comboActive0").Change(false);
+        await cut.FindComponents<ComboEditor>()[0].Find("#comboActive0").ChangeAsync(new() { Value = false });
         AssertPreviousResult(cut);
-        AssertProbability(cut, 0.5);
+        await AssertProbabilityAsync(cut, 0.5);
 
-        cut.FindComponents<ComboEditor>()[0].Find("#comboActive0").Change(true);
-        AssertProbability(cut, 5.0 / 6.0);
+        await cut.FindComponents<ComboEditor>()[0].Find("#comboActive0").ChangeAsync(new() { Value = true });
+        await AssertProbabilityAsync(cut, 5.0 / 6.0);
     }
 
     [Test]

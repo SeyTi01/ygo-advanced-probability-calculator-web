@@ -40,6 +40,8 @@ public class CalculatorEditorTest {
         return context.RenderComponent<ProbabilityCalculatorComponent>();
     }
 
+    // Synchronous bUnit events discard their dispatcher task; calculation tests await events
+    // before asserting or editing again, and retain pending calculation tasks until release.
     private static IElement Button(IRenderedFragment fragment, string text) =>
         fragment.FindAll("button").Single(element => element.TextContent.Trim() == text);
 
@@ -49,11 +51,11 @@ public class CalculatorEditorTest {
             Is.EqualTo("Previous result · inputs changed"));
     }
 
-    private static void RenameGroupWithEnter(IRenderedFragment fragment, string oldName, string newName) {
-        fragment.Find($"[aria-label='Edit group {oldName}']").Click();
+    private static async Task RenameGroupWithEnter(IRenderedFragment fragment, string oldName, string newName) {
+        await fragment.Find($"[aria-label='Edit group {oldName}']").ClickAsync(new());
         var input = fragment.Find($"[aria-label='New name for group {oldName}']");
-        input.Input(newName);
-        input.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+        await input.InputAsync(new() { Value = newName });
+        await input.KeyDownAsync(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
     }
 
     private SessionState Session() => new() {
@@ -62,7 +64,7 @@ public class CalculatorEditorTest {
     };
 
     [Test]
-    public void ReorderControlsMoveAllFourListsAndKeepSessionOrderAndReferences() {
+    public async Task ReorderControlsMoveAllFourListsAndKeepSessionOrderAndReferences() {
         var c = new CategoryBase("C");
         var cards = new List<Card> { new([a], 1, "Same"), new([b], 1, "Same"), new([c], 1, "") };
         var groups = new List<ComboGroup> { new("g1", "One"), new("g2", "Two"), new("g3", "Three") };
@@ -80,35 +82,35 @@ public class CalculatorEditorTest {
         Assert.That(cut.Find("[aria-label='Move combo Same, row 1 up']").TextContent, Is.EqualTo("▲"));
         Assert.That(cut.Find("[aria-label='Move card Same, row 1 up']").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Find("[aria-label='Move combo Combo 3, row 3 down']").HasAttribute("disabled"), Is.True);
-        cut.Find("[aria-label='Edit category A']").Click();
+        await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         Assert.That(cut.Find("[aria-label='Move category A left']").HasAttribute("disabled"), Is.True);
-        cut.Find("[aria-label='Edit group One']").Click();
+        await cut.Find("[aria-label='Edit group One']").ClickAsync(new());
         Assert.That(cut.Find("[aria-label='Move group One left']").HasAttribute("disabled"), Is.True);
-        Button(cut, "Calculate").Click();
-        cut.WaitForElement(".probability-results");
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
         var totalBeforeMove = cut.Find(".probability-total-value").TextContent;
         Assert.That(cut.Find("[aria-label='Move category A left']").HasAttribute("disabled"), Is.True);
-        cut.Find("[aria-label='Move category A right']").Click();
+        await cut.Find("[aria-label='Move category A right']").ClickAsync(new());
         AssertPreviousResult(cut);
-        cut.Find("[aria-label='Move category A right']").Click();
-        cut.Find("[aria-label='Edit category C']").Click();
-        cut.Find("[aria-label='Move category C left']").Click();
-        cut.Find("[aria-label='Move group One right']").Click();
-        cut.Find("[aria-label='Move group One right']").Click();
-        cut.Find("[aria-label='Edit group Three']").Click();
-        cut.Find("[aria-label='Move group Three left']").Click();
+        await cut.Find("[aria-label='Move category A right']").ClickAsync(new());
+        await cut.Find("[aria-label='Edit category C']").ClickAsync(new());
+        await cut.Find("[aria-label='Move category C left']").ClickAsync(new());
+        await cut.Find("[aria-label='Move group One right']").ClickAsync(new());
+        await cut.Find("[aria-label='Move group One right']").ClickAsync(new());
+        await cut.Find("[aria-label='Edit group Three']").ClickAsync(new());
+        await cut.Find("[aria-label='Move group Three left']").ClickAsync(new());
         Assert.That(cut.Find("[aria-label='Move category C right']").TextContent, Is.EqualTo("▶"));
         Assert.That(cut.Find("[aria-label='Move group Three left']").TextContent, Is.EqualTo("◀"));
-        cut.Find("[aria-label='Edit category A']").Click();
+        await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         Assert.That(cut.Find("[aria-label='Move category A right']").HasAttribute("disabled"), Is.True);
-        cut.Find("[aria-label='Edit group One']").Click();
+        await cut.Find("[aria-label='Edit group One']").ClickAsync(new());
         Assert.That(cut.Find("[aria-label='Move group One right']").HasAttribute("disabled"), Is.True);
-        cut.Find("[aria-label='Move card Same, row 1 down']").Click();
-        cut.Find("[aria-label='Move card Same, row 2 down']").Click();
-        cut.Find("[aria-label='Move card Card 2, row 2 up']").Click();
-        cut.Find("[aria-label='Move combo Same, row 1 down']").Click();
-        cut.Find("[aria-label='Move combo Same, row 2 down']").Click();
-        cut.Find("[aria-label='Move combo Combo 2, row 2 up']").Click();
+        await cut.Find("[aria-label='Move card Same, row 1 down']").ClickAsync(new());
+        await cut.Find("[aria-label='Move card Same, row 2 down']").ClickAsync(new());
+        await cut.Find("[aria-label='Move card Card 2, row 2 up']").ClickAsync(new());
+        await cut.Find("[aria-label='Move combo Same, row 1 down']").ClickAsync(new());
+        await cut.Find("[aria-label='Move combo Same, row 2 down']").ClickAsync(new());
+        await cut.Find("[aria-label='Move combo Combo 2, row 2 up']").ClickAsync(new());
 
         Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Select(x => x.Name),
             Is.EqualTo(new[] { "C", "B", "A" }));
@@ -120,15 +122,15 @@ public class CalculatorEditorTest {
             Is.EqualTo(new[] { "g3", "g2", "g1" }));
         Assert.That(cut.FindComponents<ComboEditor>()[2].Instance.Combo.Cards.Single().CardId, Is.EqualTo(cards[0].Id));
         Assert.That(cut.FindComponents<ComboEditor>()[2].Instance.Combo.GroupId, Is.EqualTo("g1"));
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-result-status"), Is.Empty));
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(totalBeforeMove));
         Assert.That(cut.FindAll(".probability-group .combo-probability-name").Select(x => x.TextContent.Trim().Split(' ')[0]),
             Is.EqualTo(new[] { "Three", "Two", "One" }));
         Assert.That(cut.FindAll(".combo-probability-item .combo-probability-name")[0].TextContent,
             Does.Contain("Unnamed combo 1"));
 
-        Button(cut, "Save Session").Click();
+        await Button(cut, "Save Session").ClickAsync(new());
         var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using (var document = System.Text.Json.JsonDocument.Parse(json)) {
@@ -143,8 +145,8 @@ public class CalculatorEditorTest {
                 Is.EqualTo(new[] { "g3", "g2", "g1" }));
         }
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "ordered.json"));
-        cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>().Select(x => x.Instance.Card.Id),
-            Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id })));
+        Assert.That(cut.FindComponents<CardEditor>().Select(x => x.Instance.Card.Id),
+            Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id }));
         Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Select(x => x.Name),
             Is.EqualTo(new[] { "C", "B", "A" }));
         Assert.That(cut.FindComponent<ComboListEditor>().Instance.ComboGroups.Select(x => x.Id),
@@ -284,7 +286,7 @@ public class CalculatorEditorTest {
     }
 
     [Test]
-    public void NewCardAndCategoryRequirementsCannotShareOneDrawnCard() {
+    public async Task NewCardAndCategoryRequirementsCannotShareOneDrawnCard() {
         var role = new CategoryBase("Role");
         var card = new Card([role], 1, "Piece");
         var other = new Card([], 1, "Other");
@@ -292,17 +294,17 @@ public class CalculatorEditorTest {
             Categories = [role], Cards = [card, other], Combos = [new([], "Mixed")], HandSize = 1
         });
         var editor = cut.FindComponent<ComboEditor>();
-        editor.Find(".accordion-button").Click();
-        editor.Find("#comboCategory0").Change("Role");
-        Button(editor, "Add").Click();
-        editor.Find("#constraintKind0").Change("Card");
-        editor.Find("#comboCard0").Change(card.Id);
-        Button(editor, "Add").Click();
+        await editor.Find(".accordion-button").ClickAsync(new());
+        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = "Role" });
+        await Button(editor, "Add").ClickAsync(new());
+        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
+        await editor.Find("#comboCard0").ChangeAsync(new() { Value = card.Id });
+        await Button(editor, "Add").ClickAsync(new());
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(cut.Find(".probability-total").TextContent,
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".probability-total").TextContent,
             Does.Contain(SmallDeckOracleTest.EnumerateProbability([card, other],
-                [new([new(role, 1, 1)], cards: [new(card.Id, 1, 1)])], 1).ToString("P2"))));
+                [new([new(role, 1, 1)], cards: [new(card.Id, 1, 1)])], 1).ToString("P2")));
         Assert.That(editor.FindAll(".accordion-body .category-tag"), Has.Count.EqualTo(2));
     }
 
@@ -330,7 +332,7 @@ public class CalculatorEditorTest {
     }
 
     [Test]
-    public void MixedComboSessionRoundTripKeepsCardIdentityAndGroup() {
+    public async Task MixedComboSessionRoundTripKeepsCardIdentityAndGroup() {
         var card = new Card([a], 2, "Piece");
         var session = new SessionState {
             Categories = [a], Cards = [card],
@@ -338,32 +340,30 @@ public class CalculatorEditorTest {
             ComboGroups = [new("g", "Group")], HandSize = 1
         };
         var cut = Render(session);
-        Button(cut, "Save Session").Click();
+        await Button(cut, "Save Session").ClickAsync(new());
         var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         Assert.That(json, Does.Contain(card.Id).And.Contain("\"Cards\""));
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "mixed.json"));
-        cut.WaitForAssertion(() => {
+        {
             var loadedCard = cut.FindComponent<CardEditor>().Instance.Card;
             var loadedCombo = cut.FindComponent<ComboEditor>().Instance.Combo;
             Assert.That(loadedCard.Id, Is.EqualTo(card.Id));
             Assert.That(loadedCombo.Cards.Single().CardId, Is.EqualTo(card.Id));
             Assert.That(loadedCombo.GroupId, Is.EqualTo("g"));
             Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-        });
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => {
-            Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(0.0.ToString("P2")));
-            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-        });
-        cut.Find("#handSize").Change("2");
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(cut.Find(".probability-total").TextContent,
-            Does.Contain(1.0.ToString("P2"))));
+        }
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(0.0.ToString("P2")));
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "2" });
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".probability-total").TextContent,
+            Does.Contain(1.0.ToString("P2")));
     }
 
     [Test]
-    public void TooManyActiveCombosExplainTheLimitAndInactiveCombosDoNotCount() {
+    public async Task TooManyActiveCombosExplainTheLimitAndInactiveCombosDoNotCount() {
         var session = Session();
         session.Combos.Clear();
         session.Combos.AddRange(Enumerable.Range(0, 31)
@@ -371,15 +371,13 @@ public class CalculatorEditorTest {
         var cut = Render(session);
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Markup, Does.Contain("at most 30 active combos"));
-        cut.Find("#comboActive30").Change(false);
+        await cut.Find("#comboActive30").ChangeAsync(new() { Value = false });
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-        for (var index = 1; index < 30; index++) cut.Find($"#comboActive{index}").Change(false);
-        Button(cut, "Calculate").Click();
+        for (var index = 1; index < 30; index++) await cut.Find($"#comboActive{index}").ChangeAsync(new() { Value = false });
+        await Button(cut, "Calculate").ClickAsync(new());
         var expected = SmallDeckOracleTest.EnumerateProbability(session.Cards, [session.Combos[0]], session.HandSize);
-        cut.WaitForAssertion(() => {
-            Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(expected.ToString("P2")));
-            Assert.That(cut.FindAll(".combo-probability-item"), Has.Count.EqualTo(1));
-        });
+        Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(expected.ToString("P2")));
+        Assert.That(cut.FindAll(".combo-probability-item"), Has.Count.EqualTo(1));
     }
 
     [Test]
@@ -693,40 +691,40 @@ public class CalculatorEditorTest {
     }
 
     [Test]
-    public void SessionSaveLoadRoundTripPreservesZeroAndResetsOldEditorDrafts() {
+    public async Task SessionSaveLoadRoundTripPreservesZeroAndResetsOldEditorDrafts() {
         var session = Session();
         session.Combos.Clear();
         session.Combos.Add(new Combo([new(a, 0, 0)], "No A"));
         var cut = Render(session);
-        Button(cut, "Save Session").Click();
+        await Button(cut, "Save Session").ClickAsync(new());
         var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         Assert.That(json, Does.Contain("\"MaxCount\": 0"));
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1)));
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
         var combo = cut.FindComponent<ComboEditor>();
-        combo.Find("select").Change("B");
-        combo.Find("#minCount0").Input("2");
-        combo.Find(".accordion-button").Click();
-        cut.Find("[placeholder='Category name']").Input("Old draft");
+        await combo.Find("select").ChangeAsync(new() { Value = "B" });
+        await combo.Find("#minCount0").InputAsync(new() { Value = "2" });
+        await combo.Find(".accordion-button").ClickAsync(new());
+        await cut.Find("[placeholder='Category name']").InputAsync(new() { Value = "Old draft" });
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "session.json"));
-        cut.WaitForAssertion(() => {
+        {
             var loaded = cut.FindComponent<ComboEditor>();
             Assert.That(loaded.Find("select").GetAttribute("value"), Is.Null.Or.Empty);
             Assert.That(loaded.Find("#minCount0").GetAttribute("value"), Is.EqualTo("1"));
             Assert.That(loaded.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
             Assert.That(cut.Find("[placeholder='Category name']").GetAttribute("value"), Is.Null.Or.Empty);
             Assert.That(cut.FindAll(".probability-results"), Is.Empty);
-        });
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(cut.Find(".alert-primary").TextContent, Does.Contain((1.0 / 6).ToString("P2"))));
-        cut.Find("[aria-label='Remove category A']").Click();
-        cut.WaitForAssertion(() => Assert.That(
-            cut.FindComponent<CategoryListEditor>().Find("[role=alert]").TextContent, Does.Contain("still used")));
+        }
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".alert-primary").TextContent, Does.Contain((1.0 / 6).ToString("P2")));
+        await cut.Find("[aria-label='Remove category A']").ClickAsync(new());
+        Assert.That(
+            cut.FindComponent<CategoryListEditor>().Find("[role=alert]").TextContent, Does.Contain("still used"));
     }
 
     [Test]
-    public void DeckImportReplacesRowsWithoutReusingDraftsAndUpdatesCalculationEligibility() {
+    public async Task DeckImportReplacesRowsWithoutReusingDraftsAndUpdatesCalculationEligibility() {
         // Exercise the real YDK parser; only the external card-name lookup is stubbed.
         context.Services.AddSingleton<IProbabilityCalculatorService>(
             new SequencedProbabilityCalculator(
@@ -739,19 +737,17 @@ public class CalculatorEditorTest {
         context.Services.AddSingleton(cardInfo.Object);
         context.Services.AddSingleton<IDeckImportService, DeckImportService>();
         var cut = Render(Session());
-        cut.Find("[aria-label='New combo group name']").Input("Tier 1");
-        cut.Find("[aria-label='Add combo group']").Click();
+        await cut.Find("[aria-label='New combo group name']").InputAsync(new() { Value = "Tier 1" });
+        await cut.Find("[aria-label='Add combo group']").ClickAsync(new());
         var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
-        cut.Find("#comboGroup0").Change(groupId);
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1)));
-        cut.FindComponents<CardEditor>()[0].Find("select").Change("B");
-        cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
+        await cut.Find("#comboGroup0").ChangeAsync(new() { Value = groupId });
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+        await cut.FindComponents<CardEditor>()[0].Find("select").ChangeAsync(new() { Value = "B" });
+        await cut.FindComponents<CardEditor>()[0].Find(".accordion-button").ClickAsync(new());
         cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n123\n123\n#extra\n456", "deck.ydk"));
-        cut.WaitForAssertion(() => {
-            Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
-            Assert.That(cut.FindAll(".probability-results"), Is.Empty);
-        });
+        Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         var card = cut.FindComponent<CardEditor>();
         Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.GroupId, Is.EqualTo(groupId));
@@ -759,13 +755,13 @@ public class CalculatorEditorTest {
         Assert.That(card.Find("select").GetAttribute("value"), Is.Null.Or.Empty);
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-        cut.Find("#handSize").Change("3");
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
     }
 
     [TestCase(false)]
     [TestCase(true)]
-    public void SessionLoadClearsPreviousResultsAndDiscardsInFlightCompletion(bool failCalculation) {
+    public async Task SessionLoadClearsPreviousResultsAndDiscardsInFlightCompletion(bool failCalculation) {
         var calculator = new SequencedProbabilityCalculator(
             new ProbabilityCalculationResult(0.9, [new ComboProbabilityResult(0, "Old session", 0.8)]),
             failSecond: failCalculation);
@@ -773,11 +769,11 @@ public class CalculatorEditorTest {
         var cut = Render(Session());
         Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
 
-        Button(cut, "Calculate").Click();
-        cut.WaitForElement(".probability-results");
-        Button(cut, "Calculate").Click();
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+        var calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
-            Assert.That(calculator.SecondStarted.Wait(TimeSpan.FromSeconds(5)), Is.True);
+            await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             const string nextSession = """
                 {
                   "Categories": [{"Name":"Loaded"}],
@@ -787,26 +783,25 @@ public class CalculatorEditorTest {
                 }
                 """;
             cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(nextSession, "next.json"));
-            cut.WaitForAssertion(() => {
+            {
                 Assert.That(cut.FindAll(".probability-results"), Is.Empty);
                 Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("1"));
                 Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Loaded card"));
                 Assert.That(cut.FindComponent<ComboEditor>().Instance.Combo.Name, Is.EqualTo("Loaded combo"));
-            });
+            }
         }
         finally {
             calculator.ContinueSecond.Set();
+            await calculation;
         }
 
-        cut.WaitForAssertion(() => {
-            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-            Assert.That(cut.FindAll(".probability-results"), Is.Empty);
-            Assert.That(cut.FindAll("[role=alert]"), Is.Empty);
-        });
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        Assert.That(cut.FindAll("[role=alert]"), Is.Empty);
     }
 
     [Test]
-    public void ResultsShowStandaloneProbabilitiesInOrderForDuplicateAndUnnamedCombos() {
+    public async Task ResultsShowStandaloneProbabilitiesInOrderForDuplicateAndUnnamedCombos() {
         var session = new SessionState {
             Categories = [a, b],
             Cards = [new([a], 2, "A copies"), new([b], 2, "B copies")],
@@ -823,8 +818,8 @@ public class CalculatorEditorTest {
             .Select(combo => SmallDeckOracleTest.EnumerateProbability(session.Cards, [combo], session.HandSize))
             .ToArray();
 
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => {
+        await Button(cut, "Calculate").ClickAsync(new());
+        {
             var result = cut.Find(".probability-results");
             Assert.That(result.GetAttribute("aria-live"), Is.EqualTo("polite"));
             var totalRow = result.QuerySelector(".probability-total")!;
@@ -845,7 +840,7 @@ public class CalculatorEditorTest {
                 Assert.That(rows[index].QuerySelector(".combo-probability-value")!.TextContent,
                     Is.EqualTo(expectedStandalone[index].ToString("P2")));
             }
-        });
+        }
     }
 
     [Test]
@@ -915,21 +910,21 @@ public class CalculatorEditorTest {
     }
 
     [Test]
-    public void GroupResultsUseActiveMembersAndAllGroupChangesInvalidateResults() {
+    public async Task GroupResultsUseActiveMembersAndAllGroupChangesInvalidateResults() {
         var session = Session();
         var cut = Render(session);
-        cut.Find("[aria-label='New combo group name']").Input("Tier 1");
-        cut.Find("[aria-label='Add combo group']").Click();
+        await cut.Find("[aria-label='New combo group name']").InputAsync(new() { Value = "Tier 1" });
+        await cut.Find("[aria-label='Add combo group']").ClickAsync(new());
         var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
-        cut.Find("#comboGroup0").Change(groupId);
-        cut.Find("#comboGroup1").Change(groupId);
+        await cut.Find("#comboGroup0").ChangeAsync(new() { Value = groupId });
+        await cut.Find("#comboGroup1").ChangeAsync(new() { Value = groupId });
         var groupChip = cut.Find(".combo-group-chip");
         Assert.That(groupChip.ClassList.Contains("me-2"), Is.True);
         Assert.That(groupChip.QuerySelector(".category-name-trigger")?.TextContent.Trim(), Is.EqualTo("Tier 1"));
 
-        RenameGroupWithEnter(cut, "Tier 1", "Tier One");
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => {
+        await RenameGroupWithEnter(cut, "Tier 1", "Tier One");
+        await Button(cut, "Calculate").ClickAsync(new());
+        {
             var result = cut.Find(".probability-results");
             var active = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo).ToList();
             var expected = SmallDeckOracleTest.EnumerateProbability(session.Cards, active, 2);
@@ -938,28 +933,28 @@ public class CalculatorEditorTest {
             Assert.That(result.QuerySelectorAll(".combo-probability-item").Length, Is.EqualTo(2));
             Assert.That(result.QuerySelector(".probability-group")!.TextContent, Does.Contain("Tier One"));
             Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-        });
+        }
 
         var secondComboEditor = cut.FindComponents<ComboEditor>()[1];
-        secondComboEditor.Find("#comboActive1").Change(false);
+        await secondComboEditor.Find("#comboActive1").ChangeAsync(new() { Value = false });
         Assert.That(secondComboEditor.Find("#comboActive1").HasAttribute("checked"), Is.False);
         Assert.That(secondComboEditor.Instance.Combo.Active, Is.False);
         AssertPreviousResult(cut);
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => {
+        await Button(cut, "Calculate").ClickAsync(new());
+        {
             var first = cut.FindComponents<ComboEditor>()[0].Instance.Combo;
             var expected = SmallDeckOracleTest.EnumerateProbability(session.Cards, [first], 2);
             Assert.That(cut.Find(".probability-group .combo-probability-value").TextContent,
                 Is.EqualTo(expected.ToString("P2")));
             Assert.That(cut.FindAll(".combo-probability-item"), Has.Count.EqualTo(1));
             Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-        });
-        cut.Find("#comboGroup0").Change("");
+        }
+        await cut.Find("#comboGroup0").ChangeAsync(new() { Value = "" });
         AssertPreviousResult(cut);
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(
-            cut.Find(".probability-group .combo-probability-value").TextContent, Is.EqualTo(0.0.ToString("P2"))));
-        cut.WaitForAssertion(() => Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False));
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(
+            cut.Find(".probability-group .combo-probability-value").TextContent, Is.EqualTo(0.0.ToString("P2")));
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
     }
 
     [Test]
@@ -994,15 +989,14 @@ public class CalculatorEditorTest {
     }
 
     [Test]
-    public void CategoryRenameInvalidatesAndRecalculatesTheWholeResultSet() {
+    public async Task CategoryRenameInvalidatesAndRecalculatesTheWholeResultSet() {
         var cut = Render(Session());
-        Button(cut, "Calculate").Click();
-        cut.WaitForElement(".probability-results", TimeSpan.FromSeconds(5));
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
 
-        cut.Find("[aria-label='Edit category A']").Click();
-        cut.WaitForElement("[aria-label='New name for category A']", TimeSpan.FromSeconds(5))
-            .Input("Renamed A");
-        cut.Find("[aria-label='Save category name']").Click();
+        await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
+        await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Renamed A" });
+        await cut.Find("[aria-label='Save category name']").ClickAsync(new());
         AssertPreviousResult(cut);
 
         var cards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
@@ -1010,15 +1004,15 @@ public class CalculatorEditorTest {
         var combos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
             .Where(combo => combo.Active).ToList();
         var expected = SmallDeckOracleTest.EnumerateProbability(cards, combos, 2);
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => Assert.That(
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(
             cut.Find(".probability-total").TextContent,
-            Does.Contain(expected.ToString("P2"))));
+            Does.Contain(expected.ToString("P2")));
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
     }
 
     [Test]
-    public void ResultsRemainVisibleAndAreReplacedOnlyWhenRecalculationSucceeds() {
+    public async Task ResultsRemainVisibleAndAreReplacedOnlyWhenRecalculationSucceeds() {
         var calculator = new SequencedProbabilityCalculator(
             new ProbabilityCalculationResult(
                 0.75,
@@ -1026,39 +1020,35 @@ public class CalculatorEditorTest {
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
         var cut = Render(Session());
 
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() => {
-            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
-            Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Original combo"));
-        });
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+        Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Original combo"));
 
-        cut.Find("#handSize").Change("3");
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         AssertPreviousResult(cut);
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         Assert.That(calculator.CallCount, Is.EqualTo(1), "input edits must not calculate automatically");
 
-        Button(cut, "Calculate").Click();
+        var calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
-            Assert.That(calculator.SecondStarted.Wait(TimeSpan.FromSeconds(5)), Is.True,
-                "the second calculation should be pending");
+            await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Assert.That(cut.Find(".results-section button").HasAttribute("disabled"), Is.True);
             AssertPreviousResult(cut);
             Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         }
         finally {
             calculator.ContinueSecond.Set();
+            await calculation;
         }
 
-        cut.WaitForAssertion(() => {
-            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.75.ToString("P2")));
-            Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Updated combo"));
-            Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
-        });
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.75.ToString("P2")));
+        Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Updated combo"));
+        Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
     }
 
     [Test]
-    public void InvalidatedInFlightCalculationCannotReplaceThePreviousResult() {
+    public async Task InvalidatedInFlightCalculationCannotReplaceThePreviousResult() {
         var calculator = new SequencedProbabilityCalculator(
             new ProbabilityCalculationResult(
                 0.9,
@@ -1066,33 +1056,30 @@ public class CalculatorEditorTest {
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
         var cut = Render(Session());
 
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() =>
-            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2"))));
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
 
-        Button(cut, "Calculate").Click();
+        var calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
-            Assert.That(calculator.SecondStarted.Wait(TimeSpan.FromSeconds(5)), Is.True,
-                "the in-flight calculation should start before inputs change");
-            cut.Find("#handSize").Change("3");
+            await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
             AssertPreviousResult(cut);
             Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         }
         finally {
             calculator.ContinueSecond.Set();
+            await calculation;
         }
 
-        cut.WaitForAssertion(() => {
-            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-            AssertPreviousResult(cut);
-            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
-            Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Original combo"));
-            Assert.That(cut.Markup, Does.Not.Contain("Stale completion"));
-        });
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        AssertPreviousResult(cut);
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+        Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Original combo"));
+        Assert.That(cut.Markup, Does.Not.Contain("Stale completion"));
     }
 
     [Test]
-    public void CalculationErrorKeepsOldNumbersMarkedAsPreviousInputs() {
+    public async Task CalculationErrorKeepsOldNumbersMarkedAsPreviousInputs() {
         var calculator = new SequencedProbabilityCalculator(
             new ProbabilityCalculationResult(
                 0.9,
@@ -1101,92 +1088,83 @@ public class CalculatorEditorTest {
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
         var cut = Render(Session());
 
-        Button(cut, "Calculate").Click();
-        cut.WaitForAssertion(() =>
-            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2"))));
-        cut.Find("#handSize").Change("3");
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         AssertPreviousResult(cut);
 
-        Button(cut, "Calculate").Click();
+        var calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
-            Assert.That(calculator.SecondStarted.Wait(TimeSpan.FromSeconds(5)), Is.True,
-                "the failing calculation should start");
+            await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         }
         finally {
             calculator.ContinueSecond.Set();
+            await calculation;
         }
 
-        cut.WaitForAssertion(() => {
-            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-            AssertPreviousResult(cut);
-            Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
-            Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("Calculation failed: expected test failure"));
-        });
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        AssertPreviousResult(cut);
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("Calculation failed: expected test failure"));
     }
 
     [Test]
-    public void InputChangeDuringCalculationCannotRestoreStaleTotalOrComboRows() {
+    public async Task InputChangeDuringCalculationCannotRestoreStaleTotalOrComboRows() {
         var delayedCalculator = new DelayedProbabilityCalculator();
         context.Services.AddSingleton<IProbabilityCalculatorService>(delayedCalculator);
         var cut = Render(Session());
 
-        Button(cut, "Calculate").Click();
+        var calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
-            Assert.That(delayedCalculator.Started.Wait(TimeSpan.FromSeconds(5)), Is.True,
-                "the test calculator should begin before inputs change");
-            cut.Find("#handSize").Change("3");
+            await delayedCalculator.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
             Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         }
         finally {
             delayedCalculator.Continue.Set();
+            await calculation;
         }
 
-        Assert.That(delayedCalculator.Finished.Wait(TimeSpan.FromSeconds(5)), Is.True,
-            "the stale calculation should finish");
-        cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Is.Empty));
+        Assert.That(calculation.IsCompletedSuccessfully, Is.True, "the stale event handler must finish before checking its result");
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
     }
 
     [TestCase(false)]
     [TestCase(true)]
-    public void ResourceLimitIsExplainedUnlessInputsHaveChanged(bool changeInputs) {
+    public async Task ResourceLimitIsExplainedUnlessInputsHaveChanged(bool changeInputs) {
         var calculator = new DelayedProbabilityCalculator { ExceedLimit = true };
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
         var cut = Render(Session());
-        Button(cut, "Calculate").Click();
+        var calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
-            Assert.That(calculator.Started.Wait(TimeSpan.FromSeconds(5)), Is.True);
-            if (changeInputs) cut.Find("#handSize").Change("3");
+            await calculator.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if (changeInputs) await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         }
-        finally { calculator.Continue.Set(); }
-        cut.WaitForAssertion(() => {
-            Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
-            Assert.That(cut.FindAll(".probability-results"), Is.Empty);
-            Assert.That(cut.Markup.Contains("Calculation stopped"), Is.EqualTo(!changeInputs));
-        });
+        finally {
+            calculator.Continue.Set();
+            await calculation;
+        }
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        Assert.That(cut.Markup.Contains("Calculation stopped"), Is.EqualTo(!changeInputs));
     }
 
     private sealed class DelayedProbabilityCalculator : IProbabilityCalculatorService {
         public bool ExceedLimit { get; init; }
-        public ManualResetEventSlim Started { get; } = new(false);
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ManualResetEventSlim Continue { get; } = new(false);
-        public ManualResetEventSlim Finished { get; } = new(false);
 
         public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) => 0.75;
 
         public ProbabilityCalculationResult CalculateProbabilityResults(
             List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
-            Started.Set();
-            try {
-                if (!Continue.Wait(TimeSpan.FromSeconds(10)))
-                    throw new TimeoutException("The test did not release the delayed calculation.");
-                if (ExceedLimit) throw new ProbabilityCalculationLimitException();
-                return new ProbabilityCalculationResult(
-                    0.75,
-                    [new ComboProbabilityResult(0, "Stale combo", 0.5)]);
-            }
-            finally {
-                Finished.Set();
-            }
+            Started.SetResult();
+            if (!Continue.Wait(TimeSpan.FromSeconds(10)))
+                throw new TimeoutException("The test did not release the delayed calculation.");
+            if (ExceedLimit) throw new ProbabilityCalculationLimitException();
+            return new ProbabilityCalculationResult(
+                0.75,
+                [new ComboProbabilityResult(0, "Stale combo", 0.5)]);
         }
     }
 
@@ -1195,7 +1173,7 @@ public class CalculatorEditorTest {
         bool failSecond = false) : IProbabilityCalculatorService {
         private int callCount;
 
-        public ManualResetEventSlim SecondStarted { get; } = new(false);
+        public TaskCompletionSource SecondStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ManualResetEventSlim ContinueSecond { get; } = new(false);
         public int CallCount => Volatile.Read(ref callCount);
 
@@ -1210,7 +1188,7 @@ public class CalculatorEditorTest {
                     [new ComboProbabilityResult(0, "Original combo", 0.2)]);
             }
 
-            SecondStarted.Set();
+            SecondStarted.SetResult();
             if (!ContinueSecond.Wait(TimeSpan.FromSeconds(10)))
                 throw new TimeoutException("The test did not release the second calculation.");
             if (failSecond)
