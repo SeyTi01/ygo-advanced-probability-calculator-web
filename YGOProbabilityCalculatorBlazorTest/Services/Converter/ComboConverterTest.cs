@@ -30,7 +30,7 @@ public class ComboConverterTests {
         var json = JsonSerializer.Serialize(combo, _options);
 
         const string expectedJson =
-            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\"},\"MinCount\":1,\"MaxCount\":3}],\"Active\":true}";
+            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\",\"Source\":\"User\"},\"MinCount\":1,\"MaxCount\":3}],\"Active\":true}";
         Assert.That(json, Is.EqualTo(expectedJson));
     }
 
@@ -43,14 +43,14 @@ public class ComboConverterTests {
         var json = JsonSerializer.Serialize(combo, _options);
 
         const string expectedJson =
-            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\"},\"MinCount\":1,\"MaxCount\":3}],\"Name\":\"Test Combo\",\"Active\":true}";
+            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\",\"Source\":\"User\"},\"MinCount\":1,\"MaxCount\":3}],\"Name\":\"Test Combo\",\"Active\":true}";
         Assert.That(json, Is.EqualTo(expectedJson));
     }
 
     [Test]
     public void Deserialize_ValidJson_ReturnsCombo() {
         const string json =
-            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\"},\"MinCount\":1,\"MaxCount\":3}]}";
+            "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\",\"Source\":\"User\"},\"MinCount\":1,\"MaxCount\":3}]}";
 
         var combo = JsonSerializer.Deserialize<Combo>(json, _options);
 

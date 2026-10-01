@@ -10,6 +10,48 @@ public class SmallDeckOracleTest {
     private static readonly CategoryBase C = new("C");
 
     [Test]
+    public void SameLabelUserAndMetadataRequirementsRemainIndependent() {
+        var user = new CategoryBase("Spell");
+        var spell = new CategoryBase("Spell", CategorySource.Metadata, "kind:spell");
+        var quick = new CategoryBase("Quick-Play Spell", CategorySource.Metadata, "spell-type:quick-play");
+        List<Card> deck = [new([user], 2), new([spell, quick], 2), new([user, spell]), new([], 2)];
+        List<Combo> combos = [
+            new([new(user, 1, 3)]), new([new(spell, 1, 3)]),
+            new([new(user, 1, 3), new(spell, 1, 3)]),
+            new([new(spell, 1, 3), new(quick, 1, 3)]),
+            new([new(user, 0, 0), new(spell, 1, 3)]),
+            new([new(spell, 0, 0), new(user, 1, 3)])
+        ];
+        foreach (var size in new[] { 1, 2, 3 }) TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, size);
+        Assert.That(MatchesHand([deck[1]], combos[3]), Is.False);
+        Assert.That(MatchesHand([deck[1], deck[1]], combos[3]), Is.True);
+        Assert.That(MatchesHand([deck[0]], combos[1]), Is.False);
+        Assert.That(MatchesHand([deck[1]], combos[0]), Is.False);
+
+        // Relabeling the same metadata key must not change membership eligibility.
+        var relabeled = new CategoryBase("New label", CategorySource.Metadata, "kind:spell");
+        var relabeledCombo = new Combo([new(relabeled, 1, 3)]);
+        TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, [relabeledCombo], 2);
+        Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, [relabeledCombo], 2),
+            Is.EqualTo(EnumerateProbability(deck, [combos[1]], 2)));
+    }
+
+    [Test]
+    public void UserOnlySemanticsRemainIdenticalToEquivalentMaterializedProperties() {
+        List<Card> userDeck = [new([A], 2), new([B], 2), new([A, B]), new([], 2)];
+        List<Combo> userCombos = [new([new(A, 1, 2), new(B, 1, 2)]), new([new(A, 0, 0)])];
+        var propertyA = new CategoryBase("A", CategorySource.Metadata, "a");
+        var propertyB = new CategoryBase("B", CategorySource.Metadata, "b");
+        var propertyDeck = userDeck.Select(card => card.WithCategories(card.Categories.Select(c => c == A ? propertyA : propertyB))).ToList();
+        var propertyCombos = userCombos.Select(combo => combo.WithCategories(combo.Categories.Select(c =>
+            new ComboCategory(c.BaseCategory == A ? propertyA : propertyB, c.MinCount, c.MaxCount)))).ToList();
+        TotalAndStandaloneResultsMatchEveryPhysicalHand(userDeck, userCombos, 2);
+        TotalAndStandaloneResultsMatchEveryPhysicalHand(propertyDeck, propertyCombos, 2);
+        Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(propertyDeck, propertyCombos, 2),
+            Is.EqualTo(EnumerateProbability(userDeck, userCombos, 2)));
+    }
+
+    [Test]
     public void DirectCardAndMixedRequirementsMatchPhysicalHandsAndGroups() {
         var starter = new CategoryBase("Starter");
         var first = new Card([starter], 2, "Starter");
@@ -402,8 +444,8 @@ public class SmallDeckOracleTest {
 
     internal static Func<IReadOnlyList<Card>, bool> HandPredicate(Combo combo) {
         var roles = new List<(Func<Card, bool> Matches, int Min, int Max)>();
-        foreach (var group in combo.Categories.GroupBy(c => c.BaseCategory.Name))
-            roles.Add((card => card.Categories.Any(c => c.Name == group.Key),
+        foreach (var group in combo.Categories.GroupBy(c => (c.BaseCategory.Source, Key: c.BaseCategory.Source == CategorySource.User ? c.BaseCategory.Name : c.BaseCategory.MetadataKey)))
+            roles.Add((card => card.Categories.Any(c => c.Source == group.Key.Source && (c.Source == CategorySource.User ? c.Name : c.MetadataKey) == group.Key.Key),
                 group.Max(c => c.MinCount), group.Min(c => c.MaxCount)));
         foreach (var group in combo.Cards.GroupBy(c => c.CardId))
             roles.Add((card => card.Id == group.Key,

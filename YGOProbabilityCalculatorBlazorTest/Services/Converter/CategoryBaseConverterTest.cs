@@ -23,7 +23,7 @@ public class CategoryBaseConverterTests {
 
         var json = JsonSerializer.Serialize(category, _options);
 
-        Assert.That(json, Is.EqualTo("{\"Name\":\"TestCategory\"}"));
+        Assert.That(json, Is.EqualTo("{\"Name\":\"TestCategory\",\"Source\":\"User\"}"));
     }
 
     [Test]
@@ -49,4 +49,11 @@ public class CategoryBaseConverterTests {
 
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<CategoryBase>(json, _options));
     }
+
+    [TestCase("{\"Name\":\"Spell\",\"Source\":\"Metadata\"}")]
+    [TestCase("{\"Name\":\"Spell\",\"Source\":\"Metadata\",\"MetadataKey\":\"\"}")]
+    [TestCase("{\"Name\":\"Spell\",\"Source\":\"Unknown\"}")]
+    [TestCase("{\"Name\":\"Spell\",\"Source\":42}")]
+    public void InvalidCategoryIdentityIsRejected(string json) =>
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<CategoryBase>(json, _options));
 }
