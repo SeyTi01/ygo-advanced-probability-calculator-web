@@ -4,7 +4,7 @@ Use these instructions when changing this repository. Read [README.md](README.md
 
 ## Project map
 
-- The .NET 9 Blazor WebAssembly app is in `YGOProbabilityCalculatorBlazor/`; `YGOProbabilityCalculatorBlazor/Pages/Index.razor` renders the main calculator.
+- The .NET 10 Blazor WebAssembly app is in `YGOProbabilityCalculatorBlazor/`; `YGOProbabilityCalculatorBlazor/Pages/Index.razor` renders the main calculator.
 - `YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/ProbabilityCalculatorService.cs` implements the probability calculation.
 - `YGOProbabilityCalculatorBlazor/Models/` contains cards, categories, combo constraints, and session state.
 - `YGOProbabilityCalculatorBlazor/Components/ProbabilityCalculator/` contains the calculator and its card, category, and combo editors. `YGOProbabilityCalculatorBlazor/Components/ProbabilityCalculator/EditorKeys.cs` supports stable editor identity.
@@ -13,7 +13,7 @@ Use these instructions when changing this repository. Read [README.md](README.md
 
 ## Local development and verification
 
-The solution's projects target `.NET 9` (`net9.0`); the README identifies C# 13. Install the .NET 9 SDK. Run commands from the repository root:
+The solution's projects target `.NET 10` (`net10.0`); the README identifies C# 14. Install the .NET 10 SDK. Run commands from the repository root:
 
 ```sh
 dotnet restore YGOProbabilityCalculatorBlazor.sln
@@ -34,7 +34,7 @@ Run the app locally with `dotnet run --project YGOProbabilityCalculatorBlazor/YG
 dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 ```
 
-At the start of implementation or test work, run `dotnet --info` and check that required restore, build, and test commands are available before substantial work. If .NET 9 is missing, try a reasonable nonprivileged bootstrap where permitted. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
+At the start of implementation or test work, run `dotnet --info` and check that required restore, build, and test commands are available before substantial work. If .NET 10 is missing, try a reasonable nonprivileged bootstrap where permitted. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
 There is no GitHub Actions CI workflow. Run relevant tests locally and report the exact commands and outcomes in the pull request. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
 
