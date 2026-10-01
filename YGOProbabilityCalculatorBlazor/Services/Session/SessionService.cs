@@ -9,6 +9,7 @@ namespace YGOProbabilityCalculatorBlazor.Services.Session;
 
 public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISessionService {
     private readonly JsonSerializerOptions _serializerOptions = CreateSerializerOptions();
+    private readonly SessionSchemaMigrator _schemaMigrator = new();
 
     public async Task SaveSessionAsync(SessionState session, string fileName) {
         if (string.IsNullOrWhiteSpace(fileName))
@@ -17,7 +18,16 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
         if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             fileName += ".json";
 
-        var json = serializer.Serialize(session, _serializerOptions);
+        var sessionToSave = new SessionState {
+            SchemaVersion = SessionState.CurrentSchemaVersion,
+            Categories = session.Categories,
+            Cards = session.Cards,
+            Combos = session.Combos,
+            ComboGroups = session.ComboGroups,
+            HandSize = session.HandSize,
+            CategoryColorIndices = session.CategoryColorIndices
+        };
+        var json = serializer.Serialize(sessionToSave, _serializerOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
         var base64 = Convert.ToBase64String(bytes);
 
@@ -26,7 +36,8 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
 
     public Task<SessionState> LoadSessionAsync(string fileContent) {
         try {
-            var session = serializer.Deserialize<SessionState>(fileContent, _serializerOptions);
+            var migratedJson = _schemaMigrator.MigrateToCurrent(fileContent);
+            var session = serializer.Deserialize<SessionState>(migratedJson, _serializerOptions);
 
             if (session == null)
                 throw new InvalidOperationException("Failed to deserialize session data");
