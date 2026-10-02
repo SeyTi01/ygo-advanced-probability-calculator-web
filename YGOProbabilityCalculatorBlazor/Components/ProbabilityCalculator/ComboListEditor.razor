@@ -81,6 +81,7 @@
                 ActiveComboIndexChanged="ActiveComboIndexChanged"
                 OnReplaceCombo="ReplaceCombo"
                 OnRemoveCombo="OnRemoveCombo"
+                OnDuplicateCombo="DuplicateCombo"
                 Count="Combos.Count"
                 OnMove="OnMoveCombo"
                 HandSize="HandSize"
@@ -107,6 +108,7 @@
 
     [Parameter] public EventCallback<(int Index, Combo NewCombo)> OnReplaceCombo { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCombo { get; set; }
+    [Parameter] public EventCallback<int> OnDuplicateCombo { get; set; }
     [Parameter] public EventCallback OnAddNewCombo { get; set; }
     [Parameter] public EventCallback<string> OnAddGroup { get; set; }
     [Parameter] public EventCallback<(string Id, string Name)> OnRenameGroup { get; set; }
@@ -136,6 +138,8 @@
         editorKeys.Replace(Combos[payload.Index], payload.NewCombo);
         return OnReplaceCombo.InvokeAsync(payload);
     }
+
+    private Task DuplicateCombo(int index) => OnDuplicateCombo.InvokeAsync(index);
 
     private async Task AddGroup() {
         var name = newGroupName.Trim();
