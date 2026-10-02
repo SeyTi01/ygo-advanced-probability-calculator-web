@@ -38,7 +38,7 @@
         <h2>Getting started</h2>
         <ol>
             <li><strong>Enter your deck or import a <code>.ydk</code> file.</strong></li>
-            <li><strong>Create categories</strong> for card properties or roles you want to reuse across combos.</li>
+            <li><strong>Create custom categories</strong> for reusable roles; imported cards already expose objective card properties.</li>
             <li><strong>Assign categories to cards.</strong> A card can belong to any number of categories.</li>
             <li><strong>Create combos</strong> using categories, specific cards, or both.</li>
             <li><strong>Set the required minimum and maximum counts.</strong></li>
@@ -50,17 +50,15 @@
     <section class="mb-4">
         <h2>Categories</h2>
         <p>Categories are reusable labels for cards that can fulfill the same role.</p>
-        <p>For example, the included Vanquish Soul / K9 session uses:</p>
+        <p>For example, the included Vanquish Soul / K9 session uses three custom role categories:</p>
         <ul>
-            <li><code>Fire</code></li>
-            <li><code>Dark</code></li>
-            <li><code>Level 5</code></li>
             <li><code>VS Monster</code></li>
             <li><code>VS Starter</code></li>
             <li><code>K9 Starter</code></li>
         </ul>
-        <p>A card can belong to several categories at once. Vanquish Soul Razen, for example, is a <code>Fire</code> card, a <code>VS Monster</code>, and a <code>VS Starter</code>.</p>
-        <p>Categories make it possible to describe a route such as <code>K9 Starter + Lv. 5</code> once instead of creating a separate combo for every possible K9 starter.</p>
+        <p>Objective properties such as <code>Attribute: FIRE</code>, <code>Attribute: DARK</code>, and <code>Level 5</code> come from card metadata instead of duplicate user categories. Functional exceptions can be assigned a property manually; for example, Reinforcement of the Army is treated as FIRE, while Chaotic Elements and &quot;A Case for K9&quot; are treated as Level 5 for combo modeling.</p>
+        <p>A card can combine several custom roles and properties. Vanquish Soul Razen, for example, is both a <code>VS Monster</code> and a <code>VS Starter</code> and also has the FIRE property.</p>
+        <p>Categories and card properties make it possible to describe a route such as <code>K9 Starter + Lv. 5</code> once instead of creating a separate combo for every possible K9 starter.</p>
     </section>
 
     <section class="mb-4">
@@ -73,7 +71,7 @@
             <li>or a mixture of both.</li>
         </ul>
         <p>Imported cards automatically expose objective properties, such as Monster, attribute, level, or Quick-Play Spell, under <strong>Card properties</strong> in combo category selection. These derived properties are read-only; use your own categories for custom roles such as Starter or Extender.</p>
-        <p>Each requirement also has a minimum and maximum count.</p>
+        <p>Each requirement has a minimum and maximum count. Leave <strong>Max</strong> empty for <strong>Any</strong> (the current hand size), or enter a number for a fixed maximum; <code>0</code> remains a fixed zero.</p>
         <p>Separate positive requirements need separate physical card copies. For example, if a card belongs to both <code>VS Starter</code> and <code>Fire</code>, one copy cannot satisfy both parts of <code>VS Starter + Fire</code> by itself.</p>
         <p>Maximums apply to all matching cards in the hand. Setting both the minimum and maximum to <code>0</code> can therefore be used to exclude a card or category from a combo entirely.</p>
     </section>
@@ -89,7 +87,7 @@
     <section class="mb-4">
         <h2>Example: Vanquish Soul / K9</h2>
         <p>The included example models nine routes in a Vanquish Soul / K9 deck that either reach the full Vanquish Soul setup directly or can make Ripper + Saryuja as a bridge. Half boards are intentionally not counted.</p>
-        <p>With all nine routes active, the modeled probability of opening at least one of them is <strong>81.19%</strong>.</p>
+        <p>With all nine routes active, the modeled probability of opening at least one of them is <strong>83.61%</strong>.</p>
         <p>Use <strong>Try It with Example Data</strong> below to load the complete configuration into the calculator.</p>
         <div class="mt-3">
             <button class="btn btn-primary" @onclick="LoadExampleSession">Try It with Example Data</button>
