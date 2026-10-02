@@ -1,0 +1,13 @@
+.help-content {
+    max-width: 56rem;
+    margin-inline: auto;
+    overflow-wrap: anywhere;
+}
+
+.help-content pre {
+    white-space: pre-wrap;
+}
+
+.help-content h1 small {
+    display: inline-block;
+}

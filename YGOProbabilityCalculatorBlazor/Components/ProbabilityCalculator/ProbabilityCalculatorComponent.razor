@@ -7,33 +7,30 @@
 @inject IPendingSessionService _pendingSessionService
 @inject IProbabilityCalculatorService _probabilityCalculator
 
-<div class="container">
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <button class="btn btn-primary">
-            <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="d-none" id="fileInput"/>
-            <label for="fileInput" class="m-0" style="cursor: pointer;">Import Deck</label>
+<div class="calculator-workspace">
+    <div class="session-toolbar mb-3">
+        <label class="btn btn-primary session-file-action" for="fileInput">
+            Import Deck
+            <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="session-file-input" id="fileInput" aria-label="Import Deck"/>
+        </label>
+        <button type="button" class="btn btn-outline-primary" @onclick="OpenYdkeImport" disabled="@isYdkeImportOpen">
+            Import YDKe
         </button>
-        @if (!isYdkeImportOpen) {
-            <button type="button" class="btn btn-outline-primary" @onclick="OpenYdkeImport">
-                Import YDKe
-            </button>
-        }
         <button class="btn btn-secondary" @onclick="SaveCurrentSession">
             Save Session
         </button>
-        <button class="btn btn-secondary">
-            <InputFile OnChange="@LoadSessionFile" accept=".json" class="d-none" id="sessionFileInput"/>
-            <label for="sessionFileInput" class="m-0" style="cursor: pointer;">Load Session</label>
-        </button>
+        <label class="btn btn-secondary session-file-action" for="sessionFileInput">
+            Load Session
+            <InputFile OnChange="@LoadSessionFile" accept=".json" class="session-file-input" id="sessionFileInput" aria-label="Load Session"/>
+        </label>
         @if (isYdkeImportOpen) {
-            <form class="ydke-import-form d-flex flex-wrap align-items-center gap-2 w-100"
+            <form class="ydke-import-form"
                   aria-label="YDKe deck import"
                   @onsubmit="ImportYdkeAsync"
                   @onsubmit:preventDefault="true">
                 <label for="ydkeCodeInput" class="visually-hidden">YDKe deck code</label>
                 <input id="ydkeCodeInput"
-                       class="form-control flex-grow-1"
-                       style="min-width: min(100%, 16rem); max-width: 40rem;"
+                       class="form-control"
                        type="text"
                        autocomplete="off"
                        aria-label="YDKe deck code"
@@ -110,7 +107,7 @@
     />
 
     <div class="results-section">
-        <div class="col-12 col-sm-4 col-md-3">
+        <div class="calculate-action">
             <button class="btn btn-primary btn-lg w-100"
                     @onclick="Calculate"
                     disabled="@(isCalculating || !CanCalculate)">
@@ -137,7 +134,7 @@
                      role="region"
                      aria-labelledby="probabilityResultsHeading"
                      aria-live="polite">
-                <h5 id="probabilityResultsHeading" class="d-flex align-items-center justify-content-between">
+                <h5 id="probabilityResultsHeading" class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
                     <span>Results</span>
                     @if (calculationResultIsStale) {
                         <small class="probability-result-status text-body-secondary fw-normal"

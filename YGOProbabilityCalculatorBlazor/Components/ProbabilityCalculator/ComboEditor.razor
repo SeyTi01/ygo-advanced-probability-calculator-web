@@ -2,59 +2,63 @@
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
 <div class="accordion-item combo-editor @(Combo.Active ? "" : "entry-inactive")">
-    <h2 class="accordion-header d-flex entry-editor-header combo-editor-header">
-        <button class="accordion-button flex-grow-1 @(Index == ActiveComboIndex ? "" : "collapsed")"
-                type="button"
-                aria-expanded="@(Index == ActiveComboIndex ? "true" : "false")"
-                aria-controls="combo@(Index)"
-                @onclick="ToggleCombo">
-            <span class="combo-header-content">
-                <span class="combo-header-name">@ComboDisplayName</span>
+    <div class="accordion-header entry-editor-header combo-editor-header">
+        <h2 class="entry-heading">
+            <button class="accordion-button flex-grow-1 @(Index == ActiveComboIndex ? "" : "collapsed")"
+                    type="button"
+                    aria-expanded="@(Index == ActiveComboIndex ? "true" : "false")"
+                    aria-controls="combo@(Index)"
+                    @onclick="ToggleCombo">
+                <span class="combo-header-content">
+                    <span class="combo-header-name">@ComboDisplayName</span>
 
-                @if (AssignedGroup is { } assignedGroup) {
-                    <small class="combo-group-membership text-body-secondary ms-2">· Group: @assignedGroup.Name</small>
-                }
-
-                @if (ConstraintCount > 0) {
-                    <span class="ms-2">-</span>
-                    @foreach (var cc in HeaderCategories) {
-                        <span class="badge category-tag ms-1 @CategoryCssClass(cc.BaseCategory)" title="@(cc.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
-                            @cc.BaseCategory.Name (@RequirementRangeFormatter.Format(cc.MinCount, cc.MaxCount, cc.MaximumMode))
-                        </span>
-                    }
-                    @foreach (var card in HeaderCards) {
-                        <span class="badge category-tag combo-card-tag ms-1">Card: @CardDisplayName(card.CardId) (@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))</span>
+                    @if (AssignedGroup is { } assignedGroup) {
+                        <small class="combo-group-membership text-body-secondary">· Group: @assignedGroup.Name</small>
                     }
 
-                    @if (HiddenHeaderCategoriesCount > 0) {
-                        <span class="badge bg-secondary ms-1">+@HiddenHeaderCategoriesCount more</span>
-                    }
-                }
-                else {
-                    <span class="text-muted ms-2">(no requirements)</span>
-                }
-                @if (!Combo.Active) {
-                    <span class="badge text-bg-secondary ms-2">Inactive</span>
-                }
-            </span>
-        </button>
+                    @if (ConstraintCount > 0) {
+                        @foreach (var cc in HeaderCategories) {
+                            <span class="badge category-tag ms-1 @CategoryCssClass(cc.BaseCategory)" title="@(cc.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
+                                @cc.BaseCategory.Name (@RequirementRangeFormatter.Format(cc.MinCount, cc.MaxCount, cc.MaximumMode))
+                            </span>
+                        }
+                        @foreach (var card in HeaderCards) {
+                            <span class="badge category-tag combo-card-tag ms-1">Card: @CardDisplayName(card.CardId) (@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))</span>
+                        }
 
-        <ReorderControls Index="Index" Count="Count" ItemLabel="@($"combo {ComboDisplayName}, row {Index + 1}")" OnMove="OnMove" />
-        <div class="d-flex align-items-center mx-2 mb-0 flex-shrink-0 entry-editor-active-toggle">
-            <input id="comboActive@(Index)" class="form-check-input entry-editor-active-checkbox" type="checkbox"
-                   checked="@Combo.Active"
-                   aria-label="@ActiveToggleLabel"
-                   title="@ActiveToggleTitle"
-                   @onchange="e => ChangeActive(e.Value)"/>
+                        @if (HiddenHeaderCategoriesCount > 0) {
+                            <span class="badge bg-secondary ms-1">+@HiddenHeaderCategoriesCount more</span>
+                        }
+                    }
+                    else {
+                        <span class="text-muted ms-2">(no requirements)</span>
+                    }
+                    @if (!Combo.Active) {
+                        <span class="badge text-bg-secondary ms-2">Inactive</span>
+                    }
+                </span>
+            </button>
+
+        </h2>
+        <div class="entry-actions">
+            <ReorderControls Index="Index" Count="Count" ItemLabel="@($"combo {ComboDisplayName}, row {Index + 1}")" OnMove="OnMove" />
+            <label for="comboActive@(Index)" class="entry-editor-active-toggle">
+                <input id="comboActive@(Index)" class="form-check-input entry-editor-active-checkbox" type="checkbox"
+                       checked="@Combo.Active"
+                       aria-label="@ActiveToggleLabel"
+                       title="@ActiveToggleTitle"
+                       @onchange="e => ChangeActive(e.Value)"/>
+                <span class="entry-active-label">Active</span>
+            </label>
+
+            <button class="btn btn-danger align-self-center flex-shrink-0" type="button" aria-label="Remove combo" title="Remove combo" @onclick="() => OnRemoveCombo.InvokeAsync(Index)">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
+                    <path d="M6 2h4l1 1h3v1H2V3h3l1-1zM4 5h8l-.7 9H4.7z"/>
+                    <path d="M6 6h1v6H6zm3 0h1v6H9z" fill="var(--bs-danger)"/>
+                </svg>
+            </button>
         </div>
-
-        <button class="btn btn-danger align-self-center flex-shrink-0" type="button" aria-label="Remove combo" title="Remove combo" @onclick="() => OnRemoveCombo.InvokeAsync(Index)">
-            <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
-                <path d="M6 2h4l1 1h3v1H2V3h3l1-1zM4 5h8l-.7 9H4.7z"/>
-                <path d="M6 6h1v6H6zm3 0h1v6H9z" fill="var(--bs-danger)"/>
-            </svg>
-        </button>
-    </h2>
+    </div>
 
     <div id="combo@(Index)" class="accordion-collapse collapse @(Index == ActiveComboIndex ? "show" : "")">
         <div class="accordion-body">
@@ -64,8 +68,8 @@
             @if (Combo.Cards.Any(card => !Cards.Any(row => row.Id == card.CardId))) {
                 <p class="text-danger" role="status">Missing card reference. Remove the missing requirement, then add another card if needed.</p>
             }
-            <div class="row mb-3">
-                <div class="col-8">
+            <div class="combo-name-row mb-3">
+                <div class="combo-name-field">
                     <label for="comboName@(Index)" class="form-label">Name</label>
                     <input id="comboName@(Index)" class="form-control"
                            value="@(Combo.Name ?? string.Empty)"
@@ -73,8 +77,8 @@
                 </div>
             </div>
 
-            <div class="row g-2 align-items-end mb-3">
-                <div class="col-8 col-sm-4">
+            <div class="requirement-fields mb-3">
+                <div class="requirement-selector">
                     @if (selectedKind == "Card") {
                         <label for="comboCard@(Index)" class="form-label">Card</label>
                         <select id="comboCard@(Index)" class="form-select" value="@selectedCardId" @onchange="e => OnSelectCard(e.Value?.ToString())">
@@ -108,32 +112,32 @@
                         </select>
                     }
                 </div>
-                <div class="col-4 col-sm-2">
+                <div class="requirement-kind">
                     <label for="constraintKind@(Index)" class="form-label">Type</label>
                     <select id="constraintKind@(Index)" class="form-select" value="@selectedKind" @onchange="e => ChangeKind(e.Value?.ToString())">
                         <option value="Category">Category</option>
                         <option value="Card">Card</option>
                     </select>
                 </div>
-                <div class="col-4 col-sm-2">
+                <div class="requirement-min">
                     <label for="minCount@(Index)" class="form-label">Min</label>
                     <input id="minCount@(Index)" class="form-control" type="number" min="0"
                            value="@minCount"
                            @oninput="e => minCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
-                <div class="col-4 col-sm-2">
+                <div class="requirement-max">
                     <label for="maxCount@(Index)" class="form-label">Max</label>
                     <input id="maxCount@(Index)" class="form-control" type="number" min="0" step="1"
                            placeholder="Any" title="Leave empty for Any" value="@maxCount"
                            @oninput="e => maxCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
-                <div class="col-4 col-sm-2">
+                <div class="requirement-submit">
                     <button class="btn btn-primary w-100" @onclick="AddConstraint">@(HasSelectedConstraint ? "Update" : "Add")</button>
                 </div>
             </div>
 
-            <div class="row mb-3">
-                <div class="col-8 col-sm-5">
+            <div class="combo-group-row mb-3">
+                <div class="combo-group-field">
                     <label for="comboGroup@(Index)" class="form-label">Group</label>
                     <select id="comboGroup@(Index)" class="form-select"
                             aria-label="@($"Group for {ComboDisplayName}")"
