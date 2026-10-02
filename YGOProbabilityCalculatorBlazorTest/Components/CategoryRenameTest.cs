@@ -115,7 +115,7 @@ public class CategoryRenameTest {
         Assert.That(probabilityAfter, Is.EqualTo(probabilityBefore).Within(1e-12));
 
         Button(combo, "Update").Click();
-        Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("Renamed (0–1)"));
+        Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("Renamed (1 Max)"));
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
     }
 

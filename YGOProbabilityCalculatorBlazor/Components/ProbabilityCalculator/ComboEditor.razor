@@ -19,11 +19,11 @@
                     <span class="ms-2">-</span>
                     @foreach (var cc in HeaderCategories) {
                         <span class="badge category-tag ms-1 @CategoryCssClass(cc.BaseCategory)" title="@(cc.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
-                            @cc.BaseCategory.Name (@cc.MinCount–@MaximumLabel(cc.MaximumMode, cc.MaxCount))
+                            @cc.BaseCategory.Name (@RequirementRangeFormatter.Format(cc.MinCount, cc.MaxCount, cc.MaximumMode))
                         </span>
                     }
                     @foreach (var card in HeaderCards) {
-                        <span class="badge category-tag combo-card-tag ms-1">Card: @CardDisplayName(card.CardId) (@card.MinCount–@MaximumLabel(card.MaximumMode, card.MaxCount))</span>
+                        <span class="badge category-tag combo-card-tag ms-1">Card: @CardDisplayName(card.CardId) (@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))</span>
                     }
 
                     @if (HiddenHeaderCategoriesCount > 0) {
@@ -161,7 +161,7 @@
                 else {
                     @foreach (var cc in Combo.Categories) {
                         <span class="badge me-2 category-tag @CategoryCssClass(cc.BaseCategory)" title="@(cc.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
-                            @cc.BaseCategory.Name (@cc.MinCount–@MaximumLabel(cc.MaximumMode, cc.MaxCount))
+                            @cc.BaseCategory.Name (@RequirementRangeFormatter.Format(cc.MinCount, cc.MaxCount, cc.MaximumMode))
                             <button type="button"
                                     class="btn-close category-remove-button ms-1"
                                     aria-label="@($"Remove category {cc.BaseCategory.Name} from combo {ComboDisplayName}")"
@@ -173,7 +173,7 @@
                     @foreach (var card in Combo.Cards) {
                         <span class="badge me-2 category-tag combo-card-tag @(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")"
                               title="@card.CardId">
-                            Card: @CardDisplayName(card.CardId) (@card.MinCount–@MaximumLabel(card.MaximumMode, card.MaxCount))
+                            Card: @CardDisplayName(card.CardId) (@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))
                             <button type="button" class="btn-close category-remove-button ms-1"
                                     aria-label="@($"Remove card {CardSelectionLabel(card.CardId)} from combo {ComboDisplayName}")"
                                     title="@($"Remove card {CardDisplayName(card.CardId)} from combo {ComboDisplayName}")"
@@ -252,9 +252,6 @@
     private IEnumerable<ComboCategory> HeaderCategories => Combo.Categories.Take(MaxHeaderBadges);
     private IEnumerable<ComboCard> HeaderCards => Combo.Cards.Take(Math.Max(0, MaxHeaderBadges - Combo.Categories.Count));
     private int HiddenHeaderCategoriesCount => Math.Max(0, ConstraintCount - MaxHeaderBadges);
-
-    private static string MaximumLabel(RequirementMaximumMode mode, int maximum) =>
-        mode == RequirementMaximumMode.HandSize ? "Any" : maximum.ToString();
 
     private RequirementMaximumMode MaximumMode => maximumIsAny ? RequirementMaximumMode.HandSize : RequirementMaximumMode.Fixed;
 
