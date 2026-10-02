@@ -74,6 +74,7 @@
         ActiveComboIndexChanged="@(i => activeComboIndex = i)"
         OnReplaceCombo="ReplaceCombo"
         OnRemoveCombo="@(i => RemoveCombo(i))"
+        OnDuplicateCombo="DuplicateCombo"
         OnAddNewCombo="AddNewCombo"
         OnAddGroup="AddGroup"
         OnRenameGroup="RenameGroup"
@@ -270,6 +271,42 @@
         combos.Add(new Combo(new List<ComboCategory>()));
         InvalidateCalculation();
         activeComboIndex = combos.Count - 1;
+    }
+
+    private void DuplicateCombo(int index) {
+        if (index < 0 || index >= combos.Count) return;
+
+        var source = combos[index];
+        var duplicate = new Combo(
+            source.Categories.Select(category => new ComboCategory(
+                category.BaseCategory,
+                category.MinCount,
+                category.MaxCount)),
+            GetDuplicateComboName(source.Name),
+            source.Active,
+            source.GroupId,
+            source.Cards.Select(card => new ComboCard(card.CardId, card.MinCount, card.MaxCount)));
+
+        var duplicateIndex = index + 1;
+        combos.Insert(duplicateIndex, duplicate);
+        InvalidateCalculation();
+        activeComboIndex = duplicateIndex;
+    }
+
+    private string? GetDuplicateComboName(string? sourceName) {
+        if (string.IsNullOrWhiteSpace(sourceName)) return null;
+
+        var usedNames = combos
+            .Where(combo => !string.IsNullOrWhiteSpace(combo.Name))
+            .Select(combo => combo.Name!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var baseName = $"{sourceName} copy";
+        if (!usedNames.Contains(baseName)) return baseName;
+
+        for (var suffix = 2L; ; suffix++) {
+            var candidate = $"{baseName} {suffix}";
+            if (!usedNames.Contains(candidate)) return candidate;
+        }
     }
 
     private void AddGroup(string name) {
