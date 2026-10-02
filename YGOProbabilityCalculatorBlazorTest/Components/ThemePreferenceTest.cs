@@ -1,5 +1,6 @@
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using YGOProbabilityCalculatorBlazor.Layout;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
@@ -36,5 +37,35 @@ public class ThemePreferenceTest {
         Assert.That(cut.Find("#theme-preference").GetAttribute("value"), Is.EqualTo("dark"));
         var invocation = context.JSInterop.Invocations["ygoTheme.setPreference"].Single();
         Assert.That(invocation.Arguments.Single(), Is.EqualTo("dark"));
+    }
+
+    [Test]
+    public void CalculatorHeaderUsesItsSinglePageHeading() {
+        using var context = new Bunit.TestContext();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = context.RenderComponent<MainLayout>();
+
+        Assert.That(cut.Find(".top-row .app-title").TagName, Is.EqualTo("H1"));
+        Assert.That(cut.FindAll("h1"), Has.Count.EqualTo(1));
+        Assert.That(cut.Find("#theme-preference").GetAttribute("aria-label"), Is.EqualTo("Color theme preference"));
+        Assert.That(cut.Find("a[href='/help']").TextContent.Trim(), Is.EqualTo("Help"));
+    }
+
+    [Test]
+    public void HelpHeaderDoesNotDuplicateItsContentHeading() {
+        using var context = new Bunit.TestContext();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo("/help");
+
+        var cut = context.RenderComponent<MainLayout>(parameters => parameters.Add(
+            layout => layout.Body,
+            builder => builder.AddMarkupContent(0, "<h1>Help page heading</h1>")));
+
+        Assert.That(cut.Find(".top-row .app-title").TagName, Is.EqualTo("DIV"));
+        Assert.That(cut.FindAll("h1"), Has.Count.EqualTo(1));
+        Assert.That(cut.Find("h1").TextContent, Is.EqualTo("Help page heading"));
+        Assert.That(cut.Find("#theme-preference").GetAttribute("aria-label"), Is.EqualTo("Color theme preference"));
+        Assert.That(cut.Find("a[href='/']").TextContent.Trim(), Is.EqualTo("Back"));
     }
 }

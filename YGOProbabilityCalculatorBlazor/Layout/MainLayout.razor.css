@@ -18,11 +18,18 @@ main {
     align-items: center;
 }
 
-.top-row h3 {
+.app-title {
+    flex-grow: 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.top-row-controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
 }
 
 .theme-select {
@@ -65,8 +72,31 @@ main {
         flex-direction: column;
     }
 
-    .top-row, article {
+    .top-row {
+        padding-left: 1.75rem !important;
+        padding-right: 1.75rem !important;
+    }
+
+    article {
         padding-left: 2rem !important;
         padding-right: 1.5rem !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .top-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+
+    .app-title {
+        grid-column: 2;
+        justify-self: center;
+        flex-grow: 0;
+    }
+
+    .top-row-controls {
+        grid-column: 3;
+        justify-self: end;
     }
 }
