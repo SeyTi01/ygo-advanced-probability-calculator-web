@@ -36,18 +36,6 @@
         </button>
 
         <ReorderControls Index="Index" Count="Count" ItemLabel="@($"combo {ComboDisplayName}, row {Index + 1}")" OnMove="OnMove" />
-        <button class="btn btn-outline-secondary align-self-center flex-shrink-0"
-                type="button"
-                aria-label="@($"Duplicate combo {ComboDisplayName}")"
-                title="@($"Duplicate combo {ComboDisplayName}")"
-                @onclick="() => OnDuplicateCombo.InvokeAsync(Index)">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-                 aria-hidden="true" focusable="false">
-                <rect x="8" y="8" width="13" height="13" rx="2"></rect>
-                <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path>
-            </svg>
-        </button>
         <div class="d-flex align-items-center mx-2 mb-0 flex-shrink-0 entry-editor-active-toggle">
             <input id="comboActive@(Index)" class="form-check-input entry-editor-active-checkbox" type="checkbox"
                    checked="@Combo.Active"
@@ -183,6 +171,24 @@
                     }
                 }
             </div>
+
+            @if (Index == ActiveComboIndex) {
+                <div class="mt-3">
+                    <button class="btn btn-outline-secondary btn-sm"
+                            type="button"
+                            aria-label="@($"Duplicate combo {ComboDisplayName}")"
+                            title="@($"Duplicate combo {ComboDisplayName}")"
+                            @onclick="() => OnDuplicateCombo.InvokeAsync(Index)">
+                        <svg class="me-1" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                             aria-hidden="true" focusable="false">
+                            <rect x="8" y="8" width="13" height="13" rx="2"></rect>
+                            <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path>
+                        </svg>
+                        Duplicate combo
+                    </button>
+                </div>
+            }
         </div>
     </div>
 </div>
