@@ -69,9 +69,21 @@ public sealed class SessionSchemaMigrator {
         foreach (var category in Array(root, "Categories")) Classify(category);
         foreach (var card in Array(root, "Cards"))
             foreach (var category in Array(card, "Categories")) Classify(category);
-        foreach (var combo in Array(root, "Combos"))
-            foreach (var constraint in Array(combo, "Categories")) Classify(Property(constraint, "BaseCategory"));
+        foreach (var combo in Array(root, "Combos")) {
+            foreach (var constraint in Array(combo, "Categories")) {
+                Classify(Property(constraint, "BaseCategory"));
+                FixMaximum(constraint);
+            }
+            foreach (var constraint in Array(combo, "Cards")) FixMaximum(constraint);
+        }
         SetSchemaVersion(root, 2);
+
+        static void FixMaximum(JsonNode? node) {
+            if (node is not JsonObject requirement) return;
+            foreach (var key in requirement.Select(p => p.Key).Where(key =>
+                key.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase)).ToArray()) requirement.Remove(key);
+            requirement["MaximumMode"] = "Fixed";
+        }
 
         static void Classify(JsonNode? node) {
             if (node is not JsonObject category) return;

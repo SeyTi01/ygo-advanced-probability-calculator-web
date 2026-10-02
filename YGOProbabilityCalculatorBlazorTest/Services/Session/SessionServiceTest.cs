@@ -415,6 +415,92 @@ public class SessionServiceTests {
         Assert.That(exception!.Message, Does.Contain("duplicate card IDs"));
     }
 
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(2)]
+    public async Task MissingMaximumModeLoadsFixedForEveryHistoricalSchema(int version) {
+        var versionField = version == 0 ? "" : $"\"SchemaVersion\":{version},";
+        var json = $$"""
+            { {{versionField}} "Categories":[{"Name":"Starter"}],
+              "Cards":[{"Id":"starter","Name":"Starter","Copies":6,"Categories":[{"Name":"Starter"}]}],
+              "Combos":[{"Categories":[{"BaseCategory":{"Name":"Starter"},"MinCount":1,"MaxCount":5},
+                                        {"BaseCategory":{"Name":"Starter"},"MinCount":0,"MaxCount":0}],
+                         "Cards":[{"CardId":"starter","MinCount":1,"MaxCount":5},
+                                   {"CardId":"starter","MinCount":0,"MaxCount":0}]}],"HandSize":5 }
+            """;
+        var migrated = new SessionSchemaMigrator().MigrateToCurrent(json);
+        using var document = JsonDocument.Parse(migrated);
+        var requirements = document.RootElement.GetProperty("Combos")[0];
+        if (version < 2) {
+            Assert.That(requirements.GetProperty("Categories")[0].GetProperty("MaximumMode").GetString(), Is.EqualTo("Fixed"));
+            Assert.That(requirements.GetProperty("Cards")[0].GetProperty("MaximumMode").GetString(), Is.EqualTo("Fixed"));
+        }
+        else Assert.That(migrated, Is.EqualTo(json), "Current-version sessions bypass migration.");
+        Assert.That(new SessionSchemaMigrator().MigrateToCurrent(migrated), Is.EqualTo(migrated));
+        var loaded = await CreateRealSerializerSessionService().LoadSessionAsync(json);
+        var category = loaded.Combos[0].Categories[0];
+        var card = loaded.Combos[0].Cards[0];
+        Assert.That(category.MaximumMode, Is.EqualTo(RequirementMaximumMode.Fixed));
+        Assert.That(category.MaxCount, Is.EqualTo(5));
+        Assert.That(category.GetEffectiveMaximum(6), Is.EqualTo(5));
+        Assert.That(card.MaximumMode, Is.EqualTo(RequirementMaximumMode.Fixed));
+        Assert.That(card.GetEffectiveMaximum(6), Is.EqualTo(5));
+        Assert.That(loaded.Combos[0].Categories[1].MaximumMode, Is.EqualTo(RequirementMaximumMode.Fixed));
+        Assert.That(loaded.Combos[0].Cards[1].MaximumMode, Is.EqualTo(RequirementMaximumMode.Fixed));
+        Assert.That(loaded.Combos[0].Categories[1].GetEffectiveMaximum(6), Is.Zero);
+        Assert.That(loaded.Combos[0].Cards[1].GetEffectiveMaximum(6), Is.Zero);
+    }
+
+    [Test]
+    public async Task DynamicAndFixedV2RequirementsRoundTripIncludingImpossibleMinimumAndZero() {
+        var category = new CategoryBase("Starter");
+        var card = new Card([category], 6, "Starter");
+        var session = new SessionState {
+            Categories = [category], Cards = [card], HandSize = 5,
+            Combos = [new([new(category, 1, 5, RequirementMaximumMode.HandSize), new(category, 0, 0)],
+                cards: [new(card.Id, 1, 5, RequirementMaximumMode.HandSize), new(card.Id, 1, 5), new(card.Id, 0, 0)]),
+                new([new(category, 6, 5, RequirementMaximumMode.HandSize)],
+                    cards: [new(card.Id, 6, 5, RequirementMaximumMode.HandSize)])]
+        };
+        var runtime = new CapturingJsRuntime();
+        var service = new SessionService(runtime, new RealJsonSerializer());
+        await service.SaveSessionAsync(session, "modes");
+        Assert.That(runtime.DownloadedJson, Does.Contain("\"MaximumMode\": \"HandSize\"").And.Contain("\"MaximumMode\": \"Fixed\""));
+        var loaded = await service.LoadSessionAsync(runtime.DownloadedJson);
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(2));
+        Assert.That(loaded.Combos[0].Categories.Select(c => (c.MinCount, c.MaxCount, c.MaximumMode)),
+            Is.EqualTo(session.Combos[0].Categories.Select(c => (c.MinCount, c.MaxCount, c.MaximumMode))));
+        Assert.That(loaded.Combos[0].Cards.Select(c => (c.MinCount, c.MaxCount, c.MaximumMode)),
+            Is.EqualTo(session.Combos[0].Cards.Select(c => (c.MinCount, c.MaxCount, c.MaximumMode))));
+        Assert.That(loaded.Combos[0].Categories.Select(c => c.GetEffectiveMaximum(6)), Is.EqualTo(new[] { 6, 0 }));
+        Assert.That(loaded.Combos[0].Cards.Select(c => c.GetEffectiveMaximum(6)), Is.EqualTo(new[] { 6, 5, 0 }));
+        Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(loaded.Cards, [loaded.Combos[1]], 5), Is.Zero);
+        Assert.That(loaded.Combos[1].Categories[0].MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
+        Assert.That(loaded.Combos[1].Cards[0].MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
+    }
+
+    [TestCase("\"Unexpected\"")]
+    [TestCase("\"0\"")]
+    [TestCase("0")]
+    [TestCase("null")]
+    [TestCase("true")]
+    [TestCase("\"HandSize\",\"maximumMode\":\"Fixed\"")]
+    public void MalformedMaximumModeIsRejectedForBothRequirementKinds(string mode) {
+        foreach (var kind in new[] { "Categories", "Cards" }) {
+            var selector = kind == "Categories" ? "\"BaseCategory\":{\"Name\":\"A\"}" : "\"CardId\":\"a\"";
+            var json = $$"""
+                {"SchemaVersion":2,"Combos":[{"Categories":[],"{{kind}}":[{ {{selector}},"MinCount":0,"MaxCount":0,"MaximumMode":{{mode}} }]}]}
+                """;
+            // Avoid a duplicate Categories property when testing category constraints.
+            if (kind == "Categories") json = json.Replace("\"Categories\":[],", "");
+            var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await CreateRealSerializerSessionService().LoadSessionAsync(json));
+            Assert.That(exception!.Message, Is.EqualTo("Invalid session file format"));
+            Assert.That(exception.InnerException, Is.TypeOf<JsonException>());
+            Assert.That(exception.InnerException!.Message, Does.Contain("maximum mode"));
+        }
+    }
+
     private static async Task<string> ReadSessionFixture(string fixtureName) => await File.ReadAllTextAsync(
         Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", fixtureName));
 

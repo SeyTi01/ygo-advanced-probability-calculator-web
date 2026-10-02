@@ -53,7 +53,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             var constraints = new List<Requirement>();
             foreach (var group in combo.Categories.GroupBy(c => c.BaseCategory.Identity, StringComparer.Ordinal)) {
                 var min = group.Max(c => c.MinCount);
-                var max = Math.Min(handSize, group.Min(c => c.MaxCount));
+                var max = Math.Min(handSize, group.Min(c => c.GetEffectiveMaximum(handSize)));
                 if (min > max) return null;
                 // Every category count is in [0, handSize], regardless of overlap.
                 if (min == 0 && max == handSize) continue;
@@ -61,7 +61,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             }
             foreach (var group in combo.Cards.GroupBy(c => c.CardId, StringComparer.Ordinal)) {
                 var min = group.Max(c => c.MinCount);
-                var max = Math.Min(handSize, group.Min(c => c.MaxCount));
+                var max = Math.Min(handSize, group.Min(c => c.GetEffectiveMaximum(handSize)));
                 if (min > max) return null;
                 if (min == 0 && max == handSize) continue;
                 constraints.Add(new Requirement(new ConstraintKey(true, group.Key), min, max));

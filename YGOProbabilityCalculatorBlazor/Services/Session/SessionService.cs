@@ -61,7 +61,8 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
                 new CategoryBaseConverter(),
                 new CardConverter(),
                 new ComboConverter(),
-                new ComboCategoryConverter()
+                new ComboCategoryConverter(),
+                new ComboCardConverter()
             }
         };
     }
