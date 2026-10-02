@@ -92,14 +92,14 @@ public class ActiveEntriesEditorTest {
         Assert.That(card.Find("#cardActive0").GetAttribute("aria-label"), Is.EqualTo("Active card A copies"));
         Assert.That(card.Find("#cardActive0").GetAttribute("title"), Is.EqualTo("Toggle A copies active state"));
         Assert.That(card.FindAll("label[for='cardActive0']"), Has.Count.EqualTo(1));
-        Assert.That(card.Find(".entry-editor-active-toggle .entry-active-label").TextContent.Trim(), Is.EqualTo("Active"));
+        Assert.That(card.FindAll(".entry-active-label"), Is.Empty);
         Assert.That(card.Find("button[title='Remove card']").GetAttribute("aria-label"), Is.EqualTo("Remove card"));
         Assert.That(card.Find("button[title='Remove card'] svg").GetAttribute("aria-hidden"), Is.EqualTo("true"));
 
         Assert.That(combo.Find("#comboActive0").GetAttribute("aria-label"), Is.EqualTo("Active combo Exactly one A"));
         Assert.That(combo.Find("#comboActive0").GetAttribute("title"), Is.EqualTo("Toggle Exactly one A active state"));
         Assert.That(combo.FindAll("label[for='comboActive0']"), Has.Count.EqualTo(1));
-        Assert.That(combo.Find(".entry-editor-active-toggle .entry-active-label").TextContent.Trim(), Is.EqualTo("Active"));
+        Assert.That(combo.FindAll(".entry-active-label"), Is.Empty);
         Assert.That(combo.Find("button[title='Remove combo']").GetAttribute("aria-label"), Is.EqualTo("Remove combo"));
         Assert.That(combo.Find("button[title='Remove combo'] svg").GetAttribute("aria-hidden"), Is.EqualTo("true"));
     }
