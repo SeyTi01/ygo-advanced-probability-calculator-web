@@ -34,14 +34,33 @@ Run the app locally with `dotnet run --project YGOProbabilityCalculatorBlazor/YG
 dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 ```
 
-At the start of implementation or test work, run `dotnet --info` and check that required restore, build, and test commands are available before substantial work. If .NET 10 is missing, try a reasonable nonprivileged bootstrap where permitted. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
+At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work. If no usable .NET 10 SDK is available, follow the restricted Linux / ChatGPT Work bootstrap below before continuing. Missing .NET 10 is not, by itself, sufficient reason to skip local verification; attempt the documented nonprivileged bootstrap first. Only report .NET verification as blocked after that attempt fails because of a real environment restriction, and include the exact failed command and error. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
 `.github/workflows/tests.yml` runs the full regular test suite on every branch push, including feature branches, `dev`, and `main`. CI complements rather than replaces local verification: run relevant tests locally before pushing and report the exact local commands and results in pull requests. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
 
 
+### Restricted Linux and ChatGPT Work: .NET 10 SDK bootstrap
+
+Run `dotnet --info` and `dotnet --list-sdks` first. If a usable 10.x SDK is listed, use it normally. If `dotnet` is missing or no 10.x SDK is installed, attempt this nonprivileged bootstrap before giving up:
+
+```sh
+mkdir -p /tmp/dotnet10-sdk
+curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+TAR_OPTIONS=--no-same-owner bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /tmp/dotnet10-sdk --no-path
+
+export DOTNET_ROOT=/tmp/dotnet10-sdk
+export PATH="$DOTNET_ROOT:$PATH"
+
+dotnet --info
+dotnet --list-sdks
+```
+
+The `TAR_OPTIONS` setting prevents GNU tar from restoring archive owners, which can fail in restricted filesystems. You may also invoke `/tmp/dotnet10-sdk/dotnet` directly. After confirming a 10.x SDK, run the normal restore, build, and test commands above. If the download is blocked or execution is prohibited, report the exact bootstrap command and error; do not claim .NET verification was blocked without attempting the bootstrap.
+
+
 ### Restricted sandbox: WebAssembly task-host failures
 
-In some restricted Linux/Work sandboxes, .NET 10 Blazor WebAssembly builds can fail with `MSB4216`/`MSB4027` or `SocketException (13): Permission denied` while MSBuild tries to start an out-of-process task host. A successful restore does not prove the app or tests build. First try the normal commands and the `-m:1`/node-reuse workaround above. If those still fail and a socket probe confirms Unix sockets are blocked while loopback TCP works, use the following verification-only workaround rather than declaring the suite un-runnable:
+This is a separate build-time issue, unrelated to a missing SDK. After obtaining a usable .NET 10 SDK, run the normal restore, build, and test commands above first; a successful restore alone does not prove the app or tests build. Use the `-m:1`/node-reuse workaround above only if the relevant MSBuild parallel-node or reuse error occurs. If a build or test fails with `MSB4216`/`MSB4027` or `SocketException (13): Permission denied` while MSBuild starts an out-of-process task host, and a socket probe confirms Unix sockets are blocked while loopback TCP works, use the following verification-only workaround rather than declaring the suite un-runnable:
 
 - Use writable temporary `DOTNET_CLI_HOME` and `NUGET_PACKAGES` locations.
 - Disable MSBuild/node reuse and compiler/Razor build servers.
