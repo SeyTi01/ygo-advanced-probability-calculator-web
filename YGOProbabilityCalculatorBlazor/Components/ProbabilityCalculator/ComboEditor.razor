@@ -11,6 +11,10 @@
             <span class="combo-header-content">
                 <span class="combo-header-name">@ComboDisplayName</span>
 
+                @if (AssignedGroup is { } assignedGroup) {
+                    <small class="combo-group-membership text-body-secondary ms-2">· Group: @assignedGroup.Name</small>
+                }
+
                 @if (ConstraintCount > 0) {
                     <span class="ms-2">-</span>
                     @foreach (var cc in HeaderCategories) {
@@ -229,6 +233,9 @@
     private string ComboDisplayName => string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name;
     private string ActiveToggleLabel => $"Active combo {ComboDisplayName}";
     private string ActiveToggleTitle => $"Toggle {ComboDisplayName} active state";
+    private ComboGroup? AssignedGroup => Combo.GroupId is { Length: > 0 } groupId
+        ? ComboGroups.FirstOrDefault(group => group.Id == groupId)
+        : null;
     private bool HasSelectedConstraint => selectedKind == "Card"
         ? Combo.Cards.Any(c => c.CardId == selectedCardId)
         : Combo.Categories.Any(c => c.BaseCategory.Identity == selectedCategory);

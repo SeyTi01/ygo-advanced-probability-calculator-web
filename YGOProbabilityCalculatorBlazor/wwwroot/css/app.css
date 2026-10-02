@@ -167,6 +167,7 @@ code {
 }
 
 .combo-header-name,
+.combo-editor-header .combo-group-membership,
 .combo-editor-header .category-tag,
 .combo-editor .accordion-body .category-tag {
     max-width: 100%;

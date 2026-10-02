@@ -820,6 +820,46 @@ public class CalculatorEditorTest {
     }
 
     [Test]
+    public void ComboHeaderShowsOnlyValidGroupMembershipAsSeparateMetadata() {
+        var card = new Card([a], 2, "Starter", id: "starter-card");
+        const string groupId = "full-combo";
+        const string staleGroupId = "removed-group";
+        var cut = Render(new SessionState {
+            Categories = [a],
+            Cards = [card],
+            Combos = [
+                new([new ComboCategory(a, 1, 1)], "Grouped combo", active: false, groupId: groupId,
+                    cards: [new ComboCard(card.Id, 1, 1)]),
+                new([], "No group assigned"),
+                new([], "Stale group reference", groupId: staleGroupId)
+            ],
+            ComboGroups = [new(groupId, "Full Combo"), new("optional-route", "Optional Route")],
+            HandSize = 2
+        });
+        var editors = cut.FindComponents<ComboEditor>();
+        var groupedHeader = editors[0].Find(".combo-header-content");
+        var membership = groupedHeader.QuerySelector(".combo-group-membership");
+
+        Assert.That(membership, Is.Not.Null);
+        Assert.That(membership!.TextContent, Does.Contain("Group: Full Combo"));
+        Assert.That(membership.ClassList, Does.Not.Contain("category-tag"));
+        Assert.That(membership.ClassList, Does.Not.Contain("card-property-tag"));
+        Assert.That(membership.ClassList, Does.Not.Contain("combo-card-tag"));
+        Assert.That(groupedHeader.QuerySelector(".category-tag")?.TextContent, Does.Contain("A (1–1)"));
+        Assert.That(groupedHeader.QuerySelector(".combo-card-tag")?.TextContent, Does.Contain("Card: Starter (1–1)"));
+        Assert.That(groupedHeader.QuerySelector(".badge.text-bg-secondary")?.TextContent, Is.EqualTo("Inactive"));
+        Assert.That(Array.IndexOf(groupedHeader.Children.ToArray(), membership),
+            Is.LessThan(Array.IndexOf(groupedHeader.Children.ToArray(), groupedHeader.QuerySelector(".category-tag"))));
+
+        foreach (var ungroupedEditor in editors.Skip(1)) {
+            var headerContent = ungroupedEditor.Find(".combo-header-content");
+            Assert.That(headerContent.QuerySelector(".combo-group-membership"), Is.Null);
+            Assert.That(headerContent.TextContent, Does.Not.Contain("Ungrouped"));
+            Assert.That(headerContent.TextContent, Does.Not.Contain(staleGroupId));
+        }
+    }
+
+    [Test]
     public async Task DuplicateActionAppearsOnlyOnTheExpandedComboAndCardHeaderControlsStayUnchanged() {
         var cut = Render(new SessionState {
             Categories = [a],
@@ -1832,6 +1872,7 @@ public class CalculatorEditorTest {
     public void ComboGroupsUseCategoryStyleInlineEditingAndKeepAssignmentsAndComboDrafts() {
         var cut = Render(Session());
         var first = cut.FindComponents<ComboEditor>()[0];
+        Assert.That(first.Find(".combo-header-content").QuerySelector(".combo-group-membership"), Is.Null);
         first.Find("#comboCategory0").Change("user:B");
         first.Find("#minCount0").Input("0");
         first.Find("#maxCount0").Input("0");
@@ -1848,6 +1889,8 @@ public class CalculatorEditorTest {
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("already exists"));
         var groupId = first.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
         first.Find("#comboGroup0").Change(groupId);
+        Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
+            Does.Contain("Group: Tier 1"));
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.Find("[aria-label='New combo group name']").Input("Tier 2");
@@ -1870,6 +1913,8 @@ public class CalculatorEditorTest {
         Assert.That(cut.Find("[aria-label='Edit group Tier One']").TextContent, Is.EqualTo("Tier One"));
         Assert.That(first.Instance.Combo.GroupId,
             Is.EqualTo(groupId));
+        Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
+            Does.Contain("Group: Tier One"));
         Assert.That(cut.Find("#comboGroup0").TextContent, Does.Contain("Tier One"));
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
@@ -1882,11 +1927,21 @@ public class CalculatorEditorTest {
 
         cut.Find("#comboGroup0").Change(secondId);
         Assert.That(first.Instance.Combo.GroupId, Is.EqualTo(secondId));
+        Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
+            Does.Contain("Group: Tier 2"));
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+
+        cut.Find("#comboGroup0").Change("");
+        Assert.That(first.Instance.Combo.GroupId, Is.Null);
+        Assert.That(first.Find(".combo-header-content").QuerySelector(".combo-group-membership"), Is.Null);
+        cut.Find("#comboGroup0").Change(groupId);
+        Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
+            Does.Contain("Group: Tier One"));
 
         cut.Find("[aria-label='Remove group Tier One']").Click();
         Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
-        Assert.That(first.Instance.Combo.GroupId, Is.EqualTo(secondId));
+        Assert.That(first.Instance.Combo.GroupId, Is.Null);
+        Assert.That(first.Find(".combo-header-content").QuerySelector(".combo-group-membership"), Is.Null);
         cut.Find("[aria-label='Remove group Tier 2']").Click();
         Assert.That(cut.FindAll(".combo-group-chip"), Is.Empty);
         Assert.That(first.Instance.Combo.GroupId, Is.Null);
