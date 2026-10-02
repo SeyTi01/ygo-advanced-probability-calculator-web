@@ -261,7 +261,7 @@ public class ActiveEntriesEditorTest {
         Assert.That(card.Find(".accordion-body").TextContent, Does.Contain("A").And.Contain("B"));
         Assert.That(combo.Find("#comboActive0").HasAttribute("checked"), Is.False);
         Assert.That(combo.Find(".accordion-button").TextContent, Does.Contain("Edited combo"));
-        Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("A (1–2)").And.Contain("B (0–0)"));
+        Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("A (1–2)").And.Contain("B (None)"));
     }
 
     [Test]
