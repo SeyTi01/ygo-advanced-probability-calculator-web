@@ -97,7 +97,7 @@ public class CalculatorEditorTest {
 
     private string SavedSessionJson(int saveNumber = 0) {
         var invocation = context.JSInterop.Invocations
-            .Where(invocation => invocation.Arguments.Length == 2 &&
+            .Where(invocation => invocation.Arguments.Count == 2 &&
                 invocation.Arguments[0] is string fileName && fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase) &&
                 invocation.Arguments[1] is string)
             .ElementAt(saveNumber);
