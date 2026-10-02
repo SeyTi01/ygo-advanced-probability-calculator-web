@@ -16,7 +16,10 @@ public class ComboCategoryConverter : JsonConverter<ComboCategory> {
         var minCount = root.GetProperty("MinCount").GetInt32();
         var maxCount = root.GetProperty("MaxCount").GetInt32();
 
-        return new ComboCategory(baseCategory, minCount, maxCount);
+        try {
+            return new ComboCategory(baseCategory, minCount, maxCount, RequirementMaximumModeJson.Read(root));
+        }
+        catch (ArgumentException ex) { throw new JsonException("Invalid category requirement bounds.", ex); }
     }
 
     public override void Write(Utf8JsonWriter writer, ComboCategory value, JsonSerializerOptions options) {
@@ -25,6 +28,7 @@ public class ComboCategoryConverter : JsonConverter<ComboCategory> {
         JsonSerializer.Serialize(writer, value.BaseCategory, options);
         writer.WriteNumber("MinCount", value.MinCount);
         writer.WriteNumber("MaxCount", value.MaxCount);
+        writer.WriteString("MaximumMode", value.MaximumMode.ToString());
         writer.WriteEndObject();
     }
 }

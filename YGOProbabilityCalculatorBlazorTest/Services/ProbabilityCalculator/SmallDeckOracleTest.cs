@@ -9,6 +9,49 @@ public class SmallDeckOracleTest {
     private static readonly CategoryBase B = new("B");
     private static readonly CategoryBase C = new("C");
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void AnyAndFixedFiveDivergeOnlyAtSixCards(bool directCard) {
+        var starter = new Card([A], 6);
+        List<Card> deck = [starter, new([], 2)];
+        Combo Requirement(RequirementMaximumMode mode) => directCard
+            ? new([], cards: [new(starter.Id, 1, 5, mode)])
+            : new([new(A, 1, 5, mode)]);
+        var fixedFive = Requirement(RequirementMaximumMode.Fixed);
+        var any = Requirement(RequirementMaximumMode.HandSize);
+        // Enumerate physical hands independently. Of 28 six-card hands, only the
+        // hand containing all six starters violates fixed 5; all 56 five-card hands pass.
+        Assert.That(EnumerateCounts(deck, [fixedFive], 5), Is.EqualTo((56, 56)));
+        Assert.That(EnumerateCounts(deck, [any], 5), Is.EqualTo((56, 56)));
+        Assert.That(EnumerateCounts(deck, [fixedFive], 6), Is.EqualTo((27, 28)));
+        Assert.That(EnumerateCounts(deck, [any], 6), Is.EqualTo((28, 28)));
+        foreach (var size in new[] { 5, 6 }) TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, [fixedFive, any], size);
+        Assert.That(directCard ? fixedFive.Cards[0].MaxCount : fixedFive.Categories[0].MaxCount, Is.EqualTo(5));
+    }
+
+    [Test]
+    public void DynamicDuplicatesExclusionsAndDistinctSlotsMatchPhysicalHands() {
+        var starter = new Card([A, B], 3);
+        List<Card> deck = [starter, new([A], 1), new([B], 1), new([], 2)];
+        List<Combo> combos = [
+            new([new(A, 1, 0, RequirementMaximumMode.HandSize), new(A, 1, 2)]),
+            new([], cards: [new(starter.Id, 1, 0, RequirementMaximumMode.HandSize), new(starter.Id, 1, 2)]),
+            new([new(A, 0, 0), new(B, 1, 0, RequirementMaximumMode.HandSize)]),
+            new([], cards: [new(starter.Id, 0, 0)]),
+            new([new(A, 1, 0, RequirementMaximumMode.HandSize), new(B, 1, 0, RequirementMaximumMode.HandSize)],
+                cards: [new(starter.Id, 1, 0, RequirementMaximumMode.HandSize)]),
+            new([new(A, 4, 0, RequirementMaximumMode.HandSize)]),
+            new([], cards: [new(starter.Id, 4, 0, RequirementMaximumMode.HandSize)])
+        ];
+        foreach (var size in new[] { 1, 2, 3, 4 }) TotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, size);
+        Assert.That(MatchesHand([starter, starter, starter], combos[0]), Is.False);
+        Assert.That(MatchesHand([starter, starter, starter], combos[1]), Is.False);
+        Assert.That(MatchesHand([starter, starter], combos[4]), Is.False);
+        Assert.That(MatchesHand([starter, starter, starter], combos[4]), Is.True);
+        Assert.That(MatchesHand([starter], combos[2]), Is.False);
+        Assert.That(MatchesHand([starter], combos[3]), Is.False);
+    }
+
     [Test]
     public void ManualAndObjectiveFireUseTheSamePhysicalCopySemantics() {
         var fire = new CategoryBase("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
@@ -42,7 +85,7 @@ public class SmallDeckOracleTest {
         Assert.That(manualDeck.Select(c => c.Categories.Any(p => p.Identity == fire.Identity)),
             Is.EqualTo(deck.Select(c => c.Categories.Any(p => p.Identity == "user:Fire"))));
         var propertyCombos = session.Combos.Select(combo => combo.WithCategories(combo.Categories.Select(c =>
-            c.BaseCategory.Identity == "user:Fire" ? new ComboCategory(fire, c.MinCount, c.MaxCount) : c))).ToList();
+            c.BaseCategory.Identity == "user:Fire" ? new ComboCategory(fire, c.MinCount, c.MaxCount, c.MaximumMode) : c))).ToList();
         var engine = new ProbabilityCalculatorService();
         var original = engine.CalculateProbabilityResults(deck, session.Combos, session.HandSize, session.ComboGroups);
         var overridden = engine.CalculateProbabilityResults(manualDeck, propertyCombos, session.HandSize, session.ComboGroups);
@@ -88,7 +131,7 @@ public class SmallDeckOracleTest {
         var propertyB = new CategoryBase("B", CategorySource.Metadata, "b");
         var propertyDeck = userDeck.Select(card => card.WithCategories(card.Categories.Select(c => c == A ? propertyA : propertyB))).ToList();
         var propertyCombos = userCombos.Select(combo => combo.WithCategories(combo.Categories.Select(c =>
-            new ComboCategory(c.BaseCategory == A ? propertyA : propertyB, c.MinCount, c.MaxCount)))).ToList();
+            new ComboCategory(c.BaseCategory == A ? propertyA : propertyB, c.MinCount, c.MaxCount, c.MaximumMode)))).ToList();
         TotalAndStandaloneResultsMatchEveryPhysicalHand(userDeck, userCombos, 2);
         TotalAndStandaloneResultsMatchEveryPhysicalHand(propertyDeck, propertyCombos, 2);
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(propertyDeck, propertyCombos, 2),
@@ -233,7 +276,7 @@ public class SmallDeckOracleTest {
             .Select(_ => new Card(card.Categories.AsEnumerable().Reverse().Select(category => renamed[category.Name])))).ToList();
         var changedCombos = combos.AsEnumerable().Reverse().Select(combo => new Combo(
             combo.Categories.AsEnumerable().Reverse().Select(constraint => new ComboCategory(
-                renamed[constraint.BaseCategory.Name], constraint.MinCount, constraint.MaxCount)), groupId: "g")).ToList();
+                renamed[constraint.BaseCategory.Name], constraint.MinCount, constraint.MaxCount, constraint.MaximumMode)), groupId: "g")).ToList();
         Assert.That(service.CalculateProbabilityForCombos(splitDeck, changedCombos, 2), Is.EqualTo(expected).Within(1e-12));
         // Adding a duplicate or a subset must not enlarge the union.
         changedCombos.Add(changedCombos[0]);
@@ -484,16 +527,16 @@ public class SmallDeckOracleTest {
     }
     // Independent exhaustive slot assignment, without Hall subsets, masks,
     // count-vector DP or production helpers. Each position can be used once.
-    internal static bool MatchesHand(IReadOnlyList<Card> hand, Combo combo) => HandPredicate(combo)(hand);
+    internal static bool MatchesHand(IReadOnlyList<Card> hand, Combo combo) => HandPredicate(combo, hand.Count)(hand);
 
-    internal static Func<IReadOnlyList<Card>, bool> HandPredicate(Combo combo) {
+    internal static Func<IReadOnlyList<Card>, bool> HandPredicate(Combo combo, int handSize) {
         var roles = new List<(Func<Card, bool> Matches, int Min, int Max)>();
         foreach (var group in combo.Categories.GroupBy(c => (c.BaseCategory.Source, Key: c.BaseCategory.Source == CategorySource.User ? c.BaseCategory.Name : c.BaseCategory.MetadataKey)))
             roles.Add((card => card.Categories.Any(c => c.Source == group.Key.Source && (c.Source == CategorySource.User ? c.Name : c.MetadataKey) == group.Key.Key),
-                group.Max(c => c.MinCount), group.Min(c => c.MaxCount)));
+                group.Max(c => c.MinCount), group.Min(c => c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount)));
         foreach (var group in combo.Cards.GroupBy(c => c.CardId))
             roles.Add((card => card.Id == group.Key,
-                group.Max(c => c.MinCount), group.Min(c => c.MaxCount)));
+                group.Max(c => c.MinCount), group.Min(c => c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount)));
         var slots = roles.SelectMany(role => Enumerable.Repeat(role.Matches, role.Min)).ToArray();
         return hand => {
             if (roles.Any(role => role.Min > role.Max || hand.Count(role.Matches) > role.Max)) return false;
@@ -518,7 +561,12 @@ public class SmallDeckOracleTest {
     // directly evaluate OR-of-combos / AND-of-constraints, without masks, merging,
     // binomial coefficients, inclusion-exclusion, or production helper methods.
     internal static double EnumerateProbability(List<Card> deck, List<Combo> combos, int handSize) {
-        var predicates = combos.Select(HandPredicate).ToArray();
+        var (successes, total) = EnumerateCounts(deck, combos, handSize);
+        return (double)successes / total;
+    }
+
+    internal static (int Successes, int Total) EnumerateCounts(List<Card> deck, List<Combo> combos, int handSize) {
+        var predicates = combos.Select(combo => HandPredicate(combo, handSize)).ToArray();
         var copies = new List<Card>();
         foreach (var card in deck)
             for (var i = 0; i < card.Copies; i++) copies.Add(card);
@@ -526,7 +574,7 @@ public class SmallDeckOracleTest {
         var total = 0;
         var successes = 0;
         Visit(0);
-        return (double)successes / total;
+        return (successes, total);
 
         void Visit(int start) {
             if (hand.Count == handSize) {
