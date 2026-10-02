@@ -345,11 +345,11 @@
             source.Categories.Select(category => new ComboCategory(
                 category.BaseCategory,
                 category.MinCount,
-                category.MaxCount)),
+                category.MaxCount, category.MaximumMode)),
             GetDuplicateComboName(source.Name),
             source.Active,
             source.GroupId,
-            source.Cards.Select(card => new ComboCard(card.CardId, card.MinCount, card.MaxCount)));
+            source.Cards.Select(card => new ComboCard(card.CardId, card.MinCount, card.MaxCount, card.MaximumMode)));
 
         var duplicateIndex = index + 1;
         combos.Insert(duplicateIndex, duplicate);
@@ -420,7 +420,7 @@
                     combo.Categories[i] = new ComboCategory(
                         newCategory,
                         constraint.MinCount,
-                        constraint.MaxCount);
+                        constraint.MaxCount, constraint.MaximumMode);
                 }
             }
         }

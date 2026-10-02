@@ -25,7 +25,7 @@ public class UnionBenchmark {
         var session = await LoadModel();
         var deck = session.Cards.Where(c => c.Active).ToList();
         var combos = session.Combos.Where(c => c.Active).ToList();
-        var predicates = combos.Select(SmallDeckOracleTest.HandPredicate).ToArray();
+        var predicates = combos.Select(combo => SmallDeckOracleTest.HandPredicate(combo, session.HandSize)).ToArray();
         var copies = deck.SelectMany(c => Enumerable.Repeat(c, c.Copies)).ToArray();
         var hand = new List<Card>();
         long total = 0, union = 0;

@@ -19,11 +19,11 @@
                     <span class="ms-2">-</span>
                     @foreach (var cc in HeaderCategories) {
                         <span class="badge category-tag ms-1 @CategoryCssClass(cc.BaseCategory)" title="@(cc.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
-                            @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
+                            @cc.BaseCategory.Name (@cc.MinCount–@MaximumLabel(cc.MaximumMode, cc.MaxCount))
                         </span>
                     }
                     @foreach (var card in HeaderCards) {
-                        <span class="badge category-tag combo-card-tag ms-1">Card: @CardDisplayName(card.CardId) (@card.MinCount–@card.MaxCount)</span>
+                        <span class="badge category-tag combo-card-tag ms-1">Card: @CardDisplayName(card.CardId) (@card.MinCount–@MaximumLabel(card.MaximumMode, card.MaxCount))</span>
                     }
 
                     @if (HiddenHeaderCategoriesCount > 0) {
@@ -122,9 +122,16 @@
                            @oninput="e => minCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
                 <div class="col-4 col-sm-2">
-                    <label for="maxCount@(Index)" class="form-label">Max</label>
+                    <div class="d-flex justify-content-between align-items-center gap-1 mb-2">
+                        <label for="maxCount@(Index)" class="form-label mb-0">Max</label>
+                        <label class="d-flex align-items-center gap-1 mb-0" title="Maximum follows hand size">
+                            <input id="maxAny@(Index)" class="form-check-input mt-0" type="checkbox"
+                                   aria-label="Any maximum" @bind="maximumIsAny" />
+                            Any
+                        </label>
+                    </div>
                     <input id="maxCount@(Index)" class="form-control" type="number" min="0"
-                           value="@maxCount"
+                           value="@maxCount" disabled="@maximumIsAny"
                            @oninput="e => maxCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
                 <div class="col-4 col-sm-2">
@@ -154,7 +161,7 @@
                 else {
                     @foreach (var cc in Combo.Categories) {
                         <span class="badge me-2 category-tag @CategoryCssClass(cc.BaseCategory)" title="@(cc.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
-                            @cc.BaseCategory.Name (@cc.MinCount–@cc.MaxCount)
+                            @cc.BaseCategory.Name (@cc.MinCount–@MaximumLabel(cc.MaximumMode, cc.MaxCount))
                             <button type="button"
                                     class="btn-close category-remove-button ms-1"
                                     aria-label="@($"Remove category {cc.BaseCategory.Name} from combo {ComboDisplayName}")"
@@ -166,7 +173,7 @@
                     @foreach (var card in Combo.Cards) {
                         <span class="badge me-2 category-tag combo-card-tag @(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")"
                               title="@card.CardId">
-                            Card: @CardDisplayName(card.CardId) (@card.MinCount–@card.MaxCount)
+                            Card: @CardDisplayName(card.CardId) (@card.MinCount–@MaximumLabel(card.MaximumMode, card.MaxCount))
                             <button type="button" class="btn-close category-remove-button ms-1"
                                     aria-label="@($"Remove card {CardSelectionLabel(card.CardId)} from combo {ComboDisplayName}")"
                                     title="@($"Remove card {CardDisplayName(card.CardId)} from combo {ComboDisplayName}")"
@@ -228,7 +235,7 @@
     private string selectedKind = "Category";
     private string minCount = "1";
     private string maxCount = "1";
-    private int previousHandSize;
+    private bool maximumIsAny = true;
     private int previousCategoryRenameVersion;
     private string ComboDisplayName => string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name;
     private string ActiveToggleLabel => $"Active combo {ComboDisplayName}";
@@ -246,6 +253,11 @@
     private IEnumerable<ComboCard> HeaderCards => Combo.Cards.Take(Math.Max(0, MaxHeaderBadges - Combo.Categories.Count));
     private int HiddenHeaderCategoriesCount => Math.Max(0, ConstraintCount - MaxHeaderBadges);
 
+    private static string MaximumLabel(RequirementMaximumMode mode, int maximum) =>
+        mode == RequirementMaximumMode.HandSize ? "Any" : maximum.ToString();
+
+    private RequirementMaximumMode MaximumMode => maximumIsAny ? RequirementMaximumMode.HandSize : RequirementMaximumMode.Fixed;
+
     private string CardDisplayName(string cardId) {
         var index = Cards.ToList().FindIndex(card => card.Id == cardId);
         if (index < 0) return $"Missing card ({cardId[..Math.Min(8, cardId.Length)]})";
@@ -260,7 +272,8 @@
 
     private void ChangeKind(string? kind) {
         selectedKind = kind == "Card" ? "Card" : "Category";
-        error = null;
+        if (selectedKind == "Card") OnSelectCard(selectedCardId);
+        else OnSelectCategory(selectedCategory);
     }
 
     private Task ToggleCombo() {
@@ -296,13 +309,13 @@
             error = "Minimum count must be a non-negative whole number.";
             return Task.CompletedTask;
         }
-        if (!int.TryParse(maxCount, out var max) || max < min) {
+        if (!TryMaximum(min, out var max)) {
             error = "Maximum count must be a whole number at least equal to minimum count.";
             return Task.CompletedTask;
         }
         var newCats = Combo.Categories.ToList();
         var existing = newCats.FindIndex(c => c.BaseCategory.Identity == baseCat.Identity);
-        var constraint = new ComboCategory(baseCat, min, max);
+        var constraint = new ComboCategory(baseCat, min, max, MaximumMode);
         if (existing >= 0) newCats[existing] = constraint;
         else newCats.Add(constraint);
 
@@ -322,13 +335,13 @@
             error = "Minimum count must be a non-negative whole number.";
             return Task.CompletedTask;
         }
-        if (!int.TryParse(maxCount, out var max) || max < min) {
+        if (!TryMaximum(min, out var max)) {
             error = "Maximum count must be a whole number at least equal to minimum count.";
             return Task.CompletedTask;
         }
         var newCards = Combo.Cards.ToList();
         var existing = newCards.FindIndex(card => card.CardId == selectedCardId);
-        var constraint = new ComboCard(selectedCardId, min, max);
+        var constraint = new ComboCard(selectedCardId, min, max, MaximumMode);
         if (existing >= 0) newCards[existing] = constraint;
         else newCards.Add(constraint);
         selectedCardId = string.Empty;
@@ -347,6 +360,7 @@
         if (existing is not null) {
             minCount = existing.MinCount.ToString();
             maxCount = existing.MaxCount.ToString();
+            maximumIsAny = existing.MaximumMode == RequirementMaximumMode.HandSize;
         }
         else ResetEditorDefaults();
     }
@@ -364,6 +378,7 @@
         if (existing is not null) {
             minCount = existing.MinCount.ToString();
             maxCount = existing.MaxCount.ToString();
+            maximumIsAny = existing.MaximumMode == RequirementMaximumMode.HandSize;
         }
         else {
             ResetEditorDefaults();
@@ -373,11 +388,18 @@
     private void ResetEditorDefaults() {
         minCount = "1";
         maxCount = HandSize.ToString();
+        maximumIsAny = true;
+    }
+
+    private bool TryMaximum(int minimum, out int maximum) {
+        var validNumber = int.TryParse(maxCount, out maximum) && maximum >= 0;
+        if (!maximumIsAny) return validNumber && maximum >= minimum;
+        if (!validNumber) maximum = HandSize;
+        return true;
     }
 
     protected override void OnInitialized() {
         ResetEditorDefaults();
-        previousHandSize = HandSize;
     }
 
     protected override void OnParametersSet() {
@@ -388,11 +410,6 @@
             previousCategoryRenameVersion = rename.Version;
         }
 
-        // Only update untouched defaults. A draft (including zero) is user input.
-        if (HandSize != previousHandSize && selectedCategory.Length == 0 && selectedCardId.Length == 0 &&
-            minCount == "1" && maxCount == previousHandSize.ToString()) {
-            ResetEditorDefaults();
-        }
-        previousHandSize = HandSize;
+        // Hand size affects effective bounds only; leave committed values and drafts intact.
     }
 }
