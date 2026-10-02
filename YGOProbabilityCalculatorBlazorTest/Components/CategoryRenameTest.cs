@@ -201,7 +201,7 @@ public class CategoryRenameTest {
         LoadSession(cut, legacySession);
         RenameCategory(cut, "Old", "Renamed");
         Button(cut, "Save Session").Click();
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         Assert.That(savedJson, Does.Contain("Renamed"));
         Assert.That(savedJson, Does.Not.Contain("\"Name\": \"Old\""));
