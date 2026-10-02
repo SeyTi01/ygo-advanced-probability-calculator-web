@@ -2,6 +2,7 @@ using AngleSharp.Dom;
 using Bunit;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -39,6 +40,35 @@ public class CalculatorEditorTest {
 
     [TearDown]
     public void TearDown() => context.Dispose();
+
+    [Test]
+    public async Task SaveSessionButtonInvokesSessionServiceWithSuggestedJsonName() {
+        var sessionService = new Mock<ISessionService>();
+        sessionService.Setup(service => service.SaveSessionAsync(It.IsAny<SessionState>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+        context.Services.AddSingleton<ISessionService>(sessionService.Object);
+
+        var cut = Render();
+        await Button(cut, "Save Session").ClickAsync(new());
+
+        sessionService.Verify(service => service.SaveSessionAsync(
+            It.IsAny<SessionState>(),
+            It.Is<string>(name => name.StartsWith("calculator_session_", StringComparison.Ordinal) && name.EndsWith(".json", StringComparison.Ordinal))),
+            Times.Once);
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+    }
+
+    [Test]
+    public async Task SaveSessionButtonShowsTheExistingErrorWhenFileWriteFails() {
+        context.JSInterop.SetupVoid("saveSessionFile")
+            .SetException(new JSException("Session file write failed."));
+
+        var cut = Render();
+        await Button(cut, "Save Session").ClickAsync(new());
+
+        Assert.That(cut.Find("[role='alert']").TextContent,
+            Does.Contain("Failed to save session: Session file write failed."));
+    }
 
     private IRenderedComponent<ProbabilityCalculatorComponent> Render(SessionState? session = null) {
         context.Services.GetRequiredService<IPendingSessionService>().PendingSession = session;
@@ -129,7 +159,7 @@ public class CalculatorEditorTest {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(expected.ToString("P2")));
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var saved = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using var document = System.Text.Json.JsonDocument.Parse(saved);
         Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
@@ -411,7 +441,7 @@ public class CalculatorEditorTest {
         Assert.That(editor.FindAll(".accordion-button .manual-property-header-badge"), Has.Count.EqualTo(1));
         await Button(cut, "Save Session").ClickAsync(new());
         var saved = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(
-            (string)context.JSInterop.Invocations["downloadFileFromStream"].Single().Arguments[1]!));
+            (string)context.JSInterop.Invocations["saveSessionFile"].Single().Arguments[1]!));
         var file = new Mock<IBrowserFile>();
         file.Setup(f => f.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(() => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(saved)));
@@ -521,7 +551,7 @@ public class CalculatorEditorTest {
             Does.Contain("Unnamed combo 1"));
 
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using (var document = System.Text.Json.JsonDocument.Parse(json)) {
             var root = document.RootElement;
@@ -731,7 +761,7 @@ public class CalculatorEditorTest {
         };
         var cut = Render(session);
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         Assert.That(json, Does.Contain(card.Id).And.Contain("\"Cards\""));
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "mixed.json"));
@@ -950,7 +980,7 @@ public class CalculatorEditorTest {
         Assert.That(firstColor, Is.Not.EqualTo(secondColor));
 
         Button(cut, "Save Session").Click();
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using (var document = System.Text.Json.JsonDocument.Parse(savedJson)) {
             var savedColors = document.RootElement.GetProperty("CategoryColorIndices");
@@ -1042,7 +1072,7 @@ public class CalculatorEditorTest {
         Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", "VS Starter renamed"), Is.EqualTo("category-color-2"));
 
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using (var document = System.Text.Json.JsonDocument.Parse(savedJson)) {
             var savedColors = document.RootElement.GetProperty("CategoryColorIndices");
@@ -1093,7 +1123,7 @@ public class CalculatorEditorTest {
             "automatic assignment uses the first unused palette slot after existing duplicate choices");
 
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using var document = System.Text.Json.JsonDocument.Parse(savedJson);
         var savedColors = document.RootElement.GetProperty("CategoryColorIndices");
@@ -1461,7 +1491,7 @@ public class CalculatorEditorTest {
 
         await DuplicateComboAsync(cut, 1);
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using (var document = System.Text.Json.JsonDocument.Parse(json)) {
             var combos = document.RootElement.GetProperty("Combos").EnumerateArray().ToArray();
@@ -1620,7 +1650,7 @@ public class CalculatorEditorTest {
         session.Combos.Add(new Combo([new(a, 0, 0)], "No A"));
         var cut = Render(session);
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         Assert.That(json, Does.Contain("\"MaxCount\": 0"));
         await Button(cut, "Calculate").ClickAsync(new());
@@ -2006,7 +2036,7 @@ public class CalculatorEditorTest {
         cut.Find("#comboGroup0").Change(groupId);
         cut.Find("#comboActive0").Change(false);
         Button(cut, "Save Session").Click();
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         Assert.That(json, Does.Contain("\"ComboGroups\"").And.Contain("\"GroupId\""));
 

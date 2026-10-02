@@ -42,7 +42,7 @@ public class SessionServiceTests {
             It.Is<SessionState>(saved => saved.SchemaVersion == SessionState.CurrentSchemaVersion),
             It.IsAny<JsonSerializerOptions>()), Times.Once);
         _jsRuntimeMock.Verify(x => x.InvokeAsync<object>(
-            "downloadFileFromStream",
+            "saveSessionFile",
             It.Is<object[]>(args =>
                 args.Length == 2 &&
                 args[0].ToString() == expectedFileName &&
@@ -65,13 +65,33 @@ public class SessionServiceTests {
         await _sessionService.SaveSessionAsync(session, fileName);
 
         _jsRuntimeMock.Verify(x => x.InvokeAsync<object>(
-            "downloadFileFromStream",
+            "saveSessionFile",
             It.Is<object[]>(args =>
                 args.Length == 2 &&
                 args[0].ToString() == fileName &&
                 args[1].ToString() == expectedBase64
             )
         ), Times.Once);
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenInteropResolvesNormally_CompletesSuccessfully() {
+        var runtime = new CapturingJsRuntime();
+        var service = new SessionService(runtime, new RealJsonSerializer());
+
+        await service.SaveSessionAsync(new SessionState(), "cancelled");
+
+        Assert.That(runtime.InvokedFunction, Is.EqualTo("saveSessionFile"));
+    }
+
+    [Test]
+    public void SaveSessionAsync_WhenJavaScriptInteropFails_PropagatesTheFailure() {
+        var service = new SessionService(new FailingJsRuntime(), new RealJsonSerializer());
+
+        var exception = Assert.ThrowsAsync<JSException>(async () =>
+            await service.SaveSessionAsync(new SessionState(), "write-failure"));
+
+        Assert.That(exception!.Message, Is.EqualTo("Session file write failed."));
     }
 
     [Test]
@@ -278,6 +298,8 @@ public class SessionServiceTests {
             Is.EqualTo(loadedSession.Cards.Select(card => (card.Id, card.Name, card.Copies, card.Active))));
         Assert.That(reloaded.Combos.Select(combo => (combo.Name, combo.GroupId, combo.Active)),
             Is.EqualTo(loadedSession.Combos.Select(combo => (combo.Name, combo.GroupId, combo.Active))));
+        Assert.That(reloaded.ComboGroups.Select(group => (group.Id, group.Name)),
+            Is.EqualTo(loadedSession.ComboGroups.Select(group => (group.Id, group.Name))));
         Assert.That(reloaded.HandSize, Is.EqualTo(loadedSession.HandSize));
         Assert.That(reloaded.CategoryColorIndices, Is.EqualTo(loadedSession.CategoryColorIndices));
     }
@@ -410,13 +432,23 @@ public class SessionServiceTests {
 
     private sealed class CapturingJsRuntime : IJSRuntime {
         private object?[]? _lastArguments;
+        public string? InvokedFunction { get; private set; }
 
         public string DownloadedJson => Encoding.UTF8.GetString(Convert.FromBase64String((string)_lastArguments![1]!));
 
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) {
+            InvokedFunction = identifier;
             _lastArguments = args;
             return ValueTask.FromResult(default(TValue)!);
         }
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) =>
+            InvokeAsync<TValue>(identifier, args);
+    }
+
+    private sealed class FailingJsRuntime : IJSRuntime {
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
+            ValueTask.FromException<TValue>(new JSException("Session file write failed."));
 
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) =>
             InvokeAsync<TValue>(identifier, args);
