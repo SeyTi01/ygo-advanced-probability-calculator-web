@@ -85,6 +85,7 @@
         OnRemoveCard="@(i => RemoveCard(i))"
         OnAddNewCard="AddNewCard"
         OnMoveCard="MoveCard"
+        OnSortAlphabetically="SortCardsAlphabetically"
     />
 
     <ComboListEditor
@@ -272,6 +273,21 @@
     private void MoveCard((int From, int To) move) {
         if (!ListMove.TryMove(cards, move.From, move.To)) return;
         activeCardIndex = ListMove.AdjustActiveIndex(activeCardIndex, move.From, move.To);
+        InvalidateCalculation();
+    }
+
+    private void SortCardsAlphabetically() {
+        var activeCardId = activeCardIndex >= 0 && activeCardIndex < cards.Count
+            ? cards[activeCardIndex].Id
+            : null;
+        var sortedCards = CardOrdering.Alphabetize(cards).ToList();
+        if (cards.SequenceEqual(sortedCards)) return;
+
+        cards.Clear();
+        cards.AddRange(sortedCards);
+        activeCardIndex = activeCardId is null
+            ? -1
+            : cards.FindIndex(card => card.Id == activeCardId);
         InvalidateCalculation();
     }
 

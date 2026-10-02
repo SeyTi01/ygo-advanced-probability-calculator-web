@@ -1,7 +1,16 @@
 @using YGOProbabilityCalculatorBlazor.Models
 
 <div class="mb-4">
-    <h4>Deck (@ActiveCopies)</h4>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <h4 class="mb-0">Deck (@ActiveCopies)</h4>
+        <button class="btn btn-outline-secondary btn-sm"
+                type="button"
+                aria-label="Sort deck A–Z"
+                title="Sort deck A–Z"
+                @onclick="OnSortAlphabetically">
+            Sort A–Z
+        </button>
+    </div>
     <div class="accordion" id="cardsAccordion">
         @for (var index = 0; index < Cards.Count; index++) {
             <CardEditor @key="editorKeys[Cards[index]]"
@@ -39,6 +48,7 @@
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
     [Parameter] public EventCallback OnAddNewCard { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMoveCard { get; set; }
+    [Parameter] public EventCallback OnSortAlphabetically { get; set; }
 
     private readonly EditorKeys<Card> editorKeys = new();
     private IReadOnlyList<CategoryBase> availableCategories = [];
