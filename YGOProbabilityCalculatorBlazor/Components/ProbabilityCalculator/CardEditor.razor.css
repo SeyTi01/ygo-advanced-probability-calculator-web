@@ -1,23 +1,14 @@
-.entry-editor-header > .accordion-button {
-    min-width: 0;
-    flex-wrap: wrap;
+.card-identity-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5.5rem;
+    gap: 0.75rem;
+    max-width: 48rem;
 }
 
-.entry-editor-header > .accordion-button > span {
-    min-width: 0;
-    max-width: 100%;
-    overflow-wrap: anywhere;
-    white-space: normal;
+.card-copies {
+    white-space: nowrap;
 }
 
-@media (max-width: 575.98px) {
-    .entry-editor-header {
-        flex-wrap: wrap;
-    }
-
-    .entry-editor-header > .accordion-button {
-        flex-basis: 100%;
-        width: auto;
-    }
+.card-property-inspector summary {
+    padding-block: 0.5rem;
 }
-

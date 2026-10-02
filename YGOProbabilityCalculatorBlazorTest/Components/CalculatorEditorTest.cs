@@ -512,8 +512,52 @@ public class CalculatorEditorTest {
 
         var manualHeader = cut.FindComponents<CardEditor>()[1].Find(".accordion-button");
         Assert.That(manualHeader.QuerySelectorAll(".category-tag").Length, Is.EqualTo(1));
-        Assert.That(manualHeader.Children.Select(child => child.TextContent.Trim()),
-            Is.EqualTo(new[] { "Manual only", "(1)", "-", fire.Name }));
+        Assert.That(manualHeader.QuerySelector(".card-header-name")?.TextContent.Trim(), Is.EqualTo("Manual only (1)"));
+        Assert.That(manualHeader.QuerySelector(".manual-property-header-badge")?.TextContent.Trim(), Is.EqualTo(fire.Name));
+    }
+
+    [Test]
+    public void ResponsiveEntryHeadersKeepActionsOutsideTheHeadingAndDoNotToggleTheAccordion() {
+        var cut = Render(new SessionState {
+            Categories = [a],
+            Cards = [new([a], 3, "Starter")],
+            Combos = [new([new ComboCategory(a, 1, 5)], "Route")]
+        });
+
+        foreach (var kind in new[] { "card", "combo" }) {
+            var header = cut.Find($".{kind}-editor .entry-editor-header");
+            Assert.That(header.QuerySelectorAll("h2 button").Length, Is.EqualTo(1));
+            Assert.That(header.QuerySelectorAll(".entry-actions button").Length, Is.EqualTo(3));
+            Assert.That(header.QuerySelectorAll("input[type=checkbox]").Length, Is.EqualTo(1));
+            var toggle = header.QuerySelector("input[type=checkbox]")!;
+            Assert.That(header.QuerySelector("label")?.GetAttribute("for"), Is.EqualTo(toggle.Id));
+            toggle.Change(false);
+
+            header = cut.Find($".{kind}-editor .entry-editor-header");
+            Assert.That(header.QuerySelector(".accordion-button")?.GetAttribute("aria-expanded"), Is.EqualTo("false"));
+            Assert.That(header.QuerySelector(".accordion-button")?.TextContent, Does.Contain("Inactive"));
+            header.QuerySelector(".accordion-button")!.Click();
+            Assert.That(cut.Find($".{kind}-editor .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        }
+    }
+
+    [Test]
+    public void SessionFileActionsExposeOneKeyboardAccessibleInputEach() {
+        var cut = Render();
+        foreach (var (id, name, extension) in new[] {
+            ("fileInput", "Import Deck", ".ydk"),
+            ("sessionFileInput", "Load Session", ".json")
+        }) {
+            var inputs = cut.FindAll($"input#{id}");
+            Assert.That(inputs, Has.Count.EqualTo(1));
+            var input = inputs[0];
+            Assert.That(input.GetAttribute("aria-label"), Is.EqualTo(name));
+            Assert.That(input.GetAttribute("accept"), Is.EqualTo(extension));
+            Assert.That(input.GetAttribute("tabindex"), Is.Not.EqualTo("-1"));
+            Assert.That(input.ClassList, Does.Not.Contain("d-none"));
+            Assert.That(input.ParentElement?.TagName, Is.EqualTo("LABEL"));
+            Assert.That(input.ParentElement?.GetAttribute("for"), Is.EqualTo(id));
+        }
     }
 
     [Test]
@@ -2115,11 +2159,13 @@ public class CalculatorEditorTest {
         var cut = Render(session);
 
         await Button(cut, "Import YDKe").ClickAsync(new());
+        Assert.That(Button(cut, "Import YDKe").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Find("input#ydkeCodeInput").GetAttribute("aria-label"), Is.EqualTo("YDKe deck code"));
         await cut.Find("input#ydkeCodeInput").InputAsync(new() { Value = "ydke://pending!!!" });
         await Button(cut, "Cancel").ClickAsync(new());
 
         Assert.That(cut.FindAll("input#ydkeCodeInput"), Is.Empty);
+        Assert.That(Button(cut, "Import YDKe").HasAttribute("disabled"), Is.False);
         Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id).ToArray(), Is.EqualTo(initialCardIds));
         Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
     }

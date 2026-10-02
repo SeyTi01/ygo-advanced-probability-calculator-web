@@ -89,3 +89,254 @@
     flex-shrink: 0;
     white-space: nowrap;
 }
+
+/* One shared workspace and editor structure, including child components. */
+.calculator-workspace {
+    max-width: 76rem;
+    margin-inline: auto;
+}
+
+.session-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.session-file-action {
+    position: relative;
+    margin: 0;
+    overflow: hidden;
+}
+
+.session-file-action ::deep .session-file-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.session-file-action:focus-within {
+    outline: 2px solid var(--app-focus-ring-color);
+    outline-offset: 2px;
+}
+
+.ydke-import-form {
+    display: grid;
+    grid-template-columns: minmax(0, 40rem) auto auto;
+    gap: 0.5rem;
+    flex-basis: 100%;
+    justify-content: start;
+}
+
+.calculate-action {
+    width: 16rem;
+    max-width: 100%;
+}
+
+.calculator-workspace ::deep .editor-add-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0.5rem;
+    max-width: 32rem;
+}
+
+.calculator-workspace ::deep .entry-editor-header {
+    display: flex;
+    align-items: center;
+    padding: 0;
+}
+
+.calculator-workspace ::deep .entry-heading {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    font-size: inherit;
+}
+
+.calculator-workspace ::deep .accordion-button {
+    min-width: 0;
+    gap: 0.75rem;
+}
+
+.calculator-workspace ::deep .accordion-button::after {
+    flex-shrink: 0;
+}
+
+.calculator-workspace ::deep .entry-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.calculator-workspace ::deep .entry-editor-active-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    cursor: pointer;
+}
+
+.calculator-workspace ::deep .entry-active-label {
+    display: none;
+}
+
+.calculator-workspace ::deep .card-header-content,
+.calculator-workspace ::deep .combo-header-content {
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.calculator-workspace ::deep .card-header-name,
+.calculator-workspace ::deep .combo-header-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.calculator-workspace ::deep .category-tag {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.calculator-workspace ::deep .category-chip {
+    margin-block-end: 0.375rem;
+}
+
+.calculator-workspace ::deep .category-chip:has(.category-rename-input) {
+    flex-wrap: wrap;
+    width: min(100%, 32rem);
+}
+
+.calculator-workspace ::deep .category-name-trigger {
+    flex: 1 1 auto;
+}
+
+.calculator-workspace ::deep .category-rename-input {
+    flex-basis: 100%;
+    width: 100%;
+    max-width: none;
+}
+
+.calculator-workspace ::deep .accordion-body .category-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-block-end: 0.375rem;
+    line-height: 1.35;
+}
+
+.calculator-workspace ::deep .entry-inactive .entry-heading .accordion-button {
+    font-style: italic;
+}
+
+@media (max-width: 767.98px) {
+    .session-toolbar {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ydke-import-form {
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ydke-import-form input {
+        grid-column: 1 / -1;
+    }
+
+    .calculator-workspace ::deep .btn,
+    .calculator-workspace ::deep .form-control,
+    .calculator-workspace ::deep .form-select {
+        min-height: 2.75rem;
+    }
+
+    .calculator-workspace ::deep .entry-editor-header {
+        flex-wrap: wrap;
+    }
+
+    .calculator-workspace ::deep .entry-heading {
+        flex-basis: 100%;
+    }
+
+    .calculator-workspace ::deep .accordion-button {
+        padding: 0.75rem;
+    }
+
+    .calculator-workspace ::deep .entry-actions {
+        width: 100%;
+        padding: 0.25rem 0.75rem;
+        border-top: 1px solid var(--bs-border-color);
+    }
+
+    .calculator-workspace ::deep .entry-actions > .btn-danger {
+        margin-inline-start: auto;
+        width: 2.75rem;
+    }
+
+    .calculator-workspace ::deep .entry-editor-active-toggle {
+        min-height: 2.75rem;
+        padding-inline: 0.5rem;
+    }
+
+    .calculator-workspace ::deep .entry-active-label {
+        display: inline;
+        font-size: 0.875rem;
+    }
+
+    .calculator-workspace ::deep .card-header-name,
+    .calculator-workspace ::deep .combo-header-name,
+    .calculator-workspace ::deep .combo-group-membership {
+        flex-basis: 100%;
+    }
+
+    .calculator-workspace ::deep .accordion-body {
+        padding: 0.75rem;
+    }
+
+    .calculator-workspace ::deep .category-name-trigger {
+        min-height: 2.5rem;
+    }
+
+    .calculator-workspace ::deep .category-icon-button,
+    .calculator-workspace ::deep .category-delete-button {
+        flex-basis: 2.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .calculator-workspace ::deep .category-remove-button {
+        box-sizing: border-box;
+        width: 2.5rem;
+        height: 2.5rem;
+        background-size: 0.75rem;
+    }
+
+    .probability-results {
+        padding: 0.75rem;
+    }
+
+    .combo-probability-row {
+        gap: 0.5rem;
+    }
+
+    .combo-probability-list.probability-group-members {
+        margin-left: 0.25rem;
+        padding-left: 0.5rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .calculate-action {
+        width: 100%;
+    }
+}

@@ -146,18 +146,6 @@ code {
     border-bottom-style: dashed;
 }
 
-.entry-inactive > .accordion-header > .accordion-button {
-    font-style: italic;
-}
-
-.entry-editor-header {
-    padding-inline-end: 0.5rem;
-}
-
-.combo-editor-header > .accordion-button {
-    min-width: 0;
-}
-
 .combo-header-content {
     display: flex;
     flex: 1 1 0;
