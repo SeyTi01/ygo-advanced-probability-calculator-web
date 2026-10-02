@@ -53,16 +53,16 @@
     padding: 0.2rem 0;
 }
 
-.probability-group-members {
-    border-left: 2px solid rgba(var(--bs-primary-rgb), 0.25);
-    margin-left: 0.5rem;
-    padding-left: 0.75rem;
-}
-
 .combo-probability-list {
     list-style: none;
     margin-bottom: 0;
     padding-left: 0;
+}
+
+.combo-probability-list.probability-group-members {
+    border-left: 2px solid rgba(var(--bs-primary-rgb), 0.25);
+    margin-left: 0.5rem;
+    padding-left: 0.75rem;
 }
 
 .combo-probability-item {
