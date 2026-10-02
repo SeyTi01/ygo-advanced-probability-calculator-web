@@ -95,6 +95,15 @@ public class CalculatorEditorTest {
             Is.EqualTo("Previous result · inputs changed"));
     }
 
+    private string SavedSessionJson(int saveNumber = 0) {
+        var invocation = context.JSInterop.Invocations
+            .Where(invocation => invocation.Arguments.Length == 2 &&
+                invocation.Arguments[0] is string fileName && fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase) &&
+                invocation.Arguments[1] is string)
+            .ElementAt(saveNumber);
+        return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+    }
+
     private static async Task RenameGroupWithEnter(IRenderedFragment fragment, string oldName, string newName) {
         await fragment.Find($"[aria-label='Edit group {oldName}']").ClickAsync(new());
         var input = fragment.Find($"[aria-label='New name for group {oldName}']");
@@ -663,6 +672,177 @@ public class CalculatorEditorTest {
         Assert.That(cut.FindAll(".combo-group-chip").Select(chip =>
             chip.QuerySelector(".category-name-trigger")?.TextContent.Trim()), Is.EqualTo(new[] { "Updated", "Two" }));
         Assert.That(cut.FindAll(".combo-group-chip .reorder-controls"), Is.Empty);
+    }
+
+    [Test]
+    public async Task DirectCardSelectorIsAlphabeticalWithoutChangingDeckOrCategoryOrder() {
+        var zetaCategory = new CategoryBase("Zeta");
+        var alphaCategory = new CategoryBase("Alpha");
+        var cards = new List<Card> {
+            new([], name: "zebra", id: "zebra"),
+            new([], name: "alpha", id: "alpha-lower"),
+            new([], name: "Alpha", id: "alpha-upper"),
+            new([], name: "beta", id: "beta-first"),
+            new([], name: "Beta", id: "beta-case"),
+            new([], name: "beta", id: "beta-second"),
+            new([], name: null, id: "unnamed-first"),
+            new([], name: "  ", id: "unnamed-second")
+        };
+        var deckOrder = cards.Select(card => card.Id).ToArray();
+        var combo = new Combo([], "Direct", cards: [new("missing-card", 1, 1)]);
+        var cut = Render(new SessionState {
+            Categories = [zetaCategory, alphaCategory], Cards = cards, Combos = [combo], HandSize = 1
+        });
+        var editor = cut.FindComponent<ComboEditor>();
+        await editor.Find(".accordion-button").ClickAsync(new());
+        Assert.That(editor.Find("[role='status']").TextContent, Does.Contain("Missing card reference"));
+        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
+
+        var selector = editor.Find("#comboCard0");
+        Assert.That(selector.QuerySelectorAll("option").Select(option => option.TextContent.Trim()), Is.EqualTo(new[] {
+            "Select card…", "alpha #2", "Alpha #3", "beta #4", "Beta #5", "beta #6", "zebra #1",
+            "Unnamed card #7", "Unnamed card #8"
+        }));
+        Assert.That(selector.QuerySelectorAll("option").Select(option => option.GetAttribute("value")), Is.EqualTo(new[] {
+            "", "alpha-lower", "alpha-upper", "beta-first", "beta-case", "beta-second", "zebra",
+            "unnamed-first", "unnamed-second"
+        }));
+        Assert.That(selector.QuerySelectorAll("option").Any(option => option.GetAttribute("value") == "missing-card"), Is.False);
+        Assert.That(cut.FindComponents<CardEditor>().Select(cardEditor => cardEditor.Instance.Card.Id), Is.EqualTo(deckOrder));
+
+        await selector.ChangeAsync(new() { Value = "beta-case" });
+        await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
+        Assert.That(editor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo("beta-case"));
+
+        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Category" });
+        Assert.That(editor.Find("#comboCategory0").QuerySelectorAll("option").Skip(1).Select(option => option.TextContent.Trim()),
+            Is.EqualTo(new[] { "Zeta", "Alpha" }), "category selectors retain configured category order");
+        Assert.That(cut.FindComponents<CardEditor>().Select(cardEditor => cardEditor.Instance.Card.Id), Is.EqualTo(deckOrder));
+    }
+
+    [Test]
+    public async Task DeckSortIsOneShotStableAndPreservesCardAndComboDrafts() {
+        var draftCategory = new CategoryBase("Draft Category");
+        var otherCategory = new CategoryBase("Other Category");
+        var fire = new CategoryBase("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
+        var zebra = new Card([draftCategory, fire], 3, "Zebra", false, "zebra", 123, [fire.MetadataKey!]);
+        var betaFirst = new Card([], 2, "beta", id: "beta-first");
+        var betaCase = new Card([], 1, "Beta", id: "beta-case");
+        var alphaLower = new Card([], 2, "alpha", id: "alpha-lower");
+        var betaSecond = new Card([], 1, "beta", id: "beta-second");
+        var alphaUpper = new Card([], 2, "Alpha", id: "alpha-upper");
+        var unnamedFirst = new Card([], 1, null, id: "unnamed-first");
+        var unnamedSecond = new Card([], 1, "  ", id: "unnamed-second");
+        var cards = new List<Card> { zebra, betaFirst, betaCase, alphaLower, betaSecond, alphaUpper, unnamedFirst, unnamedSecond };
+        var originalState = cards.ToDictionary(card => card.Id, card => (
+            card.Name,
+            card.Copies,
+            card.Active,
+            card.ExternalCardId,
+            CategoryIdentities: card.Categories.Select(category => category.Identity).ToArray(),
+            ManualKeys: card.ManualMetadataCategoryKeys.ToArray()));
+        var combo = new Combo([], "Direct", cards: [new(zebra.Id, 0, 0)]);
+        var cut = Render(new SessionState {
+            Categories = [draftCategory, otherCategory], Cards = cards, Combos = [combo], HandSize = 1
+        });
+        var deckEditor = cut.FindComponent<CardListEditor>();
+        Assert.That(deckEditor.FindAll("button").Count(button => button.TextContent.Trim() == "Sort A–Z"), Is.EqualTo(1));
+        Assert.That(cut.FindComponent<CategoryListEditor>().FindAll("button").Any(button => button.TextContent.Trim() == "Sort A–Z"), Is.False);
+        Assert.That(cut.FindComponent<ComboListEditor>().FindAll("button").Any(button => button.TextContent.Trim() == "Sort A–Z"), Is.False);
+        var sortButton = deckEditor.Find("button[aria-label='Sort deck A–Z']");
+        Assert.That(sortButton.GetAttribute("title"), Is.EqualTo("Sort deck A–Z"));
+
+        var zebraEditor = cut.FindComponents<CardEditor>().Single(editor => editor.Instance.Card.Id == zebra.Id);
+        var originalZebraEditor = zebraEditor.Instance;
+        await zebraEditor.Find(".accordion-button").ClickAsync(new());
+        await zebraEditor.Find("#cardCategory0").ChangeAsync(new() { Value = otherCategory.Identity });
+
+        var comboEditor = cut.FindComponent<ComboEditor>();
+        var originalComboEditor = comboEditor.Instance;
+        await comboEditor.Find(".accordion-button").ClickAsync(new());
+        await comboEditor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
+        await comboEditor.Find("#comboCard0").ChangeAsync(new() { Value = alphaLower.Id });
+        await comboEditor.Find("#minCount0").InputAsync(new() { Value = "2" });
+        await comboEditor.Find("#maxCount0").InputAsync(new() { Value = "3" });
+
+        await sortButton.ClickAsync(new());
+        var sortedEditors = cut.FindComponents<CardEditor>();
+        Assert.That(sortedEditors.Select(editor => editor.Instance.Card.Id), Is.EqualTo(new[] {
+            alphaLower.Id, alphaUpper.Id, betaFirst.Id, betaCase.Id, betaSecond.Id, zebra.Id,
+            unnamedFirst.Id, unnamedSecond.Id
+        }));
+        foreach (var card in cards)
+            Assert.That(sortedEditors.Single(editor => editor.Instance.Card.Id == card.Id).Instance.Card, Is.SameAs(card));
+        zebraEditor = sortedEditors.Single(editor => editor.Instance.Card.Id == zebra.Id);
+        Assert.That(zebraEditor.Instance, Is.SameAs(originalZebraEditor));
+        Assert.That(zebraEditor.Instance.ActiveCardIndex, Is.EqualTo(5));
+        Assert.That(zebraEditor.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        Assert.That(zebraEditor.Find("#cardCategory5").GetAttribute("value"), Is.EqualTo(otherCategory.Identity));
+        Assert.That(zebraEditor.Find("#cardName5").GetAttribute("value"), Is.EqualTo("Zebra"));
+        Assert.That(zebraEditor.Find("#cardCopies5").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(zebraEditor.Instance.Card, Is.SameAs(zebra));
+        Assert.That((zebra.Copies, zebra.Name, zebra.Active, zebra.ExternalCardId), Is.EqualTo((3, "Zebra", false, (int?)123)));
+        Assert.That(zebra.Categories.Select(category => category.Identity), Is.EqualTo(originalState[zebra.Id].CategoryIdentities));
+        Assert.That(zebra.ManualMetadataCategoryKeys, Is.EquivalentTo(originalState[zebra.Id].ManualKeys));
+        foreach (var editor in sortedEditors) {
+            var card = editor.Instance.Card;
+            var before = originalState[card.Id];
+            Assert.That((card.Name, card.Copies, card.Active, card.ExternalCardId),
+                Is.EqualTo((before.Name, before.Copies, before.Active, before.ExternalCardId)));
+            Assert.That(card.Categories.Select(category => category.Identity), Is.EqualTo(before.CategoryIdentities));
+            Assert.That(card.ManualMetadataCategoryKeys, Is.EquivalentTo(before.ManualKeys));
+        }
+
+        Assert.That(comboEditor.Instance, Is.SameAs(originalComboEditor));
+        Assert.That(comboEditor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo(alphaLower.Id));
+        Assert.That(comboEditor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
+        Assert.That(comboEditor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(comboEditor.Instance.Combo.Cards.Single().CardId, Is.EqualTo(zebra.Id));
+
+        await cut.Find("[aria-label='Move card alpha, row 1 down']").ClickAsync(new());
+        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id), Is.EqualTo(new[] {
+            alphaUpper.Id, alphaLower.Id, betaFirst.Id, betaCase.Id, betaSecond.Id, zebra.Id,
+            unnamedFirst.Id, unnamedSecond.Id
+        }));
+        Assert.That(zebraEditor.Find("#cardCategory5").GetAttribute("value"), Is.EqualTo(otherCategory.Identity));
+    }
+
+    [Test]
+    public async Task DeckSortInvalidatesResultsAndPersistsThroughSaveLoadAndManualMove() {
+        var zebra = new Card([a], 2, "Zebra", id: "zebra");
+        var alpha = new Card([a], 2, "Alpha", id: "alpha");
+        var calculator = new CountingProbabilityCalculator();
+        context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
+        var cut = Render(new SessionState {
+            Categories = [a], Cards = [zebra, alpha], Combos = [new([new(a, 1, 2)], "Any A")], HandSize = 2
+        });
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+        Assert.That(calculator.CallCount, Is.EqualTo(1));
+
+        await cut.Find("button[aria-label='Sort deck A–Z']").ClickAsync(new());
+        AssertPreviousResult(cut);
+        Assert.That(calculator.CallCount, Is.EqualTo(1), "sorting marks the result stale without calculating again");
+        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id), Is.EqualTo(new[] { alpha.Id, zebra.Id }));
+        await Button(cut, "Save Session").ClickAsync(new());
+        var firstSave = SavedSessionJson();
+        using (var document = System.Text.Json.JsonDocument.Parse(firstSave)) {
+            var root = document.RootElement;
+            Assert.That(root.GetProperty("Cards").EnumerateArray().Select(card => card.GetProperty("Id").GetString()),
+                Is.EqualTo(new[] { alpha.Id, zebra.Id }));
+            Assert.That(root.TryGetProperty("SortMode", out _), Is.False);
+        }
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(firstSave, "sorted.json"));
+        cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id),
+            Is.EqualTo(new[] { alpha.Id, zebra.Id })));
+
+        await cut.Find("[aria-label='Move card Alpha, row 1 down']").ClickAsync(new());
+        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id), Is.EqualTo(new[] { zebra.Id, alpha.Id }));
+        await Button(cut, "Save Session").ClickAsync(new());
+        var secondSave = SavedSessionJson(1);
+        using var secondDocument = System.Text.Json.JsonDocument.Parse(secondSave);
+        Assert.That(secondDocument.RootElement.GetProperty("Cards").EnumerateArray().Select(card => card.GetProperty("Id").GetString()),
+            Is.EqualTo(new[] { zebra.Id, alpha.Id }));
     }
 
     [Test]
@@ -2219,6 +2399,20 @@ public class CalculatorEditorTest {
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         Assert.That(cut.Markup.Contains("Calculation stopped"), Is.EqualTo(!changeInputs));
+    }
+
+    private sealed class CountingProbabilityCalculator : IProbabilityCalculatorService {
+        public int CallCount { get; private set; }
+
+        public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) => 0.25;
+
+        public ProbabilityCalculationResult CalculateProbabilityResults(
+            List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
+            CallCount++;
+            return new ProbabilityCalculationResult(
+                0.25,
+                [new ComboProbabilityResult(0, "Any A", 0.25)]);
+        }
     }
 
     private sealed class DelayedProbabilityCalculator : IProbabilityCalculatorService {
