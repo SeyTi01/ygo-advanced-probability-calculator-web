@@ -1,34 +1,36 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
 <div class="page">
     <main>
         <div class="top-row">
-            @if (IsHelpPage) {
-                <div class="h3 app-title mb-0">Yu-Gi-Oh! Advanced Probability Calculator</div>
-            }
-            else {
-                <h1 class="h3 app-title mb-0">Yu-Gi-Oh! Advanced Probability Calculator</h1>
-            }
-            <div class="top-row-controls">
-                <label class="visually-hidden" for="theme-preference">Color theme preference</label>
-                <select id="theme-preference"
-                        class="form-select form-select-sm theme-select"
-                        aria-label="Color theme preference"
-                        title="Color theme preference"
-                        value="@ThemePreference"
-                        @onchange="ChangeThemePreference">
-                    <option value="system">System</option>
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                </select>
+            <div class="top-row-inner">
                 @if (IsHelpPage) {
-                    <a href="/" class="btn btn-outline-primary">Back</a>
+                    <div class="h3 app-title mb-0">Yu-Gi-Oh! Advanced Probability Calculator</div>
                 }
                 else {
-                    <a href="/help" class="btn btn-outline-primary">Help</a>
+                    <h1 class="h3 app-title mb-0">Yu-Gi-Oh! Advanced Probability Calculator</h1>
                 }
+                <div class="top-row-controls">
+                    <label class="visually-hidden" for="theme-preference">Color theme preference</label>
+                    <select id="theme-preference"
+                            class="form-select form-select-sm theme-select"
+                            aria-label="Color theme preference"
+                            title="Color theme preference"
+                            value="@ThemePreference"
+                            @onchange="ChangeThemePreference">
+                        <option value="system">System</option>
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                    @if (IsHelpPage) {
+                        <a href="/" class="btn btn-outline-primary">Back</a>
+                    }
+                    else {
+                        <a href="/help" class="btn btn-outline-primary">Help</a>
+                    }
+                </div>
             </div>
         </div>
 

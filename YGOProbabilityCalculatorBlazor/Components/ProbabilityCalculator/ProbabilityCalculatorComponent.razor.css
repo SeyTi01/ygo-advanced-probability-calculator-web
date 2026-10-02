@@ -92,17 +92,39 @@
 
 /* One shared workspace and editor structure, including child components. */
 .calculator-workspace {
-    max-width: 76rem;
+    max-width: var(--app-workspace-width, 60rem);
     margin-inline: auto;
 }
 
-.calculator-setup {
-    width: 100%;
-    max-width: 46rem;
-    margin-inline: auto;
+.session-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.hand-size-control {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.hand-size-control label {
+    margin: 0;
+}
+
+.hand-size-control input {
+    width: 5rem;
 }
 
 .session-toolbar {
+    flex: 1 1 32rem;
+    min-width: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -148,6 +170,24 @@
     align-items: end;
     gap: 0.5rem;
     max-width: 32rem;
+}
+
+/* Section labels share the left edge; compact creation fields share the right. */
+@media (min-width: 768px) {
+    .calculator-workspace ::deep .section-add-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .calculator-workspace ::deep .section-add-heading > :is(h4, h5) {
+        margin-bottom: 0;
+    }
+
+    .calculator-workspace ::deep .section-add-heading > .editor-add-row {
+        flex: 1 1 32rem;
+    }
 }
 
 .calculator-workspace ::deep .entry-editor-header {

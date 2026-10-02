@@ -8,8 +8,8 @@
 @inject IProbabilityCalculatorService _probabilityCalculator
 
 <div class="calculator-workspace">
-    <div class="calculator-setup">
-        <div class="session-toolbar mb-3">
+    <div class="session-controls">
+        <div class="session-toolbar">
             <label class="btn btn-primary session-file-action" for="fileInput">
                 Import Deck
                 <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="session-file-input" id="fileInput" aria-label="Import Deck"/>
@@ -44,33 +44,30 @@
             }
         </div>
 
-        <div class="mb-4">
-            <div class="d-flex align-items-center">
-                <label for="handSize" class="me-2 mb-0">Hand Size:</label>
-                <input type="number"
-                       id="handSize"
-                       class="form-control"
-                       style="width: 80px;"
-                       @bind="handSize"
-                       @bind:after="OnHandSizeChanged"
-                       min="1"/>
-            </div>
+        <div class="hand-size-control">
+            <label for="handSize">Hand Size:</label>
+            <input type="number"
+                   id="handSize"
+                   class="form-control"
+                   @bind="handSize"
+                   @bind:after="OnHandSizeChanged"
+                   min="1"/>
         </div>
-        @if (importError is not null) {
-            <DismissibleAlert Message="@importError" OnDismiss="@(() => importError = null)"/>
-        }
-
-        <CategoryListEditor @key="sessionVersion"
-            OnCategoriesChanged="HandleCategoriesChanged"
-            OnCategoryColorChanged="SetCategoryColor"
-            OnRenameCategory="RenameCategoryBase"
-            CategoryBases="categoryBases"
-            CategoryColorIndices="categoryColorIndices"
-            Combos="combos"
-            Cards="cards"
-            OnMoveCategory="MoveCategory"
-        />
     </div>
+    @if (importError is not null) {
+        <DismissibleAlert Message="@importError" OnDismiss="@(() => importError = null)"/>
+    }
+
+    <CategoryListEditor @key="sessionVersion"
+        OnCategoriesChanged="HandleCategoriesChanged"
+        OnCategoryColorChanged="SetCategoryColor"
+        OnRenameCategory="RenameCategoryBase"
+        CategoryBases="categoryBases"
+        CategoryColorIndices="categoryColorIndices"
+        Combos="combos"
+        Cards="cards"
+        OnMoveCategory="MoveCategory"
+    />
 
     <CardListEditor
         Cards="cards"
