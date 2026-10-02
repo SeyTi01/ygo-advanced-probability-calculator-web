@@ -148,33 +148,55 @@
                     <span class="combo-probability-name">Any active combo</span>
                     <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
                 </div>
-                @if (result.GroupProbabilities is { Count: > 0 } groupResults) {
-                    <h6>Group probabilities</h6>
+                @{
+                    var groupResults = result.GroupProbabilities ?? Array.Empty<GroupProbabilityResult>();
+                    var renderedGroupIds = groupResults.Select(group => group.GroupId).ToHashSet(StringComparer.Ordinal);
+                    var ungroupedComboResults = result.ComboProbabilities
+                        .Where(comboResult => comboResult.GroupId is null || !renderedGroupIds.Contains(comboResult.GroupId))
+                        .ToList();
+                }
+                @if (groupResults.Count > 0) {
                     <div class="probability-groups">
                         @foreach (var group in groupResults) {
-                            <div class="combo-probability-row probability-group">
-                                <span class="combo-probability-name">@group.GroupName <small class="text-body-secondary">(@group.ActiveComboCount active)</small></span>
-                                <strong class="combo-probability-value">@group.Probability.ToString("P2")</strong>
-                            </div>
+                            var groupComboResults = result.ComboProbabilities
+                                .Where(comboResult => comboResult.GroupId == group.GroupId)
+                                .ToList();
+                            <section class="probability-group-container">
+                                <h6 class="combo-probability-row probability-group probability-group-heading">
+                                    <span class="combo-probability-name">
+                                        @group.GroupName <small class="text-body-secondary fw-normal">(@group.ActiveComboCount active)</small>
+                                    </span>
+                                    <strong class="combo-probability-value">@group.Probability.ToString("P2")</strong>
+                                </h6>
+                                @if (groupComboResults.Count > 0) {
+                                    <ol class="combo-probability-list probability-group-members">
+                                        @foreach (var comboResult in groupComboResults) {
+                                            <li class="combo-probability-item">
+                                                <div class="combo-probability-row">
+                                                    <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
+                                                    <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
+                                                </div>
+                                            </li>
+                                        }
+                                    </ol>
+                                }
+                            </section>
                         }
                     </div>
                 }
-                <h6>Individual combo probabilities</h6>
-                <ol class="combo-probability-list">
-                    @foreach (var comboResult in result.ComboProbabilities) {
-                        <li class="combo-probability-item">
-                            <div class="combo-probability-row">
-                                <span class="combo-probability-name">
-                                    @ComboResultDisplayName(comboResult)
-                                    @if (result.GroupProbabilities?.FirstOrDefault(group => group.GroupId == comboResult.GroupId) is { } group) {
-                                        <small class="text-body-secondary ms-1">· @group.GroupName</small>
-                                    }
-                                </span>
-                                <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
-                            </div>
-                        </li>
-                    }
-                </ol>
+                @if (ungroupedComboResults.Count > 0 || groupResults.Count == 0) {
+                    <h6>@(groupResults.Count > 0 ? "Ungrouped combos" : "Individual combos")</h6>
+                    <ol class="combo-probability-list probability-ungrouped-combos">
+                        @foreach (var comboResult in ungroupedComboResults) {
+                            <li class="combo-probability-item">
+                                <div class="combo-probability-row">
+                                    <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
+                                    <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                }
             </section>
         }
     </div>
