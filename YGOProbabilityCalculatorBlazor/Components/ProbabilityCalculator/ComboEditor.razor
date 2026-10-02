@@ -122,16 +122,9 @@
                            @oninput="e => minCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
                 <div class="col-4 col-sm-2">
-                    <div class="d-flex justify-content-between align-items-center gap-1 mb-2">
-                        <label for="maxCount@(Index)" class="form-label mb-0">Max</label>
-                        <label class="d-flex align-items-center gap-1 mb-0" title="Maximum follows hand size">
-                            <input id="maxAny@(Index)" class="form-check-input mt-0" type="checkbox"
-                                   aria-label="Any maximum" @bind="maximumIsAny" />
-                            Any
-                        </label>
-                    </div>
-                    <input id="maxCount@(Index)" class="form-control" type="number" min="0"
-                           value="@maxCount" disabled="@maximumIsAny"
+                    <label for="maxCount@(Index)" class="form-label">Max</label>
+                    <input id="maxCount@(Index)" class="form-control" type="number" min="0" step="1"
+                           placeholder="Any" title="Leave empty for Any" value="@maxCount"
                            @oninput="e => maxCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
                 <div class="col-4 col-sm-2">
@@ -234,8 +227,7 @@
     private string selectedCardId = string.Empty;
     private string selectedKind = "Category";
     private string minCount = "1";
-    private string maxCount = "1";
-    private bool maximumIsAny = true;
+    private string maxCount = string.Empty;
     private int previousCategoryRenameVersion;
     private string ComboDisplayName => string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name;
     private string ActiveToggleLabel => $"Active combo {ComboDisplayName}";
@@ -253,7 +245,9 @@
     private IEnumerable<ComboCard> HeaderCards => Combo.Cards.Take(Math.Max(0, MaxHeaderBadges - Combo.Categories.Count));
     private int HiddenHeaderCategoriesCount => Math.Max(0, ConstraintCount - MaxHeaderBadges);
 
-    private RequirementMaximumMode MaximumMode => maximumIsAny ? RequirementMaximumMode.HandSize : RequirementMaximumMode.Fixed;
+    private RequirementMaximumMode MaximumMode => string.IsNullOrWhiteSpace(maxCount)
+        ? RequirementMaximumMode.HandSize
+        : RequirementMaximumMode.Fixed;
 
     private string CardDisplayName(string cardId) {
         var index = Cards.ToList().FindIndex(card => card.Id == cardId);
@@ -356,8 +350,7 @@
         var existing = Combo.Cards.FirstOrDefault(card => card.CardId == selectedCardId);
         if (existing is not null) {
             minCount = existing.MinCount.ToString();
-            maxCount = existing.MaxCount.ToString();
-            maximumIsAny = existing.MaximumMode == RequirementMaximumMode.HandSize;
+            maxCount = existing.MaximumMode == RequirementMaximumMode.HandSize ? string.Empty : existing.MaxCount.ToString();
         }
         else ResetEditorDefaults();
     }
@@ -374,8 +367,7 @@
         var existing = Combo.Categories.FirstOrDefault(c => c.BaseCategory.Identity == selectedCategory);
         if (existing is not null) {
             minCount = existing.MinCount.ToString();
-            maxCount = existing.MaxCount.ToString();
-            maximumIsAny = existing.MaximumMode == RequirementMaximumMode.HandSize;
+            maxCount = existing.MaximumMode == RequirementMaximumMode.HandSize ? string.Empty : existing.MaxCount.ToString();
         }
         else {
             ResetEditorDefaults();
@@ -384,15 +376,16 @@
 
     private void ResetEditorDefaults() {
         minCount = "1";
-        maxCount = HandSize.ToString();
-        maximumIsAny = true;
+        maxCount = string.Empty;
     }
 
     private bool TryMaximum(int minimum, out int maximum) {
-        var validNumber = int.TryParse(maxCount, out maximum) && maximum >= 0;
-        if (!maximumIsAny) return validNumber && maximum >= minimum;
-        if (!validNumber) maximum = HandSize;
-        return true;
+        if (MaximumMode == RequirementMaximumMode.HandSize) {
+            maximum = HandSize;
+            return true;
+        }
+
+        return int.TryParse(maxCount, out maximum) && maximum >= minimum && maximum >= 0;
     }
 
     protected override void OnInitialized() {
