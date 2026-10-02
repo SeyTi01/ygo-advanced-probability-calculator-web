@@ -185,7 +185,7 @@
                     </div>
                 }
                 @if (ungroupedComboResults.Count > 0 || groupResults.Count == 0) {
-                    <h6>@(groupResults.Count > 0 ? "Ungrouped combos" : "Individual combos")</h6>
+                    <h6 class="@(groupResults.Count > 0 ? "fw-bold" : null)">@(groupResults.Count > 0 ? "Ungrouped combos" : "Individual combos")</h6>
                     <ol class="combo-probability-list probability-ungrouped-combos">
                         @foreach (var comboResult in ungroupedComboResults) {
                             <li class="combo-probability-item">
