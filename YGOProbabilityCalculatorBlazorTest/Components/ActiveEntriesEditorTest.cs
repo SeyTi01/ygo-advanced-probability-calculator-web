@@ -275,7 +275,7 @@ public class ActiveEntriesEditorTest {
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
         cut.FindAll("button").Single(button => button.TextContent.Trim() == "Save Session").Click();
 
-        var invocation = context.JSInterop.Invocations["downloadFileFromStream"].Single();
+        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using (var document = System.Text.Json.JsonDocument.Parse(savedJson)) {
             Assert.That(document.RootElement.GetProperty("Cards")[0].GetProperty("Active").GetBoolean(), Is.False);

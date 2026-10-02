@@ -42,14 +42,50 @@
 </div>
 <script src="_framework/blazor.webassembly.js"></script>
 <script>
-    window.downloadFileFromStream = (fileName, base64String) => {
+    const downloadFileFromStream = (fileName, base64String) => {
         const link = document.createElement('a');
         link.href = `data:application/json;base64,${base64String}`;
         link.download = fileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    }
+    };
+
+    window.saveSessionFile = async (fileName, base64String) => {
+        if (typeof window.showSaveFilePicker !== 'function') {
+            downloadFileFromStream(fileName, base64String);
+            return;
+        }
+
+        let fileHandle;
+        try {
+            fileHandle = await window.showSaveFilePicker({
+                suggestedName: fileName,
+                types: [{
+                    description: 'JSON session',
+                    accept: { 'application/json': ['.json'] }
+                }]
+            });
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+            throw error;
+        }
+
+        const writable = await fileHandle.createWritable();
+        try {
+            const binaryString = atob(base64String);
+            const bytes = Uint8Array.from(binaryString, character => character.charCodeAt(0));
+            await writable.write(new Blob([bytes], { type: 'application/json' }));
+            await writable.close();
+        } catch (error) {
+            try {
+                await writable.abort();
+            } catch {
+                // Preserve the original write/close failure.
+            }
+            throw error;
+        }
+    };
 </script>
 <script>
     (function () {

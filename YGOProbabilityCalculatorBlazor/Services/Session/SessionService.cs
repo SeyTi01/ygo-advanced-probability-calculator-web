@@ -31,7 +31,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
         var base64 = Convert.ToBase64String(bytes);
 
-        await jsRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, base64);
+        await jsRuntime.InvokeVoidAsync("saveSessionFile", fileName, base64);
     }
 
     public Task<SessionState> LoadSessionAsync(string fileContent) {
