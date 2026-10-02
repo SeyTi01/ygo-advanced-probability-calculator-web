@@ -1,60 +1,65 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<div class="accordion-item @(Card.Active ? "" : "entry-inactive")">
-    <h2 class="accordion-header d-flex entry-editor-header">
-        <button class="accordion-button flex-grow-1 @(Index == ActiveCardIndex ? "" : "collapsed")"
-                type="button"
-                aria-expanded="@(Index == ActiveCardIndex ? "true" : "false")"
-                aria-controls="card@(Index)"
-                @onclick="ToggleCard">
-            <span>@CardDisplayName</span>
-            <span class="ms-2">(@Card.Copies)</span>
+<div class="accordion-item card-editor @(Card.Active ? "" : "entry-inactive")">
+    <div class="accordion-header entry-editor-header">
+        <h2 class="entry-heading">
+            <button class="accordion-button flex-grow-1 @(Index == ActiveCardIndex ? "" : "collapsed")"
+                    type="button"
+                    aria-expanded="@(Index == ActiveCardIndex ? "true" : "false")"
+                    aria-controls="card@(Index)"
+                    @onclick="ToggleCard">
+                <span class="card-header-content">
+                    <span class="card-header-name">@CardDisplayName <span class="card-copies">(@Card.Copies)</span></span>
 
-            @if (UserCategories.Any() || ManualProperties.Any()) {
-                <span class="ms-2">-</span>
-                @foreach (var cat in UserCategories) {
-                    <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">@cat.Name</span>
-                }
-                @foreach (var property in ManualProperties) {
-                    <span class="badge category-tag card-property-tag ms-1 manual-property-header-badge @CardPropertyColorPalette.GetCssClass(property)">@property.Name</span>
-                }
-            }
-            @if (!Card.Active) {
-                <span class="badge text-bg-secondary ms-2">Inactive</span>
-            }
-        </button>
+                    @if (UserCategories.Any() || ManualProperties.Any()) {
+                        @foreach (var cat in UserCategories) {
+                            <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">@cat.Name</span>
+                        }
+                        @foreach (var property in ManualProperties) {
+                            <span class="badge category-tag card-property-tag ms-1 manual-property-header-badge @CardPropertyColorPalette.GetCssClass(property)">@property.Name</span>
+                        }
+                    }
+                    @if (!Card.Active) {
+                        <span class="badge text-bg-secondary ms-2">Inactive</span>
+                    }
+                </span>
+            </button>
 
-        <ReorderControls Index="Index" Count="Count" ItemLabel="@($"card {CardDisplayName}, row {Index + 1}")" OnMove="OnMove" />
-        <div class="d-flex align-items-center mx-2 mb-0 flex-shrink-0 entry-editor-active-toggle">
-            <input id="cardActive@(Index)" class="form-check-input entry-editor-active-checkbox" type="checkbox"
-                   checked="@Card.Active"
-                   aria-label="@ActiveToggleLabel"
-                   title="@ActiveToggleTitle"
-                   @onchange="e => ChangeActive(e.Value)"/>
+        </h2>
+        <div class="entry-actions">
+            <ReorderControls Index="Index" Count="Count" ItemLabel="@($"card {CardDisplayName}, row {Index + 1}")" OnMove="OnMove" />
+            <label for="cardActive@(Index)" class="entry-editor-active-toggle">
+                <input id="cardActive@(Index)" class="form-check-input entry-editor-active-checkbox" type="checkbox"
+                       checked="@Card.Active"
+                       aria-label="@ActiveToggleLabel"
+                       title="@ActiveToggleTitle"
+                       @onchange="e => ChangeActive(e.Value)"/>
+                <span class="entry-active-label">Active</span>
+            </label>
+
+            <button class="btn btn-danger align-self-center" type="button" aria-label="Remove card" title="Remove card" @onclick="() => OnRemoveCard.InvokeAsync(Index)">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
+                    <path d="M6 2h4l1 1h3v1H2V3h3l1-1zM4 5h8l-.7 9H4.7z"/>
+                    <path d="M6 6h1v6H6zm3 0h1v6H9z" fill="var(--bs-danger)"/>
+                </svg>
+            </button>
         </div>
-
-        <button class="btn btn-danger align-self-center" type="button" aria-label="Remove card" title="Remove card" @onclick="() => OnRemoveCard.InvokeAsync(Index)">
-            <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
-                <path d="M6 2h4l1 1h3v1H2V3h3l1-1zM4 5h8l-.7 9H4.7z"/>
-                <path d="M6 6h1v6H6zm3 0h1v6H9z" fill="var(--bs-danger)"/>
-            </svg>
-        </button>
-    </h2>
+    </div>
 
     <div id="card@(Index)" class="accordion-collapse collapse @(Index == ActiveCardIndex ? "show" : "")">
         <div class="accordion-body">
             @if (error is not null) {
                 <DismissibleAlert Message="@error" OnDismiss="@(() => error = null)"/>
             }
-            <div class="row mb-3">
-                <div class="col-6">
+            <div class="card-identity-fields mb-3">
+                <div class="card-name-field">
                     <label for="cardName@(Index)" class="form-label">Name</label>
                     <input id="cardName@(Index)" class="form-control"
                            value="@(Card.Name ?? string.Empty)"
                            @oninput="e => Rename(e.Value?.ToString())"/>
                 </div>
-                <div class="col-3">
+                <div class="card-copies-field">
                     <label for="cardCopies@(Index)" class="form-label">Copies</label>
                     <input id="cardCopies@(Index)" class="form-control" type="number" min="1"
                            value="@Card.Copies"
@@ -62,8 +67,8 @@
                 </div>
             </div>
 
-            <div class="row mb-3">
-                <div class="col-8">
+            <div class="editor-add-row mb-3">
+                <div class="editor-select-field">
                     <label for="cardCategory@(Index)" class="form-label">Category</label>
                     <select id="cardCategory@(Index)" class="form-select"
                             value="@selectedCategory"
@@ -81,7 +86,7 @@
                         </optgroup>
                     </select>
                 </div>
-                <div class="col-4 d-flex align-items-end">
+                <div class="d-flex align-items-end">
                     <button class="btn btn-primary w-100" @onclick="AddCategory">Add</button>
                 </div>
             </div>

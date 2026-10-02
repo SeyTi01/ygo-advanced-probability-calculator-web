@@ -31,3 +31,10 @@
     opacity: 0.3;
     cursor: default;
 }
+
+@media (max-width: 767.98px) {
+    .reorder-button {
+        width: 2.5rem;
+        min-height: 2.75rem;
+    }
+}

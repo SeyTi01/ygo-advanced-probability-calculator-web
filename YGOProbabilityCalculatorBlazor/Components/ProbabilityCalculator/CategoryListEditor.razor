@@ -3,8 +3,8 @@
 
 <div class="mb-4">
     <h4>Categories</h4>
-    <div class="row">
-        <div class="col-4">
+    <div class="editor-add-row">
+        <div class="editor-select-field">
             <input @bind="newCategoryName"
                    @bind:event="oninput"
                    @onkeyup="@(async e => {
@@ -14,7 +14,7 @@
                    aria-label="Category name"
                    placeholder="Category name"/>
         </div>
-        <div class="col-2">
+        <div class="editor-add-action">
             <button class="btn btn-primary" @onclick="AddCategoryBase">Add</button>
         </div>
     </div>
