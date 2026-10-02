@@ -236,7 +236,6 @@ public class ActiveEntriesEditorTest {
         card.Find("select").Change("user:B");
         combo.Find("select").Change("user:B");
         combo.Find("#minCount0").Input("0");
-        combo.Find("#maxAny0").Change(false);
         combo.Find("#maxCount0").Input("0");
         card.Find("#cardActive0").Change(true);
         card.Find("#cardActive0").Change(false);

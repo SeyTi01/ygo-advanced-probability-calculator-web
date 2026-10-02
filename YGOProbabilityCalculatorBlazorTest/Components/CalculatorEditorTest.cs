@@ -84,21 +84,24 @@ public class CalculatorEditorTest {
         await editor.Find(directCard ? "#comboCard0" : "#comboCategory0").ChangeAsync(new() {
             Value = directCard ? session.Cards[0].Id : a.Identity
         });
-        Assert.That(editor.Find("#maxAny0").HasAttribute("checked"), Is.True);
-        Assert.That(editor.Find("#maxCount0").HasAttribute("disabled"), Is.True);
+        AssertAnyMaximumDraft(editor);
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
+        AssertAnyMaximumDraft(editor);
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(editor.Find(".accordion-button").TextContent, Does.Contain("(1 Min)"));
         Assert.That(editor.Find(".accordion-body .badge").TextContent, Does.Contain("(1 Min)"));
-        await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
         var combo = editor.Instance.Combo;
         Assert.That(directCard ? combo.Cards[0].MaximumMode : combo.Categories[0].MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
+        Assert.That(directCard ? combo.Cards[0].MaxCount : combo.Categories[0].MaxCount, Is.EqualTo(6));
         Assert.That(directCard ? combo.Cards[0].GetEffectiveMaximum(6) : combo.Categories[0].GetEffectiveMaximum(6), Is.EqualTo(6));
         await editor.Find(directCard ? "#comboCard0" : "#comboCategory0").ChangeAsync(new() {
             Value = directCard ? session.Cards[0].Id : a.Identity
         });
-        Assert.That(editor.Find("#maxAny0").HasAttribute("checked"), Is.True);
+        AssertAnyMaximumDraft(editor);
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
         await Button(editor, "Update").ClickAsync(new());
+        Assert.That(directCard ? editor.Instance.Combo.Cards[0].MaximumMode : editor.Instance.Combo.Categories[0].MaximumMode,
+            Is.EqualTo(RequirementMaximumMode.HandSize));
         Assert.That(editor.Find(".accordion-body .badge").TextContent, Does.Contain("(2 Min)"));
     }
 
@@ -155,17 +158,16 @@ public class CalculatorEditorTest {
         var selector = directCard ? "#comboCard0" : "#comboCategory0";
         var value = directCard ? session.Cards[0].Id : a.Identity;
         await editor.Find(selector).ChangeAsync(new() { Value = value });
-        await editor.Find("#maxAny0").ChangeAsync(new() { Value = false });
+        AssertAnyMaximumDraft(editor);
         await editor.Find("#minCount0").InputAsync(new() { Value = minimum.ToString() });
         await editor.Find("#maxCount0").InputAsync(new() { Value = maximum.ToString() });
         await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
-        Assert.That(editor.Find("#maxAny0").HasAttribute("checked"), Is.False);
+        Assert.That(editor.FindAll("#maxAny0"), Is.Empty);
         Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo(maximum.ToString()));
         await Button(editor, "Add").ClickAsync(new());
         await cut.Find("#handSize").ChangeAsync(new() { Value = "5" });
         await editor.Find(selector).ChangeAsync(new() { Value = value });
-        Assert.That(editor.Find("#maxAny0").HasAttribute("checked"), Is.False);
-        Assert.That(editor.Find("#maxCount0").HasAttribute("disabled"), Is.False);
+        Assert.That(editor.FindAll("#maxAny0"), Is.Empty);
         Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo(maximum.ToString()));
         Assert.That(editor.Find(".accordion-body .badge").TextContent, Does.Contain($"({expectedLabel})"));
         var combo = editor.Instance.Combo;
@@ -173,23 +175,64 @@ public class CalculatorEditorTest {
         Assert.That(directCard ? combo.Cards[0].GetEffectiveMaximum(6) : combo.Categories[0].GetEffectiveMaximum(6), Is.EqualTo(maximum));
     }
 
-    [Test]
-    public async Task AnyToggleRestoresNumericDraftAndAllowsMinimumAboveCurrentHand() {
-        var cut = Render(new SessionState { Categories = [a], Combos = [new([])], HandSize = 5 });
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task MaximumDraftAloneSwitchesBetweenFixedAndDynamicModes(bool directCard) {
+        var session = Session();
+        session.Combos.Clear();
+        session.Combos.Add(new([]));
+        var cut = Render(new SessionState { Categories = session.Categories, Cards = session.Cards, Combos = session.Combos, HandSize = 5 });
         var editor = cut.FindComponent<ComboEditor>();
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = a.Identity });
-        await editor.Find("#maxAny0").ChangeAsync(new() { Value = false });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
-        await editor.Find("#maxAny0").ChangeAsync(new() { Value = true });
-        await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
-        await editor.Find("#maxAny0").ChangeAsync(new() { Value = false });
-        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
-        await editor.Find("#maxAny0").ChangeAsync(new() { Value = true });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "7" });
+        if (directCard) await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
+        var selector = directCard ? "#comboCard0" : "#comboCategory0";
+        var value = directCard ? session.Cards[0].Id : a.Identity;
+        await editor.Find(selector).ChangeAsync(new() { Value = value });
+        AssertAnyMaximumDraft(editor);
+
+        await editor.Find("#maxCount0").InputAsync(new() { Value = "2" });
         await Button(editor, "Add").ClickAsync(new());
-        Assert.That(editor.Instance.Combo.Categories[0].MinCount, Is.EqualTo(7));
-        Assert.That(editor.Instance.Combo.Categories[0].MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
+        Assert.That(directCard ? editor.Instance.Combo.Cards[0].MaximumMode : editor.Instance.Combo.Categories[0].MaximumMode,
+            Is.EqualTo(RequirementMaximumMode.Fixed));
+        Assert.That(directCard ? editor.Instance.Combo.Cards[0].MaxCount : editor.Instance.Combo.Categories[0].MaxCount,
+            Is.EqualTo(2));
+
+        await editor.Find(selector).ChangeAsync(new() { Value = value });
+        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("2"));
+        Assert.That(editor.Find("#maxCount0").GetAttribute("placeholder"), Is.EqualTo("Any"));
+        await editor.Find("#maxCount0").InputAsync(new() { Value = string.Empty });
+        await editor.Find("#minCount0").InputAsync(new() { Value = "7" });
+        await Button(editor, "Update").ClickAsync(new());
+
+        Assert.That(directCard ? editor.Instance.Combo.Cards[0].MaximumMode : editor.Instance.Combo.Categories[0].MaximumMode,
+            Is.EqualTo(RequirementMaximumMode.HandSize));
+        Assert.That(directCard ? editor.Instance.Combo.Cards[0].MinCount : editor.Instance.Combo.Categories[0].MinCount, Is.EqualTo(7));
+        Assert.That(directCard ? editor.Instance.Combo.Cards[0].GetEffectiveMaximum(6) : editor.Instance.Combo.Categories[0].GetEffectiveMaximum(6),
+            Is.EqualTo(6));
+        Assert.That(editor.Find(".accordion-body .category-tag").TextContent, Does.Contain("(7 Min)"));
+        await editor.Find(selector).ChangeAsync(new() { Value = value });
+        AssertAnyMaximumDraft(editor);
         Assert.That(editor.FindAll("[role='alert']"), Is.Empty);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task InvalidNonEmptyMaximumDoesNotBecomeAny(bool directCard) {
+        var session = Session();
+        session.Combos.Clear();
+        session.Combos.Add(new([]));
+        var cut = Render(new SessionState { Categories = session.Categories, Cards = session.Cards, Combos = session.Combos, HandSize = 5 });
+        var editor = cut.FindComponent<ComboEditor>();
+        if (directCard) await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
+        await editor.Find(directCard ? "#comboCard0" : "#comboCategory0").ChangeAsync(new() {
+            Value = directCard ? session.Cards[0].Id : a.Identity
+        });
+        AssertAnyMaximumDraft(editor);
+        await editor.Find("#maxCount0").InputAsync(new() { Value = "invalid" });
+        await Button(editor, "Add").ClickAsync(new());
+
+        Assert.That(editor.Find("[role='alert']").TextContent, Does.Contain("Maximum count"));
+        Assert.That(editor.Instance.Combo.Categories, Is.Empty);
+        Assert.That(editor.Instance.Combo.Cards, Is.Empty);
     }
 
     [Test]
@@ -221,7 +264,7 @@ public class CalculatorEditorTest {
             Assert.That(editor.Instance.Combo.Cards.Select(c => c.GetEffectiveMaximum(6)), Is.EqualTo(new[] { 6, 5 }));
             await editor.Find("#constraintKind" + editor.Instance.Index).ChangeAsync(new() { Value = "Card" });
             await editor.Find("#comboCard" + editor.Instance.Index).ChangeAsync(new() { Value = session.Cards[1].Id });
-            Assert.That(editor.Find("#maxAny" + editor.Instance.Index).HasAttribute("checked"), Is.False);
+            Assert.That(editor.FindAll("[id^='maxAny']"), Is.Empty);
             Assert.That(editor.Find("#maxCount" + editor.Instance.Index).GetAttribute("value"), Is.EqualTo("5"));
         }
     }
@@ -235,6 +278,15 @@ public class CalculatorEditorTest {
     // before asserting or editing again, and retain pending calculation tasks until release.
     private static IElement Button(IRenderedFragment fragment, string text) =>
         fragment.FindAll("button").Single(element => element.TextContent.Trim() == text);
+
+    private static void AssertAnyMaximumDraft(IRenderedFragment fragment, int index = 0) {
+        var maximum = fragment.Find($"#maxCount{index}");
+        Assert.That(maximum.GetAttribute("value"), Is.EqualTo(string.Empty));
+        Assert.That(maximum.GetAttribute("placeholder"), Is.EqualTo("Any"));
+        Assert.That(maximum.GetAttribute("title"), Is.EqualTo("Leave empty for Any"));
+        Assert.That(maximum.HasAttribute("disabled"), Is.False);
+        Assert.That(fragment.FindAll($"#maxAny{index}"), Is.Empty);
+    }
 
     private static async Task DuplicateComboAsync(IRenderedFragment fragment, int index) {
         var editor = fragment.FindComponents<ComboEditor>()[index];
@@ -1034,7 +1086,6 @@ public class CalculatorEditorTest {
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
         editor = cut.FindComponent<ComboEditor>();
         editor.Find("#comboCard0").Change(second.Id);
-        editor.Find("#maxAny0").Change(false);
         editor.Find("#maxCount0").Input("1");
         Button(editor, "Add").Click();
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
@@ -1592,20 +1643,21 @@ public class CalculatorEditorTest {
         Button(combo, "Add").Click();
         Assert.That(combo.Find("[role=alert]").TextContent, Does.Contain("Minimum"));
         combo.Find("#minCount0").Input("2");
-        combo.Find("#maxAny0").Change(false);
         combo.Find("#maxCount0").Input("1");
         cut.Find("#handSize").Change("3");
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("1"));
+        Assert.That(combo.FindAll("#maxAny0"), Is.Empty);
         Button(combo, "Add").Click();
         Assert.That(combo.Find("[role=alert]").TextContent, Does.Contain("Maximum"));
         combo.Find("#maxCount0").Input("");
         Button(combo, "Add").Click();
-        Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(1));
+        Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
+        Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("B (2 Min)"));
         combo.Find("select").Change("");
         cut.Find("#handSize").Change("4");
-        Assert.That(combo.Find("#maxAny0").HasAttribute("checked"), Is.True);
+        AssertAnyMaximumDraft(combo);
         combo.Find("select").Change("user:B");
-        Button(combo, "Add").Click();
+        Button(combo, "Update").Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
     }
 
@@ -1767,7 +1819,9 @@ public class CalculatorEditorTest {
                 Is.EqualTo(new[] { a.Identity }));
             Assert.That(editors[2].Find("#comboCategory2").GetAttribute("value"), Is.Null.Or.Empty);
             Assert.That(editors[2].Find("#minCount2").GetAttribute("value"), Is.EqualTo("1"));
-            Assert.That(editors[2].Find("#maxCount2").GetAttribute("value"), Is.EqualTo("2"));
+            Assert.That(editors[2].Find("#maxCount2").GetAttribute("value"), Is.EqualTo(string.Empty));
+            Assert.That(editors[2].Find("#maxCount2").GetAttribute("placeholder"), Is.EqualTo("Any"));
+            Assert.That(editors[2].FindAll("#maxAny2"), Is.Empty);
             Assert.That(otherEditor.Find("#comboCategory3").GetAttribute("value"), Is.EqualTo(a.Identity));
             Assert.That(otherEditor.Find("#minCount3").GetAttribute("value"), Is.EqualTo("0"));
             Assert.That(otherEditor.Find("#maxCount3").GetAttribute("value"), Is.EqualTo("2"));
@@ -1808,7 +1862,9 @@ public class CalculatorEditorTest {
             Assert.That(editors[1].Find("#constraintKind1").GetAttribute("value"), Is.EqualTo("Category"));
             Assert.That(editors[1].Find("#comboCategory1").GetAttribute("value"), Is.Null.Or.Empty);
             Assert.That(editors[1].Find("#minCount1").GetAttribute("value"), Is.EqualTo("1"));
-            Assert.That(editors[1].Find("#maxCount1").GetAttribute("value"), Is.EqualTo("2"));
+            Assert.That(editors[1].Find("#maxCount1").GetAttribute("value"), Is.EqualTo(string.Empty));
+            Assert.That(editors[1].Find("#maxCount1").GetAttribute("placeholder"), Is.EqualTo("Any"));
+            Assert.That(editors[1].FindAll("#maxAny1"), Is.Empty);
         });
     }
 
@@ -1926,7 +1982,6 @@ public class CalculatorEditorTest {
         card.Find("select").Change("user:A");
         combo.Find("select").Change("user:A");
         combo.Find("#minCount1").Input("0");
-        combo.Find("#maxAny1").Change(false);
         combo.Find("#maxCount1").Input("0");
         cut.FindComponents<CardEditor>()[0].Find("[title='Remove card']").Click();
         cut.FindComponents<ComboEditor>()[0].Find("[title='Remove combo']").Click();
