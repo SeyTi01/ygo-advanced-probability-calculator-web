@@ -241,7 +241,8 @@
     private string CardDisplayName(string cardId) {
         var index = Cards.ToList().FindIndex(card => card.Id == cardId);
         if (index < 0) return $"Missing card ({cardId[..Math.Min(8, cardId.Length)]})";
-        return string.IsNullOrWhiteSpace(Cards[index].Name) ? "Unnamed card" : Cards[index].Name;
+        var cardName = Cards[index].Name;
+        return string.IsNullOrWhiteSpace(cardName) ? "Unnamed card" : cardName;
     }
 
     private string CardSelectionLabel(string cardId) {
