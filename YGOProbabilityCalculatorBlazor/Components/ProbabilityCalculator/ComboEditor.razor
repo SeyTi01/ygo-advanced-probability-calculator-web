@@ -79,7 +79,7 @@
                         <label for="comboCard@(Index)" class="form-label">Card</label>
                         <select id="comboCard@(Index)" class="form-select" value="@selectedCardId" @onchange="e => OnSelectCard(e.Value?.ToString())">
                             <option value="">Select card…</option>
-                            @foreach (var card in Cards) {
+                            @foreach (var card in AlphabeticalCards) {
                                 <option value="@card.Id">@CardSelectionLabel(card.Id)</option>
                             }
                         </select>
@@ -241,6 +241,7 @@
         : Combo.Categories.Any(c => c.BaseCategory.Identity == selectedCategory);
 
     private int ConstraintCount => Combo.Categories.Count + Combo.Cards.Count;
+    private IEnumerable<Card> AlphabeticalCards => CardOrdering.Alphabetize(Cards);
     private IEnumerable<ComboCategory> HeaderCategories => Combo.Categories.Take(MaxHeaderBadges);
     private IEnumerable<ComboCard> HeaderCards => Combo.Cards.Take(Math.Max(0, MaxHeaderBadges - Combo.Categories.Count));
     private int HiddenHeaderCategoriesCount => Math.Max(0, ConstraintCount - MaxHeaderBadges);
