@@ -60,8 +60,10 @@ public class CalculatorEditorTest {
 
     [Test]
     public async Task SaveSessionButtonShowsTheExistingErrorWhenFileWriteFails() {
-        context.JSInterop.SetupVoid("saveSessionFile")
-            .SetException(new JSException("Session file write failed."));
+        var sessionService = new Mock<ISessionService>();
+        sessionService.Setup(service => service.SaveSessionAsync(It.IsAny<SessionState>(), It.IsAny<string>()))
+            .ThrowsAsync(new JSException("Session file write failed."));
+        context.Services.AddSingleton<ISessionService>(sessionService.Object);
 
         var cut = Render();
         await Button(cut, "Save Session").ClickAsync(new());
