@@ -13,6 +13,12 @@ It can model complex combo conditions while correctly accounting for hands that 
 - **Reusable and overlapping card categories** — cards can belong to several roles at once, such as `Fire`, `Level 5`, `Starter`, or `Extender`.
 - **Exact unions of overlapping combo routes** — calculate the probability of opening any valid combo without double-counting hands that satisfy several routes, with optional grouping for related combo families.
 
+## What makes it different
+
+- **Distinct physical requirements within a combo** — if a route needs both a `Starter` and a `Fire` card, one card that belongs to both does not satisfy both requirements by itself.
+- **Exact overlap handling across routes** — categories may overlap freely, and a hand that satisfies several combo routes is counted only once in the overall result.
+- **Exact client-side calculation** — results use combinatorial counting rather than Monte Carlo simulation or a calculation backend.
+
 ## Example: Vanquish Soul / K9
 
 The included example uses a Vanquish Soul K9 deck and models nine different combo routes that either reach the full Vanquish Soul setup directly or can make Ripper + Saryuja as a bridge. Half boards are intentionally not counted.
