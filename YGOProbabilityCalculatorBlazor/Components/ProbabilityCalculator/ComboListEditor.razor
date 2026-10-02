@@ -4,16 +4,18 @@
 <div class="mb-4">
     <h4>Combos</h4>
     <div class="mb-3">
-        <h5 class="h6 mb-2">Groups</h5>
-        <div class="editor-add-row">
-            <div class="editor-select-field">
-                <input class="form-control" type="text"
-                       aria-label="New combo group name" placeholder="Group name"
-                       @bind="newGroupName" @bind:event="oninput"
-                       @onkeyup="HandleAddGroupKeyUp" />
-            </div>
-            <div class="editor-add-action">
-                <button class="btn btn-primary" type="button" aria-label="Add combo group" @onclick="AddGroup">Add</button>
+        <div class="section-add-heading">
+            <h5 class="h6">Groups</h5>
+            <div class="editor-add-row">
+                <div class="editor-select-field">
+                    <input class="form-control" type="text"
+                           aria-label="New combo group name" placeholder="Group name"
+                           @bind="newGroupName" @bind:event="oninput"
+                           @onkeyup="HandleAddGroupKeyUp" />
+                </div>
+                <div class="editor-add-action">
+                    <button class="btn btn-primary" type="button" aria-label="Add combo group" @onclick="AddGroup">Add</button>
+                </div>
             </div>
         </div>
         @if (groupError is not null) {
