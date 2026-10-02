@@ -10,7 +10,7 @@ It can model complex combo conditions while correctly accounting for hands that 
 
 ## What it can model
 
-- **Reusable and overlapping card categories** — cards can belong to several roles at once, such as `Fire`, `Level 5`, `Starter`, or `Extender`.
+- **Reusable and overlapping card roles and properties** — cards can belong to several custom roles and metadata properties at once, such as `VS Starter`, `Attribute: FIRE`, or `Level 5`.
 - **Exact unions of overlapping combo routes** — calculate the probability of opening any valid combo without double-counting hands that satisfy several routes, with optional grouping for related combo families.
 
 ## What makes it different
@@ -23,25 +23,24 @@ It can model complex combo conditions while correctly accounting for hands that 
 
 The included example uses a Vanquish Soul K9 deck and models nine different combo routes that either reach the full Vanquish Soul setup directly or can make Ripper + Saryuja as a bridge. Half boards are intentionally not counted.
 
-The configuration uses six categories:
+The example uses three custom role categories:
 
-- `Fire`
-- `Dark`
-- `Level 5`
 - `VS Monster`
 - `VS Starter`
 - `K9 Starter`
 
-Cards can belong to multiple categories. For example, Vanquish Soul Razen is both a `Fire` card, a `VS Monster`, and a `VS Starter`, while most of the K9 cards share the `K9 Starter` role.
+Objective properties such as FIRE, DARK, and Level 5 come from card metadata rather than separate user categories. Where a spell functionally represents one of those properties for combo modeling, the example uses a manual metadata assignment.
+
+Cards can still satisfy several roles and properties at once. For example, Vanquish Soul Razen is both a `VS Monster` and a `VS Starter` and has the FIRE property, while Reinforcement of the Army is modeled as a `VS Monster` / `VS Starter` with a manual FIRE property.
 
 This allows equivalent routes to be expressed concisely.
 
-With all nine routes enabled, the example has an **81.19%** probability of opening at least one modeled full-combo hand.
+With all nine routes enabled, the example has an **83.61%** probability of opening at least one modeled full-combo hand.
 
 ## How to use it
 
 1. **Import or enter your deck.**
-2. **Create categories** for reusable card properties or roles.
+2. **Create custom categories** for reusable roles; imported cards expose objective card properties automatically.
 3. **Assign categories to cards.** A card can belong to multiple categories.
 4. **Define combos** using categories, specific cards, or both.
 5. **Set minimum and maximum counts** for each requirement.
@@ -80,7 +79,7 @@ P(success) = ------------------------
 ## Features
 
 - Require categories, individual cards, or both within a combo.
-- Set inclusive minimum and maximum counts for requirements.
+- Set minimum counts and either fixed maximums or `Any` (the current hand size) for requirements.
 - Calculate individual combo probabilities, grouped probabilities, and the union of all active combos.
 - Organize related combos into named groups.
 - Import decks from `.ydk` files or YDKe deck codes.

@@ -2,18 +2,6 @@
   "SchemaVersion": 2,
   "Categories": [
     {
-      "Name": "Fire",
-      "Source": "User"
-    },
-    {
-      "Name": "Dark",
-      "Source": "User"
-    },
-    {
-      "Name": "Level 5",
-      "Source": "User"
-    },
-    {
       "Name": "VS Monster",
       "Source": "User"
     },
@@ -64,14 +52,11 @@
       "Name": "Maxx \u0022C\u0022",
       "Active": true,
       "Id": "6791c7d39e9d41cda86fa8f59b6092a1",
-      "ExternalCardId": 23434538
+      "ExternalCardId": 23434538,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Fire",
-          "Source": "User"
-        },
         {
           "Name": "Monster",
           "Source": "Metadata",
@@ -102,14 +87,11 @@
       "Name": "Ash Blossom \u0026 Joyous Spring",
       "Active": true,
       "Id": "70933e5990b54a2ca1ac75b0ace183db",
-      "ExternalCardId": 14558127
+      "ExternalCardId": 14558127,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Dark",
-          "Source": "User"
-        },
         {
           "Name": "VS Monster",
           "Source": "User"
@@ -149,14 +131,11 @@
       "Name": "Vanquish Soul Dr. Mad Love",
       "Active": true,
       "Id": "a46c7692bd89479ebdd9430e0868a15f",
-      "ExternalCardId": 29280200
+      "ExternalCardId": 29280200,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Fire",
-          "Source": "User"
-        },
         {
           "Name": "VS Monster",
           "Source": "User"
@@ -200,7 +179,8 @@
       "Name": "Vanquish Soul Razen",
       "Active": true,
       "Id": "55c145012b004e249542f334dbe278df",
-      "ExternalCardId": 29302858
+      "ExternalCardId": 29302858,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
@@ -239,18 +219,11 @@
       "Name": "Mulcharmy Fuwalos",
       "Active": true,
       "Id": "782b979b7aa046dc80a57026c14c8f7c",
-      "ExternalCardId": 42141493
+      "ExternalCardId": 42141493,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Fire",
-          "Source": "User"
-        },
-        {
-          "Name": "Level 5",
-          "Source": "User"
-        },
         {
           "Name": "VS Monster",
           "Source": "User"
@@ -290,14 +263,11 @@
       "Name": "Vanquish Soul Jiaolong",
       "Active": true,
       "Id": "47af3086f26748fea509339d55c56651",
-      "ExternalCardId": 9091064
+      "ExternalCardId": 9091064,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Level 5",
-          "Source": "User"
-        },
         {
           "Name": "K9 Starter",
           "Source": "User"
@@ -337,14 +307,11 @@
       "Name": "K9-04 Noroi",
       "Active": true,
       "Id": "66e19737b4814804a15981112e5e79df",
-      "ExternalCardId": 47960073
+      "ExternalCardId": 47960073,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Level 5",
-          "Source": "User"
-        },
         {
           "Name": "Monster",
           "Source": "Metadata",
@@ -380,18 +347,11 @@
       "Name": "K9-17 Izuna",
       "Active": true,
       "Id": "65dbca786fcb404883a264676e08eb68",
-      "ExternalCardId": 92248362
+      "ExternalCardId": 92248362,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Dark",
-          "Source": "User"
-        },
-        {
-          "Name": "Level 5",
-          "Source": "User"
-        },
         {
           "Name": "K9 Starter",
           "Source": "User"
@@ -431,18 +391,11 @@
       "Name": "K9-66a Jokul",
       "Active": true,
       "Id": "21c07f55cd48470a9b4cfa777e905a7d",
-      "ExternalCardId": 28642461
+      "ExternalCardId": 28642461,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Dark",
-          "Source": "User"
-        },
-        {
-          "Name": "Level 5",
-          "Source": "User"
-        },
         {
           "Name": "Monster",
           "Source": "Metadata",
@@ -478,14 +431,11 @@
       "Name": "K9-66b Lantern",
       "Active": true,
       "Id": "97870450b661441f9a3d3fa26fd9a880",
-      "ExternalCardId": 55031170
+      "ExternalCardId": 55031170,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Level 5",
-          "Source": "User"
-        },
         {
           "Name": "Monster",
           "Source": "Metadata",
@@ -521,14 +471,11 @@
       "Name": "K9-\u00D8\u00D8 Lupis",
       "Active": true,
       "Id": "32ec9714c37f446391eb0df57443dc0f",
-      "ExternalCardId": 91025875
+      "ExternalCardId": 91025875,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Level 5",
-          "Source": "User"
-        },
         {
           "Name": "VS Monster",
           "Source": "User"
@@ -568,14 +515,11 @@
       "Name": "Vanquish Soul Hollie Sue",
       "Active": true,
       "Id": "74fc576402e64906853b667d299adaac",
-      "ExternalCardId": 93156774
+      "ExternalCardId": 93156774,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Dark",
-          "Source": "User"
-        },
         {
           "Name": "Monster",
           "Source": "Metadata",
@@ -611,14 +555,11 @@
       "Name": "Bystial Druiswurm",
       "Active": true,
       "Id": "fbf10b7775df44dab743db7413ee2d9c",
-      "ExternalCardId": 6637331
+      "ExternalCardId": 6637331,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Dark",
-          "Source": "User"
-        },
         {
           "Name": "Monster",
           "Source": "Metadata",
@@ -654,14 +595,11 @@
       "Name": "Bystial Magnamhut",
       "Active": true,
       "Id": "5881c34be587477b9e6c3c01f8bcca31",
-      "ExternalCardId": 33854624
+      "ExternalCardId": 33854624,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Dark",
-          "Source": "User"
-        },
         {
           "Name": "VS Monster",
           "Source": "User"
@@ -701,14 +639,11 @@
       "Name": "Vanquish Soul Heavy Borger",
       "Active": true,
       "Id": "93845904eb734ef0b243e0edd5b65939",
-      "ExternalCardId": 92895501
+      "ExternalCardId": 92895501,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Fire",
-          "Source": "User"
-        },
         {
           "Name": "Monster",
           "Source": "Metadata",
@@ -744,7 +679,8 @@
       "Name": "Dogoran, the Mad Flame Kaiju",
       "Active": true,
       "Id": "c7abb909211148218b8bdf6848e99134",
-      "ExternalCardId": 93332803
+      "ExternalCardId": 93332803,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
@@ -787,14 +723,11 @@
       "Name": "Vanquish Soul Caesar Valius",
       "Active": true,
       "Id": "a7a26174a628454db544725e9b0d2f6f",
-      "ExternalCardId": 91073013
+      "ExternalCardId": 91073013,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Fire",
-          "Source": "User"
-        },
         {
           "Name": "VS Monster",
           "Source": "User"
@@ -808,13 +741,25 @@
           "Name": "Normal Spell",
           "Source": "Metadata",
           "MetadataKey": "spell-type:normal"
+        },
+        {
+          "Name": "Attribute: FIRE",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:fire"
+        },
+        {
+          "Name": "VS Starter",
+          "Source": "User"
         }
       ],
       "Copies": 1,
       "Name": "Reinforcement of the Army",
       "Active": true,
       "Id": "6d8f37220d024d25b41fb08fc1f188c9",
-      "ExternalCardId": 32807846
+      "ExternalCardId": 32807846,
+      "ManualMetadataCategoryKeys": [
+        "attribute:fire"
+      ]
     },
     {
       "Categories": [
@@ -833,7 +778,8 @@
       "Name": "Triple Tactics Talent",
       "Active": true,
       "Id": "f5feca4301474add9ceba353d3d0081f",
-      "ExternalCardId": 25311006
+      "ExternalCardId": 25311006,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
@@ -861,18 +807,11 @@
       "Name": "Stake your Soul!",
       "Active": true,
       "Id": "d9db32f4514a4f2fb0d178efd3ef2c0b",
-      "ExternalCardId": 54562327
+      "ExternalCardId": 54562327,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Dark",
-          "Source": "User"
-        },
-        {
-          "Name": "Level 5",
-          "Source": "User"
-        },
         {
           "Name": "K9 Starter",
           "Source": "User"
@@ -886,13 +825,33 @@
           "Name": "Normal Spell",
           "Source": "Metadata",
           "MetadataKey": "spell-type:normal"
+        },
+        {
+          "Name": "Attribute: DARK",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:dark"
+        },
+        {
+          "Name": "Attribute: EARTH",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:earth"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "Metadata",
+          "MetadataKey": "level:5"
         }
       ],
       "Copies": 1,
       "Name": "Chaotic Elements",
       "Active": true,
       "Id": "19fa41dff19d44cb88cf36334363b934",
-      "ExternalCardId": 92221402
+      "ExternalCardId": 92221402,
+      "ManualMetadataCategoryKeys": [
+        "attribute:dark",
+        "attribute:earth",
+        "level:5"
+      ]
     },
     {
       "Categories": [
@@ -916,18 +875,11 @@
       "Name": "Vanquish Soul, Start!",
       "Active": true,
       "Id": "486cc2ee687247ef866e66414ccf3bcd",
-      "ExternalCardId": 35550352
+      "ExternalCardId": 35550352,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
-        {
-          "Name": "Dark",
-          "Source": "User"
-        },
-        {
-          "Name": "Level 5",
-          "Source": "User"
-        },
         {
           "Name": "K9 Starter",
           "Source": "User"
@@ -946,13 +898,33 @@
           "Name": "Archetype: K9",
           "Source": "Metadata",
           "MetadataKey": "archetype:k9"
+        },
+        {
+          "Name": "Attribute: DARK",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:dark"
+        },
+        {
+          "Name": "Attribute: EARTH",
+          "Source": "Metadata",
+          "MetadataKey": "attribute:earth"
+        },
+        {
+          "Name": "Level 5",
+          "Source": "Metadata",
+          "MetadataKey": "level:5"
         }
       ],
       "Copies": 2,
       "Name": "\u0022A Case for K9\u0022",
       "Active": true,
       "Id": "db70c79f084e4de2a9ecb78599e4d8fd",
-      "ExternalCardId": 80181649
+      "ExternalCardId": 80181649,
+      "ManualMetadataCategoryKeys": [
+        "attribute:dark",
+        "attribute:earth",
+        "level:5"
+      ]
     },
     {
       "Categories": [
@@ -976,7 +948,8 @@
       "Name": "K9-X Forced Release",
       "Active": true,
       "Id": "75b6bf4293ef4909bf8e6730662d30cd",
-      "ExternalCardId": 53792930
+      "ExternalCardId": 53792930,
+      "ManualMetadataCategoryKeys": []
     },
     {
       "Categories": [
@@ -1000,7 +973,8 @@
       "Name": "Vanquish Soul Snow Devil",
       "Active": true,
       "Id": "c21f7c993a2b476da1d669d590b80a3c",
-      "ExternalCardId": 60883493
+      "ExternalCardId": 60883493,
+      "ManualMetadataCategoryKeys": []
     }
   ],
   "Combos": [
@@ -1012,19 +986,22 @@
             "Source": "User"
           },
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         },
         {
           "BaseCategory": {
-            "Name": "Fire",
-            "Source": "User"
+            "Name": "Attribute: FIRE",
+            "Source": "Metadata",
+            "MetadataKey": "attribute:fire"
           },
           "MinCount": 1,
-          "MaxCount": 5
-        }
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"        }
       ],
       "Name": "VS Starter \u002B Fire",
-      "Active": true
+      "Active": true,
+      "GroupId": "48c6559aefb544fb949e8aabef2d251d"
     },
     {
       "Categories": [
@@ -1034,69 +1011,83 @@
             "Source": "User"
           },
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         },
         {
           "BaseCategory": {
-            "Name": "Dark",
-            "Source": "User"
+            "Name": "Attribute: DARK",
+            "Source": "Metadata",
+            "MetadataKey": "attribute:dark"
           },
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Name": "VS Starter \u002B Dark",
-      "Active": true
+      "Active": true,
+      "GroupId": "48c6559aefb544fb949e8aabef2d251d"
     },
     {
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "Fire",
-            "Source": "User"
+            "Name": "Attribute: FIRE",
+            "Source": "Metadata",
+            "MetadataKey": "attribute:fire"
           },
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Cards": [
         {
           "CardId": "a46c7692bd89479ebdd9430e0868a15f",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Name": "Mad Love \u002B Fire",
-      "Active": true
+      "Active": true,
+      "GroupId": "48c6559aefb544fb949e8aabef2d251d"
     },
     {
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "Fire",
-            "Source": "User"
+            "Name": "Attribute: FIRE",
+            "Source": "Metadata",
+            "MetadataKey": "attribute:fire"
           },
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         },
         {
           "BaseCategory": {
-            "Name": "Dark",
-            "Source": "User"
+            "Name": "Attribute: DARK",
+            "Source": "Metadata",
+            "MetadataKey": "attribute:dark"
           },
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Cards": [
         {
           "CardId": "74fc576402e64906853b667d299adaac",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Name": "Sue \u002B Fire \u002B Dark",
-      "Active": true
+      "Active": true,
+      "GroupId": "48c6559aefb544fb949e8aabef2d251d"
     },
     {
       "Categories": [
@@ -1106,19 +1097,23 @@
             "Source": "User"
           },
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         },
         {
           "BaseCategory": {
             "Name": "Level 5",
-            "Source": "User"
+            "Source": "Metadata",
+            "MetadataKey": "level:5"
           },
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Name": "K9 Starter \u002B Lv. 5",
-      "Active": true
+      "Active": true,
+      "GroupId": "0523b13956664dc7b0a36d0ec6c54b01"
     },
     {
       "Categories": [
@@ -1128,23 +1123,27 @@
             "Source": "User"
           },
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Cards": [
         {
           "CardId": "74fc576402e64906853b667d299adaac",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         },
         {
           "CardId": "486cc2ee687247ef866e66414ccf3bcd",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Name": "Sue \u002B Start \u002B VS",
-      "Active": true
+      "Active": true,
+      "GroupId": "48c6559aefb544fb949e8aabef2d251d"
     },
     {
       "Categories": [],
@@ -1152,16 +1151,19 @@
         {
           "CardId": "55c145012b004e249542f334dbe278df",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         },
         {
           "CardId": "74fc576402e64906853b667d299adaac",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Name": "Razen \u002B Sue",
-      "Active": true
+      "Active": true,
+      "GroupId": "48c6559aefb544fb949e8aabef2d251d"
     },
     {
       "Categories": [],
@@ -1169,50 +1171,64 @@
         {
           "CardId": "66e19737b4814804a15981112e5e79df",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         },
         {
           "CardId": "d9db32f4514a4f2fb0d178efd3ef2c0b",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Name": "Noroi \u002B Stake",
-      "Active": true
+      "Active": true,
+      "GroupId": "0523b13956664dc7b0a36d0ec6c54b01"
     },
     {
       "Categories": [
         {
           "BaseCategory": {
             "Name": "Level 5",
-            "Source": "User"
+            "Source": "Metadata",
+            "MetadataKey": "level:5"
           },
           "MinCount": 2,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Cards": [
         {
           "CardId": "65dbca786fcb404883a264676e08eb68",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         },
         {
           "CardId": "74fc576402e64906853b667d299adaac",
           "MinCount": 1,
-          "MaxCount": 5
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
         }
       ],
       "Name": "Izuna \u002B Sue \u002B 2 x Lv. 5",
-      "Active": true
+      "Active": true,
+      "GroupId": "0523b13956664dc7b0a36d0ec6c54b01"
     }
   ],
-  "ComboGroups": [],
+  "ComboGroups": [
+    {
+      "Id": "48c6559aefb544fb949e8aabef2d251d",
+      "Name": "Full VS"
+    },
+    {
+      "Id": "0523b13956664dc7b0a36d0ec6c54b01",
+      "Name": "Full K9"
+    }
+  ],
   "HandSize": 5,
   "CategoryColorIndices": {
-    "Fire": 0,
-    "Dark": 1,
-    "Level 5": 3,
     "VS Monster": 4,
     "VS Starter": 2,
     "K9 Starter": 5
