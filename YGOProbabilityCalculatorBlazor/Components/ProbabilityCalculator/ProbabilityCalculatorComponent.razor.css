@@ -317,7 +317,31 @@
     .calculator-workspace ::deep .entry-actions {
         width: 100%;
         padding: 0.25rem 0.75rem;
-        border-top: 1px solid var(--bs-border-color);
+        border-top: 0;
+    }
+
+    .calculator-workspace ::deep #cardsAccordion > .accordion-item,
+    .calculator-workspace ::deep #combosAccordion > .accordion-item {
+        border-radius: var(--bs-accordion-border-radius);
+    }
+
+    .calculator-workspace ::deep #cardsAccordion > .accordion-item > .accordion-header .accordion-button,
+    .calculator-workspace ::deep #combosAccordion > .accordion-item > .accordion-header .accordion-button {
+        border-top-left-radius: calc(var(--bs-accordion-border-radius) - var(--bs-accordion-border-width));
+        border-top-right-radius: calc(var(--bs-accordion-border-radius) - var(--bs-accordion-border-width));
+    }
+
+    .calculator-workspace ::deep #cardsAccordion > .accordion-item + .accordion-item,
+    .calculator-workspace ::deep #combosAccordion > .accordion-item + .accordion-item {
+        margin-top: 0.25rem;
+        border-top-width: var(--bs-accordion-border-width);
+        border-top-style: solid;
+        border-top-color: var(--bs-accordion-border-color);
+    }
+
+    .calculator-workspace ::deep #cardsAccordion > .accordion-item + .accordion-item.entry-inactive,
+    .calculator-workspace ::deep #combosAccordion > .accordion-item + .accordion-item.entry-inactive {
+        border-top-style: dashed;
     }
 
     .calculator-workspace ::deep .entry-actions > .btn-danger {
