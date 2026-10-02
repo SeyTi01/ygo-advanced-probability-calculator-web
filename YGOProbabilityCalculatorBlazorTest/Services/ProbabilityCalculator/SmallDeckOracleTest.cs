@@ -72,28 +72,40 @@ public class SmallDeckOracleTest {
     }
 
     [Test]
-    public async Task BundledRotaOverrideRecoversOriginalUserFireRoutes() {
+    public async Task BundledExampleUsesCurrentRolesAndMetadataOverrides() {
         var source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json"));
         var session = await new YGOProbabilityCalculatorBlazor.Services.Session.SessionService(
             Moq.Mock.Of<Microsoft.JSInterop.IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()).LoadSessionAsync(source);
-        var fire = session.Cards.SelectMany(c => c.Categories).First(c => c.Identity == "metadata:attribute:fire");
+
+        Assert.That(session.Categories.Select(c => c.Identity), Is.EquivalentTo(new[] {
+            "user:VS Monster", "user:VS Starter", "user:K9 Starter"
+        }));
+        Assert.That(session.Combos, Has.Count.EqualTo(9));
+        Assert.That(session.Combos.All(combo => combo.Active), Is.True);
+
         var rota = session.Cards.Single(c => c.Name == "Reinforcement of the Army");
-        Assert.That(rota.Categories.Select(c => c.Identity), Does.Contain("user:Fire").And.Not.Contain(fire.Identity));
-        var deck = session.Cards.Where(c => c.Active).ToList();
-        var manualDeck = deck.Select(c => c == rota ? c.WithManualMetadataCategory(fire) : c).ToList();
-        // Every physical card eligible for the old Fire role now has the same effective property.
-        Assert.That(manualDeck.Select(c => c.Categories.Any(p => p.Identity == fire.Identity)),
-            Is.EqualTo(deck.Select(c => c.Categories.Any(p => p.Identity == "user:Fire"))));
-        var propertyCombos = session.Combos.Select(combo => combo.WithCategories(combo.Categories.Select(c =>
-            c.BaseCategory.Identity == "user:Fire" ? new ComboCategory(fire, c.MinCount, c.MaxCount, c.MaximumMode) : c))).ToList();
-        var engine = new ProbabilityCalculatorService();
-        var original = engine.CalculateProbabilityResults(deck, session.Combos, session.HandSize, session.ComboGroups);
-        var overridden = engine.CalculateProbabilityResults(manualDeck, propertyCombos, session.HandSize, session.ComboGroups);
-        var missing = engine.CalculateProbabilityResults(deck, propertyCombos, session.HandSize, session.ComboGroups);
-        Assert.That(overridden.TotalProbability, Is.EqualTo(original.TotalProbability));
-        Assert.That(overridden.ComboProbabilities.Select(c => c.Probability), Is.EqualTo(original.ComboProbabilities.Select(c => c.Probability)));
-        Assert.That(overridden.GroupProbabilities!.Select(g => g.Probability), Is.EqualTo(original.GroupProbabilities!.Select(g => g.Probability)));
-        Assert.That(missing.TotalProbability, Is.LessThan(original.TotalProbability));
+        Assert.That(rota.Categories.Select(c => c.Identity),
+            Does.Contain("user:VS Monster").And.Contain("user:VS Starter").And.Contain("metadata:attribute:fire"));
+        Assert.That(rota.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { "attribute:fire" }));
+
+        var chaoticElements = session.Cards.Single(c => c.Name == "Chaotic Elements");
+        Assert.That(chaoticElements.ManualMetadataCategoryKeys,
+            Is.EquivalentTo(new[] { "attribute:dark", "attribute:earth", "level:5" }));
+
+        var caseForK9 = session.Cards.Single(c => c.Name == "\"A Case for K9\"");
+        Assert.That(caseForK9.ManualMetadataCategoryKeys,
+            Is.EquivalentTo(new[] { "attribute:dark", "attribute:earth", "level:5" }));
+
+        var izunaSue = session.Combos.Single(c => c.Name == "Izuna + Sue + 2 x Lv. 5");
+        var levelFive = izunaSue.Categories.Single(c => c.BaseCategory.Identity == "metadata:level:5");
+        Assert.That(levelFive.MinCount, Is.EqualTo(2));
+
+        var result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            session.Cards.Where(card => card.Active).ToList(),
+            session.Combos.Where(combo => combo.Active).ToList(),
+            session.HandSize,
+            session.ComboGroups);
+        Assert.That(result.TotalProbability * 100, Is.EqualTo(83.61).Within(0.005));
     }
 
     [Test]
