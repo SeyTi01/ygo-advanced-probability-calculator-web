@@ -96,6 +96,12 @@
     margin-inline: auto;
 }
 
+.calculator-setup {
+    width: 100%;
+    max-width: 46rem;
+    margin-inline: auto;
+}
+
 .session-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -180,10 +186,6 @@
     gap: 0.5rem;
     margin: 0;
     cursor: pointer;
-}
-
-.calculator-workspace ::deep .entry-active-label {
-    display: none;
 }
 
 .calculator-workspace ::deep .card-header-content,
@@ -279,18 +281,20 @@
     }
 
     .calculator-workspace ::deep .entry-actions > .btn-danger {
-        margin-inline-start: auto;
+        margin-inline-start: 0;
         width: 2.75rem;
     }
 
     .calculator-workspace ::deep .entry-editor-active-toggle {
+        margin-inline-start: auto;
+        width: 2.75rem;
         min-height: 2.75rem;
-        padding-inline: 0.5rem;
+        padding: 0;
+        justify-content: center;
     }
 
-    .calculator-workspace ::deep .entry-active-label {
-        display: inline;
-        font-size: 0.875rem;
+    .calculator-workspace ::deep .entry-editor-active-checkbox {
+        margin: 0;
     }
 
     .calculator-workspace ::deep .card-header-name,
