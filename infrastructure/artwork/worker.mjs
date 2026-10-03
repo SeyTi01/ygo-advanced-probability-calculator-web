@@ -6,6 +6,32 @@ const maxImageBytes = 262144;
 const maxImages = 30000;
 const intervalMs = 1100;
 const leaseMs = 30000;
+const imageCacheControl = "public, max-age=31536000, immutable";
+
+function matchesEtag(value, etag) {
+  return value?.split(",").some(item => {
+    const candidate = item.trim();
+    return candidate === "*" || (etag && candidate.replace(/^W\//, "") === etag.replace(/^W\//, ""));
+  });
+}
+
+// Apply delivery policy even to pre-rollout Cache API entries. Never rewrite R2
+// objects just to update HTTP headers, and never cache a conditional empty body.
+function imageResponse(response, request) {
+  const headers = new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Access-Control-Expose-Headers", "ETag, Retry-After, Age, Date, CF-Cache-Status");
+  headers.set("Timing-Allow-Origin", "*");
+  if (response.status === 200 || response.status === 304) {
+    headers.set("Cache-Control", imageCacheControl);
+    headers.set("Content-Type", "image/jpeg");
+    headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+    headers.set("X-Content-Type-Options", "nosniff");
+    if (response.status === 304 || matchesEtag(request.headers.get("If-None-Match"), headers.get("ETag")))
+      return new Response(null, { status: 304, headers });
+  }
+  return new Response(request.method === "HEAD" ? null : response.body, { status: response.status, headers });
+}
 
 export function validJpeg(bytes) {
   if (bytes.length < 20 || bytes.length > maxImageBytes || bytes[0] !== 255 || bytes[1] !== 216 ||
@@ -68,13 +94,11 @@ export function createHandler({ fetchImage = fetch, now = Date.now,
 
   function serve(object, method, request) {
     const headers = new Headers({ "Content-Type": "image/jpeg",
-      "Cache-Control": "public, max-age=604800, immutable",
+      "Cache-Control": imageCacheControl,
       "X-Content-Type-Options": "nosniff", "Cross-Origin-Resource-Policy": "cross-origin",
       "ETag": object.httpEtag });
-    if (request.headers.get("If-None-Match") === object.httpEtag)
-      return new Response(null, { status: 304, headers });
     headers.set("Content-Length", String(object.size));
-    return new Response(method === "HEAD" ? null : object.body, { headers });
+    return imageResponse(new Response(method === "HEAD" ? null : object.body, { headers }), request);
   }
 
   async function acquire(bucket, id, key) {
@@ -145,7 +169,7 @@ export function createHandler({ fetchImage = fetch, now = Date.now,
         const current = await bucket.head(lockKey);
         if (current?.etag !== locked.etag || now() >= startedAt + leaseMs) return unavailable();
         await bucket.put(key, bytes, { onlyIf: new Headers({ "If-None-Match": "*" }),
-          httpMetadata: { contentType: "image/jpeg", cacheControl: "public, max-age=604800, immutable" },
+          httpMetadata: { contentType: "image/jpeg", cacheControl: imageCacheControl },
           sha256: await crypto.subtle.digest("SHA-256", bytes), storageClass: "Standard" });
         failures = 0;
         return await bucket.get(key) || unavailable();
@@ -167,26 +191,37 @@ export function createHandler({ fetchImage = fetch, now = Date.now,
   return {
     async fetch(request, env, ctx) {
       const url = new URL(request.url);
-      if (!["GET", "HEAD"].includes(request.method))
-        return new Response(null, { status: 405, headers: { Allow: "GET, HEAD" } });
       const match = /^\/small\/([1-9]\d{0,9})\.jpg$/.exec(url.pathname);
       if (!match || Number(match[1]) > 2147483647 || url.search) return unavailable(404);
+      if (!["GET", "HEAD", "OPTIONS"].includes(request.method))
+        return new Response(null, { status: 405, headers: { Allow: "GET, HEAD, OPTIONS", "Cache-Control": "no-store" } });
+      if (request.method === "OPTIONS") {
+        if (!["GET", "HEAD"].includes(request.headers.get("Access-Control-Request-Method") || "GET"))
+          return unavailable(405);
+        return new Response(null, { status: 204, headers: {
+          "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, HEAD",
+          "Access-Control-Allow-Headers": "If-None-Match", "Cache-Control": "no-store"
+        }});
+      }
       const key = `small/${match[1]}.jpg`;
+      // Conditional headers are evaluated against a complete cached body below.
+      // Passing them to Cache.match could return a bodyless 304 instead.
+      const cacheKey = new Request(url.origin + url.pathname);
       try {
-        const cached = request.method === "GET" && cache && await cache.match(request);
-        if (cached) return cached;
+        const cached = request.method === "GET" && cache && await cache.match(cacheKey);
+        if (cached?.status === 200) return imageResponse(cached, request);
         let object = request.method === "HEAD" ? await env.ARTWORK.head(key) : await env.ARTWORK.get(key);
         if (!object && request.method === "GET") {
-          if (!await allowed(env.ARTWORK, Number(match[1]))) return unavailable(404);
+          if (!await allowed(env.ARTWORK, Number(match[1]))) return imageResponse(unavailable(404), request);
           object = await acquire(env.ARTWORK, Number(match[1]), key);
-          if (object instanceof Response) return object;
+          if (object instanceof Response) return imageResponse(object, request);
         }
-        if (!object) return unavailable(404);
+        if (!object) return imageResponse(unavailable(404), request);
         const response = serve(object, request.method, request);
         if (cache && response.status === 200 && request.method === "GET")
-          ctx.waitUntil(cache.put(request, response.clone()).catch(() => {}));
+          ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(() => {}));
         return response;
-      } catch { return unavailable(); }
+      } catch { return imageResponse(unavailable(), request); }
     }
   };
 }
