@@ -49,6 +49,18 @@ public class SessionRecoveryTest {
             .Add(x => x.ApplyRecovery, apply ?? (_ => Task.FromResult(true))));
     private string LastSnapshot() => (string)context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!;
     private int Writes => context.JSInterop.Invocations["sessionRecovery.update"].Count;
+    private Task<string> ObserveNextRecoveryUpdate() {
+        var queued = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.JSInterop.SetupVoid("sessionRecovery.update", invocation => {
+            queued.TrySetResult((string)invocation.Arguments[2]!);
+            return true;
+        }).SetVoidResult();
+        return queued.Task;
+    }
+    private static async Task<T> AwaitMilestone<T>(Task<T> milestone, string description) {
+        try { return await milestone.WaitAsync(TimeSpan.FromSeconds(1)); }
+        catch (TimeoutException) { throw new AssertionException($"Timed out waiting for {description}."); }
+    }
     private static AngleSharp.Dom.IElement Button(IRenderedFragment cut, string text) => cut.FindAll("button").Single(x => x.TextContent.Trim() == text);
 
     [Test] public void DefaultStartupAndUnrelatedRendersNeverQueueRecovery() {
@@ -139,15 +151,17 @@ public class SessionRecoveryTest {
         Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Legacy"));
         Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Id, Is.Not.Empty);
     }
-    [Test] public void InitialExamplePrecedesUnrelatedRecoveryAndExplicitFileLoadReplacesIt() {
+    [Test] public async Task InitialExamplePrecedesUnrelatedRecoveryAndExplicitFileLoadReplacesIt() {
         Recovery(sessions.SerializeSession(new() { HandSize = 7 }));
         context.Services.GetRequiredService<IPendingSessionService>().PendingSession = Working();
         var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
         Assert.That(cut.Markup, Does.Not.Contain("Restore previous session"));
         Assert.That(LastSnapshot(), Does.Contain("Fixture"));
         var replacement = Working(); replacement.Cards[0] = replacement.Cards[0].WithName("File replacement");
+        var update = ObserveNextRecoveryUpdate();
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(sessions.SerializeSession(replacement), "fixture.json"));
-        cut.WaitForAssertion(() => Assert.That(LastSnapshot(), Does.Contain("File replacement")));
+        var payload = await AwaitMilestone(update, "sessionRecovery.update after explicit file replacement");
+        Assert.That(payload, Does.Contain("File replacement"));
     }
     [TestCase(false)]
     [TestCase(true)]
@@ -178,7 +192,8 @@ public class SessionRecoveryTest {
         var session = new SessionState { HandSize = 5 }; var cut = Render(session);
         session = new() { HandSize = 6 }; cut.SetParametersAndRender(p => p.Add(x => x.Session, session));
         plan.SetResult(new() { Exists = true, Payload = sessions.SerializeSession(Working()) });
-        cut.WaitForAssertion(() => Assert.That(cut.Markup, Does.Contain("Restore previous session")));
+        cut.WaitForState(() => cut.Markup.Contains("Restore previous session", StringComparison.Ordinal));
+        Assert.That(cut.Markup, Does.Contain("Restore previous session"));
         Assert.That(Writes, Is.Zero);
         await Button(cut, "Restore previous session").ClickAsync(new());
         Assert.That(cut.Markup, Does.Contain("Replace current work and restore"));
@@ -196,6 +211,12 @@ public class SessionRecoveryTest {
     }
 
     [Test] public async Task PendingExampleCannotUndoEditsAndThoseEditsAreAutosavedAfterInspection() {
+        var inspectionStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var inspection = context.JSInterop.Setup<SessionRecovery.Inspection?>("sessionRecovery.initialize", _ => {
+            inspectionStarted.TrySetResult(true);
+            return true;
+        });
+        var update = ObserveNextRecoveryUpdate();
         var response = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(response.Task);
         context.Services.GetRequiredService<IPendingSessionService>().PendingSession = Working();
@@ -203,8 +224,22 @@ public class SessionRecoveryTest {
         Assert.That(context.JSInterop.Invocations["sessionRecovery.initialize"], Is.Empty);
         await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
         response.SetResult();
-        cut.WaitForAssertion(() => Assert.That(cut.Markup, Does.Contain("Current work changed while loading the example")));
-        Assert.That((await sessions.LoadSessionAsync(LastSnapshot())).HandSize, Is.EqualTo(6));
+        await AwaitMilestone(inspectionStarted.Task, "recovery inspection after pending example rejection");
+        // The parent warning is an intermediate render, not an autosave barrier.
+        // Keep inspection pending to exercise that ordering deterministically.
+        try {
+            cut.WaitForState(() => cut.Markup.Contains("Current work changed while loading the example", StringComparison.Ordinal));
+            Assert.That(cut.Markup, Does.Contain("Current work changed while loading the example"));
+            Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("6"));
+            Assert.That(cut.FindComponents<CardEditor>(), Is.Empty);
+            Assert.That(Writes, Is.Zero, "inspection must complete before an edited workspace is queued");
+        }
+        finally { inspection.SetResult(new() { Exists = false }); }
+        var payload = await AwaitMilestone(update, "sessionRecovery.update for the edited workspace after inspection");
+        var saved = await sessions.LoadSessionAsync(payload);
+        Assert.That(saved.HandSize, Is.EqualTo(6));
+        Assert.That(saved.Cards, Is.Empty, "the queued payload must exclude the rejected example");
+        Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("6"));
         Assert.That(cut.FindComponents<CardEditor>(), Is.Empty);
     }
 
@@ -226,8 +261,11 @@ public class SessionRecoveryTest {
         var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
         var restore = Button(cut, "Restore previous session").ClickAsync(new());
         var replacement = Working(); replacement.Cards[0] = replacement.Cards[0].WithName("New explicit file");
+        var update = ObserveNextRecoveryUpdate();
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(sessions.SerializeSession(replacement), "fixture.json"));
-        cut.WaitForAssertion(() => Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("New explicit file")));
+        var payload = await AwaitMilestone(update, "sessionRecovery.update for the newer explicit file");
+        Assert.That(payload, Does.Contain("New explicit file"));
+        Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("New explicit file"));
         response.SetResult(); await restore;
         Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("New explicit file"));
         Assert.That(LastSnapshot(), Does.Contain("New explicit file"));
@@ -237,7 +275,8 @@ public class SessionRecoveryTest {
         Recovery(sessions.SerializeSession(Working()));
         var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText("{", "fixture.json"));
-        cut.WaitForAssertion(() => Assert.That(cut.Markup, Does.Contain("Failed to load session")));
+        cut.WaitForState(() => cut.Markup.Contains("Failed to load session", StringComparison.Ordinal));
+        Assert.That(cut.Markup, Does.Contain("Failed to load session"));
         Assert.That(cut.Markup, Does.Contain("Restore previous session"));
         Assert.That(Writes, Is.Zero);
     }
