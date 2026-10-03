@@ -161,3 +161,143 @@ test("an evictable edge cache never replaces durable retention", async () => {
   assert.equal(head.status,200);
   assert.equal(await head.text(),"");
 });
+
+function assertPublicImage(response, status = 200) {
+  assert.equal(response.status, status);
+  assert.equal(response.headers.get("Cache-Control"), "public, max-age=31536000, immutable");
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
+  assert.equal(response.headers.get("Access-Control-Allow-Credentials"), null);
+  assert.equal(response.headers.get("Timing-Allow-Origin"), "*");
+  assert.equal(response.headers.get("Cross-Origin-Resource-Policy"), "cross-origin");
+  assert.equal(response.headers.get("Content-Type"), "image/jpeg");
+  for (const name of ["ETag", "Retry-After", "Age", "Date", "CF-Cache-Status"])
+    assert.ok(response.headers.get("Access-Control-Expose-Headers").split(", ").includes(name));
+}
+
+test("retained bytes and validators survive one-year expiry and deployment without upstream reads or writes", async () => {
+  const s = await setup();
+  await s.bucket.put("small/1.jpg", jpeg);
+  const original = structuredClone(s.bucket.objects);
+  const request = (method, headers = {}) => createHandler(s.handlerOptions).fetch(
+    new Request("https://art.example/small/1.jpg", { method, headers }),
+    { ARTWORK: s.bucket }, { waitUntil: () => assert.fail("no edge cache configured") });
+  const first = await request("GET");
+  const etag = first.headers.get("ETag");
+  assertPublicImage(first);
+  assert.deepEqual(new Uint8Array(await first.arrayBuffer()), jpeg);
+  for (const days of [364, 1, 1]) {
+    s.advance(days * 86400000);
+    const hit = await request("GET");
+    assertPublicImage(hit);
+    assert.equal(hit.headers.get("ETag"), etag);
+    assert.deepEqual(new Uint8Array(await hit.arrayBuffer()), jpeg);
+    const head = await request("HEAD");
+    assertPublicImage(head);
+    assert.equal(await head.text(), "");
+    for (const condition of [etag, `W/${etag}`, `"other", W/${etag}`, "*"]) {
+      for (const method of ["GET", "HEAD"]) {
+        const unchanged = await request(method, { "If-None-Match": condition });
+        assertPublicImage(unchanged, 304);
+        assert.equal(await unchanged.text(), "");
+        assert.equal(unchanged.headers.get("ETag"), etag);
+      }
+    }
+    assert.equal((await request("GET", { "If-None-Match": '"other"' })).status, 200);
+  }
+  assert.equal(s.calls.length, 0);
+  assert.deepEqual(s.bucket.objects, original);
+});
+
+test("old edge entries receive new headers and conditionals never poison the cached body", async () => {
+  const s = await setup();
+  const stored = new Response(jpeg, { headers: { "Cache-Control": "public, max-age=604800, immutable",
+    ETag: '"retained"', Age: "120", Date: "Sat, 03 Oct 2026 12:00:00 GMT" } });
+  let puts = 0;
+  const cache = {
+    match: async key => {
+      assert.equal(key.url, "https://art.example/small/1.jpg");
+      assert.equal(key.headers.get("If-None-Match"), null);
+      return stored.clone();
+    },
+    put: async () => { puts++; }
+  };
+  s.bucket.get = s.bucket.head = async () => assert.fail("edge hit must not read R2");
+  const handler = createHandler({ ...s.handlerOptions, cache });
+  const request = (headers = {}) => handler.fetch(new Request("https://art.example/small/1.jpg", { headers }),
+    { ARTWORK: s.bucket }, { waitUntil: () => assert.fail("edge hit must not replace cache") });
+  const conditional = await request({ "If-None-Match": 'W/"retained"' });
+  assertPublicImage(conditional, 304);
+  assert.equal(await conditional.text(), "");
+  const complete = await request();
+  assertPublicImage(complete);
+  assert.equal(complete.headers.get("Age"), "120");
+  assert.equal(complete.headers.get("Date"), "Sat, 03 Oct 2026 12:00:00 GMT");
+  assert.deepEqual(new Uint8Array(await complete.arrayBuffer()), jpeg);
+  assert.equal(puts, 0);
+  assert.equal(s.calls.length, 0);
+});
+
+test("a conditional R2 miss never inserts an empty 304 into edge storage", async () => {
+  const s = await setup();
+  await s.bucket.put("small/1.jpg", jpeg);
+  const etag = (await s.bucket.get("small/1.jpg")).httpEtag;
+  const writes = [];
+  const pending = [];
+  const handler = createHandler({ ...s.handlerOptions, cache: {
+    match: async () => null,
+    put: async (key, value) => writes.push({ key: key.url, status: value.status,
+      bytes: new Uint8Array(await value.arrayBuffer()), headers: value.headers })
+  }});
+  const request = headers => handler.fetch(new Request("https://art.example/small/1.jpg", { headers }),
+    { ARTWORK: s.bucket }, { waitUntil: p => pending.push(p) });
+  assertPublicImage(await request({ "If-None-Match": etag }), 304);
+  assert.equal(writes.length, 0);
+  assertPublicImage(await request({ "If-None-Match": '"other"' }));
+  await Promise.all(pending);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].status, 200);
+  assert.deepEqual(writes[0].bytes, jpeg);
+  assert.equal(writes[0].headers.get("Cache-Control"), "public, max-age=31536000, immutable");
+  assert.equal(s.calls.length, 0);
+});
+
+test("public preflight permits conditional reads without R2 access or acquisition", async () => {
+  const s = await setup();
+  s.bucket.get = s.bucket.head = s.bucket.put = async () => assert.fail("preflight must not touch R2");
+  const handler = createHandler(s.handlerOptions);
+  const request = (path, method) => handler.fetch(new Request("https://art.example" + path, {
+    method: "OPTIONS", headers: { Origin: "https://calculator.example",
+      "Access-Control-Request-Method": method, "Access-Control-Request-Headers": "if-none-match" }
+  }), { ARTWORK: s.bucket }, { waitUntil: () => assert.fail("no preflight caching") });
+  for (const method of ["GET", "HEAD"]) {
+    const response = await request("/small/1.jpg", method);
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
+    assert.equal(response.headers.get("Access-Control-Allow-Methods"), "GET, HEAD");
+    assert.equal(response.headers.get("Access-Control-Allow-Headers"), "If-None-Match");
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+  }
+  assert.equal((await request("/small/1.jpg", "PUT")).status, 405);
+  for (const path of ["/_control/manifest.json", "/small/1.jpg?x=1", "/small/01.jpg"]) {
+    const response = await request(path, "GET");
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get("Access-Control-Allow-Origin"), null);
+  }
+  assert.equal(s.calls.length, 0);
+});
+
+test("public image failures expose retry information but remain non-cacheable", async () => {
+  const s = await setup({ fetchImage: async () => new Response(null, {
+    status: 429, headers: { "Retry-After": "3600" }
+  }) });
+  for (const [path, status, retry] of [["/small/1.jpg", 503, "3600"], ["/small/4.jpg", 404, "60"]]) {
+    const response = await s.request(path);
+    assert.equal(response.status, status);
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+    assert.equal(response.headers.get("Retry-After"), retry);
+    assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
+    assert.equal(response.headers.get("Timing-Allow-Origin"), "*");
+    assert.ok(response.headers.get("Access-Control-Expose-Headers").includes("Retry-After"));
+  }
+  assert.equal(await s.bucket.get("small/1.jpg"), null);
+});

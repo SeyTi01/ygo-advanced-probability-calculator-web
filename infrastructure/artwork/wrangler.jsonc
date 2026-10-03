@@ -3,6 +3,7 @@
   "main": "worker.mjs",
   "compatibility_date": "2026-10-03",
   "workers_dev": true,
+  "cache": { "enabled": true },
   "r2_buckets": [{ "binding": "ARTWORK", "bucket_name": "ygo-calculator-card-artwork" }],
   "observability": { "enabled": false }
 }
