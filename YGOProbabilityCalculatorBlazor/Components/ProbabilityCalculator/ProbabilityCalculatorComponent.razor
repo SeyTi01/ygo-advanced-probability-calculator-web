@@ -571,11 +571,12 @@
         try {
             importError = null;
             var importedCards = await _deckImportService.ImportDeckFromYdkAsync(e.File);
+            if (!OwnsSessionLoad(request)) return;
             if (!CanApplySession(request, before, edit)) { importError = "Current work changed during import. Import again to replace it."; return; }
             ReplaceImportedDeck(importedCards);
         }
         catch (Exception ex) {
-            importError = $"Failed to import deck: {ex.Message}";
+            if (OwnsSessionLoad(request)) importError = $"Failed to import deck: {ex.Message}";
         }
     }
 
@@ -598,13 +599,14 @@
         try {
             importError = null;
             var importedCards = await _deckImportService.ImportDeckFromYdkeAsync(ydkeCode);
+            if (!OwnsSessionLoad(request)) return;
             if (!CanApplySession(request, before, edit)) { importError = "Current work changed during import. Import again to replace it."; return; }
             ReplaceImportedDeck(importedCards);
             ydkeCode = string.Empty;
             isYdkeImportOpen = false;
         }
         catch (Exception ex) {
-            importError = $"Failed to import deck: {ex.Message}";
+            if (OwnsSessionLoad(request)) importError = $"Failed to import deck: {ex.Message}";
         }
     }
 
@@ -637,7 +639,7 @@
             var session = await _sessionService.LoadSessionAsync(fileContent);
 
             if (!await RestoreSessionDataAsync(session, request, before, edit)) {
-                errorMessage = "Current work changed while loading. Load the session again to replace it.";
+                if (OwnsSessionLoad(request)) errorMessage = "Current work changed while loading. Load the session again to replace it.";
                 return;
             }
             activeCardIndex = -1;
@@ -646,7 +648,7 @@
             autosaveReplacementVersion++;
         }
         catch (Exception ex) {
-            errorMessage = $"Failed to load session: {ex.Message}";
+            if (OwnsSessionLoad(request)) errorMessage = $"Failed to load session: {ex.Message}";
         }
     }
 
@@ -680,13 +682,14 @@
             try {
                 _pendingSessionService.PendingSession = null;
                 if (await RestoreSessionDataAsync(session, request, before, edit)) autosaveReplacementVersion++;
-                else errorMessage = "Current work changed while loading the example. Load the example again to replace it.";
+                else if (OwnsSessionLoad(request)) errorMessage = "Current work changed while loading the example. Load the example again to replace it.";
             }
             catch (Exception ex) {
-                errorMessage = $"Failed to load example session: {ex.Message}";
+                if (OwnsSessionLoad(request)) errorMessage = $"Failed to load example session: {ex.Message}";
             }
         }
 
+        if (sessionDisposed) return;
         sessionInitialized = true;
         await base.OnInitializedAsync();
     }

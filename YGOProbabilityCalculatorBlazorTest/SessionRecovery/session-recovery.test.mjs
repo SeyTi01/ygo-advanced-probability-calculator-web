@@ -96,3 +96,15 @@ test('multi-tab conflict pauses stale writers and protects discard until explici
     f.api.update('b', 3, 'explicit tab b', true); f.tick(750); assert.equal(f.payload(), 'explicit tab b');
     f.api.update('a', 2, 'stale tab a'); f.tick(750); assert.equal(f.payload(), 'explicit tab b');
 });
+test('remount inspects the flushed bytes and obsolete owners cannot touch the new draft', () => {
+    const f = fixture(); f.start('old'); f.api.update('old', 1, 'edited during calculation');
+    f.api.dispose('old');
+    assert.equal(f.payload(), 'edited during calculation');
+    assert.equal(f.writes(), 1); assert.equal(f.listeners(), 0); assert.equal(f.timers(), 0);
+    assert.equal(f.start('new').payload, 'edited during calculation');
+    f.api.update('new', 1, 'restored workspace', true);
+    f.api.update('old', 99, 'obsolete worker/session completion', true);
+    f.api.dispose('old'); f.tick(750);
+    assert.equal(f.payload(), 'restored workspace'); assert.equal(f.writes(), 2);
+    assert.equal(f.listeners(), 2); f.api.dispose('new'); assert.equal(f.listeners(), 0);
+});

@@ -27,6 +27,9 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  page.on('worker',worker=>{if(!worker.url().includes('calculation-worker.js'))return;liveWorkers++; worker.on('close',()=>{liveWorkers--;closedWorkers++})});
  await page.addInitScript(()=>{
   window.probe={beats:[],sent:[],terminated:[],cancelClicks:[]};document.addEventListener('click',e=>{if(e.target.closest('[aria-label="Cancel calculation"]'))probe.cancelClicks.push(performance.now())},true);
+  probe.savedRecords=[];
+  const setItem=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(key,value){const result=setItem.call(this,key,value);if(this===localStorage&&key==='ygo-calculator:session-recovery:v1')probe.savedRecords.push(value);return result};
   setInterval(()=>probe.beats.push(performance.now()),10);
   const Original=Worker;
   window.Worker=class extends Original{
@@ -40,7 +43,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  async function waitIdle(){await page.waitForFunction(()=>{const button=document.querySelector('.calculate-action > button');return button&&button.getAttribute('aria-busy')!=='true'})}
  async function load(session){await page.locator('#sessionFileInput').setInputFiles({name:'worker-smoke.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(session))});await waitIdle()}
  async function runSuccess(){await calculate.click();await waitIdle();await page.locator('.probability-total-value').waitFor();assert.match(await page.locator('.probability-total-value').innerText(),/50[.,]00/);assert.equal(await page.locator('.probability-group').count(),1);assert.equal(await page.locator('.combo-probability-item').count(),1);}
- async function captureLayout(phase,width,theme){if(!screenshotDirectory||!((width===1440&&theme==='light')||(width===320&&theme==='dark')))return;fs.mkdirSync(screenshotDirectory,{recursive:true});await page.locator('.results-section').screenshot({path:path.join(screenshotDirectory,`${engine}-${width}-${theme}-${phase}.png`)})}
+ async function captureLayout(phase,width,theme){if(!screenshotDirectory||!((width===1440&&theme==='light')||(width===320&&theme==='dark')))return;fs.mkdirSync(screenshotDirectory,{recursive:true});const y=await page.evaluate(()=>scrollY);await page.locator('.results-section').screenshot({path:path.join(screenshotDirectory,`${engine}-${width}-${theme}-${phase}.png`)});await page.evaluate(y=>window.scrollTo({top:y,behavior:'instant'}),y)}
  await load(simple);await runSuccess();
  const foreground=await page.evaluate(async json=>{
   const rt=getDotnetRuntime(0);const exports=await rt.getAssemblyExports(rt.getConfig().mainAssemblyName);
@@ -92,7 +95,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  for(const [width,theme] of [[1440,'light'],[1440,'dark'],[320,'light'],[320,'dark'],[390,'light'],[390,'dark'],[575,'light'],[575,'dark'],[576,'light'],[576,'dark']]){
   await page.setViewportSize({width,height:900});
   await page.getByLabel('Color theme preference').selectOption(theme);
-  await page.evaluate(()=>{const action=document.querySelector('.calculate-action').getBoundingClientRect();window.scrollTo(0,Math.max(0,action.top+window.scrollY-300))});
+  await page.evaluate(()=>{const action=document.querySelector('.calculate-action').getBoundingClientRect();window.scrollTo({top:Math.max(0,action.top+window.scrollY-300),behavior:'instant'})});
   const viewport=await page.evaluate(()=>({innerWidth:window.innerWidth,innerHeight:window.innerHeight,client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
   assert.equal(viewport.innerWidth,width,`browser did not apply ${width}px viewport`);
   assert.equal(viewport.innerHeight,900,'browser did not apply 900px height');
@@ -107,8 +110,9 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
    assert.equal(focus.visible,true,'keyboard navigation should expose the action focus indicator');
    assert.ok(focus.shadow!=='none'||focus.outline!=='none','the action focus indicator should be visible');
   }
-  await page.evaluate(()=>{const rect=document.querySelector('.calculate-action').getBoundingClientRect();window.scrollTo(0,Math.round(rect.top+window.scrollY-300))});
+  await page.evaluate(()=>{const rect=document.querySelector('.calculate-action').getBoundingClientRect();window.scrollTo({top:Math.round(rect.top+window.scrollY-300),behavior:'instant'})});
   const idle=await measure();
+  assert.ok(idle.actionViewportTop>=0&&idle.actionViewportTop+idle.actionHeight<=900,'the shared action must be visible in the measured viewport');
   assert.ok(idle.resultTop>idle.actionTop,'the existing result should follow the action area');
   if(!legacyRowEvidence){
    legacyRowEvidence=await page.evaluate(()=>{
@@ -118,7 +122,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
    assert.ok(legacyRowEvidence.actionHeightIncrease>5,'the prior second Cancel row should increase the action area');
    assert.ok(legacyRowEvidence.resultTopShift>5,'the prior second Cancel row should fail the results-position assertion');
   }
-  await page.evaluate(y=>window.scrollTo(0,y),idle.scrollY);
+  await page.evaluate(y=>window.scrollTo({top:y,behavior:'instant'}),idle.scrollY);
   await captureLayout('idle',width,theme);
   const sentBefore=await page.evaluate(()=>probe.sent.length);
   await button.evaluate(element=>{window.__actionReference=element});
@@ -131,29 +135,29 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
   assert.equal(await page.locator('.calculate-action > button').count(),1,'there should be no second action row');
   const sameFocusedNode=await page.evaluate(()=>document.querySelector('.calculate-action > button')===window.__actionReference&&document.activeElement===window.__actionReference);
   assert.equal(sameFocusedNode,true,'changing the action role should preserve the focused button');
-  await page.evaluate(y=>window.scrollTo(0,y),idle.scrollY);
+  assert.equal(await page.getByRole('button',{name:'Copy results',exact:true}).isDisabled(),true,'copy must be unavailable during CPU work');
   const running=await measure();
-  assert.equal(running.scrollY,idle.scrollY,`scroll position changed while running at ${width}px ${theme}`);
+  assert.ok(Math.abs(running.scrollY-idle.scrollY)<=0.75,`scroll position changed while running at ${width}px ${theme}`);
   assert.ok(Math.abs(running.actionTop-idle.actionTop)<=0.75,`action document position changed while running at ${width}px ${theme}`);
-  assert.equal(running.actionViewportTop,idle.actionViewportTop,`action moved in the viewport while running at ${width}px ${theme}`);
+  assert.ok(Math.abs(running.actionViewportTop-idle.actionViewportTop)<=0.75,`action moved in the viewport while running at ${width}px ${theme}`);
   assert.ok(Math.abs(running.actionHeight-idle.actionHeight)<=0.75,`action area height changed while running at ${width}px ${theme}`);
   assert.ok(Math.abs(running.buttonTop-idle.buttonTop)<=0.75,`button document position changed while running at ${width}px ${theme}`);
   assert.ok(Math.abs(running.buttonHeight-idle.buttonHeight)<=0.75,`button height changed while running at ${width}px ${theme}`);
-  assert.equal(running.resultViewportTop,idle.resultViewportTop,`results moved in the viewport while running at ${width}px ${theme}`);
+  assert.ok(Math.abs(running.resultViewportTop-idle.resultViewportTop)<=0.75,`results moved in the viewport while running at ${width}px ${theme}`);
   assert.ok(Math.abs(running.resultTop-idle.resultTop)<=0.75,`results moved while running at ${width}px ${theme}`);
   await captureLayout('running',width,theme);
   const started=Date.now();
   await page.keyboard.press('Enter');
   await waitIdle();
-  await page.evaluate(y=>window.scrollTo(0,y),idle.scrollY);
   const cancelled=await measure();
-  assert.equal(cancelled.scrollY,idle.scrollY,`scroll position changed after cancellation at ${width}px ${theme}`);
+  assert.equal(await page.getByRole('button',{name:'Copy results',exact:true}).isDisabled(),false,'cancel must restore copying of a still-current accepted result');
+  assert.ok(Math.abs(cancelled.scrollY-idle.scrollY)<=0.75,`scroll position changed after cancellation at ${width}px ${theme}`);
   assert.ok(Math.abs(cancelled.actionTop-idle.actionTop)<=0.75,`action document position changed after cancellation at ${width}px ${theme}`);
-  assert.equal(cancelled.actionViewportTop,idle.actionViewportTop,`action moved in the viewport after cancellation at ${width}px ${theme}`);
+  assert.ok(Math.abs(cancelled.actionViewportTop-idle.actionViewportTop)<=0.75,`action moved in the viewport after cancellation at ${width}px ${theme}`);
   assert.ok(Math.abs(cancelled.actionHeight-idle.actionHeight)<=0.75,`action area height changed after cancellation at ${width}px ${theme}`);
   assert.ok(Math.abs(cancelled.buttonTop-idle.buttonTop)<=0.75,`button document position changed after cancellation at ${width}px ${theme}`);
   assert.ok(Math.abs(cancelled.buttonHeight-idle.buttonHeight)<=0.75,`button height changed after cancellation at ${width}px ${theme}`);
-  assert.equal(cancelled.resultViewportTop,idle.resultViewportTop,`results moved in the viewport after cancellation at ${width}px ${theme}`);
+  assert.ok(Math.abs(cancelled.resultViewportTop-idle.resultViewportTop)<=0.75,`results moved in the viewport after cancellation at ${width}px ${theme}`);
   assert.ok(Math.abs(cancelled.resultTop-idle.resultTop)<=0.75,`results moved after cancellation at ${width}px ${theme}`);
   assert.equal(await page.locator('.probability-total-value').innerText(),oldResult,'cancellation must preserve the accepted result');
   assert.equal(await page.locator('.probability-result-status').count(),0,'the current result should retain its current status');
@@ -174,6 +178,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  async function waitClosed(){for(let i=0;i<300 && liveWorkers;i++)await page.waitForTimeout(10);assert.equal(liveWorkers,0);}
  await startCpu();await page.locator('#handSize').fill('4');await page.locator('#handSize').press('Tab');
  await page.locator('.probability-result-status').waitFor();await waitClosed();
+ assert.equal(await page.getByRole('button',{name:'Copy results',exact:true}).isDisabled(),true,'stale results must remain unavailable to copy');
  assert.equal(await page.locator('.probability-total-value').innerText(),oldResult);
  await page.locator('#handSize').fill('5');await page.locator('#handSize').press('Tab');
  await startCpu();await load(simple);await waitClosed();await runSuccess();
@@ -195,10 +200,72 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  const limited={...heavy,Cards:heavy.Cards.map(c=>({...c,Copies:c.Id==='blank'?22:1})),Combos:heavy.Combos.map(c=>({...c,Categories:c.Categories.map(r=>({...r,MinCount:0,MaxCount:0}))}))};
  await load(limited);await calculate.click();await page.getByRole('alert').filter({hasText:'Calculation stopped because it exceeded'}).waitFor({timeout:45000});
  await load(simple);await runSuccess();
+ // Combined recovery/export flows use the real components and stored envelope bytes.
+ if(engine==='chromium')await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(base).origin});
+ async function savedWorkspace(handSize,count=null,name=null){
+  await page.waitForFunction(({handSize,count,name})=>{try{const envelope=JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1'));const session=JSON.parse(envelope.payload);return session.HandSize===handSize&&(count===null||session.Cards.length===count)&&(name===null||session.Cards.some(c=>c.Name===name))}catch{return false}},{handSize,count,name});
+  return page.evaluate(()=>localStorage.getItem('ygo-calculator:session-recovery:v1'));
+ }
+ async function observeClipboard(){await page.evaluate(()=>{const write=navigator.clipboard.writeText.bind(navigator.clipboard);navigator.clipboard.writeText=async text=>{if(window.failSmokeClipboard)throw new DOMException('Smoke clipboard denial','NotAllowedError');await write(text);window.smokeCopiedText=text}})}
+ const combinedEvidence=[];
+ for(const [width,theme] of [[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']]){
+  await page.setViewportSize({width,height:900});await page.getByLabel('Color theme preference').selectOption(theme);
+  await page.getByRole('link',{name:'Help',exact:true}).click();
+  await page.getByRole('button',{name:'Try It with Example Data',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('.card-editor').length>0&&document.querySelector('#handSize')?.value==='5');
+  await calculate.click();await waitIdle();await page.locator('.probability-total-value').waitFor();
+  const sampleTotal=await page.locator('.probability-total-value').innerText();
+  assert.equal(await page.locator('.combo-probability-item').count(),9);
+  const sampleRecord=await savedWorkspace(5,null,'Vanquish Soul Razen');
+  const writesBeforeCopy=await page.evaluate(()=>probe.savedRecords.length);
+  await observeClipboard();await page.getByRole('button',{name:'Copy results',exact:true}).click();
+  await page.locator('.probability-result-copy-success-icon').waitFor();
+  const copied=await page.evaluate(()=>smokeCopiedText);
+  assert.ok(copied.includes('Probability results')&&copied.includes(sampleTotal)&&copied.includes('Full VS')&&copied.includes('VS Starter + Fire'),'copied example should be readable and retain its hierarchy/names');
+  let clipboardRead=false;
+  // Windows clipboard text uses CRLF; compare every character after line-ending normalization.
+  if(engine==='chromium'){assert.equal((await page.evaluate(()=>navigator.clipboard.readText())).replace(/\r\n/g,'\n'),copied);clipboardRead=true}
+  if(screenshotDirectory){fs.mkdirSync(screenshotDirectory,{recursive:true});await page.locator('.results-section').screenshot({path:path.join(screenshotDirectory,`${engine}-${width}-${theme}-example-copy.png`)})}
+  await page.locator('.probability-result-copy-success-icon').waitFor({state:'detached'});
+  assert.equal(await page.evaluate(()=>localStorage.getItem('ygo-calculator:session-recovery:v1')),sampleRecord,'copy/checkmark expiry must preserve saved bytes');
+  assert.equal(await page.evaluate(()=>probe.savedRecords.length),writesBeforeCopy,'copy/checkmark expiry must not write storage');
+  await page.evaluate(()=>window.failSmokeClipboard=true);
+  await page.getByRole('button',{name:'Copy results',exact:true}).click();
+  const fallback=page.locator('textarea.probability-result-copy-text');await fallback.waitFor();assert.equal(await fallback.inputValue(),copied);
+  await fallback.focus();await page.keyboard.press('Control+A');
+  assert.equal(await fallback.evaluate(e=>e.selectionStart===0&&e.selectionEnd===e.value.length),true,'fallback should be fully selectable');
+  await page.getByRole('button',{name:'Close copy fallback',exact:true}).click();await page.evaluate(()=>window.failSmokeClipboard=false);
+  await load(heavy);await calculate.click();await waitIdle();await page.locator('.probability-total-value').waitFor();
+  await startCpu();await page.locator('#handSize').fill('4');await page.locator('#handSize').press('Tab');
+  await page.locator('.probability-result-status').waitFor();await waitClosed();
+  const editedRecord=await savedWorkspace(4,19);
+  assert.equal(JSON.parse(JSON.parse(editedRecord).payload).HandSize,4);
+  await page.reload();await calculate.waitFor();
+  await page.getByRole('button',{name:'Restore previous session',exact:true}).waitFor();
+  assert.equal(await page.locator('.card-editor').count(),0,'refresh must wait for explicit recovery acceptance');
+  assert.equal(await page.evaluate(()=>localStorage.getItem('ygo-calculator:session-recovery:v1')),editedRecord,'default startup must preserve the edited draft');
+  await page.getByRole('button',{name:'Dismiss',exact:true}).click();
+  const dismissalGap=await page.getByRole('heading',{name:'Categories',exact:true}).evaluate(e=>e.getBoundingClientRect().top-document.querySelector('.session-recovery-dismissed').getBoundingClientRect().bottom);
+  assert.ok(dismissalGap>=12,'dismissed recovery row should remain separated from Categories');
+  if(screenshotDirectory){await page.screenshot({path:path.join(screenshotDirectory,`${engine}-${width}-${theme}-dismissed-recovery.png`)})}
+  await page.getByRole('button',{name:'Show recovery',exact:true}).click();
+  await page.getByRole('button',{name:'Restore previous session',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#handSize')?.value==='4'&&document.querySelectorAll('.card-editor').length===19);
+  assert.equal(await page.getByRole('button',{name:'Restore previous session',exact:true}).count(),0);
+  await calculate.click();await waitIdle();await page.locator('.probability-total-value').waitFor();
+  assert.equal(await page.locator('.combo-probability-item').count(),18);
+  await startCpu();assert.equal(await page.getByRole('button',{name:'Cancel calculation',exact:true}).count(),1);await load(simple);await waitClosed();await runSuccess();
+  const replacementRecord=await savedWorkspace(1,2);
+  const viewport=await page.evaluate(()=>({width:innerWidth,client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
+  assert.equal(viewport.width,width);assert.equal(viewport.client,viewport.scroll);
+  assert.equal(await page.locator('[role="alert"]').count(),0);
+  combinedEvidence.push({width,theme,sampleTotal,clipboardRead,copiedCharacters:copied.length,editedHandSize:4,restoredCards:19,replacementHandSize:JSON.parse(JSON.parse(replacementRecord).payload).HandSize,dismissalGap,viewport});
+  console.log(JSON.stringify({engine,combinedCase:combinedEvidence.at(-1)}));
+ }
  if(process.env.SMOKE_SCREENSHOT) {
   await page.getByLabel('Color theme preference').selectOption('dark');
   fs.mkdirSync(screenshotDirectory,{recursive:true});await page.screenshot({path:path.join(screenshotDirectory,`${engine}-final.png`),fullPage:true});
  }
- console.log(JSON.stringify({engine,evidence,layoutEvidence,legacyRowEvidence,errors,browser:browser.version()}));assert.deepEqual(errors,[]);
+ console.log(JSON.stringify({engine,evidence,layoutEvidence,legacyRowEvidence,combinedEvidence,errors,browser:browser.version()}));assert.deepEqual(errors,[]);
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
