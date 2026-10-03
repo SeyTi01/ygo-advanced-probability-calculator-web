@@ -191,6 +191,21 @@
     max-width: 100%;
 }
 
+.calculation-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.pin-result-action { width: 8rem; min-height: 2.75rem; flex-shrink: 0; }
+.result-comparison { display: grid; gap: 1rem; align-items: start; }
+.result-comparison > * { min-width: 0; }
+.result-comparison .probability-results-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; min-height: 2.5rem; }
+.result-comparison .probability-results-heading h5 { align-self: center; }
+.result-comparison .probability-result-status { grid-row: 2; grid-column: 1 / -1; }
+.result-comparison .probability-results-heading ::deep .probability-result-export-toolbar { grid-row: 1; grid-column: 2; width: 7.5rem; align-items: start; }
+.comparison-value { text-align: right; flex-shrink: 0; }
+.result-difference { display: block; font-size: .8rem; font-weight: normal; }
+.result-row-comparison { display: block; color: var(--bs-secondary-color); }
+@media (min-width: 900px) {
+    .result-comparison:has(.probability-results) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
 .calculator-workspace ::deep .editor-add-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

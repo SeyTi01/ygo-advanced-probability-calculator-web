@@ -126,6 +126,7 @@
     />
 
     <div class="results-section">
+        <div class="calculation-controls">
         <div class="calculate-action">
             <button type="button"
                     class="btn btn-lg w-100 @(isCalculating ? "btn-outline-secondary" : "btn-primary")"
@@ -143,6 +144,14 @@
                 }
             </button>
         </div>
+        <button type="button" class="btn btn-outline-primary pin-result-action" disabled="@(!CanPin)"
+                aria-label="@(pinnedResult is null ? "Pin result" : "Replace pin with current result")"
+                title="@(pinnedResult is null ? "Pin result" : "Replace pin with current result")"
+                aria-describedby="@(!CanPin ? "pinUnavailableReason" : null)" @onclick="PinCurrentResult">
+            @(pinnedResult is null ? "Pin result" : "Replace pin")
+        </button>
+        <span id="pinUnavailableReason" class="visually-hidden">@PinUnavailableReason</span>
+        </div>
 
         @if (CalculationUnavailableMessage is { } unavailableMessage) {
             <p class="form-text mt-2" role="status" aria-live="polite">@unavailableMessage</p>
@@ -152,13 +161,14 @@
             <DismissibleAlert Message="@errorMessage" OnDismiss="@(() => errorMessage = null)"/>
         }
 
+        <div class="@(pinnedResult is null ? null : "result-comparison")">
         @if (calculationResult is { } result) {
             <section class="alert alert-primary mt-3 probability-results"
                      role="region"
                      aria-labelledby="probabilityResultsHeading"
                      aria-live="polite">
                 <div class="probability-results-heading">
-                    <h5 id="probabilityResultsHeading">Results</h5>
+                    <h5 id="probabilityResultsHeading">@(pinnedResult is null ? "Results" : "Current result")</h5>
                     @if (calculationResultIsStale) {
                         <small class="probability-result-status text-body-secondary fw-normal"
                                role="status"
@@ -169,13 +179,22 @@
                         </small>
                     }
                     <ProbabilityResultExport Result="result"
-                                             HandSize="handSize"
+                                             HandSize="@(acceptedComparison?.Context.HandSize ?? handSize)"
                                              IsStale="calculationResultIsStale"
                                              IsCalculating="isCalculating" />
                 </div>
+                @if (pinnedResult is not null && acceptedComparison is { } accepted) {
+                    <p class="small text-body-secondary mb-2">@accepted.Context.Description
+                        @if (CanCompare && accepted.Context.HandSize != pinnedResult.Context.HandSize) { <span> · Different hand size</span> }
+                        @if (CanCompare && accepted.Context.DeckDefinition != pinnedResult.Context.DeckDefinition) { <span> · Different deck composition</span> }
+                    </p>
+                }
                 <div class="combo-probability-row probability-total">
                     <span class="combo-probability-name">Any active combo</span>
+                    <div class="comparison-value">
                     <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
+                    @if (pinnedResult is not null && CanCompare) { <small class="result-difference">@PinnedResultSnapshot.Difference(acceptedComparison!.Total, pinnedResult.Total)</small> }
+                    </div>
                 </div>
                 @{
                     var groupResults = result.GroupProbabilities ?? Array.Empty<GroupProbabilityResult>();
@@ -197,6 +216,7 @@
                                     </span>
                                     <strong class="combo-probability-value">@group.Probability.ToString("P2")</strong>
                                 </h6>
+                                @if (CurrentGroupComparison(group.GroupId) is { } groupComparison) { <small class="result-row-comparison">@groupComparison</small> }
                                 @if (groupComboResults.Count > 0) {
                                     <ol class="combo-probability-list probability-group-members">
                                         @foreach (var comboResult in groupComboResults) {
@@ -205,6 +225,7 @@
                                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
                                                     <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
                                                 </div>
+                                                @if (CurrentComboComparison(comboResult.ComboIndex) is { } comparison) { <small class="result-row-comparison">@comparison</small> }
                                             </li>
                                         }
                                     </ol>
@@ -222,12 +243,17 @@
                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
                                     <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
                                 </div>
+                                @if (CurrentComboComparison(comboResult.ComboIndex) is { } comparison) { <small class="result-row-comparison">@comparison</small> }
                             </li>
                         }
                     </ol>
                 }
             </section>
         }
+        @if (pinnedResult is { } pinned) {
+            <PinnedResultPanel Snapshot="pinned" Current="@(CanCompare ? acceptedComparison : null)" OnClear="ClearPinnedResult" />
+        }
+        </div>
     </div>
 </div>
 
@@ -348,6 +374,7 @@
 
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
         var (i, newCombo) = payload;
+        TransferComparisonLineage(combos[i], newCombo);
         combos[i] = newCombo;
         InvalidateCalculation();
         StateHasChanged();
@@ -538,8 +565,10 @@
             StateHasChanged();
 
             var snapshot = CalculationSnapshot.Capture(cards, combos, handSize, comboGroups);
+            var comparisonContext = CaptureComparisonContext();
             var result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
             if (OwnsRequest()) {
+                acceptedComparison = PinnedResultSnapshot.Capture(comparisonContext, result);
                 calculationResult = result;
                 calculationResultIsStale = false;
             }
@@ -683,6 +712,7 @@
 
     private void InvalidateCalculation(bool clearPreviousResult = false) {
         ObserveWorkspaceEdit();
+        InvalidateComparison(clearPreviousResult);
         StopCalculation();
         calculationVersion++;
         if (clearPreviousResult) {
