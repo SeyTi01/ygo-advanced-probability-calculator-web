@@ -231,24 +231,72 @@ public class ProbabilityResultExportTest {
     }
 
     [Test]
-    public async Task StaleBusyAndNullResultsCannotStartCopy() {
+    public async Task DisabledCopyDescriptionStaysNonvisualAcrossRunningAndStaleTransitions() {
         var result = Result(0.42, "Not current");
-        var stale = Render(result, isStale: true);
-        var staleButton = stale.Find("button[title='Copy a summary of these results']");
-        Assert.That(staleButton.HasAttribute("disabled"), Is.True);
-        Assert.That(staleButton.GetAttribute("aria-describedby"), Is.Not.Null);
-        Assert.That(stale.Markup, Does.Contain("Recalculate to copy current results."));
-        await staleButton.ClickAsync(new MouseEventArgs());
+        var cut = Render(result);
+        const string buttonSelector = "button[title='Copy a summary of these results']";
+        var button = cut.Find(buttonSelector);
 
-        var busy = Render(result, isCalculating: true);
-        var busyButton = busy.Find("button[title='Copy a summary of these results']");
-        Assert.That(busyButton.HasAttribute("disabled"), Is.True);
-        Assert.That(busy.Markup, Does.Contain("Wait for the calculation to finish"));
-        await busyButton.ClickAsync(new MouseEventArgs());
+        Assert.That(button.HasAttribute("disabled"), Is.False);
+        Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
+        await button.ClickAsync(new MouseEventArgs());
+        Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
+        Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Has.Count.EqualTo(1));
+
+        cut.SetParametersAndRender(parameters => parameters
+            .Add(component => component.IsCalculating, true));
+
+        button = cut.Find(buttonSelector);
+        AssertDisabledDescription(cut, button, "Wait for the calculation to finish before copying results.");
+        Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
+        Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Is.Empty);
+        await button.ClickAsync(new MouseEventArgs());
+        Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
+
+        cut.SetParametersAndRender(parameters => parameters
+            .Add(component => component.IsCalculating, false));
+
+        button = cut.Find(buttonSelector);
+        Assert.That(button.HasAttribute("disabled"), Is.False);
+        Assert.That(cut.FindAll(".probability-result-export-toolbar > small:not(.visually-hidden)"), Is.Empty);
+
+        cut.SetParametersAndRender(parameters => parameters
+            .Add(component => component.IsStale, true));
+
+        button = cut.Find(buttonSelector);
+        AssertDisabledDescription(cut, button, "Recalculate to copy current results.");
+        await button.ClickAsync(new MouseEventArgs());
+        Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
+
+        cut.SetParametersAndRender(parameters => parameters
+            .Add(component => component.Result, Result(0.87, "Recalculated"))
+            .Add(component => component.IsStale, false));
+
+        button = cut.Find(buttonSelector);
+        Assert.That(button.HasAttribute("disabled"), Is.False);
+        Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
+        Assert.That(cut.FindAll(".probability-result-export-toolbar > small:not(.visually-hidden)"), Is.Empty);
 
         var empty = Render(null);
         Assert.That(empty.FindAll("button"), Is.Empty);
-        Assert.That(clipboard.CopyAttempts, Is.EqualTo(0));
+        Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
+    }
+
+    private static void AssertDisabledDescription(
+        IRenderedComponent<ProbabilityResultExport> cut,
+        AngleSharp.Dom.IElement button,
+        string expectedDescription) {
+        Assert.That(button.HasAttribute("disabled"), Is.True);
+        Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
+
+        var descriptionId = button.GetAttribute("aria-describedby");
+        Assert.That(descriptionId, Is.Not.Null.And.Not.Empty);
+        var description = cut.Find("#" + descriptionId);
+        Assert.That(description.TagName, Is.EqualTo("SMALL"));
+        Assert.That(description.GetAttribute("class"), Is.EqualTo("visually-hidden"));
+        Assert.That(description.TextContent.Trim(), Is.EqualTo(expectedDescription));
+        Assert.That(cut.FindAll(".probability-result-export-toolbar > small:not(.visually-hidden)"), Is.Empty,
+            "the unavailable description is retained for assistive technology without a visible toolbar item");
     }
 
     [TestCase(true)]

@@ -147,7 +147,7 @@ public class ProbabilityResultLayoutTest {
         await groupName.InputAsync(new() { Value = "Alpha renamed" });
         await groupName.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
 
-        Assert.That(cut.Find(".probability-result-status").TextContent.Trim(),
+        Assert.That(cut.Find(".probability-result-status .visually-hidden").TextContent.Trim(),
             Is.EqualTo("Previous result · inputs changed"));
         Assert.That(cut.Find("[aria-label='Group for Editor combo 1']").GetAttribute("value"), Is.EqualTo("group-b"));
         var staleGroups = ResultGroups(cut);

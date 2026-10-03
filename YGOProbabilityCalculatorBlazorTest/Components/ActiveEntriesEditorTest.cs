@@ -79,7 +79,7 @@ public class ActiveEntriesEditorTest {
 
     private static void AssertPreviousResult(IRenderedComponent<ProbabilityCalculatorComponent> cut) {
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
-        Assert.That(cut.Find(".probability-result-status").TextContent.Trim(),
+        Assert.That(cut.Find(".probability-result-status .visually-hidden").TextContent.Trim(),
             Is.EqualTo("Previous result · inputs changed"));
     }
 
