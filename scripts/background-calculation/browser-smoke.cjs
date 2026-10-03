@@ -52,7 +52,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
   const elapsed=performance.now()-start;await new Promise(r=>setTimeout(r,50));
   return {elapsed,response:JSON.parse(response),maxHeartbeatGap:Math.max(...probe.beats.slice(1).map((t,i)=>t-probe.beats[i]))};
  },JSON.stringify(wire));
- assert.ok(foreground.response.Result || foreground.response.IsLimit);
+ assert.ok(foreground.response.Result || foreground.response.LimitReason);
  console.log(JSON.stringify({engine,foreground:{elapsed:foreground.elapsed,maxHeartbeatGap:foreground.maxHeartbeatGap}}));
  const evidence=[];
  for(const [width,theme] of [[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']]){

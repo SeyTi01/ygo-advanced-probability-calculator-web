@@ -5,19 +5,28 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 public class ProbabilityCalculatorService : IProbabilityCalculatorService {
-    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) {
+    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) =>
+        CalculateProbabilityForCombos(deck, combos, handSize, CalculationWorkPolicy.Default);
+
+    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize, CalculationWorkPolicy workPolicy) {
+        ArgumentNullException.ThrowIfNull(workPolicy);
         ValidateComboCount(combos);
         ValidateCardIds(deck);
-        var calculation = new Calculation(deck, handSize);
+        var calculation = new Calculation(deck, handSize, workPolicy);
         return calculation.Union(combos.Select(combo => calculation.Canonicalize(combo)).ToList());
     }
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
-        List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
+        List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) =>
+        CalculateProbabilityResults(deck, combos, handSize, groups, CalculationWorkPolicy.Default);
+
+    public ProbabilityCalculationResult CalculateProbabilityResults(
+        List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups, CalculationWorkPolicy workPolicy) {
+        ArgumentNullException.ThrowIfNull(workPolicy);
         ValidateComboCount(combos);
         ValidateCardIds(deck);
         // Cache and work budget belong to this request, never to a service instance.
-        var calculation = new Calculation(deck, handSize);
+        var calculation = new Calculation(deck, handSize, workPolicy);
         var events = combos.Select(combo => calculation.Canonicalize(combo)).ToList();
         var totalProbability = calculation.Union(events);
         var comboProbabilities = combos.Select((combo, index) =>
@@ -42,10 +51,11 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             throw new ArgumentException("Deck card IDs must be unique.", nameof(deck));
     }
 
-    private sealed class Calculation(List<Card> deck, int handSize) {
-        private readonly WorkBudget budget = new();
+    private sealed class Calculation(List<Card> deck, int handSize, CalculationWorkPolicy workPolicy) {
+        private readonly WorkBudget budget = new(workPolicy);
         private readonly Dictionary<Event, BigInteger> counts = new();
         private int cachedConstraints;
+        private long cachedIntegerCells;
         private BigInteger? totalWays;
 
         public Event? Canonicalize(Combo combo) {
@@ -314,9 +324,12 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                 }
             }
             // A full cache only stops retaining entries; it never changes the result.
-            if (counts.Count < 1024 && cachedConstraints + categories.Length <= 16384) {
+            var integerCells = WorkBudget.IntegerCells(successes);
+            if (counts.Count < 1024 && cachedConstraints + categories.Length <= 16384 &&
+                cachedIntegerCells + integerCells <= 262144) {
                 counts.Add(predicate, successes);
                 cachedConstraints += categories.Length;
+                cachedIntegerCells += integerCells;
             }
             return successes;
         }
@@ -330,14 +343,19 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             var maxDraw = Math.Min(groupSize, handSize);
             // The same binomial row is used by every state in this convolution.
             budget.Spend(maxDraw + 1L);
-            WorkBudget.CheckStorage(maxDraw + 1, maxDraw + 1L);
+            // Check the length in long arithmetic before int addition/allocation.
+            WorkBudget.CheckStorage(maxDraw + 1L, maxDraw + 1L);
             var binomials = new BigInteger[maxDraw + 1];
             BigInteger binomial = 1;
+            long binomialCells = maxDraw + 1L;
             for (var draw = 0; draw <= maxDraw; draw++) {
                 budget.Spend(1 + binomial.GetBitLength() / 64);
+                binomialCells += WorkBudget.IntegerCells(binomial);
+                WorkBudget.CheckStorage(maxDraw + 1L, binomialCells);
                 binomials[draw] = binomial;
                 binomial = binomial * (groupSize - draw) / (draw + 1);
             }
+            long nextIntegerCells = 0;
             foreach (var (state, ways) in states) {
                 var limit = Math.Min(maxDraw, handSize - state.DrawnCards);
                 foreach (var index in indices)
@@ -367,11 +385,12 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                     var key = new StateKey(state.DrawnCards + draw, counts);
                     budget.Spend(1 + ways.GetBitLength() / 64 + binomials[draw].GetBitLength() / 64);
                     var increment = ways * binomials[draw];
-                    if (next.TryGetValue(key, out var previous)) next[key] = previous + increment;
-                    else {
-                        WorkBudget.CheckStorage(next.Count + 1, (long)(next.Count + 1) * categories.Length);
-                        next.Add(key, increment);
-                    }
+                    var existed = next.TryGetValue(key, out var previous);
+                    var updated = previous + increment;
+                    nextIntegerCells += WorkBudget.IntegerCells(updated) - (existed ? WorkBudget.IntegerCells(previous) : 0);
+                    var entries = next.Count + (existed ? 0 : 1);
+                    WorkBudget.CheckStorage(entries, (long)entries * categories.Length + nextIntegerCells);
+                    next[key] = updated;
                 }
             }
             return next;
@@ -382,16 +401,21 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
     // pretending the 30-combo compatibility ceiling is a runtime guarantee.
     // Each live map: <= 32K entries and 256K cells (about 1 MiB of int payload).
     // Old/new DP maps, Hall subsets and union/change maps can coexist.
-    // BigInteger limbs and object overhead are extra; arithmetic work is charged.
-    private sealed class WorkBudget {
-        private long remaining = 10_000_000;
+    // DP/binomial integer payload is also checked; object overhead is extra.
+    // This is not a total-memory ceiling. Arithmetic work is charged separately.
+    private sealed class WorkBudget(CalculationWorkPolicy policy) {
+        private long remaining = policy.WorkUnits;
         public void Spend(long units) {
+            if (units < 0) throw new ArgumentOutOfRangeException(nameof(units));
+            if (units > remaining) throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Work);
             remaining -= units;
-            if (remaining < 0) throw new ProbabilityCalculationLimitException();
         }
-        public static void CheckStorage(int entries, long cells) {
-            if (entries > 32768 || cells > 262144) throw new ProbabilityCalculationLimitException();
+        public static void CheckStorage(long entries, long cells) {
+            if (entries > 32768 || cells > 262144) throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
         }
+        // Count retained BigInteger payload in 32-bit cells as well as count vectors.
+        // This is still a per-structure bound, not a total process-byte ceiling.
+        public static long IntegerCells(BigInteger value) => (value.GetBitLength() + 31) / 32;
     }
 
     private static BigInteger ComputeBinomial(int n, int k, WorkBudget budget) {
@@ -401,6 +425,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         for (var i = 1; i <= k; i++) {
             budget.Spend(1 + result.GetBitLength() / 64);
             result = result * (n - (k - i)) / i;
+            WorkBudget.CheckStorage(1, WorkBudget.IntegerCells(result));
         }
         return result;
     }
