@@ -74,7 +74,8 @@ Run it against a freshly built development server and static published output:
 node scripts/background-calculation/browser-smoke.cjs http://localhost:5157 chromium
 node scripts/background-calculation/browser-smoke.cjs http://localhost:5157 firefox
 node scripts/background-calculation/work-policy-smoke.cjs http://localhost:5157 chromium
-node scripts/background-calculation/work-policy-smoke.cjs http://localhost:5157 firefox
+node scripts/background-calculation/work-policy-smoke.cjs http://localhost:5157 firefox 1 wire
+node scripts/background-calculation/work-policy-smoke.cjs http://localhost:5157 firefox 1 ui
 node scripts/background-calculation/work-policy-smoke.cjs http://localhost:5157 chromium 4
 node scripts/background-calculation/measure-work-policy.cjs
 ```
@@ -85,8 +86,12 @@ during worker computation, worker execution-context destruction and cancellation
 latency. The policy smoke compares explicit bounded allowances through actual
 workers, validates independent total/group/individual expectations, and checks
 long-work cancellation, rapid restart, edits, stored recovery bytes and file
-replacement at verified desktop/narrow viewports. Its browser process has a
-three-minute external deadline. The final argument applies Chromium main-thread
+replacement at verified desktop/narrow viewports. Unique saved-session markers
+prove asynchronous replacements completed before the next calculation; anonymous
+fixture cards avoid metadata-provider requests. Its browser process has a
+three-minute external deadline per invocation. Firefox's slower execution uses
+separate wire and UI invocations so comparisons cannot consume the UI probe's
+deadline; no request timeout or retry is increased. The slowdown argument applies Chromium main-thread
 CPU throttling. Worker slowdown is not established by this setting; this tests
 slower UI handling rather than a physical low-power device or worker CPU ceiling.
 Run CPU/memory probes serially, away from concurrent builds. The native harness
