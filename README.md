@@ -4,7 +4,9 @@ An exact opening-hand probability calculator for Yu-Gi-Oh! decks allowing overla
 
 It can model complex combo conditions while correctly accounting for hands that satisfy several combos at once.
 
-**[Try the calculator](https://ygo-calculator.pages.dev/)**
+**[Try the stable calculator](https://ygo-calculator.pages.dev/)**
+
+> **Development preview:** This README describes the current `dev` branch. You can try that version at **[dev.ygo-calculator.pages.dev](https://dev.ygo-calculator.pages.dev/)**.
 
 ![Yu-Gi-Oh! Advanced Probability Calculator example](YGOProbabilityCalculatorBlazor/Assets/probability_calculator_example.png)
 
