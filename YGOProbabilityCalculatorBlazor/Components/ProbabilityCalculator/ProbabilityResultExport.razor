@@ -1,0 +1,221 @@
+@using System.Globalization
+@using Microsoft.JSInterop
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+@inject IJSRuntime JavaScriptRuntime
+@implements IAsyncDisposable
+
+@if (Result is not null) {
+    <div class="probability-result-export-toolbar">
+        <button id="@_copyButtonId"
+                type="button"
+                class="btn btn-sm btn-outline-primary"
+                title="Copy a summary of these results"
+                disabled="@(!CanCopy)"
+                aria-describedby="@(!CanCopy ? _unavailableMessageId : null)"
+                @onclick="CopyResultsAsync">
+            Copy results
+        </button>
+        @if (!CanCopy) {
+            <small id="@_unavailableMessageId" class="probability-result-export-unavailable">
+                @CopyUnavailableMessage
+            </small>
+        }
+        @if (_feedback is { } feedback) {
+            <span class="visually-hidden" role="status" aria-live="polite">@feedback</span>
+        }
+    </div>
+
+    @if (_fallbackText is { } fallbackText) {
+        <div class="alert alert-secondary probability-result-copy-fallback"
+             role="group"
+             aria-labelledby="@_fallbackHeadingId">
+            <div class="probability-result-copy-fallback-heading">
+                <label id="@_fallbackHeadingId" for="@_fallbackTextId">Result summary</label>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        title="Close manual copy text"
+                        aria-label="Close copy fallback"
+                        @onclick="DismissFallback">
+                    Close
+                </button>
+            </div>
+            <p id="@_fallbackInstructionId" class="form-text mb-1">
+                Clipboard copying was unavailable. Select the text below and copy it manually.
+            </p>
+            <textarea id="@_fallbackTextId"
+                      class="form-control probability-result-copy-text"
+                      rows="7"
+                      readonly
+                      spellcheck="false"
+                      aria-describedby="@_fallbackInstructionId">@fallbackText</textarea>
+        </div>
+    }
+}
+
+@code {
+    private const string ClipboardModulePath = "./js/probabilityResultExport.js";
+
+    private readonly string _copyButtonId = $"copy-results-{Guid.NewGuid():N}";
+    private readonly string _unavailableMessageId = $"copy-unavailable-{Guid.NewGuid():N}";
+    private readonly string _fallbackHeadingId = $"copy-fallback-heading-{Guid.NewGuid():N}";
+    private readonly string _fallbackInstructionId = $"copy-fallback-instruction-{Guid.NewGuid():N}";
+    private readonly string _fallbackTextId = $"copy-fallback-text-{Guid.NewGuid():N}";
+
+    private IJSObjectReference? _clipboardModule;
+    private ProbabilityCalculationResult? _observedResult;
+    private int _observedHandSize;
+    private bool _observedIsStale;
+    private bool _observedIsCalculating;
+    private bool _hasObservedParameters;
+    private bool _disposed;
+    private bool _focusFallbackAfterRender;
+    private bool _focusCopyButtonAfterRender;
+    private long _validityVersion;
+    private string? _fallbackText;
+    private string? _feedback;
+
+    [Parameter, EditorRequired]
+    public ProbabilityCalculationResult? Result { get; set; }
+
+    [Parameter]
+    public int HandSize { get; set; }
+
+    [Parameter]
+    public bool IsStale { get; set; }
+
+    [Parameter]
+    public bool IsCalculating { get; set; }
+
+    private bool CanCopy => Result is not null && HandSize >= 1 && !IsStale && !IsCalculating;
+
+    private string CopyUnavailableMessage => IsCalculating
+        ? "Wait for the calculation to finish before copying results."
+        : "Recalculate to copy current results.";
+
+    protected override void OnParametersSet() {
+        if (_hasObservedParameters &&
+            ReferenceEquals(_observedResult, Result) &&
+            _observedHandSize == HandSize &&
+            _observedIsStale == IsStale &&
+            _observedIsCalculating == IsCalculating) {
+            return;
+        }
+
+        _hasObservedParameters = true;
+        _observedResult = Result;
+        _observedHandSize = HandSize;
+        _observedIsStale = IsStale;
+        _observedIsCalculating = IsCalculating;
+        _validityVersion++;
+        _fallbackText = null;
+        _feedback = null;
+        _focusFallbackAfterRender = false;
+        _focusCopyButtonAfterRender = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            try {
+                _clipboardModule = await JavaScriptRuntime.InvokeAsync<IJSObjectReference>("import", ClipboardModulePath);
+            }
+            catch (Exception exception) when (IsJavaScriptFailure(exception)) {
+                _clipboardModule = null;
+            }
+        }
+
+        if (_clipboardModule is null) {
+            _focusFallbackAfterRender = false;
+            _focusCopyButtonAfterRender = false;
+            return;
+        }
+
+        if (_focusFallbackAfterRender) {
+            _focusFallbackAfterRender = false;
+            try {
+                await _clipboardModule.InvokeVoidAsync("focusElementById", _fallbackTextId);
+            }
+            catch (Exception exception) when (IsJavaScriptFailure(exception)) {
+                // The textarea remains selectable if focus cannot be moved programmatically.
+            }
+        }
+        else if (_focusCopyButtonAfterRender) {
+            _focusCopyButtonAfterRender = false;
+            try {
+                await _clipboardModule.InvokeVoidAsync("focusElementById", _copyButtonId);
+            }
+            catch (Exception exception) when (IsJavaScriptFailure(exception)) {
+                // Closing the fallback must not affect whether the summary can be copied.
+            }
+        }
+    }
+
+    private async Task CopyResultsAsync() {
+        if (!CanCopy || Result is not { } result) return;
+
+        // Capture the accepted result, hand size, culture, and text before any interop await.
+        var handSize = HandSize;
+        var version = _validityVersion;
+        var summary = ProbabilityResultSummaryFormatter.Format(result, handSize, CultureInfo.CurrentCulture);
+        _feedback = null;
+        _fallbackText = null;
+
+        if (_clipboardModule is null) {
+            ShowFallbackIfCurrent(version, result, handSize, summary);
+            return;
+        }
+
+        try {
+            var copied = await _clipboardModule.InvokeAsync<bool>("copyText", summary);
+            if (!IsCurrentSnapshot(version, result, handSize)) return;
+
+            if (copied) {
+                _feedback = "Results copied.";
+            }
+            else {
+                ShowFallbackIfCurrent(version, result, handSize, summary);
+            }
+        }
+        catch (Exception exception) when (IsJavaScriptFailure(exception)) {
+            ShowFallbackIfCurrent(version, result, handSize, summary);
+        }
+    }
+
+    private void ShowFallbackIfCurrent(
+        long version,
+        ProbabilityCalculationResult result,
+        int handSize,
+        string summary) {
+        if (!IsCurrentSnapshot(version, result, handSize)) return;
+
+        _fallbackText = summary;
+        _focusFallbackAfterRender = true;
+    }
+
+    private bool IsCurrentSnapshot(long version, ProbabilityCalculationResult result, int handSize) =>
+        !_disposed &&
+        version == _validityVersion &&
+        CanCopy &&
+        ReferenceEquals(Result, result) &&
+        HandSize == handSize;
+
+    private void DismissFallback() {
+        _fallbackText = null;
+        _focusCopyButtonAfterRender = CanCopy;
+    }
+
+    private static bool IsJavaScriptFailure(Exception exception) =>
+        exception is JSException or OperationCanceledException or InvalidOperationException;
+
+    public async ValueTask DisposeAsync() {
+        _disposed = true;
+        _validityVersion++;
+
+        if (_clipboardModule is null) return;
+        try {
+            await _clipboardModule.DisposeAsync();
+        }
+        catch (Exception exception) when (IsJavaScriptFailure(exception)) {
+            // Disposal may race a pending clipboard call or a disconnected renderer.
+        }
+    }
+}

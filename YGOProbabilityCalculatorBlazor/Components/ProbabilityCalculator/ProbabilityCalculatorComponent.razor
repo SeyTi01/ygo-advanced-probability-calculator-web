@@ -133,14 +133,18 @@
                      role="region"
                      aria-labelledby="probabilityResultsHeading"
                      aria-live="polite">
-                <h5 id="probabilityResultsHeading" class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                    <span>Results</span>
+                <div class="probability-results-heading">
+                    <h5 id="probabilityResultsHeading">Results</h5>
                     @if (calculationResultIsStale) {
                         <small class="probability-result-status text-body-secondary fw-normal"
                                role="status"
                                aria-live="polite">Previous result · inputs changed</small>
                     }
-                </h5>
+                    <ProbabilityResultExport Result="result"
+                                             HandSize="handSize"
+                                             IsStale="calculationResultIsStale"
+                                             IsCalculating="isCalculating" />
+                </div>
                 <div class="combo-probability-row probability-total">
                     <span class="combo-probability-name">Any active combo</span>
                     <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
