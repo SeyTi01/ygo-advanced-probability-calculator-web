@@ -7,7 +7,7 @@
 @inject IPendingSessionService _pendingSessionService
 @inject IProbabilityCalculatorService _probabilityCalculator
 
-<div class="calculator-workspace">
+<div class="calculator-workspace" @oninput="ObserveWorkspaceEdit">
     <div class="session-controls">
         <div class="session-toolbar">
             <label class="btn btn-primary session-file-action" for="fileInput">
@@ -56,6 +56,10 @@
     </div>
     @if (importError is not null) {
         <DismissibleAlert Message="@importError" OnDismiss="@(() => importError = null)"/>
+    }
+
+    @if (sessionInitialized) {
+        <SessionRecovery Session="CaptureSession()" ReplacementVersion="autosaveReplacementVersion" EditVersion="workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" />
     }
 
     <CategoryListEditor @key="sessionVersion"
@@ -534,9 +538,13 @@
     }
 
     private async Task ImportDeckAsync(InputFileChangeEventArgs e) {
+        var request = ++sessionLoadVersion;
+        var edit = workspaceEditVersion;
+        var before = _sessionService.SerializeSession(CaptureSession());
         try {
             importError = null;
             var importedCards = await _deckImportService.ImportDeckFromYdkAsync(e.File);
+            if (!CanApplySession(request, before, edit)) { importError = "Current work changed during import. Import again to replace it."; return; }
             ReplaceImportedDeck(importedCards);
         }
         catch (Exception ex) {
@@ -557,9 +565,13 @@
     }
 
     private async Task ImportYdkeAsync() {
+        var request = ++sessionLoadVersion;
+        var edit = workspaceEditVersion;
+        var before = _sessionService.SerializeSession(CaptureSession());
         try {
             importError = null;
             var importedCards = await _deckImportService.ImportDeckFromYdkeAsync(ydkeCode);
+            if (!CanApplySession(request, before, edit)) { importError = "Current work changed during import. Import again to replace it."; return; }
             ReplaceImportedDeck(importedCards);
             ydkeCode = string.Empty;
             isYdkeImportOpen = false;
@@ -574,20 +586,12 @@
         cards.AddRange(importedCards);
         InvalidateCalculation(clearPreviousResult: true);
         activeCardIndex = -1;
+        autosaveReplacementVersion++;
     }
 
     private async Task SaveSession(string fileName) {
         try {
-            var session = new SessionState {
-                Categories = categoryBases,
-                Cards = cards,
-                Combos = combos,
-                ComboGroups = comboGroups,
-                HandSize = handSize,
-                CategoryColorIndices = new(categoryColorIndices, StringComparer.Ordinal)
-            };
-
-            await _sessionService.SaveSessionAsync(session, fileName);
+            await _sessionService.SaveSessionAsync(CaptureSession(), fileName);
         }
         catch (Exception ex) {
             errorMessage = $"Failed to save session: {ex.Message}";
@@ -595,6 +599,9 @@
     }
 
     private async Task LoadSessionFile(InputFileChangeEventArgs e) {
+        var request = ++sessionLoadVersion;
+        var edit = workspaceEditVersion;
+        var before = _sessionService.SerializeSession(CaptureSession());
         try {
             var file = e.File;
             using var streamReader = new StreamReader(file.OpenReadStream());
@@ -602,11 +609,15 @@
 
             var session = await _sessionService.LoadSessionAsync(fileContent);
 
-            await RestoreSessionDataAsync(session);
+            if (!await RestoreSessionDataAsync(session, request, before, edit)) {
+                errorMessage = "Current work changed while loading. Load the session again to replace it.";
+                return;
+            }
             activeCardIndex = -1;
             activeComboIndex = -1;
             InvalidateCalculation(clearPreviousResult: true);
             sessionVersion++;
+            autosaveReplacementVersion++;
         }
         catch (Exception ex) {
             errorMessage = $"Failed to load session: {ex.Message}";
@@ -616,25 +627,6 @@
     private async Task SaveCurrentSession() {
         var fileName = $"calculator_session_{DateTime.Now:yyyyMMdd_HHmmss}.json";
         await SaveSession(fileName);
-    }
-
-    private async Task RestoreSessionDataAsync(SessionState session) {
-        if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
-            throw new InvalidOperationException("Session contains duplicate card IDs.");
-        await _legacyMetadataEnricher.EnrichAsync(session);
-        categoryBases.Clear();
-        categoryBases.AddRange(session.Categories.Where(category => category.Source == CategorySource.User));
-
-        cards.Clear();
-        cards.AddRange(session.Cards);
-
-        combos.Clear();
-        combos.AddRange(session.Combos);
-        comboGroups.Clear();
-        comboGroups.AddRange(session.ComboGroups ?? []);
-
-        RestoreCategoryColorIndices(session);
-        handSize = session.HandSize;
     }
 
     private void OnHandSizeChanged() => InvalidateCalculation();
@@ -655,17 +647,23 @@
 
     protected override async Task OnInitializedAsync() {
         if (_pendingSessionService.PendingSession is { } session) {
+            var request = ++sessionLoadVersion;
+            var edit = workspaceEditVersion;
+            var before = _sessionService.SerializeSession(CaptureSession());
             try {
-                await RestoreSessionDataAsync(session);
-
                 _pendingSessionService.PendingSession = null;
+                if (await RestoreSessionDataAsync(session, request, before, edit)) autosaveReplacementVersion++;
+                else errorMessage = "Current work changed while loading the example. Load the example again to replace it.";
             }
             catch (Exception ex) {
                 errorMessage = $"Failed to load example session: {ex.Message}";
             }
         }
 
+        sessionInitialized = true;
         await base.OnInitializedAsync();
     }
+
+
 
 }

@@ -1,0 +1,165 @@
+@using Microsoft.JSInterop
+@using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ISessionService Sessions
+
+@if (hasRecovery && !dismissed) {
+    <section class="alert alert-secondary mt-3" aria-label="Session recovery">
+        <p class="mb-2" role="status">@(recoveryError ?? "A previous working session is saved locally.")
+            @if (savedAt is { } time) { <span class="ms-1">Last saved @time.ToLocalTime().ToString("g").</span> }
+        </p>
+        @if (confirmReplacement) { <p class="mb-2">Restoring will replace your current edits.</p> }
+        <div class="d-flex flex-wrap gap-2">
+            @if (recoveryPayload is not null && recoveryError is null) {
+                <button type="button" class="btn btn-primary" disabled="@restoring" @onclick="RestoreAsync">@(confirmReplacement ? "Replace current work and restore" : "Restore previous session")</button>
+            }
+            <button type="button" class="btn btn-secondary" disabled="@restoring" @onclick="DiscardAsync">Discard saved draft</button>
+            <button type="button" class="btn btn-link text-body" disabled="@restoring" @onclick="Dismiss">Dismiss</button>
+        </div>
+        <p class="form-text mb-0">Dismiss keeps the draft and pauses autosave. Discard deletes it; your next edit starts autosaving again.</p>
+    </section>
+}
+else if (hasRecovery) {
+    <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+        <span class="form-text">Recovery draft kept; autosave paused.</span>
+        <button type="button" class="btn btn-sm btn-secondary" @onclick="Show">Show recovery</button>
+        <button type="button" class="btn btn-sm btn-secondary" @onclick="UseCurrentAsync">Use this workspace for recovery</button>
+    </div>
+}
+@if (status is not null) {
+    <div class="alert alert-warning mt-2" role="status">
+        <p class="mb-2">@status</p>
+        <button type="button" class="btn btn-sm btn-secondary" @onclick="UseCurrentAsync">Use this workspace for recovery</button>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public SessionState Session { get; set; } = new();
+    [Parameter] public int ReplacementVersion { get; set; }
+    [Parameter] public long EditVersion { get; set; }
+    [Parameter, EditorRequired] public Func<SessionState, Task<bool>> ApplyRecovery { get; set; } = null!;
+    private readonly string id = Guid.NewGuid().ToString("N");
+    private DotNetObjectReference<SessionRecovery>? reference;
+    private string? snapshot, initialSnapshot, recoveryPayload, recoveryError, status;
+    private DateTimeOffset? savedAt;
+    private long generation;
+    private long editVersion;
+    private int replacementVersion;
+    private bool initialized, initializing, disposed, hasRecovery, dismissed, confirmReplacement, restoring, pending, replace;
+
+    protected override void OnParametersSet() {
+        if (editVersion != EditVersion) { editVersion = EditVersion; confirmReplacement = false; }
+        try {
+            var next = Sessions.SerializeSession(Session);
+            if (next is null) return;
+            initialSnapshot ??= Sessions.SerializeSession(new SessionState { HandSize = 5 });
+            if (next != snapshot) {
+                snapshot = next;
+                generation++;
+                pending = next != initialSnapshot || initialized;
+                confirmReplacement = false;
+            }
+            if (ReplacementVersion != replacementVersion) {
+                replacementVersion = ReplacementVersion;
+                hasRecovery = false;
+                replace = pending = true;
+                generation++;
+            }
+        }
+        catch { status = "Local recovery could not capture this session. Save a session file to keep your work."; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (disposed || initializing) return;
+        try {
+            if (!initialized) {
+                initializing = true;
+                reference = DotNetObjectReference.Create(this);
+                var inspection = await JS.InvokeAsync<Inspection?>("sessionRecovery.initialize", id, reference);
+                if (disposed) { await JS.InvokeVoidAsync("sessionRecovery.dispose", id); return; }
+                initialized = true;
+                initializing = false;
+                if (!replace && inspection?.Exists == true) {
+                    hasRecovery = true;
+                    recoveryPayload = inspection.Payload;
+                    recoveryError = inspection.Error;
+                    if (DateTimeOffset.TryParse(inspection.SavedAt, out var time)) savedAt = time;
+                    if (recoveryPayload is not null) {
+                        try { await Sessions.LoadSessionAsync(recoveryPayload); }
+                        catch { recoveryError = "The local draft is invalid or from an unsupported session version. It is kept until you discard or replace it."; }
+                    }
+                }
+                StateHasChanged();
+            }
+            if (pending && !hasRecovery && snapshot is not null) {
+                pending = false;
+                var force = replace;
+                replace = false;
+                await JS.InvokeVoidAsync("sessionRecovery.update", id, generation, snapshot, force);
+            }
+        }
+        catch {
+            initialized = true;
+            initializing = false;
+            pending = false;
+            const string message = "Local recovery is unavailable. Save a session file to keep your work.";
+            if (status != message) { status = message; StateHasChanged(); }
+        }
+    }
+
+    private async Task RestoreAsync() {
+        if ((snapshot != initialSnapshot || EditVersion > 0) && !confirmReplacement) { confirmReplacement = true; return; }
+        if (recoveryPayload is null) return;
+        restoring = true;
+        var version = generation;
+        try {
+            var session = await Sessions.LoadSessionAsync(recoveryPayload);
+            if (disposed || version != generation) return;
+            if (!await ApplyRecovery(session)) { status = "Current work changed while restoring. Review the draft and try again."; return; }
+            if (disposed) return;
+            hasRecovery = false;
+            replace = pending = true;
+            generation++;
+        }
+        catch { recoveryError = "The local draft could not be restored. Your current work and saved draft are kept."; }
+        finally { restoring = false; }
+    }
+
+    private async Task DiscardAsync() {
+        var version = ++generation;
+        if (await JS.InvokeAsync<bool>("sessionRecovery.discard", id, version) && !disposed) {
+            hasRecovery = dismissed = false;
+            pending = version != generation;
+            if (!pending) initialSnapshot = snapshot;
+            status = null;
+        }
+    }
+    private void Dismiss() => dismissed = true;
+    private void Show() => dismissed = false;
+    private void UseCurrentAsync() {
+        hasRecovery = dismissed = false;
+        replace = pending = true;
+        status = null;
+        generation++;
+    }
+    [JSInvokable] public Task AutosaveStatus(long version, string? message) => InvokeAsync(() => {
+        if (disposed || version != generation) return;
+        status = message;
+        StateHasChanged();
+    });
+    public async ValueTask DisposeAsync() {
+        disposed = true;
+        try { await JS.InvokeVoidAsync("sessionRecovery.dispose", id); }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+        reference?.Dispose();
+    }
+    public sealed class Inspection {
+        public bool Exists { get; set; }
+        public string? Payload { get; set; }
+        public string? SavedAt { get; set; }
+        public string? Error { get; set; }
+    }
+}
