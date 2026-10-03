@@ -13,8 +13,8 @@
     <div class="session-controls">
         <div class="session-toolbar">
             <label class="btn btn-primary session-file-action" for="fileInput">
-                Import Deck
-                <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="session-file-input" id="fileInput" aria-label="Import Deck"/>
+                Import YDK
+                <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="session-file-input" id="fileInput" aria-label="Import YDK"/>
             </label>
             <button type="button" class="btn btn-outline-primary" @onclick="OpenYdkeImport" disabled="@isYdkeImportOpen">
                 Import YDKe
