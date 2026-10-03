@@ -18,6 +18,15 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
         if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             fileName += ".json";
 
+        var json = SerializeSession(session);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        var base64 = Convert.ToBase64String(bytes);
+
+        await jsRuntime.InvokeVoidAsync("saveSessionFile", fileName, base64);
+    }
+
+    // Offline codec shared by file saving and recovery; never opens a picker.
+    public string SerializeSession(SessionState session) {
         var sessionToSave = new SessionState {
             SchemaVersion = SessionState.CurrentSchemaVersion,
             Categories = session.Categories,
@@ -27,11 +36,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             HandSize = session.HandSize,
             CategoryColorIndices = session.CategoryColorIndices
         };
-        var json = serializer.Serialize(sessionToSave, _serializerOptions);
-        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var base64 = Convert.ToBase64String(bytes);
-
-        await jsRuntime.InvokeVoidAsync("saveSessionFile", fileName, base64);
+        return serializer.Serialize(sessionToSave, _serializerOptions);
     }
 
     public Task<SessionState> LoadSessionAsync(string fileContent) {
