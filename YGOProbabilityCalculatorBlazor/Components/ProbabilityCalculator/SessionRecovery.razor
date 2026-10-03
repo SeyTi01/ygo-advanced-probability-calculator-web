@@ -91,6 +91,7 @@ else if (hasRecovery) {
                         catch { recoveryError = "The local draft is invalid or from an unsupported session version. It is kept until you discard or replace it."; }
                     }
                 }
+                if (disposed) return;
                 StateHasChanged();
             }
             if (pending && !hasRecovery && snapshot is not null) {
@@ -101,6 +102,7 @@ else if (hasRecovery) {
             }
         }
         catch {
+            if (disposed) return;
             initialized = true;
             initializing = false;
             pending = false;
@@ -117,13 +119,14 @@ else if (hasRecovery) {
         try {
             var session = await Sessions.LoadSessionAsync(recoveryPayload);
             if (disposed || version != generation) return;
-            if (!await ApplyRecovery(session)) { status = "Current work changed while restoring. Review the draft and try again."; return; }
+            var accepted = await ApplyRecovery(session);
             if (disposed) return;
+            if (!accepted) { status = "Current work changed while restoring. Review the draft and try again."; return; }
             hasRecovery = false;
             replace = pending = true;
             generation++;
         }
-        catch { recoveryError = "The local draft could not be restored. Your current work and saved draft are kept."; }
+        catch { if (!disposed) recoveryError = "The local draft could not be restored. Your current work and saved draft are kept."; }
         finally { restoring = false; }
     }
 
