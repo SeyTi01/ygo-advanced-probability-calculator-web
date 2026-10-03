@@ -7,6 +7,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazor.Services.Shared;
 using TestContext = Bunit.TestContext;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
@@ -26,6 +27,9 @@ public class BackgroundCalculationComponentTest {
         context.Services.AddSingleton<IBackgroundCalculator>(calculator);
         context.Services.AddSingleton(Mock.Of<IDeckImportService>());
         sessions = new();
+        var codec = new SessionService(context.JSInterop.JSRuntime, new JsonSerializer());
+        sessions.Setup(s => s.SerializeSession(It.IsAny<SessionState>())).Returns<SessionState>(codec.SerializeSession);
+        sessions.Setup(s => s.LoadSessionAsync(It.IsAny<string>())).Returns<string>(codec.LoadSessionAsync);
         context.Services.AddSingleton(sessions.Object);
         context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
         context.Services.AddSingleton<IPendingSessionService>(new PendingSessionService { PendingSession = new SessionState {
@@ -192,19 +196,17 @@ public class BackgroundCalculationComponentTest {
     }
 
     [Test]
-    public async Task LoadingAnotherSessionCancelsBeforeItsAsynchronousReadCompletes() {
-        sessions.Setup(s => s.LoadSessionAsync(It.IsAny<string>())).Returns(() => {
-            Assert.That(calculator.Tokens[0].IsCancellationRequested, Is.True);
-            return Task.FromResult(new SessionState {
-                Cards = [new([], 4, id: "new")], Combos = [new([], "New combo", cards: [new("new", 1, 2)])], HandSize = 2
-            });
-        });
+    public async Task AcceptingAnotherSessionCancelsThePreviousWorkspaceCalculation() {
+        var replacement = new SessionState {
+            Cards = [new([], 4, id: "new")], Combos = [new([], "New combo", cards: [new("new", 1, 2)])], HandSize = 2
+        };
         var first = Start();
-        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText("{}", "session.json"));
-        cut.WaitForAssertion(() => Assert.That(calculator.Tokens[0].IsCancellationRequested, Is.True));
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(sessions.Object.SerializeSession(replacement), "session.json"));
+        cut.WaitForState(() => calculator.Tokens[0].IsCancellationRequested);
+        Assert.That(calculator.Tokens[0].IsCancellationRequested, Is.True);
         calculator.Jobs[0].SetResult(Result("old workspace"));
         await first;
-        cut.WaitForAssertion(() => Assert.That(cut.Markup, Does.Contain("New combo").And.Not.Contain("old workspace")));
+        Assert.That(cut.Markup, Does.Contain("New combo").And.Not.Contain("old workspace"));
         var next = Start(); calculator.Jobs[1].SetResult(Result("new workspace")); await next;
         Assert.That(cut.Markup, Does.Contain("new workspace"));
     }

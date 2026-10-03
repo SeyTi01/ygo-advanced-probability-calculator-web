@@ -9,6 +9,7 @@ using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Shared;
 using TestContext = Bunit.TestContext;
@@ -28,6 +29,7 @@ public class SessionRecoveryTest {
         context.Services.AddSingleton<ISessionService, SessionService>();
         context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
         context.Services.AddSingleton<IProbabilityCalculatorService, ProbabilityCalculatorService>();
+        context.Services.AddSingleton<IBackgroundCalculator, BackgroundCalculatorTestAdapter>();
         context.Services.AddSingleton(Mock.Of<IDeckImportService>());
         context.Services.AddSingleton(Mock.Of<ICardArtworkService>());
         enricher = new Mock<ILegacyCardMetadataEnricher>();

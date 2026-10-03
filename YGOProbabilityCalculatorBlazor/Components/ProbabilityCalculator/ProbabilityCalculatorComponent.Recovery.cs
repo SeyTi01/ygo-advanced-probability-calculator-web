@@ -19,10 +19,12 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         CategoryColorIndices = new(categoryColorIndices, StringComparer.Ordinal)
     };
 
-    private bool CanApplySession(long request, string before, long edit) => !sessionDisposed && request == sessionLoadVersion && edit == workspaceEditVersion &&
+    private bool OwnsSessionLoad(long request) => !sessionDisposed && request == sessionLoadVersion;
+    private bool CanApplySession(long request, string before, long edit) => OwnsSessionLoad(request) && edit == workspaceEditVersion &&
         before == _sessionService.SerializeSession(CaptureSession());
 
     private async Task<bool> ApplyRecoveryAsync(SessionState session) {
+        if (sessionDisposed) return false;
         var request = ++sessionLoadVersion;
         var edit = workspaceEditVersion;
         var before = _sessionService.SerializeSession(CaptureSession());
