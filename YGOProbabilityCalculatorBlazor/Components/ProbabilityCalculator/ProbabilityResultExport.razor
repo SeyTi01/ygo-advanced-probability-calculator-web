@@ -29,7 +29,7 @@
             <span>Copy results</span>
         </button>
         @if (!CanCopy) {
-            <small id="@_unavailableMessageId" class="probability-result-export-unavailable">
+            <small id="@_unavailableMessageId" class="visually-hidden">
                 @CopyUnavailableMessage
             </small>
         }
