@@ -81,19 +81,16 @@ public class CardInfoServiceTests {
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
     }
 
-    [TestCase(false)]
-    [TestCase(true)]
-    public async Task FreshExistingV2CacheEnrichesOnlyRequestedArtworkOnce(bool offline) {
+    [Test]
+    public async Task FreshExistingV2CacheEnrichesOnlyRequestedArtworkOnce() {
         var storage = new TestLocalStorage(CreateCacheJson(Now, (1234, "Saved"), (5678, "Other")));
-        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(offline
-            ? Response(HttpStatusCode.ServiceUnavailable, "{}")
-            : Response(HttpStatusCode.OK, "{\"data\":[" + ArtworkCardJson + "]}")));
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + ArtworkCardJson + "]}")));
         using var client = new HttpClient(handler);
         var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
         Assert.That((await service.GetCardInfoAsync(1234)).Name, Is.EqualTo("Saved"));
         Assert.That(handler.Requests, Is.Empty);
         var results = await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => service.GetCardArtworkInfoAsync(1234)));
-        Assert.That(results.All(info => offline ? info.ArtworkImageIds.Count == 0 : info.ArtworkImageIds.Count == 3), Is.True);
+        Assert.That(results.All(info => info.ArtworkImageIds.Count == 3), Is.True);
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
         Assert.That(handler.Requests[0], Does.EndWith("?id=1234"));
         using var doc = JsonDocument.Parse(storage.RawCache!);

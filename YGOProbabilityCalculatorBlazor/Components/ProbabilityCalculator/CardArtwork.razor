@@ -1,82 +1,90 @@
 @using YGOProbabilityCalculatorBlazor.Services.Interface
-@implements IDisposable
-@inject ICardArtworkService ArtworkService
+@using YGOProbabilityCalculatorBlazor.Services.DeckImport
+@using Microsoft.JSInterop
+@using Microsoft.Extensions.DependencyInjection
+@implements IAsyncDisposable
+@inject IServiceProvider Services
+@inject IJSRuntime JS
 
-<div class="card-artwork-disclosure mb-3">
-    <button type="button" class="btn btn-outline-secondary btn-sm"
-            aria-label="@($"{(requested ? "Hide" : "Show")} artwork for {Name}")"
-            title="@($"{(requested ? "Hide" : "Show")} artwork for {Name}")"
-            aria-expanded="@(requested && Visible ? "true" : "false")" aria-controls="@PreviewId"
-            @onclick="ToggleAsync">Artwork</button>
-    @if (requested && Visible) {
-        <div id="@PreviewId" class="mt-2">
-            @if (unavailable) {
-                <span class="small text-body-secondary" role="status">Artwork unavailable</span>
-            }
-            else {
-                <div class="card-artwork-preview" aria-busy="@(loading ? "true" : "false")">
-                    @if (url is not null) {
-                        var imageVersion = version;
-                        <img src="@url" alt="@($"Card artwork for {Name}")" width="268" height="391"
-                             decoding="async" @onload="() => Loaded(imageVersion)" @onerror="() => Failed(imageVersion)" />
-                    }
-                    else {
-                        <span class="small text-body-secondary" role="status">Loading artwork…</span>
-                    }
-                </div>
-            }
-        </div>
+<span @ref="footprint" class="card-artwork @(Thumbnail ? "card-artwork-thumbnail" : "card-artwork-preview")">
+    @if (url is not null) {
+        <img src="@url" alt="@(Thumbnail ? string.Empty : $"Card artwork for {Name}")"
+             width="268" height="391" decoding="async" />
     }
-</div>
+    else {
+        <svg viewBox="0 0 24 35" aria-hidden="true" focusable="false">
+            <rect x="3" y="3" width="18" height="29" rx="1" fill="none" stroke="currentColor" />
+            <path d="M6 8h12v12H6zm0 16h12m-12 3h8" fill="none" stroke="currentColor" />
+        </svg>
+    }
+</span>
 
 @code {
     [Parameter] public string CardId { get; set; } = string.Empty;
     [Parameter] public int ExternalCardId { get; set; }
     [Parameter] public string Name { get; set; } = string.Empty;
-    [Parameter] public bool Visible { get; set; }
-    private string? previousCardId;
-    private int previousExternalCardId;
-    private bool requested, loading, unavailable, disposed;
+    [Parameter] public bool Thumbnail { get; set; }
+    private ElementReference footprint;
+    private IJSObjectReference? module;
+    private Task<IJSObjectReference>? moduleTask;
+    private DotNetObjectReference<CardArtwork>? bridge;
+    private int? registration;
+    private (string, int) identity;
     private int version;
+    private bool disposed, changed;
     private string? url;
-    private string PreviewId => $"artwork-{CardId}";
 
     protected override void OnParametersSet() {
-        if (CardId != previousCardId || ExternalCardId != previousExternalCardId) {
-            version++;
-            requested = loading = unavailable = false;
-            url = null;
-            previousCardId = CardId;
-            previousExternalCardId = ExternalCardId;
+        if (identity == (CardId, ExternalCardId)) return;
+        identity = (CardId, ExternalCardId);
+        version++; url = null; changed = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (disposed || (!firstRender && !changed)) return;
+        var currentVersion = version;
+        changed = false;
+        if (module is null && ExternalCardId <= 0) return;
+        module ??= await (moduleTask ??= JS.InvokeAsync<IJSObjectReference>("import", "./js/card-artwork.mjs").AsTask());
+        if (module is null || disposed || currentVersion != version) return;
+        if (registration is { } old) await module.InvokeVoidAsync("unobserve", old);
+        registration = null;
+        if (ExternalCardId <= 0) return;
+        bridge ??= DotNetObjectReference.Create(this);
+        var id = await module.InvokeAsync<int>("observe", footprint, bridge, ExternalCardId, currentVersion);
+        if (disposed || currentVersion != version) await module.InvokeVoidAsync("unobserve", id);
+        else registration = id;
+    }
+
+    [JSInvokable]
+    public async Task<ArtworkResolution> ResolveArtwork(int requestVersion) {
+        if (disposed || requestVersion != version) return new(null, null);
+        var externalId = ExternalCardId;
+        try { return new(await Services.GetRequiredService<ICardArtworkService>().GetArtworkUrlAsync(externalId), null); }
+        catch (CardArtworkLookupException ex) { return new(null, Math.Max(0, ex.RetryAfter.TotalMilliseconds)); }
+        catch { return new(null, 60000); }
+    }
+
+    [JSInvokable]
+    public Task ArtworkReady(int requestVersion, string? source) => InvokeAsync(() => {
+        if (disposed || requestVersion != version) return;
+        // Only our numeric retained-image route is a display source, including mocks.
+        url = source is not null && Uri.TryCreate(source, UriKind.Absolute, out var uri) &&
+            uri.GetLeftPart(UriPartial.Authority) == CardArtworkService.ArtworkOrigin &&
+            System.Text.RegularExpressions.Regex.IsMatch(uri.PathAndQuery, @"^/small/[1-9]\d{0,9}\.jpg$") ? source : null;
+        StateHasChanged();
+    });
+
+    public async ValueTask DisposeAsync() {
+        if (disposed) return;
+        disposed = true; version++;
+        try {
+            if (moduleTask is not null) module ??= await moduleTask;
+            if (module is not null && registration is { } id) await module.InvokeVoidAsync("unobserve", id);
+            if (module is not null) await module.DisposeAsync();
         }
-        if (!Visible && loading) { version++; loading = false; }
+        catch (JSDisconnectedException) { }
+        finally { bridge?.Dispose(); }
     }
-
-    protected override Task OnParametersSetAsync() => LoadAsync();
-
-    private async Task ToggleAsync() {
-        requested = !requested;
-        if (!requested) { version++; loading = false; return; }
-        await LoadAsync();
-    }
-
-    private async Task LoadAsync() {
-        if (!requested || !Visible || loading || unavailable || url is not null || disposed) return;
-        loading = true;
-        var currentVersion = ++version;
-        string? resolved;
-        try { resolved = await ArtworkService.GetArtworkUrlAsync(ExternalCardId); }
-        catch { resolved = null; }
-        if (disposed || currentVersion != version || !Visible || !requested) return;
-        url = resolved;
-        unavailable = url is null;
-        if (unavailable) loading = false;
-    }
-
-    private void Loaded(int imageVersion) { if (imageVersion == version) loading = false; }
-    private void Failed(int imageVersion) {
-        if (imageVersion != version) return;
-        url = null; loading = false; unavailable = true;
-    }
-    public void Dispose() { disposed = true; version++; }
+    public sealed record ArtworkResolution(string? Url, double? RetryAfter);
 }
