@@ -112,6 +112,9 @@ public class PinnedResultTest {
 
     [Test] public async Task PinOwnsRequestContextAndCopiesMutableResultsAndNestedDefinitions() {
         var action = Start();
+        var input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(worker.Inputs[0].Json)!;
+        Assert.That(input.WorkUnits, Is.EqualTo(50_000_000), "ordinary Calculate selects the interactive policy on its first request");
+        Assert.That(input.HandSize, Is.EqualTo(2));
         var result = Result(0, .814);
         // An unannounced edit specifically verifies capture timing, independent of invalidation.
         Field<List<Card>>("cards")[0].Categories.Clear();
@@ -178,8 +181,10 @@ public class PinnedResultTest {
     }
 
     [TestCase("late-success")] [TestCase("late-error")] [TestCase("cancelled")] [TestCase("failure")]
+    [TestCase("work-limit")] [TestCase("storage-limit")]
     public async Task BusyStaleCancelledFailedAndLateResultsCannotReplacePinOrAcceptedComparison(string completion) {
         await Accept(); await Pin(); var baseline = Pinned;
+        var accepted = Field<PinnedResultSnapshot>("acceptedComparison");
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         Assert.That(cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
@@ -195,6 +200,8 @@ public class PinnedResultTest {
             else worker.Jobs[1].SetException(new Exception("Obsolete error"));
         }
         else if (completion == "cancelled") worker.Jobs[1].SetCanceled();
+        else if (completion.EndsWith("limit")) worker.Jobs[1].SetException(new ProbabilityCalculationLimitException(
+            completion == "work-limit" ? ProbabilityCalculationLimitReason.Work : ProbabilityCalculationLimitReason.Storage));
         else worker.Jobs[1].SetException(new Exception("Current failure"));
         await action;
         Assert.That(Pinned, Is.SameAs(baseline));
@@ -203,9 +210,32 @@ public class PinnedResultTest {
             Assert.That(cut.Markup, Does.Not.Contain("Obsolete error"));
         }
         else {
+            Assert.That(Field<PinnedResultSnapshot>("acceptedComparison"), Is.SameAs(accepted));
             Assert.That(cut.FindAll(".result-difference"), Is.Empty);
             Assert.That(cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
         }
+    }
+
+    [TestCase(false)] [TestCase(true)]
+    public async Task ObsoleteCompletionCannotUnlockNewBusyRequestOrReplaceItsAcceptedContext(bool limit) {
+        await Accept(); await Pin(); var pin = Pinned;
+        var accepted = Field<PinnedResultSnapshot>("acceptedComparison");
+        var old = Start();
+        await cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
+        var current = Start();
+        Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(worker.Inputs[2].Json)!.WorkUnits, Is.EqualTo(50_000_000));
+        if (limit) worker.Jobs[1].SetException(new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage));
+        else worker.Jobs[1].SetResult(Result(1, .1));
+        await old;
+        Assert.That(Field<PinnedResultSnapshot>("acceptedComparison"), Is.SameAs(accepted));
+        Assert.That(Pinned, Is.SameAs(pin));
+        Assert.That(cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
+        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+        worker.Jobs[2].SetResult(Result(2, .842)); await current;
+        Assert.That(Field<PinnedResultSnapshot>("acceptedComparison").Context.HandSize, Is.EqualTo(6));
+        Assert.That(Pinned.Context.HandSize, Is.EqualTo(2));
     }
 
     [Test] public async Task ReorderRenameAndCountChangesPreserveDistinctLineageForDuplicateAndUnnamedRows() {
