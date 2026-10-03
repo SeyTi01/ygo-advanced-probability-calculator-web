@@ -20,12 +20,13 @@ function fixture(initial = null) {
         removeEventListener: (name, fn) => listeners.get(name)?.delete(fn)
     };
     const document = { ...events, visibilityState: 'visible' };
-    const context = vm.createContext({ localStorage: storage, document, ...events,
+    const location = { hash: '' };
+    const context = vm.createContext({ localStorage: storage, document, location, ...events,
         setTimeout: (fn, ms) => { const id = ++timerId; timers.set(id, { fn, at: clock + ms }); return id; },
         clearTimeout: id => timers.delete(id) });
     vm.runInContext(source, context);
     const api = context.sessionRecovery;
-    return { api, data, statuses, document,
+    return { api, data, statuses, document, location,
         start: id => api.initialize(id, { invokeMethodAsync: (_, generation, message) => { statuses.push(message); return Promise.resolve(); } }),
         tick: ms => { clock += ms; for (const [id, timer] of [...timers]) if (timer.at <= clock) { timers.delete(id); timer.fn(); } },
         event: name => { for (const fn of listeners.get(name) ?? []) fn(); },
@@ -106,5 +107,61 @@ test('remount inspects the flushed bytes and obsolete owners cannot touch the ne
     f.api.update('old', 99, 'obsolete worker/session completion', true);
     f.api.dispose('old'); f.tick(750);
     assert.equal(f.payload(), 'restored workspace'); assert.equal(f.writes(), 2);
-    assert.equal(f.listeners(), 2); f.api.dispose('new'); assert.equal(f.listeners(), 0);
+    assert.equal(f.listeners(), 4); f.api.dispose('new'); assert.equal(f.listeners(), 0);
+});
+
+test('a share offer cancels old timers and flushes, then accepted replacement uses exact bytes', () => {
+    const f = fixture(); f.start('a');
+    f.api.update('a', 1, 'old queued work');
+    f.api.suspend('a', 2, true);
+    f.tick(1000); f.event('pagehide');
+    assert.equal(f.payload(), null);
+    f.api.update('a', 1, 'late old interop', true);
+    f.api.update('a', 3, 'edit during offer');
+    f.tick(1000); assert.equal(f.payload(), null);
+    f.api.suspend('a', 4, false);
+    f.api.update('a', 4, '{"HandSize":3,"Cards":[]}', true);
+    f.tick(750);
+    assert.equal(f.payload(), '{"HandSize":3,"Cards":[]}');
+    f.api.update('a', 3, 'late link'); f.tick(1000);
+    assert.equal(f.payload(), '{"HandSize":3,"Cards":[]}');
+});
+
+test('share dismissal preserves existing draft and disposal cannot flush suspended work', () => {
+    const raw = envelope('only saved copy'); const f = fixture(raw); f.start('a');
+    f.api.suspend('a', 1, true);
+    f.api.update('a', 2, 'default', true);
+    f.api.suspend('a', 3, false);
+    f.tick(1000); assert.equal(f.data.get(key), raw);
+    f.api.suspend('a', 4, true); f.api.dispose('a');
+    assert.equal(f.data.get(key), raw);
+    assert.equal(f.listeners(), 0);
+});
+
+test('native hash and back-forward navigation stop queued autosave before a .NET render', () => {
+    for (const event of ['hashchange', 'popstate']) {
+        const f = fixture(); f.start('a'); f.api.update('a', 1, 'queued');
+        f.location.hash = '#ygo-session=v1.payload'; f.event(event); f.tick(1000);
+        assert.equal(f.payload(), null);
+        f.api.suspend('a', 2, false); f.api.update('a', 2, 'stale render'); f.tick(750);
+        assert.equal(f.payload(), null);
+        f.location.hash = '';
+        f.api.suspend('a', 3, false); f.api.update('a', 3, 'next real edit'); f.tick(750);
+        assert.equal(f.payload(), 'next real edit');
+    }
+    const ordinary = fixture(); ordinary.start('a'); ordinary.api.update('a', 1, 'queued');
+    ordinary.location.hash = '#ordinary'; ordinary.event('hashchange'); ordinary.tick(750);
+    assert.equal(ordinary.payload(), 'queued');
+});
+
+test('delayed suspension interop cannot undo a newer offer or replacement', () => {
+    const f = fixture(); f.start('a');
+    f.api.suspend('a', 1, false);
+    f.api.update('a', 1, 'queued');
+    f.api.suspend('a', 2, true);
+    f.api.suspend('a', 1, false); f.api.update('a', 2, 'old force', true);
+    f.tick(1000); assert.equal(f.payload(), null);
+    f.api.suspend('a', 3, false); f.api.update('a', 3, 'accepted', true);
+    f.api.suspend('a', 2, true); f.tick(750);
+    assert.equal(f.payload(), 'accepted');
 });

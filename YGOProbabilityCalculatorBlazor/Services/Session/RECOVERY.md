@@ -38,3 +38,54 @@ be cleared by the browser or user.
 
 Run deterministic browser-storage tests with
 `node --test YGOProbabilityCalculatorBlazorTest/SessionRecovery/session-recovery.test.mjs`.
+
+## Session share links
+
+`Copy share link` captures accepted model state using the same serializer as Save
+Session. Unsaved editor drafts, results and theme preferences are excluded. Links
+use the actual app base URI and calculator root, without unrelated queries or
+anchors. Compression is cached on accepted snapshot changes; a press checks and
+captures the current serialized state before clipboard interop. A clipboard denial
+or lost user activation shows selectable link text. Success changes only the icon
+for two seconds and announces a screen-reader status.
+
+Transport v1 is `#ygo-session=v1.<unpadded-base64url>`. Decoded bytes contain a
+four-byte little-endian uncompressed UTF-8 JSON length, a 32-byte SHA-256 digest of
+the compressed bytes, then one gzip member containing compacted, otherwise
+unchanged session JSON. The transport version is independent of the session
+schema; existing file migration/converters validate a loaded session. The digest
+detects corruption, and provides no authentication or encryption.
+
+The application cap is 16,384 characters for a complete generated URL and for an
+incoming fragment, with at most 262,144 decompressed bytes. This is a conservative
+sharing policy, not a universal browser limit. Measured test-origin links are
+3,240 characters for the current bundled example and 2,592 for a synthetic
+100-card/50-combo fixture. A longer base path or less repetitive names can increase
+these sizes. Larger sessions must use normal session-file sharing; no truncation
+or partial link is produced. Input is bounded before base64 decoding. Declared
+output length is checked before allocation, and gzip reads into that bounded
+buffer followed by a single excess-byte probe. Strict UTF-8, JSON depth 32,
+20,000 nodes, arrays of at most 2,048 entries, strings of at most 4,096 characters,
+and duplicate-key/null-collection checks bound parsing and model loading.
+Copy counts are bounded to -10,000 through 10,000 per row to keep aggregate UI
+arithmetic safe; invalid/incomplete values within that range keep normal file semantics.
+
+Initial links and later navigation (including back/forward) offer an explicit
+`Load shared session` / dismiss choice. The warning states that acceptance replaces
+the workspace, editor drafts and saved recovery draft. Inspection must finish
+before loading is enabled. A pending link pauses recovery writes and cancels old
+timers, including native hash/popstate navigation before the .NET render. Recovery
+remains available as an alternative. An incoming startup link takes precedence
+over a pending example by offering it without automatically applying either.
+Dismissal keeps the workspace and draft; normal recovery conflict rules continue.
+Accepted loads reuse load/edit ownership, enrichment, result invalidation and
+replacement accounting. A newer edit, file/import/recovery/link load, dismissal,
+or disposal fences a delayed shared load. Shared-link parsing never computes,
+fetches metadata, writes storage, or sends a payload for remote validation.
+
+Accepted loads and dismissals consume only a recognized share fragment with a
+history replacement and no page reload. Ordinary anchors are preserved. Opening
+the same explicit link later offers it again; rerenders of the current offer do
+not reapply it. Links remain readable by anyone with the link, browser history
+access or page-script access. They are not placed in query strings, logs or
+analytics. Names and errors are rendered as text.
