@@ -1,0 +1,74 @@
+@using Microsoft.JSInterop
+@using YGOProbabilityCalculatorBlazor.Services.Session
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<button type="button" class="btn btn-secondary d-inline-flex align-items-center gap-2" title="Copy a link to the accepted session" @onclick="CopyAsync">
+    <span class="share-icon" aria-hidden="true">@(copied ? "✓" : "↗")</span><span>Copy share link</span>
+</button>
+@if (copied) { <span class="visually-hidden" role="status">Share link copied.</span> }
+@if (error is not null || fallback is not null) {
+    <div class="share-fallback alert alert-warning mb-0" role="status">
+        @if (error is not null) { <p class="mb-0">@error</p> }
+        @if (fallback is not null) {
+            <label for="@id">Clipboard access was denied. Select and copy this link:</label>
+            <textarea id="@id" class="form-control mt-2" rows="3" readonly @onclick="SelectAsync">@fallback</textarea>
+        }
+        <button type="button" class="btn btn-sm btn-secondary mt-2" @onclick="Dismiss">Dismiss</button>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Snapshot { get; set; } = "";
+    [Parameter, EditorRequired] public Func<string> Capture { get; set; } = null!;
+    [Parameter] public TimeProvider FeedbackTimeProvider { get; set; } = TimeProvider.System;
+    private readonly string id = "share-link-" + Guid.NewGuid().ToString("N");
+    private string? observed, link, preparationError, error, fallback;
+    private bool copied, disposed;
+    private long attempt;
+    private ITimer? reset;
+
+    protected override void OnParametersSet() {
+        if (observed == Snapshot) return;
+        Prepare(Snapshot);
+        Dismiss();
+    }
+    private void Prepare(string snapshot) {
+        observed = snapshot;
+        try { link = SessionShareCodec.CreateLink(Navigation.BaseUri, snapshot); preparationError = null; }
+        catch { link = null; preparationError = "This session is too large or unsupported for a share link. Share a normal session file instead."; }
+    }
+    private async Task CopyAsync() {
+        // Freeze accepted model state at the press; editor drafts follow Save Session semantics.
+        var snapshot = Capture();
+        if (snapshot != observed) Prepare(snapshot);
+        Dismiss();
+        var version = attempt;
+        if (link is not { } captured) { error = preparationError; return; }
+        bool success;
+        try { success = await JS.InvokeAsync<bool>("sessionSharing.copy", captured); }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException) { success = false; }
+        if (disposed || version != attempt) return;
+        if (!success) { fallback = captured; return; }
+        copied = true;
+        reset = FeedbackTimeProvider.CreateTimer(_ => { _ = ResetFeedbackAsync(version); }, null, TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
+    }
+    private async Task ResetFeedbackAsync(long version) {
+        try {
+            await InvokeAsync(() => {
+                if (disposed || version != attempt) return;
+                copied = false;
+                StateHasChanged();
+            });
+        }
+        catch (InvalidOperationException) when (disposed) { }
+        catch (OperationCanceledException) when (disposed) { }
+    }
+    private async Task SelectAsync() {
+        try { await JS.InvokeVoidAsync("sessionSharing.select", id); }
+        catch (JSException) { }
+    }
+    private void Dismiss() { attempt++; reset?.Dispose(); reset = null; copied = false; error = fallback = null; }
+    public void Dispose() { disposed = true; Dismiss(); }
+}
