@@ -26,6 +26,7 @@
                 Load Session
                 <InputFile OnChange="@LoadSessionFile" accept=".json" class="session-file-input" id="sessionFileInput" aria-label="Load Session"/>
             </label>
+            <SessionShareButton Snapshot="@_sessionService.SerializeSession(CaptureSession())" Capture="@(() => _sessionService.SerializeSession(CaptureSession()))" />
             @if (isYdkeImportOpen) {
                 <form class="ydke-import-form"
                       aria-label="YDKe deck import"
@@ -60,8 +61,21 @@
         <DismissibleAlert Message="@importError" OnDismiss="@(() => importError = null)"/>
     }
 
+    @if (sharedFragment is not null) {
+        <section class="alert alert-secondary mt-3" aria-label="Shared session">
+            <p class="mb-2" role="status">@(sharedError ?? "A shared session is available.")</p>
+            <p class="mb-2">Loading replaces this workspace, including editor drafts, and any saved recovery draft. You can dismiss this link or restore the local draft below instead.</p>
+            <div class="d-flex flex-wrap gap-2">
+                @if (sharedJson is not null) {
+                    <button type="button" class="btn btn-primary" disabled="@(sharedLoading || sharingRecovery?.InspectionComplete != true)" @onclick="LoadSharedSessionAsync">Load shared session</button>
+                }
+                <button type="button" class="btn btn-secondary" @onclick="DismissSharedSession">Dismiss shared link</button>
+            </div>
+            <p class="form-text mb-0">Links are not encrypted. Anyone with this link or access to browser history can read the session.</p>
+        </section>
+    }
     @if (sessionInitialized) {
-        <SessionRecovery Session="CaptureSession()" ReplacementVersion="autosaveReplacementVersion" EditVersion="workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" />
+        <SessionRecovery @ref="sharingRecovery" Session="CaptureSession()" ReplacementVersion="autosaveReplacementVersion" EditVersion="workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" Suspended="@(sharedFragment is not null)" OnInspectionComplete="@(() => StateHasChanged())" />
     }
 
     <CategoryListEditor @key="sessionVersion"
@@ -459,6 +473,7 @@
             return Task.CompletedTask;
 
         categoryColorIndices[change.CategoryName] = change.ColorIndex;
+        ObserveWorkspaceEdit();
         return Task.CompletedTask;
     }
 
@@ -615,6 +630,7 @@
     }
 
     private void ReplaceImportedDeck(List<Card> importedCards) {
+        ConsumeSharedFragment();
         cards.Clear();
         cards.AddRange(importedCards);
         InvalidateCalculation(clearPreviousResult: true);
@@ -666,6 +682,7 @@
     private void OnCategoriesChanged() => InvalidateCalculation();
 
     private void InvalidateCalculation(bool clearPreviousResult = false) {
+        ObserveWorkspaceEdit();
         StopCalculation();
         calculationVersion++;
         if (clearPreviousResult) {
@@ -679,7 +696,9 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        if (_pendingSessionService.PendingSession is { } session) {
+        InitializeSharing();
+        if (sharedFragment is not null) _pendingSessionService.PendingSession = null;
+        if (sharedFragment is null && _pendingSessionService.PendingSession is { } session) {
             var request = ++sessionLoadVersion;
             var edit = workspaceEditVersion;
             var before = _sessionService.SerializeSession(CaptureSession());

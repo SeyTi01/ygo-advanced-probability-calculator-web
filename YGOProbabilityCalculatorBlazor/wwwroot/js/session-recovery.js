@@ -12,7 +12,7 @@
     const flush = c => {
         clearTimeout(c.timer);
         c.timer = null;
-        if (!c.pending || c.paused) return;
+        if (!c.pending || c.paused || c.suspended) return;
         const record = c.pending;
         c.pending = null;
         try {
@@ -51,6 +51,13 @@
             }
             c.inspection = inspection;
             c.paused = inspection.exists;
+            // Native fragment navigation can precede the .NET render that offers a link.
+            c.navigation = () => {
+                if (root.location?.hash?.startsWith('#ygo-session=')) { c.suspended = true; cancel(c); }
+            };
+            c.navigation();
+            root.addEventListener('hashchange', c.navigation);
+            root.addEventListener('popstate', c.navigation);
             c.visibility = () => { if (root.document.visibilityState === 'hidden') flush(c); };
             c.pagehide = () => flush(c);
             root.document.addEventListener('visibilitychange', c.visibility);
@@ -62,6 +69,7 @@
             if (!c || generation <= c.generation) return;
             c.generation = generation;
             cancel(c);
+            if (c.suspended) return;
             if (c.paused && !replace) return;
             try {
                 if (replace) c.expected = root.localStorage.getItem(key);
@@ -74,6 +82,15 @@
                 c.pending = record;
                 c.timer = setTimeout(() => flush(c), debounceMs);
             } catch { report(c, 'Local recovery is unavailable. Save a session file to keep your work.'); }
+        },
+        suspend(id, generation, suspended) {
+            const c = clients.get(id);
+            if (!c || generation < c.generation || generation <= (c.suspensionGeneration ?? -1)) return;
+            if (!suspended && root.location?.hash?.startsWith('#ygo-session=')) return;
+            c.suspensionGeneration = generation;
+            c.generation = Math.max(c.generation, suspended ? generation : generation - 1);
+            c.suspended = suspended;
+            if (suspended) cancel(c);
         },
         discard(id, generation) {
             const c = clients.get(id);
@@ -99,6 +116,8 @@
             cancel(c);
             root.document.removeEventListener('visibilitychange', c.visibility);
             root.removeEventListener('pagehide', c.pagehide);
+            root.removeEventListener('hashchange', c.navigation);
+            root.removeEventListener('popstate', c.navigation);
             clients.delete(id);
         }
     };

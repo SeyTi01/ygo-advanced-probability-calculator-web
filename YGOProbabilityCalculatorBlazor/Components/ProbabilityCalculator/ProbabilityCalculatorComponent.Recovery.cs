@@ -51,6 +51,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         }
         catch { }
         if (!CanApplySession(request, before, edit)) return false;
+        ConsumeSharedFragment();
         InvalidateCalculation(clearPreviousResult: true);
         categoryBases.Clear();
         categoryBases.AddRange(session.Categories.Where(category => category.Source == CategorySource.User));
@@ -71,6 +72,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
     public void Dispose() {
         if (sessionDisposed) return;
         sessionDisposed = true;
+        SharingNavigation.LocationChanged -= SharingLocationChanged;
         sessionLoadVersion++;
         disposed = true;
         StopCalculation();

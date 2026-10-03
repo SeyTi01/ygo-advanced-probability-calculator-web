@@ -39,6 +39,11 @@ else if (hasRecovery) {
     [Parameter, EditorRequired] public SessionState Session { get; set; } = new();
     [Parameter] public int ReplacementVersion { get; set; }
     [Parameter] public long EditVersion { get; set; }
+    [Parameter] public bool Suspended { get; set; }
+    [Parameter] public EventCallback OnInspectionComplete { get; set; }
+    public bool InspectionComplete => initialized && appliedSuspension == Suspended;
+    private bool? appliedSuspension;
+    private bool observedSuspension;
     [Parameter, EditorRequired] public Func<SessionState, Task<bool>> ApplyRecovery { get; set; } = null!;
     private readonly string id = Guid.NewGuid().ToString("N");
     private DotNetObjectReference<SessionRecovery>? reference;
@@ -50,6 +55,7 @@ else if (hasRecovery) {
     private bool initialized, initializing, disposed, hasRecovery, dismissed, confirmReplacement, restoring, pending, replace;
 
     protected override void OnParametersSet() {
+        if (observedSuspension != Suspended) { observedSuspension = Suspended; generation++; }
         if (editVersion != EditVersion) { editVersion = EditVersion; confirmReplacement = false; }
         try {
             var next = Sessions.SerializeSession(Session);
@@ -94,7 +100,14 @@ else if (hasRecovery) {
                 if (disposed) return;
                 StateHasChanged();
             }
-            if (pending && !hasRecovery && snapshot is not null) {
+            if (appliedSuspension != Suspended) {
+                var suspension = Suspended;
+                await JS.InvokeVoidAsync("sessionRecovery.suspend", id, generation, suspension);
+                if (disposed) return;
+                appliedSuspension = suspension;
+                await OnInspectionComplete.InvokeAsync();
+            }
+            if (pending && !Suspended && !hasRecovery && snapshot is not null) {
                 pending = false;
                 var force = replace;
                 replace = false;
@@ -105,6 +118,8 @@ else if (hasRecovery) {
             if (disposed) return;
             initialized = true;
             initializing = false;
+            appliedSuspension = Suspended;
+            await OnInspectionComplete.InvokeAsync();
             pending = false;
             const string message = "Local recovery is unavailable. Save a session file to keep your work.";
             if (status != message) { status = message; StateHasChanged(); }
