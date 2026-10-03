@@ -6,7 +6,7 @@ const base = process.argv[2];
 const engine = process.argv[3] || 'chromium';
 const slowdown = Number(process.argv[4] || 1);
 const phase = process.argv[5] || 'all';
-assert.ok(['all', 'wire', 'ui'].includes(phase), 'unknown smoke phase');
+assert.ok(['all', 'wire', 'ui', 'comparison'].includes(phase), 'unknown smoke phase');
 function fixture(count, hand = 5) {
  const categories = Array.from({ length: count }, (_, i) => ({ Name: `Role${i}`, Source: 'User' }));
  return { SchemaVersion: 2, Categories: categories, HandSize: hand,
@@ -74,7 +74,7 @@ function probability(count, hand = 5) {
    }, json);
   }
   let wireEvidence;
-  if (phase !== 'ui') {
+  if (phase !== 'ui' && phase !== 'comparison') {
   const expensive = fixture(21);
   const old = await request(wire(expensive, 10_000_000));
   assert.equal(old.response.LimitReason, 1);
@@ -140,6 +140,98 @@ function probability(count, hand = 5) {
    assert.equal(live, 0, 'worker execution contexts must all shut down');
    return Date.now() - started;
   }
+  async function comparisons() {
+  // Verify the policy and accepted comparison/export context together through
+  // the ordinary UI, using the same request that exceeded the old wire budget.
+  await load(fixture(21)); await start();
+  assert.equal(JSON.parse(await page.evaluate(() => workProbe.inputs.at(-1))).WorkUnits, 50_000_000);
+  await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
+  await page.locator('.probability-total-value').waitFor();
+  assert.equal(await page.locator('.combo-probability-item').count(), 21);
+  const acceptedOdds = await page.locator('.probability-total-value').innerText();
+  if (engine === 'chromium') await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+  await page.evaluate(() => {
+   const write = navigator.clipboard.writeText.bind(navigator.clipboard);
+   navigator.clipboard.writeText = async text => {
+    if (window.denyPolicyClipboard) throw new DOMException('Smoke clipboard denial', 'NotAllowedError');
+    await write(text); window.policyCopiedText = text;
+   };
+  });
+  const comparisonEvidence = [];
+  for (const pinned of [true, false]) {
+   if (pinned) await page.locator('.pin-result-action').click();
+   else await page.locator('.pinned-result button').click();
+   for (const [width, theme] of [[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']]) {
+   await page.setViewportSize({ width, height: 900 });
+   await page.getByLabel('Color theme preference').selectOption(theme);
+    await page.locator('#handSize').fill('5'); await page.locator('#handSize').press('Tab');
+    await page.locator('#handSize').fill('6'); await page.locator('#handSize').press('Tab');
+    assert.equal(await page.getByRole('button', { name: 'Copy results', exact: true }).isDisabled(), false);
+    assert.equal(await page.locator('.pin-result-action').isDisabled(), true);
+    await page.getByRole('button', { name: 'Copy results', exact: true }).click();
+    await page.locator('.probability-result-copy-success-icon').waitFor();
+    const copied = await page.evaluate(() => policyCopiedText);
+    assert.ok(copied.startsWith('Previous result — current inputs have changed.\nProbability results\nHand size: 5\n'));
+    assert.ok(copied.includes(acceptedOdds) && copied.includes('Even') && copied.includes('Odd'));
+    assert.ok(!copied.includes('Pinned') && !copied.includes('pp'));
+    if (engine === 'chromium') assert.equal((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n'), copied);
+    await page.evaluate(() => { window.denyPolicyClipboard = true; });
+    await page.getByRole('button', { name: 'Copy results', exact: true }).click();
+    const fallback = page.locator('textarea.probability-result-copy-text'); await fallback.waitFor();
+    assert.equal(await fallback.inputValue(), copied);
+    await page.getByRole('button', { name: 'Close copy fallback', exact: true }).click();
+    await page.evaluate(() => { window.denyPolicyClipboard = false; });
+    const summary = pinned ? await page.locator('.probability-results > p.small').innerText() : null;
+    if (pinned) {
+     assert.equal(summary, 'Hand size 5 · 60 active copies · 22 active cards');
+     assert.equal(await page.locator('.pinned-result > p.small').innerText(), summary);
+    }
+    comparisonEvidence.push({ width, theme, pinned, copiedCharacters: copied.length, summary });
+   }
+  }
+  // Fresh current/pin deltas remain inline, with captured context on each side.
+  const deltaEvidence = [];
+  for (const [width, theme] of [[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']]) {
+  await page.setViewportSize({ width, height: 900 });
+  await page.getByLabel('Color theme preference').selectOption(theme);
+  await load(fixture(1)); await start();
+  await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
+  await page.locator('.pin-result-action').click();
+  await page.locator('#handSize').fill('6'); await page.locator('#handSize').press('Tab');
+  const measureAction = () => page.locator('.calculate-action').evaluate(e => { const r = e.getBoundingClientRect(); return { top: r.top + scrollY, height: r.height, width: r.width }; });
+  const idle = await measureAction();
+  await start(); const busy = await measureAction();
+  for (const dimension of ['top', 'height', 'width'])
+   assert.ok(Math.abs(busy[dimension] - idle[dimension]) <= .1, `Calculate/Cancel ${dimension} stays fixed with a pin (allowing browser subpixel precision)`);
+  assert.equal(await page.getByRole('button', { name: 'Copy results', exact: true }).isDisabled(), true);
+  await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
+  assert.match(await page.locator('.probability-total .result-difference').innerText(), /^\+\d+(?:[.,]\d+)?\s*%$/);
+  const inline = await page.locator('.probability-total .result-difference').evaluate(e => {
+   const odds = e.previousElementSibling.getBoundingClientRect(), delta = e.getBoundingClientRect();
+   return { parentDisplay: getComputedStyle(e.parentElement).display, color: getComputedStyle(e).color, className: e.className,
+    beside: delta.left >= odds.right && delta.top < odds.bottom && delta.bottom > odds.top };
+  });
+  assert.ok(inline.className.includes('result-difference-positive')); assert.ok(['flex', 'inline-flex'].includes(inline.parentDisplay)); assert.equal(inline.beside, true);
+  assert.equal(await page.locator('.probability-results > p.small').innerText(), 'Hand size 6 · 60 active copies · 2 active cards');
+  assert.equal(await page.locator('.pinned-result > p.small').innerText(), 'Hand size 5 · 60 active copies · 2 active cards');
+  const summaries = await page.evaluate(() => ['.probability-results > p.small', '.pinned-result > p.small'].map(selector => { const e = document.querySelector(selector), s = getComputedStyle(e); return { className: e.className, font: s.fontSize, line: s.lineHeight, margin: s.marginBottom, children: e.children.length }; }));
+  assert.deepEqual(summaries[0], summaries[1]); assert.equal(summaries[0].children, 0);
+  await page.locator('#handSize').fill('4'); await page.locator('#handSize').press('Tab');
+  await start(); await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
+  const negative = await page.locator('.probability-total .result-difference').evaluate(e => ({ text: e.textContent, color: getComputedStyle(e).color, className: e.className }));
+  assert.match(negative.text, /^-\d+(?:[.,]\d+)?\s*%$/); assert.ok(negative.className.includes('result-difference-negative'));
+  assert.notEqual(negative.color, inline.color);
+  await page.locator('.pin-result-action').click();
+  const neutral = await page.locator('.probability-total .result-difference').evaluate(e => ({ text: e.textContent, className: e.className }));
+  assert.match(neutral.text, /^0\s*%$/); assert.ok(neutral.className.includes('result-difference-neutral'));
+  const viewport = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+  assert.equal(viewport.client, viewport.scroll);
+  deltaEvidence.push({ width, theme, idle, busy, inline, negative, neutral, summaries, viewport });
+  await page.locator('.pinned-result button').click();
+  }
+  console.log(JSON.stringify({ engine, phase: 'comparison', comparisonEvidence, deltaEvidence }));
+  }
+  if (phase === 'comparison') { await comparisons(); assert.deepEqual(errors, []); return; }
   const cancellation = [];
   for (const width of [1440, 390]) {
    await page.setViewportSize({ width, height: 900 });
@@ -196,6 +288,7 @@ function probability(count, hand = 5) {
   await start();
   await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
   assert.equal(await page.getByRole('alert').count(), 0); assert.deepEqual(errors, []);
+  await comparisons();
   console.log(JSON.stringify({ engine, browser: browser.version(), slowdown, phase, ...wireEvidence,
    cancellation, rapid: { peak, rapidClosedMs, closed }, errors }));
  } finally { clearTimeout(deadline); await browser.close(); }

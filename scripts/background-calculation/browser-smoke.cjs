@@ -14,6 +14,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  if(engine==='chromium'&&process.env.PLAYWRIGHT_CHROMIUM_CHANNEL)launchOptions.channel=process.env.PLAYWRIGHT_CHROMIUM_CHANNEL;
  if(engine==='firefox'&&process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH)launchOptions.executablePath=process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH;
  const browser=await ({chromium,firefox}[engine]).launch(launchOptions);
+ const deadline=setTimeout(()=>browser.close(),300000);
  try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
  const cdp=engine==='chromium'?await browser.newBrowserCDPSession():null;
@@ -41,7 +42,14 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  const calculate=page.getByRole('button',{name:'Calculate',exact:true});
  await calculate.waitFor();
  async function waitIdle(){await page.waitForFunction(()=>{const button=document.querySelector('.calculate-action > button');return button&&button.getAttribute('aria-busy')!=='true'})}
- async function load(session){await page.locator('#sessionFileInput').setInputFiles({name:'worker-smoke.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(session))});await waitIdle()}
+ let loadSequence=0;
+ async function load(session){
+  const marker=`${session.Combos[0].Name} / worker smoke load ${++loadSequence}`;
+  const owned={...session,Combos:session.Combos.map((combo,i)=>i===0?{...combo,Name:marker}:combo)};
+  await page.locator('#sessionFileInput').setInputFiles({name:'worker-smoke.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(owned))});
+  await page.waitForFunction(marker=>{try{return JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Combos[0].Name===marker}catch{return false}},marker);
+  await waitIdle();
+ }
  async function runSuccess(){await calculate.click();await waitIdle();await page.locator('.probability-total-value').waitFor();assert.match(await page.locator('.probability-total-value').innerText(),/50[.,]00/);assert.equal(await page.locator('.probability-group').count(),1);assert.equal(await page.locator('.combo-probability-item').count(),1);}
  async function captureLayout(phase,width,theme){if(!screenshotDirectory||!((width===1440&&theme==='light')||(width===320&&theme==='dark')))return;fs.mkdirSync(screenshotDirectory,{recursive:true});const y=await page.evaluate(()=>scrollY);await page.locator('.results-section').screenshot({path:path.join(screenshotDirectory,`${engine}-${width}-${theme}-${phase}.png`)});await page.evaluate(y=>window.scrollTo({top:y,behavior:'instant'}),y)}
  await load(simple);await runSuccess();
@@ -180,6 +188,14 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  await page.locator('.probability-result-status').waitFor();await waitClosed();
  assert.equal(await page.getByRole('button',{name:'Copy results',exact:true}).isDisabled(),false,'idle stale results retain their captured export snapshot');
  assert.equal(await page.locator('.probability-total-value').innerText(),oldResult);
+ if(engine==='chromium')await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(base).origin});
+ await observeClipboard();
+ await page.getByRole('button',{name:'Copy results',exact:true}).click();
+ await page.locator('.probability-result-copy-success-icon').waitFor();
+ const historicalCopy=await page.evaluate(()=>smokeCopiedText);
+ assert.ok(historicalCopy.startsWith('Previous result — current inputs have changed.\nProbability results\nHand size: 5\n'),'idle stale copy retains the accepted hand size rather than edited hand 4');
+ assert.ok(historicalCopy.includes(oldResult),'idle stale copy retains the accepted odds');
+ if(engine==='chromium')assert.equal((await page.evaluate(()=>navigator.clipboard.readText())).replace(/\r\n/g,'\n'),historicalCopy);
  await page.locator('#handSize').fill('5');await page.locator('#handSize').press('Tab');
  await startCpu();await load(simple);await waitClosed();await runSuccess();
  await load(heavy);await startCpu();await page.getByRole('link',{name:'Help',exact:true}).click();await waitClosed();
@@ -191,6 +207,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  await failurePage.goto(base);
  await failurePage.getByRole('button',{name:'Calculate',exact:true}).waitFor();
  await failurePage.locator('#sessionFileInput').setInputFiles({name:'simple.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(simple))});
+ await failurePage.waitForFunction(()=>{try{return JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Combos[0].Name==='One card'}catch{return false}});
  await failurePage.getByRole('button',{name:'Calculate',exact:true}).click();
  await failurePage.getByRole('alert').filter({hasText:'Background calculation is unavailable'}).waitFor();
  await failurePage.evaluate(()=>window.Worker=window.savedWorker);
@@ -267,5 +284,5 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
   fs.mkdirSync(screenshotDirectory,{recursive:true});await page.screenshot({path:path.join(screenshotDirectory,`${engine}-final.png`),fullPage:true});
  }
  console.log(JSON.stringify({engine,evidence,layoutEvidence,legacyRowEvidence,combinedEvidence,errors,browser:browser.version()}));assert.deepEqual(errors,[]);
- }finally{await browser.close()}
+ }finally{clearTimeout(deadline);await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
