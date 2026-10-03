@@ -554,7 +554,7 @@ public partial class CalculatorEditorTest {
     public void SessionFileActionsExposeOneKeyboardAccessibleInputEach() {
         var cut = Render();
         foreach (var (id, name, extension) in new[] {
-            ("fileInput", "Import Deck", ".ydk"),
+            ("fileInput", "Import YDK", ".ydk"),
             ("sessionFileInput", "Load Session", ".json")
         }) {
             var inputs = cut.FindAll($"input#{id}");
@@ -566,6 +566,7 @@ public partial class CalculatorEditorTest {
             Assert.That(input.ClassList, Does.Not.Contain("d-none"));
             Assert.That(input.ParentElement?.TagName, Is.EqualTo("LABEL"));
             Assert.That(input.ParentElement?.GetAttribute("for"), Is.EqualTo(id));
+            Assert.That(input.ParentElement?.TextContent.Trim(), Is.EqualTo(name));
         }
     }
 

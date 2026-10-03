@@ -107,6 +107,41 @@ public class ActiveEntriesEditorTest {
     }
 
     [Test]
+    public async Task RowActionsOnlyChangeTheirOwnEntriesAndDeletingOneKeepsTheNeighborState() {
+        var cut = Render(Session(
+            [new([a], 1, "First card"), new([b], 1, "Second card")],
+            [new([new(a, 1, 1)], "First combo"), new([new(b, 1, 1)], "Second combo")]));
+
+        await cut.Find("#cardActive0").ChangeAsync(new() { Value = false });
+        await cut.Find("#comboActive1").ChangeAsync(new() { Value = false });
+
+        Assert.Multiple(() => {
+            Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find("#cardActive1").HasAttribute("checked"), Is.True);
+            Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.True);
+            Assert.That(cut.Find("#comboActive1").HasAttribute("checked"), Is.False);
+            Assert.That(cut.FindAll(".card-editor .accordion-button").Select(button => button.GetAttribute("aria-expanded")),
+                Is.All.EqualTo("false"));
+            Assert.That(cut.FindAll(".combo-editor .accordion-button").Select(button => button.GetAttribute("aria-expanded")),
+                Is.All.EqualTo("false"));
+        });
+
+        await cut.FindComponents<CardEditor>()[1].Find("[title='Remove card']").ClickAsync(new());
+        await cut.FindComponents<ComboEditor>()[0].Find("[title='Remove combo']").ClickAsync(new());
+
+        Assert.Multiple(() => {
+            Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
+            Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Name, Is.EqualTo("First card"));
+            Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find(".card-editor .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
+            Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(1));
+            Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.Name, Is.EqualTo("Second combo"));
+            Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find(".combo-editor .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
+        });
+    }
+
+    [Test]
     public void DeckCounterUsesOnlyActiveCopiesAndUpdatesAfterToggleAndEdit() {
         var cut = Render(Session(
             [new([], 3, "Active card"), new([], 4, "Inactive card", active: false)],
