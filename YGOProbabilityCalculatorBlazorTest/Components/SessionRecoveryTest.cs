@@ -92,11 +92,26 @@ public class SessionRecoveryTest {
         Recovery(sessions.SerializeSession(Working())); var session = new SessionState { HandSize = 5 };
         var applied = 0; var cut = Render(session, _ => { applied++; return Task.FromResult(true); });
         await Button(cut, "Dismiss").ClickAsync(new());
+        var dismissed = cut.Find(".session-recovery-dismissed");
+        Assert.That(dismissed.ClassList, Does.Contain("mb-3"));
+        Assert.That(dismissed.TextContent, Does.Contain("Recovery draft kept; autosave paused.")
+            .And.Contain("Show recovery").And.Contain("Use this workspace for recovery"));
         session.Cards.Add(new([], 1, "New")); cut.SetParametersAndRender(p => p.Add(x => x.Session, session));
         Assert.That(Writes, Is.Zero); Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
         await Button(cut, "Show recovery").ClickAsync(new());
         await Button(cut, "Restore previous session").ClickAsync(new()); Assert.That(applied, Is.Zero);
         await Button(cut, "Replace current work and restore").ClickAsync(new()); Assert.That(applied, Is.EqualTo(1));
+    }
+
+    [Test] public async Task DismissedRecoveryKeepsItsBoundaryWhenStorageWarningAppears() {
+        Recovery(sessions.SerializeSession(Working()));
+        var cut = Render(new() { HandSize = 5 });
+        await Button(cut, "Dismiss").ClickAsync(new());
+        await cut.InvokeAsync(() => cut.Instance.AutosaveStatus(1, "Local recovery could not be saved."));
+        Assert.That(cut.Find(".session-recovery-dismissed").ClassList, Does.Contain("mb-3"));
+        Assert.That(cut.Find(".alert-warning").TextContent,
+            Does.Contain("Local recovery could not be saved."));
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
     }
     [Test] public async Task DiscardWaitsForNextEditAndExplicitReplacementResumesPausedDraft() {
         Recovery(sessions.SerializeSession(Working()));
