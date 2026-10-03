@@ -51,6 +51,10 @@
             @if (error is not null) {
                 <DismissibleAlert Message="@error" OnDismiss="@(() => error = null)"/>
             }
+            @if (Card.ExternalCardId is > 0 and <= 2147483647) {
+                <CardArtwork CardId="@Card.Id" ExternalCardId="@Card.ExternalCardId.Value"
+                             Name="@CardDisplayName" Visible="@(Index == ActiveCardIndex)" />
+            }
             <div class="card-identity-fields mb-3">
                 <div class="card-name-field">
                     <label for="cardName@(Index)" class="form-label">Name</label>

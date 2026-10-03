@@ -1,0 +1,82 @@
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+@implements IDisposable
+@inject ICardArtworkService ArtworkService
+
+<div class="card-artwork-disclosure mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm"
+            aria-label="@($"{(requested ? "Hide" : "Show")} artwork for {Name}")"
+            title="@($"{(requested ? "Hide" : "Show")} artwork for {Name}")"
+            aria-expanded="@(requested && Visible ? "true" : "false")" aria-controls="@PreviewId"
+            @onclick="ToggleAsync">Artwork</button>
+    @if (requested && Visible) {
+        <div id="@PreviewId" class="mt-2">
+            @if (unavailable) {
+                <span class="small text-body-secondary" role="status">Artwork unavailable</span>
+            }
+            else {
+                <div class="card-artwork-preview" aria-busy="@(loading ? "true" : "false")">
+                    @if (url is not null) {
+                        var imageVersion = version;
+                        <img src="@url" alt="@($"Card artwork for {Name}")" width="268" height="391"
+                             decoding="async" @onload="() => Loaded(imageVersion)" @onerror="() => Failed(imageVersion)" />
+                    }
+                    else {
+                        <span class="small text-body-secondary" role="status">Loading artwork…</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string CardId { get; set; } = string.Empty;
+    [Parameter] public int ExternalCardId { get; set; }
+    [Parameter] public string Name { get; set; } = string.Empty;
+    [Parameter] public bool Visible { get; set; }
+    private string? previousCardId;
+    private int previousExternalCardId;
+    private bool requested, loading, unavailable, disposed;
+    private int version;
+    private string? url;
+    private string PreviewId => $"artwork-{CardId}";
+
+    protected override void OnParametersSet() {
+        if (CardId != previousCardId || ExternalCardId != previousExternalCardId) {
+            version++;
+            requested = loading = unavailable = false;
+            url = null;
+            previousCardId = CardId;
+            previousExternalCardId = ExternalCardId;
+        }
+        if (!Visible && loading) { version++; loading = false; }
+    }
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task ToggleAsync() {
+        requested = !requested;
+        if (!requested) { version++; loading = false; return; }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() {
+        if (!requested || !Visible || loading || unavailable || url is not null || disposed) return;
+        loading = true;
+        var currentVersion = ++version;
+        string? resolved;
+        try { resolved = await ArtworkService.GetArtworkUrlAsync(ExternalCardId); }
+        catch { resolved = null; }
+        if (disposed || currentVersion != version || !Visible || !requested) return;
+        url = resolved;
+        unavailable = url is null;
+        if (unavailable) loading = false;
+    }
+
+    private void Loaded(int imageVersion) { if (imageVersion == version) loading = false; }
+    private void Failed(int imageVersion) {
+        if (imageVersion != version) return;
+        url = null; loading = false; unavailable = true;
+    }
+    public void Dispose() { disposed = true; version++; }
+}

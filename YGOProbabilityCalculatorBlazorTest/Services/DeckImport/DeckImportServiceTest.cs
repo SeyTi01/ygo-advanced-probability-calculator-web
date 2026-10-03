@@ -1,9 +1,11 @@
 using System.Buffers.Binary;
+using System.Text.Json;
 using Microsoft.AspNetCore.Components.Forms;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.Converter;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
@@ -236,6 +238,40 @@ public class DeckImportServiceTest {
         for (var index = 0; index < ids.Distinct().Count(); index++)
             Assert.That(ydkeCards[index].Categories.Select(category => category.Identity),
                 Is.EqualTo(ydkCards[index].Categories.Select(category => category.Identity)));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ArtworkIdentitySurvivesBothImportFormatsAndSessionCardRoundTrip(bool ydke) {
+        foreach (var id in new[] { 123, 456 }) {
+            var info = new CardInfo {
+                Id = id, CanonicalCardId = 123, Name = "Same named card", Type = "Spell Card",
+                ArtworkMetadataKnown = true, ArtworkImageIds = new[] { 123, 456 }
+            };
+            _cardInfoServiceMock.Setup(s => s.GetCardInfoAsync(id)).ReturnsAsync(info);
+            _cardInfoServiceMock.Setup(s => s.GetCardArtworkInfoAsync(id)).ReturnsAsync(info);
+        }
+        _fileServiceMock.Setup(s => s.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
+            .ReturnsAsync(["#main", "123", "456", "123", "#extra"]);
+        var cards = ydke ? await _service.ImportDeckFromYdkeAsync(BuildYdke([123, 456, 123]))
+            : await _service.ImportDeckFromYdkAsync(Mock.Of<IBrowserFile>());
+        Assert.That(cards.Select(c => c.ExternalCardId), Is.EqualTo(new int?[] { 123, 456 }));
+        Assert.That(cards.Select(c => c.Copies), Is.EqualTo(new[] { 2, 1 }));
+        Assert.That(cards[0].Id, Is.Not.EqualTo(cards[1].Id));
+        _cardInfoServiceMock.Verify(s => s.GetCardArtworkInfoAsync(It.IsAny<int>()), Times.Never);
+        var options = new JsonSerializerOptions { Converters = { new CardConverter(), new CategoryBaseConverter() } };
+        var json = JsonSerializer.Serialize(cards, options);
+        Assert.That(json, Does.Not.Contain("Artwork").And.Not.Contain("image").And.Not.Contain("http").And.Not.Contain("base64"));
+        var loaded = JsonSerializer.Deserialize<List<Card>>(json, options)!;
+        var artwork = new CardArtworkService(_cardInfoServiceMock.Object);
+        for (var i = 0; i < cards.Count; i++) {
+            Assert.That((loaded[i].Id, loaded[i].ExternalCardId, loaded[i].Copies, loaded[i].Name),
+                Is.EqualTo((cards[i].Id, cards[i].ExternalCardId, cards[i].Copies, cards[i].Name)));
+            Assert.That(await artwork.GetArtworkUrlAsync(loaded[i].ExternalCardId!.Value),
+                Is.EqualTo($"{CardArtworkService.ArtworkOrigin}/small/{loaded[i].ExternalCardId}.jpg"));
+        }
+        var legacy = JsonSerializer.Deserialize<Card>("""{"Categories":[],"Copies":1,"Name":"Manual"}""", options)!;
+        Assert.That(legacy.ExternalCardId, Is.Null);
     }
 
     private static string BuildYdke(uint[] main, uint[]? extra = null, uint[]? side = null) =>
