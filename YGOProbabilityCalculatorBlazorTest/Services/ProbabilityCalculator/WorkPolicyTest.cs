@@ -64,13 +64,24 @@ public class WorkPolicyTest {
     }
 
     [Test]
-    public void BinomialRowPayloadStopsBeforeSmallEntryCountCanHideLargeIntegers() {
-        // Only 1,001 row entries, but their cumulative integer payload exceeds
-        // the existing 262,144-cell bound. This does not allocate a physical deck.
+    public void DistributionIntegerPayloadStopsWithFewCountVectorCells() {
+        // Count vectors alone fit, but the products retained by the distribution
+        // exceed the existing cell bound. No physical deck is allocated.
         var role = new CategoryBase("Large multiplicity");
         var error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
             new ProbabilityCalculatorService().CalculateProbabilityForCombos(
                 [new([role], 100_000), new([], 100_000)], [new([new(role, 0, 999)])], 1000, new(5_000_000)));
+        Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
+    }
+
+    [Test]
+    public void BinomialRowPayloadStopsBeforeDistributionAllocation() {
+        // Independently counted: this 2,001-entry row requires 490,231 cells,
+        // including integer payload, exceeding 262,144 before DP transitions.
+        var role = new CategoryBase("Large multiplicity");
+        var error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
+            new ProbabilityCalculatorService().CalculateProbabilityForCombos(
+                [new([role], 100_000), new([], 100_000)], [new([new(role, 0, 1999)])], 2000, new(5_000_000)));
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }
 }
