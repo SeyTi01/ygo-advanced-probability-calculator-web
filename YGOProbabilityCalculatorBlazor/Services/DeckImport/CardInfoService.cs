@@ -20,20 +20,67 @@ public class CardInfoService : ICardInfoService {
     private CardMetadataCache _cache = new();
     private readonly SemaphoreSlim _singleLookupGate = new(1, 1);
     private readonly HashSet<int> _singleLookups = [];
-    private readonly HashSet<int> _artworkLookups = [];
+    private readonly SemaphoreSlim _artworkLookupGate = new(1, 1);
+    private readonly HashSet<int> _missingArtwork = [];
+    private DateTimeOffset _nextArtworkLookup;
 
     public async Task<CardInfo> GetCardArtworkInfoAsync(int id) {
-        var info = await GetCardInfoAsync(id);
+        // Artwork never initializes/refreshes the full catalog. Reuse even stale
+        // validated image IDs, then enrich only a visible requested passcode.
+        await _loadCacheTask.Value;
+        // Retained identities must not queue behind another card's cold metadata.
         await _singleLookupGate.WaitAsync();
         try {
-            // Fresh pre-artwork v2 snapshots remain valid for import/properties. Enrich only
-            // a requested preview, at most once per ID per service lifetime on failure.
-            if (_cache.Cards.TryGetValue(id, out info) && !info.ArtworkMetadataKnown &&
-                _artworkLookups.Add(id) && !_singleLookups.Contains(id))
-                await FetchSingleCardAsync(id);
-            return _cache.Cards.TryGetValue(id, out info) ? info : new CardInfo { Id = id };
+            if (_cache.Cards.TryGetValue(id, out var cached) && cached.ArtworkMetadataKnown) return cached;
         }
         finally { _singleLookupGate.Release(); }
+        await _artworkLookupGate.WaitAsync();
+        try {
+            if (_missingArtwork.Contains(id)) return new CardInfo { Id = id, ArtworkMetadataKnown = true };
+            await _singleLookupGate.WaitAsync();
+            try {
+                if (_cache.Cards.TryGetValue(id, out var cached) && cached.ArtworkMetadataKnown) return cached;
+            }
+            finally { _singleLookupGate.Release(); }
+            // Cache hits remain immediate. Space only new artwork JSON requests;
+            // the metadata API's limit does not authorize image-download bursts.
+            var wait = _nextArtworkLookup - _timeProvider.GetUtcNow();
+            if (wait > TimeSpan.Zero) await Task.Delay(wait, _timeProvider);
+            _nextArtworkLookup = _timeProvider.GetUtcNow().AddMilliseconds(100);
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            using var response = await _httpClient.GetAsync(string.Format(CultureInfo.InvariantCulture, SingleApiTemplate, id), timeout.Token);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound) {
+                _missingArtwork.Add(id);
+                return new CardInfo { Id = id, ArtworkMetadataKnown = true };
+            }
+            if (!response.IsSuccessStatusCode) {
+                var retry = response.Headers.RetryAfter;
+                throw new CardArtworkLookupException(retry?.Delta ??
+                    (retry?.Date is { } date ? date - _timeProvider.GetUtcNow() : TimeSpan.FromMinutes(1)));
+            }
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            using var document = await JsonDocument.ParseAsync(stream);
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !TryGetProperty(document.RootElement, "data", out var data) || data.ValueKind != JsonValueKind.Array)
+                throw new CardArtworkLookupException(TimeSpan.FromMinutes(1));
+            var info = data.EnumerateArray().Select(item => ReadCardInfo(item, id)).FirstOrDefault(card => card is not null);
+            if (info is null) throw new CardArtworkLookupException(TimeSpan.FromMinutes(1));
+            // Do not hold the import/enrichment gate across artwork HTTP or storage.
+            // Cache publication is the only shared critical section.
+            await _singleLookupGate.WaitAsync();
+            CardMetadataCache snapshot;
+            try {
+                _cache.Cards[id] = info;
+                if (_cache.SchemaVersion != CacheSchemaVersion) _cache.LastFullRefreshUtc = null;
+                _cache.SchemaVersion = CacheSchemaVersion;
+                snapshot = new CardMetadataCache { SchemaVersion = _cache.SchemaVersion,
+                    LastFullRefreshUtc = _cache.LastFullRefreshUtc, Cards = new(_cache.Cards) };
+            }
+            finally { _singleLookupGate.Release(); }
+            await SaveCacheAsync(snapshot);
+            return info;
+        }
+        finally { _artworkLookupGate.Release(); }
     }
 
     public async Task<CardInfo> GetCardInfoAsync(int id) {
@@ -344,9 +391,9 @@ public class CardInfoService : ICardInfoService {
         return false;
     }
 
-    private async Task SaveCacheAsync() {
+    private async Task SaveCacheAsync(CardMetadataCache? snapshot = null) {
         try {
-            await _localStorage.SetItemAsync(CacheKey, _cache);
+            await _localStorage.SetItemAsync(CacheKey, snapshot ?? _cache);
         }
         catch {
             // The in-memory cache remains usable for the current page session.
