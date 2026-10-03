@@ -1,0 +1,56 @@
+<section class="alert alert-secondary mt-3 pinned-result" aria-labelledby="pinnedResultHeading">
+    <div class="pinned-heading">
+        <h5 id="pinnedResultHeading">Pinned result</h5>
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="Clear pinned result" @onclick="OnClear">Unpin</button>
+    </div>
+    <p class="small text-body-secondary mb-2">@Snapshot.Context.Description</p>
+    <div class="pinned-row pinned-total">
+        <span>Any active combo</span><strong>@Snapshot.Total.ToString("P2")</strong>
+    </div>
+    @foreach (var group in Snapshot.Groups) {
+        <section class="pinned-group">
+            <h6 class="pinned-row">
+                <span>@group.Label <small class="text-body-secondary fw-normal">(@group.ActiveCount active)</small></span>
+                <strong>@group.Probability.ToString("P2")</strong>
+            </h6>
+            @if (Current is not null && Snapshot.CompareGroup(group, Current, false) is var groupMatch && groupMatch != "Comparable") {
+                <small class="pinned-match">@groupMatch</small>
+            }
+            <ol class="pinned-list pinned-members">
+                @foreach (var row in Snapshot.Combos.Where(c => c.GroupId == group.Id)) {
+                    <li>
+                        <div class="pinned-row">
+                            <span>@row.Label</span>
+                            <strong>@row.Probability.ToString("P2")</strong>
+                        </div>
+                        @if (Current is not null && Snapshot.CompareCombo(row, Current, false) is var match && match != "Comparable") {
+                            <small class="pinned-match">@match</small>
+                        }
+                    </li>
+                }
+            </ol>
+        </section>
+    }
+    @if (Snapshot.Groups.IsEmpty || Snapshot.Combos.Any(c => c.GroupId is null || !Snapshot.Groups.Any(g => g.Id == c.GroupId))) {
+        <h6>@(Snapshot.Groups.IsEmpty ? "Individual combos" : "Ungrouped combos")</h6>
+        <ol class="pinned-list">
+            @foreach (var row in Snapshot.Combos.Where(c => c.GroupId is null || !Snapshot.Groups.Any(g => g.Id == c.GroupId))) {
+                <li>
+                    <div class="pinned-row">
+                        <span>@row.Label</span>
+                        <strong>@row.Probability.ToString("P2")</strong>
+                    </div>
+                    @if (Current is not null && Snapshot.CompareCombo(row, Current, false) is var match && match != "Comparable") {
+                        <small class="pinned-match">@match</small>
+                    }
+                </li>
+            }
+        </ol>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public PinnedResultSnapshot Snapshot { get; set; } = null!;
+    [Parameter] public PinnedResultSnapshot? Current { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+}
