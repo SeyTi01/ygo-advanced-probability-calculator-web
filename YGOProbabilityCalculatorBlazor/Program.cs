@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
+using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
@@ -25,6 +26,7 @@ public static class Program {
         builder.Services.AddScoped<IPendingSessionService, PendingSessionService>();
         builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
         builder.Services.AddScoped<IProbabilityCalculatorService, ProbabilityCalculatorService>();
+        builder.Services.AddScoped<IBackgroundCalculator, BackgroundCalculator>();
 
         await builder.Build().RunAsync();
     }

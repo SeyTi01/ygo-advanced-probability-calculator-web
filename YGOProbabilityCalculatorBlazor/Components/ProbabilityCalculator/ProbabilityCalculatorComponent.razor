@@ -1,11 +1,13 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using YGOProbabilityCalculatorBlazor.Components.Shared
+@using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation
+@implements IDisposable
 @inject IDeckImportService _deckImportService
 @inject ISessionService _sessionService
 @inject ILegacyCardMetadataEnricher _legacyMetadataEnricher
 @inject IPendingSessionService _pendingSessionService
-@inject IProbabilityCalculatorService _probabilityCalculator
+@inject IBackgroundCalculator _backgroundCalculator
 
 <div class="calculator-workspace" @oninput="ObserveWorkspaceEdit">
     <div class="session-controls">
@@ -122,6 +124,10 @@
                     <span>Calculate</span>
                 }
             </button>
+            @if (isCalculating) {
+                <button type="button" class="btn btn-outline-secondary mt-2" @onclick="CancelCalculation"
+                        aria-label="Cancel calculation" title="Cancel calculation">Cancel</button>
+            }
         </div>
 
         @if (CalculationUnavailableMessage is { } unavailableMessage) {
@@ -224,6 +230,9 @@
     private int handSize = 5;
     private bool isCalculating;
     private long calculationVersion;
+    private long calculationRequestId;
+    private CancellationTokenSource? calculationCancellation;
+    private bool disposed;
     private string? errorMessage;
     private string? importError;
     private bool isYdkeImportOpen;
@@ -496,45 +505,57 @@
     }
 
     private async Task Calculate() {
-        if (!CanCalculate) return;
+        if (disposed || isCalculating || !CanCalculate) return;
 
         var requestVersion = calculationVersion;
-        var activeCards = cards.Where(card => card.Active).ToList();
-        var activeCombos = combos.Where(combo => combo.Active).ToList();
-        var requestedGroups = comboGroups.ToList();
-        var requestedHandSize = handSize;
+        var requestId = ++calculationRequestId;
+        using var cancellation = new CancellationTokenSource();
+        calculationCancellation = cancellation;
+        bool OwnsRequest() => !disposed && requestId == calculationRequestId && requestVersion == calculationVersion;
 
         try {
             isCalculating = true;
             errorMessage = null;
             StateHasChanged();
 
-            var result = await Task.Run(() => _probabilityCalculator.CalculateProbabilityResults(
-                activeCards,
-                activeCombos,
-                requestedHandSize,
-                requestedGroups
-            ));
-            if (requestVersion == calculationVersion) {
+            var snapshot = CalculationSnapshot.Capture(cards, combos, handSize, comboGroups);
+            var result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
+            if (OwnsRequest()) {
                 calculationResult = result;
                 calculationResultIsStale = false;
             }
         }
         catch (OperationCanceledException) {
-            if (requestVersion == calculationVersion)
+            if (OwnsRequest())
                 errorMessage = "Calculation was cancelled.";
         }
         catch (ProbabilityCalculationLimitException ex) {
-            if (requestVersion == calculationVersion)
+            if (OwnsRequest())
                 errorMessage = ex.Message;
         }
         catch (Exception ex) {
-            if (requestVersion == calculationVersion)
+            if (OwnsRequest())
                 errorMessage = $"Calculation failed: {ex.Message}";
         }
         finally {
-            isCalculating = false;
+            if (OwnsRequest()) {
+                calculationCancellation = null;
+                isCalculating = false;
+            }
         }
+    }
+
+    private void StopCalculation() {
+        calculationRequestId++;
+        var cancellation = calculationCancellation;
+        calculationCancellation = null;
+        isCalculating = false;
+        cancellation?.Cancel();
+    }
+
+    private void CancelCalculation() {
+        StopCalculation();
+        errorMessage = "Calculation was cancelled.";
     }
 
     private async Task ImportDeckAsync(InputFileChangeEventArgs e) {
@@ -615,7 +636,6 @@
             }
             activeCardIndex = -1;
             activeComboIndex = -1;
-            InvalidateCalculation(clearPreviousResult: true);
             sessionVersion++;
             autosaveReplacementVersion++;
         }
@@ -634,6 +654,7 @@
     private void OnCategoriesChanged() => InvalidateCalculation();
 
     private void InvalidateCalculation(bool clearPreviousResult = false) {
+        StopCalculation();
         calculationVersion++;
         if (clearPreviousResult) {
             calculationResult = null;

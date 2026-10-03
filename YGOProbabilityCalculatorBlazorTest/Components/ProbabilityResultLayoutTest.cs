@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,7 @@ public class ProbabilityResultLayoutTest {
     public void SetUp() {
         context = new TestContext();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Services.AddSingleton<IBackgroundCalculator, BackgroundCalculatorTestAdapter>();
 
         var calculator = new Mock<IProbabilityCalculatorService>();
         resultToReturn = new ProbabilityCalculationResult(0, []);
