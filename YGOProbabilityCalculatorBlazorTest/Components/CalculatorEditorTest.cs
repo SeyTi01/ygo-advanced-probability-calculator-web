@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
 using Microsoft.AspNetCore.Components.Forms;
@@ -26,6 +27,7 @@ public class CalculatorEditorTest {
     public void SetUp() {
         context = new TestContext();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Services.AddSingleton<IBackgroundCalculator, BackgroundCalculatorTestAdapter>();
         context.Services.AddSingleton<IProbabilityCalculatorService, ProbabilityCalculatorService>();
         context.Services.AddSingleton<ISerializer, JsonSerializer>();
         context.Services.AddSingleton<ISessionService, SessionService>();

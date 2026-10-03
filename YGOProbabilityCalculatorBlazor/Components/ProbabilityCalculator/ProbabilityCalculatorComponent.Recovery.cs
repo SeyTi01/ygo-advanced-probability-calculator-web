@@ -2,7 +2,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
-// Feature-owned recovery/load ordering; compose Dispose with other lifecycle features.
+// Recovery/load ordering shares disposal with calculation ownership.
 public partial class ProbabilityCalculatorComponent : IDisposable {
     private int autosaveReplacementVersion;
     private long sessionLoadVersion;
@@ -28,7 +28,6 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         var before = _sessionService.SerializeSession(CaptureSession());
         if (!await RestoreSessionDataAsync(session, request, before, edit)) return false;
         activeCardIndex = activeComboIndex = -1;
-        InvalidateCalculation(clearPreviousResult: true);
         sessionVersion++;
         autosaveReplacementVersion++;
         StateHasChanged();
@@ -50,6 +49,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         }
         catch { }
         if (!CanApplySession(request, before, edit)) return false;
+        InvalidateCalculation(clearPreviousResult: true);
         categoryBases.Clear();
         categoryBases.AddRange(session.Categories.Where(category => category.Source == CategorySource.User));
 
@@ -66,5 +66,11 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         return true;
     }
 
-    public void Dispose() { sessionDisposed = true; sessionLoadVersion++; }
+    public void Dispose() {
+        if (sessionDisposed) return;
+        sessionDisposed = true;
+        sessionLoadVersion++;
+        disposed = true;
+        StopCalculation();
+    }
 }
