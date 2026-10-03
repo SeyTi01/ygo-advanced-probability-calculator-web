@@ -63,6 +63,7 @@
 .probability-groups {
     margin-bottom: 0.75rem;
 }
+.probability-groups-last { margin-bottom: 0; }
 
 .probability-group-container {
     padding: 0.35rem 0 0.5rem;
@@ -73,7 +74,8 @@
     padding-top: 0.55rem;
 }
 
-.probability-group-heading {
+.combo-probability-row.probability-group-heading {
+    align-items: center;
     font-size: 1rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
@@ -200,7 +202,11 @@
 .result-comparison .probability-result-status { grid-row: 2; grid-column: 1 / -1; }
 .result-comparison .probability-results-heading ::deep .probability-result-export-toolbar { grid-row: 1; grid-column: 2; width: 7.5rem; align-items: start; }
 .comparison-value { text-align: right; flex-shrink: 0; }
-.result-difference { display: block; font-size: .8rem; font-weight: normal; }
+.result-value-group { display: inline-flex; align-items: baseline; flex-shrink: 0; gap: .35rem; white-space: nowrap; }
+.result-difference { display: inline; font-size: .8rem; font-weight: normal; line-height: 1; white-space: nowrap; }
+.result-difference-positive { color: var(--bs-success-text-emphasis); }
+.result-difference-negative { color: var(--bs-danger-text-emphasis); }
+.result-difference-neutral { color: var(--bs-secondary-color); }
 .result-row-comparison { display: block; color: var(--bs-secondary-color); }
 @media (min-width: 900px) {
     .result-comparison:has(.probability-results) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

@@ -46,10 +46,10 @@ public partial class ProbabilityCalculatorComponent {
     private PinnedCalculationContext CaptureComparisonContext() => PinnedCalculationContext.Capture(
         comparisonEpoch, handSize, cards, combos, comboGroups, ComboLineage, GroupLineage);
 
-    private string? CurrentComboComparison(int index) => CanCompare && pinnedResult is not null &&
+    private PinnedResultComparison? CurrentComboComparison(int index) => CanCompare && pinnedResult is not null &&
         acceptedComparison!.Combos.SingleOrDefault(c => c.Index == index) is { } row
-            ? acceptedComparison.CompareCombo(row, pinnedResult, true) : null;
-    private string? CurrentGroupComparison(string id) => CanCompare && pinnedResult is not null &&
+            ? acceptedComparison.CompareComboPresentation(row, pinnedResult, true) : null;
+    private PinnedResultComparison? CurrentGroupComparison(string id) => CanCompare && pinnedResult is not null &&
         acceptedComparison!.Groups.SingleOrDefault(g => g.Id == id) is { } row
-            ? acceptedComparison.CompareGroup(row, pinnedResult, true) : null;
+            ? acceptedComparison.CompareGroupPresentation(row, pinnedResult, true) : null;
 }
