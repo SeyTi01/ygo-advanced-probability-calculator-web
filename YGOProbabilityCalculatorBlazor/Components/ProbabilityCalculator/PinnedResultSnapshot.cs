@@ -49,6 +49,19 @@ public sealed record PinnedComboRow(int Index, string Label, double Probability,
     PinnedComboDefinition? Definition);
 public sealed record PinnedGroupRow(string Id, string Label, double Probability, int ActiveCount,
     PinnedGroupDefinition? Definition);
+public sealed record PinnedResultDifference(decimal RoundedPercentagePoints, string Text) {
+    public string CssClass => RoundedPercentagePoints switch {
+        > 0 => "result-difference-positive",
+        < 0 => "result-difference-negative",
+        _ => "result-difference-neutral"
+    };
+}
+public sealed record PinnedResultComparison(string? Status, PinnedResultDifference? Difference) {
+    public string Text => Difference?.Text ?? Status ?? "Not comparable";
+    public static PinnedResultComparison ForStatus(string status) => new(status, null);
+    public static PinnedResultComparison ForDifference(PinnedResultDifference difference) => new(null, difference);
+}
+
 public sealed record PinnedResultSnapshot(PinnedCalculationContext Context, double Total,
     ImmutableArray<PinnedComboRow> Combos, ImmutableArray<PinnedGroupRow> Groups) {
     public static PinnedResultSnapshot Capture(PinnedCalculationContext context, ProbabilityCalculationResult result) => new(
@@ -65,25 +78,67 @@ public sealed record PinnedResultSnapshot(PinnedCalculationContext Context, doub
 
     // Lineage is explicitly transferred by supported edits. Never infer continuity from names,
     // indices, identical requirements, or group IDs across accepted session/deck replacements.
-    public string CompareCombo(PinnedComboRow row, PinnedResultSnapshot other, bool currentSide) {
-        if (Context.Epoch != other.Context.Epoch) return "Unrelated session";
+    public PinnedResultComparison CompareComboPresentation(PinnedComboRow row, PinnedResultSnapshot other, bool currentSide) {
+        if (Context.Epoch != other.Context.Epoch) return PinnedResultComparison.ForStatus("Unrelated session");
         var matches = other.Combos.Where(c => row.Definition is not null && c.Definition?.Lineage == row.Definition.Lineage).ToArray();
-        if (matches.Length != 1) return currentSide ? "New route" : "Removed or inactive";
-        if (row.Definition!.Signature != matches[0].Definition!.Signature) return "Definition changed";
-        return currentSide ? Difference(row.Probability, matches[0].Probability) : "Comparable";
+        if (matches.Length != 1) return PinnedResultComparison.ForStatus(currentSide ? "New route" : "Removed or inactive");
+        if (row.Definition!.Signature != matches[0].Definition!.Signature) return PinnedResultComparison.ForStatus("Definition changed");
+        return currentSide ? CompareDifference(row.Probability, matches[0].Probability) : PinnedResultComparison.ForStatus("Comparable");
     }
 
-    public string CompareGroup(PinnedGroupRow row, PinnedResultSnapshot other, bool currentSide) {
-        if (Context.Epoch != other.Context.Epoch) return "Unrelated session";
+    public string CompareCombo(PinnedComboRow row, PinnedResultSnapshot other, bool currentSide) => CompareComboPresentation(row, other, currentSide).Text;
+
+    public PinnedResultComparison CompareGroupPresentation(PinnedGroupRow row, PinnedResultSnapshot other, bool currentSide) {
+        if (Context.Epoch != other.Context.Epoch) return PinnedResultComparison.ForStatus("Unrelated session");
         var matches = other.Groups.Where(g => row.Definition is not null && g.Definition?.Lineage == row.Definition.Lineage).ToArray();
-        if (matches.Length != 1) return currentSide ? "New group" : "Removed group";
-        if (row.Definition!.Signature != matches[0].Definition!.Signature) return "Composition changed";
-        return currentSide ? Difference(row.Probability, matches[0].Probability) : "Comparable";
+        if (matches.Length != 1) return PinnedResultComparison.ForStatus(currentSide ? "New group" : "Removed group");
+        if (row.Definition!.Signature != matches[0].Definition!.Signature) return PinnedResultComparison.ForStatus("Composition changed");
+        return currentSide ? CompareDifference(row.Probability, matches[0].Probability) : PinnedResultComparison.ForStatus("Comparable");
     }
 
-    public static string Difference(double current, double pinned) {
-        if (!Valid(current) || !Valid(pinned)) return "Not comparable";
+    public string CompareGroup(PinnedGroupRow row, PinnedResultSnapshot other, bool currentSide) => CompareGroupPresentation(row, other, currentSide).Text;
+
+    public static string Difference(double current, double pinned) => DifferencePresentation(current, pinned)?.Text ?? "Not comparable";
+
+    public static PinnedResultDifference? DifferencePresentation(double current, double pinned) {
+        if (!Valid(current) || !Valid(pinned)) return null;
         var rounded = Math.Round(((decimal)current - (decimal)pinned) * 100, 2, MidpointRounding.AwayFromZero);
-        return $"{(rounded > 0 ? "+" : "")}{rounded.ToString("0.##", CultureInfo.CurrentCulture)} pp";
+        var format = CultureInfo.CurrentCulture;
+        var number = Math.Abs(rounded).ToString("0.##", format);
+        var symbol = format.NumberFormat.PercentSymbol;
+        string text = rounded switch {
+            > 0 => format.NumberFormat.PercentPositivePattern switch {
+                0 => $"+{number} {symbol}",
+                1 => $"+{number}{symbol}",
+                2 => $"{symbol}+{number}",
+                _ => $"{symbol} +{number}"
+            },
+            < 0 => format.NumberFormat.PercentNegativePattern switch {
+                0 => $"-{number} {symbol}",
+                1 => $"-{number}{symbol}",
+                2 => $"-{symbol}{number}",
+                3 => $"{symbol}-{number}",
+                4 => $"{symbol}{number}-",
+                5 => $"{number}-{symbol}",
+                6 => $"{number}{symbol}-",
+                7 => $"-{number}{symbol}",
+                8 => $"{number} {symbol}-",
+                9 => $"{symbol} {number}-",
+                10 => $"{symbol} -{number}",
+                _ => $"{number}- {symbol}"
+            },
+            _ => format.NumberFormat.PercentPositivePattern switch {
+                0 => $"{number} {symbol}",
+                1 => $"{number}{symbol}",
+                2 => $"{symbol}{number}",
+                _ => $"{symbol} {number}"
+            }
+        };
+        return new(rounded, text);
     }
+
+    private static PinnedResultComparison CompareDifference(double current, double pinned) =>
+        DifferencePresentation(current, pinned) is { } difference
+            ? PinnedResultComparison.ForDifference(difference)
+            : PinnedResultComparison.ForStatus("Not comparable");
 }

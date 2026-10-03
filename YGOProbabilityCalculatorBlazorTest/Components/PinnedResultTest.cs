@@ -83,10 +83,10 @@ public class PinnedResultTest {
         await Pin(); var first = Pinned;
         await Accept(.842);
         Assert.That(Pinned, Is.SameAs(first));
-        Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8 pp"));
+        Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
         await Pin();
         Assert.That(Pinned.Total, Is.EqualTo(.842));
-        Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("0 pp"));
+        Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("0%"));
         await Clear();
         Assert.That(cut.FindAll(".pinned-result"), Is.Empty);
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
@@ -118,15 +118,41 @@ public class PinnedResultTest {
         Assert.That(Pinned.Combos[0].Definition!.Signature, Does.Contain("card"));
     }
 
-    [TestCase(.842, "+2.8 pp")] [TestCase(.786, "-2.8 pp")] [TestCase(.814, "0 pp")]
-    [TestCase(.813999999, "0 pp")] [TestCase(.81405, "+0.01 pp")]
+    [TestCase(.842, "+2.8%")] [TestCase(.786, "-2.8%")] [TestCase(.814, "0%")]
+    [TestCase(.813999999, "0%")] [TestCase(.814049, "0%")] [TestCase(.81405, "+0.01%")]
+    [TestCase(.81395, "-0.01%")]
     public async Task AcceptedDeltasUsePercentagePointsWithoutNegativeZero(double probability, string expected) {
         await Accept(); await Pin(); await Accept(probability);
         Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo(expected));
     }
+    [Test] public async Task DisplayedDeltasStayInlineAndUseRoundedDirectionForEveryResultRow() {
+        await Accept(); await Pin(); await Accept(.842);
+
+        Assert.That(cut.Find(".probability-total .result-difference").TextContent, Is.EqualTo("+2.8%"));
+        Assert.That(cut.Find(".probability-group-heading .result-difference").TextContent, Is.EqualTo("+2.8%"));
+        Assert.That(cut.Find(".probability-group-members .result-difference").TextContent, Is.EqualTo("+2.8%"));
+        Assert.That(cut.FindAll(".probability-ungrouped-combos .result-difference"), Has.Count.EqualTo(2));
+        var positive = cut.FindAll(".result-difference");
+        Assert.That(positive, Has.Count.EqualTo(5));
+        foreach (var difference in positive) {
+            Assert.That(difference.ClassList, Does.Contain("result-difference-positive"));
+            Assert.That(difference.ParentElement!.ClassList, Does.Contain("result-value-group"));
+            Assert.That(difference.ParentElement.QuerySelector(".combo-probability-value"), Is.Not.Null);
+            Assert.That(difference.GetAttribute("aria-label"), Does.Contain("Absolute change from pinned result"));
+        }
+
+        await Accept(.786);
+        Assert.That(cut.FindAll(".result-difference-negative"), Has.Count.EqualTo(5));
+        Assert.That(cut.FindAll(".result-difference-positive"), Is.Empty);
+        await Pin();
+        Assert.That(cut.FindAll(".result-difference-neutral"), Has.Count.EqualTo(5));
+        Assert.That(cut.FindAll(".result-difference-negative"), Is.Empty);
+    }
     [Test] public void DifferenceUsesCultureAndRejectsNonfiniteProbabilities() {
         using var culture = new CultureScope("de-DE");
-        Assert.That(PinnedResultSnapshot.Difference(.842, .814), Is.EqualTo("+2,8 pp"));
+        Assert.That(PinnedResultSnapshot.Difference(.842, .814), Is.EqualTo("+2,8 %"));
+        Assert.That(PinnedResultSnapshot.Difference(.786, .814), Is.EqualTo("-2,8 %"));
+        Assert.That(PinnedResultSnapshot.Difference(.814, .814), Is.EqualTo("0 %"));
         Assert.That(PinnedResultSnapshot.Difference(double.NaN, .814), Is.EqualTo("Not comparable"));
         Assert.That(PinnedResultSnapshot.Difference(double.PositiveInfinity, .814), Is.EqualTo("Not comparable"));
     }
@@ -159,7 +185,7 @@ public class PinnedResultTest {
         await action;
         Assert.That(Pinned, Is.SameAs(baseline));
         if (completion.StartsWith("late")) {
-            Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8 pp"));
+            Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
             Assert.That(cut.Markup, Does.Not.Contain("Obsolete error"));
         }
         else {
@@ -178,10 +204,10 @@ public class PinnedResultTest {
         await Accept(.842);
         var current = Field<PinnedResultSnapshot>("acceptedComparison");
         Assert.That(current.Combos[2].Definition!.Lineage, Is.EqualTo(original.Combos[0].Definition!.Lineage));
-        Assert.That(current.CompareCombo(current.Combos[2], original, true), Is.EqualTo("+2.8 pp"));
-        Assert.That(current.CompareCombo(current.Combos[0], original, true), Is.EqualTo("+2.8 pp"));
-        Assert.That(current.CompareCombo(current.Combos[1], original, true), Is.EqualTo("+2.8 pp"));
-        Assert.That(current.CompareGroup(current.Groups[0], original, true), Is.EqualTo("+2.8 pp"));
+        Assert.That(current.CompareCombo(current.Combos[2], original, true), Is.EqualTo("+2.8%"));
+        Assert.That(current.CompareCombo(current.Combos[0], original, true), Is.EqualTo("+2.8%"));
+        Assert.That(current.CompareCombo(current.Combos[1], original, true), Is.EqualTo("+2.8%"));
+        Assert.That(current.CompareGroup(current.Groups[0], original, true), Is.EqualTo("+2.8%"));
         Assert.That(cut.Find(".probability-results").TextContent, Does.Contain("Different deck composition"));
         Assert.That(Pinned.Combos.Select(c => c.Label), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
     }
@@ -203,7 +229,9 @@ public class PinnedResultTest {
         var current = Field<PinnedResultSnapshot>("acceptedComparison");
         Assert.That(current.CompareCombo(current.Combos[0], Pinned, true), Is.EqualTo("Definition changed"));
         Assert.That(current.CompareGroup(current.Groups[0], Pinned, true), Is.EqualTo("Composition changed"));
-        Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8 pp"));
+        Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
+        Assert.That(cut.FindAll(".result-row-comparison").Select(x => x.TextContent),
+            Does.Contain("Definition changed").And.Contain("Composition changed"));
     }
     [Test] public async Task RemovedRecreatedAndInactiveRowsAreNotGuessedFromNamesOrDefinitions() {
         await Accept(); await Pin(); var baseline = Pinned;
@@ -216,7 +244,8 @@ public class PinnedResultTest {
         Assert.That(baseline.CompareCombo(baseline.Combos[0], current, false), Is.EqualTo("Removed or inactive"));
         Assert.That(baseline.CompareCombo(baseline.Combos[1], current, false), Is.EqualTo("Removed or inactive"));
         Assert.That(current.CompareCombo(current.Combos.Last(), baseline, true), Is.EqualTo("New route"));
-        Assert.That(current.CompareCombo(current.Combos[0], baseline, true), Is.EqualTo("+2.8 pp"));
+        Assert.That(current.CompareCombo(current.Combos[0], baseline, true), Is.EqualTo("+2.8%"));
+        Assert.That(cut.FindAll(".result-row-comparison").Any(x => x.TextContent == "New route"), Is.True);
         Assert.That(Pinned.Combos, Has.Length.EqualTo(3));
     }
     [Test] public async Task RecreatedGroupIdDoesNotEstablishGroupContinuity() {
@@ -235,8 +264,8 @@ public class PinnedResultTest {
         await Accept(.842);
         var current = Field<PinnedResultSnapshot>("acceptedComparison");
         Assert.That(current.CompareCombo(current.Combos[1], Pinned, true), Is.EqualTo("Definition changed"));
-        Assert.That(current.CompareCombo(current.Combos[0], Pinned, true), Is.EqualTo("+2.8 pp"));
-        Assert.That(current.CompareGroup(current.Groups[0], Pinned, true), Is.EqualTo("+2.8 pp"));
+        Assert.That(current.CompareCombo(current.Combos[0], Pinned, true), Is.EqualTo("+2.8%"));
+        Assert.That(current.CompareGroup(current.Groups[0], Pinned, true), Is.EqualTo("+2.8%"));
         Assert.That(current.Context.DeckDefinition, Is.Not.EqualTo(Pinned.Context.DeckDefinition));
     }
     [Test] public async Task InactiveMemberChangesGroupCompositionWithoutInvalidatingOtherRouteContinuity() {
@@ -246,7 +275,7 @@ public class PinnedResultTest {
         var current = Field<PinnedResultSnapshot>("acceptedComparison");
         Assert.That(current.CompareGroup(current.Groups[0], Pinned, true), Is.EqualTo("Composition changed"));
         Assert.That(Pinned.CompareCombo(Pinned.Combos[0], current, false), Is.EqualTo("Removed or inactive"));
-        Assert.That(current.CompareCombo(current.Combos[0], Pinned, true), Is.EqualTo("-2.8 pp"));
+        Assert.That(current.CompareCombo(current.Combos[0], Pinned, true), Is.EqualTo("-2.8%"));
     }
 
     [TestCase("file")] [TestCase("recovery")] [TestCase("accepted-example-path")] [TestCase("ydk")]
@@ -269,7 +298,7 @@ public class PinnedResultTest {
         var current = Field<PinnedResultSnapshot>("acceptedComparison");
         Assert.That(current.CompareCombo(current.Combos[0], pin, true), Is.EqualTo("Unrelated session"));
         Assert.That(current.CompareGroup(current.Groups[0], pin, true), Is.EqualTo("Unrelated session"));
-        Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8 pp"));
+        Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
         if (load != "ydk") Assert.That(cut.Find(".probability-results").TextContent, Does.Contain("Different hand size"));
     }
     [Test] public async Task CopyStillExportsOnlyTheAcceptedCurrentResultAndCapturedHandSize() {

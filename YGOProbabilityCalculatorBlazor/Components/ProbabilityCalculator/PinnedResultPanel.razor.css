@@ -8,11 +8,12 @@
 .pinned-total { border-bottom: 1px solid var(--bs-border-color); font-size: 1.2rem; padding-bottom: .75rem; margin-bottom: .75rem; }
 .pinned-total strong { font-size: 1.1em; }
 .pinned-group { padding: .35rem 0 .5rem; }
-.pinned-group + .pinned-group { border-top: 1px solid var(--bs-border-color); }
-.pinned-group h6 { margin-bottom: .25rem; }
+.pinned-group + .pinned-group { border-top: 1px solid var(--bs-border-color); padding-top: .55rem; }
+.pinned-group h6 { align-items: center; margin-bottom: .25rem; padding: .2rem 0; }
 .pinned-list { list-style: none; padding: 0; margin: 0; }
 .pinned-list li { padding: .35rem 0; }
 .pinned-list li + li { border-top: 1px solid var(--bs-border-color); }
 .pinned-members { border-left: 2px solid var(--bs-border-color); margin-left: .5rem; padding-left: .75rem; }
 .pinned-match { display: block; color: var(--bs-secondary-color); }
+@media (min-width: 768px) { .pinned-members { margin-left: .25rem; padding-left: .5rem; } }
 @media (max-width: 575.98px) { .pinned-result { padding: .75rem; } }
