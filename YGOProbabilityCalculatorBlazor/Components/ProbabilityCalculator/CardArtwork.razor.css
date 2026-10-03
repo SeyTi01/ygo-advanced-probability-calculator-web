@@ -1,0 +1,18 @@
+.card-artwork-preview {
+    width: 11rem;
+    max-width: 100%;
+    aspect-ratio: 268 / 391;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    background: var(--bs-tertiary-bg);
+}
+
+.card-artwork-preview img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: inherit;
+}

@@ -20,6 +20,21 @@ public class CardInfoService : ICardInfoService {
     private CardMetadataCache _cache = new();
     private readonly SemaphoreSlim _singleLookupGate = new(1, 1);
     private readonly HashSet<int> _singleLookups = [];
+    private readonly HashSet<int> _artworkLookups = [];
+
+    public async Task<CardInfo> GetCardArtworkInfoAsync(int id) {
+        var info = await GetCardInfoAsync(id);
+        await _singleLookupGate.WaitAsync();
+        try {
+            // Fresh pre-artwork v2 snapshots remain valid for import/properties. Enrich only
+            // a requested preview, at most once per ID per service lifetime on failure.
+            if (_cache.Cards.TryGetValue(id, out info) && !info.ArtworkMetadataKnown &&
+                _artworkLookups.Add(id) && !_singleLookups.Contains(id))
+                await FetchSingleCardAsync(id);
+            return _cache.Cards.TryGetValue(id, out info) ? info : new CardInfo { Id = id };
+        }
+        finally { _singleLookupGate.Release(); }
+    }
 
     public async Task<CardInfo> GetCardInfoAsync(int id) {
         await _initializeTask.Value;
@@ -243,7 +258,7 @@ public class CardInfoService : ICardInfoService {
             if (string.IsNullOrWhiteSpace(name))
                 return false;
 
-            cards[id] = version == 1 ? new CardInfo { Id = id, Name = name } : ReadCardInfo(property.Value, id)!;
+            cards[id] = version == 1 ? new CardInfo { Id = id, Name = name } : ReadCardInfo(property.Value, id, fromCache: true)!;
         }
 
         if (cards.Count == 0)
@@ -275,7 +290,7 @@ public class CardInfoService : ICardInfoService {
         return true;
     }
 
-    private static CardInfo? ReadCardInfo(JsonElement item, int? cacheId = null) {
+    private static CardInfo? ReadCardInfo(JsonElement item, int? cacheId = null, bool fromCache = false) {
         if (item.ValueKind != JsonValueKind.Object) return null;
         var id = cacheId ?? Number("id");
         var name = Text("name");
@@ -283,8 +298,31 @@ public class CardInfoService : ICardInfoService {
         return new CardInfo {
             Id = id.Value, Name = name, Type = Text("type"), FrameType = Text("frameType"),
             Race = Text("race"), Attribute = Text("attribute"), Level = Number("level"),
-            LinkVal = Number("linkval"), Scale = Number("scale"), Archetype = Text("archetype")
+            LinkVal = Number("linkval"), Scale = Number("scale"), Archetype = Text("archetype"),
+            CanonicalCardId = fromCache ? Number("canonicalCardId") : Number("id"),
+            ArtworkImageIds = ReadImageIds(),
+            ArtworkMetadataKnown = !fromCache || (TryGetProperty(item, "artworkMetadataKnown", out var known) &&
+                known.ValueKind == JsonValueKind.True)
         };
+        IReadOnlyList<int> ReadImageIds() {
+            if (!TryGetProperty(item, fromCache ? "artworkImageIds" : "card_images", out var images) ||
+                images.ValueKind != JsonValueKind.Array) return Array.Empty<int>();
+            var result = new List<int>();
+            foreach (var image in images.EnumerateArray()) {
+                int imageId;
+                if (fromCache) {
+                    if (image.ValueKind != JsonValueKind.Number || !image.TryGetInt32(out imageId)) continue;
+                }
+                else {
+                    if (image.ValueKind != JsonValueKind.Object || !TryGetProperty(image, "id", out var imageIdValue) ||
+                        imageIdValue.ValueKind != JsonValueKind.Number || !imageIdValue.TryGetInt32(out imageId) ||
+                        !TryGetProperty(image, "image_url_small", out var url) || url.ValueKind != JsonValueKind.String ||
+                        url.GetString() != $"https://images.ygoprodeck.com/images/cards_small/{imageId}.jpg") continue;
+                }
+                if (imageId is > 0 and <= 2147483647 && !result.Contains(imageId)) result.Add(imageId);
+            }
+            return result.Count == 0 ? Array.Empty<int>() : result.AsReadOnly();
+        }
         string? Text(string key) => TryGetProperty(item, key, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString() : null;
         int? Number(string key) => TryGetProperty(item, key, out var value) && value.ValueKind == JsonValueKind.Number &&

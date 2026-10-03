@@ -19,6 +19,7 @@ public static class Program {
         builder.Services.AddScoped<ISessionService, SessionService>();
         builder.Services.AddScoped<ILegacyCardMetadataEnricher, LegacyCardMetadataEnricher>();
         builder.Services.AddScoped<ICardInfoService, CardInfoService>();
+        builder.Services.AddScoped<ICardArtworkService, CardArtworkService>();
         builder.Services.AddScoped<IFileService, FileService>();
         builder.Services.AddScoped<ISerializer, JsonSerializer>();
         builder.Services.AddScoped<IPendingSessionService, PendingSessionService>();
