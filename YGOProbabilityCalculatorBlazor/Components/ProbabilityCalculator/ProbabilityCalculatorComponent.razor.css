@@ -270,10 +270,57 @@
 
 .calculator-workspace ::deep .entry-editor-active-toggle {
     display: flex;
+    flex: 0 0 2.75rem;
+    justify-content: center;
     align-items: center;
-    gap: 0.5rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
     margin: 0;
     cursor: pointer;
+}
+
+.calculator-workspace ::deep .entry-editor-active-checkbox {
+    width: 2rem;
+    height: 2rem;
+    margin: 0;
+    cursor: pointer;
+}
+
+.calculator-workspace ::deep .entry-editor-delete {
+    display: grid;
+    flex: 0 0 2.75rem;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    background-color: transparent;
+    border-color: transparent;
+}
+
+.calculator-workspace ::deep .entry-editor-delete-face {
+    display: grid;
+    flex: 0 0 2rem;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--bs-btn-color);
+    background-color: var(--bs-btn-bg);
+    border: var(--bs-btn-border-width) solid var(--bs-btn-border-color);
+    border-radius: var(--bs-btn-border-radius);
+}
+
+.calculator-workspace ::deep .entry-editor-delete:hover .entry-editor-delete-face {
+    color: var(--bs-btn-hover-color);
+    background-color: var(--bs-btn-hover-bg);
+    border-color: var(--bs-btn-hover-border-color);
+}
+
+.calculator-workspace ::deep .entry-editor-delete:active .entry-editor-delete-face {
+    color: var(--bs-btn-active-color);
+    background-color: var(--bs-btn-active-bg);
+    border-color: var(--bs-btn-active-border-color);
 }
 
 .calculator-workspace ::deep .card-header-content,
@@ -392,21 +439,8 @@
         border-top-style: dashed;
     }
 
-    .calculator-workspace ::deep .entry-actions > .btn-danger {
-        margin-inline-start: 0;
-        width: 2.75rem;
-    }
-
     .calculator-workspace ::deep .entry-editor-active-toggle {
         margin-inline-start: auto;
-        width: 2.75rem;
-        min-height: 2.75rem;
-        padding: 0;
-        justify-content: center;
-    }
-
-    .calculator-workspace ::deep .entry-editor-active-checkbox {
-        margin: 0;
     }
 
     .calculator-workspace ::deep .card-header-name,
