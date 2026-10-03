@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { chromium, firefox } = require('playwright');
 const base = process.argv[2] || 'http://127.0.0.1:5157';
 const engine = process.argv[3] || 'chromium';
@@ -6,8 +8,12 @@ const categories = Array.from({length:18},(_,i)=>({Name:`C${i}`,Source:'User'}))
 const heavy = {SchemaVersion:2,Categories:categories, Cards:categories.map((c,i)=>({Id:`c${i}`,Name:null,Copies:3,Categories:[c]})).concat([{Id:'blank',Name:null,Copies:22,Categories:[]}]),Combos:categories.map((c,i)=>({Name:`Exactly one C${i}`,Categories:[{BaseCategory:c,MinCount:1,MaxCount:1}]})),ComboGroups:[],HandSize:5};
 const simple={SchemaVersion:2,Categories:[categories[0]],Cards:[{Id:'a',Name:null,Copies:1,Categories:[categories[0]]},{Id:'b',Name:null,Copies:1,Categories:[]}],Combos:[{Name:'One card',GroupId:'g',Categories:[{BaseCategory:categories[0],MinCount:1,MaxCount:1}]}],ComboGroups:[{Id:'g',Name:'Group'}],HandSize:1};
 const wire={Cards:heavy.Cards.map(c=>({...c,ExternalCardId:null,ManualMetadataCategoryKeys:[],Categories:c.Categories.map(c=>({...c,Source:0,MetadataKey:null}))})),Combos:heavy.Combos.map(c=>({...c,GroupId:null,Cards:[],Categories:c.Categories.map(c=>({...c,MaximumMode:0,BaseCategory:{...c.BaseCategory,Source:0,MetadataKey:null}}))})),Groups:[],HandSize:5};
+const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENSHOT.replace(/\.png$/i,''):null;
 (async()=>{
- const browser=await ({chromium,firefox}[engine]).launch({headless:true,timeout:20000});
+ const launchOptions={headless:true,timeout:20000};
+ if(engine==='chromium'&&process.env.PLAYWRIGHT_CHROMIUM_CHANNEL)launchOptions.channel=process.env.PLAYWRIGHT_CHROMIUM_CHANNEL;
+ if(engine==='firefox'&&process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH)launchOptions.executablePath=process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH;
+ const browser=await ({chromium,firefox}[engine]).launch(launchOptions);
  try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
  const cdp=engine==='chromium'?await browser.newBrowserCDPSession():null;
@@ -31,8 +37,10 @@ const wire={Cards:heavy.Cards.map(c=>({...c,ExternalCardId:null,ManualMetadataCa
  await page.goto(base);
  const calculate=page.getByRole('button',{name:'Calculate',exact:true});
  await calculate.waitFor();
- async function load(session){await page.locator('#sessionFileInput').setInputFiles({name:'worker-smoke.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(session))}); await page.waitForFunction(()=>!document.querySelector('.calculate-action > button').disabled);}
- async function runSuccess(){await calculate.click();await page.waitForFunction(()=>!document.querySelector('.calculate-action > button').disabled);await page.locator('.probability-total-value').waitFor();assert.match(await page.locator('.probability-total-value').innerText(),/50[.,]00/);assert.equal(await page.locator('.probability-group').count(),1);assert.equal(await page.locator('.combo-probability-item').count(),1);}
+ async function waitIdle(){await page.waitForFunction(()=>{const button=document.querySelector('.calculate-action > button');return button&&button.getAttribute('aria-busy')!=='true'})}
+ async function load(session){await page.locator('#sessionFileInput').setInputFiles({name:'worker-smoke.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(session))});await waitIdle()}
+ async function runSuccess(){await calculate.click();await waitIdle();await page.locator('.probability-total-value').waitFor();assert.match(await page.locator('.probability-total-value').innerText(),/50[.,]00/);assert.equal(await page.locator('.probability-group').count(),1);assert.equal(await page.locator('.combo-probability-item').count(),1);}
+ async function captureLayout(phase,width,theme){if(!screenshotDirectory||!((width===1440&&theme==='light')||(width===320&&theme==='dark')))return;fs.mkdirSync(screenshotDirectory,{recursive:true});await page.locator('.results-section').screenshot({path:path.join(screenshotDirectory,`${engine}-${width}-${theme}-${phase}.png`)})}
  await load(simple);await runSuccess();
  const foreground=await page.evaluate(async json=>{
   const rt=getDotnetRuntime(0);const exports=await rt.getAssemblyExports(rt.getConfig().mainAssemblyName);
@@ -59,9 +67,9 @@ const wire={Cards:heavy.Cards.map(c=>({...c,ExternalCardId:null,ManualMetadataCa
   assert.equal(await page.getByLabel('YDKe deck code',{exact:true}).inputValue(),'responsive input');
   await page.getByRole('button',{name:'Cancel',exact:true}).click();
   if(process.env.SMOKE_SCREENSHOT && width===390 && theme==='dark')
-   await page.locator('.results-section').screenshot({path:process.env.SMOKE_SCREENSHOT.replace('.png','-cancel.png')});
+   await captureLayout('responsive-cancel',width,theme);
   const started=Date.now();await page.getByRole('button',{name:'Cancel calculation',exact:true}).click();
-  await page.waitForFunction(()=>!document.querySelector('.calculate-action > button').disabled);
+  await waitIdle();
   const uiCancelledMs=Date.now()-started;
   for(let i=0;i<300 && liveWorkers;i++) await page.waitForTimeout(10);
   assert.equal(liveWorkers,0,'terminated worker must lose its execution context');
@@ -75,10 +83,93 @@ const wire={Cards:heavy.Cards.map(c=>({...c,ExternalCardId:null,ManualMetadataCa
   await load(simple);await runSuccess();
  }
  // Full heavy result, then stale preservation, edit, replacement and navigation cancellation.
- await load(heavy);await calculate.click();
+ await load(heavy);await calculate.click();await waitIdle();
  await page.locator('.probability-total-value').waitFor({timeout:45000});
  assert.equal(await page.locator('.combo-probability-item').count(),18);
  const oldResult=await page.locator('.probability-total-value').innerText();
+ const layoutEvidence=[];
+ let legacyRowEvidence=null;
+ for(const [width,theme] of [[1440,'light'],[1440,'dark'],[320,'light'],[320,'dark'],[390,'light'],[390,'dark'],[575,'light'],[575,'dark'],[576,'light'],[576,'dark']]){
+  await page.setViewportSize({width,height:900});
+  await page.getByLabel('Color theme preference').selectOption(theme);
+  await page.evaluate(()=>{const action=document.querySelector('.calculate-action').getBoundingClientRect();window.scrollTo(0,Math.max(0,action.top+window.scrollY-300))});
+  const viewport=await page.evaluate(()=>({innerWidth:window.innerWidth,innerHeight:window.innerHeight,client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
+  assert.equal(viewport.innerWidth,width,`browser did not apply ${width}px viewport`);
+  assert.equal(viewport.innerHeight,900,'browser did not apply 900px height');
+  assert.equal(viewport.client,viewport.scroll,`horizontal overflow at ${width}px ${theme}`);
+  const measure=()=>page.evaluate(()=>{const action=document.querySelector('.calculate-action').getBoundingClientRect();const button=document.querySelector('.calculate-action > button').getBoundingClientRect();const result=document.querySelector('.probability-results').getBoundingClientRect();return{actionTop:action.top+window.scrollY,actionViewportTop:action.top,actionHeight:action.height,buttonTop:button.top+window.scrollY,buttonHeight:button.height,resultTop:result.top+window.scrollY,resultViewportTop:result.top,scrollY:window.scrollY}});
+  const keyboardCase=width===320&&theme==='dark';
+  const button=page.locator('.calculate-action > button');
+  await button.focus();
+  if(keyboardCase){
+   await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
+   const focus=await button.evaluate(element=>({visible:element.matches(':focus-visible'),shadow:getComputedStyle(element).boxShadow,outline:getComputedStyle(element).outlineStyle}));
+   assert.equal(focus.visible,true,'keyboard navigation should expose the action focus indicator');
+   assert.ok(focus.shadow!=='none'||focus.outline!=='none','the action focus indicator should be visible');
+  }
+  await page.evaluate(()=>{const rect=document.querySelector('.calculate-action').getBoundingClientRect();window.scrollTo(0,Math.round(rect.top+window.scrollY-300))});
+  const idle=await measure();
+  assert.ok(idle.resultTop>idle.actionTop,'the existing result should follow the action area');
+  if(!legacyRowEvidence){
+   legacyRowEvidence=await page.evaluate(()=>{
+    const measure=()=>{const action=document.querySelector('.calculate-action').getBoundingClientRect();const result=document.querySelector('.probability-results').getBoundingClientRect();return{actionHeight:action.height,resultTop:result.top+window.scrollY}};
+    const before=measure();const oldCancel=document.createElement('button');oldCancel.type='button';oldCancel.className='btn btn-outline-secondary mt-2';oldCancel.textContent='Cancel';document.querySelector('.calculate-action').append(oldCancel);const withOldRow=measure();oldCancel.remove();return{actionHeightIncrease:withOldRow.actionHeight-before.actionHeight,resultTopShift:withOldRow.resultTop-before.resultTop};
+   });
+   assert.ok(legacyRowEvidence.actionHeightIncrease>5,'the prior second Cancel row should increase the action area');
+   assert.ok(legacyRowEvidence.resultTopShift>5,'the prior second Cancel row should fail the results-position assertion');
+  }
+  await page.evaluate(y=>window.scrollTo(0,y),idle.scrollY);
+  await captureLayout('idle',width,theme);
+  const sentBefore=await page.evaluate(()=>probe.sent.length);
+  await button.evaluate(element=>{window.__actionReference=element});
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(n=>probe.sent.length>n,sentBefore);
+  await page.waitForTimeout(100);
+  const runningButton=page.getByRole('button',{name:'Cancel calculation',exact:true});
+  assert.equal(await runningButton.count(),1,'running action should be named Cancel calculation');
+  assert.equal(await runningButton.isDisabled(),false,'running cancellation action should remain enabled');
+  assert.equal(await page.locator('.calculate-action > button').count(),1,'there should be no second action row');
+  const sameFocusedNode=await page.evaluate(()=>document.querySelector('.calculate-action > button')===window.__actionReference&&document.activeElement===window.__actionReference);
+  assert.equal(sameFocusedNode,true,'changing the action role should preserve the focused button');
+  await page.evaluate(y=>window.scrollTo(0,y),idle.scrollY);
+  const running=await measure();
+  assert.equal(running.scrollY,idle.scrollY,`scroll position changed while running at ${width}px ${theme}`);
+  assert.ok(Math.abs(running.actionTop-idle.actionTop)<=0.75,`action document position changed while running at ${width}px ${theme}`);
+  assert.equal(running.actionViewportTop,idle.actionViewportTop,`action moved in the viewport while running at ${width}px ${theme}`);
+  assert.ok(Math.abs(running.actionHeight-idle.actionHeight)<=0.75,`action area height changed while running at ${width}px ${theme}`);
+  assert.ok(Math.abs(running.buttonTop-idle.buttonTop)<=0.75,`button document position changed while running at ${width}px ${theme}`);
+  assert.ok(Math.abs(running.buttonHeight-idle.buttonHeight)<=0.75,`button height changed while running at ${width}px ${theme}`);
+  assert.equal(running.resultViewportTop,idle.resultViewportTop,`results moved in the viewport while running at ${width}px ${theme}`);
+  assert.ok(Math.abs(running.resultTop-idle.resultTop)<=0.75,`results moved while running at ${width}px ${theme}`);
+  await captureLayout('running',width,theme);
+  const started=Date.now();
+  await page.keyboard.press('Enter');
+  await waitIdle();
+  await page.evaluate(y=>window.scrollTo(0,y),idle.scrollY);
+  const cancelled=await measure();
+  assert.equal(cancelled.scrollY,idle.scrollY,`scroll position changed after cancellation at ${width}px ${theme}`);
+  assert.ok(Math.abs(cancelled.actionTop-idle.actionTop)<=0.75,`action document position changed after cancellation at ${width}px ${theme}`);
+  assert.equal(cancelled.actionViewportTop,idle.actionViewportTop,`action moved in the viewport after cancellation at ${width}px ${theme}`);
+  assert.ok(Math.abs(cancelled.actionHeight-idle.actionHeight)<=0.75,`action area height changed after cancellation at ${width}px ${theme}`);
+  assert.ok(Math.abs(cancelled.buttonTop-idle.buttonTop)<=0.75,`button document position changed after cancellation at ${width}px ${theme}`);
+  assert.ok(Math.abs(cancelled.buttonHeight-idle.buttonHeight)<=0.75,`button height changed after cancellation at ${width}px ${theme}`);
+  assert.equal(cancelled.resultViewportTop,idle.resultViewportTop,`results moved in the viewport after cancellation at ${width}px ${theme}`);
+  assert.ok(Math.abs(cancelled.resultTop-idle.resultTop)<=0.75,`results moved after cancellation at ${width}px ${theme}`);
+  assert.equal(await page.locator('.probability-total-value').innerText(),oldResult,'cancellation must preserve the accepted result');
+  assert.equal(await page.locator('.probability-result-status').count(),0,'the current result should retain its current status');
+  assert.equal(await page.locator('[role="alert"]').count(),0,'cancellation must not create an alert');
+  assert.equal(await page.getByText(/calculation was cancelled/i).count(),0,'cancellation must not create a cancellation notice');
+  const sameIdleNode=await page.evaluate(()=>document.querySelector('.calculate-action > button')===window.__actionReference&&document.activeElement===window.__actionReference);
+  assert.equal(sameIdleNode,true,'returning to Calculate should preserve the focused button');
+  await captureLayout('cancelled',width,theme);
+  for(let i=0;i<300&&liveWorkers;i++)await page.waitForTimeout(10);
+  assert.equal(liveWorkers,0,'cancelled layout-check worker should terminate');
+  const totalCancelMs=Date.now()-started;
+  const afterViewport=await page.evaluate(()=>({innerWidth:window.innerWidth,client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
+  assert.equal(afterViewport.innerWidth,width);
+  assert.equal(afterViewport.client,afterViewport.scroll,`horizontal overflow after cancellation at ${width}px ${theme}`);
+  layoutEvidence.push({width,theme,viewport:afterViewport,idle,running,cancelled,totalCancelMs,keyboardCase});
+ }
  async function startCpu(){const n=await page.evaluate(()=>probe.sent.length);await calculate.click();await page.waitForFunction(n=>probe.sent.length>n,n);}
  async function waitClosed(){for(let i=0;i<300 && liveWorkers;i++)await page.waitForTimeout(10);assert.equal(liveWorkers,0);}
  await startCpu();await page.locator('#handSize').fill('4');await page.locator('#handSize').press('Tab');
@@ -106,8 +197,8 @@ const wire={Cards:heavy.Cards.map(c=>({...c,ExternalCardId:null,ManualMetadataCa
  await load(simple);await runSuccess();
  if(process.env.SMOKE_SCREENSHOT) {
   await page.getByLabel('Color theme preference').selectOption('dark');
-  await page.screenshot({path:process.env.SMOKE_SCREENSHOT,fullPage:true});
+  fs.mkdirSync(screenshotDirectory,{recursive:true});await page.screenshot({path:path.join(screenshotDirectory,`${engine}-final.png`),fullPage:true});
  }
- console.log(JSON.stringify({engine,evidence,errors,browser:browser.version()}));assert.deepEqual(errors,[]);
+ console.log(JSON.stringify({engine,evidence,layoutEvidence,legacyRowEvidence,errors,browser:browser.version()}));assert.deepEqual(errors,[]);
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
