@@ -4,10 +4,8 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
-/// <summary>Formats an accepted probability result as a readable, shareable Markdown summary.</summary>
+/// <summary>Formats an accepted probability result as a readable, shareable plain-text summary.</summary>
 public static class ProbabilityResultSummaryFormatter {
-    private const string MarkdownPunctuation = """\`*_{}[]()<>#+-.!|~""";
-
     public static string Format(
         ProbabilityCalculationResult result,
         int handSize,
@@ -37,7 +35,7 @@ public static class ProbabilityResultSummaryFormatter {
             lines.Add("Group probabilities:");
             foreach (var group in groups) {
                 lines.Add(
-                    $"- **{EscapeMarkdown(group.GroupName)}** — {FormatProbability(group.Probability, culture)} ({group.ActiveComboCount} active)");
+                    $"- **{NormalizeLabel(group.GroupName)}** — {FormatProbability(group.Probability, culture)} ({group.ActiveComboCount} active)");
 
                 foreach (var combo in result.ComboProbabilities.Where(combo =>
                              StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId))) {
@@ -63,13 +61,13 @@ public static class ProbabilityResultSummaryFormatter {
             ? $"Unnamed combo {combo.ComboIndex + 1}"
             : combo.ComboName;
 
-        return $"{indent}- **{EscapeMarkdown(name)}** — {FormatProbability(combo.Probability, culture)}";
+        return $"{indent}- **{NormalizeLabel(name)}** — {FormatProbability(combo.Probability, culture)}";
     }
 
     private static string FormatProbability(double probability, CultureInfo culture) =>
         probability.ToString("P2", culture);
 
-    private static string EscapeMarkdown(string? value) {
+    private static string NormalizeLabel(string? value) {
         if (string.IsNullOrWhiteSpace(value)) return string.Empty;
 
         var normalized = new StringBuilder(value.Length);
@@ -85,7 +83,6 @@ public static class ProbabilityResultSummaryFormatter {
                 hasPendingSpace = false;
             }
 
-            if (MarkdownPunctuation.Contains(character)) normalized.Append('\\');
             normalized.Append(character);
         }
 

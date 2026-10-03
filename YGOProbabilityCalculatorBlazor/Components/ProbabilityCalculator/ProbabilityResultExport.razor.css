@@ -5,6 +5,37 @@
     gap: 0.5rem;
 }
 
+.probability-result-copy-icon-slot {
+    display: inline-flex;
+    flex: 0 0 1em;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+}
+
+.probability-result-copy-icon-slot svg {
+    display: block;
+    width: 1em;
+    height: 1em;
+}
+
+.probability-result-copy-rest-icon {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.25;
+}
+
+.probability-result-copy-success-icon {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
 .probability-result-export-unavailable {
     color: var(--bs-secondary-color);
 }
