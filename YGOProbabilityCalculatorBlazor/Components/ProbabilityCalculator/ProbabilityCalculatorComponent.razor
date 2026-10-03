@@ -191,9 +191,11 @@
                 }
                 <div class="combo-probability-row probability-total">
                     <span class="combo-probability-name">Any active combo</span>
-                    <div class="comparison-value">
-                    <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
-                    @if (pinnedResult is not null && CanCompare) { <small class="result-difference">@PinnedResultSnapshot.Difference(acceptedComparison!.Total, pinnedResult.Total)</small> }
+                    <div class="comparison-value result-value-group">
+                        <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
+                        @if (pinnedResult is not null && CanCompare && PinnedResultSnapshot.DifferencePresentation(acceptedComparison!.Total, pinnedResult.Total) is { } totalDifference) {
+                            <small class="result-difference @totalDifference.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {totalDifference.Text}")">@totalDifference.Text</small>
+                        }
                     </div>
                 </div>
                 @{
@@ -204,28 +206,40 @@
                         .ToList();
                 }
                 @if (groupResults.Count > 0) {
-                    <div class="probability-groups">
+                    <div class="probability-groups @(ungroupedComboResults.Count == 0 ? "probability-groups-last" : null)">
                         @foreach (var group in groupResults) {
                             var groupComboResults = result.ComboProbabilities
                                 .Where(comboResult => comboResult.GroupId == group.GroupId)
                                 .ToList();
+                            var groupComparison = CurrentGroupComparison(group.GroupId);
                             <section class="probability-group-container">
                                 <h6 class="combo-probability-row probability-group probability-group-heading">
                                     <span class="combo-probability-name">
                                         @group.GroupName <small class="text-body-secondary fw-normal">(@group.ActiveComboCount active)</small>
                                     </span>
-                                    <strong class="combo-probability-value">@group.Probability.ToString("P2")</strong>
+                                    <span class="result-value-group">
+                                        <strong class="combo-probability-value">@group.Probability.ToString("P2")</strong>
+                                        @if (groupComparison?.Difference is { } groupDelta) {
+                                            <small class="result-difference @groupDelta.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {groupDelta.Text}")">@groupDelta.Text</small>
+                                        }
+                                    </span>
                                 </h6>
-                                @if (CurrentGroupComparison(group.GroupId) is { } groupComparison) { <small class="result-row-comparison">@groupComparison</small> }
+                                @if (groupComparison?.Status is { } groupStatus) { <small class="result-row-comparison" role="note">@groupStatus</small> }
                                 @if (groupComboResults.Count > 0) {
                                     <ol class="combo-probability-list probability-group-members">
                                         @foreach (var comboResult in groupComboResults) {
+                                            var comboComparison = CurrentComboComparison(comboResult.ComboIndex);
                                             <li class="combo-probability-item">
                                                 <div class="combo-probability-row">
                                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
-                                                    <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
+                                                    <span class="result-value-group">
+                                                        <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
+                                                        @if (comboComparison?.Difference is { } groupedComboDelta) {
+                                                            <small class="result-difference @groupedComboDelta.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {groupedComboDelta.Text}")">@groupedComboDelta.Text</small>
+                                                        }
+                                                    </span>
                                                 </div>
-                                                @if (CurrentComboComparison(comboResult.ComboIndex) is { } comparison) { <small class="result-row-comparison">@comparison</small> }
+                                                @if (comboComparison?.Status is { } comboStatus) { <small class="result-row-comparison" role="note">@comboStatus</small> }
                                             </li>
                                         }
                                     </ol>
@@ -238,12 +252,18 @@
                     <h6 class="@(groupResults.Count > 0 ? "fw-bold" : null)">@(groupResults.Count > 0 ? "Ungrouped combos" : "Individual combos")</h6>
                     <ol class="combo-probability-list probability-ungrouped-combos">
                         @foreach (var comboResult in ungroupedComboResults) {
+                            var comboComparison = CurrentComboComparison(comboResult.ComboIndex);
                             <li class="combo-probability-item">
                                 <div class="combo-probability-row">
                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
-                                    <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
+                                    <span class="result-value-group">
+                                        <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
+                                        @if (comboComparison?.Difference is { } ungroupedComboDelta) {
+                                            <small class="result-difference @ungroupedComboDelta.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {ungroupedComboDelta.Text}")">@ungroupedComboDelta.Text</small>
+                                        }
+                                    </span>
                                 </div>
-                                @if (CurrentComboComparison(comboResult.ComboIndex) is { } comparison) { <small class="result-row-comparison">@comparison</small> }
+                                @if (comboComparison?.Status is { } comboStatus) { <small class="result-row-comparison" role="note">@comboStatus</small> }
                             </li>
                         }
                     </ol>
