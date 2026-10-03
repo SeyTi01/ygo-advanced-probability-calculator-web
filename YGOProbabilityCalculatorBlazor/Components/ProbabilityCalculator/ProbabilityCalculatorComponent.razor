@@ -581,7 +581,7 @@
             errorMessage = null;
             StateHasChanged();
 
-            var snapshot = CalculationSnapshot.Capture(cards, combos, handSize, comboGroups);
+            var snapshot = CalculationSnapshot.Capture(cards, combos, handSize, comboGroups, CalculationWorkPolicy.Interactive);
             var comparisonContext = CaptureComparisonContext();
             var result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
             if (OwnsRequest()) {
