@@ -2678,16 +2678,20 @@ public class CalculatorEditorTest {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Original combo"));
+        var copyButton = cut.Find("button[title='Copy a summary of these results']");
+        Assert.That(copyButton.HasAttribute("disabled"), Is.False);
 
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         AssertPreviousResult(cut);
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
+        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
         Assert.That(calculator.CallCount, Is.EqualTo(1), "input edits must not calculate automatically");
 
         var calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
             await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Assert.That(cut.Find(".results-section button").HasAttribute("disabled"), Is.True);
+            Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
             AssertPreviousResult(cut);
             Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         }
@@ -2699,6 +2703,7 @@ public class CalculatorEditorTest {
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.75.ToString("P2")));
         Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Updated combo"));
+        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
     }
 
