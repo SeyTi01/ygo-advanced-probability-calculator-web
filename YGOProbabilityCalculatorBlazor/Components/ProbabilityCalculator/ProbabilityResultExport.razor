@@ -107,14 +107,14 @@
     [Parameter]
     public TimeProvider FeedbackTimeProvider { get; set; } = TimeProvider.System;
 
-    private bool CanCopy => Result is not null && HandSize >= 1 && !IsStale && !IsCalculating;
+    private bool CanCopy => Result is not null && HandSize >= 1 && !IsCalculating;
     private string CopyButtonClass => _copySucceeded
         ? "btn btn-sm btn-outline-success d-inline-flex align-items-center gap-2"
         : "btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2";
 
     private string CopyUnavailableMessage => IsCalculating
         ? "Wait for the calculation to finish before copying results."
-        : "Recalculate to copy current results.";
+        : "The original result context is unavailable.";
 
     protected override void OnParametersSet() {
         if (_hasObservedParameters &&
@@ -181,9 +181,12 @@
 
         // Capture the accepted result, hand size, culture, and text before any interop await.
         var handSize = HandSize;
+        var stale = IsStale;
+        var culture = CultureInfo.CurrentCulture;
         var version = _validityVersion;
         var attemptVersion = ++_copyAttemptVersion;
-        var summary = ProbabilityResultSummaryFormatter.Format(result, handSize, CultureInfo.CurrentCulture);
+        var summary = ProbabilityResultSummaryFormatter.Format(result, handSize, culture);
+        if (stale) summary = "Previous result — current inputs have changed.\n" + summary;
         CancelSuccessReset();
         _copySucceeded = false;
         _feedback = null;

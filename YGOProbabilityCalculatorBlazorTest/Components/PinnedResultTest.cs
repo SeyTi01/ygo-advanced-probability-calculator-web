@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -308,6 +309,120 @@ public class PinnedResultTest {
         Assert.That(text, Does.Contain(.842.ToString("P2")).And.Not.Contain(.814.ToString("P2")));
         Assert.That(text, Does.Contain("Hand size: 3").And.Not.Contain("Pinned").And.Not.Contain("\\n"));
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Has.Count.EqualTo(1));
+    }
+    [TestCase(false)] [TestCase(true)]
+    public async Task StaleCopyOwnsHandSizeRowsAndGroupsWithoutChangingEditedSession(bool pin) {
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "5" });
+        var calculation = Start();
+        var original = Result(0, .814);
+        worker.Jobs[0].SetResult(original); await calculation;
+        if (pin) await Pin();
+        // Even mutation of the worker's returned lists cannot alter accepted display/export rows.
+        ((List<ComboProbabilityResult>)original.ComboProbabilities).Clear();
+        ((List<GroupProbabilityResult>)original.GroupProbabilities!).Clear();
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
+        await Call("MoveCombo", (0, 2));
+        await Call("ReplaceCombo", (2, Field<List<Combo>>("combos")[2].WithName("Edited route").WithGroup(null)));
+        await Call("RenameGroup", ("g", "Edited group"));
+        await Call("RemoveCombo", 0);
+        await Call("ReplaceCard", (0, Field<List<Card>>("cards")[0].WithCopies(3)));
+        var session = sessions.SerializeSession(FieldSession());
+        var writes = context.JSInterop.Invocations["sessionRecovery.update"].Count;
+        var copy = cut.Find("button[title='Copy a summary of these results']");
+        Assert.That(copy.HasAttribute("disabled"), Is.False);
+        Assert.That(cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Find("#pinUnavailableReason").ClassList, Does.Contain("visually-hidden"));
+        await copy.ClickAsync(new());
+        const string expected = "Previous result — current inputs have changed.\nProbability results\nHand size: 5\nAny active combo: 81.40%\n\nGroup probabilities:\n- **Group** — 81.40% (1 active)\n  - **Duplicate** — 81.40%\n\nUngrouped combos:\n- **Duplicate** — 81.40%\n- **Unnamed combo 3** — 81.40%";
+        Assert.That(clipboard.Invocations["copyText"].Last().Arguments[0], Is.EqualTo(expected));
+        Assert.That(sessions.SerializeSession(FieldSession()), Is.EqualTo(session));
+        Assert.That(cut.FindComponent<SessionShareButton>().Instance.Snapshot, Is.EqualTo(session));
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.update"], Has.Count.EqualTo(writes));
+        var running = Start();
+        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
+        await cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
+        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
+        await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
+        Assert.That(clipboard.Invocations["copyText"].Last().Arguments[0], Is.EqualTo(expected));
+        worker.Jobs[1].SetResult(Result(1, .1)); await running;
+        await Accept(.842);
+        await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
+        var fresh = (string)clipboard.Invocations["copyText"].Last().Arguments[0]!;
+        Assert.That(fresh, Does.StartWith("Probability results\nHand size: 6\nAny active combo: 84.20%"));
+        Assert.That(fresh, Does.Contain("Edited route").And.Not.Contain("Previous result"));
+    }
+
+    [Test] public async Task SharedOfferDismissalAndGatedAcceptanceKeepPinAndFenceOldClipboardAndWorker() {
+        await Accept(); await Pin(); var pin = Pinned;
+        var navigation = context.Services.GetRequiredService<NavigationManager>();
+        var replacement = Workspace(6);
+        replacement.Combos[0] = replacement.Combos[0].WithName("Shared route");
+        var link = SessionShareCodec.CreateLink(navigation.BaseUri, sessions.SerializeSession(replacement));
+        var before = sessions.SerializeSession(FieldSession());
+        await cut.InvokeAsync(() => navigation.NavigateTo(link));
+        await cut.Find("section[aria-label='Shared session'] .btn-secondary").ClickAsync(new());
+        Assert.That(Pinned, Is.SameAs(pin));
+        Assert.That(sessions.SerializeSession(FieldSession()), Is.EqualTo(before));
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+        var delayed = clipboard.Setup<bool>("copyText", _ => true);
+        var copying = cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
+        var oldWork = Start();
+        await cut.InvokeAsync(() => navigation.NavigateTo(link));
+        var recovery = cut.FindComponent<SessionRecovery>();
+        cut.WaitForState(() => recovery.Instance.InspectionComplete);
+        await Call("LoadSharedSessionAsync");
+        Assert.That(Pinned, Is.SameAs(pin));
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        Assert.That(typeof(ProbabilityCalculatorComponent).GetField("acceptedComparison", Private)!.GetValue(cut.Instance), Is.Null);
+        worker.Jobs[1].SetResult(Result(1, .1)); await oldWork;
+        delayed.SetResult(false); await copying;
+        Assert.That(cut.FindAll(".probability-result-copy-fallback"), Is.Empty);
+        Assert.That(cut.FindAll(".probability-results"), Is.Empty);
+        await Accept(.842); await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
+        Assert.That(clipboard.Invocations["copyText"].Last().Arguments[0], Does.StartWith("Probability results\nHand size: 6\nAny active combo: 84.20%"));
+        var shared = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
+        Assert.That(shared, Is.EqualTo(sessions.SerializeSession(FieldSession())));
+        Assert.That(shared, Does.Not.Contain("acceptedComparison").And.Not.Contain("pinnedResult").And.Not.Contain("Previous result").And.Not.Contain("84.20%"));
+        Assert.That(cut.FindAll(".result-row-comparison").Select(x => x.TextContent), Does.Contain("Unrelated session"));
+    }
+
+    [TestCase("edit")] [TestCase("dismiss")] [TestCase("failure")]
+    public async Task ObsoleteOrFailedSharedLoadRetainsPinAndAcceptedExportContext(string action) {
+        await Accept(); await Pin(); var pin = Pinned;
+        var accepted = Field<PinnedResultSnapshot>("acceptedComparison");
+        var navigation = context.Services.GetRequiredService<NavigationManager>();
+        var replacement = Workspace(6);
+        replacement.Combos[0] = replacement.Combos[0].WithName("Obsolete shared route");
+        await cut.InvokeAsync(() => navigation.NavigateTo(SessionShareCodec.CreateLink(navigation.BaseUri, sessions.SerializeSession(replacement))));
+        cut.WaitForState(() => cut.FindComponent<SessionRecovery>().Instance.InspectionComplete);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock.Get(context.Services.GetRequiredService<ILegacyCardMetadataEnricher>())
+            .Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(() => { started.SetResult(); return gate.Task; });
+        var loading = Call("LoadSharedSessionAsync");
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        if (action == "edit") await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+        else if (action == "dismiss") await Call("DismissSharedSession");
+        // Enrichment failures are recoverable and intentionally do not block a valid load.
+        // A failed session decode exercises the actual failure path before acceptance.
+        else {
+            await cut.InvokeAsync(() => navigation.NavigateTo(navigation.BaseUri + "#ygo-session=v1.%ZZ"));
+        }
+        gate.SetResult(); await loading;
+        Assert.That(Pinned, Is.SameAs(pin));
+        Assert.That(Field<PinnedResultSnapshot>("acceptedComparison"), Is.SameAs(accepted));
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+        Assert.That(sessions.SerializeSession(FieldSession()), Does.Not.Contain("Obsolete shared route"));
+        await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
+        Assert.That(clipboard.Invocations["copyText"].Last().Arguments[0], Does.Contain("Hand size: 2").And.Not.Contain("Obsolete shared route"));
+    }
+
+    [Test] public async Task MissingAcceptedContextFailsClosedRatherThanExportingLiveHandSize() {
+        await Accept();
+        typeof(ProbabilityCalculatorComponent).GetField("acceptedComparison", Private)!.SetValue(cut.Instance, null);
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
+        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
+        Assert.That(clipboard.Invocations["copyText"], Is.Empty);
     }
     private sealed class SessionFile(string json) : IBrowserFile {
         public string Name => "fixture.json";

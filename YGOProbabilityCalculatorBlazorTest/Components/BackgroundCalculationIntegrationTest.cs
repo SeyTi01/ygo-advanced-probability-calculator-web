@@ -172,7 +172,10 @@ public class BackgroundCalculationIntegrationTest {
         Assert.That(saved.HandSize, Is.EqualTo(3));
         Assert.That(calculator.Tokens[2].IsCancellationRequested, Is.True);
         Assert.That(cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
-        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
+        await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
+        Assert.That(context.JSInterop.Invocations["copyText"].Last().Arguments[0],
+            Does.StartWith("Previous result — current inputs have changed.\nProbability results\nHand size: 2"));
         var latest = Start();
         calculator.Jobs[2].SetException(new InvalidOperationException("Late edit error")); await worker;
         await Complete(3, latest, "Current result");

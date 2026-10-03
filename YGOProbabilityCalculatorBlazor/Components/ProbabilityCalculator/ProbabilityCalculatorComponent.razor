@@ -179,7 +179,7 @@
                         </small>
                     }
                     <ProbabilityResultExport Result="result"
-                                             HandSize="@(acceptedComparison?.Context.HandSize ?? handSize)"
+                                             HandSize="@(acceptedComparison?.Context.HandSize ?? 0)"
                                              IsStale="calculationResultIsStale"
                                              IsCalculating="isCalculating" />
                 </div>
@@ -588,8 +588,13 @@
             var comparisonContext = CaptureComparisonContext();
             var result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
             if (OwnsRequest()) {
-                acceptedComparison = PinnedResultSnapshot.Capture(comparisonContext, result);
-                calculationResult = result;
+                // Own the accepted rows independently of mutable worker result collections.
+                var acceptedResult = result with {
+                    ComboProbabilities = result.ComboProbabilities.ToArray(),
+                    GroupProbabilities = result.GroupProbabilities?.ToArray()
+                };
+                acceptedComparison = PinnedResultSnapshot.Capture(comparisonContext, acceptedResult);
+                calculationResult = acceptedResult;
                 calculationResultIsStale = false;
             }
         }
