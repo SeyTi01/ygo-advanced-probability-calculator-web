@@ -113,21 +113,21 @@
 
     <div class="results-section">
         <div class="calculate-action">
-            <button class="btn btn-primary btn-lg w-100"
-                    @onclick="Calculate"
-                    disabled="@(isCalculating || !CanCalculate)">
+            <button type="button"
+                    class="btn btn-lg w-100 @(isCalculating ? "btn-outline-secondary" : "btn-primary")"
+                    aria-label="@(isCalculating ? "Cancel calculation" : null)"
+                    title="@(isCalculating ? "Cancel calculation" : null)"
+                    aria-busy="@(isCalculating ? "true" : "false")"
+                    @onclick="HandleCalculationAction"
+                    disabled="@(!isCalculating && !CanCalculate)">
                 @if (isCalculating) {
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    <span class="ms-1">Calculating...</span>
+                    <span class="ms-1">Cancel</span>
                 }
                 else {
                     <span>Calculate</span>
                 }
             </button>
-            @if (isCalculating) {
-                <button type="button" class="btn btn-outline-secondary mt-2" @onclick="CancelCalculation"
-                        aria-label="Cancel calculation" title="Cancel calculation">Cancel</button>
-            }
         </div>
 
         @if (CalculationUnavailableMessage is { } unavailableMessage) {
@@ -526,8 +526,7 @@
             }
         }
         catch (OperationCanceledException) {
-            if (OwnsRequest())
-                errorMessage = "Calculation was cancelled.";
+            // Cancellation is expected when the user, an edit, or disposal stops a request.
         }
         catch (ProbabilityCalculationLimitException ex) {
             if (OwnsRequest())
@@ -553,9 +552,16 @@
         cancellation?.Cancel();
     }
 
+    private Task HandleCalculationAction() {
+        if (!isCalculating)
+            return Calculate();
+
+        CancelCalculation();
+        return Task.CompletedTask;
+    }
+
     private void CancelCalculation() {
         StopCalculation();
-        errorMessage = "Calculation was cancelled.";
     }
 
     private async Task ImportDeckAsync(InputFileChangeEventArgs e) {
