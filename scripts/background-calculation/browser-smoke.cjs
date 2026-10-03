@@ -178,7 +178,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  async function waitClosed(){for(let i=0;i<300 && liveWorkers;i++)await page.waitForTimeout(10);assert.equal(liveWorkers,0);}
  await startCpu();await page.locator('#handSize').fill('4');await page.locator('#handSize').press('Tab');
  await page.locator('.probability-result-status').waitFor();await waitClosed();
- assert.equal(await page.getByRole('button',{name:'Copy results',exact:true}).isDisabled(),true,'stale results must remain unavailable to copy');
+ assert.equal(await page.getByRole('button',{name:'Copy results',exact:true}).isDisabled(),false,'idle stale results retain their captured export snapshot');
  assert.equal(await page.locator('.probability-total-value').innerText(),oldResult);
  await page.locator('#handSize').fill('5');await page.locator('#handSize').press('Tab');
  await startCpu();await load(simple);await waitClosed();await runSuccess();

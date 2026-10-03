@@ -2692,7 +2692,7 @@ public class CalculatorEditorTest {
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         AssertPreviousResult(cut);
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
-        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
         Assert.That(calculator.CallCount, Is.EqualTo(1), "input edits must not calculate automatically");
 
         var calculation = Button(cut, "Calculate").ClickAsync(new());
