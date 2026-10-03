@@ -8,12 +8,25 @@
     <div class="probability-result-export-toolbar">
         <button id="@_copyButtonId"
                 type="button"
-                class="btn btn-sm btn-outline-primary"
+                class="@CopyButtonClass"
                 title="Copy a summary of these results"
                 disabled="@(!CanCopy)"
                 aria-describedby="@(!CanCopy ? _unavailableMessageId : null)"
                 @onclick="CopyResultsAsync">
-            Copy results
+            <span class="probability-result-copy-icon-slot" aria-hidden="true">
+                @if (_copySucceeded) {
+                    <svg class="probability-result-copy-success-icon" viewBox="0 0 16 16" focusable="false">
+                        <path d="m2.5 8.25 3.25 3.25 7.75-7.75" />
+                    </svg>
+                }
+                else {
+                    <svg class="probability-result-copy-rest-icon" viewBox="0 0 16 16" focusable="false">
+                        <path d="M5.25 3.25h6.5c.83 0 1.5.67 1.5 1.5v8c0 .83-.67 1.5-1.5 1.5h-6.5c-.83 0-1.5-.67-1.5-1.5v-8c0-.83.67-1.5 1.5-1.5Z" />
+                        <path d="M3.5 11.75H3c-.83 0-1.5-.67-1.5-1.5v-8c0-.83.67-1.5 1.5-1.5h6.5c.83 0 1.5.67 1.5 1.5v.5" />
+                    </svg>
+                }
+            </span>
+            <span>Copy results</span>
         </button>
         @if (!CanCopy) {
             <small id="@_unavailableMessageId" class="probability-result-export-unavailable">
@@ -54,6 +67,7 @@
 
 @code {
     private const string ClipboardModulePath = "./js/probabilityResultExport.js";
+    private static readonly TimeSpan CopySuccessDuration = TimeSpan.FromMilliseconds(1750);
 
     private readonly string _copyButtonId = $"copy-results-{Guid.NewGuid():N}";
     private readonly string _unavailableMessageId = $"copy-unavailable-{Guid.NewGuid():N}";
@@ -70,7 +84,11 @@
     private bool _disposed;
     private bool _focusFallbackAfterRender;
     private bool _focusCopyButtonAfterRender;
+    private bool _copySucceeded;
     private long _validityVersion;
+    private long _copyAttemptVersion;
+    private long _successResetVersion;
+    private ITimer? _successResetTimer;
     private string? _fallbackText;
     private string? _feedback;
 
@@ -86,7 +104,13 @@
     [Parameter]
     public bool IsCalculating { get; set; }
 
+    [Parameter]
+    public TimeProvider FeedbackTimeProvider { get; set; } = TimeProvider.System;
+
     private bool CanCopy => Result is not null && HandSize >= 1 && !IsStale && !IsCalculating;
+    private string CopyButtonClass => _copySucceeded
+        ? "btn btn-sm btn-outline-success d-inline-flex align-items-center gap-2"
+        : "btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2";
 
     private string CopyUnavailableMessage => IsCalculating
         ? "Wait for the calculation to finish before copying results."
@@ -107,8 +131,11 @@
         _observedIsStale = IsStale;
         _observedIsCalculating = IsCalculating;
         _validityVersion++;
+        _copyAttemptVersion++;
+        CancelSuccessReset();
         _fallbackText = null;
         _feedback = null;
+        _copySucceeded = false;
         _focusFallbackAfterRender = false;
         _focusCopyButtonAfterRender = false;
     }
@@ -155,45 +182,106 @@
         // Capture the accepted result, hand size, culture, and text before any interop await.
         var handSize = HandSize;
         var version = _validityVersion;
+        var attemptVersion = ++_copyAttemptVersion;
         var summary = ProbabilityResultSummaryFormatter.Format(result, handSize, CultureInfo.CurrentCulture);
+        CancelSuccessReset();
+        _copySucceeded = false;
         _feedback = null;
         _fallbackText = null;
 
         if (_clipboardModule is null) {
-            ShowFallbackIfCurrent(version, result, handSize, summary);
+            ShowFallbackIfCurrent(version, attemptVersion, result, handSize, summary);
             return;
         }
 
+        bool copied;
         try {
-            var copied = await _clipboardModule.InvokeAsync<bool>("copyText", summary);
-            if (!IsCurrentSnapshot(version, result, handSize)) return;
-
-            if (copied) {
-                _feedback = "Results copied.";
-            }
-            else {
-                ShowFallbackIfCurrent(version, result, handSize, summary);
-            }
+            copied = await _clipboardModule.InvokeAsync<bool>("copyText", summary);
         }
         catch (Exception exception) when (IsJavaScriptFailure(exception)) {
-            ShowFallbackIfCurrent(version, result, handSize, summary);
+            ShowFallbackIfCurrent(version, attemptVersion, result, handSize, summary);
+            return;
         }
+
+        if (!IsCurrentSnapshot(version, attemptVersion, result, handSize)) return;
+
+        if (copied) {
+            _copySucceeded = true;
+            _feedback = "Results copied.";
+            StartSuccessReset(version, attemptVersion, result, handSize);
+        }
+        else {
+            ShowFallbackIfCurrent(version, attemptVersion, result, handSize, summary);
+        }
+    }
+
+    private void StartSuccessReset(
+        long version,
+        long attemptVersion,
+        ProbabilityCalculationResult result,
+        int handSize) {
+        CancelSuccessReset();
+        var resetVersion = ++_successResetVersion;
+        var state = new SuccessResetState(resetVersion, version, attemptVersion, result, handSize);
+        _successResetTimer = FeedbackTimeProvider.CreateTimer(
+            OnSuccessResetTimer,
+            state,
+            CopySuccessDuration,
+            Timeout.InfiniteTimeSpan);
+    }
+
+    private void OnSuccessResetTimer(object? state) {
+        if (state is not SuccessResetState resetState) return;
+        _ = ResetSuccessFeedbackAsync(resetState);
+    }
+
+    private async Task ResetSuccessFeedbackAsync(SuccessResetState resetState) {
+        try {
+            await InvokeAsync(() => {
+                if (_disposed ||
+                    resetState.ResetVersion != _successResetVersion ||
+                    !IsCurrentSnapshot(resetState.ValidityVersion, resetState.AttemptVersion, resetState.Result, resetState.HandSize) ||
+                    !_copySucceeded) {
+                    return;
+                }
+
+                _successResetTimer?.Dispose();
+                _successResetTimer = null;
+                _copySucceeded = false;
+                StateHasChanged();
+            });
+        }
+        catch (Exception exception) when (_disposed && exception is InvalidOperationException) {
+            // Renderer teardown may race the timer completion.
+        }
+        catch (OperationCanceledException) when (_disposed) {
+            // The renderer may cancel the dispatched update during teardown.
+        }
+    }
+
+    private void CancelSuccessReset() {
+        _successResetVersion++;
+        var resetTimer = _successResetTimer;
+        _successResetTimer = null;
+        resetTimer?.Dispose();
     }
 
     private void ShowFallbackIfCurrent(
         long version,
+        long attemptVersion,
         ProbabilityCalculationResult result,
         int handSize,
         string summary) {
-        if (!IsCurrentSnapshot(version, result, handSize)) return;
+        if (!IsCurrentSnapshot(version, attemptVersion, result, handSize)) return;
 
         _fallbackText = summary;
         _focusFallbackAfterRender = true;
     }
 
-    private bool IsCurrentSnapshot(long version, ProbabilityCalculationResult result, int handSize) =>
+    private bool IsCurrentSnapshot(long version, long attemptVersion, ProbabilityCalculationResult result, int handSize) =>
         !_disposed &&
         version == _validityVersion &&
+        attemptVersion == _copyAttemptVersion &&
         CanCopy &&
         ReferenceEquals(Result, result) &&
         HandSize == handSize;
@@ -206,9 +294,21 @@
     private static bool IsJavaScriptFailure(Exception exception) =>
         exception is JSException or OperationCanceledException or InvalidOperationException;
 
+    private sealed record SuccessResetState(
+        long ResetVersion,
+        long ValidityVersion,
+        long AttemptVersion,
+        ProbabilityCalculationResult Result,
+        int HandSize);
+
     public async ValueTask DisposeAsync() {
+        if (_disposed) return;
+
         _disposed = true;
         _validityVersion++;
+        _copyAttemptVersion++;
+        _copySucceeded = false;
+        CancelSuccessReset();
 
         if (_clipboardModule is null) return;
         try {
