@@ -9,6 +9,8 @@
                     aria-expanded="@(Index == ActiveCardIndex ? "true" : "false")"
                     aria-controls="card@(Index)"
                     @onclick="ToggleCard">
+                <CardArtwork CardId="@Card.Id" ExternalCardId="@(Card.ExternalCardId ?? 0)"
+                             Name="@CardDisplayName" Thumbnail="true" />
                 <span class="card-header-content">
                     <span class="card-header-name">@CardDisplayName <span class="card-copies">(@Card.Copies)</span></span>
 
@@ -51,25 +53,26 @@
             @if (error is not null) {
                 <DismissibleAlert Message="@error" OnDismiss="@(() => error = null)"/>
             }
-            @if (Card.ExternalCardId is > 0 and <= 2147483647) {
-                <CardArtwork CardId="@Card.Id" ExternalCardId="@Card.ExternalCardId.Value"
-                             Name="@CardDisplayName" Visible="@(Index == ActiveCardIndex)" />
-            }
-            <div class="card-identity-fields mb-3">
-                <div class="card-name-field">
-                    <label for="cardName@(Index)" class="form-label">Name</label>
-                    <input id="cardName@(Index)" class="form-control"
-                           value="@(Card.Name ?? string.Empty)"
-                           @oninput="e => Rename(e.Value?.ToString())"/>
+            <div class="card-expanded-identity mb-3">
+                @if (Index == ActiveCardIndex) {
+                    <CardArtwork CardId="@Card.Id" ExternalCardId="@(Card.ExternalCardId ?? 0)" Name="@CardDisplayName" />
+                }
+                <div class="card-identity-fields">
+                    <div class="card-name-field">
+                        <label for="cardName@(Index)" class="form-label">Name</label>
+                        <input id="cardName@(Index)" class="form-control"
+                               value="@(Card.Name ?? string.Empty)"
+                               @oninput="e => Rename(e.Value?.ToString())"/>
+                    </div>
+                    <div class="card-copies-field">
+                        <label for="cardCopies@(Index)" class="form-label">Copies</label>
+                        <input id="cardCopies@(Index)" class="form-control" type="number" min="1"
+                               value="@Card.Copies"
+                               @oninput="e => ChangeCopies(e.Value)"/>
+                    </div>
                 </div>
-                <div class="card-copies-field">
-                    <label for="cardCopies@(Index)" class="form-label">Copies</label>
-                    <input id="cardCopies@(Index)" class="form-control" type="number" min="1"
-                           value="@Card.Copies"
-                           @oninput="e => ChangeCopies(e.Value)"/>
-                </div>
-            </div>
 
+            </div>
             <div class="editor-add-row mb-3">
                 <div class="editor-select-field">
                     <label for="cardCategory@(Index)" class="form-label">Category</label>

@@ -19,6 +19,15 @@ public sealed class CardArtworkService(ICardInfoService cardInfoService) : ICard
             return info?.SelectArtworkImageId(id) is > 0 and <= 2147483647 and var imageId
                 ? $"{ArtworkOrigin}/small/{imageId.ToString(CultureInfo.InvariantCulture)}.jpg" : null;
         }
-        catch { return null; }
+        catch {
+            // Only authoritative absence is a negative cache entry. The viewport loader
+            // owns bounded retries; a failed metadata request must remain retryable.
+            lookups.TryRemove(id, out _);
+            throw;
+        }
     }
+}
+
+public sealed class CardArtworkLookupException(TimeSpan retryAfter) : Exception("Artwork metadata temporarily unavailable") {
+    public TimeSpan RetryAfter { get; } = retryAfter;
 }

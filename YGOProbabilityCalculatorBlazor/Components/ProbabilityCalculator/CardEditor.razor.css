@@ -12,3 +12,12 @@
 .card-property-inspector summary {
     padding-block: 0.5rem;
 }
+
+.card-editor .accordion-button { gap: 0.65rem; padding-block: 0.55rem; }
+.card-expanded-identity { display: flex; gap: 1rem; align-items: flex-start; }
+.card-expanded-identity .card-identity-fields { flex: 1; min-width: 0; }
+@media (max-width: 575.98px) {
+    .card-expanded-identity { gap: 0.75rem; }
+    .card-expanded-identity .card-identity-fields { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+    .card-expanded-identity .card-copies-field { max-width: 5.5rem; }
+}
