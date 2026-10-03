@@ -83,6 +83,7 @@ P(success) = ------------------------
 - Calculate individual combo probabilities, grouped probabilities, and the union of all active combos.
 - Organize related combos into named groups.
 - Import decks from `.ydk` files or YDKe deck codes.
+- Open **Artwork** inside an expanded imported-card editor for an on-demand full-card preview. Images are retained on project hosting; unavailable artwork does not affect calculations or saved sessions. See [artwork delivery setup](infrastructure/artwork/README.md) and the [YGOPRODeck image rules](https://ygoprodeck.com/api-guide/).
 - Save and load complete calculator sessions.
 - Temporarily deactivate cards and combos while testing changes.
 - Reorder cards, categories, combos, and combo groups.

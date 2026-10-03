@@ -11,6 +11,120 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 public class CardInfoServiceTests {
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 9, 0, 0, TimeSpan.Zero);
 
+    private const string ArtworkCardJson = """
+        {"id":1234,"name":"Art","type":"Effect Monster","card_images":[
+          {"id":2222,"image_url_small":"https://images.ygoprodeck.com/images/cards_small/2222.jpg"},
+          {"id":1234,"image_url_small":"https://images.ygoprodeck.com/images/cards_small/1234.jpg"},
+          {"id":100000101,"image_url_small":"https://images.ygoprodeck.com/images/cards_small/100000101.jpg"},
+          {"id":6666,"image_url_small":"https://evil.test/6666.jpg"},
+          {"id":"bad"},null,42]}
+        """;
+
+    [Test]
+    public async Task ArtworkApiCacheRoundTripPreservesCanonicalAndAlternateIdsWithoutProviderUrls() {
+        var storage = new TestLocalStorage(null);
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            "{\"data\":[" + ArtworkCardJson + "]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        var info = await service.GetCardArtworkInfoAsync(1234);
+        Assert.That(info.ArtworkImageIds, Is.EqualTo(new[] {2222, 1234, 100000101}));
+        Assert.That(info.CanonicalCardId, Is.EqualTo(1234));
+        Assert.That(info.SelectArtworkImageId(1234), Is.EqualTo(1234));
+        Assert.That(info.SelectArtworkImageId(2222), Is.EqualTo(2222));
+        Assert.That(info.SelectArtworkImageId(5555), Is.EqualTo(1234));
+        Assert.That((info with { CanonicalCardId = 9999 }).SelectArtworkImageId(5555), Is.EqualTo(2222));
+        Assert.That(storage.RawCache, Does.Not.Contain("images.ygoprodeck").And.Not.Contain("evil.test")
+            .And.Not.Contain("data:image").And.Not.Contain("blob:"));
+        var next = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        var restored = await next.GetCardArtworkInfoAsync(1234);
+        Assert.That(restored.ArtworkImageIds, Is.EqualTo(info.ArtworkImageIds));
+        Assert.That(restored.SelectArtworkImageId(2222), Is.EqualTo(2222));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public async Task AlternateQueryPasscodeRemainsDistinctFromCanonicalAndInternalIdentity() {
+        var storage = new TestLocalStorage(CreateCacheJson(Now, (5678, "Other")));
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            "{\"data\":[" + ArtworkCardJson + "]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        var info = await service.GetCardArtworkInfoAsync(2222);
+        Assert.That(info.Id, Is.EqualTo(2222));
+        Assert.That(info.CanonicalCardId, Is.EqualTo(1234));
+        Assert.That(info.SelectArtworkImageId(2222), Is.EqualTo(2222));
+        var url = await new CardArtworkService(service).GetArtworkUrlAsync(2222);
+        Assert.That(url, Is.EqualTo(CardArtworkService.ArtworkOrigin + "/small/2222.jpg"));
+        Assert.That(handler.Requests.Single(), Does.EndWith("?id=2222"));
+    }
+
+    [TestCase("")]
+    [TestCase(",\"card_images\":null")]
+    [TestCase(",\"card_images\":42")]
+    [TestCase(",\"card_images\":[]")]
+    [TestCase(",\"card_images\":[{\"id\":1,\"image_url_small\":\"https://evil.test/image.jpg\"}]")]
+    public async Task AuthoritativeMissingOrMalformedArtworkPreservesCardAndDoesNotRefetch(string images) {
+        var storage = new TestLocalStorage(null);
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            "{\"data\":[{\"id\":1234,\"name\":\"Spell\",\"type\":\"Spell Card\"" + images + "}]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        var info = await service.GetCardArtworkInfoAsync(1234);
+        Assert.That(info.Type, Is.EqualTo("Spell Card"));
+        Assert.That(info.ArtworkMetadataKnown, Is.True);
+        Assert.That(info.SelectArtworkImageId(1234), Is.Null);
+        var urls = new CardArtworkService(service);
+        Assert.That(await urls.GetArtworkUrlAsync(1234), Is.Null);
+        var next = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        Assert.That((await next.GetCardArtworkInfoAsync(1234)).ArtworkMetadataKnown, Is.True);
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task FreshExistingV2CacheEnrichesOnlyRequestedArtworkOnce(bool offline) {
+        var storage = new TestLocalStorage(CreateCacheJson(Now, (1234, "Saved"), (5678, "Other")));
+        var handler = new RecordingHttpMessageHandler((_, _) => Task.FromResult(offline
+            ? Response(HttpStatusCode.ServiceUnavailable, "{}")
+            : Response(HttpStatusCode.OK, "{\"data\":[" + ArtworkCardJson + "]}")));
+        using var client = new HttpClient(handler);
+        var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
+        Assert.That((await service.GetCardInfoAsync(1234)).Name, Is.EqualTo("Saved"));
+        Assert.That(handler.Requests, Is.Empty);
+        var results = await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => service.GetCardArtworkInfoAsync(1234)));
+        Assert.That(results.All(info => offline ? info.ArtworkImageIds.Count == 0 : info.ArtworkImageIds.Count == 3), Is.True);
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+        Assert.That(handler.Requests[0], Does.EndWith("?id=1234"));
+        using var doc = JsonDocument.Parse(storage.RawCache!);
+        Assert.That(doc.RootElement.GetProperty("LastFullRefreshUtc").GetDateTimeOffset(), Is.EqualTo(Now));
+        Assert.That((await service.GetCardInfoAsync(5678)).Name, Is.EqualTo("Other"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public async Task DisplayLookupsShareInFlightResolutionAndCacheUnavailableIds() {
+        var info = new MockCardInfo();
+        var artwork = new CardArtworkService(info);
+        var first = artwork.GetArtworkUrlAsync(1234);
+        var second = artwork.GetArtworkUrlAsync(1234);
+        Assert.That(info.Calls, Is.EqualTo(1));
+        info.Result.SetResult(new CardInfo { Id = 1234, CanonicalCardId = 1234,
+            ArtworkImageIds = new[] {1234}, ArtworkMetadataKnown = true });
+        Assert.That(await first, Is.EqualTo(CardArtworkService.ArtworkOrigin + "/small/1234.jpg"));
+        Assert.That(await second, Is.EqualTo(await first));
+        Assert.That(await artwork.GetArtworkUrlAsync(0), Is.Null);
+        Assert.That(info.Calls, Is.EqualTo(1));
+    }
+
+    private sealed class MockCardInfo : ICardInfoService {
+        public int Calls;
+        public TaskCompletionSource<CardInfo> Result { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task<CardInfo> GetCardInfoAsync(int id) { Calls++; return Result.Task; }
+        public Task<string> GetCardNameAsync(int id) => throw new NotSupportedException();
+        public Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names) => throw new NotSupportedException();
+    }
+
     private const string RichCardJson = """
         {"id":1234,"name":"Pendulum","type":"XYZ Pendulum Effect Monster","frameType":"xyz_pendulum",
          "race":"Warrior","attribute":"FIRE","level":4,"linkval":2,"scale":8,"archetype":"Vanquish Soul",
@@ -113,7 +227,8 @@ public class CardInfoServiceTests {
         var service = new CardInfoService(storage, client, new TestTimeProvider(Now));
         var info = await service.GetCardInfoAsync(1234);
         Assert.That(info, Is.EqualTo(new CardInfo { Id = 1234, Name = "Pendulum", Type = "XYZ Pendulum Effect Monster",
-            FrameType = "xyz_pendulum", Race = "Warrior", Attribute = "FIRE", Level = 4, LinkVal = 2, Scale = 8, Archetype = "Vanquish Soul" }));
+            FrameType = "xyz_pendulum", Race = "Warrior", Attribute = "FIRE", Level = 4, LinkVal = 2, Scale = 8, Archetype = "Vanquish Soul",
+            CanonicalCardId = 1234, ArtworkMetadataKnown = true }));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
         Assert.That(handler.Requests[0].EndsWith(single ? "?id=1234" : "cardinfo.php"), Is.True);
         Assert.That(storage.RawCache, Does.Not.Contain("Not cached").And.Not.Contain("card_prices").And.Not.Contain("image_url"));

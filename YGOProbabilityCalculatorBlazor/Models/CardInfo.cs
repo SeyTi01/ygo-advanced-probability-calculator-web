@@ -12,4 +12,11 @@ public sealed record CardInfo {
     public int? LinkVal { get; init; }
     public int? Scale { get; init; }
     public string? Archetype { get; init; }
+    public int? CanonicalCardId { get; init; }
+    public IReadOnlyList<int> ArtworkImageIds { get; init; } = Array.Empty<int>();
+    public bool ArtworkMetadataKnown { get; init; }
+
+    public int? SelectArtworkImageId(int importedPasscode) => ArtworkImageIds.Contains(importedPasscode)
+        ? importedPasscode : CanonicalCardId is { } canonical && ArtworkImageIds.Contains(canonical)
+            ? canonical : ArtworkImageIds.Count > 0 ? ArtworkImageIds[0] : null;
 }
