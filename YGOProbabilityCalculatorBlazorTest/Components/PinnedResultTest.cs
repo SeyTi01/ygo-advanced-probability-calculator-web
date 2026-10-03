@@ -61,6 +61,18 @@ public class PinnedResultTest {
     private Task Pin() => cut.Find(".pin-result-action").ClickAsync(new());
     private Task Clear() => cut.Find(".pinned-result button").ClickAsync(new());
     private PinnedResultSnapshot Pinned => cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+    private (string Current, string Pinned) ContextDescriptions() => (
+        cut.Find(".probability-results > p.small").TextContent.Trim(),
+        cut.FindComponent<PinnedResultPanel>().Find(".pinned-result > p.small").TextContent.Trim());
+    private void AssertContextDescriptions(string current, string pinned) {
+        var actual = ContextDescriptions();
+        Assert.That(actual.Current, Is.EqualTo(current));
+        Assert.That(actual.Pinned, Is.EqualTo(pinned));
+        Assert.That(cut.Find(".probability-results > p.small").GetAttribute("class"), Is.EqualTo("small text-body-secondary mb-2"));
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Find(".pinned-result > p.small").GetAttribute("class"), Is.EqualTo("small text-body-secondary mb-2"));
+        Assert.That(actual.Current, Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition"));
+        Assert.That(actual.Pinned, Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition"));
+    }
     private ProbabilityCalculationResult Result(int job, double total) {
         var input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(worker.Inputs[job].Json)!;
         return new(total, input.Combos.Select((c, i) => new ComboProbabilityResult(i, c.Name, total, c.GroupId)).ToList(),
@@ -82,6 +94,7 @@ public class PinnedResultTest {
         var version = Field<long>("calculationVersion");
         var writes = context.JSInterop.Invocations["sessionRecovery.update"].Count;
         await Pin(); var first = Pinned;
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
         await Accept(.842);
         Assert.That(Pinned, Is.SameAs(first));
         Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
@@ -209,8 +222,29 @@ public class PinnedResultTest {
         Assert.That(current.CompareCombo(current.Combos[0], original, true), Is.EqualTo("+2.8%"));
         Assert.That(current.CompareCombo(current.Combos[1], original, true), Is.EqualTo("+2.8%"));
         Assert.That(current.CompareGroup(current.Groups[0], original, true), Is.EqualTo("+2.8%"));
-        Assert.That(cut.Find(".probability-results").TextContent, Does.Contain("Different deck composition"));
+        AssertContextDescriptions("Hand size 2 · 7 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
         Assert.That(Pinned.Combos.Select(c => c.Label), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
+    }
+    [Test]
+    public async Task CurrentAndPinnedContextSummariesKeepTheSameCapturedFieldsAcrossEditsAndRecalculation() {
+        await Accept(.814); await Pin();
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+        await Accept(.842);
+        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+
+        await Call("ReplaceCard", (0, Field<List<Card>>("cards")[0].WithCopies(3)));
+        await Call("ReplaceCard", (1, Field<List<Card>>("cards")[1].WithActive(false)));
+        // Pending edits do not leak into the last accepted result or the explicit pin.
+        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+        await Accept(.786);
+        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+
+        await Pin();
+        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards", "Hand size 3 · 3 active copies · 1 active cards");
+        Assert.That(cut.FindAll(".result-difference-neutral"), Has.Count.EqualTo(5),
+            "removing the context note does not alter the inline comparison rows");
     }
     [TestCase("requirement")] [TestCase("mode")] [TestCase("multiplicity")] [TestCase("kind")] [TestCase("membership")] [TestCase("regroup")]
     public async Task StructuralChangesPreventRouteAndGroupDelta(string edit) {
@@ -300,7 +334,10 @@ public class PinnedResultTest {
         Assert.That(current.CompareCombo(current.Combos[0], pin, true), Is.EqualTo("Unrelated session"));
         Assert.That(current.CompareGroup(current.Groups[0], pin, true), Is.EqualTo("Unrelated session"));
         Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
-        if (load != "ydk") Assert.That(cut.Find(".probability-results").TextContent, Does.Contain("Different hand size"));
+        AssertContextDescriptions(load == "ydk"
+                ? "Hand size 2 · 8 active copies · 2 active cards"
+                : "Hand size 3 · 8 active copies · 2 active cards",
+            "Hand size 2 · 8 active copies · 2 active cards");
     }
     [Test] public async Task CopyStillExportsOnlyTheAcceptedCurrentResultAndCapturedHandSize() {
         await Accept(); await Pin(); await cut.Find("#handSize").ChangeAsync(new() { Value = "3" }); await Accept(.842);
