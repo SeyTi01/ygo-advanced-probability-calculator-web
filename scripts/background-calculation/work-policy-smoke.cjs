@@ -1,15 +1,17 @@
-// Opt-in: node work-policy-smoke.cjs <origin> chromium|firefox [CPU slowdown]
+// Opt-in: node work-policy-smoke.cjs <origin> chromium|firefox [CPU slowdown] [all|wire|ui]
 // The controller closes the entire isolated browser after three minutes.
 const assert = require('node:assert/strict');
 const { chromium, firefox } = require('playwright');
 const base = process.argv[2];
 const engine = process.argv[3] || 'chromium';
 const slowdown = Number(process.argv[4] || 1);
+const phase = process.argv[5] || 'all';
+assert.ok(['all', 'wire', 'ui'].includes(phase), 'unknown smoke phase');
 function fixture(count, hand = 5) {
  const categories = Array.from({ length: count }, (_, i) => ({ Name: `Role${i}`, Source: 'User' }));
  return { SchemaVersion: 2, Categories: categories, HandSize: hand,
-  Cards: categories.map((c, i) => ({ Id: `c${i}`, Name: `Card ${i}`, Copies: 2, Categories: [c] }))
-   .concat([{ Id: 'blank', Name: 'Other cards', Copies: 60 - 2 * count, Categories: [] }]),
+  Cards: categories.map((c, i) => ({ Id: `c${i}`, Name: null, Copies: 2, Categories: [c] }))
+   .concat([{ Id: 'blank', Name: null, Copies: 60 - 2 * count, Categories: [] }]),
   Combos: categories.map((c, i) => ({ Name: `Exactly one ${c.Name}`, GroupId: `g${i % 2}`, Categories: [{ BaseCategory: c, MinCount: 1, MaxCount: 1 }] })),
   ComboGroups: [{ Id: 'g0', Name: 'Even' }, { Id: 'g1', Name: 'Odd' }] };
 }
@@ -34,7 +36,10 @@ function probability(count, hand = 5) {
  if (engine === 'chromium' && process.env.PLAYWRIGHT_CHROMIUM_CHANNEL) options.channel = process.env.PLAYWRIGHT_CHROMIUM_CHANNEL;
  if (engine === 'firefox' && process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH) options.executablePath = process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH;
  const browser = await ({ chromium, firefox }[engine]).launch(options);
- const deadline = setTimeout(() => browser.close(), 180000);
+ const deadline = setTimeout(() => {
+  console.error(`Work-policy ${phase} smoke reached its three-minute browser deadline.`);
+  browser.close();
+ }, 180000);
  try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.setDefaultTimeout(45000);
@@ -42,10 +47,15 @@ function probability(count, hand = 5) {
   page.on('worker', worker => { live++; peak = Math.max(peak, live); worker.on('close', () => { live--; closed++; }); });
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => {
-   window.workProbe = { beats: [], inputs: [], terminations: [] };
+   window.workProbe = { beats: [], inputs: [], terminations: [], clicks: [], creations: [] };
+   document.addEventListener('click', event => {
+    const button = event.target.closest('.calculate-action > button');
+    if (button) workProbe.clicks.push({ time: performance.now(), label: button.getAttribute('aria-label'), busy: button.getAttribute('aria-busy'), detail: event.detail });
+   }, true);
    setInterval(() => workProbe.beats.push(performance.now()), 20);
    const Original = Worker;
    window.Worker = class extends Original {
+    constructor(...args) { super(...args); workProbe.creations.push(performance.now()); }
     postMessage(message) { workProbe.inputs.push(message.json); super.postMessage(message); }
     terminate() { workProbe.terminations.push(performance.now()); super.terminate(); }
    };
@@ -63,6 +73,8 @@ function probability(count, hand = 5) {
     finally { job.dispose(); }
    }, json);
   }
+  let wireEvidence;
+  if (phase !== 'ui') {
   const expensive = fixture(21);
   const old = await request(wire(expensive, 10_000_000));
   assert.equal(old.response.LimitReason, 1);
@@ -90,9 +102,25 @@ function probability(count, hand = 5) {
   const malformedInput = await request('not JSON');
   assert.equal(malformedInput.response.LimitReason, null);
   assert.equal(malformedInput.response.FailureKind, 2);
+  wireEvidence = { old: { ms: old.ms, reason: old.response.LimitReason }, selected: { ms: selected.ms, probability: selected.response.Result.TotalProbability },
+   ampleMs: ample.ms, storage: { ms: storage.ms, reason: storage.response.LimitReason } };
+  if (phase === 'wire') {
+   console.log(JSON.stringify({ engine, browser: browser.version(), slowdown, phase, ...wireEvidence, errors }));
+   assert.deepEqual(errors, []);
+   return;
+  }
+  }
+  let loadSequence = 0;
   async function load(session) {
-   await page.locator('#sessionFileInput').setInputFiles({ name: 'work-policy.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(session)) });
-   await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
+   // A unique saved marker proves this replacement finished even when its
+   // model otherwise equals the prior session. An idle button cannot prove it.
+   const marker = `${session.Combos[0].Name} / smoke load ${++loadSequence}`;
+   const owned = { ...session, Combos: session.Combos.map((combo, i) => i === 0 ? { ...combo, Name: marker } : combo) };
+   await page.locator('#sessionFileInput').setInputFiles({ name: 'work-policy.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(owned)) });
+   await page.waitForFunction(marker => {
+    try { return JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Combos[0].Name === marker; }
+    catch { return false; }
+   }, marker);
   }
   async function start() {
    await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
@@ -101,7 +129,8 @@ function probability(count, hand = 5) {
    try { await page.waitForFunction(before => workProbe.inputs.length > before, before); }
    catch (error) {
     console.error(JSON.stringify({ engine, slowdown, live, peak, before,
-     action: await page.locator('.calculate-action').innerText(), alerts: await page.getByRole('alert').allTextContents() }));
+     action: await page.locator('.calculate-action').innerText(), alerts: await page.getByRole('alert').allTextContents(),
+     trace: await page.evaluate(() => ({ clicks: workProbe.clicks.slice(-12), creations: workProbe.creations.length, sent: workProbe.inputs.length, terminated: workProbe.terminations.length })) }));
     throw error;
    }
   }
@@ -167,8 +196,7 @@ function probability(count, hand = 5) {
   await start();
   await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
   assert.equal(await page.getByRole('alert').count(), 0); assert.deepEqual(errors, []);
-  console.log(JSON.stringify({ engine, browser: browser.version(), slowdown, old: { ms: old.ms, reason: old.response.LimitReason },
-   selected: { ms: selected.ms, probability: selected.response.Result.TotalProbability }, ampleMs: ample.ms,
-   storage: { ms: storage.ms, reason: storage.response.LimitReason }, cancellation, rapid: { peak, rapidClosedMs, closed }, errors }));
+  console.log(JSON.stringify({ engine, browser: browser.version(), slowdown, phase, ...wireEvidence,
+   cancellation, rapid: { peak, rapidClosedMs, closed }, errors }));
  } finally { clearTimeout(deadline); await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
