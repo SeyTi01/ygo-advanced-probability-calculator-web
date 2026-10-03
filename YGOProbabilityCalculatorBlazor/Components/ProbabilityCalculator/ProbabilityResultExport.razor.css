@@ -36,10 +36,6 @@
     stroke-width: 2;
 }
 
-.probability-result-export-unavailable {
-    color: var(--bs-secondary-color);
-}
-
 .probability-result-copy-fallback {
     flex: 1 1 100%;
     min-width: 0;

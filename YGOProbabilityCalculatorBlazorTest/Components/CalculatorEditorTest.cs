@@ -450,7 +450,7 @@ public class CalculatorEditorTest {
 
     private static void AssertPreviousResult(IRenderedFragment fragment) {
         Assert.That(fragment.FindAll(".probability-results"), Has.Count.EqualTo(1));
-        Assert.That(fragment.Find(".probability-result-status").TextContent.Trim(),
+        Assert.That(fragment.Find(".probability-result-status .visually-hidden").TextContent.Trim(),
             Is.EqualTo("Previous result · inputs changed"));
     }
 

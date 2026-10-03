@@ -34,6 +34,20 @@
     margin: 0;
 }
 
+.probability-result-status-compact {
+    display: none;
+}
+
+@media (max-width: 575.98px) {
+    .probability-result-status-full {
+        display: none;
+    }
+
+    .probability-result-status-compact {
+        display: inline;
+    }
+}
+
 .probability-total {
     border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.3);
     font-size: 1.2rem;

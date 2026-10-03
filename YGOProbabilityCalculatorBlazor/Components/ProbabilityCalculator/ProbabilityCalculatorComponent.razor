@@ -148,7 +148,11 @@
                     @if (calculationResultIsStale) {
                         <small class="probability-result-status text-body-secondary fw-normal"
                                role="status"
-                               aria-live="polite">Previous result · inputs changed</small>
+                               aria-live="polite">
+                            <span class="probability-result-status-full" aria-hidden="true">Previous result · inputs changed</span>
+                            <span class="probability-result-status-compact" aria-hidden="true">Stale</span>
+                            <span class="visually-hidden">Previous result · inputs changed</span>
+                        </small>
                     }
                     <ProbabilityResultExport Result="result"
                                              HandSize="handSize"
