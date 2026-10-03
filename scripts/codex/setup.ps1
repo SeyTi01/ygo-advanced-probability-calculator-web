@@ -3,6 +3,11 @@
 # Run it from Codex's Windows-specific setup script with:
 # powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\codex\setup.ps1
 
+param(
+    [string]$GitPublicName,
+    [string]$GitPublicEmail
+)
+
 $ErrorActionPreference = 'Stop'
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
@@ -17,9 +22,22 @@ if ($LASTEXITCODE -ne 0) {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 Set-Location $repoRoot
 
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+    throw 'Node.js 18+ is required for the local publication guard. Install it and rerun project setup.'
+}
+$guardArguments = @((Join-Path $PSScriptRoot 'privacy-guard.mjs'), 'install')
+if ($GitPublicName -or $GitPublicEmail) {
+    if (-not $GitPublicName -or -not $GitPublicEmail) {
+        throw 'Supply both approved public Git identity inputs; values are never inferred from account or machine names.'
+    }
+    $guardArguments += @('--name', $GitPublicName, '--email', $GitPublicEmail)
+}
+& node @guardArguments
+if ($LASTEXITCODE -ne 0) { throw 'Project publication guard installation failed; resolve it before committing or pushing.' }
+
 $solution = 'YGOProbabilityCalculatorBlazor.sln'
 if (-not (Test-Path $solution)) {
-    throw "Expected $solution in the repository root: $(Get-Location)"
+    throw "Expected $solution in the repository root."
 }
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {

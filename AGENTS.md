@@ -90,6 +90,14 @@ The .NET 10 migration PR #46 contains one verified example of this workaround an
 
 ## Contribution workflow and boundaries
 
+### Publication privacy
+
+- Before an owner-authored commit, verify the raw resolved author and committer with `node scripts/codex/privacy-guard.mjs check`. The owner's approved public name is `SeyTi01`; obtain the issued GitHub noreply address from authenticated **Settings → Emails**, never from profile, billing, machine identity, or an inferred numerical ID.
+- Windows Codex setup installs the shared local publication hooks. A fresh clone starts with a blocking, unconfigured policy; configure your explicitly approved public identity using the [guard setup instructions](scripts/codex/PRIVACY.md). Other contributors and forks must use their own approved identity, never silently adopt the owner's identity. Keep existing hooks and their stdin behavior intact; do not bypass guards with `--no-verify` or disabled hooks.
+- Before pushing or making an API write, inspect every newly outgoing raw author/committer, identity trailer, annotated tagger, message, path and changed content. Local config does not configure API commits. Use explicit approved API identity controls or the verified local Git path; do not publish an object to probe API defaults. Inspect incoming author metadata before web/API merge operations.
+- Never derive public hostnames, resources, documentation or screenshots from personal names, emails, machine profiles or billing information. Inspect text and images separately: these metadata hooks cannot detect every identifying string or screenshot.
+- These preemptive checks validate new publication. Changes to existing published history require separate authorization.
+
 - Start from an up-to-date `dev` branch. Read the issue, relevant dependencies, applicable agent instructions, and recent code before editing.
 - Before finalizing a pull request, fetch the latest `origin/dev` and check recent or concurrent changes for overlap. Rebase the feature branch onto `origin/dev`, resolve conflicts without losing behavior, then rerun affected tests and the full suite when feasible. Do not use `git merge dev`, `git merge origin/dev`, or an implicit `git pull` that creates an upstream-integration merge commit; keep the PR history linear for GitHub's Rebase and merge workflow.
 - Before the first push, review local commits. If an unpushed commit merely corrects or refines an earlier unpushed commit for the same logical change, amend or squash them into one coherent commit. Keep independently meaningful changes in separate commits, grouped by purpose rather than by pull request or file.
