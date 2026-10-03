@@ -184,10 +184,7 @@
                                              IsCalculating="isCalculating" />
                 </div>
                 @if (pinnedResult is not null && acceptedComparison is { } accepted) {
-                    <p class="small text-body-secondary mb-2">@accepted.Context.Description
-                        @if (CanCompare && accepted.Context.HandSize != pinnedResult.Context.HandSize) { <span> · Different hand size</span> }
-                        @if (CanCompare && accepted.Context.DeckDefinition != pinnedResult.Context.DeckDefinition) { <span> · Different deck composition</span> }
-                    </p>
+                    <p class="small text-body-secondary mb-2">@accepted.Context.Description</p>
                 }
                 <div class="combo-probability-row probability-total">
                     <span class="combo-probability-name">Any active combo</span>
