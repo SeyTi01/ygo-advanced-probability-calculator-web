@@ -39,7 +39,13 @@ public class BackgroundCalculationComponentTest {
     public void TearDown() { cut?.Dispose(); context.Dispose(); }
 
     private Task Start() => cut.Find(".calculate-action > button").ClickAsync(new());
-    private Task Cancel() => cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
+    private Task Cancel() => cut.Find(".calculate-action > button[aria-label='Cancel calculation']").ClickAsync(new());
+    private Task SetHandSizeWithoutInvalidating(int value) => cut.InvokeAsync(() => {
+        typeof(ProbabilityCalculatorComponent).GetField("handSize",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(cut.Instance, value);
+        typeof(Microsoft.AspNetCore.Components.ComponentBase).GetMethod("StateHasChanged",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(cut.Instance, null);
+    });
     private static ProbabilityCalculationResult Result(string name) => new(0.5, [new(0, name, 0.5)]);
 
     [TestCase(false)]
@@ -52,13 +58,102 @@ public class BackgroundCalculationComponentTest {
         if (oldError) calculator.Jobs[0].SetException(new InvalidOperationException("old failure"));
         else calculator.Jobs[0].SetResult(Result("old success"));
         await first;
-        Assert.That(cut.Find(".calculate-action > button").HasAttribute("disabled"), Is.True);
-        Assert.That(cut.FindAll("[aria-label='Cancel calculation']"), Has.Count.EqualTo(1));
+        Assert.That(cut.Find(".calculate-action > button").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.FindAll(".calculate-action > button[aria-label='Cancel calculation']"), Has.Count.EqualTo(1));
         Assert.That(cut.Markup, Does.Not.Contain("old failure").And.Not.Contain("old success"));
         calculator.Jobs[1].SetResult(Result("new success"));
         await second;
         Assert.That(cut.Markup, Does.Contain("new success"));
         Assert.That(cut.Find(".calculate-action > button").HasAttribute("disabled"), Is.False);
+    }
+
+    [Test]
+    public async Task IdleInvalidInputsDisableCalculateButRunningActionRemainsUsableForCancellation() {
+        await SetHandSizeWithoutInvalidating(0);
+        Assert.That(cut.Find(".calculate-action > button").HasAttribute("disabled"), Is.True);
+
+        await SetHandSizeWithoutInvalidating(2);
+        var calculation = Start();
+        var runningButton = cut.Find(".calculate-action > button");
+        Assert.That(runningButton.GetAttribute("aria-label"), Is.EqualTo("Cancel calculation"));
+        Assert.That(runningButton.GetAttribute("title"), Is.EqualTo("Cancel calculation"));
+        Assert.That(runningButton.GetAttribute("type"), Is.EqualTo("button"));
+        Assert.That(runningButton.GetAttribute("aria-busy"), Is.EqualTo("true"));
+        Assert.That(runningButton.HasAttribute("disabled"), Is.False);
+        Assert.That(cut.FindAll(".calculate-action > button"), Has.Count.EqualTo(1));
+
+        // Keep the controlled request active while validation changes, so the in-progress cancel action
+        // must stay enabled even though the idle Calculate action would now be disabled.
+        await SetHandSizeWithoutInvalidating(0);
+        Assert.That(cut.Find(".calculate-action > button").HasAttribute("disabled"), Is.False);
+        await Cancel();
+        Assert.That(calculator.Jobs, Has.Count.EqualTo(1));
+        Assert.That(calculator.Tokens[0].IsCancellationRequested, Is.True);
+        Assert.That(cut.Find(".calculate-action > button").HasAttribute("disabled"), Is.True);
+
+        calculator.Jobs[0].SetCanceled();
+        await calculation;
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+        Assert.That(cut.Markup, Does.Not.Contain("Calculation was cancelled."));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task UserCancellationPreservesAcceptedResultAndDoesNotCreateCancellationNotice(bool stale) {
+        var accepted = Start();
+        calculator.Jobs[0].SetResult(Result("previous result"));
+        await accepted;
+        if (stale)
+            await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+
+        var wasStale = cut.FindAll(".probability-result-status").Count == 1;
+        Assert.That(wasStale, Is.EqualTo(stale));
+        var priorValue = cut.Find(".probability-total-value").TextContent;
+        var cancellation = Start();
+
+        Assert.That(cut.FindAll(".calculate-action > button"), Has.Count.EqualTo(1));
+        Assert.That(cut.Find(".calculate-action > button").GetAttribute("aria-label"), Is.EqualTo("Cancel calculation"));
+        await Cancel();
+        Assert.That(calculator.Tokens[1].IsCancellationRequested, Is.True);
+        Assert.That(cut.Find(".calculate-action > button").TextContent, Does.Contain("Calculate"));
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(priorValue));
+        Assert.That(cut.FindAll(".probability-result-status"), Has.Count.EqualTo(stale ? 1 : 0));
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+        Assert.That(cut.Markup, Does.Not.Contain("Calculation was cancelled.").And.Not.Contain("Calculation was canceled."));
+        Assert.That(cut.FindAll("[role='status']").Any(status => status.TextContent.Contains("cancel", StringComparison.OrdinalIgnoreCase)), Is.False);
+
+        // The worker may report cancellation after the user has already returned the control to idle.
+        calculator.Jobs[1].SetCanceled();
+        await cancellation;
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(priorValue));
+        Assert.That(cut.FindAll(".probability-result-status"), Has.Count.EqualTo(stale ? 1 : 0));
+
+        var next = Start();
+        calculator.Jobs[2].SetResult(Result("after cancellation"));
+        await next;
+        Assert.That(cut.Markup, Does.Contain("after cancellation"));
+        Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+    }
+
+    [Test]
+    public async Task CalculationLimitErrorsRemainVisible() {
+        var calculation = Start();
+        var exception = new ProbabilityCalculationLimitException();
+        calculator.Jobs[0].SetException(exception);
+        await calculation;
+
+        Assert.That(cut.Find("[role='alert']").TextContent, Does.Contain(exception.Message));
+    }
+
+    [Test]
+    public async Task GenuineCalculationFailuresRemainVisible() {
+        var calculation = Start();
+        calculator.Jobs[0].SetException(new InvalidOperationException("worker transport failed"));
+        await calculation;
+
+        Assert.That(cut.Find("[role='alert']").TextContent, Does.Contain("Calculation failed: worker transport failed"));
     }
 
     [Test]

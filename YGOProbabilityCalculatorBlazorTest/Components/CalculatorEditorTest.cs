@@ -2692,7 +2692,10 @@ public class CalculatorEditorTest {
         var calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
             await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.That(cut.Find(".results-section button").HasAttribute("disabled"), Is.True);
+            var runningAction = cut.Find(".calculate-action > button");
+            Assert.That(runningAction.GetAttribute("aria-label"), Is.EqualTo("Cancel calculation"));
+            Assert.That(runningAction.HasAttribute("disabled"), Is.False);
+            Assert.That(cut.FindAll(".calculate-action > button"), Has.Count.EqualTo(1));
             Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
             AssertPreviousResult(cut);
             Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
