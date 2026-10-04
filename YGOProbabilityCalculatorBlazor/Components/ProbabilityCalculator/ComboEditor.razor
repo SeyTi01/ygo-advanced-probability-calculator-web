@@ -93,11 +93,11 @@
 
             @if (AlternativeScope) {
                 <div class="alternative-scope mb-2" role="status">
-                    @(editingAlternative is null ? "Add alternative to" : $"Edit alternative {editingAlternative + 1} in") (@ScopeLabel)
+                    Add alternative to @ScopeLabel
                     <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelAlternative">Cancel</button>
                 </div>
             }
-            <div class="requirement-fields mb-3">
+            <div class="requirement-fields @(AlternativeScope ? "alternative-fields" : "") mb-3">
                 <div class="requirement-selector">
                     @if (selectedKind == "Card") {
                         <label for="comboCard@(Index)" class="form-label">Card</label>
@@ -152,7 +152,29 @@
                            @oninput="e => maxCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
                 <div class="requirement-submit">
-                    <button class="btn btn-primary w-100" aria-label="@(AlternativeScope ? (editingAlternative is null ? "Add alternative" : "Update alternative") : null)" @onclick="AddConstraint">@((AlternativeScope ? editingAlternative is not null : HasSelectedConstraint) ? "Update" : "Add")</button>
+                    <button class="btn btn-primary w-100" @onclick="AddConstraint">@(AlternativeScope ? "Add alternative" : HasSelectedConstraint ? "Update" : "Add")</button>
+                </div>
+            </div>
+
+            <div class="alternative-authoring mb-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" aria-expanded="@alternativesOpen.ToString().ToLowerInvariant()"
+                        aria-controls="alternativeTargets@(Index)" @onclick="ToggleAlternatives">OR alternatives</button>
+                <div id="alternativeTargets@(Index)" class="mt-2" hidden="@(!alternativesOpen)">
+                    @if (alternativesOpen) {
+                        <label for="alternativeTarget@(Index)" class="form-label">Extend requirement or OR group</label>
+                        <select id="alternativeTarget@(Index)" class="form-select" value="@SelectedAlternativeTarget" @onchange="e => SelectAlternativeTarget(e.Value?.ToString())">
+                            <option value="">Choose target…</option>
+                            @for (var i = 0; i < Combo.Categories.Count; i++) {
+                                <option value="@($"category:{i}")">Requirement @(i + 1): @AlternativeTargetLabel(ComboAlternative.For(Combo.Categories[i]))</option>
+                            }
+                            @for (var i = 0; i < Combo.Cards.Count; i++) {
+                                <option value="@($"card:{i}")">Requirement @(Combo.Categories.Count + i + 1): @AlternativeTargetLabel(ComboAlternative.For(Combo.Cards[i]))</option>
+                            }
+                            @for (var i = 0; i < Combo.AlternativeGroups.Count; i++) {
+                                <option value="@($"group:{i}")">OR group @(i + 1): @string.Join(" OR ", Combo.AlternativeGroups[i].Alternatives.Select(AlternativeTargetLabel))</option>
+                            }
+                        </select>
+                    }
                 </div>
             </div>
 
@@ -171,14 +193,12 @@
                 </div>
             </div>
 
-            <div>
+            <div class="expanded-expression">
                 @if (ConstraintCount == 0) {
                     <em>No requirements yet.</em>
                 }
                 else {
                     @foreach (var cc in Combo.Categories) {
-                        @if (!ReferenceEquals(cc, Combo.Categories[0])) { <span class="expression-and">+</span> }
-                        <span class="alternative-leaf">
                         <span class="badge me-2 category-tag @CategoryCssClass(cc.BaseCategory)" title="@(cc.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
                             @cc.BaseCategory.Name (@RequirementRangeFormatter.Format(cc.MinCount, cc.MaxCount, cc.MaximumMode))
                             <button type="button"
@@ -188,12 +208,8 @@
                                     @onclick="() => RemoveCategory(cc)">
                             </button>
                         </span>
-                            <button type="button" class="alternative-action" aria-label="@($"Add alternative to category {cc.BaseCategory.Name}")" title="Add OR alternative" @onclick="() => BeginAlternative(ComboAlternative.For(cc))">OR</button>
-                        </span>
                     }
                     @foreach (var card in Combo.Cards) {
-                        @if (Combo.Categories.Count > 0 || !ReferenceEquals(card, Combo.Cards[0])) { <span class="expression-and">+</span> }
-                        <span class="alternative-leaf">
                         <span class="badge me-2 category-tag combo-card-tag @(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")"
                               title="@card.CardId">
                             Card: @CardDisplayName(card.CardId) (@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))
@@ -201,8 +217,6 @@
                                     aria-label="@($"Remove card {CardSelectionLabel(card.CardId)} from combo {ComboDisplayName}")"
                                     title="@($"Remove card {CardDisplayName(card.CardId)} from combo {ComboDisplayName}")"
                                     @onclick="() => RemoveCard(card)"></button>
-                        </span>
-                            <button type="button" class="alternative-action" aria-label="@($"Add alternative to card {CardSelectionLabel(card.CardId)}")" title="Add OR alternative" @onclick="() => BeginAlternative(ComboAlternative.For(card))">OR</button>
                         </span>
                     }
                     @for (var groupIndex = 0; groupIndex < Combo.AlternativeGroups.Count; groupIndex++) {
@@ -215,15 +229,11 @@
                                 var ai = alternativeIndex;
                                 var alternative = group.Alternatives[ai];
                                 @if (ai > 0) { <span class="alternative-separator">OR</span> }
-                                <span @key="alternative" class="alternative-leaf">
-                                    @AlternativeBadge(alternative)
-                                    <button type="button" class="alternative-action" title="Edit alternative" aria-label="@($"Edit alternative {ai + 1} in group {gi + 1}")" @onclick="() => EditAlternative(gi, ai)">✎</button>
-                                    <button type="button" class="btn-close category-remove-button" title="Remove alternative" aria-label="@($"Remove alternative {ai + 1} from group {gi + 1}")" @onclick="() => RemoveAlternative(gi, ai)"></button>
+                                <span @key="(alternative, ai)" class="alternative-leaf">
+                                    @AlternativeBadge(alternative, group, ai)
                                 </span>
                             }
                             <span>)</span>
-                            <button type="button" class="alternative-action" title="Add OR alternative" aria-label="@($"Add alternative to group {gi + 1}")" @onclick="() => BeginGroupAlternative(gi)">OR +</button>
-                            <ReorderControls Index="gi" Count="Combo.AlternativeGroups.Count" ItemLabel="@($"alternative group {gi + 1}")" OnMove="MoveAlternativeGroup" />
                         </span>
                     }
                 }
@@ -284,52 +294,63 @@
     private ElementReference targetSelect;
     private bool focusAlternativeTarget;
     private (string Kind, string Category, string Card, string Min, string Max)? suspendedDraft;
-    private int? alternativeGroup;
-    private int? editingAlternative;
+    private bool alternativesOpen;
+    private ComboAlternativeGroup? alternativeGroup;
     private ComboAlternative? alternativeSeed;
+    private int? alternativeSeedIndex;
+    private Combo? previousCombo;
     private bool AlternativeScope => alternativeGroup is not null || alternativeSeed is not null;
-    private string ScopeLabel => alternativeSeed is { } seed ? AlternativeLabel(seed) : alternativeGroup is { } g && g < Combo.AlternativeGroups.Count
-        ? $"OR group {g + 1}" : "";
+    private string ScopeLabel => alternativeSeed is { } seed
+        ? $"requirement {(seed.Category is not null ? 0 : Combo.Categories.Count) + alternativeSeedIndex + 1}: {AlternativeTargetLabel(seed)}"
+        : $"OR group {Combo.AlternativeGroups.IndexOf(alternativeGroup!) + 1}";
     private string AlternativeLabel(ComboAlternative a) => a.Category?.BaseCategory.Name ?? $"Card: {CardDisplayName(a.Card!.CardId)}";
+    private string AlternativeRange(ComboAlternative a) => a.Category is { } c
+        ? RequirementRangeFormatter.Format(c.MinCount, c.MaxCount, c.MaximumMode)
+        : RequirementRangeFormatter.Format(a.Card!.MinCount, a.Card.MaxCount, a.Card.MaximumMode);
+    private string AlternativeTargetLabel(ComboAlternative a) {
+        var subject = a.Card is { } card ? $"Card: {CardSelectionLabel(card.CardId)}"
+            : $"{(a.Category!.BaseCategory.Source == CategorySource.Metadata ? "Property" : "Category")}: {a.Category.BaseCategory.Name}";
+        return $"{subject} ({AlternativeRange(a)})";
+    }
 
-    private RenderFragment AlternativeBadge(ComboAlternative a) => @<span class="badge category-tag @(a.Category is { } c ? CategoryCssClass(c.BaseCategory) : "combo-card-tag")">
-        @AlternativeLabel(a) (@(a.Category is { } category
-            ? RequirementRangeFormatter.Format(category.MinCount, category.MaxCount, category.MaximumMode)
-            : RequirementRangeFormatter.Format(a.Card!.MinCount, a.Card.MaxCount, a.Card.MaximumMode)))
+    private RenderFragment AlternativeBadge(ComboAlternative a, ComboAlternativeGroup? removableGroup = null, int leafIndex = 0) => @<span class="badge category-tag @(a.Category is { } c ? CategoryCssClass(c.BaseCategory) : "combo-card-tag")">
+        <span>@AlternativeLabel(a) (@AlternativeRange(a))</span>
+        @if (removableGroup is not null) {
+            <button type="button" class="btn-close category-remove-button ms-1"
+                    title="Remove alternative" aria-label="@($"Remove alternative {leafIndex + 1} ({AlternativeLabel(a)}) from group {Combo.AlternativeGroups.IndexOf(removableGroup) + 1}")"
+                    @onclick="() => RemoveAlternative(removableGroup, a, leafIndex)"></button>
+        }
     </span>;
 
-    private async Task BeginAlternative(ComboAlternative seed) {
+    private string SelectedAlternativeTarget => alternativeSeed?.Category is not null ? $"category:{alternativeSeedIndex}"
+        : alternativeSeed?.Card is not null ? $"card:{alternativeSeedIndex}"
+        : alternativeGroup is { } group ? $"group:{Combo.AlternativeGroups.IndexOf(group)}" : "";
+
+    private void ToggleAlternatives() {
+        if (alternativesOpen && AlternativeScope) CancelAlternative();
+        alternativesOpen = !alternativesOpen;
+    }
+
+    private void SelectAlternativeTarget(string? value) {
+        if (AlternativeScope) CancelAlternative();
+        var parts = value?.Split(':');
+        if (!alternativesOpen || parts is not { Length: 2 } || !int.TryParse(parts[1], out var i) || i < 0) return;
+        var seed = parts[0] == "category" && i < Combo.Categories.Count ? ComboAlternative.For(Combo.Categories[i])
+            : parts[0] == "card" && i < Combo.Cards.Count ? ComboAlternative.For(Combo.Cards[i]) : null;
+        var group = parts[0] == "group" && i < Combo.AlternativeGroups.Count ? Combo.AlternativeGroups[i] : null;
+        if (seed is null && group is null) return;
         BeginAlternativeDraft();
         alternativeSeed = seed;
-        await targetSelect.FocusAsync();
-    }
-
-    private async Task BeginGroupAlternative(int group) {
-        BeginAlternativeDraft();
+        alternativeSeedIndex = seed is null ? null : i;
         alternativeGroup = group;
-        await targetSelect.FocusAsync();
-    }
-
-    private void EditAlternative(int group, int alternative) {
-        if (!AlternativeScope) suspendedDraft = (selectedKind, selectedCategory, selectedCardId, minCount, maxCount);
-        alternativeSeed = null;
-        alternativeGroup = group;
-        editingAlternative = alternative;
         focusAlternativeTarget = true;
-        var leaf = Combo.AlternativeGroups[group].Alternatives[alternative];
-        selectedKind = leaf.Kind;
-        selectedCategory = leaf.Category?.BaseCategory.Identity ?? "";
-        selectedCardId = leaf.Card?.CardId ?? "";
-        minCount = (leaf.Category?.MinCount ?? leaf.Card!.MinCount).ToString();
-        var mode = leaf.Category?.MaximumMode ?? leaf.Card!.MaximumMode;
-        maxCount = mode == RequirementMaximumMode.HandSize ? "" : (leaf.Category?.MaxCount ?? leaf.Card!.MaxCount).ToString();
-        error = null;
     }
 
     private void CancelAlternative() {
+        focusAlternativeTarget = false;
         alternativeGroup = null;
-        editingAlternative = null;
         alternativeSeed = null;
+        alternativeSeedIndex = null;
         selectedCategory = selectedCardId = "";
         ResetEditorDefaults();
         if (suspendedDraft is { } draft) {
@@ -343,13 +364,16 @@
         if (!AlternativeScope) suspendedDraft = (selectedKind, selectedCategory, selectedCardId, minCount, maxCount);
         alternativeGroup = null;
         alternativeSeed = null;
-        editingAlternative = null;
         selectedCategory = selectedCardId = "";
         ResetEditorDefaults();
         error = null;
     }
 
     private Task CommitAlternative() {
+        if (!alternativesOpen || !AlternativeTargetIsCurrent) {
+            CancelAlternative();
+            return Task.CompletedTask;
+        }
         if (!int.TryParse(minCount, out var min) || min < 0 || !TryMaximum(min, out var max)) {
             error = "Enter valid minimum and maximum counts.";
             return Task.CompletedTask;
@@ -363,35 +387,31 @@
         var updated = Combo;
         var groups = Combo.AlternativeGroups.ToList();
         if (alternativeGroup is { } g) {
-            var alternatives = groups[g].Alternatives.ToList();
-            if (editingAlternative is { } a) alternatives[a] = leaf;
-            else alternatives.Add(leaf);
-            groups[g] = new ComboAlternativeGroup(alternatives);
+            var alternatives = g.Alternatives.ToList();
+            alternatives.Add(leaf);
+            groups[groups.IndexOf(g)] = new ComboAlternativeGroup(alternatives);
         } else if (alternativeSeed is { } seed) {
-            if (seed.Category is { } c) updated = updated.WithCategories(updated.Categories.Where(x => !ReferenceEquals(x, c)));
-            else updated = updated.WithCards(updated.Cards.Where(x => !ReferenceEquals(x, seed.Card)));
+            if (seed.Category is not null) updated = updated.WithCategories(updated.Categories.Where((_, i) => i != alternativeSeedIndex));
+            else updated = updated.WithCards(updated.Cards.Where((_, i) => i != alternativeSeedIndex));
             groups.Add(new ComboAlternativeGroup([seed, leaf]));
         }
         CancelAlternative();
         return OnReplaceCombo.InvokeAsync((Index, updated.WithAlternativeGroups(groups)));
     }
 
-    private Task RemoveAlternative(int group, int alternative) {
-        var groups = Combo.AlternativeGroups.ToList();
-        var remaining = groups[group].Alternatives.Where((_, i) => i != alternative).ToArray();
-        if (remaining.Length == 0) groups.RemoveAt(group);
-        else groups[group] = new ComboAlternativeGroup(remaining);
-        if (alternativeGroup == group) {
-            if (remaining.Length == 0 || editingAlternative == alternative) CancelAlternative();
-            else if (editingAlternative > alternative) editingAlternative--;
-        } else if (remaining.Length == 0 && alternativeGroup > group) alternativeGroup--;
-        return OnReplaceCombo.InvokeAsync((Index, Combo.WithAlternativeGroups(groups)));
-    }
+    private bool AlternativeTargetIsCurrent => alternativeGroup is { } group ? Combo.AlternativeGroups.Contains(group)
+        : alternativeSeedIndex is { } i && i >= 0 && (alternativeSeed?.Category is { } c
+            ? i < Combo.Categories.Count && ReferenceEquals(Combo.Categories[i], c)
+            : alternativeSeed?.Card is { } card && i < Combo.Cards.Count && ReferenceEquals(Combo.Cards[i], card));
 
-    private Task MoveAlternativeGroup((int From, int To) move) {
+    private Task RemoveAlternative(ComboAlternativeGroup group, ComboAlternative alternative, int leafIndex) {
         var groups = Combo.AlternativeGroups.ToList();
-        if (!ListMove.TryMove(groups, move.From, move.To)) return Task.CompletedTask;
-        if (alternativeGroup is { } g) alternativeGroup = ListMove.AdjustActiveIndex(g, move.From, move.To);
+        var index = groups.IndexOf(group);
+        if (index < 0 || leafIndex < 0 || leafIndex >= group.Alternatives.Count || !ReferenceEquals(group.Alternatives[leafIndex], alternative)) return Task.CompletedTask;
+        var remaining = group.Alternatives.Where((_, i) => i != leafIndex).ToArray();
+        if (remaining.Length == 0) groups.RemoveAt(index);
+        else groups[index] = new ComboAlternativeGroup(remaining);
+        if (ReferenceEquals(alternativeGroup, group)) CancelAlternative();
         return OnReplaceCombo.InvokeAsync((Index, Combo.WithAlternativeGroups(groups)));
     }
     private int previousCategoryRenameVersion;
@@ -578,11 +598,18 @@
             if (suspendedDraft is { } draft && draft.Category == $"user:{rename.OldName}")
                 suspendedDraft = (draft.Kind, $"user:{rename.NewName}", draft.Card, draft.Min, draft.Max);
             if (alternativeSeed?.Category is { } seed && seed.BaseCategory.Identity == $"user:{rename.OldName}") {
-                var current = Combo.Categories.FirstOrDefault(c => c.BaseCategory.Identity == $"user:{rename.NewName}");
-                if (current is not null) alternativeSeed = ComboAlternative.For(current);
+                var index = alternativeSeedIndex ?? -1;
+                if (ReferenceEquals(previousCombo, Combo) && index >= 0 && index < Combo.Categories.Count &&
+                    Combo.Categories[index].BaseCategory.Identity == $"user:{rename.NewName}" &&
+                    Combo.Categories[index].MinCount == seed.MinCount && Combo.Categories[index].MaxCount == seed.MaxCount &&
+                    Combo.Categories[index].MaximumMode == seed.MaximumMode)
+                    alternativeSeed = ComboAlternative.For(Combo.Categories[index]);
             }
             previousCategoryRenameVersion = rename.Version;
         }
+
+        if (AlternativeScope && !AlternativeTargetIsCurrent) CancelAlternative();
+        previousCombo = Combo;
 
         // Hand size affects effective bounds only; leave committed values and drafts intact.
     }

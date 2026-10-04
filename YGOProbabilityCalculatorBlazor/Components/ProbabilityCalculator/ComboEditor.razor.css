@@ -35,18 +35,31 @@
     min-width: 0;
 }
 
-.alternative-action {
-    color: inherit;
-    background: transparent;
-    border: 1px solid currentColor;
-    border-radius: .25rem;
-    min-height: 28px;
-    min-width: 28px;
-    font-size: .8rem;
+.alternative-authoring {
+    max-width: 48rem;
 }
 
-.alternative-action:hover { background: var(--bs-secondary-bg); }
-.alternative-action:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.expanded-expression {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .375rem;
+}
+
+.expanded-expression .badge {
+    margin: 0 !important;
+}
+
+.expanded-expression .badge > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.expanded-expression .alternative-group {
+    margin: 0;
+    gap: .375rem;
+}
+
 .alternative-separator, .expression-and { font-size: .8rem; font-weight: 600; }
 .alternative-scope { overflow-wrap: anywhere; }
 .summary-group { font-size: .8rem; }
@@ -62,12 +75,20 @@
     min-width: 0;
 }
 
+.alternative-fields {
+    grid-template-columns: minmax(0, 1fr) 8rem 5.5rem 5.5rem 9rem;
+}
+
 @media (max-width: 767.98px) {
     .requirement-fields {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .requirement-selector, .requirement-kind {
+        grid-column: 1 / -1;
+    }
+
+    .alternative-fields .requirement-submit {
         grid-column: 1 / -1;
     }
 }
