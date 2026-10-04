@@ -189,6 +189,39 @@ public class SessionRecoveryTest {
         Assert.That(call.Arguments[0], Is.EqualTo("fixture.json"));
         Assert.That(bytes, Is.EqualTo(LastSnapshot()));
     }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ExampleEnrichmentDoesNotMutateIncomingSessionEvenWhenRejected(bool reject) {
+        var source = Working();
+        var original = source.Cards[0];
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(async (SessionState session) => {
+            started.SetResult();
+            await completion.Task;
+            session.Cards[0] = session.Cards[0].WithName("Enriched fixture");
+        });
+        context.Services.GetRequiredService<IPendingSessionService>().PendingSession = source;
+        var update = ObserveNextRecoveryUpdate();
+        var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        if (reject) await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
+        completion.SetResult();
+        var payload = await AwaitMilestone(update, "recovery update after example preparation");
+
+        Assert.That(source.Cards[0], Is.SameAs(original));
+        Assert.That(source.Cards[0].Name, Is.EqualTo("Fixture"));
+        if (reject) {
+            Assert.That(cut.FindComponents<CardEditor>(), Is.Empty);
+            Assert.That(payload, Does.Not.Contain("Enriched fixture"));
+            Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("6"));
+        }
+        else {
+            Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Enriched fixture"));
+            Assert.That(payload, Does.Contain("Enriched fixture"));
+        }
+    }
     [Test] public async Task DelayedInspectionDoesNotOverwriteEdits() {
         var plan = context.JSInterop.Setup<SessionRecovery.Inspection?>("sessionRecovery.initialize", _ => true);
         var session = new SessionState { HandSize = 5 }; var cut = Render(session);
@@ -199,6 +232,35 @@ public class SessionRecoveryTest {
         Assert.That(Writes, Is.Zero);
         await Button(cut, "Restore previous session").ClickAsync(new());
         Assert.That(cut.Markup, Does.Contain("Replace current work and restore"));
+    }
+
+    [Test] public async Task TimedOutEnrichmentCannotMutateAppliedWorkspaceOnLateCompletion() {
+        var source = Working();
+        SessionState? enrichmentInput = null;
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(async (SessionState session) => {
+            enrichmentInput = session;
+            await completion.Task;
+            session.Cards[0].Categories.Add(new("Late category"));
+            session.Cards[0] = session.Cards[0].WithName("Late enrichment");
+        });
+        context.Services.GetRequiredService<IPendingSessionService>().PendingSession = source;
+        var update = ObserveNextRecoveryUpdate();
+        var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
+        var payload = await update.WaitAsync(TimeSpan.FromSeconds(5));
+        var appliedCard = cut.FindComponent<CardEditor>().Instance.Card;
+        Assert.That(payload, Is.EqualTo(sessions.SerializeSession(source)));
+        Assert.That(appliedCard, Is.SameAs(source.Cards[0]));
+        Assert.That(enrichmentInput, Is.Not.Null);
+        completion.SetResult();
+        // Observe the enrichment task itself, not a render that may precede it.
+        var enrichment = (Task)enricher.Invocations.Single().ReturnValue!;
+        await enrichment;
+        cut.Render();
+        Assert.That(cut.FindComponent<CardEditor>().Instance.Card, Is.SameAs(appliedCard));
+        Assert.That(appliedCard.Name, Is.EqualTo("Fixture"));
+        Assert.That(appliedCard.Categories, Is.Empty);
+        Assert.That(LastSnapshot(), Is.EqualTo(payload));
     }
 
     [Test] public async Task DiscardCompletionDoesNotDropAnEditMadeWhileInteropIsPending() {
