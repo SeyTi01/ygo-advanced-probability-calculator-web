@@ -1,5 +1,5 @@
 {
-  "SchemaVersion": 2,
+  "SchemaVersion": 3,
   "Categories": [
     {
       "Name": "VS Monster",
@@ -988,44 +988,61 @@
           "MinCount": 1,
           "MaxCount": 5,
           "MaximumMode": "HandSize"
-        },
-        {
-          "BaseCategory": {
-            "Name": "Attribute: FIRE",
-            "Source": "Metadata",
-            "MetadataKey": "attribute:fire"
-          },
-          "MinCount": 1,
-          "MaxCount": 5,
-          "MaximumMode": "HandSize"        }
+        }
       ],
-      "Name": "VS Starter \u002B Fire",
+      "AlternativeGroups": [
+        {
+          "Alternatives": [
+            {
+              "Kind": "Category",
+              "Category": {
+                "BaseCategory": {
+                  "Name": "Attribute: FIRE",
+                  "Source": "Metadata",
+                  "MetadataKey": "attribute:fire"
+                },
+                "MinCount": 1,
+                "MaxCount": 5,
+                "MaximumMode": "HandSize"
+              }
+            },
+            {
+              "Kind": "Category",
+              "Category": {
+                "BaseCategory": {
+                  "Name": "Attribute: DARK",
+                  "Source": "Metadata",
+                  "MetadataKey": "attribute:dark"
+                },
+                "MinCount": 1,
+                "MaxCount": 5,
+                "MaximumMode": "HandSize"
+              }
+            }
+          ]
+        }
+      ],
+      "Name": "VS Starter \u002B (Fire OR Dark)",
       "Active": true,
       "GroupId": "48c6559aefb544fb949e8aabef2d251d"
     },
     {
-      "Categories": [
+      "Categories": [],
+      "Cards": [
         {
-          "BaseCategory": {
-            "Name": "VS Starter",
-            "Source": "User"
-          },
+          "CardId": "55c145012b004e249542f334dbe278df",
           "MinCount": 1,
           "MaxCount": 5,
           "MaximumMode": "HandSize"
         },
         {
-          "BaseCategory": {
-            "Name": "Attribute: DARK",
-            "Source": "Metadata",
-            "MetadataKey": "attribute:dark"
-          },
+          "CardId": "74fc576402e64906853b667d299adaac",
           "MinCount": 1,
           "MaxCount": 5,
           "MaximumMode": "HandSize"
         }
       ],
-      "Name": "VS Starter \u002B Dark",
+      "Name": "Razen \u002B Sue",
       "Active": true,
       "GroupId": "48c6559aefb544fb949e8aabef2d251d"
     },
@@ -1093,32 +1110,6 @@
       "Categories": [
         {
           "BaseCategory": {
-            "Name": "K9 Starter",
-            "Source": "User"
-          },
-          "MinCount": 1,
-          "MaxCount": 5,
-          "MaximumMode": "HandSize"
-        },
-        {
-          "BaseCategory": {
-            "Name": "Level 5",
-            "Source": "Metadata",
-            "MetadataKey": "level:5"
-          },
-          "MinCount": 1,
-          "MaxCount": 5,
-          "MaximumMode": "HandSize"
-        }
-      ],
-      "Name": "K9 Starter \u002B Lv. 5",
-      "Active": true,
-      "GroupId": "0523b13956664dc7b0a36d0ec6c54b01"
-    },
-    {
-      "Categories": [
-        {
-          "BaseCategory": {
             "Name": "VS Monster",
             "Source": "User"
           },
@@ -1141,29 +1132,35 @@
           "MaximumMode": "HandSize"
         }
       ],
-      "Name": "Sue \u002B Start \u002B VS",
+      "Name": "Sue \u002B Start \u002B VS Monster",
       "Active": true,
       "GroupId": "48c6559aefb544fb949e8aabef2d251d"
     },
     {
-      "Categories": [],
-      "Cards": [
+      "Categories": [
         {
-          "CardId": "55c145012b004e249542f334dbe278df",
+          "BaseCategory": {
+            "Name": "K9 Starter",
+            "Source": "User"
+          },
           "MinCount": 1,
           "MaxCount": 5,
           "MaximumMode": "HandSize"
         },
         {
-          "CardId": "74fc576402e64906853b667d299adaac",
+          "BaseCategory": {
+            "Name": "Level 5",
+            "Source": "Metadata",
+            "MetadataKey": "level:5"
+          },
           "MinCount": 1,
           "MaxCount": 5,
           "MaximumMode": "HandSize"
         }
       ],
-      "Name": "Razen \u002B Sue",
+      "Name": "K9 Starter \u002B Lv. 5",
       "Active": true,
-      "GroupId": "48c6559aefb544fb949e8aabef2d251d"
+      "GroupId": "0523b13956664dc7b0a36d0ec6c54b01"
     },
     {
       "Categories": [],
