@@ -237,4 +237,55 @@ public class ProbabilityCalculatorServiceTest {
         Assert.That(result.TotalProbability, Is.EqualTo(expected).Within(expected * Tolerance));
         Assert.That(result.ComboProbabilities.All(c => Math.Abs(c.Probability / expected - 1) < Tolerance), Is.True);
     }
+
+    [TestCase(1100, 550)]
+    [TestCase(2000, 600)]
+    [TestCase(int.MaxValue, 51)]
+    public void LargeExactCountsRemainFiniteAcrossTotalStandaloneAndGroups(int population, int handSize) {
+        var a = new CategoryBase("A");
+        List<Card> deck = [new([a]), new([], population - 1)];
+        List<Combo> combos = [new([new(a, 1, 1)], "Present", groupId: "present"),
+            new([new(a, 0, 0)], "Absent", groupId: "absent")];
+        // A distinguished physical copy is in h/n hands. Python independently
+        // evaluates Fraction(comb(n-1,h-1), comb(n,h)); the complement is (n-h)/n.
+        var expected = (double)handSize / population;
+        var result = _probabilityCalculator.CalculateProbabilityResults(deck, combos, handSize,
+            [new("present", "Present"), new("absent", "Absent")]);
+        Assert.Multiple(() => {
+            Assert.That(result.TotalProbability, Is.EqualTo(1));
+            Assert.That(result.ComboProbabilities.Select(c => c.Probability),
+                Is.EqualTo(new[] { expected, 1 - expected }).Within(Tolerance));
+            Assert.That(result.GroupProbabilities!.Select(g => g.Probability),
+                Is.EqualTo(new[] { expected, 1 - expected }).Within(Tolerance));
+            Assert.That(_probabilityCalculator.CalculateProbabilityForCombos(deck, [combos[0]], handSize),
+                Is.EqualTo(expected).Within(Tolerance));
+        });
+    }
+
+    [TestCase(1030, 3.496941992245984e-309)]
+    [TestCase(1040, 3.431511947555e-312)]
+    [TestCase(1078, 3 * double.Epsilon)]
+    [TestCase(1080, double.Epsilon)]
+    [TestCase(1100, 0d)]
+    public void RareHandsRoundToRepresentableSubnormalProbabilities(int population, double expected) {
+        var a = new CategoryBase("A");
+        var hand = population / 2;
+        // Exactly one physical hand contains every designated copy. Independent
+        // Python 3: float(Fraction(1, math.comb(n, n//2))). Exact double assertions
+        // distinguish the smallest subnormal from zero and legitimate underflow.
+        var actual = _probabilityCalculator.CalculateProbabilityForCombos(
+            [new([a], hand), new([], hand)], [new([new(a, hand, hand)])], hand);
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void FiniteNumeratorOverOverflowingDenominatorPreservesANormalProbability() {
+        var a = new CategoryBase("A");
+        // All 550 drawn copies must come from the 1000 designated copies.
+        // Python: float(Fraction(math.comb(1000,550), math.comb(1100,550))).
+        const double expected = 5.555993916883148e-33;
+        var actual = _probabilityCalculator.CalculateProbabilityForCombos(
+            [new([a], 1000), new([], 100)], [new([new(a, 550, 550)])], 550);
+        Assert.That(actual, Is.EqualTo(expected).Within(expected * Tolerance));
+    }
 }
