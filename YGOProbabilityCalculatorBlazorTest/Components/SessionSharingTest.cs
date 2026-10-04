@@ -272,8 +272,14 @@ public class SessionSharingTest {
         await Button(cut, "Pin result").ClickAsync(new());
         cut.Find("[aria-label='Category name']").Input("Unsaved draft");
         var before = Snapshot(cut);
-        var result = cut.Find(".probability-results").OuterHtml;
-        var pin = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+        var results = cut.FindComponent<PinnedResultPanel>();
+        var current = results.Instance.Current!;
+        var currentTotal = current.Total;
+        var currentContext = current.Context;
+        var currentComboDefinitions = current.Context.Combos.Select(row => (row.Lineage, row.Signature)).ToArray();
+        var currentRows = CurrentRows(cut);
+        var pin = results.Instance.Snapshot;
+        var pinnedValues = PinnedValues(pin);
         var uri = navigation.Uri;
         var history = ((FakeNavigationManager)navigation).History.Count;
         var writes = Writes;
@@ -297,8 +303,17 @@ public class SessionSharingTest {
             }
             Assert.That(Snapshot(cut), Is.EqualTo(before));
             Assert.That(cut.Find("[aria-label='Category name']").GetAttribute("value"), Is.EqualTo("Unsaved draft"));
-            Assert.That(cut.Find(".probability-results").OuterHtml, Is.EqualTo(result));
+            Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+            Assert.That(cut.Find("#probabilityResultsHeading").TextContent, Is.EqualTo("Current result"));
+            Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
+            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current, Is.Not.Null);
+            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!.Total, Is.EqualTo(currentTotal));
+            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!.Context, Is.EqualTo(currentContext));
+            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!.Context.Combos
+                .Select(row => (row.Lineage, row.Signature)).ToArray(), Is.EqualTo(currentComboDefinitions));
+            Assert.That(CurrentRows(cut), Is.EqualTo(currentRows));
             Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pin));
+            AssertPinnedValues(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, pinnedValues);
             Assert.That(navigation.Uri, Is.EqualTo(uri));
             Assert.That(((FakeNavigationManager)navigation).History, Has.Count.EqualTo(history));
             Assert.That(cut.FindAll("[aria-label='Shared session']"), Is.Empty);
@@ -328,9 +343,12 @@ public class SessionSharingTest {
         var before = Snapshot(cut);
         var uri = navigation.Uri;
         var history = ((FakeNavigationManager)navigation).History.Count;
-        var offer = cut.Find("[aria-label='Shared session']").OuterHtml;
+        var incoming = cut.Find("[aria-label='Shared session']");
+        Assert.That(incoming.QuerySelector("[role='status']")!.TextContent, Is.EqualTo("A shared session is available."));
         await Button(cut, "Copy share link").ClickAsync(new());
-        Assert.That(cut.Find("[aria-label='Shared session']").OuterHtml, Is.EqualTo(offer));
+        Assert.That(cut.FindAll("[aria-label='Shared session']"), Has.Count.EqualTo(1));
+        Assert.That(cut.Find("[aria-label='Shared session'] [role='status']").TextContent, Is.EqualTo("A shared session is available."));
+        Assert.That(Button(cut, "Load shared session").HasAttribute("disabled"), Is.False);
         Assert.That(navigation.Uri, Is.EqualTo(uri));
         Assert.That(((FakeNavigationManager)navigation).History, Has.Count.EqualTo(history));
         Assert.That(Snapshot(cut), Is.EqualTo(before));
@@ -344,6 +362,35 @@ public class SessionSharingTest {
         Assert.That(cut.Markup, Does.Contain("Restore previous session"));
         await cut.InvokeAsync(() => navigation.NavigateTo(uri));
         Assert.That(Button(cut, "Load shared session").HasAttribute("disabled"), Is.False);
+    }
+
+    [Test] public async Task CopyLeavesIncomingOfferActionableForItsOriginalSession() {
+        Recovery();
+        var incoming = Session("Incoming");
+        var incomingJson = sessions.SerializeSession(incoming);
+        navigation.NavigateTo(Link(incoming));
+        var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
+        cut.WaitForState(() => cut.FindComponent<SessionRecovery>().Instance.InspectionComplete);
+        context.JSInterop.Setup<bool>("sessionSharing.copy", _ => true).SetResult(true);
+        await Button(cut, "Copy share link").ClickAsync(new());
+        Assert.That(cut.Find("[aria-label='Shared session'] [role='status']").TextContent, Is.EqualTo("A shared session is available."));
+        Assert.That(Button(cut, "Load shared session").HasAttribute("disabled"), Is.False);
+        Assert.That(Snapshot(cut), Is.Not.EqualTo(incomingJson));
+
+        var saved = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.JSInterop.SetupVoid("sessionRecovery.update", invocation => {
+            saved.TrySetResult((string)invocation.Arguments[2]!);
+            return true;
+        }).SetVoidResult();
+        await Button(cut, "Load shared session").ClickAsync(new());
+        var applied = await saved.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.That(applied, Is.EqualTo(incomingJson));
+        Assert.That(Snapshot(cut), Is.EqualTo(incomingJson));
+        Assert.That(cut.FindAll("[aria-label='Shared session']"), Is.Empty);
+        Assert.That(navigation.Uri, Does.Not.Contain("#"));
+        Assert.That(cut.Markup, Does.Not.Contain("Restore previous session"));
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
     }
 
     [TestCase(true, "navigate")]
@@ -399,6 +446,24 @@ public class SessionSharingTest {
             public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
             public void Fire() { if (!disposed) { disposed = true; callback(state); } }
         }
+    }
+
+    private sealed record ResultObservation(string Name, string Value, string? Comparison);
+    private sealed record PinnedObservation(double Total, string Description,
+        (int Index, string Label, double Probability, string? GroupId, Guid? Lineage, string? Signature)[] Combos,
+        (string Id, string Label, double Probability, int ActiveCount)[] Groups);
+    private static ResultObservation[] CurrentRows(IRenderedFragment cut) => cut.FindAll(".combo-probability-item")
+        .Select(row => new ResultObservation(row.QuerySelector(".combo-probability-name")!.TextContent.Trim(),
+            row.QuerySelector(".combo-probability-value")!.TextContent.Trim(),
+            row.QuerySelector(".result-row-comparison")?.TextContent.Trim())).ToArray();
+    private static PinnedObservation PinnedValues(PinnedResultSnapshot pin) => new(pin.Total, pin.Context.Description,
+        pin.Combos.Select(row => (row.Index, row.Label, row.Probability, row.GroupId, row.Definition?.Lineage, row.Definition?.Signature)).ToArray(),
+        pin.Groups.Select(row => (row.Id, row.Label, row.Probability, row.ActiveCount)).ToArray());
+    private static void AssertPinnedValues(PinnedResultSnapshot actual, PinnedObservation expected) {
+        Assert.That(actual.Total, Is.EqualTo(expected.Total));
+        Assert.That(actual.Context.Description, Is.EqualTo(expected.Description));
+        Assert.That(actual.Combos.Select(row => (row.Index, row.Label, row.Probability, row.GroupId, row.Definition?.Lineage, row.Definition?.Signature)).ToArray(), Is.EqualTo(expected.Combos));
+        Assert.That(actual.Groups.Select(row => (row.Id, row.Label, row.Probability, row.ActiveCount)).ToArray(), Is.EqualTo(expected.Groups));
     }
 
     public sealed class SharingHost : ComponentBase {
