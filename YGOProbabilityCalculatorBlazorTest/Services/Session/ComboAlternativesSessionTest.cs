@@ -31,6 +31,26 @@ public class ComboAlternativesSessionTest {
         Assert.That(shared.Combos[0].AlternativeGroups[0].Alternatives.Select(a => a.Kind), Is.EqualTo(new[] { "Card", "Category", "Category" }));
     }
 
+    [Test]
+    public async Task Schema3SingletonGroupsRemainStructuredWhenLoaded() {
+        var categoryLeaf = new ComboCategory(new("Fire"), 1, 0, RequirementMaximumMode.HandSize);
+        var cardLeaf = new ComboCard("a", 0, 0);
+        var session = new SessionState { SchemaVersion = 3, Combos = [new([], cards: [], alternativeGroups: [
+            new([ComboAlternative.For(categoryLeaf)]), new([ComboAlternative.For(cardLeaf)])])] };
+        var codec = Codec();
+
+        var json = codec.SerializeSession(session);
+        var loaded = await codec.LoadSessionAsync(json);
+
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(3));
+        Assert.That(loaded.Combos[0].AlternativeGroups, Has.Count.EqualTo(2));
+        Assert.That(loaded.Combos[0].AlternativeGroups.Select(group => group.Alternatives.Count), Is.EqualTo(new[] { 1, 1 }));
+        Assert.That(loaded.Combos[0].AlternativeGroups[0].Alternatives[0].Category!.MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
+        Assert.That(loaded.Combos[0].AlternativeGroups[0].Alternatives[0].Category!.MaxCount, Is.Zero);
+        Assert.That(loaded.Combos[0].AlternativeGroups[1].Alternatives[0].Card!.MaxCount, Is.Zero);
+        Assert.That(codec.SerializeSession(loaded), Is.EqualTo(json));
+    }
+
     [TestCase("null")]
     [TestCase("[null]")]
     [TestCase("[{\"Alternatives\":[]}]")]
