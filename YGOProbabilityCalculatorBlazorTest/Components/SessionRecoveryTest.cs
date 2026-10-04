@@ -127,6 +127,19 @@ public class SessionRecoveryTest {
             Does.Contain("Local recovery could not be saved."));
         Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
     }
+
+    [TestCase("\"Combos\":[{\"Categories\":[null]}]")]
+    [TestCase("\"ComboGroups\":[{\"Id\":\"g\",\"Name\":\"One\"},{\"Id\":\"g\",\"Name\":\"Two\"}]")]
+    public void InvalidNestedRecoveryModelStaysPausedAndCannotBeRestored(string invalidField) {
+        Recovery($"{{\"SchemaVersion\":3,{invalidField}}}");
+        var applied = false;
+        var cut = Render(new() { HandSize = 5 }, _ => { applied = true; return Task.FromResult(true); });
+        Assert.That(cut.Markup, Does.Contain("The local draft is invalid"));
+        Assert.That(cut.FindAll("button").Any(button => button.TextContent.Trim() == "Restore previous session"), Is.False);
+        Assert.That(applied, Is.False);
+        Assert.That(Writes, Is.Zero);
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
+    }
     [Test] public async Task DiscardWaitsForNextEditAndExplicitReplacementResumesPausedDraft() {
         Recovery(sessions.SerializeSession(Working()));
         context.JSInterop.Setup<bool>("sessionRecovery.discard", _ => true).SetResult(true);

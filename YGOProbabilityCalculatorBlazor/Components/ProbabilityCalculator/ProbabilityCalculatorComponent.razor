@@ -302,7 +302,7 @@
     private bool calculationResultIsStale;
 
     private int ActiveCardCount => cards.Count(card => card.Active);
-    private int ActiveCardCopies => cards.Where(card => card.Active).Sum(card => card.Copies);
+    private long ActiveCardCopies => cards.Where(card => card.Active).Sum(card => (long)card.Copies);
     private int ActiveComboCount => combos.Count(combo => combo.Active);
 
     private string? CalculationUnavailableMessage {
@@ -314,6 +314,8 @@
             if (ActiveCardCount == 0) return "Activate at least one card to calculate.";
             if (cards.Any(card => card.Active && card.Copies < 1))
                 return "Each active card must have at least one copy, or be deactivated.";
+            if (ActiveCardCopies > int.MaxValue)
+                return "The active deck is too large to calculate. Reduce the number of copies or deactivate cards.";
             if (ActiveCardCopies < handSize)
                 return $"The active deck has {ActiveCardCopies} copies, fewer than the hand size of {handSize}.";
             if (ActiveComboCount == 0) return "Activate at least one combo to calculate.";
