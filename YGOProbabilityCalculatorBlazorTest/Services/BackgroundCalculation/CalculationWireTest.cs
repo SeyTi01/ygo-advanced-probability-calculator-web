@@ -9,6 +9,18 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.BackgroundCalculation;
 [TestFixture]
 public class CalculationWireTest {
     [Test]
+    public void LargeFiniteProbabilitySurvivesWorkerSerialization() {
+        var a = new CategoryBase("A");
+        var snapshot = CalculationSnapshot.Capture([new([a]), new([], 1099)],
+            [new([new(a, 1, 1)], groupId: "g")], 550, [new("g", "Group")]);
+        // A distinguished copy occurs in exactly h/n = 550/1100 of all hands.
+        var result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
+        Assert.That(result.TotalProbability, Is.EqualTo(0.5));
+        Assert.That(result.ComboProbabilities.Single().Probability, Is.EqualTo(0.5));
+        Assert.That(result.GroupProbabilities!.Single().Probability, Is.EqualTo(0.5));
+    }
+
+    [Test]
     public void SnapshotFiltersActiveInputsAndOwnsNestedValuesAndGroupOrder() {
         var role = new CategoryBase("Role");
         var property = new CategoryBase("FIRE", CategorySource.Metadata, "attribute:fire");

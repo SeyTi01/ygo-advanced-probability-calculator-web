@@ -210,7 +210,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                 WorkBudget.CheckStorage(1, WorkBudget.IntegerCells(successes));
             }
             // Cancel signed inclusion-exclusion terms exactly, before conversion.
-            return (double)successes / (double)totalWays!.Value;
+            return ToProbability(successes);
         }
 
         private List<Event> FactorAlternatives(List<Event?> events) {
@@ -325,7 +325,32 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
                 return handSize < 0 || handSize > deckSize ? double.NaN : 1;
             }
             var successes = Count(predicate);
-            return (double)successes / (double)totalWays!.Value;
+            return ToProbability(successes);
+        }
+
+        private double ToProbability(BigInteger successes) {
+            var denominator = totalWays!.Value;
+            var doubleDenominator = (double)denominator;
+            // Preserve ordinary-sized conversion, including the existing invalid
+            // empty sample-space behavior. Valid counts satisfy 0 <= successes <= denominator.
+            if (double.IsFinite(doubleDenominator)) return (double)successes / doubleDenominator;
+            if (successes.IsZero) return 0;
+
+            // Neither infinity/infinity nor finite/infinity represents the exact
+            // ratio. Locate its binary exponent using integers, then round once
+            // to a 53-bit significand (or the fixed 2^-1074 subnormal grid).
+            var numeratorBits = successes.GetBitLength();
+            var denominatorBits = denominator.GetBitLength();
+            budget.Spend(1 + (numeratorBits + denominatorBits) / 32);
+            var exponent = numeratorBits - denominatorBits;
+            if (exponent < -1075) return 0;
+            if ((successes << (int)-exponent) < denominator) exponent--;
+            var shift = (int)Math.Min(1074, 52 - exponent);
+            WorkBudget.CheckStorage(1, (numeratorBits + shift + 31) / 32);
+            var significand = BigInteger.DivRem(successes << shift, denominator, out var remainder);
+            var rounding = (remainder << 1).CompareTo(denominator);
+            if (rounding > 0 || (rounding == 0 && !significand.IsEven)) significand++;
+            return Math.ScaleB((double)significand, -shift);
         }
 
         private BigInteger Count(Event predicate) {

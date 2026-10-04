@@ -53,6 +53,25 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  async function runSuccess(){await calculate.click();await waitIdle();await page.locator('.probability-total-value').waitFor();assert.match(await page.locator('.probability-total-value').innerText(),/50[.,]00/);assert.equal(await page.locator('.probability-group').count(),1);assert.equal(await page.locator('.combo-probability-item').count(),1);}
  async function captureLayout(phase,width,theme){if(!screenshotDirectory||!((width===1440&&theme==='light')||(width===320&&theme==='dark')))return;fs.mkdirSync(screenshotDirectory,{recursive:true});const y=await page.evaluate(()=>scrollY);await page.locator('.results-section').screenshot({path:path.join(screenshotDirectory,`${engine}-${width}-${theme}-${phase}.png`)});await page.evaluate(y=>window.scrollTo({top:y,behavior:'instant'}),y)}
  await load(simple);await runSuccess();
+ // Exercise the real trimmed WASM worker's conversion of counts beyond the
+ // double range, including a representable subnormal. Python Fraction/comb
+ // independently gives 550/1100 and float(1 / C(1080,540)) = Number.MIN_VALUE.
+ for (const [population, copies, hand, minimum, expected] of [[1100,1,550,1,0.5],[1080,540,540,540,Number.MIN_VALUE]]) {
+  const category={Name:'Large-count role',Source:0,MetadataKey:null};
+  const input={Cards:[{Id:'a',Copies:copies,Categories:[category]},{Id:'blank',Copies:population-copies,Categories:[]}]
+   .map(c=>({...c,Name:null,ExternalCardId:null,ManualMetadataCategoryKeys:[]})),
+   Combos:[{Name:'Large-count result',GroupId:'g',Categories:[{BaseCategory:category,MinCount:minimum,MaxCount:minimum,MaximumMode:0}],Cards:[],AlternativeGroups:[]}],
+   Groups:[{Id:'g',Name:'Group'}],HandSize:hand};
+  const response=await page.evaluate(async json=>{
+   const {createJob}=await import('./js/background-calculation.js');const job=createJob();
+   try{return JSON.parse(await job.run(json))}finally{job.dispose()}
+  },JSON.stringify(input));
+  assert.equal(response.Error,null);
+  assert.equal(response.Result.TotalProbability,expected);
+  assert.equal(response.Result.ComboProbabilities[0].Probability,expected);
+  assert.equal(response.Result.GroupProbabilities[0].Probability,expected);
+ }
+ console.log(JSON.stringify({engine,largeCountWorkerProbabilities:[0.5,Number.MIN_VALUE]}));
  const foreground=await page.evaluate(async json=>{
   const rt=getDotnetRuntime(0);const exports=await rt.getAssemblyExports(rt.getConfig().mainAssemblyName);
   await new Promise(r=>setTimeout(r,50));const start=performance.now();
