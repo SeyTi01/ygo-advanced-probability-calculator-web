@@ -159,7 +159,8 @@ public partial class CalculatorEditorTest {
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives[0].Card, Is.SameAs(cardSurvivor));
         var restoredCardGroup = editor.Instance.Combo.AlternativeGroups.Single();
 
-        var ordinaryCategoryButtons = editor.FindAll(".expanded-expression > span.badge.category-tag:not(.combo-card-tag)");
+        var ordinaryCategoryButtons = editor.FindAll(".expanded-expression > span.badge.category-tag:not(.combo-card-tag)").ToArray();
+        Assert.That(ordinaryCategoryButtons, Has.Length.EqualTo(2));
         await ordinaryCategoryButtons[1].QuerySelector("button")!.ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories, Has.Count.EqualTo(1));
         Assert.That(editor.Instance.Combo.Categories[0], Is.SameAs(ordinary), "Deleting the promoted occurrence leaves the pre-existing same-target requirement untouched.");
@@ -223,7 +224,8 @@ public partial class CalculatorEditorTest {
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[0].Category, Is.SameAs(repeated));
         Assert.That(editor.Instance.Combo.Categories, Has.Count.EqualTo(2));
         Assert.That(editor.Instance.Combo.Categories.All(category => ReferenceEquals(category, repeated)), Is.True);
-        var categories = editor.FindAll(".expanded-expression > span.badge.category-tag:not(.combo-card-tag)");
+        var categories = editor.FindAll(".expanded-expression > span.badge.category-tag:not(.combo-card-tag)").ToArray();
+        Assert.That(categories, Has.Length.EqualTo(2));
         await categories[1].QuerySelector("button")!.ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories, Has.Count.EqualTo(1));
         Assert.That(editor.Instance.Combo.Categories[0], Is.SameAs(repeated));
