@@ -46,8 +46,15 @@ public class WorkPolicyBenchmark {
                         service.CalculateProbabilityResults(deck, combos, hand, groups, new(midpoint));
                         high = midpoint;
                     } catch (ProbabilityCalculationLimitException ex) when (ex.Reason == ProbabilityCalculationLimitReason.Work) { low = midpoint; }
+                    catch (ProbabilityCalculationLimitException ex) when (ex.Reason == ProbabilityCalculationLimitReason.Storage) {
+                        // More work cannot bypass the independent storage ceiling.
+                        // Report it and continue measuring the remaining scenarios.
+                        TestContext.Out.WriteLine($"routes={count}; hand={hand}; chargedWork=unavailable (storage limit)");
+                        break;
+                    }
                 }
-                TestContext.Out.WriteLine($"routes={count}; hand={hand}; chargedWork=({low},{high}]; processWorkingSetBytes={Process.GetCurrentProcess().WorkingSet64}; managedHeapBytes={GC.GetTotalMemory(false)}");
+                if (high - low <= 100_000)
+                    TestContext.Out.WriteLine($"routes={count}; hand={hand}; chargedWork=({low},{high}]; processWorkingSetBytes={Process.GetCurrentProcess().WorkingSet64}; managedHeapBytes={GC.GetTotalMemory(false)}");
             }
         }
     }
