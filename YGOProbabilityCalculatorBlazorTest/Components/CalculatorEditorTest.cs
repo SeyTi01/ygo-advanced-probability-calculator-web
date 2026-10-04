@@ -333,6 +333,30 @@ public partial class CalculatorEditorTest {
         Combos = [new([new(a, 1, 2)], "First combo"), new([new(b, 1, 2)], "Second combo")], HandSize = 2
     };
 
+    [TestCase("\"Categories\":null")]
+    [TestCase("\"Categories\":[null]")]
+    [TestCase("\"Combos\":null")]
+    [TestCase("\"ComboGroups\":[null]")]
+    public async Task InvalidFileModelDataCannotPartiallyReplaceWorkingSession(string invalidField) {
+        var cut = Render(Session());
+        await Button(cut, "Calculate").ClickAsync(new());
+        await Button(cut, "Pin result").ClickAsync(new());
+        await cut.Find("[aria-label='Category name']").InputAsync(new() { Value = "Preserved draft" });
+        var before = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
+        var result = cut.Find(".probability-results").TextContent;
+        var pinned = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+        var writes = context.JSInterop.Invocations["sessionRecovery.update"].Count;
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(
+            $"{{\"SchemaVersion\":3,{invalidField}}}", "invalid.json"));
+        cut.WaitForState(() => cut.Markup.Contains("Failed to load session", StringComparison.Ordinal));
+
+        Assert.That(cut.FindComponent<SessionShareButton>().Instance.Snapshot, Is.EqualTo(before));
+        Assert.That(cut.Find(".probability-results").TextContent, Is.EqualTo(result));
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pinned));
+        Assert.That(cut.Find("[aria-label='Category name']").GetAttribute("value"), Is.EqualTo("Preserved draft"));
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.update"], Has.Count.EqualTo(writes));
+    }
+
     [Test]
     public async Task ReorderControlsMoveAllFourListsAndKeepSessionOrderAndReferences() {
         var c = new CategoryBase("C");
@@ -1794,6 +1818,44 @@ public partial class CalculatorEditorTest {
         Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
     }
 
+    [TestCase(false, false)]
+    [TestCase(true, false)]
+    [TestCase(false, true)]
+    [TestCase(true, true)]
+    public async Task CancelledYdkeImportCannotReplaceDeckOrReportLateFailure(bool fail, bool reopen) {
+        var completion = new TaskCompletionSource<List<Card>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var importer = new Mock<IDeckImportService>();
+        importer.Setup(service => service.ImportDeckFromYdkeAsync(It.IsAny<string>()))
+            .Returns(() => { started.SetResult(); return completion.Task; });
+        context.Services.AddSingleton(importer.Object);
+        var cut = Render(Session());
+        await Button(cut, "Calculate").ClickAsync(new());
+        var originalIds = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id).ToArray();
+        var originalResults = cut.Find(".probability-results").TextContent;
+        var writes = context.JSInterop.Invocations["sessionRecovery.update"].Count;
+        await Button(cut, "Import YDKe").ClickAsync(new());
+        await cut.Find("#ydkeCodeInput").InputAsync(new() { Value = "ydke://pending!!!" });
+        var import = Button(cut, "Import").ClickAsync(new());
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await Button(cut, "Cancel").ClickAsync(new());
+        // A late completion must also leave a newly opened form alone.
+        if (reopen) {
+            await Button(cut, "Import YDKe").ClickAsync(new());
+            await cut.Find("#ydkeCodeInput").InputAsync(new() { Value = "New draft" });
+        }
+        if (fail) completion.SetException(new InvalidOperationException("Obsolete failure"));
+        else completion.SetResult([new([], name: "Obsolete deck")]);
+        await import;
+
+        Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id).ToArray(), Is.EqualTo(originalIds));
+        Assert.That(cut.Find(".probability-results").TextContent, Is.EqualTo(originalResults));
+        if (reopen) Assert.That(cut.Find("#ydkeCodeInput").GetAttribute("value"), Is.EqualTo("New draft"));
+        else Assert.That(cut.FindAll("#ydkeCodeInput"), Is.Empty);
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.update"], Has.Count.EqualTo(writes));
+    }
+
     [Test]
     public async Task YdkeImportFailureKeepsDeckAndCorrectedRetrySucceeds() {
         const string invalidCode = "not a ydke code";
@@ -1824,6 +1886,43 @@ public partial class CalculatorEditorTest {
         Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Recovered import"));
+    }
+
+    [Test]
+    public async Task CancellingOldYdkeFormDoesNotRevokeNewerFileLoad() {
+        var importCompletion = new TaskCompletionSource<List<Card>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var importer = new Mock<IDeckImportService>();
+        importer.Setup(service => service.ImportDeckFromYdkeAsync(It.IsAny<string>())).Returns(importCompletion.Task);
+        context.Services.AddSingleton(importer.Object);
+        var enrichmentStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var enrichmentCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var enricher = new Mock<ILegacyCardMetadataEnricher>();
+        enricher.Setup(service => service.EnrichAsync(It.IsAny<SessionState>())).Returns(Task.CompletedTask);
+        context.Services.AddSingleton(enricher.Object);
+        var cut = Render(Session());
+        await Button(cut, "Import YDKe").ClickAsync(new());
+        await cut.Find("#ydkeCodeInput").InputAsync(new() { Value = "ydke://pending!!!" });
+        var import = Button(cut, "Import").ClickAsync(new());
+        enricher.Setup(service => service.EnrichAsync(It.IsAny<SessionState>()))
+            .Returns(() => { enrichmentStarted.SetResult(); return enrichmentCompletion.Task; });
+        var replacement = new SessionState { Cards = [new([], name: "Newer file")], HandSize = 7 };
+        var sessions = context.Services.GetRequiredService<ISessionService>();
+        var saved = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.JSInterop.SetupVoid("sessionRecovery.update", call => {
+            saved.TrySetResult((string)call.Arguments[2]!); return true;
+        }).SetVoidResult();
+        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(sessions.SerializeSession(replacement), "fixture.json"));
+        await enrichmentStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await Button(cut, "Cancel").ClickAsync(new());
+        importCompletion.SetResult([new([], name: "Obsolete import")]);
+        enrichmentCompletion.SetResult();
+        await import;
+        var payload = await saved.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.That(payload, Is.EqualTo(sessions.SerializeSession(replacement)));
+        Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Newer file"));
+        Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("7"));
+        Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
     }
 
     [Test]

@@ -15,7 +15,7 @@ public partial class ProbabilityCalculatorComponent {
         ObserveShareLocation(SharingNavigation.Uri);
     }
     private void SharingLocationChanged(object? sender, LocationChangedEventArgs args) =>
-        _ = InvokeAsync(() => { if (!sessionDisposed) { ObserveShareLocation(args.Location); StateHasChanged(); } });
+        _ = InvokeAsync(() => { if (!disposed) { ObserveShareLocation(args.Location); StateHasChanged(); } });
 
     private void ObserveShareLocation(string location) {
         var start = location.IndexOf('#');
@@ -57,19 +57,14 @@ public partial class ProbabilityCalculatorComponent {
 
     private async Task LoadSharedSessionAsync() {
         if (sharedJson is not { } json || sharedLoading || sharingRecovery?.InspectionComplete != true) return;
-        var request = ++sessionLoadVersion;
-        var edit = workspaceEditVersion;
-        var before = _sessionService.SerializeSession(CaptureSession());
+        var request = BeginSessionLoad();
         sharedLoading = true;
         try {
             var session = await _sessionService.LoadSessionAsync(json);
-            if (!await RestoreSessionDataAsync(session, request, before, edit)) {
+            if (!await RestoreSessionDataAsync(session, request)) {
                 if (OwnsSessionLoad(request)) sharedError = "Current work changed while loading. Review the shared session and load it again.";
                 return;
             }
-            activeCardIndex = activeComboIndex = -1;
-            sessionVersion++;
-            autosaveReplacementVersion++;
         }
         catch {
             if (OwnsSessionLoad(request)) sharedError = "The shared session is invalid or uses an unsupported session version. Your work and saved draft are kept.";
