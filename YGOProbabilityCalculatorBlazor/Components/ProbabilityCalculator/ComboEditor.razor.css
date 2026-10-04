@@ -6,6 +6,20 @@
     max-width: 32rem;
 }
 
+.combo-group-membership {
+    display: inline-flex;
+    align-items: center;
+    gap: .2rem;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+}
+
+.combo-group-membership svg {
+    flex: 0 0 auto;
+}
+
 .alternative-group {
     display: inline-flex;
     flex-wrap: wrap;

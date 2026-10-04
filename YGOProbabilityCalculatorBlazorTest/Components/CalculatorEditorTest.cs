@@ -916,7 +916,11 @@ public partial class CalculatorEditorTest {
         var membership = groupedHeader.QuerySelector(".combo-group-membership");
 
         Assert.That(membership, Is.Not.Null);
-        Assert.That(membership!.TextContent, Does.Contain("Group: Full Combo"));
+        Assert.That(membership!.TextContent.Trim(), Is.EqualTo("Full Combo"));
+        Assert.That(membership.TextContent, Does.Not.Contain("Group:"));
+        Assert.That(membership.GetAttribute("aria-label"), Is.EqualTo("Group: Full Combo"));
+        Assert.That(membership.QuerySelector("svg")?.GetAttribute("aria-hidden"), Is.EqualTo("true"));
+        Assert.That(membership.QuerySelector("svg")?.GetAttribute("focusable"), Is.EqualTo("false"));
         Assert.That(membership.ClassList, Does.Not.Contain("category-tag"));
         Assert.That(membership.ClassList, Does.Not.Contain("card-property-tag"));
         Assert.That(membership.ClassList, Does.Not.Contain("combo-card-tag"));
@@ -2048,7 +2052,7 @@ public partial class CalculatorEditorTest {
         var groupId = first.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
         first.Find("#comboGroup0").Change(groupId);
         Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
-            Does.Contain("Group: Tier 1"));
+            Does.Contain("Tier 1"));
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.Find("[aria-label='New combo group name']").Input("Tier 2");
@@ -2072,7 +2076,7 @@ public partial class CalculatorEditorTest {
         Assert.That(first.Instance.Combo.GroupId,
             Is.EqualTo(groupId));
         Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
-            Does.Contain("Group: Tier One"));
+            Does.Contain("Tier One"));
         Assert.That(cut.Find("#comboGroup0").TextContent, Does.Contain("Tier One"));
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
@@ -2086,7 +2090,7 @@ public partial class CalculatorEditorTest {
         cut.Find("#comboGroup0").Change(secondId);
         Assert.That(first.Instance.Combo.GroupId, Is.EqualTo(secondId));
         Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
-            Does.Contain("Group: Tier 2"));
+            Does.Contain("Tier 2"));
         Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.Find("#comboGroup0").Change("");
@@ -2094,7 +2098,7 @@ public partial class CalculatorEditorTest {
         Assert.That(first.Find(".combo-header-content").QuerySelector(".combo-group-membership"), Is.Null);
         cut.Find("#comboGroup0").Change(groupId);
         Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
-            Does.Contain("Group: Tier One"));
+            Does.Contain("Tier One"));
 
         cut.Find("[aria-label='Remove group Tier One']").Click();
         Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
