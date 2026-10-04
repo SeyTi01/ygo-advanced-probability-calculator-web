@@ -93,7 +93,7 @@
 
             @if (AlternativeScope) {
                 <div class="alternative-scope mb-2" role="status">
-                    @(editingAlternative is null ? "Add alternative to" : "Edit alternative in") (@ScopeLabel)
+                    @(editingAlternative is null ? "Add alternative to" : $"Edit alternative {editingAlternative + 1} in") (@ScopeLabel)
                     <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelAlternative">Cancel</button>
                 </div>
             }
@@ -152,7 +152,7 @@
                            @oninput="e => maxCount = e.Value?.ToString() ?? string.Empty"/>
                 </div>
                 <div class="requirement-submit">
-                    <button class="btn btn-primary w-100" @onclick="AddConstraint">@(AlternativeScope ? (editingAlternative is null ? "Add alternative" : "Update alternative") : HasSelectedConstraint ? "Update" : "Add")</button>
+                    <button class="btn btn-primary w-100" aria-label="@(AlternativeScope ? (editingAlternative is null ? "Add alternative" : "Update alternative") : null)" @onclick="AddConstraint">@((AlternativeScope ? editingAlternative is not null : HasSelectedConstraint) ? "Update" : "Add")</button>
                 </div>
             </div>
 
@@ -289,7 +289,7 @@
     private ComboAlternative? alternativeSeed;
     private bool AlternativeScope => alternativeGroup is not null || alternativeSeed is not null;
     private string ScopeLabel => alternativeSeed is { } seed ? AlternativeLabel(seed) : alternativeGroup is { } g && g < Combo.AlternativeGroups.Count
-        ? string.Join(" OR ", Combo.AlternativeGroups[g].Alternatives.Select(AlternativeLabel)) : "";
+        ? $"OR group {g + 1}" : "";
     private string AlternativeLabel(ComboAlternative a) => a.Category?.BaseCategory.Name ?? $"Card: {CardDisplayName(a.Card!.CardId)}";
 
     private RenderFragment AlternativeBadge(ComboAlternative a) => @<span class="badge category-tag @(a.Category is { } c ? CategoryCssClass(c.BaseCategory) : "combo-card-tag")">
