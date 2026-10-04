@@ -52,7 +52,7 @@
 
     private readonly EditorKeys<Card> editorKeys = new();
     private IReadOnlyList<CategoryBase> availableCategories = [];
-    private int ActiveCopies => Cards.Where(card => card.Active).Sum(card => card.Copies);
+    private long ActiveCopies => Cards.Where(card => card.Active).Sum(card => (long)card.Copies);
 
     protected override void OnParametersSet() {
         editorKeys.Synchronize(Cards);

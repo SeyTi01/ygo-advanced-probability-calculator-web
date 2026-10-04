@@ -193,6 +193,21 @@ public class SessionSharingTest {
         Assert.That(context.JSInterop.Invocations["saveSessionFile"], Is.Empty);
     }
 
+    [TestCase("\"Categories\":[{\"Name\":\"Role\"},{\"Name\":\"Role\"}]")]
+    [TestCase("\"ComboGroups\":[{\"Id\":\"g\",\"Name\":\"One\"},{\"Id\":\"g\",\"Name\":\"Two\"}]")]
+    public async Task InvalidEditorIdentitiesCannotBecomeAnAcceptableShareOffer(string invalidField) {
+        Recovery();
+        var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
+        var before = Snapshot(cut);
+        var link = SessionShareCodec.CreateLink(navigation.BaseUri, $"{{\"SchemaVersion\":3,{invalidField}}}");
+        await cut.InvokeAsync(() => navigation.NavigateTo(link));
+        Assert.That(cut.Markup, Does.Contain("The shared session is invalid"));
+        Assert.That(cut.FindAll("button").Any(button => button.TextContent.Trim() == "Load shared session"), Is.False);
+        Assert.That(Snapshot(cut), Is.EqualTo(before));
+        Assert.That(Writes, Is.Zero);
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
+    }
+
     [Test] public async Task OfferAndInvalidLinkKeepCalculationRunningAndAcceptanceCancelsAtCommit() {
         var role = new CategoryBase("Role");
         context.Services.GetRequiredService<IPendingSessionService>().PendingSession = new() {
