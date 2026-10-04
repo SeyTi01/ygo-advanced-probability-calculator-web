@@ -9,7 +9,7 @@ public partial class ProbabilityCalculatorComponent {
     private PinnedResultSnapshot? acceptedComparison;
     private PinnedResultSnapshot? pinnedResult;
     private bool CanPin => !disposed && !isCalculating && !calculationResultIsStale && calculationResult is not null && acceptedComparison is { IsValid: true };
-    private bool CanCompare => !isCalculating && !calculationResultIsStale && calculationResult is not null && acceptedComparison is { IsValid: true };
+    private bool CanCompareDisplayedResult => !disposed && calculationResult is not null && acceptedComparison is { IsValid: true };
     private string PinUnavailableReason => CanPin ? "" : isCalculating ? "Calculation is running." : calculationResultIsStale
         ? "Inputs changed. Calculate again to pin a current result." : "Calculate a valid result before pinning.";
 
@@ -46,10 +46,10 @@ public partial class ProbabilityCalculatorComponent {
     private PinnedCalculationContext CaptureComparisonContext() => PinnedCalculationContext.Capture(
         comparisonEpoch, handSize, cards, combos, comboGroups, ComboLineage, GroupLineage);
 
-    private PinnedResultComparison? CurrentComboComparison(int index) => CanCompare && pinnedResult is not null &&
+    private PinnedResultComparison? CurrentComboComparison(int index) => CanCompareDisplayedResult && pinnedResult is not null &&
         acceptedComparison!.Combos.SingleOrDefault(c => c.Index == index) is { } row
             ? acceptedComparison.CompareComboPresentation(row, pinnedResult, true) : null;
-    private PinnedResultComparison? CurrentGroupComparison(string id) => CanCompare && pinnedResult is not null &&
+    private PinnedResultComparison? CurrentGroupComparison(string id) => CanCompareDisplayedResult && pinnedResult is not null &&
         acceptedComparison!.Groups.SingleOrDefault(g => g.Id == id) is { } row
             ? acceptedComparison.CompareGroupPresentation(row, pinnedResult, true) : null;
 }
