@@ -39,6 +39,27 @@
     max-width: 48rem;
 }
 
+.add-or-button {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+}
+
+.add-or-chevron {
+    width: .7rem;
+    height: .7rem;
+    flex: 0 0 auto;
+    transition: transform 120ms ease;
+}
+
+.add-or-chevron.is-open {
+    transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .add-or-chevron { transition: none; }
+}
+
 .expanded-expression {
     display: flex;
     flex-wrap: wrap;
