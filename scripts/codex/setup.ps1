@@ -1,5 +1,4 @@
 # Codex local-environment setup (Windows / PowerShell)
-# Add this file to the repository as scripts/codex/setup.ps1.
 # Run it from Codex's Windows-specific setup script with:
 # powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\codex\setup.ps1
 
