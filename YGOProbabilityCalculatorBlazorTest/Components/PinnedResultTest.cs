@@ -427,7 +427,10 @@ public class PinnedResultTest {
                 new InputFileChangeEventArgs([new SessionFile("fixture")])));
         }
         else if (load == "recovery") await Call("ApplyRecoveryAsync", replacement);
-        else await Call("RestoreSessionDataAsync", replacement, Field<long>("sessionLoadVersion"), sessions.SerializeSession(FieldSession()), Field<long>("workspaceEditVersion"));
+        else {
+            var request = typeof(ProbabilityCalculatorComponent).GetMethod("BeginSessionLoad", Private)!.Invoke(cut.Instance, null)!;
+            await Call("RestoreSessionDataAsync", replacement, request);
+        }
         Assert.That(Pinned, Is.SameAs(pin));
         Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);

@@ -47,6 +47,13 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             if (session == null)
                 throw new InvalidOperationException("Failed to deserialize session data");
 
+            // Reject incomplete model graphs before any caller begins replacing its workspace.
+            // Omitted collections retain defaults; optional legacy groups/colors may still be null.
+            if (session.Categories is null || session.Cards is null || session.Combos is null ||
+                session.Categories.Any(category => category is null) || session.Cards.Any(card => card is null) ||
+                session.Combos.Any(combo => combo is null) || session.ComboGroups?.Any(group => group is null) == true)
+                throw new JsonException("Session contains missing model collections or entries.");
+
             if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
                 throw new InvalidOperationException("Session contains duplicate card IDs.");
 

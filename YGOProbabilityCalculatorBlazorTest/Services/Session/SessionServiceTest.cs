@@ -145,6 +145,29 @@ public class SessionServiceTests {
         Assert.That(exception!.Message, Does.Contain("duplicate card IDs"));
     }
 
+    [TestCase("Categories", "null")]
+    [TestCase("Cards", "null")]
+    [TestCase("Combos", "null")]
+    [TestCase("Categories", "[null]")]
+    [TestCase("Cards", "[null]")]
+    [TestCase("Combos", "[null]")]
+    [TestCase("ComboGroups", "[null]")]
+    public void LoadSessionAsync_RejectsMissingModelCollectionsAndEntries(string field, string value) {
+        var service = new SessionService(_jsRuntimeMock.Object, new RealJsonSerializer());
+        var json = $"{{\"SchemaVersion\":3,\"{field}\":{value}}}";
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() => service.LoadSessionAsync(json));
+        Assert.That(exception!.Message, Is.EqualTo("Invalid session file format"));
+    }
+
+    [Test]
+    public async Task LoadSessionAsync_AbsentCollectionsAndLegacyNullOptionalFieldsRemainSupported() {
+        var service = new SessionService(_jsRuntimeMock.Object, new RealJsonSerializer());
+        var session = await service.LoadSessionAsync("{\"ComboGroups\":null,\"CategoryColorIndices\":null}");
+        Assert.That(session.Categories, Is.Empty);
+        Assert.That(session.Cards, Is.Empty);
+        Assert.That(session.Combos, Is.Empty);
+    }
+
     [Test]
     public async Task LoadSessionAsync_HistoricalV1_2UnversionedFixture_MigratesAndPreservesLegacySession() {
         // Unchanged bundled Fiendsmith/Bystial example from the v1.2.0 release.
