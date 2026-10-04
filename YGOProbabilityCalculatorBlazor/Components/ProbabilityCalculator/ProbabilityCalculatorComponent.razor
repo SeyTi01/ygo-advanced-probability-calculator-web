@@ -308,7 +308,7 @@
     private string? CalculationUnavailableMessage {
         get {
             if (handSize < 1) return "Hand size must be at least 1.";
-            if (combos.Any(combo => combo.Active && combo.Cards.Any(requirement =>
+            if (combos.Any(combo => combo.Active && combo.AllCards.Any(requirement =>
                 cards.Count(card => card.Id == requirement.CardId) != 1)))
                 return "An active combo has a missing card reference. Repair or remove it, or deactivate the combo.";
             if (ActiveCardCount == 0) return "Activate at least one card to calculate.";
@@ -319,7 +319,7 @@
             if (ActiveComboCount == 0) return "Activate at least one combo to calculate.";
             if (ActiveComboCount > IProbabilityCalculatorService.MaxComboCount)
                 return $"Calculate with at most {IProbabilityCalculatorService.MaxComboCount} active combos. Deactivate or remove extra combos.";
-            if (combos.Any(combo => combo.Active && combo.Categories.Count == 0 && combo.Cards.Count == 0))
+            if (combos.Any(combo => combo.Active && combo.RequirementCount == 0))
                 return "Complete or deactivate every incomplete active combo before calculating.";
             return null;
         }
@@ -424,7 +424,7 @@
             GetDuplicateComboName(source.Name),
             source.Active,
             source.GroupId,
-            source.Cards.Select(card => new ComboCard(card.CardId, card.MinCount, card.MaxCount, card.MaximumMode)));
+            source.Cards.Select(card => new ComboCard(card.CardId, card.MinCount, card.MaxCount, card.MaximumMode)), source.AlternativeGroups);
 
         var duplicateIndex = index + 1;
         combos.Insert(duplicateIndex, duplicate);
@@ -500,6 +500,13 @@
             }
         }
 
+        foreach (var combo in combos) {
+            for (var g = 0; g < combo.AlternativeGroups.Count; g++) {
+                combo.AlternativeGroups[g] = new ComboAlternativeGroup(combo.AlternativeGroups[g].Alternatives.Select(a =>
+                    a.Category is { } c && c.BaseCategory.Identity == oldCategory.Identity
+                        ? ComboAlternative.For(new ComboCategory(newCategory, c.MinCount, c.MaxCount, c.MaximumMode)) : a).ToArray());
+            }
+        }
         categoryRename = new CategoryRenameNotice(++categoryRenameVersion, oldCategory.Name, newCategory.Name);
         return Task.CompletedTask;
     }
@@ -523,7 +530,7 @@
 
     private void ReconcileCategoryColorIndices() {
         var activeCategoryNames = categoryBases.Concat(cards.SelectMany(card => card.Categories))
-            .Concat(combos.SelectMany(combo => combo.Categories).Select(category => category.BaseCategory))
+            .Concat(combos.SelectMany(combo => combo.AllCategories).Select(category => category.BaseCategory))
             .Where(category => category.Source == CategorySource.User).Select(category => category.Name)
             .Distinct(StringComparer.Ordinal)
             .ToList();

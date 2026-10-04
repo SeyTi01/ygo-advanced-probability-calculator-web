@@ -542,6 +542,27 @@ public class SmallDeckOracleTest {
     internal static bool MatchesHand(IReadOnlyList<Card> hand, Combo combo) => HandPredicate(combo, hand.Count)(hand);
 
     internal static Func<IReadOnlyList<Card>, bool> HandPredicate(Combo combo, int handSize) {
+        // Independently choose each alternative and then assign physical copies
+        // across the WHOLE conjunction. No production expression/compiler helper.
+        if (combo.AlternativeGroups.Count > 0) {
+            var predicates = new List<Func<IReadOnlyList<Card>, bool>>();
+            Choose(0, combo.Categories.ToList(), combo.Cards.ToList());
+            return hand => predicates.Any(predicate => predicate(hand));
+            void Choose(int index, List<ComboCategory> categories, List<ComboCard> cards) {
+                if (index == combo.AlternativeGroups.Count) {
+                    predicates.Add(HandPredicate(new Combo(categories, cards: cards), handSize));
+                    return;
+                }
+                foreach (var alternative in combo.AlternativeGroups[index].Alternatives) {
+                    var nextCategories = categories.ToList();
+                    var nextCards = cards.ToList();
+                    if (alternative.Kind == "Category") nextCategories.Add(alternative.Category!);
+                    else if (alternative.Kind == "Card") nextCards.Add(alternative.Card!);
+                    else throw new ArgumentException("Unknown oracle alternative.");
+                    Choose(index + 1, nextCategories, nextCards);
+                }
+            }
+        }
         var roles = new List<(Func<Card, bool> Matches, int Min, int Max)>();
         foreach (var group in combo.Categories.GroupBy(c => (c.BaseCategory.Source, Key: c.BaseCategory.Source == CategorySource.User ? c.BaseCategory.Name : c.BaseCategory.MetadataKey)))
             roles.Add((card => card.Categories.Any(c => c.Source == group.Key.Source && (c.Source == CategorySource.User ? c.Name : c.MetadataKey) == group.Key.Key),

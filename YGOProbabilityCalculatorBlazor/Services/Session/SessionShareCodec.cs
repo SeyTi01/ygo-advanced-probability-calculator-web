@@ -14,7 +14,7 @@ public static class SessionShareCodec {
     public const int MaxJsonBytes = 262_144;
     private const int HeaderLength = 36;
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
-    private static readonly HashSet<string> Collections = new(["Cards", "Categories", "Combos", "ComboGroups", "ManualMetadataCategoryKeys"], StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> Collections = new(["Cards", "Categories", "Combos", "ComboGroups", "ManualMetadataCategoryKeys", "AlternativeGroups", "Alternatives"], StringComparer.OrdinalIgnoreCase);
 
     public static string CreateLink(string baseUri, string serializedSession) {
         var source = StrictUtf8.GetBytes(serializedSession);

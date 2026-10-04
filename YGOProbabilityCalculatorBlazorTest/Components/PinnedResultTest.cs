@@ -58,6 +58,24 @@ public class PinnedResultTest {
         typeof(Microsoft.AspNetCore.Components.ComponentBase).GetMethod("StateHasChanged", Private)!.Invoke(cut.Instance, null);
     });
     private Task Start() => cut.Find(".calculate-action > button").ClickAsync(new());
+    [Test]
+    public async Task OrSignatureFreezesStructureAndIgnoresAlternativeAndGroupOrder() {
+        var original = Field<List<Combo>>("combos")[0];
+        var first = new ComboAlternativeGroup([ComboAlternative.For(new ComboCard("a", 1, 5)), ComboAlternative.For(new ComboCategory(role, 1, 5))]);
+        var second = new ComboAlternativeGroup([ComboAlternative.For(new ComboCard("b", 0, 0)), ComboAlternative.For(new ComboCard("a", 0, 0))]);
+        var grouped = original.WithCards([]).WithAlternativeGroups([first, second]);
+        await Call("ReplaceCombo", (0, grouped));
+        await Accept(); await Pin();
+        var signature = Pinned.Combos[0].Definition!.Signature;
+        await Call("ReplaceCombo", (0, grouped.WithAlternativeGroups([second, new(first.Alternatives.Reverse().ToArray())])));
+        await Accept();
+        Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Definition changed"));
+        var edited = grouped.WithAlternativeGroups([new([first.Alternatives[0]]), second]);
+        await Call("ReplaceCombo", (0, edited));
+        Assert.That(Pinned.Combos[0].Definition!.Signature, Is.EqualTo(signature));
+        await Accept();
+        Assert.That(cut.Find(".probability-results").TextContent, Does.Contain("Definition changed"));
+    }
     private Task Pin() => cut.Find(".pin-result-action").ClickAsync(new());
     private Task Clear() => cut.Find(".pinned-result button").ClickAsync(new());
     private PinnedResultSnapshot Pinned => cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;

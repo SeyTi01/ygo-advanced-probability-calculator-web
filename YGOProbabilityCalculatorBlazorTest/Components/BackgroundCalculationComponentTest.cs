@@ -43,6 +43,32 @@ public class BackgroundCalculationComponentTest {
     public void TearDown() { cut?.Dispose(); context.Dispose(); }
 
     private Task Start() => cut.Find(".calculate-action > button").ClickAsync(new());
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task OrEditCancelsPendingRequestAndRejectsLateCompletion(bool error) {
+        var accepted = Start();
+        calculator.Jobs[0].SetResult(Result("accepted"));
+        await accepted;
+        await cut.Find(".pin-result-action").ClickAsync(new());
+        var pending = Start();
+        Assert.That(calculator.Jobs, Has.Count.EqualTo(2));
+        var editor = cut.FindComponent<ComboEditor>();
+        await editor.Find(".accordion-button").ClickAsync(new());
+        await editor.Find("[aria-label='Add alternative to card A #1']").ClickAsync(new());
+        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
+        await editor.Find("#comboCard0").ChangeAsync(new() { Value = "b" });
+        await editor.Find(".requirement-submit button").ClickAsync(new());
+        Assert.That(calculator.Tokens[1].IsCancellationRequested, Is.True);
+        if (error) calculator.Jobs[1].SetException(new InvalidOperationException("late OR error"));
+        else calculator.Jobs[1].SetResult(Result("late OR success"));
+        await pending;
+        Assert.That(cut.Markup, Does.Contain("accepted").And.Not.Contain("late OR"));
+        Assert.That(cut.FindAll(".pinned-result"), Has.Count.EqualTo(1));
+        var next = Start();
+        calculator.Jobs[2].SetResult(Result("new OR result"));
+        await next;
+        Assert.That(cut.Markup, Does.Contain("new OR result"));
+    }
     private Task Cancel() => cut.Find(".calculate-action > button[aria-label='Cancel calculation']").ClickAsync(new());
     private Task SetHandSizeWithoutInvalidating(int value) => cut.InvokeAsync(() => {
         typeof(ProbabilityCalculatorComponent).GetField("handSize",
