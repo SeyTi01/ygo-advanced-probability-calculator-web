@@ -100,6 +100,15 @@ public class PinnedResultTest {
         var action = Start(); var job = worker.Jobs.Count - 1;
         worker.Jobs[job].SetResult(Result(job, probability)); await action;
     }
+    private void AssertAllComparisonRows(string text, string cssClass) {
+        var differences = cut.FindAll(".result-difference").ToArray();
+        Assert.That(differences, Has.Length.EqualTo(5));
+        foreach (var difference in differences) {
+            Assert.That(difference.TextContent, Is.EqualTo(text));
+            Assert.That(difference.ClassList, Does.Contain(cssClass));
+            Assert.That(difference.GetAttribute("aria-label"), Is.EqualTo($"Absolute change from pinned result: {text}"));
+        }
+    }
     private Task Upload(SessionState session) => cut.InvokeAsync(() => cut.FindComponents<InputFile>()[1].Instance.OnChange.InvokeAsync(
         new InputFileChangeEventArgs([new SessionFile(sessions.SerializeSession(session))])));
 
@@ -198,38 +207,84 @@ public class PinnedResultTest {
         Assert.That(Pinned.Total, Is.EqualTo(.814));
     }
 
+    [TestCase(.842, "+2.8%", "result-difference-positive")]
+    [TestCase(.786, "-2.8%", "result-difference-negative")]
+    public async Task AcceptedComparisonRowsRemainVisibleWhenDisplayedResultBecomesStale(double probability, string delta, string cssClass) {
+        await Accept(); await Pin();
+        var pin = Pinned;
+        await Accept(probability);
+        var accepted = Field<PinnedResultSnapshot>("acceptedComparison");
+        AssertAllComparisonRows(delta, cssClass);
+
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+
+        Assert.That(cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
+        Assert.That(cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
+        Assert.That(Pinned, Is.SameAs(pin));
+        Assert.That(Field<PinnedResultSnapshot>("acceptedComparison"), Is.SameAs(accepted));
+        AssertAllComparisonRows(delta, cssClass);
+
+        var action = Start();
+        Assert.That(cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
+        AssertAllComparisonRows(delta, cssClass);
+        worker.Jobs[^1].SetCanceled();
+        await action;
+        Assert.That(Field<PinnedResultSnapshot>("acceptedComparison"), Is.SameAs(accepted));
+        AssertAllComparisonRows(delta, cssClass);
+    }
+
+    [Test] public async Task SuccessfulStaleRecalculationReplacesAcceptedComparisonRows() {
+        await Accept(); await Pin();
+        var pin = Pinned;
+        await Accept(.842);
+        var previous = Field<PinnedResultSnapshot>("acceptedComparison");
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+        var action = Start();
+        AssertAllComparisonRows("+2.8%", "result-difference-positive");
+
+        worker.Jobs[^1].SetResult(Result(worker.Jobs.Count - 1, .786));
+        await action;
+
+        var accepted = Field<PinnedResultSnapshot>("acceptedComparison");
+        Assert.That(accepted, Is.Not.SameAs(previous));
+        Assert.That(Pinned, Is.SameAs(pin));
+        Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
+        Assert.That(cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
+        AssertAllComparisonRows("-2.8%", "result-difference-negative");
+    }
+
     [TestCase("late-success")] [TestCase("late-error")] [TestCase("cancelled")] [TestCase("failure")]
     [TestCase("work-limit")] [TestCase("storage-limit")]
     public async Task BusyStaleCancelledFailedAndLateResultsCannotReplacePinOrAcceptedComparison(string completion) {
-        await Accept(); await Pin(); var baseline = Pinned;
+        await Accept(); await Pin(); var baseline = Pinned; await Accept(.842);
         var accepted = Field<PinnedResultSnapshot>("acceptedComparison");
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         Assert.That(cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
-        Assert.That(cut.FindAll(".result-difference"), Is.Empty);
+        AssertAllComparisonRows("+2.8%", "result-difference-positive");
         var action = Start();
         await Call("PinCurrentResult");
         Assert.That(Pinned, Is.SameAs(baseline), "the event handler also rejects busy/stale pinning");
         Assert.That(cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
-        Assert.That(cut.FindAll(".result-difference"), Is.Empty);
+        AssertAllComparisonRows("+2.8%", "result-difference-positive");
         if (completion.StartsWith("late")) {
             await cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
             await Accept(.842);
-            if (completion == "late-success") worker.Jobs[1].SetResult(Result(1, .1));
-            else worker.Jobs[1].SetException(new Exception("Obsolete error"));
+            if (completion == "late-success") worker.Jobs[2].SetResult(Result(2, .1));
+            else worker.Jobs[2].SetException(new Exception("Obsolete error"));
         }
-        else if (completion == "cancelled") worker.Jobs[1].SetCanceled();
-        else if (completion.EndsWith("limit")) worker.Jobs[1].SetException(new ProbabilityCalculationLimitException(
+        else if (completion == "cancelled") worker.Jobs[2].SetCanceled();
+        else if (completion.EndsWith("limit")) worker.Jobs[2].SetException(new ProbabilityCalculationLimitException(
             completion == "work-limit" ? ProbabilityCalculationLimitReason.Work : ProbabilityCalculationLimitReason.Storage));
-        else worker.Jobs[1].SetException(new Exception("Current failure"));
+        else worker.Jobs[2].SetException(new Exception("Current failure"));
         await action;
         Assert.That(Pinned, Is.SameAs(baseline));
         if (completion.StartsWith("late")) {
-            Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
+            AssertAllComparisonRows("+2.8%", "result-difference-positive");
             Assert.That(cut.Markup, Does.Not.Contain("Obsolete error"));
         }
         else {
             Assert.That(Field<PinnedResultSnapshot>("acceptedComparison"), Is.SameAs(accepted));
-            Assert.That(cut.FindAll(".result-difference"), Is.Empty);
+            AssertAllComparisonRows("+2.8%", "result-difference-positive");
             Assert.That(cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
         }
     }

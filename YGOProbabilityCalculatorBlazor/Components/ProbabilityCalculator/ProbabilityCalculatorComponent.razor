@@ -190,7 +190,7 @@
                     <span class="combo-probability-name">Any active combo</span>
                     <div class="comparison-value result-value-group">
                         <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
-                        @if (pinnedResult is not null && CanCompare && PinnedResultSnapshot.DifferencePresentation(acceptedComparison!.Total, pinnedResult.Total) is { } totalDifference) {
+                        @if (pinnedResult is not null && CanCompareDisplayedResult && PinnedResultSnapshot.DifferencePresentation(acceptedComparison!.Total, pinnedResult.Total) is { } totalDifference) {
                             <small class="result-difference @totalDifference.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {totalDifference.Text}")">@totalDifference.Text</small>
                         }
                     </div>
@@ -268,7 +268,7 @@
             </section>
         }
         @if (pinnedResult is { } pinned) {
-            <PinnedResultPanel Snapshot="pinned" Current="@(CanCompare ? acceptedComparison : null)" OnClear="ClearPinnedResult" />
+            <PinnedResultPanel Snapshot="pinned" Current="@(CanCompareDisplayedResult ? acceptedComparison : null)" OnClear="ClearPinnedResult" />
         }
         </div>
     </div>
