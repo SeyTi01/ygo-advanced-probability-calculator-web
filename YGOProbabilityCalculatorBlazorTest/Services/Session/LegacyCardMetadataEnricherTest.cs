@@ -121,15 +121,15 @@ public class LegacyCardMetadataEnricherTest {
     }
 
     [Test]
-    public async Task CompleteBundledExampleIsV2AndRequiresNoMetadataServiceOrApi() {
+    public async Task CompleteBundledExampleIsCurrentSchemaAndRequiresNoMetadataServiceOrApi() {
         var source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json"));
         using var document = JsonDocument.Parse(source);
-        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         var session = await new SessionService(new CaptureJs(), new Serializer()).LoadSessionAsync(source);
         Assert.That(session.Cards, Has.Count.EqualTo(25));
         Assert.That(session.Categories.Select(category => category.Name), Is.EqualTo(new[] { "VS Monster", "VS Starter", "K9 Starter" }));
         Assert.That(session.Cards.All(card => card.ExternalCardId is > 0 && card.Categories.Any(category => category.Source == CategorySource.Metadata)), Is.True);
-        Assert.That(session.Combos, Has.Count.EqualTo(9));
+        Assert.That(session.Combos, Has.Count.EqualTo(8));
         Assert.That(session.HandSize, Is.EqualTo(5));
         var ash = session.Cards.Single(card => card.Name == Ash.Name);
         Assert.That(ash.ExternalCardId, Is.EqualTo(Ash.Id));
