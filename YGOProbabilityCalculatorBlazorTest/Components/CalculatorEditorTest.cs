@@ -924,7 +924,7 @@ public partial class CalculatorEditorTest {
         Assert.That(groupedHeader.QuerySelector(".combo-card-tag")?.TextContent, Does.Contain("Card: Starter (1)"));
         Assert.That(groupedHeader.QuerySelector(".badge.text-bg-secondary")?.TextContent, Is.EqualTo("Inactive"));
         Assert.That(Array.IndexOf(groupedHeader.Children.ToArray(), membership),
-            Is.LessThan(Array.IndexOf(groupedHeader.Children.ToArray(), groupedHeader.QuerySelector(".category-tag"))));
+            Is.LessThan(Array.IndexOf(groupedHeader.Children.ToArray(), groupedHeader.QuerySelector(".expression-term"))));
 
         foreach (var ungroupedEditor in editors.Skip(1)) {
             var headerContent = ungroupedEditor.Find(".combo-header-content");
