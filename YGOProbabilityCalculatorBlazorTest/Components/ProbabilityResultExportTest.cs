@@ -25,6 +25,20 @@ public class ProbabilityResultExportTest {
     public void TearDown() => context.Dispose();
 
     [Test]
+    public async Task DisposalDuringImportReleasesTheLateModuleExactlyOnce() {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        clipboard.ImportDelay = completion.Task;
+        var cut = Render(Result(0.42, "Late import"));
+        await cut.Instance.DisposeAsync();
+        completion.SetResult();
+        await clipboard.ModuleDisposed.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await cut.Instance.DisposeAsync();
+        Assert.That(clipboard.DisposalCount, Is.EqualTo(1));
+        Assert.That(clipboard.CopyAttempts, Is.Zero);
+        Assert.That(clipboard.FocusAttempts, Is.Zero);
+    }
+
+    [Test]
     public void UngroupedSummaryUsesExactHandSizeComboOrderAndUnnamedFallback() {
         var result = new ProbabilityCalculationResult(
             0.123456,
@@ -600,6 +614,9 @@ public class ProbabilityResultExportTest {
         public Func<string, Task<bool>> Copy { get; set; } = _ => Task.FromResult(true);
         public bool FailImport { get; set; }
         public bool FailCopy { get; set; }
+        public Task? ImportDelay { get; set; }
+        public TaskCompletionSource ModuleDisposed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int DisposalCount { get; private set; }
         public int CopyAttempts { get; private set; }
         public int FocusAttempts { get; private set; }
         public string? LastCopiedText { get; private set; }
@@ -612,10 +629,15 @@ public class ProbabilityResultExportTest {
                 if (FailImport)
                     return ValueTask.FromException<TValue>(new JSException("Module load failed."));
 
-                return ValueTask.FromResult((TValue)(object)module);
+                return new ValueTask<TValue>(ImportAsync<TValue>());
             }
 
             return ValueTask.FromException<TValue>(new JSException("Unexpected JavaScript invocation."));
+        }
+
+        private async Task<TValue> ImportAsync<TValue>() {
+            if (ImportDelay is not null) await ImportDelay;
+            return (TValue)(object)module;
         }
 
         private ValueTask<TValue> InvokeModuleAsync<TValue>(string identifier, object?[]? args) {
@@ -645,7 +667,11 @@ public class ProbabilityResultExportTest {
             public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) =>
                 owner.InvokeModuleAsync<TValue>(identifier, args);
 
-            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+            public ValueTask DisposeAsync() {
+                owner.DisposalCount++;
+                owner.ModuleDisposed.TrySetResult();
+                return ValueTask.CompletedTask;
+            }
         }
     }
 }

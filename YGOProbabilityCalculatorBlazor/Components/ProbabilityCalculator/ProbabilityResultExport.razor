@@ -143,7 +143,12 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             try {
-                _clipboardModule = await JavaScriptRuntime.InvokeAsync<IJSObjectReference>("import", ClipboardModulePath);
+                var module = await JavaScriptRuntime.InvokeAsync<IJSObjectReference>("import", ClipboardModulePath);
+                if (_disposed) {
+                    await module.DisposeAsync();
+                    return;
+                }
+                _clipboardModule = module;
             }
             catch (Exception exception) when (IsJavaScriptFailure(exception)) {
                 _clipboardModule = null;
