@@ -1,4 +1,6 @@
 using Bunit;
+using Bunit.TestDoubles;
+using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -248,6 +250,155 @@ public class SessionSharingTest {
         Assert.That(cut.Markup, Does.Contain("Share a normal session file instead"));
         Assert.That(context.JSInterop.Invocations["sessionSharing.copy"], Is.Empty);
         Assert.That(cut.FindAll("textarea"), Is.Empty);
+    }
+
+    [TestCase("success")]
+    [TestCase("denied")]
+    [TestCase("unavailable")]
+    public async Task OutboundCopyPreservesWorkspaceDraftResultsPinNavigationAndRecovery(string outcome) {
+        var clipboard = context.JSInterop.Setup<bool>("sessionSharing.copy", _ => true);
+        if (outcome == "unavailable") clipboard.SetException(new JSException("Clipboard unavailable"));
+        else clipboard.SetResult(outcome == "success");
+        var saved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.JSInterop.SetupVoid("sessionRecovery.update", _ => { saved.TrySetResult(); return true; }).SetVoidResult();
+        var role = new CategoryBase("Role");
+        context.Services.GetRequiredService<IPendingSessionService>().PendingSession = new() {
+            HandSize = 1, Categories = [role], Cards = [new([role], 3, "Working")],
+            Combos = [new([new(role, 1, 1)], "Working route")]
+        };
+        var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
+        await saved.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await Button(cut, "Calculate").ClickAsync(new());
+        await Button(cut, "Pin result").ClickAsync(new());
+        cut.Find("[aria-label='Category name']").Input("Unsaved draft");
+        var before = Snapshot(cut);
+        var result = cut.Find(".probability-results").OuterHtml;
+        var pin = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+        var uri = navigation.Uri;
+        var history = ((FakeNavigationManager)navigation).History.Count;
+        var writes = Writes;
+        var suspensions = context.JSInterop.Invocations["sessionRecovery.suspend"].Count;
+        var clock = new FeedbackClock();
+        cut.FindComponent<SessionShareButton>().SetParametersAndRender(p => p.Add(x => x.FeedbackTimeProvider, clock));
+
+        for (var i = 0; i < 2; i++) {
+            await Button(cut, "Copy share link").ClickAsync(new());
+            var copied = (string)context.JSInterop.Invocations["sessionSharing.copy"].Last().Arguments[0]!;
+            Assert.That(copied, Is.EqualTo(Link(await sessions.LoadSessionAsync(before))));
+            if (outcome == "success") {
+                Assert.That(cut.Markup, Does.Contain("Share link copied."));
+                await cut.InvokeAsync(clock.Expire);
+                Assert.That(cut.Markup, Does.Not.Contain("Share link copied."));
+            }
+            else {
+                Assert.That(cut.Find("textarea[readonly]").TextContent, Is.EqualTo(copied));
+                await cut.Find("textarea[readonly]").ClickAsync(new());
+                Assert.That(context.JSInterop.Invocations["sessionSharing.select"], Has.Count.EqualTo(i + 1));
+            }
+            Assert.That(Snapshot(cut), Is.EqualTo(before));
+            Assert.That(cut.Find("[aria-label='Category name']").GetAttribute("value"), Is.EqualTo("Unsaved draft"));
+            Assert.That(cut.Find(".probability-results").OuterHtml, Is.EqualTo(result));
+            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pin));
+            Assert.That(navigation.Uri, Is.EqualTo(uri));
+            Assert.That(((FakeNavigationManager)navigation).History, Has.Count.EqualTo(history));
+            Assert.That(cut.FindAll("[aria-label='Shared session']"), Is.Empty);
+            Assert.That(Writes, Is.EqualTo(writes));
+            Assert.That(context.JSInterop.Invocations["sessionRecovery.suspend"], Has.Count.EqualTo(suspensions));
+            Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
+        }
+        // Positive control: this same locally generated session is still a valid inbound link.
+        var generatedLink = Link(await sessions.LoadSessionAsync(before));
+        await cut.InvokeAsync(() => navigation.NavigateTo(generatedLink));
+        Assert.That(cut.Markup, Does.Contain("Load shared session"));
+        Assert.That(Snapshot(cut), Is.EqualTo(before));
+        await Button(cut, "Dismiss shared link").ClickAsync(new());
+        await Button(cut, "Calculate").ClickAsync(new());
+        cut.Render();
+        Assert.That(cut.FindAll("[aria-label='Shared session']"), Is.Empty);
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pin));
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task CopyKeepsAnExistingIncomingOfferAndSavedRecoveryUntilExplicitDismissal(bool success) {
+        Recovery();
+        context.JSInterop.Setup<bool>("sessionSharing.copy", _ => true).SetResult(success);
+        navigation.NavigateTo(Link(Session("Incoming")));
+        var cut = context.RenderComponent<ProbabilityCalculatorComponent>();
+        var before = Snapshot(cut);
+        var uri = navigation.Uri;
+        var history = ((FakeNavigationManager)navigation).History.Count;
+        var offer = cut.Find("[aria-label='Shared session']").OuterHtml;
+        await Button(cut, "Copy share link").ClickAsync(new());
+        Assert.That(cut.Find("[aria-label='Shared session']").OuterHtml, Is.EqualTo(offer));
+        Assert.That(navigation.Uri, Is.EqualTo(uri));
+        Assert.That(((FakeNavigationManager)navigation).History, Has.Count.EqualTo(history));
+        Assert.That(Snapshot(cut), Is.EqualTo(before));
+        Assert.That(cut.Markup, Does.Contain("Restore previous session"));
+        Assert.That(Writes, Is.Zero);
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
+        await Button(cut, "Dismiss shared link").ClickAsync(new());
+        await Button(cut, "Copy share link").ClickAsync(new());
+        cut.Render();
+        Assert.That(cut.FindAll("[aria-label='Shared session']"), Is.Empty);
+        Assert.That(cut.Markup, Does.Contain("Restore previous session"));
+        await cut.InvokeAsync(() => navigation.NavigateTo(uri));
+        Assert.That(Button(cut, "Load shared session").HasAttribute("disabled"), Is.False);
+    }
+
+    [TestCase(true, "navigate")]
+    [TestCase(false, "navigate")]
+    [TestCase(true, "dismiss")]
+    [TestCase(false, "dismiss")]
+    [TestCase(true, "dispose")]
+    [TestCase(false, "dispose")]
+    public async Task DelayedCopyCompletionDoesNotOwnIncomingNavigationOrResurrectConsumedOffers(bool success, string action) {
+        Recovery();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var clipboard = context.JSInterop.Setup<bool>("sessionSharing.copy", _ => { started.TrySetResult(); return true; });
+        var host = context.RenderComponent<SharingHost>(p => p.Add(x => x.Visible, true));
+        var cut = host.FindComponent<ProbabilityCalculatorComponent>();
+        var before = Snapshot(cut);
+        var copy = Button(cut, "Copy share link").ClickAsync(new());
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        var link = Link(Session("Incoming during copy"));
+        await cut.InvokeAsync(() => navigation.NavigateTo(link));
+        if (action == "dismiss") await Button(cut, "Dismiss shared link").ClickAsync(new());
+        if (action == "dispose") host.SetParametersAndRender(p => p.Add(x => x.Visible, false));
+        clipboard.SetResult(success);
+        await copy;
+        Assert.That(Writes, Is.Zero);
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
+        if (action == "dispose") {
+            Assert.That(host.FindComponents<SessionShareButton>(), Is.Empty);
+            Assert.That(navigation.Uri, Is.EqualTo(link));
+            return;
+        }
+        Assert.That(Snapshot(cut), Is.EqualTo(before));
+        Assert.That(cut.Markup, Does.Contain("Restore previous session"));
+        Assert.That(cut.FindAll("[aria-label='Shared session']"), Has.Count.EqualTo(action == "navigate" ? 1 : 0));
+        Assert.That(navigation.Uri, Is.EqualTo(action == "navigate" ? link : navigation.BaseUri));
+        if (action == "dismiss") {
+            await cut.InvokeAsync(() => navigation.NavigateTo(navigation.BaseUri + "#ordinary-anchor"));
+            cut.Render();
+            Assert.That(cut.FindAll("[aria-label='Shared session']"), Is.Empty);
+            Assert.That(navigation.Uri, Does.EndWith("#ordinary-anchor"));
+            await cut.InvokeAsync(() => navigation.NavigateTo(link));
+            Assert.That(cut.Markup, Does.Contain("Load shared session"));
+        }
+    }
+
+    private sealed class FeedbackClock : TimeProvider {
+        private ManualTimer? timer;
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) => timer = new(callback, state);
+        public void Expire() => timer?.Fire();
+        private sealed class ManualTimer(TimerCallback callback, object? state) : ITimer {
+            private bool disposed;
+            public bool Change(TimeSpan dueTime, TimeSpan period) => !disposed;
+            public void Dispose() => disposed = true;
+            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+            public void Fire() { if (!disposed) { disposed = true; callback(state); } }
+        }
     }
 
     public sealed class SharingHost : ComponentBase {
