@@ -48,7 +48,7 @@ With all eight combo definitions active, the example has an **83.61%** probabili
 5. **Set minimum and maximum counts** for each requirement.
 6. **Calculate** to see the probability of each combo and the combined probability of opening any active combo.
 
-Open **Add OR**, choose the requirement or OR group to extend, then use **Add alternative** with the type and range inputs. Cancel or close the disclosure to return to your ordinary draft. Remove alternatives using their chip crosses. For example, `Razen + (Fire OR Dark)` requires Razen and either Fire or Dark; satisfying both alternatives counts once. Each alternative has its own Min and fixed Max or Any. Separate positive requirements still need distinct physical copies. Multiple flat OR groups are supported, with one result per named combo.
+Click **Add OR**, then click a condition or whole OR group in the expanded expression. Enter the alternative with the type and range inputs and choose **Add alternative**. Cancel target selection or alternative authoring to return to your ordinary draft. Remove alternatives using their chip crosses. For example, `Razen + (Fire OR Dark)` requires Razen and either Fire or Dark; satisfying both alternatives counts once. Each alternative has its own Min and fixed Max or Any. Separate positive requirements still need distinct physical copies. Multiple flat OR groups are supported, with one result per named combo.
 
 Complete configurations can be saved as sessions and loaded again later. New saves use session schema 3. Supported older sessions migrate with their existing AND meaning; older applications that reject schema 3 cannot open new saves. Ancient readers without schema checks may misinterpret them.
 

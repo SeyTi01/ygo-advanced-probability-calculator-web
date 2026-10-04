@@ -59,12 +59,16 @@ public class BackgroundCalculationComponentTest {
         var pin = cut.Find(".pinned-result").OuterHtml;
         await editor.Find(".accordion-button").ClickAsync(new());
         await editor.Find(".alternative-authoring > button").ClickAsync(new());
-        await editor.Find("#alternativeTarget0").ChangeAsync(new() { Value = "card:0" });
-        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
-        await editor.Find("#comboCard0").ChangeAsync(new() { Value = "b" });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
-        if (close) await editor.Find(".alternative-authoring > button").ClickAsync(new());
-        else await editor.Find(".alternative-scope button").ClickAsync(new());
+        if (close) {
+            await editor.Find(".alternative-target-instruction button").ClickAsync(new());
+        }
+        else {
+            await editor.Find("button[data-alternative-target='card:0']").ClickAsync(new());
+            await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
+            await editor.Find("#comboCard0").ChangeAsync(new() { Value = "b" });
+            await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
+            await editor.Find(".alternative-scope button").ClickAsync(new());
+        }
         Assert.That(codec.SerializeSession(new SessionState { Cards = editor.Instance.Cards.ToList(), Combos = [editor.Instance.Combo], HandSize = 2 }), Is.EqualTo(before));
         Assert.That(context.JSInterop.Invocations["sessionRecovery.update"].Count, Is.EqualTo(recoveryWrites));
         Assert.That(cut.Find(".probability-results").OuterHtml, Is.EqualTo(result));
@@ -83,7 +87,7 @@ public class BackgroundCalculationComponentTest {
         var editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         await editor.Find(".alternative-authoring > button").ClickAsync(new());
-        await editor.Find("#alternativeTarget0").ChangeAsync(new() { Value = "card:0" });
+        await editor.Find("button[data-alternative-target='card:0']").ClickAsync(new());
         await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
         await editor.Find("#comboCard0").ChangeAsync(new() { Value = "b" });
         await editor.Find(".requirement-submit button").ClickAsync(new());
