@@ -43,6 +43,34 @@ public class BackgroundCalculationComponentTest {
     public void TearDown() { cut?.Dispose(); context.Dispose(); }
 
     private Task Start() => cut.Find(".calculate-action > button").ClickAsync(new());
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task AdvancedDraftCancellationKeepsAcceptedResultPinAndRecoveryBytes(bool close) {
+        var accepted = Start();
+        calculator.Jobs[0].SetResult(Result("accepted"));
+        await accepted;
+        await cut.Find(".pin-result-action").ClickAsync(new());
+        var editor = cut.FindComponent<ComboEditor>();
+        var codec = new SessionService(context.JSInterop.JSRuntime, new JsonSerializer());
+        var before = codec.SerializeSession(new SessionState { Cards = editor.Instance.Cards.ToList(), Combos = [editor.Instance.Combo], HandSize = 2 });
+        var recoveryWrites = context.JSInterop.Invocations["sessionRecovery.update"].Count;
+        var result = cut.Find(".probability-results").OuterHtml;
+        var pin = cut.Find(".pinned-result").OuterHtml;
+        await editor.Find(".accordion-button").ClickAsync(new());
+        await editor.Find(".alternative-authoring > button").ClickAsync(new());
+        await editor.Find("#alternativeTarget0").ChangeAsync(new() { Value = "card:0" });
+        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
+        await editor.Find("#comboCard0").ChangeAsync(new() { Value = "b" });
+        await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
+        if (close) await editor.Find(".alternative-authoring > button").ClickAsync(new());
+        else await editor.Find(".alternative-scope button").ClickAsync(new());
+        Assert.That(codec.SerializeSession(new SessionState { Cards = editor.Instance.Cards.ToList(), Combos = [editor.Instance.Combo], HandSize = 2 }), Is.EqualTo(before));
+        Assert.That(context.JSInterop.Invocations["sessionRecovery.update"].Count, Is.EqualTo(recoveryWrites));
+        Assert.That(cut.Find(".probability-results").OuterHtml, Is.EqualTo(result));
+        Assert.That(cut.Find(".pinned-result").OuterHtml, Is.EqualTo(pin));
+        Assert.That(cut.Markup, Does.Not.Contain("Previous result").And.Not.Contain("Definition changed"));
+    }
     [TestCase(false)]
     [TestCase(true)]
     public async Task OrEditCancelsPendingRequestAndRejectsLateCompletion(bool error) {
@@ -54,7 +82,8 @@ public class BackgroundCalculationComponentTest {
         Assert.That(calculator.Jobs, Has.Count.EqualTo(2));
         var editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
-        await editor.Find("[aria-label='Add alternative to card A #1']").ClickAsync(new());
+        await editor.Find(".alternative-authoring > button").ClickAsync(new());
+        await editor.Find("#alternativeTarget0").ChangeAsync(new() { Value = "card:0" });
         await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
         await editor.Find("#comboCard0").ChangeAsync(new() { Value = "b" });
         await editor.Find(".requirement-submit button").ClickAsync(new());
