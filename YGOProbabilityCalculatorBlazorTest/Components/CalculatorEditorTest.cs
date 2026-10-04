@@ -285,6 +285,8 @@ public partial class CalculatorEditorTest {
 
     // Synchronous bUnit events discard their dispatcher task; calculation tests await events
     // before asserting or editing again, and retain pending calculation tasks until release.
+    // Patched AngleSharp is binary-incompatible with bUnit 1.x's FindAll indexer.
+    // Use Single for unique queries or ToArray before indexing; requery after edits.
     private static IElement Button(IRenderedFragment fragment, string text) =>
         fragment.FindAll("button").Single(element => element.TextContent.Trim() == text);
 
@@ -559,7 +561,7 @@ public partial class CalculatorEditorTest {
         }) {
             var inputs = cut.FindAll($"input#{id}");
             Assert.That(inputs, Has.Count.EqualTo(1));
-            var input = inputs[0];
+            var input = inputs.Single();
             Assert.That(input.GetAttribute("aria-label"), Is.EqualTo(name));
             Assert.That(input.GetAttribute("accept"), Is.EqualTo(extension));
             Assert.That(input.GetAttribute("tabindex"), Is.Not.EqualTo("-1"));
@@ -818,7 +820,7 @@ public partial class CalculatorEditorTest {
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(totalBeforeMove));
         Assert.That(cut.FindAll(".probability-group .combo-probability-name").Select(x => x.TextContent.Trim().Split(' ')[0]),
             Is.EqualTo(new[] { "Three", "Two", "One" }));
-        Assert.That(cut.FindAll(".combo-probability-item .combo-probability-name")[0].TextContent,
+        Assert.That(cut.FindAll(".combo-probability-item .combo-probability-name").ToArray()[0].TextContent,
             Does.Contain("Unnamed combo 1"));
 
         await Button(cut, "Save Session").ClickAsync(new());
@@ -2083,10 +2085,10 @@ public partial class CalculatorEditorTest {
         session.Combos.Add(new Combo([new(a, 1, 2), new(a, 0, 1), new(b, 0, 2)]));
         var cut = Render(session);
         var combo = cut.FindComponent<ComboEditor>();
-        combo.FindAll(".accordion-body .badge button")[2].Click();
+        combo.FindAll(".accordion-body .badge button").ToArray()[2].Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
         Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("A (1–2)").And.Contain("A (1 Max)"));
-        combo.FindAll(".accordion-body .badge button")[0].Click();
+        combo.FindAll(".accordion-body .badge button").ToArray()[0].Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(1));
         Assert.That(combo.Find(".accordion-body .badge").TextContent, Does.Contain("A (1 Max)"));
     }
@@ -2376,7 +2378,7 @@ public partial class CalculatorEditorTest {
         cut.Find("[aria-label='New combo group name']").Input("Tier 2");
         cut.Find("[aria-label='New combo group name']")
             .KeyUp(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
-        var secondId = cut.FindAll("#comboGroup0 option:not([value=''])")[1].GetAttribute("value")!;
+        var secondId = cut.FindAll("#comboGroup0 option:not([value=''])").ToArray()[1].GetAttribute("value")!;
 
         cut.Find("[aria-label='Edit group Tier 1']").Click();
         context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 1);
