@@ -38,7 +38,7 @@ public partial class CalculatorEditorTest {
         await cut.Find("[aria-label='Save category name']").ClickAsync(new());
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
         Assert.That(editor.Find("#comboCategory0").GetAttribute("value"), Is.EqualTo("user:Renamed"));
-        await Button(editor, "Update alternative").ClickAsync(new());
+        await editor.Find("[aria-label='Update alternative']").ClickAsync(new());
         Assert.That(editor.Instance.Combo.AlternativeGroups[1].Alternatives[0].Category!.MinCount, Is.EqualTo(2));
         Assert.That(editor.Instance.Combo.AlternativeGroups[1].Alternatives[0].Category!.BaseCategory.Name, Is.EqualTo("Renamed"));
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[0].Card!.CardId, Is.EqualTo("r"));
@@ -57,7 +57,7 @@ public partial class CalculatorEditorTest {
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
-        await Button(editor, "Add alternative").ClickAsync(new());
+        await editor.Find("[aria-label='Add alternative']").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories.Select(c => c.BaseCategory.Name), Is.EqualTo(new[] { "B" }));
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[1].Card!.MinCount, Is.EqualTo(2));
         Assert.That(editor.FindAll(".summary-group"), Has.Count.EqualTo(1));
@@ -68,7 +68,7 @@ public partial class CalculatorEditorTest {
         await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
         await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
-        await Button(editor, "Update alternative").ClickAsync(new());
+        await editor.Find("[aria-label='Update alternative']").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories[0].MinCount, Is.EqualTo(1), "The same target outside the group must not change.");
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[0].Category!.MaxCount, Is.Zero);
 
