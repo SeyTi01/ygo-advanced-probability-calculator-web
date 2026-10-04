@@ -9,6 +9,14 @@ import { spawnSync } from 'node:child_process';
 const guard = fileURLToPath(new URL('./privacy-guard.mjs', import.meta.url));
 const publicName = 'ExampleOwner';
 const publicEmail = 'owner@example.invalid';
+const unapprovedIdentity = {
+    env: {
+        GIT_AUTHOR_NAME: 'Unconfigured Test Author',
+        GIT_AUTHOR_EMAIL: 'unconfigured@example.invalid',
+        GIT_COMMITTER_NAME: 'Unconfigured Test Author',
+        GIT_COMMITTER_EMAIL: 'unconfigured@example.invalid'
+    }
+};
 const wrongName = 'Fictional Private Person';
 const wrongEmail = 'private@example.invalid';
 const environment = { ...process.env };
@@ -74,7 +82,8 @@ test('ordinary commits use installed defaults in fresh processes and a new works
     const fresh = path.join(root, 'fresh workspace');
     success(run(root, 'git', ['clone', repo, fresh]));
     success(install(fresh, []));
-    rejected(commit(fresh));
+    // Give Git an identity so the commit reaches the privacy hook even on CI images without global Git identity.
+    rejected(commit(fresh, 'Fresh workspace without policy', unapprovedIdentity));
     success(install(fresh));
     success(commit(fresh, 'Fresh workspace example'));
     assert.match(success(git(fresh, ['cat-file', 'commit', 'HEAD'])), new RegExp(`^author ${publicName} <${publicEmail}>`, 'm'));
@@ -210,7 +219,8 @@ test('custom hook manager is untouched; missing policy/runtime fails closed', t 
     assert.equal(success(git(repo, ['config', 'core.hooksPath'])), manager);
     success(git(repo, ['config', '--unset', 'core.hooksPath']));
     success(install(repo, []));
-    rejected(commit(repo));
+    // Missing policy must be rejected by the privacy hook, not by Git's identity setup.
+    rejected(commit(repo, 'Commit without policy', unapprovedIdentity));
     success(install(repo));
     fs.writeFileSync(path.join(repo, '.git', 'privacy-guard', 'policy.json'), '{');
     rejected(commit(repo));
