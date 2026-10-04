@@ -46,3 +46,6 @@ jobs:
 
       - name: Test
         run: dotnet test YGOProbabilityCalculatorBlazor.sln --no-build --no-restore
+
+      - name: JavaScript tests
+        run: node --test
