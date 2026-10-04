@@ -337,6 +337,11 @@ public partial class CalculatorEditorTest {
     [TestCase("\"Categories\":[null]")]
     [TestCase("\"Combos\":null")]
     [TestCase("\"ComboGroups\":[null]")]
+    [TestCase("\"Combos\":[{\"Categories\":[null]}]")]
+    [TestCase("\"Combos\":[{\"Categories\":[],\"Cards\":[null]}]")]
+    [TestCase("\"Categories\":[{\"Name\":\"Role\"},{\"Name\":\"Role\"}]")]
+    [TestCase("\"ComboGroups\":[{\"Id\":\"g\",\"Name\":\"One\"},{\"Id\":\"g\",\"Name\":\"Two\"}]")]
+    [TestCase("\"ComboGroups\":[{\"Name\":\"Group\"}]")]
     public async Task InvalidFileModelDataCannotPartiallyReplaceWorkingSession(string invalidField) {
         var cut = Render(Session());
         await Button(cut, "Calculate").ClickAsync(new());
@@ -355,6 +360,25 @@ public partial class CalculatorEditorTest {
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pinned));
         Assert.That(cut.Find("[aria-label='Category name']").GetAttribute("value"), Is.EqualTo("Preserved draft"));
         Assert.That(context.JSInterop.Invocations["sessionRecovery.update"], Has.Count.EqualTo(writes));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task LargeCopyTotalsRemainEditableWithoutOverflowingTheWorkspace(bool editAfterLoad) {
+        var session = Session();
+        if (!editAfterLoad) session.Cards[0] = session.Cards[0].WithCopies(int.MaxValue);
+        var cut = Render(session);
+        if (editAfterLoad)
+            await cut.FindComponent<CardEditor>().Find("#cardCopies0").InputAsync(new() { Value = int.MaxValue.ToString() });
+        Assert.That(cut.FindComponent<CardListEditor>().Find("h4").TextContent,
+            Is.EqualTo("Deck (2147483649)"));
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Markup, Does.Contain("The active deck is too large to calculate"));
+
+        await cut.FindComponent<CardEditor>().Find("#cardCopies0").InputAsync(new() { Value = "2" });
+        Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
     }
 
     [Test]

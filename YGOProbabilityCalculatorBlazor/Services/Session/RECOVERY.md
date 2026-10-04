@@ -2,7 +2,7 @@
 
 `SessionService.SerializeSession` is the offline serialization boundary shared with
 Save Session. Loading uses the existing migration, converters and ID validation.
-The transport envelope is version 1; the enclosed session retains schema version 2.
+The transport envelope is version 1; the enclosed session uses the current schema version 3.
 
 `SessionRecovery` compares serialized accepted model values on parent renders. This
 covers category/color/name/order changes, cards and manual properties, constraints,

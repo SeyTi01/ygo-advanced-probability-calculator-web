@@ -12,6 +12,8 @@ public class CardConverter : JsonConverter<Card> {
         var categories = JsonSerializer.Deserialize<List<CategoryBase>>(
             root.GetProperty("Categories").GetRawText(),
             options) ?? [];
+        if (categories.Any(category => category is null))
+            throw new JsonException("Card contains missing categories.");
 
         var copies = root.GetProperty("Copies").GetInt32();
         var name = root.GetProperty("Name").GetString();

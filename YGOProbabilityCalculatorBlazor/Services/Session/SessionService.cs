@@ -54,6 +54,19 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
                 session.Combos.Any(combo => combo is null) || session.ComboGroups?.Any(group => group is null) == true)
                 throw new JsonException("Session contains missing model collections or entries.");
 
+            if (session.Combos.Any(combo => combo.Categories.Any(category => category is null) ||
+                combo.Cards.Any(card => card is null)))
+                throw new JsonException("Session contains missing combo requirements.");
+
+            // These identities are rendered as sibling keys and used for editor references.
+            // Reject ambiguity before the caller clears its accepted workspace.
+            if (session.Categories.Select(category => category.Identity).Distinct(StringComparer.Ordinal).Count() != session.Categories.Count)
+                throw new JsonException("Session contains duplicate category identities.");
+            if (session.ComboGroups is { } groups &&
+                (groups.Any(group => string.IsNullOrWhiteSpace(group.Id) || string.IsNullOrWhiteSpace(group.Name)) ||
+                 groups.Select(group => group.Id).Distinct(StringComparer.Ordinal).Count() != groups.Count))
+                throw new JsonException("Session contains invalid or duplicate combo group identities.");
+
             if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
                 throw new InvalidOperationException("Session contains duplicate card IDs.");
 

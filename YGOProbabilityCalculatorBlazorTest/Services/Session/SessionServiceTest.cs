@@ -168,6 +168,23 @@ public class SessionServiceTests {
         Assert.That(session.Combos, Is.Empty);
     }
 
+    [TestCase("\"Cards\":[{\"Categories\":[null],\"Copies\":1,\"Name\":\"Card\"}]")]
+    [TestCase("\"Combos\":[{\"Categories\":[null]}]")]
+    [TestCase("\"Combos\":[{\"Categories\":[],\"Cards\":[null]}]")]
+    [TestCase("\"Categories\":[{\"Name\":\"Role\"},{\"Name\":\"Role\"}]")]
+    [TestCase("\"ComboGroups\":[{\"Id\":\"g\",\"Name\":\"One\"},{\"Id\":\"g\",\"Name\":\"Two\"}]")]
+    [TestCase("\"ComboGroups\":[{\"Name\":\"Group\"}]")]
+    [TestCase("\"ComboGroups\":[{\"Id\":null,\"Name\":\"Group\"}]")]
+    [TestCase("\"ComboGroups\":[{\"Id\":\" \",\"Name\":\"Group\"}]")]
+    [TestCase("\"ComboGroups\":[{\"Id\":\"g\",\"Name\":null}]")]
+    [TestCase("\"ComboGroups\":[{\"Id\":\"g\",\"Name\":\" \"}]")]
+    public void LoadSessionAsync_RejectsInvalidNestedEntriesAndEditorIdentities(string invalidField) {
+        var service = new SessionService(_jsRuntimeMock.Object, new RealJsonSerializer());
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.LoadSessionAsync($"{{\"SchemaVersion\":3,{invalidField}}}"));
+        Assert.That(exception!.Message, Is.EqualTo("Invalid session file format"));
+    }
+
     [Test]
     public async Task LoadSessionAsync_HistoricalV1_2UnversionedFixture_MigratesAndPreservesLegacySession() {
         // Unchanged bundled Fiendsmith/Bystial example from the v1.2.0 release.
