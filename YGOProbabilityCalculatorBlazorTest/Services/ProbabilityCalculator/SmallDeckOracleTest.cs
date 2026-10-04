@@ -80,8 +80,22 @@ public class SmallDeckOracleTest {
         Assert.That(session.Categories.Select(c => c.Identity), Is.EquivalentTo(new[] {
             "user:VS Monster", "user:VS Starter", "user:K9 Starter"
         }));
-        Assert.That(session.Combos, Has.Count.EqualTo(9));
+        Assert.That(session.Combos, Has.Count.EqualTo(8));
         Assert.That(session.Combos.All(combo => combo.Active), Is.True);
+
+        var fireOrDark = session.Combos.Single(combo => combo.Name == "VS Starter + (Fire OR Dark)");
+        Assert.That(fireOrDark.Categories, Has.Count.EqualTo(1));
+        var starter = fireOrDark.Categories.Single();
+        Assert.That(starter.BaseCategory.Identity, Is.EqualTo("user:VS Starter"));
+        Assert.That(starter.MinCount, Is.EqualTo(1));
+        Assert.That(starter.MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
+        Assert.That(fireOrDark.AlternativeGroups, Has.Count.EqualTo(1));
+        var alternatives = fireOrDark.AlternativeGroups.Single().Alternatives;
+        Assert.That(alternatives, Has.Count.EqualTo(2));
+        Assert.That(alternatives.Select(alternative => alternative.Category!.BaseCategory.Identity),
+            Is.EquivalentTo(new[] { "metadata:attribute:fire", "metadata:attribute:dark" }));
+        Assert.That(alternatives.All(alternative => alternative.Category!.MinCount == 1
+            && alternative.Category.MaximumMode == RequirementMaximumMode.HandSize), Is.True);
 
         var rota = session.Cards.Single(c => c.Name == "Reinforcement of the Army");
         Assert.That(rota.Categories.Select(c => c.Identity),

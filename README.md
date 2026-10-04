@@ -23,7 +23,7 @@ It can model complex combo conditions while correctly accounting for hands that 
 
 ## Example: Vanquish Soul / K9
 
-The included example uses a Vanquish Soul K9 deck and models nine different combo routes that either reach the full Vanquish Soul setup directly or can make Ripper + Saryuja as a bridge. Half boards are intentionally not counted.
+The included example uses a Vanquish Soul / K9 deck and models nine underlying routes as eight combo definitions. `VS Starter + (Fire OR Dark)` combines two starter routes into one OR definition. The routes either reach the full Vanquish Soul setup directly or make Ripper + Saryuja as a bridge; half boards are intentionally not counted.
 
 The example uses three custom role categories:
 
@@ -37,7 +37,7 @@ Cards can still satisfy several roles and properties at once. For example, Vanqu
 
 This allows equivalent routes to be expressed concisely.
 
-With all nine routes enabled, the example has an **83.61%** probability of opening at least one modeled full-combo hand.
+With all eight combo definitions active, the example has an **83.61%** probability of opening at least one modeled full-combo hand.
 
 ## How to use it
 

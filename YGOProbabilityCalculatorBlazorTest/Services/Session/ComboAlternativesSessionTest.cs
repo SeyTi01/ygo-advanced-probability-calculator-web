@@ -77,9 +77,31 @@ public class ComboAlternativesSessionTest {
     }
 
     [Test]
-    public async Task ShippedNineRouteExampleHasParityWhenFirstTwoRoutesAreCombinedOnACopy() {
+    public async Task ShippedExampleOrDefinitionHasParityWithItsTwoUnderlyingRoutes() {
         var path = Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json");
-        await VerifyCombinedExample(path);
+        var original = await Codec().LoadSessionAsync(await File.ReadAllTextAsync(path));
+        var combined = original.Combos.Single(combo => combo.Name == "VS Starter + (Fire OR Dark)");
+        var alternatives = combined.AlternativeGroups.Single().Alternatives;
+        var routes = alternatives.Select((alternative, index) => new Combo(
+            combined.Categories.Concat([alternative.Category!]),
+            $"Underlying route {index + 1}",
+            combined.Active,
+            combined.GroupId,
+            combined.Cards)).ToList();
+        var expanded = routes.Concat(original.Combos.Skip(1)).ToList();
+        var service = new ProbabilityCalculatorService();
+        var bundled = service.CalculateProbabilityResults(original.Cards, original.Combos, original.HandSize, original.ComboGroups);
+        var expandedResult = service.CalculateProbabilityResults(original.Cards, expanded, original.HandSize, original.ComboGroups);
+
+        Assert.That(expandedResult.TotalProbability, Is.EqualTo(bundled.TotalProbability));
+        Assert.That(expandedResult.GroupProbabilities!.Select(group => group.Probability),
+            Is.EqualTo(bundled.GroupProbabilities!.Select(group => group.Probability)));
+        Assert.That(service.CalculateProbabilityForCombos(original.Cards, routes, original.HandSize),
+            Is.EqualTo(bundled.ComboProbabilities.Single(result => result.ComboName == combined.Name).Probability));
+        Assert.That(bundled.ComboProbabilities, Has.Count.EqualTo(8));
+        Assert.That(expandedResult.ComboProbabilities, Has.Count.EqualTo(9));
+        Assert.That(bundled.GroupProbabilities!.Single(group => group.GroupId == combined.GroupId).ActiveComboCount, Is.EqualTo(5));
+        Assert.That(expandedResult.GroupProbabilities!.Single(group => group.GroupId == combined.GroupId).ActiveComboCount, Is.EqualTo(6));
     }
 
     [Test, Explicit("Set YGO_OR_SESSION to an available supplied session; no fixture is modified.")]

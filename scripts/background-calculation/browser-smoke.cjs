@@ -232,13 +232,13 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
   await page.waitForFunction(()=>document.querySelectorAll('.card-editor').length>0&&document.querySelector('#handSize')?.value==='5');
   await calculate.click();await waitIdle();await page.locator('.probability-total-value').waitFor();
   const sampleTotal=await page.locator('.probability-total-value').innerText();
-  assert.equal(await page.locator('.combo-probability-item').count(),9);
+  assert.equal(await page.locator('.combo-probability-item').count(),8);
   const sampleRecord=await savedWorkspace(5,null,'Vanquish Soul Razen');
   const writesBeforeCopy=await page.evaluate(()=>probe.savedRecords.length);
   await observeClipboard();await page.getByRole('button',{name:'Copy results',exact:true}).click();
   await page.locator('.probability-result-copy-success-icon').waitFor();
   const copied=await page.evaluate(()=>smokeCopiedText);
-  assert.ok(copied.includes('Probability results')&&copied.includes(sampleTotal)&&copied.includes('Full VS')&&copied.includes('VS Starter + Fire'),'copied example should be readable and retain its hierarchy/names');
+  assert.ok(copied.includes('Probability results')&&copied.includes(sampleTotal)&&copied.includes('Full VS')&&copied.includes('VS Starter + (Fire OR Dark)'),'copied example should be readable and retain its hierarchy/names');
   let clipboardRead=false;
   // Windows clipboard text uses CRLF; compare every character after line-ending normalization.
   if(engine==='chromium'){assert.equal((await page.evaluate(()=>navigator.clipboard.readText())).replace(/\r\n/g,'\n'),copied);clipboardRead=true}
