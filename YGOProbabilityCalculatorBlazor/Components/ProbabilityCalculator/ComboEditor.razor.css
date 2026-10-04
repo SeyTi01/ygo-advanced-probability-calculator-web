@@ -10,13 +10,24 @@
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .25rem;
+    gap: .375rem;
     max-width: 100%;
     min-width: 0;
-    margin: .2rem;
+    margin: 0;
     padding: .2rem;
     border: 1px solid var(--bs-border-color);
     border-radius: .375rem;
+}
+
+.expression-term,
+.alternative-term {
+    display: inline-flex;
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: .25rem;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .alternative-leaf {
@@ -42,29 +53,40 @@
 .add-or-button {
     display: inline-flex;
     align-items: center;
-    gap: .375rem;
 }
 
-.add-or-chevron {
-    width: .7rem;
-    height: .7rem;
-    flex: 0 0 auto;
-    transition: transform 120ms ease;
+.alternative-target-instruction {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem;
 }
 
-.add-or-chevron.is-open {
-    transform: rotate(180deg);
+.combo-expression-target {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: .375rem;
+    background: transparent;
+    color: inherit;
+    line-height: inherit;
+    text-align: start;
+    cursor: pointer;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .add-or-chevron { transition: none; }
+.combo-expression-target:hover .badge {
+    outline: 1px solid var(--bs-primary);
+    outline-offset: 1px;
 }
 
 .expanded-expression {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .375rem;
+    gap: .25rem;
 }
 
 .expanded-expression .badge {
