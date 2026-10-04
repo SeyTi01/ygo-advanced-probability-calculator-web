@@ -32,6 +32,33 @@ public class WorkPolicyTest {
         Assert.Throws<ProbabilityCalculationLimitException>(() => service.CalculateProbabilityForCombos(deck, combos, 2, new(1)));
     }
 
+    [Test]
+    public void DefaultPolicyStopsARealisticMultiRouteRequestAtItsWorkLimit() {
+        var categories = Enumerable.Range(0, 20).Select(i => new CategoryBase($"Role{i}")).ToArray();
+        var deck = categories.Select((category, i) => new Card([category], 2, id: $"c{i}"))
+            .Append(new Card([], 20, id: "blank")).ToList();
+        var combos = categories.Select(category => new Combo([new(category, 1, 1)])).ToList();
+
+        var error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
+            new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5));
+
+        Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
+    }
+
+    [Test]
+    public void RedundantZeroMaximumRoutesStopAtTheStorageLimit() {
+        var categories = Enumerable.Range(0, 15).Select(i => new CategoryBase($"Excluded{i}")).ToArray();
+        var deck = categories.SelectMany((category, i) =>
+            Enumerable.Range(0, 4).Select(j => new Card([category], id: $"c{i}-{j}"))).ToList();
+        var combos = categories.Select(category => new Combo([new(category, 0, 0)])).ToList();
+
+        var error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
+            new ProbabilityCalculatorService().CalculateProbabilityResults(
+                deck, combos, 9, null, CalculationWorkPolicy.Interactive));
+
+        Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
+    }
+
     [TestCase(0L)]
     [TestCase(-1L)]
     [TestCase(long.MinValue)]

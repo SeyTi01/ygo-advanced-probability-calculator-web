@@ -49,10 +49,6 @@ public class WorkPolicyBenchmark {
                 }
                 TestContext.Out.WriteLine($"routes={count}; hand={hand}; chargedWork=({low},{high}]; processWorkingSetBytes={Process.GetCurrentProcess().WorkingSet64}; managedHeapBytes={GC.GetTotalMemory(false)}");
             }
-            if ((count, hand) == (20, 5)) {
-                var error = Assert.Throws<ProbabilityCalculationLimitException>(() => service.CalculateProbabilityResults(deck, combos, hand, groups));
-                Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work), "large policies must not leak into omitted defaults");
-            }
         }
     }
 
@@ -61,18 +57,5 @@ public class WorkPolicyBenchmark {
         System.Numerics.BigInteger result = 1;
         for (var i = 1; i <= k; i++) result = result * (n - i + 1) / i;
         return (long)result;
-    }
-
-    [Test]
-    public void RedundantExclusionsStillHaveABoundedWorkCutoff() {
-        var categories = Enumerable.Range(0, 15).Select(i => new CategoryBase($"Excluded{i}")).ToArray();
-        var deck = categories.SelectMany((c, i) => Enumerable.Range(0, 4).Select(j => new Card([c], id: $"c{i}-{j}"))).ToList();
-        var combos = categories.Select(c => new Combo([new(c, 0, 0)])).ToList();
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var timer = Stopwatch.StartNew();
-        var error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 9, null, CalculationWorkPolicy.Interactive));
-        Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
-        TestContext.Out.WriteLine($"redundant-exclusions: rows=60; routes=15; hand=9; units={CalculationWorkPolicy.Interactive.WorkUnits}; ms={timer.Elapsed.TotalMilliseconds:F2}; allocatedBytes={GC.GetAllocatedBytesForCurrentThread() - before}; {error.Reason}");
     }
 }
