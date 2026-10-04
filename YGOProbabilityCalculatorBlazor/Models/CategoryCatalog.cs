@@ -5,7 +5,7 @@ public static class CategoryCatalog {
         IEnumerable<Card> cards, IEnumerable<Combo> combos) => categories
         .Where(category => category.Source == CategorySource.User)
         .Concat(categories.Concat(cards.SelectMany(card => card.Categories))
-            .Concat(combos.SelectMany(combo => combo.Categories).Select(requirement => requirement.BaseCategory))
+            .Concat(combos.SelectMany(combo => combo.AllCategories).Select(requirement => requirement.BaseCategory))
             .Where(category => category.Source == CategorySource.Metadata)
             .DistinctBy(category => category.Identity)
             .OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase)

@@ -167,7 +167,7 @@
     }
 
     private async Task RemoveCategoryBase(CategoryBase category) {
-        var usedInCombos = Combos.Any(c => c.Categories.Any(cc => cc.BaseCategory.Identity == category.Identity));
+        var usedInCombos = Combos.Any(c => c.AllCategories.Any(cc => cc.BaseCategory.Identity == category.Identity));
         var usedInCards = Cards.Any(c => c.Categories.Any(item => item.Identity == category.Identity));
         if (usedInCombos || usedInCards) {
             categoryError = "This category is still used by a card or combo.";

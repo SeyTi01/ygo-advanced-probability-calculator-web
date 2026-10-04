@@ -20,13 +20,22 @@ public sealed record PinnedCalculationContext(int Epoch, int HandSize, int Copie
         Func<Combo, Guid> comboLineage, Func<string, Guid> groupLineage) {
         // Sorted structured JSON avoids delimiter collisions; repeated constraints remain repeated.
         // Counts/active flags are deck context. Category membership is part of a route definition.
+        string AlternativeSignature(ComboAlternative a) => a.Category is { } c
+            ? Pack(["category", c.BaseCategory.Identity, Number(c.MinCount), c.MaximumMode.ToString(),
+                Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0),
+                Pack(cards.Where(card => card.Categories.Any(x => x.Identity == c.BaseCategory.Identity))
+                    .Select(card => card.Id).Order(StringComparer.Ordinal))])
+            : Pack(["card", a.Card!.CardId, Number(a.Card.MinCount), a.Card.MaximumMode.ToString(),
+                Number(a.Card.MaximumMode == RequirementMaximumMode.Fixed ? a.Card.MaxCount : 0)]);
         string Signature(Combo combo) => Pack([combo.GroupId ?? "",
             Pack(combo.Categories.Select(c => Pack(["category", c.BaseCategory.Identity, Number(c.MinCount),
                 c.MaximumMode.ToString(), Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0),
                 Pack(cards.Where(card => card.Categories.Any(x => x.Identity == c.BaseCategory.Identity))
                     .Select(card => card.Id).Order(StringComparer.Ordinal))])).Order(StringComparer.Ordinal)),
             Pack(combo.Cards.Select(c => Pack(["card", c.CardId, Number(c.MinCount), c.MaximumMode.ToString(),
-                Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0)])).Order(StringComparer.Ordinal))]);
+                Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0)])).Order(StringComparer.Ordinal)),
+            Pack(combo.AlternativeGroups.Select(g => Pack(g.Alternatives.Select(AlternativeSignature).Order(StringComparer.Ordinal)))
+                .Order(StringComparer.Ordinal))]);
         var active = combos.Where(c => c.Active).ToArray();
         var definitions = active.Select(c => new PinnedComboDefinition(comboLineage(c), Signature(c))).ToImmutableArray();
         var groupDefinitions = groups.ToImmutableDictionary(g => g.Id, g => new PinnedGroupDefinition(groupLineage(g.Id),

@@ -75,7 +75,7 @@ public class LegacyCardMetadataEnricherTest {
 
         await sessions.SaveSessionAsync(session, "enriched.json");
         using var saved = JsonDocument.Parse(js.Json);
-        Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         var reloaded = await sessions.LoadSessionAsync(js.Json);
         var offline = new Mock<ICardInfoService>(MockBehavior.Strict);
         // The custom card still gets a best-effort attempt; even a thrown lookup cannot lose saved memberships.
@@ -181,9 +181,9 @@ public class LegacyCardMetadataEnricherTest {
         var js = new CaptureJs();
         var sessions = new SessionService(js, new Serializer());
         await sessions.SaveSessionAsync(new SessionState { Cards = [original] }, "manual.json");
-        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(2));
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(3));
         using var saved = JsonDocument.Parse(js.Json);
-        Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         var loaded = await sessions.LoadSessionAsync(js.Json);
         var offline = new Mock<ICardInfoService>(MockBehavior.Strict);
         offline.Setup(s => s.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>())).ThrowsAsync(new HttpRequestException("Offline"));
