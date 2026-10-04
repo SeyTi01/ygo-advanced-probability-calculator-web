@@ -347,7 +347,7 @@ public class SessionServiceTests {
         var service = new SessionService(runtime, new RealJsonSerializer());
         await service.SaveSessionAsync(session, "metadata");
         var loaded = await service.LoadSessionAsync(runtime.DownloadedJson);
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(2));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Categories, Is.EqualTo(new[] { user }));
         Assert.That(loaded.Cards[0].Categories, Is.EqualTo(new[] { user, property }));
         Assert.That(loaded.Cards[0].ExternalCardId, Is.EqualTo(123));
@@ -369,7 +369,7 @@ public class SessionServiceTests {
         var migrated = new SessionSchemaMigrator().MigrateToCurrent(json);
         using var document = JsonDocument.Parse(migrated);
         var root = document.RootElement;
-        Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         var locations = new[] { root.GetProperty("Categories")[0], root.GetProperty("Cards")[0].GetProperty("Categories")[0],
             root.GetProperty("Combos")[0].GetProperty("Categories")[0].GetProperty("BaseCategory") };
         foreach (var category in locations) {
@@ -382,9 +382,9 @@ public class SessionServiceTests {
     [Test]
     public void LoadSessionAsync_FutureSchemaVersion_IsRejectedClearly() {
         var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await CreateRealSerializerSessionService().LoadSessionAsync("{ \"SchemaVersion\": 3 }"));
+            await CreateRealSerializerSessionService().LoadSessionAsync("{ \"SchemaVersion\": 4 }"));
 
-        Assert.That(exception!.Message, Does.Contain("Unsupported session schema version 3"));
+        Assert.That(exception!.Message, Does.Contain("Unsupported session schema version 4"));
     }
 
     [TestCase("{ \"SchemaVersion\": \"1\" }")]
@@ -418,6 +418,7 @@ public class SessionServiceTests {
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
+    [TestCase(3)]
     public async Task MissingMaximumModeLoadsFixedForEveryHistoricalSchema(int version) {
         var versionField = version == 0 ? "" : $"\"SchemaVersion\":{version},";
         var json = $$"""
@@ -435,7 +436,7 @@ public class SessionServiceTests {
             Assert.That(requirements.GetProperty("Categories")[0].GetProperty("MaximumMode").GetString(), Is.EqualTo("Fixed"));
             Assert.That(requirements.GetProperty("Cards")[0].GetProperty("MaximumMode").GetString(), Is.EqualTo("Fixed"));
         }
-        else Assert.That(migrated, Is.EqualTo(json), "Current-version sessions bypass migration.");
+        else if (version == SessionState.CurrentSchemaVersion) Assert.That(migrated, Is.EqualTo(json), "Current-version sessions bypass migration.");
         Assert.That(new SessionSchemaMigrator().MigrateToCurrent(migrated), Is.EqualTo(migrated));
         var loaded = await CreateRealSerializerSessionService().LoadSessionAsync(json);
         var category = loaded.Combos[0].Categories[0];
@@ -467,7 +468,7 @@ public class SessionServiceTests {
         await service.SaveSessionAsync(session, "modes");
         Assert.That(runtime.DownloadedJson, Does.Contain("\"MaximumMode\": \"HandSize\"").And.Contain("\"MaximumMode\": \"Fixed\""));
         var loaded = await service.LoadSessionAsync(runtime.DownloadedJson);
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(2));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Combos[0].Categories.Select(c => (c.MinCount, c.MaxCount, c.MaximumMode)),
             Is.EqualTo(session.Combos[0].Categories.Select(c => (c.MinCount, c.MaxCount, c.MaximumMode))));
         Assert.That(loaded.Combos[0].Cards.Select(c => (c.MinCount, c.MaxCount, c.MaximumMode)),

@@ -11,7 +11,8 @@ public sealed class SessionSchemaMigrator {
     private static readonly IReadOnlyDictionary<int, Action<JsonObject>> Migrations =
         new Dictionary<int, Action<JsonObject>> {
             [0] = MigrateV0ToV1,
-            [1] = MigrateV1ToV2
+            [1] = MigrateV1ToV2,
+            [2] = root => SetSchemaVersion(root, 3)
         };
 
     public string MigrateToCurrent(string json) {

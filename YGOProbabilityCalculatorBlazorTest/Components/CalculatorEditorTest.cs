@@ -390,7 +390,7 @@ public partial class CalculatorEditorTest {
         var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         var saved = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using var document = System.Text.Json.JsonDocument.Parse(saved);
-        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(document.RootElement.GetProperty("Cards")[0].GetProperty("ExternalCardId").GetInt32(), Is.EqualTo(14558127));
         cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>())).ThrowsAsync(new HttpRequestException("Offline"));
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(saved, "saved.json"));

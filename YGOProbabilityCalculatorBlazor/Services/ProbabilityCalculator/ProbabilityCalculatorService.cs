@@ -13,7 +13,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         ValidateComboCount(combos);
         ValidateCardIds(deck);
         var calculation = new Calculation(deck, handSize, workPolicy);
-        return calculation.Union(combos.Select(combo => calculation.Canonicalize(combo)).ToList());
+        return calculation.Union(combos.SelectMany(combo => calculation.CompileCombo(combo)).ToList());
     }
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
@@ -27,13 +27,14 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         ValidateCardIds(deck);
         // Cache and work budget belong to this request, never to a service instance.
         var calculation = new Calculation(deck, handSize, workPolicy);
-        var events = combos.Select(combo => calculation.Canonicalize(combo)).ToList();
+        var ownedEvents = combos.Select(combo => calculation.CompileCombo(combo)).ToList();
+        var events = ownedEvents.SelectMany(e => e).ToList();
         var totalProbability = calculation.Union(events);
         var comboProbabilities = combos.Select((combo, index) =>
-            new ComboProbabilityResult(index, combo.Name, calculation.Probability(events[index]), combo.GroupId)).ToList();
+            new ComboProbabilityResult(index, combo.Name, calculation.Union(ownedEvents[index]), combo.GroupId)).ToList();
         var groupProbabilities = (groups ?? []).Select(group => {
-            var members = events.Where((_, index) => combos[index].GroupId == group.Id).ToList();
-            return new GroupProbabilityResult(group.Id, group.Name, calculation.Union(members), members.Count);
+            var members = ownedEvents.Where((_, index) => combos[index].GroupId == group.Id).ToList();
+            return new GroupProbabilityResult(group.Id, group.Name, calculation.Union(members.SelectMany(e => e).ToList()), members.Count);
         }).ToList();
 
         return new ProbabilityCalculationResult(
@@ -58,7 +59,53 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         private long cachedIntegerCells;
         private BigInteger? totalWays;
 
-        public Event? Canonicalize(Combo combo) {
+        private long compiledEntries;
+        private long compiledCells;
+
+        public List<Event?> CompileCombo(Combo combo) {
+            // Check the compact input and potential expansion before route allocation.
+            // This request-wide bound is independent of the 30 USER combo policy.
+            long routes = 1;
+            budget.Spend(combo.RequirementCount + 1L);
+            foreach (var group in combo.AlternativeGroups) {
+                budget.Spend(group.Alternatives.Count + 1L);
+                if (routes > 32768 / group.Alternatives.Count)
+                    throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
+                routes *= group.Alternatives.Count;
+            }
+            WorkBudget.CheckStorage(compiledEntries + routes,
+                combo.Categories.Count + (long)combo.Cards.Count + combo.AlternativeGroups.Count);
+            var choices = new int[combo.AlternativeGroups.Count];
+            var unique = new HashSet<Event>();
+            for (long route = 0; route < routes; route++) {
+                budget.Spend(combo.Categories.Count + (long)combo.Cards.Count + choices.Length + 1);
+                var categories = combo.Categories.ToList();
+                var cards = combo.Cards.ToList();
+                for (var g = 0; g < choices.Length; g++) {
+                    var alternative = combo.AlternativeGroups[g].Alternatives[choices[g]];
+                    if (alternative.Category is { } category) categories.Add(category);
+                    else cards.Add(alternative.Card!);
+                }
+                var compiled = Canonicalize(new Combo(categories, cards: cards));
+                if (compiled is not null) {
+                    budget.Spend(compiled.Constraints.Length + 1L);
+                    if (!unique.Contains(compiled)) {
+                        var cells = (long)(compiled.Constraints.Length + (compiled.Roles?.Length ?? 0)) * (3 + deck.Count / 32);
+                        WorkBudget.CheckStorage(compiledEntries + 1, compiledCells + cells);
+                        compiledEntries++;
+                        compiledCells += cells;
+                        unique.Add(compiled);
+                    }
+                }
+                for (var g = choices.Length - 1; g >= 0; g--) {
+                    if (++choices[g] < combo.AlternativeGroups[g].Alternatives.Count) break;
+                    choices[g] = 0;
+                }
+            }
+            return unique.Cast<Event?>().ToList();
+        }
+
+        private Event? Canonicalize(Combo combo) {
             budget.Spend(combo.Categories.Count + combo.Cards.Count + 1L);
             var constraints = new List<Requirement>();
             foreach (var group in combo.Categories.GroupBy(c => c.BaseCategory.Identity, StringComparer.Ordinal)) {
@@ -133,15 +180,16 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
 
         public double Union(List<Event?> events) {
+            budget.Spend(events.Count + 1L);
             var universal = events.FirstOrDefault(e => e is { Constraints.Length: 0 });
             if (universal is not null) return Probability(universal);
-            var terms = new Dictionary<Event, long>();
+            var terms = new Dictionary<Event, BigInteger>();
             long storedConstraints = 0;
             foreach (var current in FactorAlternatives(events)) {
                 // Indicator identity: U OR E = U + E - U*E. Equal intersections
                 // combine integer coefficients before any floating-point evaluation.
                 // Nested events cancel here too; no independence assumption is used.
-                var changes = new Dictionary<Event, long>();
+                var changes = new Dictionary<Event, BigInteger>();
                 long changedConstraints = 0;
                 Add(changes, current, 1, ref changedConstraints);
                 foreach (var (existing, coefficient) in terms) {
@@ -157,17 +205,20 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             BigInteger successes = 0;
             foreach (var (intersection, coefficient) in terms) {
                 var count = Count(intersection);
-                budget.Spend(1 + count.GetBitLength() / 64 + successes.GetBitLength() / 64);
+                budget.Spend(1 + count.GetBitLength() / 64 + successes.GetBitLength() / 64 + coefficient.GetBitLength() / 64);
                 successes += coefficient * count;
+                WorkBudget.CheckStorage(1, WorkBudget.IntegerCells(successes));
             }
             // Cancel signed inclusion-exclusion terms exactly, before conversion.
             return (double)successes / (double)totalWays!.Value;
         }
 
         private List<Event> FactorAlternatives(List<Event?> events) {
+            foreach (var item in events) budget.Spend((item?.Constraints.Length ?? 0) + 1L);
             var alternatives = events.OfType<Event>().Distinct().ToList();
             for (var i = 0; i < alternatives.Count; i++) {
                 for (var j = i + 1; j < alternatives.Count; j++) {
+                    budget.Spend(1);
                     var first = alternatives[i].Roles;
                     var second = alternatives[j].Roles;
                     if (first is null || second is null || first.Length != second.Length) continue;
@@ -202,18 +253,21 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             return alternatives;
         }
 
-        private void Add(Dictionary<Event, long> terms, Event key, long coefficient, ref long storedConstraints) {
-            budget.Spend(key.Constraints.Length + 1L);
+        private void Add(Dictionary<Event, BigInteger> terms, Event key, BigInteger coefficient, ref long storedConstraints) {
+            budget.Spend(key.Constraints.Length + 1L + coefficient.GetBitLength() / 32);
             if (terms.TryGetValue(key, out var previous)) {
+                budget.Spend(1 + previous.GetBitLength() / 32);
                 var updated = previous + coefficient;
+                var cells = storedConstraints - WorkBudget.IntegerCells(previous) + WorkBudget.IntegerCells(updated);
+                WorkBudget.CheckStorage(terms.Count, cells);
                 if (updated == 0) {
                     terms.Remove(key);
-                    storedConstraints -= key.Constraints.Length;
-                } else terms[key] = updated;
+                    storedConstraints -= key.Constraints.Length + WorkBudget.IntegerCells(previous);
+                } else { terms[key] = updated; storedConstraints = cells; }
             } else if (coefficient != 0) {
-                WorkBudget.CheckStorage(terms.Count + 1, storedConstraints + key.Constraints.Length);
+                WorkBudget.CheckStorage(terms.Count + 1, storedConstraints + key.Constraints.Length + WorkBudget.IntegerCells(coefficient));
                 terms.Add(key, coefficient);
-                storedConstraints += key.Constraints.Length;
+                storedConstraints += key.Constraints.Length + WorkBudget.IntegerCells(coefficient);
             }
         }
 
@@ -415,7 +469,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
         // Count retained BigInteger payload in 32-bit cells as well as count vectors.
         // This is still a per-structure bound, not a total process-byte ceiling.
-        public static long IntegerCells(BigInteger value) => (value.GetBitLength() + 31) / 32;
+        public static long IntegerCells(BigInteger value) => (BigInteger.Abs(value).GetBitLength() + 31) / 32;
     }
 
     private static BigInteger ComputeBinomial(int n, int k, WorkBudget budget) {

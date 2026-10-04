@@ -14,14 +14,14 @@ public sealed record CalculationSnapshot(string Json) {
             cards.Where(c => c.Active).Select(c => new WorkerCard(c.Id, c.Copies, c.Name,
                 c.ExternalCardId, c.Categories.ToArray(), c.ManualMetadataCategoryKeys.ToArray())).ToArray(),
             combos.Where(c => c.Active).Select(c => new WorkerCombo(c.Name, c.GroupId,
-                c.Categories.ToArray(), c.Cards.ToArray())).ToArray(), handSize, groups.ToArray(),
+                c.Categories.ToArray(), c.Cards.ToArray(), c.AlternativeGroups.ToArray())).ToArray(), handSize, groups.ToArray(),
             (workPolicy ?? CalculationWorkPolicy.Default).WorkUnits),
             CalculationJsonContext.Default.CalculationInput));
 }
 
 public sealed record WorkerCard(string Id, int Copies, string? Name, int? ExternalCardId,
     CategoryBase[] Categories, string[] ManualMetadataCategoryKeys);
-public sealed record WorkerCombo(string? Name, string? GroupId, ComboCategory[] Categories, ComboCard[] Cards);
+public sealed record WorkerCombo(string? Name, string? GroupId, ComboCategory[] Categories, ComboCard[] Cards, ComboAlternativeGroup[]? AlternativeGroups = null);
 public sealed record CalculationInput(WorkerCard[] Cards, WorkerCombo[] Combos, int HandSize, ComboGroup[] Groups,
     long? WorkUnits = null);
 public enum CalculationFailureKind { Input = 1, Error = 2 }
@@ -36,7 +36,7 @@ public static class CalculationWire {
                 ?? throw new InvalidOperationException("Calculation input is missing.");
             var cards = input.Cards.Select(c => new Card(c.Categories, c.Copies, c.Name, true, c.Id,
                 c.ExternalCardId, c.ManualMetadataCategoryKeys)).ToList();
-            var combos = input.Combos.Select(c => new Combo(c.Categories, c.Name, true, c.GroupId, c.Cards)).ToList();
+            var combos = input.Combos.Select(c => new Combo(c.Categories, c.Name, true, c.GroupId, c.Cards, c.AlternativeGroups)).ToList();
             response = new(new ProbabilityCalculatorService().CalculateProbabilityResults(
                 cards, combos, input.HandSize, input.Groups,
                 input.WorkUnits is { } units ? new CalculationWorkPolicy(units) : CalculationWorkPolicy.Default), null);

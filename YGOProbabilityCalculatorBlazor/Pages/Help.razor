@@ -64,6 +64,8 @@
     <section class="mb-4">
         <h2>Combos and requirements</h2>
         <p>A combo is satisfied when all of its requirements can be met by the opening hand.</p>
+        <p>Choose <strong>OR</strong> beside a requirement to add an alternative. <code>Razen + (Fire OR Dark)</code> means Razen AND either Fire or Dark. Each alternative keeps its own Min and fixed Max or Any; only the selected alternative's bounds apply. Satisfying both counts once, and the combo keeps one result row. You can add several alternatives or several flat OR groups; requirements outside each group are joined by AND.</p>
+        <p>Separate positive requirements still need distinct copies across the selected route. <code>Fire (2–2) OR Dark (2–2)</code> needs two Fire or two Dark, not one of each. Repeated references to the exact same target intersect their bounds; use Min to request multiple copies.</p>
         <p>Requirements can reference:</p>
         <ul>
             <li>a category,</li>
@@ -103,6 +105,7 @@
         <h2>Experimenting with a deck</h2>
         <p>Cards and combos can be temporarily deactivated without deleting them. This is useful for comparing deck choices or removing a route from the calculation.</p>
         <p>You can also reorder cards, categories, combos, and combo groups to keep larger configurations readable.</p>
+        <p>New saved sessions use schema 3 for grouped alternatives. Supported older sessions load with their original AND meaning. Older applications may reject new saves; ancient readers without schema checks may misinterpret them.</p>
         <p>When you want to keep a setup, save it as a session. Sessions preserve the deck, categories, combo definitions, ordering, and other calculator settings.</p>
         <p>Imported cards show thumbnails automatically as their rows approach the viewport. Expand a card editor for a larger preview using the same image. Artwork is served from retained project-hosted copies and is recovered using the card's external ID when a session is loaded. Missing or unavailable images do not affect calculations. Card images are supplied by <a href="https://ygoprodeck.com/api-guide/" target="_blank" rel="noopener noreferrer">YGOPRODeck</a>; the calculator's software license does not cover third-party artwork.</p>
     </section>
