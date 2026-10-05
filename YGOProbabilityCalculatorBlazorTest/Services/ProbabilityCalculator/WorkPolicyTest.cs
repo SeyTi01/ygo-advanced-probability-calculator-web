@@ -20,15 +20,15 @@ public class WorkPolicyTest {
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
         foreach (var policy in new[] { new CalculationWorkPolicy(100_000), CalculationWorkPolicy.Default, CalculationWorkPolicy.Interactive, new(long.MaxValue) }) {
             var result = service.CalculateProbabilityResults(deck, combos, 2, groups, policy);
-            Assert.That(result.TotalProbability, Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(deck, combos, 2)).Within(1e-12));
+            Assert.That(result.TotalProbability, Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, 2)).Within(1e-12));
             Assert.That(result.GroupProbabilities![0].Probability, Is.EqualTo(result.TotalProbability));
             Assert.That(result.GroupProbabilities[1].Probability, Is.Zero);
             for (var i = 0; i < combos.Count; i++)
                 Assert.That(result.ComboProbabilities[i].Probability,
-                    Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(deck, [combos[i]], 2)).Within(1e-12));
+                    Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], 2)).Within(1e-12));
         }
         Assert.That(service.CalculateProbabilityResults(deck, combos, 2, groups).TotalProbability,
-            Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(deck, combos, 2)).Within(1e-12));
+            Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, 2)).Within(1e-12));
         Assert.Throws<ProbabilityCalculationLimitException>(() => service.CalculateProbabilityForCombos(deck, combos, 2, new(1)));
     }
 

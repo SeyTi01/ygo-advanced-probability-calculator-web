@@ -45,11 +45,11 @@ public class UnionFactoringTest {
         List<Card> deck = [new([A]), new([B]), new([C])];
         List<Combo> combos = [new([new(C, 1, 3), new(A, 2, 3)]), new([new(C, 1, 3), new(B, 2, 3)])];
         Check(deck, combos, 3);
-        Assert.That(SmallDeckOracleTest.EnumerateProbability(deck, combos, 3), Is.Zero);
+        Assert.That(SmallDeckOracle.EnumerateProbability(deck, combos, 3), Is.Zero);
         // C + two from (A union B) would incorrectly accept this hand.
         var unionCategory = new CategoryBase("A or B");
         var rewrittenDeck = deck.Select(c => c.Categories.Contains(C) ? c : c.WithCategories([unionCategory])).ToList();
-        Assert.That(SmallDeckOracleTest.EnumerateProbability(rewrittenDeck,
+        Assert.That(SmallDeckOracle.EnumerateProbability(rewrittenDeck,
             [new([new(C, 1, 3), new(unionCategory, 2, 3)])], 3), Is.EqualTo(1));
     }
 
@@ -58,7 +58,7 @@ public class UnionFactoringTest {
         List<Card> deck = [new([A], 2), new([B], 2), new([C])];
         List<Combo> bounded = [new([new(C, 1, 5), new(A, 1, 1)]), new([new(C, 1, 5), new(B, 1, 1)])];
         Check(deck, bounded, 5);
-        Assert.That(SmallDeckOracleTest.EnumerateProbability(deck, bounded, 5), Is.Zero);
+        Assert.That(SmallDeckOracle.EnumerateProbability(deck, bounded, 5), Is.Zero);
         Check(deck, [new([new(C, 1, 3), new(A, 1, 3), new(B, 0, 0)]),
             new([new(C, 1, 3), new(B, 1, 3), new(A, 0, 0)])], 3);
         Check(deck, [new([new(C, 1, 3), new(A, 1, 1)]), new([new(C, 1, 3), new(B, 1, 3)])], 3);
@@ -138,7 +138,7 @@ public class UnionFactoringTest {
         List<ComboGroup> groups = [new("g0", "Same"), new("g1", "Same"), new("empty", "Empty")];
         var service = new ProbabilityCalculatorService();
         var result = service.CalculateProbabilityResults(deck, combos, handSize, groups);
-        var expected = SmallDeckOracleTest.EnumerateProbability(deck, combos, handSize);
+        var expected = SmallDeckOracle.EnumerateProbability(deck, combos, handSize);
         Assert.That(result.TotalProbability, Is.EqualTo(expected).Within(1e-12));
         Assert.That(service.CalculateProbabilityForCombos(deck, combos, handSize), Is.EqualTo(expected).Within(1e-12));
         for (var i = 0; i < combos.Count; i++) {
@@ -146,12 +146,12 @@ public class UnionFactoringTest {
             Assert.That(result.ComboProbabilities[i].ComboName, Is.EqualTo(combos[i].Name));
             Assert.That(result.ComboProbabilities[i].GroupId, Is.EqualTo(combos[i].GroupId));
             Assert.That(result.ComboProbabilities[i].Probability,
-                Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(deck, [combos[i]], handSize)).Within(1e-12));
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], handSize)).Within(1e-12));
         }
         foreach (var group in result.GroupProbabilities!) {
             var members = combos.Where(c => c.GroupId == group.GroupId).ToList();
             Assert.That(group.ActiveComboCount, Is.EqualTo(members.Count));
-            Assert.That(group.Probability, Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(deck, members, handSize)).Within(1e-12));
+            Assert.That(group.Probability, Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, members, handSize)).Within(1e-12));
         }
     }
 }
