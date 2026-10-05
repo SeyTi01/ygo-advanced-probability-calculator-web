@@ -8,6 +8,7 @@ trim_trailing_whitespace = true
 
 [*.cs]
 # Roslyn style preferences: keep simplifications suggestion-only.
+csharp_prefer_braces = true:suggestion
 csharp_style_var_for_built_in_types = false:suggestion
 csharp_style_var_when_type_is_apparent = false:suggestion
 csharp_style_var_elsewhere = false:suggestion
@@ -24,6 +25,7 @@ dotnet_diagnostic.IDE0003.severity = suggestion
 dotnet_diagnostic.IDE0004.severity = suggestion
 dotnet_diagnostic.IDE0005.severity = suggestion
 dotnet_diagnostic.IDE0008.severity = suggestion
+dotnet_diagnostic.IDE0011.severity = suggestion
 dotnet_diagnostic.IDE0034.severity = suggestion
 dotnet_diagnostic.IDE0090.severity = suggestion
 dotnet_diagnostic.IDE0300.severity = suggestion
@@ -34,12 +36,29 @@ dotnet_diagnostic.IDE0304.severity = suggestion
 dotnet_diagnostic.IDE0305.severity = suggestion
 dotnet_diagnostic.IDE0306.severity = suggestion
 
+# JetBrains syntax style: always use braces for ordinary control flow.
+resharper_csharp_braces_for_ifelse = required
+resharper_csharp_braces_for_for = required
+resharper_csharp_braces_for_foreach = required
+resharper_csharp_braces_for_while = required
+resharper_csharp_braces_for_dowhile = required
+resharper_csharp_braces_for_using = required
+resharper_csharp_braces_for_lock = required
+resharper_csharp_braces_for_fixed = required
+
+# Keep invocation arguments and formal parameters together or chop them one per line.
+resharper_csharp_wrap_arguments_style = chop_if_long
+resharper_csharp_wrap_parameters_style = chop_if_long
+resharper_csharp_wrap_after_declaration_lpar = true
+
 # JetBrains formatting: one blank line around methods/local functions,
-# after block statements, and before control-transfer statements; cap runs at one.
+# before and after block statements, and before control-transfer statements;
+# cap retained blank-line runs at one.
 resharper_csharp_blank_lines_around_invocable = 1
 resharper_csharp_blank_lines_around_single_line_invocable = 1
 resharper_csharp_blank_lines_around_local_method = 1
 resharper_csharp_blank_lines_around_single_line_local_method = 1
+resharper_csharp_blank_lines_before_block_statements = 1
 resharper_csharp_blank_lines_after_block_statements = 1
 resharper_csharp_blank_lines_before_control_transfer_statements = 1
 resharper_csharp_keep_blank_lines_in_code = 1
