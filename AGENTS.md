@@ -58,6 +58,10 @@ dotnet format style YGOProbabilityCalculatorBlazor.sln --severity info --no-rest
 
 Review the diff after both commands. Do not use CleanupCode's default Full Cleanup profile.
 
+CA1822 and CA1851 are suggestion-level review findings. Keep them out of a bulk `dotnet format analyzers` cleanup: its CA1822 fix can make public instance members static, while CA1851 has no built-in code fix. Before changing a non-private member to static, check interface and virtual contracts, reflection/API compatibility, and instance call sites. For CA1851, materialize once only when repeated enumeration is unintended and caching preserves the intended sequence behavior.
+
+For a required but unused lambda or delegate parameter, retain the signature slot and rename the parameter to `_` after checking the delegate contract. Do not remove or change a required parameter to silence IDE0060 or Rider's unused-parameter inspection.
+
 At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work. If no usable .NET 10 SDK is available, follow the restricted Linux / ChatGPT Work bootstrap below before continuing. Missing .NET 10 is not, by itself, sufficient reason to skip local verification; attempt the documented nonprivileged bootstrap first. Only report .NET verification as blocked after that attempt fails because of a real environment restriction, and include the exact failed command and error. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
 `.github/workflows/tests.yml` runs the full regular test suite on every branch push, including feature branches, `dev`, and `main`. CI complements rather than replaces local verification: run relevant tests locally before pushing and report the exact local commands and results in pull requests. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
