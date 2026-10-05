@@ -42,11 +42,11 @@ Run the one canonical fixer from the repository root (PowerShell 5.1+ on Windows
 pwsh -NoProfile -File scripts/style/fix.ps1
 ```
 
-Windows PowerShell users can run `powershell -NoProfile -File scripts/style/fix.ps1`. The script restores the pinned SDK-compatible tools/packages, applies the explicitly enabled Roslyn style fixes and private-only CA1822 fixes, then applies the repository's narrow JetBrains formatting/braces profile. `global.json` pins Roslyn's SDK; the tool manifest pins ReSharper. Only noninteractive, safely auto-fixable rules belong in `.editorconfig`; adding a rule requires proving its fix with this command. C# source is the enforced scope; unrelated file formats have no formatter gate.
+Windows PowerShell users can run `powershell -NoProfile -File scripts/style/fix.ps1`. The script restores the pinned SDK-compatible tools/packages, builds to resolve references, applies the narrow JetBrains explicit-type/braces/formatting profile, applies the explicitly enabled Roslyn style fixes, then restores JetBrains formatting and removes UTF-8 BOMs. `global.json` pins Roslyn's SDK; the tool manifest pins ReSharper. Only noninteractive, safely auto-fixable rules belong in `.editorconfig`; adding a rule requires proving its fix with this command. C# source is the enforced scope; unrelated file formats have no formatter gate.
 
 CI runs this same script and asserts `git diff --exit-code` on a clean checkout. Run it and commit its output to satisfy lint/style CI; build, .NET tests, and JavaScript tests independently check functional correctness and can still fail on broken code. Review the generated diff. Keep logs and probe files outside the repository. CI attaches `lint-fixes.patch` if cleanup changes tracked files.
 
-`inspectcode` is optional diagnostic tooling, never an enforcement gate for manual-only findings. Unused parameter/delegate names, repeated enumeration, nullability-based constant conditions, and public/internal static candidates are outside the explicit lint policy. Do not use the default Full Cleanup profile. If this workspace blocks Roslyn's build-host Unix pipe, report the local limitation and review the output of the identical fixer from CI; do not bypass the restriction or invent replacement source rewrites.
+`inspectcode` is optional diagnostic tooling, never an enforcement gate for manual-only findings. Unused parameter/delegate names, repeated enumeration, nullability-based constant conditions, and all static candidates are outside the explicit lint policy. Do not use the default Full Cleanup profile. After an actual managed-workspace MSBuild failure, pass verification-only flags with `-MSBuildArguments` (for example `-m:1`, `-p:UseSharedCompilation=false`, and the temporary task override described below). If this workspace blocks Roslyn's build-host Unix pipe, report the local limitation and review the output of the identical fixer from CI; do not bypass the restriction or invent replacement source rewrites.
 
 At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work. If no usable .NET 10 SDK is available, follow the restricted Linux / ChatGPT Work bootstrap below before continuing. Missing .NET 10 is not, by itself, sufficient reason to skip local verification; attempt the documented nonprivileged bootstrap first. Only report .NET verification as blocked after that attempt fails because of a real environment restriction, and include the exact failed command and error. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
@@ -55,12 +55,13 @@ At the start of implementation or test work, run `dotnet --info` and `dotnet --l
 
 ### Restricted Linux and ChatGPT Work: .NET 10 SDK bootstrap
 
-Run `dotnet --info` and `dotnet --list-sdks` first. If a usable 10.x SDK is listed, use it normally. If `dotnet` is missing or no 10.x SDK is installed, attempt this nonprivileged bootstrap before giving up:
+Run `dotnet --info` and `dotnet --list-sdks` first. Use the exact SDK pinned in `global.json`. If `dotnet` or that SDK is missing, attempt this nonprivileged bootstrap before giving up:
 
 ```sh
 mkdir -p /tmp/dotnet10-sdk
 curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
-TAR_OPTIONS=--no-same-owner bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /tmp/dotnet10-sdk --no-path
+YGO_SDK_VERSION=$(node -p "require('./global.json').sdk.version")
+TAR_OPTIONS=--no-same-owner bash /tmp/dotnet-install.sh --version "$YGO_SDK_VERSION" --install-dir /tmp/dotnet10-sdk --no-path
 
 export DOTNET_ROOT=/tmp/dotnet10-sdk
 export PATH="$DOTNET_ROOT:$PATH"

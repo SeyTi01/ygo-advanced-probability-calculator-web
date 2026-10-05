@@ -53,6 +53,10 @@ public class AutofixProbe {
   lock (o) value++;
   int negative = -5;
   int positive = +1;
+  void Local() { value++; }
+  void OtherLocal() => value++;
+  Local();
+  OtherLocal();
 
 
 
@@ -75,6 +79,10 @@ try {
     & "$PSScriptRoot/fix.ps1"
     $fixed = [IO.File]::ReadAllText($probe)
     Write-Host $fixed
+    $bytes = [IO.File]::ReadAllBytes($probe)
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+        throw 'UTF-8 encoding fix left a BOM.'
+    }
     Assert-Pattern $fixed 'int number = 1;' 'explicit types and redundant casts'
     Assert-Pattern $fixed 'object apparent = new\(\);' 'explicit apparent types and target-typed new'
     Assert-Pattern $fixed 'string elsewhere =' 'explicit inferred types'
@@ -88,10 +96,10 @@ try {
     Assert-Pattern $fixed 'ImmutableArray<int> created = \[1, 2\];' 'Create collection expression'
     Assert-Pattern $fixed 'ImmutableArray<int> built = \[1, 2\];' 'builder collection expression'
     Assert-Pattern $fixed 'int n = default;' 'default literal'
-    Assert-Pattern $fixed 'private static int PrivateCandidate' 'private-only static candidate'
+    Assert-Pattern $fixed 'private int PrivateCandidate' 'private instance API preserved'
     Assert-Pattern $fixed 'public int PublicCandidate' 'public API preserved'
     Assert-Pattern $fixed 'internal int InternalCandidate' 'internal API preserved'
-    Assert-Pattern $fixed '=> PrivateCandidate\(1\);' 'static call site updated and simplified'
+    Assert-Pattern $fixed 'new AutofixProbe\(\).PrivateCandidate\(1\)' 'qualified instance call preserved'
     Assert-Pattern $fixed '(?m)^\s*Noop\(\);' 'static qualification simplification'
     Assert-Pattern $fixed 'Property = value;' 'field/property qualification simplification'
     Assert-Pattern $fixed '(?m)^\s*Changed\?\.Invoke\(\);' 'event qualification simplification'
@@ -108,7 +116,8 @@ try {
     if ($fixed -match 'using System.Text;' -or $fixed -match '\r|[ \t]+\n|\n\n\n' -or -not $fixed.EndsWith("`n")) {
         throw 'Import removal or C# text/blank-line formatting failed.'
     }
-    Assert-Pattern $fixed 'LongParameters\(\s*\n' 'parameter and argument wrapping'
+    Assert-Pattern $fixed 'LongParameters\(\s*\n' 'parameter wrapping'
+    Assert-Pattern $fixed '(?s)LongParameters\([^;]*\n\s*secondParameterWithAVeryLongName:' 'argument wrapping'
     $before = git -c "safe.directory=$repoRoot" diff --binary
     if ($LASTEXITCODE -ne 0) { throw 'Could not snapshot tracked cleanup output.' }
     & "$PSScriptRoot/fix.ps1"

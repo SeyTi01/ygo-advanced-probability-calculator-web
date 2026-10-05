@@ -36,9 +36,7 @@ dotnet_diagnostic.IDE0303.severity = suggestion
 dotnet_diagnostic.IDE0304.severity = suggestion
 dotnet_diagnostic.IDE0305.severity = suggestion
 dotnet_diagnostic.IDE0306.severity = suggestion
-dotnet_diagnostic.CA1822.severity = suggestion
-# Private members only: do not change public/internal API shape.
-dotnet_code_quality.CA1822.api_surface = private
+dotnet_diagnostic.CA1822.severity = none
 dotnet_diagnostic.CA1851.severity = none
 # Keep primary constructors deferred while Info-level style cleanup runs.
 dotnet_diagnostic.IDE0290.severity = none

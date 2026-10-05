@@ -1,3 +1,3 @@
 <wpf:ResourceDictionary xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib">
-  <s:String x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=YGO_0020Autofix/@EntryIndexedValue">&lt;Profile name="YGO Autofix"&gt;&lt;CSReformatCode&gt;True&lt;/CSReformatCode&gt;&lt;CSCodeStyleAttributes ArrangeBraces="True" /&gt;&lt;/Profile&gt;</s:String>
+  <s:String x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=YGO_0020Autofix/@EntryIndexedValue">&lt;Profile name="YGO Autofix"&gt;&lt;CSReformatCode&gt;True&lt;/CSReformatCode&gt;&lt;CSCodeStyleAttributes ArrangeBraces="True" ArrangeVarStyle="True" /&gt;&lt;/Profile&gt;</s:String>
 </wpf:ResourceDictionary>
