@@ -24,16 +24,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up .NET 10
-        id: setup-dotnet
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
-          dotnet-quality: "ga"
-
-      - name: Pin SDK for this run
-        shell: bash
-        run: |
-          echo '{"sdk":{"version":"${{ steps.setup-dotnet.outputs.dotnet-version }}"}}' > global.json
+          global-json-file: global.json
 
       - name: Show .NET environment
         run: dotnet --info
@@ -49,3 +42,41 @@ jobs:
 
       - name: JavaScript tests
         run: node --test
+
+  lint:
+    name: Automatic C# cleanup
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Apply canonical fixer
+        id: fixer
+        shell: pwsh
+        run: ./scripts/style/fix.ps1
+
+      - name: Require unchanged tree
+        id: clean-tree
+        shell: bash
+        run: |
+          git diff --binary > "${RUNNER_TEMP}/lint-fixes.patch"
+          git diff --exit-code
+
+      - name: Attach automatic fixes
+        if: failure() && steps.clean-tree.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-fixes
+          path: ${{ runner.temp }}/lint-fixes.patch
+          retention-days: 7
+
+      - name: Verify automatic fixes and idempotence
+        if: ${{ !cancelled() && steps.fixer.outcome == 'success' }}
+        shell: pwsh
+        run: ./scripts/style/test.ps1

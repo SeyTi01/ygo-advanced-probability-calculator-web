@@ -1,13 +1,11 @@
 root = true
 
-[*]
+[*.cs]
 charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
-
-[*.cs]
-# Roslyn style preferences: keep simplifications suggestion-only.
+# Only rules repaired by scripts/style/fix.ps1 belong in this policy.
 csharp_prefer_braces = true:suggestion
 csharp_style_var_for_built_in_types = false:suggestion
 csharp_style_var_when_type_is_apparent = false:suggestion
@@ -28,7 +26,7 @@ dotnet_diagnostic.IDE0005.severity = suggestion
 dotnet_diagnostic.IDE0008.severity = suggestion
 dotnet_diagnostic.IDE0011.severity = suggestion
 dotnet_diagnostic.IDE0034.severity = suggestion
-dotnet_diagnostic.IDE0060.severity = suggestion
+dotnet_diagnostic.IDE0060.severity = none
 dotnet_diagnostic.IDE0075.severity = suggestion
 dotnet_diagnostic.IDE0090.severity = suggestion
 dotnet_diagnostic.IDE0300.severity = suggestion
@@ -39,7 +37,9 @@ dotnet_diagnostic.IDE0304.severity = suggestion
 dotnet_diagnostic.IDE0305.severity = suggestion
 dotnet_diagnostic.IDE0306.severity = suggestion
 dotnet_diagnostic.CA1822.severity = suggestion
-dotnet_diagnostic.CA1851.severity = suggestion
+# Private members only: do not change public/internal API shape.
+dotnet_code_quality.CA1822.api_surface = private
+dotnet_diagnostic.CA1851.severity = none
 # Keep primary constructors deferred while Info-level style cleanup runs.
 dotnet_diagnostic.IDE0290.severity = none
 
@@ -54,14 +54,14 @@ resharper_csharp_braces_for_lock = required
 resharper_csharp_braces_for_fixed = required
 resharper_csharp_space_after_logical_not_op = true
 
-# Keep low-risk Rider inspections visible for review.
-resharper_member_can_be_made_static_local_highlighting = suggestion
-resharper_member_can_be_made_static_global_highlighting = suggestion
-resharper_unused_parameter_local_highlighting = suggestion
-resharper_unused_parameter_global_highlighting = suggestion
-resharper_possible_multiple_enumeration_highlighting = suggestion
-resharper_condition_is_always_true_or_false_highlighting = suggestion
-resharper_condition_is_always_true_or_false_according_to_nullable_api_contract_highlighting = suggestion
+# Disable inspection-only findings; interactive quick-fixes are not a lint contract.
+resharper_member_can_be_made_static_local_highlighting = none
+resharper_member_can_be_made_static_global_highlighting = none
+resharper_unused_parameter_local_highlighting = none
+resharper_unused_parameter_global_highlighting = none
+resharper_possible_multiple_enumeration_highlighting = none
+resharper_condition_is_always_true_or_false_highlighting = none
+resharper_condition_is_always_true_or_false_according_to_nullable_api_contract_highlighting = none
 
 # Keep invocation arguments and formal parameters together or chop them one per line.
 resharper_csharp_wrap_arguments_style = chop_if_long

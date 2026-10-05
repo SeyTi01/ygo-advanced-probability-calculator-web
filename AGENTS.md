@@ -36,31 +36,17 @@ dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 
 ## Linting and cleanup tools
 
-Restore the pinned JetBrains tools with `dotnet tool restore`. `inspectcode` is the non-mutating inspection command. Write its SARIF output outside the repository:
+Run the one canonical fixer from the repository root (PowerShell 5.1+ on Windows, `pwsh` on Linux):
 
 ```powershell
-dotnet tool run jb -- inspectcode YGOProbabilityCalculatorBlazor.sln -o="$env:TEMP\ygo-inspections.sarif"
+pwsh -NoProfile -File scripts/style/fix.ps1
 ```
 
-```sh
-dotnet tool run jb -- inspectcode YGOProbabilityCalculatorBlazor.sln -o="${TMPDIR:-/tmp}/ygo-inspections.sarif"
-```
+Windows PowerShell users can run `powershell -NoProfile -File scripts/style/fix.ps1`. The script restores the pinned SDK-compatible tools/packages, applies the explicitly enabled Roslyn style fixes and private-only CA1822 fixes, then applies the repository's narrow JetBrains formatting/braces profile. `global.json` pins Roslyn's SDK; the tool manifest pins ReSharper. Only noninteractive, safely auto-fixable rules belong in `.editorconfig`; adding a rule requires proving its fix with this command. C# source is the enforced scope; unrelated file formats have no formatter gate.
 
-`cleanupcode` and `dotnet format style` modify tracked source. Run them only when the task explicitly calls for cleanup/formatting, or in a disposable worktree/copy for validation. Style cleanup is not enforced in CI yet. Keep generated SARIF, logs, and profiler output outside the repository; do not commit them.
+CI runs this same script and asserts `git diff --exit-code` on a clean checkout. Run it and commit its output to satisfy lint/style CI; build, .NET tests, and JavaScript tests independently check functional correctness and can still fail on broken code. Review the generated diff. Keep logs and probe files outside the repository. CI attaches `lint-fixes.patch` if cleanup changes tracked files.
 
-For an explicitly requested cleanup, use both stages: JetBrains CleanupCode for ReSharper formatting and syntax style, then Roslyn style fixes at suggestion/Info severity:
-
-```sh
-dotnet tool restore
-dotnet tool run jb -- cleanupcode YGOProbabilityCalculatorBlazor.sln --profile="Built-in: Reformat & Apply Syntax Style"
-dotnet format style YGOProbabilityCalculatorBlazor.sln --severity info --no-restore
-```
-
-Review the diff after both commands. Do not use CleanupCode's default Full Cleanup profile.
-
-CA1822 and CA1851 are suggestion-level review findings. Keep them out of a bulk `dotnet format analyzers` cleanup: its CA1822 fix can make public instance members static, while CA1851 has no built-in code fix. Before changing a non-private member to static, check interface and virtual contracts, reflection/API compatibility, and instance call sites. For CA1851, materialize once only when repeated enumeration is unintended and caching preserves the intended sequence behavior.
-
-For a required but unused lambda or delegate parameter, retain the signature slot and rename the parameter to `_` after checking the delegate contract. Do not remove or change a required parameter to silence IDE0060 or Rider's unused-parameter inspection.
+`inspectcode` is optional diagnostic tooling, never an enforcement gate for manual-only findings. Unused parameter/delegate names, repeated enumeration, nullability-based constant conditions, and public/internal static candidates are outside the explicit lint policy. Do not use the default Full Cleanup profile. If this workspace blocks Roslyn's build-host Unix pipe, report the local limitation and review the output of the identical fixer from CI; do not bypass the restriction or invent replacement source rewrites.
 
 At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work. If no usable .NET 10 SDK is available, follow the restricted Linux / ChatGPT Work bootstrap below before continuing. Missing .NET 10 is not, by itself, sufficient reason to skip local verification; attempt the documented nonprivileged bootstrap first. Only report .NET verification as blocked after that attempt fails because of a real environment restriction, and include the exact failed command and error. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
