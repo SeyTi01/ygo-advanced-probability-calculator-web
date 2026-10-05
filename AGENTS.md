@@ -36,13 +36,27 @@ dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 
 ## Linting and cleanup tools
 
-Restore the pinned JetBrains tools with `dotnet tool restore`. Run non-mutating inspections with:
+Restore the pinned JetBrains tools with `dotnet tool restore`. `inspectcode` is the non-mutating inspection command. Write its SARIF output outside the repository:
 
-```sh
-dotnet tool run jb -- inspectcode YGOProbabilityCalculatorBlazor.sln -o=/tmp/ygo-inspections.sarif
+```powershell
+dotnet tool run jb -- inspectcode YGOProbabilityCalculatorBlazor.sln -o="$env:TEMP\ygo-inspections.sarif"
 ```
 
-Use `dotnet format` for Roslyn style fixes and `dotnet tool run jb -- cleanupcode YGOProbabilityCalculatorBlazor.sln` for ReSharper formatting. Cleanup is not applied or enforced in CI during this groundwork; review the rules and resulting diff before running it.
+```sh
+dotnet tool run jb -- inspectcode YGOProbabilityCalculatorBlazor.sln -o="${TMPDIR:-/tmp}/ygo-inspections.sarif"
+```
+
+`cleanupcode` and `dotnet format style` modify tracked source. Run them only when the task explicitly calls for cleanup/formatting, or in a disposable worktree/copy for validation. Style cleanup is not enforced in CI yet. Keep generated SARIF, logs, and profiler output outside the repository; do not commit them.
+
+For an explicitly requested cleanup, use both stages: JetBrains CleanupCode for ReSharper formatting and syntax style, then Roslyn style fixes at suggestion/Info severity:
+
+```sh
+dotnet tool restore
+dotnet tool run jb -- cleanupcode YGOProbabilityCalculatorBlazor.sln --profile="Built-in: Reformat & Apply Syntax Style"
+dotnet format style YGOProbabilityCalculatorBlazor.sln --severity info --no-restore
+```
+
+Review the diff after both commands. Do not use CleanupCode's default Full Cleanup profile.
 
 At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work. If no usable .NET 10 SDK is available, follow the restricted Linux / ChatGPT Work bootstrap below before continuing. Missing .NET 10 is not, by itself, sufficient reason to skip local verification; attempt the documented nonprivileged bootstrap first. Only report .NET verification as blocked after that attempt fails because of a real environment restriction, and include the exact failed command and error. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
@@ -99,6 +113,11 @@ The .NET 10 migration PR #46 contains one verified example of this workaround an
 - Preserve existing saved-session JSON and `.ydk` import behavior unless the issue explicitly changes it. For persistence or import changes, add focused coverage under `YGOProbabilityCalculatorBlazorTest/Services/Session/`, `YGOProbabilityCalculatorBlazorTest/Services/Converter/`, or `YGOProbabilityCalculatorBlazorTest/Services/DeckImport/` as appropriate.
 
 ## Contribution workflow and boundaries
+
+### Managed worktrees and publication access
+
+- Managed/cloud worktrees can report Git ownership or safe-directory errors. Apply `-c safe.directory=<repo>` to the individual Git command; do not change global Git configuration. For a privacy/publication guard that invokes Git internally, pass the equivalent setting to that process with Git's `GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_0`, and `GIT_CONFIG_VALUE_0` variables.
+- Check CLI Git credentials and available authenticated GitHub integration/API publication paths early when a task requires publication. A missing GitHub CLI or this setup issue alone does not block implementation. Use an authenticated integration only when that specific remote write is authorized, and verify the published commit and tree.
 
 ### Publication privacy
 
