@@ -16,6 +16,8 @@ dotnet_style_qualification_for_property = false:suggestion
 dotnet_style_qualification_for_method = false:suggestion
 dotnet_style_qualification_for_event = false:suggestion
 dotnet_style_prefer_collection_expression = when_types_exactly_match:suggestion
+# IDE0028 handles empty/initialized constructors; disable its traditional initializer fallback.
+dotnet_style_collection_initializer = false:none
 dotnet_style_prefer_simplified_boolean_expressions = true:suggestion
 
 dotnet_diagnostic.IDE0001.severity = suggestion
@@ -25,6 +27,7 @@ dotnet_diagnostic.IDE0004.severity = suggestion
 dotnet_diagnostic.IDE0005.severity = suggestion
 dotnet_diagnostic.IDE0008.severity = suggestion
 dotnet_diagnostic.IDE0011.severity = suggestion
+dotnet_diagnostic.IDE0028.severity = suggestion
 dotnet_diagnostic.IDE0034.severity = suggestion
 dotnet_diagnostic.IDE0060.severity = none
 dotnet_diagnostic.IDE0075.severity = suggestion

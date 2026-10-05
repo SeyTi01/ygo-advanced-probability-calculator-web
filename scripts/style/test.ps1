@@ -27,6 +27,8 @@ public class AutofixProbe {
   var elsewhere = alternatives.First();
   System.Collections.Generic.List<int> list = new List<int>();
   List<int> copied = list.ToList();
+  List<int> constructed = new List<int>(copied);
+  List<int> capacity = new List<int>(5);
   int[] array = copied.ToArray();
   ImmutableArray<int> immutable = copied.ToImmutableArray();
   int[] literal = new int[] { 1, 2 };
@@ -88,6 +90,8 @@ try {
     Assert-Pattern $fixed 'string elsewhere =' 'explicit inferred types'
     Assert-Pattern $fixed 'List<int> list = \[\];' 'qualified names and empty collections'
     Assert-Pattern $fixed 'List<int> copied = \[\.\. list\];' 'ToList collection expression'
+    Assert-Pattern $fixed 'List<int> constructed = \[\.\. copied\];' 'enumerable constructor collection expression'
+    Assert-Pattern $fixed 'List<int> capacity = new\(5\);' 'capacity constructor preserved'
     Assert-Pattern $fixed 'int\[\] array = \[\.\. copied\];' 'ToArray collection expression'
     Assert-Pattern $fixed 'ImmutableArray<int> immutable = \[\.\. copied\];' 'ToImmutableArray collection expression'
     Assert-Pattern $fixed 'int\[\] literal = \[1, 2\];' 'array collection expression'
