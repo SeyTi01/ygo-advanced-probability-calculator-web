@@ -41,7 +41,7 @@ public class LegacyCardMetadataEnricherTest {
         var originalCategories = session.Categories.ToArray();
         var engine = new ProbabilityCalculatorService();
         var active = session.Cards.Where(card => card.Active).ToList();
-        var oracleBefore = SmallDeckOracleTest.EnumerateProbability(active, session.Combos, session.HandSize);
+        var oracleBefore = SmallDeckOracle.EnumerateProbability(active, session.Combos, session.HandSize);
         var before = engine.CalculateProbabilityResults(active, session.Combos, session.HandSize, session.ComboGroups);
         var metadata = MatchingService(Ash, Maxx);
 
@@ -65,7 +65,7 @@ public class LegacyCardMetadataEnricherTest {
             Is.EqualTo(session.Cards[0].Categories.Count));
         Assert.That(session.Cards[3], Is.SameAs(originalCards[3]));
         var enrichedActive = session.Cards.Where(card => card.Active).ToList();
-        var oracleAfter = SmallDeckOracleTest.EnumerateProbability(enrichedActive, session.Combos, session.HandSize);
+        var oracleAfter = SmallDeckOracle.EnumerateProbability(enrichedActive, session.Combos, session.HandSize);
         var after = engine.CalculateProbabilityResults(enrichedActive, session.Combos, session.HandSize, session.ComboGroups);
         Assert.That(oracleAfter, Is.EqualTo(oracleBefore));
         Assert.That(before.TotalProbability, Is.EqualTo(oracleBefore).Within(1e-12));

@@ -56,7 +56,7 @@ public class ActiveEntriesEditorTest {
         var activeCombos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
             .Where(combo => combo.Active).ToList();
         var handSize = int.Parse(cut.Find("#handSize").GetAttribute("value") ?? "5");
-        var oracleValue = SmallDeckOracleTest.EnumerateProbability(activeCards, activeCombos, handSize);
+        var oracleValue = SmallDeckOracle.EnumerateProbability(activeCards, activeCombos, handSize);
         Assert.That(value, Is.EqualTo(oracleValue).Within(1e-12),
             "expected probability must match independent physical-hand enumeration");
 
@@ -69,7 +69,7 @@ public class ActiveEntriesEditorTest {
         Assert.That(comboRows.Length, Is.EqualTo(activeCombos.Count));
         for (var index = 0; index < activeCombos.Count; index++) {
             var combo = activeCombos[index];
-            var expectedStandalone = SmallDeckOracleTest.EnumerateProbability(activeCards, [combo], handSize);
+            var expectedStandalone = SmallDeckOracle.EnumerateProbability(activeCards, [combo], handSize);
             var displayName = string.IsNullOrWhiteSpace(combo.Name) ? $"Unnamed combo {index + 1}" : combo.Name;
             Assert.That(comboRows[index].TextContent, Does.Contain(displayName));
             Assert.That(comboRows[index].QuerySelector("strong")!.TextContent,

@@ -9,7 +9,9 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
-public partial class CalculatorEditorTest {
+[TestFixture]
+public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase {
+
     [Test]
     public async Task AutomaticArtworkKeepsResultsDraftsActiveStateAndSessionUnchanged() {
         var artwork = new Mock<ICardArtworkService>();

@@ -71,7 +71,7 @@ public class CategoryRenameTest {
         var originalCombos = session.Combos.ToArray();
         var expectedConstraints = session.Combos.Select(combo => combo.Categories
             .Select(category => (category.BaseCategory.Name, category.MinCount, category.MaxCount)).ToArray()).ToArray();
-        var oracleProbability = SmallDeckOracleTest.EnumerateProbability(session.Cards, session.Combos, session.HandSize);
+        var oracleProbability = SmallDeckOracle.EnumerateProbability(session.Cards, session.Combos, session.HandSize);
         var calculator = new ProbabilityCalculatorService();
         var probabilityBefore = calculator.CalculateProbabilityForCombos(session.Cards, session.Combos, session.HandSize);
         Assert.That(probabilityBefore, Is.EqualTo(oracleProbability).Within(1e-12));

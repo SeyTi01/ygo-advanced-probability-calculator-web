@@ -29,7 +29,7 @@ public class CalculationWireTest {
         List<Combo> combos = [new([new(property, 0, 2, RequirementMaximumMode.HandSize)], "Combo", groupId: "g",
             cards: [new("stable", 1, 2)]), new([new(role, 0, 0)], active: false)];
         List<ComboGroup> groups = [new("other", "Other"), new("g", "Group")];
-        var expected = SmallDeckOracleTest.EnumerateProbability(cards.Where(c => c.Active).ToList(), [combos[0]], 2);
+        var expected = SmallDeckOracle.EnumerateProbability(cards.Where(c => c.Active).ToList(), [combos[0]], 2);
         var snapshot = CalculationSnapshot.Capture(cards, combos, 2, groups);
         cards[0].Categories.Clear();
         combos[0].Categories.Clear();
@@ -60,10 +60,10 @@ public class CalculationWireTest {
         List<Combo> combos = [new([new(a, 1, 2), new(b, 1, 2)], "Both"),
             new([new(b, 0, 0)], "Direct", cards: [new("a", 1, 2, RequirementMaximumMode.HandSize)])];
         var result = CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(cards, combos, 2, []).Json));
-        Assert.That(result.TotalProbability, Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(cards, combos, 2)).Within(1e-12));
+        Assert.That(result.TotalProbability, Is.EqualTo(SmallDeckOracle.EnumerateProbability(cards, combos, 2)).Within(1e-12));
         for (var i = 0; i < combos.Count; i++)
             Assert.That(result.ComboProbabilities[i].Probability,
-                Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(cards, [combos[i]], 2)).Within(1e-12));
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(cards, [combos[i]], 2)).Within(1e-12));
     }
 
     [Test]

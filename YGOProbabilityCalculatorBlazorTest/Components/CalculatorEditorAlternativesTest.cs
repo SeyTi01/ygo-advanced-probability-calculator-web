@@ -8,7 +8,8 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
-public partial class CalculatorEditorTest {
+[TestFixture]
+public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase {
     private static async Task ChooseAlternativeTarget(IRenderedComponent<ComboEditor> editor, string target) {
         if (Button(editor, "Add OR").GetAttribute("aria-pressed") == "false")
             await Button(editor, "Add OR").ClickAsync(new());

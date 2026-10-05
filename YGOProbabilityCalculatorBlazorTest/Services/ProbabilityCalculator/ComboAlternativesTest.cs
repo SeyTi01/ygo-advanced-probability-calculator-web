@@ -119,11 +119,11 @@ public class ComboAlternativesTest {
     }
 
     private static void Verify(List<Card> deck, List<Combo> combos, int hand, int? success = null, int? total = null) {
-        var expected = SmallDeckOracleTest.EnumerateCounts(deck, combos, hand);
+        var expected = SmallDeckOracle.EnumerateCounts(deck, combos, hand);
         if (success is not null) Assert.That(expected, Is.EqualTo((success.Value, total!.Value)), "Independently enumerate the stated physical hands.");
         var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, hand);
         Assert.That(result.TotalProbability, Is.EqualTo((double)expected.Successes / expected.Total).Within(1e-12));
         for (var i = 0; i < combos.Count; i++)
-            Assert.That(result.ComboProbabilities[i].Probability, Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(deck, [combos[i]], hand)).Within(1e-12));
+            Assert.That(result.ComboProbabilities[i].Probability, Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], hand)).Within(1e-12));
     }
 }
