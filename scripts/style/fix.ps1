@@ -38,16 +38,22 @@ try {
     )
     if ($styleRules.Count -eq 0) { throw 'No automatically fixable style rules configured.' }
 
+    $sources = Get-ChildItem YGOProbabilityCalculatorBlazor, YGOProbabilityCalculatorBlazorTest -Filter '*.cs' -File -Recurse |
+        Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } | Sort-Object FullName
+
     # Establish explicit target types before Roslyn's exact-type collection fixes.
     Invoke-CleanupCode
-    Invoke-Dotnet -Arguments (@('format', 'style', $solution, '--severity', 'info', '--no-restore', '--diagnostics') + $styleRules)
+    # Roslyn can expose another fix (for example new T() -> new() -> []).
+    do {
+        $before = ($sources | Get-FileHash -Algorithm SHA256).Hash -join ''
+        Invoke-Dotnet -Arguments (@('format', 'style', $solution, '--severity', 'info', '--no-restore', '--diagnostics') + $styleRules)
+        $after = ($sources | Get-FileHash -Algorithm SHA256).Hash -join ''
+    } while ($before -cne $after)
 
     # Restore JetBrains spacing after Roslyn's code fixes.
     Invoke-CleanupCode
 
     # CleanupCode preserves existing BOMs; charset=utf-8 requires UTF-8 without one.
-    $sources = Get-ChildItem YGOProbabilityCalculatorBlazor, YGOProbabilityCalculatorBlazorTest -Filter '*.cs' -File -Recurse |
-        Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }
     foreach ($source in $sources) {
         $bytes = [IO.File]::ReadAllBytes($source.FullName)
         if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
