@@ -34,6 +34,16 @@ Run the app locally with `dotnet run --project YGOProbabilityCalculatorBlazor/YG
 dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 ```
 
+## Linting and cleanup tools
+
+Restore the pinned JetBrains tools with `dotnet tool restore`. Run non-mutating inspections with:
+
+```sh
+dotnet tool run jb -- inspectcode YGOProbabilityCalculatorBlazor.sln -o=/tmp/ygo-inspections.sarif
+```
+
+Use `dotnet format` for Roslyn style fixes and `dotnet tool run jb -- cleanupcode YGOProbabilityCalculatorBlazor.sln` for ReSharper formatting. Cleanup is not applied or enforced in CI during this groundwork; review the rules and resulting diff before running it.
+
 At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work. If no usable .NET 10 SDK is available, follow the restricted Linux / ChatGPT Work bootstrap below before continuing. Missing .NET 10 is not, by itself, sufficient reason to skip local verification; attempt the documented nonprivileged bootstrap first. Only report .NET verification as blocked after that attempt fails because of a real environment restriction, and include the exact failed command and error. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
 `.github/workflows/tests.yml` runs the full regular test suite on every branch push, including feature branches, `dev`, and `main`. CI complements rather than replaces local verification: run relevant tests locally before pushing and report the exact local commands and results in pull requests. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
