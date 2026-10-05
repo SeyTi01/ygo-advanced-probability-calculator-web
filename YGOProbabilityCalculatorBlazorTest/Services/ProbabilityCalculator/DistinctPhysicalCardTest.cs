@@ -60,7 +60,7 @@ public class DistinctPhysicalCardTest {
             new([new(Dark, 1, 2)], cards: [new(razen.Id, 1, 2)])
         ];
         var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 2);
-        Assert.That(SmallDeckOracleTest.EnumerateProbability(deck, combos, 2), Is.EqualTo(2.0 / 6));
+        Assert.That(SmallDeckOracle.EnumerateProbability(deck, combos, 2), Is.EqualTo(2.0 / 6));
         Assert.That(result.TotalProbability, Is.EqualTo(2.0 / 6).Within(1e-12));
         Assert.That(result.ComboProbabilities.Select(c => c.Probability), Is.All.EqualTo(1.0 / 6).Within(1e-12));
     }
@@ -74,8 +74,8 @@ public class DistinctPhysicalCardTest {
             new([new(Dark, 1, 2), new(Earth, 1, 2)], groupId: "b"),
             new([new(Fire, 1, 2)], groupId: "b")
         ];
-        Assert.That(SmallDeckOracleTest.MatchesHand(deck.Take(2).ToList(), combos[0]), Is.True);
-        Assert.That(SmallDeckOracleTest.MatchesHand(deck.Take(2).ToList(), combos[1]), Is.True);
+        Assert.That(SmallDeckOracle.MatchesHand(deck.Take(2).ToList(), combos[0]), Is.True);
+        Assert.That(SmallDeckOracle.MatchesHand(deck.Take(2).ToList(), combos[1]), Is.True);
         CheckAllResults(deck, combos, 2);
         combos.Add(combos[0]);
         CheckAllResults(deck, combos, 2);
@@ -113,9 +113,9 @@ public class DistinctPhysicalCardTest {
         var combos = session.Combos.Where(c => c.Active).ToList();
         Assert.That(deck.Sum(c => c.Copies), Is.EqualTo(40));
         // Independent enumeration of all C(40,5) physical hands with slot backtracking.
-        var expected = SmallDeckOracleTest.EnumerateProbability(deck, combos, session.HandSize);
+        var expected = SmallDeckOracle.EnumerateProbability(deck, combos, session.HandSize);
         Assert.That(expected, Is.EqualTo(149946.0 / 658008));
-        var standalone = combos.Select(c => SmallDeckOracleTest.EnumerateProbability(deck, [c], 5)).ToArray();
+        var standalone = combos.Select(c => SmallDeckOracle.EnumerateProbability(deck, [c], 5)).ToArray();
         Assert.That(standalone, Is.EqualTo(new[] { 93136.0 / 658008, 128466.0 / 658008 }));
         var repeated = Enumerable.Range(0, 30).Select(i => combos[i % 2].WithGroup(i % 3 == 0 ? "a" : "b")).ToList();
         var before = GC.GetAllocatedBytesForCurrentThread();
@@ -153,7 +153,7 @@ public class DistinctPhysicalCardTest {
     }
 
     private static void AssertHand(List<Card> hand, Combo combo, bool expected) {
-        Assert.That(SmallDeckOracleTest.MatchesHand(hand, combo), Is.EqualTo(expected), "Independent slot assignment");
+        Assert.That(SmallDeckOracle.MatchesHand(hand, combo), Is.EqualTo(expected), "Independent slot assignment");
         var deck = hand.GroupBy(c => c.Id).Select(g => g.First().WithCopies(g.Count())).ToList();
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, [combo], hand.Count),
             Is.EqualTo(expected ? 1 : 0).Within(1e-12));
@@ -162,12 +162,12 @@ public class DistinctPhysicalCardTest {
     private static void CheckAllResults(List<Card> deck, List<Combo> combos, int size) {
         var result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, size,
             [new("a", "First"), new("b", "Second"), new("empty", "Empty")]);
-        Assert.That(result.TotalProbability, Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(deck, combos, size)).Within(1e-12));
+        Assert.That(result.TotalProbability, Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, size)).Within(1e-12));
         for (var i = 0; i < combos.Count; i++)
             Assert.That(result.ComboProbabilities[i].Probability,
-                Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(deck, [combos[i]], size)).Within(1e-12));
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], size)).Within(1e-12));
         foreach (var group in result.GroupProbabilities!)
-            Assert.That(group.Probability, Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(deck,
+            Assert.That(group.Probability, Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck,
                 combos.Where(c => c.GroupId == group.GroupId).ToList(), size)).Within(1e-12));
     }
 }

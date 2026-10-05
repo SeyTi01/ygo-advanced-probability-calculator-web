@@ -17,7 +17,8 @@ using TestContext = Bunit.TestContext;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
-public partial class CalculatorEditorTest {
+[TestFixture]
+public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBase {
 
     [TestCase(false)]
     [TestCase(true)]
@@ -69,7 +70,7 @@ public partial class CalculatorEditorTest {
         var combo = cut.FindComponent<ComboEditor>();
         Assert.That(combo.FindAll("optgroup[label='Card properties'] option").Select(option => option.TextContent), Does.Contain("Tuner Monster"));
         Assert.That(combo.Instance.Combo.Categories.Single().BaseCategory.Source, Is.EqualTo(CategorySource.User));
-        var expected = SmallDeckOracleTest.EnumerateProbability(cards, [combo.Instance.Combo], 1);
+        var expected = SmallDeckOracle.EnumerateProbability(cards, [combo.Instance.Combo], 1);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(expected.ToString("P2")));
         await Button(cut, "Save Session").ClickAsync(new());
@@ -424,7 +425,7 @@ public partial class CalculatorEditorTest {
         Assert.That(editor.FindAll("details.card-property-inspector"), Is.Empty);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(
-            SmallDeckOracleTest.EnumerateProbability(cut.FindComponents<CardEditor>().Select(e => e.Instance.Card).ToList(),
+            SmallDeckOracle.EnumerateProbability(cut.FindComponents<CardEditor>().Select(e => e.Instance.Card).ToList(),
                 cut.FindComponents<ComboEditor>().Select(e => e.Instance.Combo).ToList(), 1).ToString("P2")));
     }
 

@@ -395,7 +395,7 @@ public class SessionServiceTests {
         Assert.That(loaded.Combos[0].Categories.Select(c => c.BaseCategory), Is.EqualTo(new[] { user, property }));
         Assert.That(loaded.CategoryColorIndices, Is.EqualTo(session.CategoryColorIndices));
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(loaded.Cards, loaded.Combos, 2),
-            Is.EqualTo(SmallDeckOracleTest.EnumerateProbability(session.Cards, session.Combos, 2)));
+            Is.EqualTo(SmallDeckOracle.EnumerateProbability(session.Cards, session.Combos, 2)));
     }
 
     [TestCase(0)]
