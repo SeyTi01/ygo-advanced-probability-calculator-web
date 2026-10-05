@@ -18,4 +18,8 @@ public sealed record GroupProbabilityResult(string GroupId, string GroupName, do
 /// <param name="ComboIndex">Zero-based position in the supplied combo list.</param>
 /// <param name="ComboName">The combo's optional display name.</param>
 /// <param name="Probability">Probability that this combo succeeds on its own.</param>
-public sealed record ComboProbabilityResult(int ComboIndex, string? ComboName, double Probability, string? GroupId = null);
+public sealed record ComboProbabilityResult(
+    int ComboIndex,
+    string? ComboName,
+    double Probability,
+    string? GroupId = null);

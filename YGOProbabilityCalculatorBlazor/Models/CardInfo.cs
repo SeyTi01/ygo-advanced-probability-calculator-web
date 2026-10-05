@@ -1,7 +1,8 @@
 namespace YGOProbabilityCalculatorBlazor.Models;
 
 /// <summary>Reusable objective fields from YGOPRODeck's cardinfo endpoint.</summary>
-public sealed record CardInfo {
+public sealed record CardInfo
+{
     public int Id { get; init; }
     public string Name { get; init; } = string.Empty;
     public string? Type { get; init; }
@@ -17,6 +18,10 @@ public sealed record CardInfo {
     public bool ArtworkMetadataKnown { get; init; }
 
     public int? SelectArtworkImageId(int importedPasscode) => ArtworkImageIds.Contains(importedPasscode)
-        ? importedPasscode : CanonicalCardId is { } canonical && ArtworkImageIds.Contains(canonical)
-            ? canonical : ArtworkImageIds.Count > 0 ? ArtworkImageIds[0] : null;
+        ? importedPasscode
+        : CanonicalCardId is { } canonical && ArtworkImageIds.Contains(canonical)
+            ? canonical
+            : ArtworkImageIds.Count > 0
+                ? ArtworkImageIds[0]
+                : null;
 }

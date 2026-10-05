@@ -4,7 +4,8 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
-public class CardPropertyColorPaletteTest {
+public class CardPropertyColorPaletteTest
+{
     [TestCase("attribute:fire", "card-property-color-attribute-fire")]
     [TestCase("attribute:water", "card-property-color-attribute-water")]
     [TestCase("attribute:wind", "card-property-color-attribute-wind")]
@@ -41,12 +42,14 @@ public class CardPropertyColorPaletteTest {
     [TestCase("archetype:k9", "card-property-color-archetype")]
     [TestCase("unrecognized:future", "card-property-color-generic")]
     [TestCase("malformed-key", "card-property-color-generic")]
-    public void ResolvesSemanticColorFromMetadataKey(string metadataKey, string expectedClass) {
+    public void ResolvesSemanticColorFromMetadataKey(string metadataKey, string expectedClass)
+    {
         Assert.That(CardPropertyColorPalette.GetCssClass(metadataKey), Is.EqualTo(expectedClass));
     }
 
     [Test]
-    public void NumericRaceAndArchetypeValuesShareTheirSemanticFamilyColor() {
+    public void NumericRaceAndArchetypeValuesShareTheirSemanticFamilyColor()
+    {
         Assert.That(CardPropertyColorPalette.GetCssClass("level:1"),
             Is.EqualTo(CardPropertyColorPalette.GetCssClass("level:12")));
         Assert.That(CardPropertyColorPalette.GetCssClass("rank:1"),
@@ -62,12 +65,16 @@ public class CardPropertyColorPaletteTest {
     }
 
     [Test]
-    public void StableMetadataKeyDeterminesClassRegardlessOfDisplayName() {
-        var fire = new CategoryBase("Something with an unrelated label", CategorySource.Metadata, "attribute:fire");
-        var misleadingLabel = new CategoryBase("Attribute: WATER", CategorySource.Metadata, "attribute:fire");
+    public void StableMetadataKeyDeterminesClassRegardlessOfDisplayName()
+    {
+        CategoryBase fire =
+            new("Something with an unrelated label", CategorySource.Metadata, "attribute:fire");
+        CategoryBase misleadingLabel = new("Attribute: WATER", CategorySource.Metadata, "attribute:fire");
 
         Assert.That(CardPropertyColorPalette.GetCssClass(fire), Is.EqualTo("card-property-color-attribute-fire"));
-        Assert.That(CardPropertyColorPalette.GetCssClass(misleadingLabel), Is.EqualTo(CardPropertyColorPalette.GetCssClass(fire)));
-        Assert.That(CardPropertyColorPalette.GetCssClass("future-family:water"), Is.EqualTo(CardPropertyColorPalette.GenericMetadataClass));
+        Assert.That(CardPropertyColorPalette.GetCssClass(misleadingLabel),
+            Is.EqualTo(CardPropertyColorPalette.GetCssClass(fire)));
+        Assert.That(CardPropertyColorPalette.GetCssClass("future-family:water"),
+            Is.EqualTo(CardPropertyColorPalette.GenericMetadataClass));
     }
 }

@@ -3,7 +3,8 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.Shared;
 
-public class JsonSerializer : ISerializer {
+public class JsonSerializer : ISerializer
+{
     private readonly JsonSerializerOptions _defaultOptions = new() { WriteIndented = true };
 
     public string Serialize<T>(T value, JsonSerializerOptions? options = null) =>

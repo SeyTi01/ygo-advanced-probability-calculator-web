@@ -2,12 +2,14 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazorTest.Models;
 
-public class CategoryIdentityTest {
+public class CategoryIdentityTest
+{
     [Test]
-    public void IdentitySeparatesSourcesAndIgnoresMetadataDisplayLabels() {
-        var user = new CategoryBase("Spell");
-        var property = new CategoryBase("Spell", CategorySource.Metadata, "kind:spell");
-        var relabeled = new CategoryBase("Spells", CategorySource.Metadata, "kind:spell");
+    public void IdentitySeparatesSourcesAndIgnoresMetadataDisplayLabels()
+    {
+        CategoryBase user = new("Spell");
+        CategoryBase property = new("Spell", CategorySource.Metadata, "kind:spell");
+        CategoryBase relabeled = new("Spells", CategorySource.Metadata, "kind:spell");
         Assert.That(user.Source, Is.EqualTo(CategorySource.User));
         Assert.That(user.MetadataKey, Is.Null);
         Assert.That(user, Is.Not.EqualTo(property));
@@ -25,9 +27,10 @@ public class CategoryIdentityTest {
         Assert.Throws<ArgumentException>(() => new CategoryBase("Spell", CategorySource.Metadata, key));
 
     [Test]
-    public void CopyMethodsPreserveExternalAndInternalCardIdentity() {
-        var card = new Card([], 1, "Spell", externalCardId: 123);
-        var updated = card.WithName("Renamed").WithCopies(3).WithCategories([new("Role")]).WithActive(false);
+    public void CopyMethodsPreserveExternalAndInternalCardIdentity()
+    {
+        Card card = new([], 1, "Spell", externalCardId: 123);
+        Card updated = card.WithName("Renamed").WithCopies(3).WithCategories([new("Role")]).WithActive(false);
         Assert.That(updated.ExternalCardId, Is.EqualTo(123));
         Assert.That(updated.Id, Is.EqualTo(card.Id));
         Assert.That(new Card([]).ExternalCardId, Is.Null);

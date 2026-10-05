@@ -1,22 +1,40 @@
 namespace YGOProbabilityCalculatorBlazor.Models;
 
-public class ComboCategory {
+public class ComboCategory
+{
     public CategoryBase BaseCategory { get; }
     public int MinCount { get; }
     public int MaxCount { get; }
     public RequirementMaximumMode MaximumMode { get; }
 
-    public int GetEffectiveMaximum(int handSize) => MaximumMode == RequirementMaximumMode.HandSize ? handSize : MaxCount;
+    public int GetEffectiveMaximum(int handSize) =>
+        MaximumMode == RequirementMaximumMode.HandSize ? handSize : MaxCount;
 
-    public ComboCategory(CategoryBase baseCategory, int minCount, int maxCount,
-        RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed) {
-        if (!Enum.IsDefined(maximumMode)) throw new ArgumentOutOfRangeException(nameof(maximumMode));
+    public ComboCategory(
+        CategoryBase baseCategory,
+        int minCount,
+        int maxCount,
+        RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed)
+    {
+        if (! Enum.IsDefined(maximumMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumMode));
+        }
+
         if (minCount < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(minCount), "Minimum count cannot be negative.");
+        }
+
         if (maxCount < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(maxCount), "Maximum count cannot be negative.");
+        }
+
         if (maximumMode == RequirementMaximumMode.Fixed && maxCount < minCount)
+        {
             throw new ArgumentOutOfRangeException(nameof(maxCount), "Maximum count cannot be less than minimum count.");
+        }
 
         BaseCategory = baseCategory;
         MinCount = minCount;

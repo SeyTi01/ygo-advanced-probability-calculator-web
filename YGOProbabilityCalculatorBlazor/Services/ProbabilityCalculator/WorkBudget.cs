@@ -9,16 +9,33 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 // Old/new DP maps, Hall subsets and union/change maps can coexist.
 // DP/binomial integer payload is also checked; object overhead is extra.
 // This is not a total-memory ceiling. Arithmetic work is charged separately.
-internal sealed class WorkBudget(CalculationWorkPolicy policy) {
+internal sealed class WorkBudget(CalculationWorkPolicy policy)
+{
     private long remaining = policy.WorkUnits;
-    public void Spend(long units) {
-        if (units < 0) throw new ArgumentOutOfRangeException(nameof(units));
-        if (units > remaining) throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Work);
+
+    public void Spend(long units)
+    {
+        if (units < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(units));
+        }
+
+        if (units > remaining)
+        {
+            throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Work);
+        }
+
         remaining -= units;
     }
-    public static void CheckStorage(long entries, long cells) {
-        if (entries > 32768 || cells > 262144) throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
+
+    public static void CheckStorage(long entries, long cells)
+    {
+        if (entries > 32768 || cells > 262144)
+        {
+            throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
+        }
     }
+
     // Count retained BigInteger payload in 32-bit cells as well as count vectors.
     // This is still a per-structure bound, not a total process-byte ceiling.
     public static long IntegerCells(BigInteger value) => (BigInteger.Abs(value).GetBitLength() + 31) / 32;

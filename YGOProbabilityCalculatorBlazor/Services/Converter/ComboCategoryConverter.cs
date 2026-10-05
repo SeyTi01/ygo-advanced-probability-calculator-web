@@ -4,25 +4,32 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.Converter;
 
-public class ComboCategoryConverter : JsonConverter<ComboCategory> {
-    public override ComboCategory Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) {
-        using var doc = JsonDocument.ParseValue(ref reader);
-        var root = doc.RootElement;
+public class ComboCategoryConverter : JsonConverter<ComboCategory>
+{
+    public override ComboCategory Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        using JsonDocument doc = JsonDocument.ParseValue(ref reader);
+        JsonElement root = doc.RootElement;
 
-        var baseCategory = JsonSerializer.Deserialize<CategoryBase>(
+        CategoryBase baseCategory = JsonSerializer.Deserialize<CategoryBase>(
             root.GetProperty("BaseCategory").GetRawText(),
             options) ?? throw new JsonException("BaseCategory is required");
 
-        var minCount = root.GetProperty("MinCount").GetInt32();
-        var maxCount = root.GetProperty("MaxCount").GetInt32();
+        int minCount = root.GetProperty("MinCount").GetInt32();
+        int maxCount = root.GetProperty("MaxCount").GetInt32();
 
-        try {
+        try
+        {
             return new ComboCategory(baseCategory, minCount, maxCount, RequirementMaximumModeJson.Read(root));
         }
-        catch (ArgumentException ex) { throw new JsonException("Invalid category requirement bounds.", ex); }
+        catch (ArgumentException ex)
+        {
+            throw new JsonException("Invalid category requirement bounds.", ex);
+        }
     }
 
-    public override void Write(Utf8JsonWriter writer, ComboCategory value, JsonSerializerOptions options) {
+    public override void Write(Utf8JsonWriter writer, ComboCategory value, JsonSerializerOptions options)
+    {
         writer.WriteStartObject();
         writer.WritePropertyName("BaseCategory");
         JsonSerializer.Serialize(writer, value.BaseCategory, options);

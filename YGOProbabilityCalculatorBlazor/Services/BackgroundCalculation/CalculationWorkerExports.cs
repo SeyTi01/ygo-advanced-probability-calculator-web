@@ -4,7 +4,8 @@ using System.Runtime.Versioning;
 namespace YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 
 [SupportedOSPlatform("browser")]
-public static partial class CalculationWorkerExports {
+public static partial class CalculationWorkerExports
+{
     [JSExport]
     public static string Calculate(string json) => CalculationWire.Execute(json);
 }

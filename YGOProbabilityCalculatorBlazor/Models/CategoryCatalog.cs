@@ -1,8 +1,11 @@
 namespace YGOProbabilityCalculatorBlazor.Models;
 
-public static class CategoryCatalog {
-    public static IReadOnlyList<CategoryBase> Build(IEnumerable<CategoryBase> categories,
-        IEnumerable<Card> cards, IEnumerable<Combo> combos) => categories
+public static class CategoryCatalog
+{
+    public static IReadOnlyList<CategoryBase> Build(
+        IEnumerable<CategoryBase> categories,
+        IEnumerable<Card> cards,
+        IEnumerable<Combo> combos) => categories
         .Where(category => category.Source == CategorySource.User)
         .Concat(categories.Concat(cards.SelectMany(card => card.Categories))
             .Concat(combos.SelectMany(combo => combo.AllCategories).Select(requirement => requirement.BaseCategory))

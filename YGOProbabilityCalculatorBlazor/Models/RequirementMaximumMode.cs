@@ -1,6 +1,7 @@
 namespace YGOProbabilityCalculatorBlazor.Models;
 
-public enum RequirementMaximumMode {
+public enum RequirementMaximumMode
+{
     Fixed,
     HandSize
 }
