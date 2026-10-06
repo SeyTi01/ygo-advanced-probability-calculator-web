@@ -50,6 +50,11 @@ jobs:
       - name: JavaScript tests
         run: node --test
 
+      - name: Install WebAssembly build tools
+        run: |
+          dotnet workload install wasm-tools
+          dotnet workload list
+
       - name: Publish prerendered site
         run: dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release --no-restore
 
