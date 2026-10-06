@@ -7,6 +7,7 @@ insert_final_newline = true
 trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
+max_line_length = 100
 csharp_new_line_before_open_brace = all
 csharp_preserve_single_line_blocks = false
 csharp_preserve_single_line_statements = false
@@ -31,6 +32,8 @@ dotnet_diagnostic.IDE0003.severity = suggestion
 dotnet_diagnostic.IDE0004.severity = suggestion
 dotnet_diagnostic.IDE0005.severity = suggestion
 dotnet_diagnostic.IDE0008.severity = suggestion
+# CSharpier owns whitespace layout; do not enable conflicting IDE0055 formatting.
+dotnet_diagnostic.IDE0055.severity = none
 dotnet_diagnostic.IDE0011.severity = suggestion
 dotnet_diagnostic.IDE0028.severity = suggestion
 dotnet_diagnostic.IDE0034.severity = suggestion
@@ -49,13 +52,9 @@ dotnet_diagnostic.CA1851.severity = none
 # Keep primary constructors deferred while Info-level style cleanup runs.
 dotnet_diagnostic.IDE0290.severity = none
 
-# Maintained formatting analyzers; all other Roslynator rules remain disabled.
-roslynator_block_braces_style = multi_line
+# CSharpier owns layout; selected Roslynator rules own blank-line cleanup.
 roslynator_new_line_at_end_of_file = true
 dotnet_diagnostic.RCS0008.severity = warning
 dotnet_diagnostic.RCS0010.severity = warning
-dotnet_diagnostic.RCS0021.severity = warning
-dotnet_diagnostic.RCS0053.severity = warning
-dotnet_diagnostic.RCS0054.severity = warning
 dotnet_diagnostic.RCS0058.severity = warning
 dotnet_diagnostic.RCS0063.severity = warning

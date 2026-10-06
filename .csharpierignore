@@ -1,0 +1,4 @@
+# Format only C# source; the formatter also supports XML project/configuration files.
+*
+!*/
+!*.cs

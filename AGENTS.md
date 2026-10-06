@@ -36,7 +36,7 @@ dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 
 ## Linting and cleanup tools
 
-`.editorconfig`, the pinned .NET SDK and Roslynator.Formatting.Analyzers define the C# policy. Before publishing C# changes, run from the repository root:
+`.editorconfig`, the pinned .NET SDK, Roslynator.Formatting.Analyzers and CSharpier define the C# policy. Before publishing C# changes, run from the repository root:
 
 ```powershell
 pwsh -NoProfile -File scripts/style/fix.ps1
@@ -45,11 +45,11 @@ pwsh -NoProfile -File scripts/style/check.ps1
 
 Inspect and keep the automatic fixes before committing. Publish only when the checker passes. CI is not a formatting service; agents apply cleanup before publication. Windows PowerShell 5.1+ may use `powershell` instead of `pwsh`.
 
-Both wrappers restore project assets and invoke the SDK's `dotnet format` with the same explicit IDE/Roslynator diagnostic filter. The fixer applies whitespace, IDE style and selected formatting-analyzer fixes; the checker adds `--verify-no-changes` and never writes source. No application build or separate formatter CLI is required. The whole solution is checked for every event; functional tests remain independent and parallel.
+Both wrappers restore the pinned tool and project assets, invoke SDK `dotnet format style` and `dotnet format analyzers` with explicit diagnostic filters, then invoke CSharpier. The fixer applies fixes; the checker uses `--verify-no-changes` and `csharpier check`, which never write source. No application build is required. The whole solution is checked for every event; functional tests remain independent and parallel.
 
-Roslyn owns explicit types, braces, simplifications, exact-type collection expressions and ordinary whitespace. Roslynator owns declaration/block spacing, block-brace layout, multiline lists/chains, unnecessary blank lines and EOF whitespace. The analyzer reference is private and shared by both projects in `Directory.Build.props`. Only selected RCS rules are enabled.
+Roslyn owns explicit types, braces and safe simplifications. Roslynator.Formatting.Analyzers 5.0.1 owns declaration/block blank lines, excess blank lines and EOF whitespace (RCS0008, RCS0010, RCS0058, RCS0063); its private analyzer reference is shared by both projects in `Directory.Build.props`. CSharpier 1.3.0 owns layout, wrapping and ordinary whitespace; `.csharpierignore` limits it to C# source. RCS0053/RCS0054 and Roslyn whitespace verification are omitted because their nested-list output failed to converge together on this solution. The Roslynator CLI fallback also left a formatting loop; do not reintroduce it or overlap CSharpier's layout rules.
 
-Use standard tool output. Unsupported preferences, including a space after logical NOT, exact standalone closing-parenthesis alignment, global line-length chopping and custom blank-line placement, are not implemented with repository-specific syntax tooling. Future rules should normally be enabled/configured in `.editorconfig` and added to the wrapper's diagnostic filter, with a disposable fix/check smoke test when changing tooling. Do not build a custom linter or a third-party formatter correctness suite.
+Use standard tool output. Unsupported preferences, including a space after logical NOT, exact standalone closing-parenthesis alignment, exact line chopping and custom blank-line placement, are not implemented with repository-specific syntax tooling. Future rules should normally be enabled/configured in `.editorconfig` and the diagnostic filter, with a disposable fix/check smoke test when changing tooling. Do not build a custom linter or a third-party formatter correctness suite.
 
 If Roslyn's project loader cannot open its required Unix pipe in a managed workspace, report the exact failure and review the identical standard fixer's output from an explicitly authorized temporary Actions workflow. Remove that workflow before final validation. Do not bypass the restriction or manually recreate formatter output.
 
