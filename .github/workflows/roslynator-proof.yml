@@ -32,14 +32,18 @@ jobs:
           git diff --binary --output="$env:RUNNER_TEMP/style-after-whitespace.patch"
           dotnet format analyzers YGOProbabilityCalculatorBlazor.sln --no-restore --severity info --diagnostics @rcs --verify-no-changes
           Write-Host "Analyzer verification after final whitespace exit: $LASTEXITCODE"
+          dotnet format analyzers YGOProbabilityCalculatorBlazor.sln --no-restore --severity info --diagnostics @rcs --verbosity normal
+          dotnet format analyzers YGOProbabilityCalculatorBlazor.sln --no-restore --severity info --diagnostics @rcs --verify-no-changes
+          Write-Host "Analyzer verification after second fix exit: $LASTEXITCODE"
+          git diff --binary --output="$env:RUNNER_TEMP/style-second-analyzer.patch"
           dotnet tool install Roslynator.DotNet.Cli --version 1.0.0 --tool-path "$env:RUNNER_TEMP/roslynator"
           if ($LASTEXITCODE -ne 0) { throw 'CLI install failed.' }
           dotnet build YGOProbabilityCalculatorBlazor.sln --no-restore
           if ($LASTEXITCODE -ne 0) { throw 'Build before CLI failed.' }
-          & "$env:RUNNER_TEMP/roslynator/roslynator" fix YGOProbabilityCalculatorBlazor.sln --supported-diagnostics @rcs --verbosity normal
+          & "$env:RUNNER_TEMP/roslynator/roslynator" fix YGOProbabilityCalculatorBlazor.sln --supported-diagnostics @rcs --ignore-compiler-errors --verbosity normal
           if ($LASTEXITCODE -ne 0) { throw 'CLI fix failed.' }
           git diff --binary --output="$env:RUNNER_TEMP/style-cli.patch"
-          & "$env:RUNNER_TEMP/roslynator/roslynator" analyze YGOProbabilityCalculatorBlazor.sln --supported-diagnostics @rcs --verbosity normal
+          & "$env:RUNNER_TEMP/roslynator/roslynator" analyze YGOProbabilityCalculatorBlazor.sln --supported-diagnostics @rcs --ignore-compiler-diagnostics --verbosity normal
           Write-Host "CLI analyze exit: $LASTEXITCODE"
           dotnet format whitespace YGOProbabilityCalculatorBlazor.sln --no-restore --verify-no-changes
           Write-Host "Whitespace verify after CLI exit: $LASTEXITCODE"
