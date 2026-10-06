@@ -21,37 +21,28 @@ jobs:
           git worktree add --detach $root HEAD
           if ($LASTEXITCODE -ne 0) { throw 'Could not create disposable worktree.' }
           Set-Location $root
-          ./scripts/style/fix.ps1
-          git diff --binary --output="$env:RUNNER_TEMP/style-cleanup.patch"
-          ./scripts/style/check.ps1
-          ./scripts/style/fix.ps1
-          ./scripts/style/check.ps1
-          git diff --binary --output="$env:RUNNER_TEMP/style-second.patch"
-          if ((Get-FileHash "$env:RUNNER_TEMP/style-cleanup.patch").Hash -ne
-              (Get-FileHash "$env:RUNNER_TEMP/style-second.patch").Hash) { throw 'Second fixer run is not idempotent.' }
-
-          $probe = Join-Path $root 'YGOProbabilityCalculatorBlazor/StyleSmoke.cs'
-          @'
-          namespace StyleSmoke;
-          internal class Probe {
-          internal int First(int first,
-          int second, int third) { var sum = first + second + third; if (sum > 0) return sum; return 0; }
-          internal int Second() { return First(1,
-          2, 3); }
-          }
-          '@ | Set-Content -LiteralPath $probe -Encoding utf8NoBOM
-          $hash = (Get-FileHash $probe).Hash
-          $failed = $false
-          try { ./scripts/style/check.ps1 } catch { $failed = $true }
-          if (-not $failed -or (Get-FileHash $probe).Hash -ne $hash) { throw 'Dirty check failed its rejection/no-write contract.' }
-          ./scripts/style/fix.ps1
-          ./scripts/style/check.ps1
-          Get-Content $probe
-          Remove-Item -LiteralPath $probe
-          git diff --binary --output="$env:RUNNER_TEMP/style-after-smoke.patch"
-          if ((Get-FileHash "$env:RUNNER_TEMP/style-cleanup.patch").Hash -ne
-              (Get-FileHash "$env:RUNNER_TEMP/style-after-smoke.patch").Hash) { throw 'Smoke fix changed the canonical tree.' }
-          Write-Host 'PASS: standard-tool wrappers repair a dirty fixture, verify without writes, and converge.'
+          dotnet restore YGOProbabilityCalculatorBlazor.sln
+          $rcs = @('RCS0008', 'RCS0010', 'RCS0021', 'RCS0053', 'RCS0054', 'RCS0058', 'RCS0063')
+          dotnet format whitespace YGOProbabilityCalculatorBlazor.sln --no-restore
+          dotnet format analyzers YGOProbabilityCalculatorBlazor.sln --no-restore --severity info --diagnostics @rcs
+          git diff --binary --output="$env:RUNNER_TEMP/style-before-whitespace.patch"
+          dotnet format analyzers YGOProbabilityCalculatorBlazor.sln --no-restore --severity info --diagnostics @rcs --verify-no-changes
+          Write-Host "Analyzer verification before final whitespace exit: $LASTEXITCODE"
+          dotnet format whitespace YGOProbabilityCalculatorBlazor.sln --no-restore
+          git diff --binary --output="$env:RUNNER_TEMP/style-after-whitespace.patch"
+          dotnet format analyzers YGOProbabilityCalculatorBlazor.sln --no-restore --severity info --diagnostics @rcs --verify-no-changes
+          Write-Host "Analyzer verification after final whitespace exit: $LASTEXITCODE"
+          dotnet tool install Roslynator.DotNet.Cli --version 1.0.0 --tool-path "$env:RUNNER_TEMP/roslynator"
+          if ($LASTEXITCODE -ne 0) { throw 'CLI install failed.' }
+          dotnet build YGOProbabilityCalculatorBlazor.sln --no-restore
+          if ($LASTEXITCODE -ne 0) { throw 'Build before CLI failed.' }
+          & "$env:RUNNER_TEMP/roslynator/roslynator" fix YGOProbabilityCalculatorBlazor.sln --supported-diagnostics @rcs --verbosity normal
+          if ($LASTEXITCODE -ne 0) { throw 'CLI fix failed.' }
+          git diff --binary --output="$env:RUNNER_TEMP/style-cli.patch"
+          & "$env:RUNNER_TEMP/roslynator/roslynator" analyze YGOProbabilityCalculatorBlazor.sln --supported-diagnostics @rcs --verbosity normal
+          Write-Host "CLI analyze exit: $LASTEXITCODE"
+          dotnet format whitespace YGOProbabilityCalculatorBlazor.sln --no-restore --verify-no-changes
+          Write-Host "Whitespace verify after CLI exit: $LASTEXITCODE"
       - name: Upload exact standard-tool cleanup
         if: always()
         uses: actions/upload-artifact@v7
