@@ -36,49 +36,22 @@ dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 
 ## Linting and cleanup tools
 
-Before final verification or publication of C# changes, run the canonical fixer from the repository root (PowerShell 5.1+ on Windows, `pwsh` on Linux):
+`.editorconfig`, the pinned .NET SDK and Roslynator.Formatting.Analyzers define the C# policy. Before publishing C# changes, run from the repository root:
 
 ```powershell
 pwsh -NoProfile -File scripts/style/fix.ps1
-```
-
-Inspect the formatter output and keep its C# changes. Then run the read-only verifier:
-
-```powershell
 pwsh -NoProfile -File scripts/style/check.ps1
 ```
 
-Publish only when the verifier passes. CI is not a formatting service. Agents are responsible for applying cleanup before publication.
+Inspect and keep the automatic fixes before committing. Publish only when the checker passes. CI is not a formatting service; agents apply cleanup before publication. Windows PowerShell 5.1+ may use `powershell` instead of `pwsh`.
 
-The checker reads the existing source directly. It never invokes CleanupCode or the fixer, copies a source tree, writes transformed source, or applies a non-verifying formatter. Its stages are direct UTF-8/BOM/LF/trailing-whitespace/final-newline checks, SDK-local Roslyn syntax/trivia and `InvocationLayout --check`, then `dotnet format style --verify-no-changes` using the EditorConfig-derived diagnostic allowlist. The helper build does not build the application. Roslyn semantic diagnostics require restored project references: existing app/test assets enable `--no-restore`; a fresh checkout lets `dotnet format` restore its workspace. Only ignored build/restore assets are written. Source hashes and Git status are checked before and after, including on failure.
+Both wrappers restore project assets and invoke the SDK's `dotnet format` with the same explicit IDE/Roslynator diagnostic filter. The fixer applies whitespace, IDE style and selected formatting-analyzer fixes; the checker adds `--verify-no-changes` and never writes source. No application build or separate formatter CLI is required. The whole solution is checked for every event; functional tests remain independent and parallel.
 
-| Accepted policy | CI verification |
-| --- | --- |
-| IDE0001–0005, IDE0008, IDE0011, IDE0028, IDE0034, IDE0075, IDE0090, IDE0300–0306 | Roslyn style verify mode: simplifications, explicit types, braces, exact-type collections |
-| Ordinary control-flow braces (including using/lock/fixed/do) and logical NOT spacing | Direct syntax/token checks derived from JetBrains EditorConfig settings |
-| UTF-8/BOM, LF, trailing whitespace, final newline | Direct byte/text checks |
-| Maximum one blank line; blank lines around invocable members/local methods, compound statements and before control transfers | Syntax/trivia checks; standalone scopes and consecutive yields retain canonical exceptions; literal contents are excluded |
-| Already wrapped arguments/parameters, declaration opening/closing lines, leading method-chain dots | Direct syntax/trivia checks: one item per line, separate closer, declaration closer alignment |
-| Multiline foreach lambda chains | Existing trivia-only `InvocationLayout --check`, including receiver-relative dots and nested/outer closers |
-| ReSharper decisions about when line length requires wrapping (`chop_if_long`), generic continuation/argument indentation, and remaining general reformatting | Local fixer only: duplicating the formatter's context-sensitive layout engine would defeat lightweight verification |
+Roslyn owns explicit types, braces, simplifications, exact-type collection expressions and ordinary whitespace. Roslynator owns declaration/block spacing, block-brace layout, multiline lists/chains, unnecessary blank lines and EOF whitespace. The analyzer reference is private and shared by both projects in `Directory.Build.props`. Only selected RCS rules are enabled.
 
-The local-only preferences remain in `.editorconfig` and the canonical fixer; CI verifies the explicit invariants above and does not claim complete CleanupCode equivalence. Wrapped single-item expressions, comments and raw-string contents retain their syntax; wrapping selection stays a local preference. Adding an accepted rule requires both an automatic fix proof and an explicit decision about its verification family.
+Use standard tool output. Unsupported preferences, including a space after logical NOT, exact standalone closing-parenthesis alignment, global line-length chopping and custom blank-line placement, are not implemented with repository-specific syntax tooling. Future rules should normally be enabled/configured in `.editorconfig` and added to the wrapper's diagnostic filter, with a disposable fix/check smoke test when changing tooling. Do not build a custom linter or a third-party formatter correctness suite.
 
-Ordinary PR checks compare `pull_request.base.sha` with `pull_request.head.sha`; pushes compare `event.before` with `GITHUB_SHA`. Deleted files are skipped and renames include their existing destination. Missing/zero SHAs fall back to a full scan without fetching. No C# changes skip verification. Manual dispatch and formatter infrastructure changes check all app/test C# sources.
-
-For changes to `.editorconfig`, `global.json`, `.config/dotnet-tools.json`, `scripts/style/**`, formatter configuration, or style workflow logic, additionally run the local infrastructure regression suite before publication:
-
-```powershell
-pwsh -NoProfile -File scripts/style/test.ps1
-```
-
-This suite exercises dirty-source detection, canonical fixing and idempotence in a disposable copy. Report its local result in the PR. It is never an ordinary Actions job. The workflow has exactly two independent jobs: C# style verification and Full test suite.
-
-Windows PowerShell users can run `powershell -NoProfile -File scripts/style/fix.ps1`. The fixer restores the pinned SDK-compatible tools/packages, builds to resolve references, applies the narrow JetBrains explicit-type/braces/formatting profile, repeats the explicitly enabled Roslyn style fixes until the C# file hashes stop changing, then restores JetBrains formatting and removes UTF-8 BOMs. `global.json` pins Roslyn's SDK; the tool manifest pins ReSharper. Only noninteractive, safely auto-fixable rules belong in `.editorconfig`; adding a rule requires proving its fix with this command. C# source is the enforced scope; unrelated file formats have no formatter gate.
-
-If the local environment genuinely blocks the fixer because of the documented managed-workspace Roslyn/MSBuild restriction, use the recovery path below and document the exact failure. CI may help diagnose that environment-specific failure, but must not be treated as the normal way to find or apply formatting fixes.
-
-`inspectcode` is optional diagnostic tooling, never an enforcement gate for manual-only findings. Unused parameter/delegate names, repeated enumeration, nullability-based constant conditions, and all static candidates are outside the explicit lint policy. Do not use the default Full Cleanup profile. After an actual managed-workspace MSBuild failure, pass verification-only flags with `-MSBuildArguments` (for example `-m:1`, `-p:UseSharedCompilation=false`, and the temporary task override described below). If this workspace blocks Roslyn's build-host Unix pipe, report the local limitation and review the output of the identical fixer from CI; do not bypass the restriction or invent replacement source rewrites.
+If Roslyn's project loader cannot open its required Unix pipe in a managed workspace, report the exact failure and review the identical standard fixer's output from an explicitly authorized temporary Actions workflow. Remove that workflow before final validation. Do not bypass the restriction or manually recreate formatter output.
 
 At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work. If no usable .NET 10 SDK is available, follow the restricted Linux / ChatGPT Work bootstrap below before continuing. Missing .NET 10 is not, by itself, sufficient reason to skip local verification; attempt the documented nonprivileged bootstrap first. Only report .NET verification as blocked after that attempt fails because of a real environment restriction, and include the exact failed command and error. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
