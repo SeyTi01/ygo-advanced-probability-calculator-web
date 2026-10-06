@@ -1,0 +1,40 @@
+name: Disposable Roslynator proof
+on:
+  pull_request:
+    branches: [dev]
+permissions:
+  contents: read
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.401
+      - name: Create disposable proof outside checkout
+        env:
+          PROOF_INPUT: >-
+            {"global.json": "{\n  \"sdk\": {\n    \"version\": \"10.0.401\",\n    \"rollForward\": \"disable\"\n  }\n}\n", "Proof.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup><ItemGroup><PackageReference Include=\"Roslynator.Formatting.Analyzers\" Version=\"5.0.1\" PrivateAssets=\"all\" IncludeAssets=\"analyzers\" /></ItemGroup></Project>\n", ".editorconfig": "root = true\n[*.cs]\nindent_style = space\nindent_size = 4\ncharset = utf-8\nend_of_line = lf\ninsert_final_newline = true\ntrim_trailing_whitespace = true\ncsharp_new_line_before_open_brace = all\ncsharp_preserve_single_line_blocks = false\ncsharp_preserve_single_line_statements = false\nroslynator_block_braces_style = multi_line\nroslynator_new_line_at_end_of_file = true\ndotnet_diagnostic.RCS0053.severity = warning\ndotnet_diagnostic.RCS0054.severity = warning\ndotnet_diagnostic.RCS0010.severity = warning\ndotnet_diagnostic.RCS0008.severity = warning\ndotnet_diagnostic.RCS0021.severity = warning\ndotnet_diagnostic.RCS0058.severity = warning\ndotnet_diagnostic.RCS0063.severity = warning\n", "Proof.cs": "using System;\nusing System.Linq;\nusing System.Collections.Generic;\n\n\nnamespace Proof;\n\npublic class Example {\npublic int First(int one,\n int two, int three) { return one + two + three; }\npublic int Second() { return First(1,\n 2, 3); }\npublic void Clean(Dictionary<string,string> category) {\nforeach (string key in category\n.Select(p => p.Key)\n.Where(key =>\nkey.Equals(\"Source\", StringComparison.OrdinalIgnoreCase) ||\nkey.Equals(\"MetadataKey\", StringComparison.OrdinalIgnoreCase)\n)\n.ToArray()\n)\n{\ncategory.Remove(key);\n}\nConsole.WriteLine(\"done\");\n\n\n\nConsole.WriteLine(First(1,2,3));\n}\n}\n\n\n"}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'roslynator-proof'
+          root.mkdir()
+          for name, content in json.loads(os.environ['PROOF_INPUT']).items():
+              root.joinpath(name).write_text(content)
+          PYTHON
+      - name: Exercise official formatter and verify unchanged second pass
+        run: |
+          proof_dir="$RUNNER_TEMP/roslynator-proof"
+          dotnet restore "$proof_dir/Proof.csproj"
+          dotnet format whitespace "$proof_dir/Proof.csproj" --no-restore
+          dotnet format analyzers "$proof_dir/Proof.csproj" --no-restore --diagnostics RCS0053 RCS0054 RCS0010 RCS0008 RCS0021 RCS0058 RCS0063
+          dotnet format whitespace "$proof_dir/Proof.csproj" --no-restore
+          cat "$proof_dir/Proof.cs"
+          dotnet format whitespace "$proof_dir/Proof.csproj" --no-restore --verify-no-changes
+          dotnet format analyzers "$proof_dir/Proof.csproj" --no-restore --verify-no-changes --diagnostics RCS0053 RCS0054 RCS0010 RCS0008 RCS0021 RCS0058 RCS0063
+          dotnet build "$proof_dir/Proof.csproj" --no-restore
+          git diff --exit-code
