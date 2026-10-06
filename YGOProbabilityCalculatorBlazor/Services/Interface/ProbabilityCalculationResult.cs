@@ -11,7 +11,12 @@ public sealed record ProbabilityCalculationResult(
 );
 
 /// <summary>The union probability of the active combos assigned to a named group.</summary>
-public sealed record GroupProbabilityResult(string GroupId, string GroupName, double Probability, int ActiveComboCount);
+public sealed record GroupProbabilityResult(
+    string GroupId,
+    string GroupName,
+    double Probability,
+    int ActiveComboCount
+);
 
 /// <summary>
 /// The standalone probability for a combo at a specific position in the calculator input.

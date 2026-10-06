@@ -21,31 +21,45 @@ internal sealed class ProbabilityCalculation
     internal double CalculateUnion(List<Combo> combos) =>
         unionEvaluator.Union([.. combos.SelectMany(combo => compiler.CompileCombo(combo))]);
 
-    internal ProbabilityCalculationResult CalculateResults(List<Combo> combos, IReadOnlyList<ComboGroup>? groups)
+    internal ProbabilityCalculationResult CalculateResults(
+        List<Combo> combos,
+        IReadOnlyList<ComboGroup>? groups
+    )
     {
-        List<List<CompiledEvent?>> ownedEvents = [.. combos.Select(combo => compiler.CompileCombo(combo))];
+        List<List<CompiledEvent?>> ownedEvents =
+        [
+            .. combos.Select(combo => compiler.CompileCombo(combo)),
+        ];
         List<CompiledEvent?> events = [.. ownedEvents.SelectMany(e => e)];
         double totalProbability = unionEvaluator.Union(events);
         List<ComboProbabilityResult> comboProbabilities =
         [
-            .. combos.Select((combo, index) =>
-                new ComboProbabilityResult(index, combo.Name, unionEvaluator.Union(ownedEvents[index]), combo.GroupId)
-            )
+            .. combos.Select(
+                (combo, index) =>
+                    new ComboProbabilityResult(
+                        index,
+                        combo.Name,
+                        unionEvaluator.Union(ownedEvents[index]),
+                        combo.GroupId
+                    )
+            ),
         ];
         List<GroupProbabilityResult> groupProbabilities =
         [
             .. (groups ?? []).Select(group =>
-                {
-                    List<List<CompiledEvent?>> members =
-                        [.. ownedEvents.Where((_, index) => combos[index].GroupId == group.Id)];
+            {
+                List<List<CompiledEvent?>> members =
+                [
+                    .. ownedEvents.Where((_, index) => combos[index].GroupId == group.Id),
+                ];
 
-                    return new GroupProbabilityResult(group.Id,
-                        group.Name,
-                        unionEvaluator.Union([.. members.SelectMany(e => e)]),
-                        members.Count
-                    );
-                }
-            )
+                return new GroupProbabilityResult(
+                    group.Id,
+                    group.Name,
+                    unionEvaluator.Union([.. members.SelectMany(e => e)]),
+                    members.Count
+                );
+            }),
         ];
 
         return new ProbabilityCalculationResult(

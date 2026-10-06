@@ -61,7 +61,10 @@ internal sealed class EventUnionEvaluator(
         {
             BigInteger count = counter.Count(intersection);
             budget.Spend(
-                1 + count.GetBitLength() / 64 + successes.GetBitLength() / 64 + coefficient.GetBitLength() / 64
+                1
+                    + count.GetBitLength() / 64
+                    + successes.GetBitLength() / 64
+                    + coefficient.GetBitLength() / 64
             );
             successes += coefficient * count;
             WorkBudget.CheckStorage(1, WorkBudget.IntegerCells(successes));
@@ -119,8 +122,12 @@ internal sealed class EventUnionEvaluator(
                     }
                 }
 
-                if (common.Count != first.Length - 1 || unmatched.Count != 1 ||
-                    different is not { MinCount: 1 } left || unmatched[0].MinCount != 1)
+                if (
+                    common.Count != first.Length - 1
+                    || unmatched.Count != 1
+                    || different is not { MinCount: 1 } left
+                    || unmatched[0].MinCount != 1
+                )
                 {
                     continue;
                 }
@@ -130,7 +137,9 @@ internal sealed class EventUnionEvaluator(
                 // belongs to at least one branch, with the same assignment
                 // for C. The converse is immediate. This fails for demand>1
                 // (copies could split across branches) or branch maxima.
-                common.Add(new CountBound(left.EligibleRows | unmatched[0].EligibleRows, 1, handSize));
+                common.Add(
+                    new CountBound(left.EligibleRows | unmatched[0].EligibleRows, 1, handSize)
+                );
                 alternatives[i] = compiler.CompileRoles([.. common])!;
                 alternatives.RemoveAt(j);
                 // A merge can expose another common-role pair anywhere.
@@ -156,7 +165,10 @@ internal sealed class EventUnionEvaluator(
         {
             budget.Spend(1 + previous.GetBitLength() / 32);
             BigInteger updated = previous + coefficient;
-            long cells = storedConstraints - WorkBudget.IntegerCells(previous) + WorkBudget.IntegerCells(updated);
+            long cells =
+                storedConstraints
+                - WorkBudget.IntegerCells(previous)
+                + WorkBudget.IntegerCells(updated);
             WorkBudget.CheckStorage(terms.Count, cells);
 
             if (updated == 0)
@@ -172,7 +184,8 @@ internal sealed class EventUnionEvaluator(
         }
         else if (coefficient != 0)
         {
-            WorkBudget.CheckStorage(terms.Count + 1,
+            WorkBudget.CheckStorage(
+                terms.Count + 1,
                 storedConstraints + key.Constraints.Length + WorkBudget.IntegerCells(coefficient)
             );
             terms.Add(key, coefficient);
@@ -187,7 +200,8 @@ internal sealed class EventUnionEvaluator(
         // since each combo may reuse the same drawn copies independently.
         budget.Spend(first.Constraints.Length + second.Constraints.Length + 1L);
         List<CountBound> constraints = [];
-        int i = 0, j = 0;
+        int i = 0,
+            j = 0;
 
         while (i < first.Constraints.Length || j < second.Constraints.Length)
         {

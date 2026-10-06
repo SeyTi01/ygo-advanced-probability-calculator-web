@@ -19,7 +19,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             throw new ArgumentException("File name cannot be empty", nameof(fileName));
         }
 
-        if (! fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
             fileName += ".json";
         }
@@ -42,7 +42,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             Combos = session.Combos,
             ComboGroups = session.ComboGroups,
             HandSize = session.HandSize,
-            CategoryColorIndices = session.CategoryColorIndices
+            CategoryColorIndices = session.CategoryColorIndices,
         };
 
         return serializer.Serialize(sessionToSave, _serializerOptions);
@@ -53,7 +53,10 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
         try
         {
             string migratedJson = _schemaMigrator.MigrateToCurrent(fileContent);
-            SessionState? session = serializer.Deserialize<SessionState>(migratedJson, _serializerOptions);
+            SessionState? session = serializer.Deserialize<SessionState>(
+                migratedJson,
+                _serializerOptions
+            );
 
             if (session == null)
             {
@@ -62,36 +65,61 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
 
             // Reject incomplete model graphs before any caller begins replacing its workspace.
             // Omitted collections retain defaults; optional legacy groups/colors may still be null.
-            if (session.Categories is null || session.Cards is null || session.Combos is null ||
-                session.Categories.Any(category => category is null) || session.Cards.Any(card => card is null) ||
-                session.Combos.Any(combo => combo is null) || session.ComboGroups?.Any(group => group is null) == true)
+            if (
+                session.Categories is null
+                || session.Cards is null
+                || session.Combos is null
+                || session.Categories.Any(category => category is null)
+                || session.Cards.Any(card => card is null)
+                || session.Combos.Any(combo => combo is null)
+                || session.ComboGroups?.Any(group => group is null) == true
+            )
             {
                 throw new JsonException("Session contains missing model collections or entries.");
             }
 
-            if (session.Combos.Any(combo => combo.Categories.Any(category => category is null) ||
-                                            combo.Cards.Any(card => card is null)
-                ))
+            if (
+                session.Combos.Any(combo =>
+                    combo.Categories.Any(category => category is null)
+                    || combo.Cards.Any(card => card is null)
+                )
+            )
             {
                 throw new JsonException("Session contains missing combo requirements.");
             }
 
             // These identities are rendered as sibling keys and used for editor references.
             // Reject ambiguity before the caller clears its accepted workspace.
-            if (session.Categories.Select(category => category.Identity).Distinct(StringComparer.Ordinal).Count() !=
-                session.Categories.Count)
+            if (
+                session
+                    .Categories.Select(category => category.Identity)
+                    .Distinct(StringComparer.Ordinal)
+                    .Count() != session.Categories.Count
+            )
             {
                 throw new JsonException("Session contains duplicate category identities.");
             }
 
-            if (session.ComboGroups is { } groups &&
-                (groups.Any(group => string.IsNullOrWhiteSpace(group.Id) || string.IsNullOrWhiteSpace(group.Name)) ||
-                 groups.Select(group => group.Id).Distinct(StringComparer.Ordinal).Count() != groups.Count))
+            if (
+                session.ComboGroups is { } groups
+                && (
+                    groups.Any(group =>
+                        string.IsNullOrWhiteSpace(group.Id) || string.IsNullOrWhiteSpace(group.Name)
+                    )
+                    || groups.Select(group => group.Id).Distinct(StringComparer.Ordinal).Count()
+                        != groups.Count
+                )
+            )
             {
-                throw new JsonException("Session contains invalid or duplicate combo group identities.");
+                throw new JsonException(
+                    "Session contains invalid or duplicate combo group identities."
+                );
             }
 
-            if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
+            if (
+                session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count()
+                != session.Cards.Count
+            )
             {
                 throw new InvalidOperationException("Session contains duplicate card IDs.");
             }
@@ -117,8 +145,8 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
                 new CardConverter(),
                 new ComboConverter(),
                 new ComboCategoryConverter(),
-                new ComboCardConverter()
-            }
+                new ComboCardConverter(),
+            },
         };
     }
 }

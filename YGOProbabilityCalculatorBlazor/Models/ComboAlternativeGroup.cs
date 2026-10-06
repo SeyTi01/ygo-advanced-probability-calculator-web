@@ -10,9 +10,11 @@ public sealed class ComboAlternative
 
     public ComboAlternative(string kind, ComboCategory? category = null, ComboCard? card = null)
     {
-        if (kind == "Category"
+        if (
+            kind == "Category"
                 ? category is null || card is not null
-                : kind != "Card" || card is null || category is not null)
+                : kind != "Card" || card is null || category is not null
+        )
         {
             throw new ArgumentException(
                 "An alternative must contain exactly one matching Category or Card requirement."
@@ -37,7 +39,9 @@ public sealed class ComboAlternativeGroup
     {
         if (alternatives is null || alternatives.Count == 0 || alternatives.Any(a => a is null))
         {
-            throw new ArgumentException("An OR group must contain at least one complete alternative.");
+            throw new ArgumentException(
+                "An OR group must contain at least one complete alternative."
+            );
         }
 
         Alternatives = Array.AsReadOnly(alternatives.ToArray());

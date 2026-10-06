@@ -4,7 +4,7 @@ namespace YGOProbabilityCalculatorBlazor.Services.Interface;
 public enum ProbabilityCalculationLimitReason
 {
     Work = 1,
-    Storage = 2
+    Storage = 2,
 }
 
 public sealed class ProbabilityCalculationLimitException : Exception
@@ -14,13 +14,14 @@ public sealed class ProbabilityCalculationLimitException : Exception
     public ProbabilityCalculationLimitException(
         ProbabilityCalculationLimitReason reason = ProbabilityCalculationLimitReason.Work
     )
-        : base(reason switch
+        : base(
+            reason switch
             {
                 ProbabilityCalculationLimitReason.Work =>
                     "Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again.",
                 ProbabilityCalculationLimitReason.Storage =>
                     "Calculation stopped because it exceeded the storage safety limit. Simplify the combos or category constraints and try again.",
-                _ => throw new ArgumentOutOfRangeException(nameof(reason))
+                _ => throw new ArgumentOutOfRangeException(nameof(reason)),
             }
         ) => Reason = reason;
 }

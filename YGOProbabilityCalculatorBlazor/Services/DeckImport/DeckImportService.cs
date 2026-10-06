@@ -4,7 +4,8 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 
-public class DeckImportService(ICardInfoService cardInfoService, IFileService fileService) : IDeckImportService
+public class DeckImportService(ICardInfoService cardInfoService, IFileService fileService)
+    : IDeckImportService
 {
     public async Task<List<Card>> ImportDeckFromYdkAsync(IBrowserFile file)
     {
@@ -43,7 +44,9 @@ public class DeckImportService(ICardInfoService cardInfoService, IFileService fi
         {
             if (cardId > int.MaxValue)
             {
-                throw new FormatException($"Card passcode {cardId} is outside the supported card ID range.");
+                throw new FormatException(
+                    $"Card passcode {cardId} is outside the supported card ID range."
+                );
             }
 
             mainCardIds.Add((int)cardId);
@@ -85,11 +88,12 @@ public class DeckImportService(ICardInfoService cardInfoService, IFileService fi
                 info = new CardInfo
                 {
                     Id = id,
-                    Name = id.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    Name = id.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 };
             }
 
-            cards.Add(new Card(
+            cards.Add(
+                new Card(
                     CardPropertyProvider.GetCategories(info),
                     cardCounts[id],
                     info.Name,

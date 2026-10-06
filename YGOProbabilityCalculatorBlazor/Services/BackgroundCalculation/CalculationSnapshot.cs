@@ -16,37 +16,40 @@ public sealed record CalculationSnapshot(string Json)
         int handSize,
         IEnumerable<ComboGroup> groups,
         CalculationWorkPolicy? workPolicy = null
-    ) => new(JsonSerializer.Serialize(new CalculationInput(
-                [
-                    .. cards
-                        .Where(c => c.Active)
-                        .Select(c => new WorkerCard(c.Id,
+    ) =>
+        new(
+            JsonSerializer.Serialize(
+                new CalculationInput(
+                    [
+                        .. cards
+                            .Where(c => c.Active)
+                            .Select(c => new WorkerCard(
+                                c.Id,
                                 c.Copies,
                                 c.Name,
                                 c.ExternalCardId,
                                 [.. c.Categories],
                                 [.. c.ManualMetadataCategoryKeys]
-                            )
-                        )
-                ],
-                [
-                    .. combos
-                        .Where(c => c.Active)
-                        .Select(c => new WorkerCombo(c.Name,
+                            )),
+                    ],
+                    [
+                        .. combos
+                            .Where(c => c.Active)
+                            .Select(c => new WorkerCombo(
+                                c.Name,
                                 c.GroupId,
                                 [.. c.Categories],
                                 [.. c.Cards],
                                 [.. c.AlternativeGroups]
-                            )
-                        )
-                ],
-                handSize,
-                [.. groups],
-                (workPolicy ?? CalculationWorkPolicy.Default).WorkUnits
-            ),
-            CalculationJsonContext.Default.CalculationInput
-        )
-    );
+                            )),
+                    ],
+                    handSize,
+                    [.. groups],
+                    (workPolicy ?? CalculationWorkPolicy.Default).WorkUnits
+                ),
+                CalculationJsonContext.Default.CalculationInput
+            )
+        );
 }
 
 public sealed record WorkerCard(
@@ -77,7 +80,7 @@ public sealed record CalculationInput(
 public enum CalculationFailureKind
 {
     Input = 1,
-    Error = 2
+    Error = 2,
 }
 
 public sealed record CalculationResponse(
@@ -95,32 +98,41 @@ public static class CalculationWire
 
         try
         {
-            CalculationInput input = JsonSerializer.Deserialize(json, CalculationJsonContext.Default.CalculationInput)
-                                     ?? throw new InvalidOperationException("Calculation input is missing.");
+            CalculationInput input =
+                JsonSerializer.Deserialize(json, CalculationJsonContext.Default.CalculationInput)
+                ?? throw new InvalidOperationException("Calculation input is missing.");
             List<Card> cards =
             [
-                .. input.Cards.Select(c => new Card(c.Categories,
-                        c.Copies,
-                        c.Name,
-                        true,
-                        c.Id,
-                        c.ExternalCardId,
-                        c.ManualMetadataCategoryKeys
-                    )
-                )
+                .. input.Cards.Select(c => new Card(
+                    c.Categories,
+                    c.Copies,
+                    c.Name,
+                    true,
+                    c.Id,
+                    c.ExternalCardId,
+                    c.ManualMetadataCategoryKeys
+                )),
             ];
             List<Combo> combos =
             [
-                .. input.Combos.Select(c =>
-                    new Combo(c.Categories, c.Name, true, c.GroupId, c.Cards, c.AlternativeGroups)
-                )
+                .. input.Combos.Select(c => new Combo(
+                    c.Categories,
+                    c.Name,
+                    true,
+                    c.GroupId,
+                    c.Cards,
+                    c.AlternativeGroups
+                )),
             ];
-            response = new(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            response = new(
+                new ProbabilityCalculatorService().CalculateProbabilityResults(
                     cards,
                     combos,
                     input.HandSize,
                     input.Groups,
-                    input.WorkUnits is { } units ? new CalculationWorkPolicy(units) : CalculationWorkPolicy.Default
+                    input.WorkUnits is { } units
+                        ? new CalculationWorkPolicy(units)
+                        : CalculationWorkPolicy.Default
                 ),
                 null
             );
@@ -138,7 +150,10 @@ public static class CalculationWire
             response = new(null, ex.Message, FailureKind: CalculationFailureKind.Error);
         }
 
-        return JsonSerializer.Serialize(response, CalculationJsonContext.Default.CalculationResponse);
+        return JsonSerializer.Serialize(
+            response,
+            CalculationJsonContext.Default.CalculationResponse
+        );
     }
 
     public static ProbabilityCalculationResult ReadResult(string json)
@@ -147,15 +162,28 @@ public static class CalculationWire
             JsonSerializer.Deserialize(json, CalculationJsonContext.Default.CalculationResponse)
             ?? throw new InvalidOperationException("Background calculation returned no response.");
 
-        if ((response.Result is { ComboProbabilities: null }) ||
-            (response.LimitReason is { } reason && ! Enum.IsDefined(reason)) ||
-            (response.FailureKind is { } kind && ! Enum.IsDefined(kind)) ||
-            (response.LimitReason is not null && response.FailureKind is not null) ||
-            (response.Result is not null && (response.Error is not null || response.LimitReason is not null ||
-                                             response.FailureKind is not null)) ||
-            (response.Error is null && (response.LimitReason is not null || response.FailureKind is not null)))
+        if (
+            (response.Result is { ComboProbabilities: null })
+            || (response.LimitReason is { } reason && !Enum.IsDefined(reason))
+            || (response.FailureKind is { } kind && !Enum.IsDefined(kind))
+            || (response.LimitReason is not null && response.FailureKind is not null)
+            || (
+                response.Result is not null
+                && (
+                    response.Error is not null
+                    || response.LimitReason is not null
+                    || response.FailureKind is not null
+                )
+            )
+            || (
+                response.Error is null
+                && (response.LimitReason is not null || response.FailureKind is not null)
+            )
+        )
         {
-            throw new InvalidOperationException("Background calculation returned an invalid response.");
+            throw new InvalidOperationException(
+                "Background calculation returned an invalid response."
+            );
         }
 
         if (response.LimitReason is { } limit)
@@ -173,7 +201,8 @@ public static class CalculationWire
             throw new InvalidOperationException(response.Error);
         }
 
-        return response.Result ?? throw new InvalidOperationException("Background calculation returned no result.");
+        return response.Result
+            ?? throw new InvalidOperationException("Background calculation returned no result.");
     }
 }
 

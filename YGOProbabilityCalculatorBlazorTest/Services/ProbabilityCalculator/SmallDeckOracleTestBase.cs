@@ -30,8 +30,10 @@ public abstract class SmallDeckOracleTestBase
             ComboProbabilityResult comboResult = result.ComboProbabilities[index];
             Assert.That(comboResult.ComboIndex, Is.EqualTo(index));
             Assert.That(comboResult.ComboName, Is.EqualTo(combos[index].Name));
-            Assert.That(comboResult.Probability,
-                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[index]], handSize)).Within(1e-12),
+            Assert.That(
+                comboResult.Probability,
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[index]], handSize))
+                    .Within(1e-12),
                 $"Standalone result for combo at index {index}"
             );
         }

@@ -16,12 +16,7 @@ public class ComboConverterTests
         _converter = new ComboConverter();
         _options = new JsonSerializerOptions
         {
-            Converters =
-            {
-                _converter,
-                new ComboCategoryConverter(),
-                new CategoryBaseConverter()
-            }
+            Converters = { _converter, new ComboCategoryConverter(), new CategoryBaseConverter() },
         };
     }
 
@@ -63,14 +58,13 @@ public class ComboConverterTests
 
         Assert.That(combo, Is.Not.Null);
         Assert.Multiple(() =>
-            {
-                Assert.That(combo!.Categories, Has.Count.EqualTo(1));
-                Assert.That(combo.Categories[0].BaseCategory.Name, Is.EqualTo("TestCategory"));
-                Assert.That(combo.Categories[0].MinCount, Is.EqualTo(1));
-                Assert.That(combo.Categories[0].MaxCount, Is.EqualTo(3));
-                Assert.That(combo.Name, Is.Null);
-            }
-        );
+        {
+            Assert.That(combo!.Categories, Has.Count.EqualTo(1));
+            Assert.That(combo.Categories[0].BaseCategory.Name, Is.EqualTo("TestCategory"));
+            Assert.That(combo.Categories[0].MinCount, Is.EqualTo(1));
+            Assert.That(combo.Categories[0].MaxCount, Is.EqualTo(3));
+            Assert.That(combo.Name, Is.Null);
+        });
     }
 
     [Test]
@@ -82,11 +76,10 @@ public class ComboConverterTests
 
         Assert.That(combo, Is.Not.Null);
         Assert.Multiple(() =>
-            {
-                Assert.That(combo!.Categories, Is.Empty);
-                Assert.That(combo.Name, Is.Null);
-            }
-        );
+        {
+            Assert.That(combo!.Categories, Is.Empty);
+            Assert.That(combo.Name, Is.Null);
+        });
     }
 
     [Test]
@@ -94,7 +87,10 @@ public class ComboConverterTests
     {
         Combo combo = new([], "Grouped", false, "stable-group-id");
         string json = JsonSerializer.Serialize(combo, _options);
-        Assert.That(json, Does.Contain("\"GroupId\":\"stable-group-id\"").And.Contain("\"Active\":false"));
+        Assert.That(
+            json,
+            Does.Contain("\"GroupId\":\"stable-group-id\"").And.Contain("\"Active\":false")
+        );
         Combo loaded = JsonSerializer.Deserialize<Combo>(json, _options)!;
         Assert.That(loaded.GroupId, Is.EqualTo("stable-group-id"));
         Assert.That(loaded.Active, Is.False);
@@ -110,17 +106,22 @@ public class ComboConverterTests
     public void MixedRequirementsRoundTripThroughAllReplacementOperations()
     {
         Card card = new([], 2, "Card");
-        Combo combo = new([new(new CategoryBase("Role"), 0, 2)],
+        Combo combo = new(
+            [new(new CategoryBase("Role"), 0, 2)],
             "Mixed",
             true,
             "g",
             [new(card.Id, 1, 2)]
         );
-        Combo loaded = JsonSerializer.Deserialize<Combo>(JsonSerializer.Serialize(combo, _options), _options)!;
+        Combo loaded = JsonSerializer.Deserialize<Combo>(
+            JsonSerializer.Serialize(combo, _options),
+            _options
+        )!;
         Assert.That(loaded.Cards.Single().CardId, Is.EqualTo(card.Id));
         Assert.That(loaded.Cards.Single().MinCount, Is.EqualTo(1));
         Assert.That(loaded.Categories, Has.Count.EqualTo(1));
-        Assert.That(loaded.WithName("Other").WithActive(false).WithGroup(null).WithCategories([]).Cards,
+        Assert.That(
+            loaded.WithName("Other").WithActive(false).WithGroup(null).WithCategories([]).Cards,
             Has.Count.EqualTo(1)
         );
         Assert.That(loaded.WithCards([]).Categories, Has.Count.EqualTo(1));

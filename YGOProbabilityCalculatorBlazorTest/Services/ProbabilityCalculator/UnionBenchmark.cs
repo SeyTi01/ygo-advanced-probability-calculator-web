@@ -17,14 +17,12 @@ public class UnionBenchmark
 {
     internal static async Task<SessionState> LoadModel()
     {
-        string json =
-            await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory,
-                    "Fixtures",
-                    "vsmodel.json"
-                )
-            );
+        string json = await File.ReadAllTextAsync(
+            Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "vsmodel.json")
+        );
 
-        return await new SessionService(Mock.Of<IJSRuntime>(),
+        return await new SessionService(
+            Mock.Of<IJSRuntime>(),
             new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()
         ).LoadSessionAsync(json);
     }
@@ -36,10 +34,13 @@ public class UnionBenchmark
         List<Card> deck = [.. session.Cards.Where(c => c.Active)];
         List<Combo> combos = [.. session.Combos.Where(c => c.Active)];
         Func<IReadOnlyList<Card>, bool>[] predicates =
-            [.. combos.Select(combo => SmallDeckOracle.HandPredicate(combo, session.HandSize))];
+        [
+            .. combos.Select(combo => SmallDeckOracle.HandPredicate(combo, session.HandSize)),
+        ];
         Card[] copies = [.. deck.SelectMany(c => Enumerable.Repeat(c, c.Copies))];
         List<Card> hand = [];
-        long total = 0, union = 0;
+        long total = 0,
+            union = 0;
         long[] individual = new long[combos.Count];
         long[] grouped = new long[session.ComboGroups.Count];
         bool[] matches = new bool[combos.Count];
@@ -49,7 +50,8 @@ public class UnionBenchmark
         );
         Assert.That(total, Is.EqualTo(658008));
         ProbabilityCalculationResult actual =
-            new ProbabilityCalculatorService().CalculateProbabilityResults(deck,
+            new ProbabilityCalculatorService().CalculateProbabilityResults(
+                deck,
                 combos,
                 session.HandSize,
                 session.ComboGroups
@@ -58,14 +60,16 @@ public class UnionBenchmark
 
         for (int i = 0; i < combos.Count; i++)
         {
-            Assert.That(actual.ComboProbabilities[i].Probability,
+            Assert.That(
+                actual.ComboProbabilities[i].Probability,
                 Is.EqualTo((double)individual[i] / total).Within(1e-12)
             );
         }
 
         for (int i = 0; i < grouped.Length; i++)
         {
-            Assert.That(actual.GroupProbabilities![i].Probability,
+            Assert.That(
+                actual.GroupProbabilities![i].Probability,
                 Is.EqualTo((double)grouped[i] / total).Within(1e-12)
             );
         }
@@ -93,9 +97,11 @@ public class UnionBenchmark
 
                 for (int g = 0; g < grouped.Length; g++)
                 {
-                    if (Enumerable
-                        .Range(0, combos.Count)
-                        .Any(i => matches[i] && combos[i].GroupId == session.ComboGroups[g].Id))
+                    if (
+                        Enumerable
+                            .Range(0, combos.Count)
+                            .Any(i => matches[i] && combos[i].GroupId == session.ComboGroups[g].Id)
+                    )
                     {
                         grouped[g]++;
                     }
@@ -123,7 +129,8 @@ public class UnionBenchmark
         List<Card> deck = [.. session.Cards.Where(c => c.Active)];
         List<Combo> combos = [.. session.Combos.Where(c => c.Active)];
         Measure("VS/K9-10", deck, combos, 5, session.ComboGroups);
-        Measure("VS/K9-30-duplicates",
+        Measure(
+            "VS/K9-30-duplicates",
             deck,
             [.. Enumerable.Range(0, 30).Select(i => combos[i % 10])],
             5,
@@ -134,34 +141,55 @@ public class UnionBenchmark
         {
             List<Combo> alternatives =
             [
-                .. deck
-                    .Take(count - 5)
-                    .Select((c, i) =>
-                        new Combo([new(session.Categories[0], 1, 5)],
-                            groupId: session.ComboGroups[i % 2].Id,
-                            cards: [new(c.Id, 1, 5)]
-                        )
-                    )
+                .. deck.Take(count - 5)
+                    .Select(
+                        (c, i) =>
+                            new Combo(
+                                [new(session.Categories[0], 1, 5)],
+                                groupId: session.ComboGroups[i % 2].Id,
+                                cards: [new(c.Id, 1, 5)]
+                            )
+                    ),
             ];
             alternatives.AddRange(combos.Take(5));
-            Measure($"VS/K9-{alternatives.Count}-alternatives", deck, alternatives, 5, session.ComboGroups);
+            Measure(
+                $"VS/K9-{alternatives.Count}-alternatives",
+                deck,
+                alternatives,
+                5,
+                session.ComboGroups
+            );
         }
 
         foreach (int count in new[] { 6, 10, 18 })
         {
             CategoryBase[] categories =
-                [.. Enumerable.Range(0, count).Select(i => new CategoryBase($"Distinct{i}"))];
+            [
+                .. Enumerable.Range(0, count).Select(i => new CategoryBase($"Distinct{i}")),
+            ];
             List<Card> distinctDeck =
-                [.. categories.Select(c => new Card([c], 2)), new Card([], 60 - count * 2)];
+            [
+                .. categories.Select(c => new Card([c], 2)),
+                new Card([], 60 - count * 2),
+            ];
             // Min=2 alternatives cannot be replaced by two copies from a union:
             // drawing one copy from each of two selectors must still fail.
             List<Combo> distinct =
-                [.. categories.Select((c, i) => new Combo([new(c, 2, 2)], groupId: $"g{i % 2}"))];
-            Measure($"distinct-restrictive-{count}", distinctDeck, distinct, 5, [new("g0", "Even"), new("g1", "Odd")]);
+            [
+                .. categories.Select((c, i) => new Combo([new(c, 2, 2)], groupId: $"g{i % 2}")),
+            ];
+            Measure(
+                $"distinct-restrictive-{count}",
+                distinctDeck,
+                distinct,
+                5,
+                [new("g0", "Even"), new("g1", "Odd")]
+            );
 
             if (count == 18)
             {
-                Measure("distinct-zero-max-18",
+                Measure(
+                    "distinct-zero-max-18",
                     distinctDeck,
                     [.. categories.Select(c => new Combo([new(c, 0, 0)]))],
                     5,
@@ -171,7 +199,13 @@ public class UnionBenchmark
         }
     }
 
-    private static void Measure(string name, List<Card> deck, List<Combo> combos, int hand, List<ComboGroup> groups)
+    private static void Measure(
+        string name,
+        List<Card> deck,
+        List<Combo> combos,
+        int hand,
+        List<ComboGroup> groups
+    )
     {
         ProbabilityCalculatorService service = new();
         (double Ms, long Bytes, string Outcome) cold = Run();
@@ -181,7 +215,10 @@ public class UnionBenchmark
             Run();
         }
 
-        (double Ms, long Bytes, string Outcome)[] trials = [.. Enumerable.Range(0, 7).Select(_ => Run())];
+        (double Ms, long Bytes, string Outcome)[] trials =
+        [
+            .. Enumerable.Range(0, 7).Select(_ => Run()),
+        ];
         double[] times = [.. trials.Select(t => t.Ms).Order()];
         TestContext.Out.WriteLine(
             $"{name}: cold={cold.Ms:F3}ms; median={times[3]:F3}ms range={times[0]:F3}..{times[^1]:F3}; bytes={trials[0].Bytes}; {trials[0].Outcome}"
@@ -195,7 +232,12 @@ public class UnionBenchmark
 
             try
             {
-                ProbabilityCalculationResult result = service.CalculateProbabilityResults(deck, combos, hand, groups);
+                ProbabilityCalculationResult result = service.CalculateProbabilityResults(
+                    deck,
+                    combos,
+                    hand,
+                    groups
+                );
                 outcome = $"p={result.TotalProbability:R}";
             }
             catch (ProbabilityCalculationLimitException)
@@ -205,7 +247,11 @@ public class UnionBenchmark
 
             timer.Stop();
 
-            return (timer.Elapsed.TotalMilliseconds, GC.GetAllocatedBytesForCurrentThread() - before, outcome);
+            return (
+                timer.Elapsed.TotalMilliseconds,
+                GC.GetAllocatedBytesForCurrentThread() - before,
+                outcome
+            );
         }
     }
 }

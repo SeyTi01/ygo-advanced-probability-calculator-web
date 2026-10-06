@@ -10,5 +10,6 @@ public class SessionState
     public List<Combo> Combos { get; init; } = [];
     public List<ComboGroup> ComboGroups { get; init; } = [];
     public int HandSize { get; init; }
-    public Dictionary<string, int> CategoryColorIndices { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, int> CategoryColorIndices { get; init; } =
+        new(StringComparer.Ordinal);
 }

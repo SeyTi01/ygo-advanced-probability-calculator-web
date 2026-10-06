@@ -6,7 +6,8 @@ internal static class SmallDeckOracle
 {
     // Independent exhaustive slot assignment, without Hall subsets, masks,
     // count-vector DP or production helpers. Each position can be used once.
-    internal static bool MatchesHand(IReadOnlyList<Card> hand, Combo combo) => HandPredicate(combo, hand.Count)(hand);
+    internal static bool MatchesHand(IReadOnlyList<Card> hand, Combo combo) =>
+        HandPredicate(combo, hand.Count)(hand);
 
     internal static Func<IReadOnlyList<Card>, bool> HandPredicate(Combo combo, int handSize)
     {
@@ -28,7 +29,9 @@ internal static class SmallDeckOracle
                     return;
                 }
 
-                foreach (ComboAlternative alternative in combo.AlternativeGroups[index].Alternatives)
+                foreach (
+                    ComboAlternative alternative in combo.AlternativeGroups[index].Alternatives
+                )
                 {
                     List<ComboCategory> nextCategories = [.. categories];
                     List<ComboCard> nextCards = [.. cards];
@@ -51,35 +54,55 @@ internal static class SmallDeckOracle
             }
         }
 
-        List<(Func<Card, bool> Matches, int Min, int Max)> roles =
-            [];
+        List<(Func<Card, bool> Matches, int Min, int Max)> roles = [];
 
-        foreach (IGrouping<(CategorySource Source, string? Key), ComboCategory> group in combo.Categories.GroupBy(c =>
-                     (c.BaseCategory.Source,
-                         Key: c.BaseCategory.Source == CategorySource.User
-                             ? c.BaseCategory.Name
-                             : c.BaseCategory.MetadataKey)
-                 ))
+        foreach (
+            IGrouping<
+                (CategorySource Source, string? Key),
+                ComboCategory
+            > group in combo.Categories.GroupBy(c =>
+                (
+                    c.BaseCategory.Source,
+                    Key: c.BaseCategory.Source == CategorySource.User
+                        ? c.BaseCategory.Name
+                        : c.BaseCategory.MetadataKey
+                )
+            )
+        )
         {
-            roles.Add((
-                    card => card.Categories.Any(c =>
-                        c.Source == group.Key.Source &&
-                        (c.Source == CategorySource.User ? c.Name : c.MetadataKey) == group.Key.Key
-                    ),
+            roles.Add(
+                (
+                    card =>
+                        card.Categories.Any(c =>
+                            c.Source == group.Key.Source
+                            && (c.Source == CategorySource.User ? c.Name : c.MetadataKey)
+                                == group.Key.Key
+                        ),
                     group.Max(c => c.MinCount),
-                    group.Min(c => c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount))
+                    group.Min(c =>
+                        c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount
+                    )
+                )
             );
         }
 
         foreach (IGrouping<string, ComboCard> group in combo.Cards.GroupBy(c => c.CardId))
         {
-            roles.Add((card => card.Id == group.Key,
+            roles.Add(
+                (
+                    card => card.Id == group.Key,
                     group.Max(c => c.MinCount),
-                    group.Min(c => c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount))
+                    group.Min(c =>
+                        c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount
+                    )
+                )
             );
         }
 
-        Func<Card, bool>[] slots = [.. roles.SelectMany(role => Enumerable.Repeat(role.Matches, role.Min))];
+        Func<Card, bool>[] slots =
+        [
+            .. roles.SelectMany(role => Enumerable.Repeat(role.Matches, role.Min)),
+        ];
 
         return hand =>
         {
@@ -106,7 +129,7 @@ internal static class SmallDeckOracle
 
                 for (int copy = 0; copy < hand.Count; copy++)
                 {
-                    if (used[copy] || ! slots[slot](hand[copy]))
+                    if (used[copy] || !slots[slot](hand[copy]))
                     {
                         continue;
                     }
@@ -136,9 +159,16 @@ internal static class SmallDeckOracle
         return (double)successes / total;
     }
 
-    internal static (int Successes, int Total) EnumerateCounts(List<Card> deck, List<Combo> combos, int handSize)
+    internal static (int Successes, int Total) EnumerateCounts(
+        List<Card> deck,
+        List<Combo> combos,
+        int handSize
+    )
     {
-        Func<IReadOnlyList<Card>, bool>[] predicates = [.. combos.Select(combo => HandPredicate(combo, handSize))];
+        Func<IReadOnlyList<Card>, bool>[] predicates =
+        [
+            .. combos.Select(combo => HandPredicate(combo, handSize)),
+        ];
         List<Card> copies = [];
 
         foreach (Card card in deck)

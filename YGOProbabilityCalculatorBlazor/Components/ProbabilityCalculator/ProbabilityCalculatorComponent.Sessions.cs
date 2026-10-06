@@ -13,32 +13,36 @@ public partial class ProbabilityCalculatorComponent : IDisposable
 
     private void ObserveWorkspaceEdit() => workspaceEditVersion++;
 
-    private SessionState CaptureSession() => new()
-    {
-        Categories = categoryBases,
-        Cards = cards,
-        Combos = combos,
-        ComboGroups = comboGroups,
-        HandSize = handSize,
-        CategoryColorIndices = new(categoryColorIndices, StringComparer.Ordinal)
-    };
+    private SessionState CaptureSession() =>
+        new()
+        {
+            Categories = categoryBases,
+            Cards = cards,
+            Combos = combos,
+            ComboGroups = comboGroups,
+            HandSize = handSize,
+            CategoryColorIndices = new(categoryColorIndices, StringComparer.Ordinal),
+        };
 
     private sealed record SessionLoadRequest(long Version, long EditVersion, string Before);
 
     private SessionLoadRequest? ydkeImportRequest;
 
-    private SessionLoadRequest BeginSessionLoad() => new(++sessionLoadVersion,
-        workspaceEditVersion,
-        _sessionService.SerializeSession(CaptureSession())
-    );
+    private SessionLoadRequest BeginSessionLoad() =>
+        new(
+            ++sessionLoadVersion,
+            workspaceEditVersion,
+            _sessionService.SerializeSession(CaptureSession())
+        );
 
-    private bool OwnsSessionLoad(long version) => ! disposed && version == sessionLoadVersion;
+    private bool OwnsSessionLoad(long version) => !disposed && version == sessionLoadVersion;
 
     private bool OwnsSessionLoad(SessionLoadRequest request) => OwnsSessionLoad(request.Version);
 
     private bool CanApplySession(SessionLoadRequest request) =>
-        OwnsSessionLoad(request) && request.EditVersion == workspaceEditVersion &&
-        request.Before == _sessionService.SerializeSession(CaptureSession());
+        OwnsSessionLoad(request)
+        && request.EditVersion == workspaceEditVersion
+        && request.Before == _sessionService.SerializeSession(CaptureSession());
 
     private async Task<bool> ApplyRecoveryAsync(SessionState session)
     {
@@ -49,7 +53,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable
 
         SessionLoadRequest request = BeginSessionLoad();
 
-        if (! await RestoreSessionDataAsync(session, request))
+        if (!await RestoreSessionDataAsync(session, request))
         {
             return false;
         }
@@ -61,7 +65,10 @@ public partial class ProbabilityCalculatorComponent : IDisposable
 
     private async Task<List<Card>> PrepareSessionCardsAsync(SessionState session)
     {
-        if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
+        if (
+            session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count()
+            != session.Cards.Count
+        )
         {
             throw new InvalidOperationException("Session contains duplicate card IDs.");
         }
@@ -69,7 +76,9 @@ public partial class ProbabilityCalculatorComponent : IDisposable
         // Metadata is best effort; a hung network must not gate recovery/startup.
         // Enrichment receives its own model so a late completion cannot mutate applied work.
         List<Card> preparedCards = [.. session.Cards];
-        SessionState enriched = await _sessionService.LoadSessionAsync(_sessionService.SerializeSession(session));
+        SessionState enriched = await _sessionService.LoadSessionAsync(
+            _sessionService.SerializeSession(session)
+        );
         Card[] originalEnrichmentCards = [.. enriched.Cards];
 
         try
@@ -78,29 +87,30 @@ public partial class ProbabilityCalculatorComponent : IDisposable
 
             for (int i = 0; i < enriched.Cards.Count; i++)
             {
-                if (! ReferenceEquals(enriched.Cards[i], originalEnrichmentCards[i]))
+                if (!ReferenceEquals(enriched.Cards[i], originalEnrichmentCards[i]))
                 {
                     preparedCards[i] = enriched.Cards[i];
                 }
             }
         }
-        catch
-        {
-        }
+        catch { }
 
         return preparedCards;
     }
 
-    private async Task<bool> RestoreSessionDataAsync(SessionState session, SessionLoadRequest request)
+    private async Task<bool> RestoreSessionDataAsync(
+        SessionState session,
+        SessionLoadRequest request
+    )
     {
-        if (! OwnsSessionLoad(request))
+        if (!OwnsSessionLoad(request))
         {
             return false;
         }
 
         List<Card> preparedCards = await PrepareSessionCardsAsync(session);
 
-        if (! CanApplySession(request))
+        if (!CanApplySession(request))
         {
             return false;
         }
@@ -108,7 +118,9 @@ public partial class ProbabilityCalculatorComponent : IDisposable
         ConsumeSharedFragment();
         InvalidateCalculation(clearPreviousResult: true);
         categoryBases.Clear();
-        categoryBases.AddRange(session.Categories.Where(category => category.Source == CategorySource.User));
+        categoryBases.AddRange(
+            session.Categories.Where(category => category.Source == CategorySource.User)
+        );
 
         cards.Clear();
         cards.AddRange(preparedCards);
@@ -149,12 +161,12 @@ public partial class ProbabilityCalculatorComponent : IDisposable
             importError = null;
             List<Card> importedCards = await _deckImportService.ImportDeckFromYdkAsync(e.File);
 
-            if (! OwnsSessionLoad(request))
+            if (!OwnsSessionLoad(request))
             {
                 return;
             }
 
-            if (! CanApplySession(request))
+            if (!CanApplySession(request))
             {
                 importError = "Current work changed during import. Import again to replace it.";
 
@@ -203,12 +215,12 @@ public partial class ProbabilityCalculatorComponent : IDisposable
             importError = null;
             List<Card> importedCards = await _deckImportService.ImportDeckFromYdkeAsync(ydkeCode);
 
-            if (! OwnsSessionLoad(request))
+            if (!OwnsSessionLoad(request))
             {
                 return;
             }
 
-            if (! CanApplySession(request))
+            if (!CanApplySession(request))
             {
                 importError = "Current work changed during import. Import again to replace it.";
 
@@ -269,11 +281,12 @@ public partial class ProbabilityCalculatorComponent : IDisposable
 
             SessionState session = await _sessionService.LoadSessionAsync(fileContent);
 
-            if (! await RestoreSessionDataAsync(session, request))
+            if (!await RestoreSessionDataAsync(session, request))
             {
                 if (OwnsSessionLoad(request))
                 {
-                    errorMessage = "Current work changed while loading. Load the session again to replace it.";
+                    errorMessage =
+                        "Current work changed while loading. Load the session again to replace it.";
                 }
 
                 return;
@@ -311,7 +324,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable
             {
                 _pendingSessionService.PendingSession = null;
 
-                if (! await RestoreSessionDataAsync(session, request) && OwnsSessionLoad(request))
+                if (!await RestoreSessionDataAsync(session, request) && OwnsSessionLoad(request))
                 {
                     errorMessage =
                         "Current work changed while loading the example. Load the example again to replace it.";

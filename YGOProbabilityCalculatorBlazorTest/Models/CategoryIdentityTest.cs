@@ -24,13 +24,18 @@ public class CategoryIdentityTest
     [TestCase("")]
     [TestCase(" ")]
     public void MetadataRequiresAKey(string? key) =>
-        Assert.Throws<ArgumentException>(() => new CategoryBase("Spell", CategorySource.Metadata, key));
+        Assert.Throws<ArgumentException>(() =>
+            new CategoryBase("Spell", CategorySource.Metadata, key)
+        );
 
     [Test]
     public void CopyMethodsPreserveExternalAndInternalCardIdentity()
     {
         Card card = new([], 1, "Spell", externalCardId: 123);
-        Card updated = card.WithName("Renamed").WithCopies(3).WithCategories([new("Role")]).WithActive(false);
+        Card updated = card.WithName("Renamed")
+            .WithCopies(3)
+            .WithCategories([new("Role")])
+            .WithActive(false);
         Assert.That(updated.ExternalCardId, Is.EqualTo(123));
         Assert.That(updated.Id, Is.EqualTo(card.Id));
         Assert.That(new Card([]).ExternalCardId, Is.Null);

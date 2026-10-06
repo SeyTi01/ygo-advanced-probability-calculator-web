@@ -59,7 +59,10 @@ public class CardInfoService : ICardInfoService
 
             try
             {
-                if (_cache.Cards.TryGetValue(id, out CardInfo? cached) && cached.ArtworkMetadataKnown)
+                if (
+                    _cache.Cards.TryGetValue(id, out CardInfo? cached)
+                    && cached.ArtworkMetadataKnown
+                )
                 {
                     return cached;
                 }
@@ -80,10 +83,10 @@ public class CardInfoService : ICardInfoService
 
             _nextArtworkLookup = _timeProvider.GetUtcNow().AddMilliseconds(100);
             using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(15));
-            using HttpResponseMessage response =
-                await _httpClient.GetAsync(string.Format(CultureInfo.InvariantCulture, SingleApiTemplate, id),
-                    timeout.Token
-                );
+            using HttpResponseMessage response = await _httpClient.GetAsync(
+                string.Format(CultureInfo.InvariantCulture, SingleApiTemplate, id),
+                timeout.Token
+            );
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
@@ -92,29 +95,33 @@ public class CardInfoService : ICardInfoService
                 return new CardInfo { Id = id, ArtworkMetadataKnown = true };
             }
 
-            if (! response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
                 RetryConditionHeaderValue? retry = response.Headers.RetryAfter;
 
-                throw new CardArtworkLookupException(retry?.Delta ??
-                                                     (retry?.Date is { } date
-                                                         ? date - _timeProvider.GetUtcNow()
-                                                         : TimeSpan.FromMinutes(1))
+                throw new CardArtworkLookupException(
+                    retry?.Delta
+                        ?? (
+                            retry?.Date is { } date
+                                ? date - _timeProvider.GetUtcNow()
+                                : TimeSpan.FromMinutes(1)
+                        )
                 );
             }
 
             await using Stream stream = await response.Content.ReadAsStreamAsync();
             using JsonDocument document = await JsonDocument.ParseAsync(stream);
 
-            if (document.RootElement.ValueKind != JsonValueKind.Object ||
-                ! TryGetProperty(document.RootElement, "data", out JsonElement data) ||
-                data.ValueKind != JsonValueKind.Array)
+            if (
+                document.RootElement.ValueKind != JsonValueKind.Object
+                || !TryGetProperty(document.RootElement, "data", out JsonElement data)
+                || data.ValueKind != JsonValueKind.Array
+            )
             {
                 throw new CardArtworkLookupException(TimeSpan.FromMinutes(1));
             }
 
-            CardInfo? info = data
-                .EnumerateArray()
+            CardInfo? info = data.EnumerateArray()
                 .Select(item => ReadCardInfo(item, id))
                 .FirstOrDefault(card => card is not null);
 
@@ -141,7 +148,8 @@ public class CardInfoService : ICardInfoService
                 snapshot = new CardMetadataCache
                 {
                     SchemaVersion = _cache.SchemaVersion,
-                    LastFullRefreshUtc = _cache.LastFullRefreshUtc, Cards = new(_cache.Cards)
+                    LastFullRefreshUtc = _cache.LastFullRefreshUtc,
+                    Cards = new(_cache.Cards),
                 };
             }
             finally
@@ -166,8 +174,13 @@ public class CardInfoService : ICardInfoService
 
         try
         {
-            if (! _cache.Cards.TryGetValue(id, out CardInfo? card) ||
-                (string.IsNullOrWhiteSpace(card.Type) && string.IsNullOrWhiteSpace(card.FrameType)))
+            if (
+                !_cache.Cards.TryGetValue(id, out CardInfo? card)
+                || (
+                    string.IsNullOrWhiteSpace(card.Type)
+                    && string.IsNullOrWhiteSpace(card.FrameType)
+                )
+            )
             {
                 if (_singleLookups.Add(id))
                 {
@@ -226,7 +239,7 @@ public class CardInfoService : ICardInfoService
 
         try
         {
-            if (! IsFresh(_cache))
+            if (!IsFresh(_cache))
             {
                 await FetchAllCardsAsync();
             }
@@ -237,10 +250,16 @@ public class CardInfoService : ICardInfoService
         }
     }
 
-    public async Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names)
+    public async Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(
+        IEnumerable<string> names
+    )
     {
         string[] requested =
-            [.. names.Where(name => ! string.IsNullOrWhiteSpace(name)).Distinct(StringComparer.Ordinal)];
+        [
+            .. names
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.Ordinal),
+        ];
         Dictionary<string, CardInfo> resolved = new(StringComparer.Ordinal);
 
         if (requested.Length == 0)
@@ -256,7 +275,11 @@ public class CardInfoService : ICardInfoService
             foreach (string name in requested)
             {
                 CardInfo[] matches =
-                    [.. _cache.Cards.Values.Where(card => card.Name.Equals(name, StringComparison.Ordinal))];
+                [
+                    .. _cache.Cards.Values.Where(card =>
+                        card.Name.Equals(name, StringComparison.Ordinal)
+                    ),
+                ];
 
                 if (matches.Length == 1 && HasMetadata(matches[0]))
                 {
@@ -265,7 +288,7 @@ public class CardInfoService : ICardInfoService
             }
 
             // Each unresolved name uses the exact endpoint. A bad/custom name cannot fail other lookups.
-            foreach (string name in requested.Where(name => ! resolved.ContainsKey(name)))
+            foreach (string name in requested.Where(name => !resolved.ContainsKey(name)))
             {
                 CardInfo? info = await FetchExactNameAsync(name);
 
@@ -283,10 +306,10 @@ public class CardInfoService : ICardInfoService
         }
     }
 
-    private static bool HasMetadata(CardInfo info) => info.Id > 0 &&
-                                                      (! string.IsNullOrWhiteSpace(info.Type) ||
-                                                       ! string.IsNullOrWhiteSpace(info.FrameType)) &&
-                                                      CardPropertyProvider.GetCategories(info).Count > 0;
+    private static bool HasMetadata(CardInfo info) =>
+        info.Id > 0
+        && (!string.IsNullOrWhiteSpace(info.Type) || !string.IsNullOrWhiteSpace(info.FrameType))
+        && CardPropertyProvider.GetCategories(info).Count > 0;
 
     private async Task<CardInfo?> FetchExactNameAsync(string name)
     {
@@ -296,27 +319,32 @@ public class CardInfoService : ICardInfoService
                 .GetAsync($"{BulkApiUrl}?name={Uri.EscapeDataString(name)}")
                 .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            await using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using JsonDocument document = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            await using Stream stream = await response
+                .Content.ReadAsStreamAsync()
+                .ConfigureAwait(false);
+            using JsonDocument document = await JsonDocument
+                .ParseAsync(stream)
+                .ConfigureAwait(false);
 
-            if (document.RootElement.ValueKind != JsonValueKind.Object ||
-                ! TryGetProperty(document.RootElement, "data", out JsonElement data) ||
-                data.ValueKind != JsonValueKind.Array)
+            if (
+                document.RootElement.ValueKind != JsonValueKind.Object
+                || !TryGetProperty(document.RootElement, "data", out JsonElement data)
+                || data.ValueKind != JsonValueKind.Array
+            )
             {
                 return null;
             }
 
             CardInfo?[] matches =
             [
-                .. data
-                    .EnumerateArray()
+                .. data.EnumerateArray()
                     .Select(item => ReadCardInfo(item))
                     .Where(info =>
                         info is not null && info.Name.Equals(name, StringComparison.Ordinal)
-                    )
+                    ),
             ];
 
-            if (matches.Length != 1 || ! HasMetadata(matches[0]!))
+            if (matches.Length != 1 || !HasMetadata(matches[0]!))
             {
                 return null;
             }
@@ -344,7 +372,10 @@ public class CardInfoService : ICardInfoService
 
     private bool IsFresh(CardMetadataCache cache)
     {
-        if (cache.SchemaVersion != CacheSchemaVersion || cache.LastFullRefreshUtc is not { } lastRefresh)
+        if (
+            cache.SchemaVersion != CacheSchemaVersion
+            || cache.LastFullRefreshUtc is not { } lastRefresh
+        )
         {
             return false;
         }
@@ -358,15 +389,23 @@ public class CardInfoService : ICardInfoService
     {
         try
         {
-            using HttpResponseMessage response = await _httpClient.GetAsync(BulkApiUrl).ConfigureAwait(false);
+            using HttpResponseMessage response = await _httpClient
+                .GetAsync(BulkApiUrl)
+                .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            await using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using JsonDocument document = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            await using Stream stream = await response
+                .Content.ReadAsStreamAsync()
+                .ConfigureAwait(false);
+            using JsonDocument document = await JsonDocument
+                .ParseAsync(stream)
+                .ConfigureAwait(false);
 
-            if (document.RootElement.ValueKind != JsonValueKind.Object ||
-                ! TryGetProperty(document.RootElement, "data", out JsonElement data) ||
-                data.ValueKind != JsonValueKind.Array)
+            if (
+                document.RootElement.ValueKind != JsonValueKind.Object
+                || !TryGetProperty(document.RootElement, "data", out JsonElement data)
+                || data.ValueKind != JsonValueKind.Array
+            )
             {
                 return;
             }
@@ -393,7 +432,7 @@ public class CardInfoService : ICardInfoService
             {
                 SchemaVersion = CacheSchemaVersion,
                 LastFullRefreshUtc = _timeProvider.GetUtcNow(),
-                Cards = cards
+                Cards = cards,
             };
             await SaveCacheAsync().ConfigureAwait(false);
         }
@@ -412,16 +451,21 @@ public class CardInfoService : ICardInfoService
                 .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            await using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using JsonDocument document = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            await using Stream stream = await response
+                .Content.ReadAsStreamAsync()
+                .ConfigureAwait(false);
+            using JsonDocument document = await JsonDocument
+                .ParseAsync(stream)
+                .ConfigureAwait(false);
 
-            if (document.RootElement.ValueKind == JsonValueKind.Object &&
-                TryGetProperty(document.RootElement, "data", out JsonElement data) &&
-                data.ValueKind == JsonValueKind.Array)
+            if (
+                document.RootElement.ValueKind == JsonValueKind.Object
+                && TryGetProperty(document.RootElement, "data", out JsonElement data)
+                && data.ValueKind == JsonValueKind.Array
+            )
             {
                 // The query passcode remains the cache identity, including alternate passcodes.
-                CardInfo? info = data
-                    .EnumerateArray()
+                CardInfo? info = data.EnumerateArray()
                     .Select(item => ReadCardInfo(item, id))
                     .FirstOrDefault(card => card is not null);
 
@@ -473,7 +517,9 @@ public class CardInfoService : ICardInfoService
                     : new CardMetadataCache();
             }
 
-            return TryReadLegacyCache(root, out CardMetadataCache legacyCache) ? legacyCache : new CardMetadataCache();
+            return TryReadLegacyCache(root, out CardMetadataCache legacyCache)
+                ? legacyCache
+                : new CardMetadataCache();
         }
         catch
         {
@@ -486,25 +532,30 @@ public class CardInfoService : ICardInfoService
     {
         cache = new CardMetadataCache();
 
-        if (! TryGetProperty(root, "schemaVersion", out JsonElement versionProperty) ||
-            versionProperty.ValueKind != JsonValueKind.Number ||
-            ! versionProperty.TryGetInt32(out int version) ||
-            version is not (1 or CacheSchemaVersion) ||
-            ! TryGetProperty(root, "cards", out JsonElement cardsProperty) ||
-            cardsProperty.ValueKind != JsonValueKind.Object)
+        if (
+            !TryGetProperty(root, "schemaVersion", out JsonElement versionProperty)
+            || versionProperty.ValueKind != JsonValueKind.Number
+            || !versionProperty.TryGetInt32(out int version)
+            || version is not (1 or CacheSchemaVersion)
+            || !TryGetProperty(root, "cards", out JsonElement cardsProperty)
+            || cardsProperty.ValueKind != JsonValueKind.Object
+        )
         {
             return false;
         }
 
         DateTimeOffset? lastFullRefreshUtc = null;
 
-        if (TryGetProperty(root, "lastFullRefreshUtc", out JsonElement timestampProperty) &&
-            timestampProperty.ValueKind == JsonValueKind.String &&
-            DateTimeOffset.TryParse(timestampProperty.GetString(),
+        if (
+            TryGetProperty(root, "lastFullRefreshUtc", out JsonElement timestampProperty)
+            && timestampProperty.ValueKind == JsonValueKind.String
+            && DateTimeOffset.TryParse(
+                timestampProperty.GetString(),
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
                 out DateTimeOffset parsedTimestamp
-            ))
+            )
+        )
         {
             lastFullRefreshUtc = parsedTimestamp;
         }
@@ -513,10 +564,17 @@ public class CardInfoService : ICardInfoService
 
         foreach (JsonProperty property in cardsProperty.EnumerateObject())
         {
-            if (! int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id) ||
-                property.Value.ValueKind != JsonValueKind.Object ||
-                ! TryGetProperty(property.Value, "name", out JsonElement nameProperty) ||
-                nameProperty.ValueKind != JsonValueKind.String)
+            if (
+                !int.TryParse(
+                    property.Name,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int id
+                )
+                || property.Value.ValueKind != JsonValueKind.Object
+                || !TryGetProperty(property.Value, "name", out JsonElement nameProperty)
+                || nameProperty.ValueKind != JsonValueKind.String
+            )
             {
                 return false;
             }
@@ -528,9 +586,10 @@ public class CardInfoService : ICardInfoService
                 return false;
             }
 
-            cards[id] = version == 1
-                ? new CardInfo { Id = id, Name = name }
-                : ReadCardInfo(property.Value, id, fromCache: true)!;
+            cards[id] =
+                version == 1
+                    ? new CardInfo { Id = id, Name = name }
+                    : ReadCardInfo(property.Value, id, fromCache: true)!;
         }
 
         if (cards.Count == 0)
@@ -542,7 +601,7 @@ public class CardInfoService : ICardInfoService
         {
             SchemaVersion = version,
             LastFullRefreshUtc = lastFullRefreshUtc,
-            Cards = cards
+            Cards = cards,
         };
 
         return true;
@@ -554,8 +613,15 @@ public class CardInfoService : ICardInfoService
 
         foreach (JsonProperty property in root.EnumerateObject())
         {
-            if (! int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id) ||
-                property.Value.ValueKind != JsonValueKind.String)
+            if (
+                !int.TryParse(
+                    property.Name,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int id
+                )
+                || property.Value.ValueKind != JsonValueKind.String
+            )
             {
                 cache = new CardMetadataCache();
 
@@ -564,7 +630,7 @@ public class CardInfoService : ICardInfoService
 
             string? name = property.Value.GetString();
 
-            if (! string.IsNullOrWhiteSpace(name))
+            if (!string.IsNullOrWhiteSpace(name))
             {
                 cards[id] = new CardInfo { Id = id, Name = name };
             }
@@ -575,7 +641,11 @@ public class CardInfoService : ICardInfoService
         return true;
     }
 
-    private static CardInfo? ReadCardInfo(JsonElement item, int? cacheId = null, bool fromCache = false)
+    private static CardInfo? ReadCardInfo(
+        JsonElement item,
+        int? cacheId = null,
+        bool fromCache = false
+    )
     {
         if (item.ValueKind != JsonValueKind.Object)
         {
@@ -592,20 +662,36 @@ public class CardInfoService : ICardInfoService
 
         return new CardInfo
         {
-            Id = id.Value, Name = name, Type = Text("type"), FrameType = Text("frameType"),
-            Race = Text("race"), Attribute = Text("attribute"), Level = Number("level"),
-            LinkVal = Number("linkval"), Scale = Number("scale"), Archetype = Text("archetype"),
+            Id = id.Value,
+            Name = name,
+            Type = Text("type"),
+            FrameType = Text("frameType"),
+            Race = Text("race"),
+            Attribute = Text("attribute"),
+            Level = Number("level"),
+            LinkVal = Number("linkval"),
+            Scale = Number("scale"),
+            Archetype = Text("archetype"),
             CanonicalCardId = fromCache ? Number("canonicalCardId") : Number("id"),
             ArtworkImageIds = ReadImageIds(),
-            ArtworkMetadataKnown = ! fromCache ||
-                                   (TryGetProperty(item, "artworkMetadataKnown", out JsonElement known) &&
-                                    known.ValueKind == JsonValueKind.True)
+            ArtworkMetadataKnown =
+                !fromCache
+                || (
+                    TryGetProperty(item, "artworkMetadataKnown", out JsonElement known)
+                    && known.ValueKind == JsonValueKind.True
+                ),
         };
 
         IReadOnlyList<int> ReadImageIds()
         {
-            if (! TryGetProperty(item, fromCache ? "artworkImageIds" : "card_images", out JsonElement images) ||
-                images.ValueKind != JsonValueKind.Array)
+            if (
+                !TryGetProperty(
+                    item,
+                    fromCache ? "artworkImageIds" : "card_images",
+                    out JsonElement images
+                )
+                || images.ValueKind != JsonValueKind.Array
+            )
             {
                 return Array.Empty<int>();
             }
@@ -618,25 +704,29 @@ public class CardInfoService : ICardInfoService
 
                 if (fromCache)
                 {
-                    if (image.ValueKind != JsonValueKind.Number || ! image.TryGetInt32(out imageId))
+                    if (image.ValueKind != JsonValueKind.Number || !image.TryGetInt32(out imageId))
                     {
                         continue;
                     }
                 }
                 else
                 {
-                    if (image.ValueKind != JsonValueKind.Object ||
-                        ! TryGetProperty(image, "id", out JsonElement imageIdValue) ||
-                        imageIdValue.ValueKind != JsonValueKind.Number || ! imageIdValue.TryGetInt32(out imageId) ||
-                        ! TryGetProperty(image, "image_url_small", out JsonElement url) ||
-                        url.ValueKind != JsonValueKind.String ||
-                        url.GetString() != $"https://images.ygoprodeck.com/images/cards_small/{imageId}.jpg")
+                    if (
+                        image.ValueKind != JsonValueKind.Object
+                        || !TryGetProperty(image, "id", out JsonElement imageIdValue)
+                        || imageIdValue.ValueKind != JsonValueKind.Number
+                        || !imageIdValue.TryGetInt32(out imageId)
+                        || !TryGetProperty(image, "image_url_small", out JsonElement url)
+                        || url.ValueKind != JsonValueKind.String
+                        || url.GetString()
+                            != $"https://images.ygoprodeck.com/images/cards_small/{imageId}.jpg"
+                    )
                     {
                         continue;
                     }
                 }
 
-                if (imageId is > 0 and <= 2147483647 && ! result.Contains(imageId))
+                if (imageId is > 0 and <= 2147483647 && !result.Contains(imageId))
                 {
                     result.Add(imageId);
                 }
@@ -646,15 +736,17 @@ public class CardInfoService : ICardInfoService
         }
 
         string? Text(string key) =>
-            TryGetProperty(item, key, out JsonElement value) && value.ValueKind == JsonValueKind.String
+            TryGetProperty(item, key, out JsonElement value)
+            && value.ValueKind == JsonValueKind.String
                 ? value.GetString()
                 : null;
 
-        int? Number(string key) => TryGetProperty(item, key, out JsonElement value) &&
-                                   value.ValueKind == JsonValueKind.Number &&
-                                   value.TryGetInt32(out int number)
-            ? number
-            : null;
+        int? Number(string key) =>
+            TryGetProperty(item, key, out JsonElement value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetInt32(out int number)
+                ? number
+                : null;
     }
 
     private static bool TryGetProperty(JsonElement element, string name, out JsonElement property)

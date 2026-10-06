@@ -11,12 +11,11 @@ public class YdkeParserTest
         YdkeDeck deck = YdkeParser.Parse("ydke://o6lXBZyFNAI=!viOnAg==!7ydRAA==!");
 
         Assert.Multiple(() =>
-            {
-                Assert.That(deck.MainDeck, Is.EqualTo(new uint[] { 89631139, 36996508 }));
-                Assert.That(deck.ExtraDeck, Is.EqualTo(new uint[] { 44508094 }));
-                Assert.That(deck.SideDeck, Is.EqualTo(new uint[] { 5318639 }));
-            }
-        );
+        {
+            Assert.That(deck.MainDeck, Is.EqualTo(new uint[] { 89631139, 36996508 }));
+            Assert.That(deck.ExtraDeck, Is.EqualTo(new uint[] { 44508094 }));
+            Assert.That(deck.SideDeck, Is.EqualTo(new uint[] { 5318639 }));
+        });
     }
 
     [Test]
@@ -95,7 +94,10 @@ public class YdkeParserTest
 
         for (int index = 0; index < main.Length; index++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(index * sizeof(uint), sizeof(uint)), main[index]);
+            BinaryPrimitives.WriteUInt32LittleEndian(
+                bytes.AsSpan(index * sizeof(uint), sizeof(uint)),
+                main[index]
+            );
         }
 
         return $"ydke://{Convert.ToBase64String(bytes)}!!!";

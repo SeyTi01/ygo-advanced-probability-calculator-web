@@ -23,13 +23,16 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
 
             if (routes > 32768 / group.Alternatives.Count)
             {
-                throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
+                throw new ProbabilityCalculationLimitException(
+                    ProbabilityCalculationLimitReason.Storage
+                );
             }
 
             routes *= group.Alternatives.Count;
         }
 
-        WorkBudget.CheckStorage(compiledEntries + routes,
+        WorkBudget.CheckStorage(
+            compiledEntries + routes,
             combo.Categories.Count + (long)combo.Cards.Count + combo.AlternativeGroups.Count
         );
         int[] choices = new int[combo.AlternativeGroups.Count];
@@ -61,10 +64,11 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
             {
                 budget.Spend(compiled.Constraints.Length + 1L);
 
-                if (! unique.Contains(compiled))
+                if (!unique.Contains(compiled))
                 {
-                    long cells = (long)(compiled.Constraints.Length + (compiled.Roles?.Length ?? 0)) *
-                                 (3 + deck.Count / 32);
+                    long cells =
+                        (long)(compiled.Constraints.Length + (compiled.Roles?.Length ?? 0))
+                        * (3 + deck.Count / 32);
                     WorkBudget.CheckStorage(compiledEntries + 1, compiledCells + cells);
                     compiledEntries++;
                     compiledCells += cells;
@@ -91,9 +95,12 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
         budget.Spend(combo.Categories.Count + combo.Cards.Count + 1L);
         List<Requirement> constraints = [];
 
-        foreach (IGrouping<string, ComboCategory> group in combo.Categories.GroupBy(c => c.BaseCategory.Identity,
-                     StringComparer.Ordinal
-                 ))
+        foreach (
+            IGrouping<string, ComboCategory> group in combo.Categories.GroupBy(
+                c => c.BaseCategory.Identity,
+                StringComparer.Ordinal
+            )
+        )
         {
             int min = group.Max(c => c.MinCount);
             int max = Math.Min(handSize, group.Min(c => c.GetEffectiveMaximum(handSize)));
@@ -112,7 +119,12 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
             constraints.Add(new Requirement(new ConstraintKey(false, group.Key), min, max));
         }
 
-        foreach (IGrouping<string, ComboCard> group in combo.Cards.GroupBy(c => c.CardId, StringComparer.Ordinal))
+        foreach (
+            IGrouping<string, ComboCard> group in combo.Cards.GroupBy(
+                c => c.CardId,
+                StringComparer.Ordinal
+            )
+        )
         {
             int min = group.Max(c => c.MinCount);
             int max = Math.Min(handSize, group.Min(c => c.GetEffectiveMaximum(handSize)));
@@ -145,9 +157,14 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
             {
                 budget.Spend(deck[i].Categories.Count + 1L);
 
-                if (deck[i].Copies > 0 && (constraint.Key.IsCard
-                        ? deck[i].Id == constraint.Key.Value
-                        : deck[i].Categories.Any(c => c.Identity == constraint.Key.Value)))
+                if (
+                    deck[i].Copies > 0
+                    && (
+                        constraint.Key.IsCard
+                            ? deck[i].Id == constraint.Key.Value
+                            : deck[i].Categories.Any(c => c.Identity == constraint.Key.Value)
+                    )
+                )
                 {
                     eligible |= BigInteger.One << i;
                 }
@@ -172,7 +189,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
         {
             BigInteger eligible = constraint.EligibleRows;
 
-            if (! AddBound(eligible, constraint.MinCount, constraint.MaxCount))
+            if (!AddBound(eligible, constraint.MinCount, constraint.MaxCount))
             {
                 return null;
             }
@@ -194,16 +211,17 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
 
         foreach ((BigInteger eligible, int minimum) in demands)
         {
-            if (! AddBound(eligible, minimum, handSize))
+            if (!AddBound(eligible, minimum, handSize))
             {
                 return null;
             }
         }
 
-        return new CompiledEvent([
+        return new CompiledEvent(
+            [
                 .. bounds
                     .OrderBy(pair => pair.Key)
-                    .Select(pair => new CountBound(pair.Key, pair.Value.Min, pair.Value.Max))
+                    .Select(pair => new CountBound(pair.Key, pair.Value.Min, pair.Value.Max)),
             ],
             roles.All(r => r.MaxCount == handSize) ? roles : null
         );

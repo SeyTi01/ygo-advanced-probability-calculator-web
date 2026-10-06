@@ -12,15 +12,23 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IBackgroundCalculator
     {
         cancellationToken.ThrowIfCancellationRequested();
         // Do not abandon an import/create invocation: a late handle still needs disposing.
-        await using IJSObjectReference module =
-            await js.InvokeAsync<IJSObjectReference>("import", "./js/background-calculation.js");
+        await using IJSObjectReference module = await js.InvokeAsync<IJSObjectReference>(
+            "import",
+            "./js/background-calculation.js"
+        );
         cancellationToken.ThrowIfCancellationRequested();
-        await using IJSObjectReference job = await module.InvokeAsync<IJSObjectReference>("createJob");
+        await using IJSObjectReference job = await module.InvokeAsync<IJSObjectReference>(
+            "createJob"
+        );
 
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string response = await job.InvokeAsync<string>("run", cancellationToken, snapshot.Json);
+            string response = await job.InvokeAsync<string>(
+                "run",
+                cancellationToken,
+                snapshot.Json
+            );
             cancellationToken.ThrowIfCancellationRequested();
 
             return CalculationWire.ReadResult(response);

@@ -13,12 +13,13 @@ public class BackgroundCalculatorTest
     private Mock<IJSObjectReference> module = null!;
     private Mock<IJSObjectReference> job = null!;
 
-    private static CalculationSnapshot Snapshot() => CalculationSnapshot.Capture(
-        [new Card([], 2, id: "card")],
-        [new Combo([], cards: [new("card", 1, 1)])],
-        1,
-        []
-    );
+    private static CalculationSnapshot Snapshot() =>
+        CalculationSnapshot.Capture(
+            [new Card([], 2, id: "card")],
+            [new Combo([], cards: [new("card", 1, 1)])],
+            1,
+            []
+        );
 
     [SetUp]
     public void Setup()
@@ -26,7 +27,8 @@ public class BackgroundCalculatorTest
         js = new();
         module = new();
         job = new();
-        js.Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>())).ReturnsAsync(module.Object);
+        js.Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()))
+            .ReturnsAsync(module.Object);
         module
             .Setup(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()))
             .ReturnsAsync(job.Object);
@@ -36,16 +38,21 @@ public class BackgroundCalculatorTest
     public async Task SuccessPassesTheSnapshotThroughAndDisposesBothHandles()
     {
         CalculationSnapshot snapshot = Snapshot();
-        job
-            .Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+        job.Setup(j =>
+                j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>())
+            )
             .ReturnsAsync(CalculationWire.Execute(snapshot.Json));
-        ProbabilityCalculationResult result =
-            await new BackgroundCalculator(js.Object).CalculateAsync(snapshot, default);
+        ProbabilityCalculationResult result = await new BackgroundCalculator(
+            js.Object
+        ).CalculateAsync(snapshot, default);
         Assert.That(result.ComboProbabilities, Has.Count.EqualTo(1));
-        job.Verify(j => j.InvokeAsync<string>("run",
-                It.IsAny<CancellationToken>(),
-                It.Is<object?[]?>(a => (string)a![0]! == snapshot.Json)
-            ),
+        job.Verify(
+            j =>
+                j.InvokeAsync<string>(
+                    "run",
+                    It.IsAny<CancellationToken>(),
+                    It.Is<object?[]?>(a => (string)a![0]! == snapshot.Json)
+                ),
             Times.Once
         );
         VerifyDisposed();
@@ -57,20 +64,26 @@ public class BackgroundCalculatorTest
     {
         if (importing)
         {
-            js
-                .Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()))
+            js.Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()))
                 .ThrowsAsync(new JSException("startup failed"));
         }
         else
         {
-            job
-                .Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            job.Setup(j =>
+                    j.InvokeAsync<string>(
+                        "run",
+                        It.IsAny<CancellationToken>(),
+                        It.IsAny<object?[]?>()
+                    )
+                )
                 .ThrowsAsync(new JSException("transport failed"));
         }
 
-        Assert.ThrowsAsync<JSException>(() => new BackgroundCalculator(js.Object).CalculateAsync(Snapshot(), default));
+        Assert.ThrowsAsync<JSException>(() =>
+            new BackgroundCalculator(js.Object).CalculateAsync(Snapshot(), default)
+        );
 
-        if (! importing)
+        if (!importing)
         {
             VerifyDisposed();
         }
@@ -80,16 +93,19 @@ public class BackgroundCalculatorTest
     public async Task CancellationDuringImportDoesNotCreateAWorker()
     {
         TaskCompletionSource<IJSObjectReference> completion = new();
-        js
-            .Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()))
+        js.Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()))
             .Returns(new ValueTask<IJSObjectReference>(completion.Task));
         using CancellationTokenSource cancellation = new();
-        Task<ProbabilityCalculationResult> task =
-            new BackgroundCalculator(js.Object).CalculateAsync(Snapshot(), cancellation.Token);
+        Task<ProbabilityCalculationResult> task = new BackgroundCalculator(
+            js.Object
+        ).CalculateAsync(Snapshot(), cancellation.Token);
         cancellation.Cancel();
         completion.SetResult(module.Object);
         Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
-        module.Verify(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()), Times.Never);
+        module.Verify(
+            j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()),
+            Times.Never
+        );
         module.Verify(j => j.DisposeAsync(), Times.Once);
         await Task.CompletedTask;
     }
@@ -101,17 +117,18 @@ public class BackgroundCalculatorTest
         module
             .Setup(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()))
             .Returns(() =>
-                {
-                    cancellation.Cancel();
+            {
+                cancellation.Cancel();
 
-                    return ValueTask.FromResult(job.Object);
-                }
-            );
+                return ValueTask.FromResult(job.Object);
+            });
         Assert.ThrowsAsync<OperationCanceledException>(() =>
             new BackgroundCalculator(js.Object).CalculateAsync(Snapshot(), cancellation.Token)
         );
         VerifyDisposed();
-        job.Verify(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()),
+        job.Verify(
+            j =>
+                j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()),
             Times.Never
         );
     }
@@ -120,16 +137,22 @@ public class BackgroundCalculatorTest
     public async Task CancellationDuringRunWaitsForActualTerminationBeforeSettlingAndAllowsRestart()
     {
         TaskCompletionSource termination = new();
-        job
-            .Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
-            .Returns((string _, CancellationToken token, object?[]? _) =>
-                new ValueTask<string>(WaitForCancellation(token))
-            );
-        job
-            .Setup(j =>
-                j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("dispose", It.IsAny<object?[]?>())
+        job.Setup(j =>
+                j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>())
             )
-            .Returns(new ValueTask<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(FinishTermination()));
+            .Returns(
+                (string _, CancellationToken token, object?[]? _) =>
+                    new ValueTask<string>(WaitForCancellation(token))
+            );
+        job.Setup(j =>
+                j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(
+                    "dispose",
+                    It.IsAny<object?[]?>()
+                )
+            )
+            .Returns(
+                new ValueTask<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(FinishTermination())
+            );
 
         async Task<Microsoft.JSInterop.Infrastructure.IJSVoidResult> FinishTermination()
         {
@@ -140,15 +163,22 @@ public class BackgroundCalculatorTest
 
         using CancellationTokenSource cancellation = new();
         BackgroundCalculator service = new(js.Object);
-        Task<ProbabilityCalculationResult> task = service.CalculateAsync(Snapshot(), cancellation.Token);
+        Task<ProbabilityCalculationResult> task = service.CalculateAsync(
+            Snapshot(),
+            cancellation.Token
+        );
         cancellation.Cancel();
         Assert.That(task.IsCompleted, Is.False);
         termination.SetResult();
         Assert.That(async () => await task, Throws.InstanceOf<OperationCanceledException>());
-        job
-            .Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+        job.Setup(j =>
+                j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>())
+            )
             .ReturnsAsync(CalculationWire.Execute(Snapshot().Json));
-        Assert.That((await service.CalculateAsync(Snapshot(), default)).ComboProbabilities, Has.Count.EqualTo(1));
+        Assert.That(
+            (await service.CalculateAsync(Snapshot(), default)).ComboProbabilities,
+            Has.Count.EqualTo(1)
+        );
     }
 
     private static async Task<string> WaitForCancellation(CancellationToken token)
@@ -160,8 +190,12 @@ public class BackgroundCalculatorTest
 
     private void VerifyDisposed()
     {
-        job.Verify(j =>
-                j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("dispose", It.IsAny<object?[]?>()),
+        job.Verify(
+            j =>
+                j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(
+                    "dispose",
+                    It.IsAny<object?[]?>()
+                ),
             Times.Once
         );
         job.Verify(j => j.DisposeAsync(), Times.Once);

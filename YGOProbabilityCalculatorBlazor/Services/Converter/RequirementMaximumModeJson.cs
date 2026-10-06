@@ -9,11 +9,10 @@ internal static class RequirementMaximumModeJson
     {
         JsonProperty[] properties =
         [
-            .. root
-                .EnumerateObject()
+            .. root.EnumerateObject()
                 .Where(property =>
                     property.Name.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase)
-                )
+                ),
         ];
 
         if (properties.Length == 0)
@@ -34,7 +33,7 @@ internal static class RequirementMaximumModeJson
             {
                 "Fixed" => RequirementMaximumMode.Fixed,
                 "HandSize" => RequirementMaximumMode.HandSize,
-                _ => throw new JsonException("Unknown requirement maximum mode.")
+                _ => throw new JsonException("Unknown requirement maximum mode."),
             };
         }
 

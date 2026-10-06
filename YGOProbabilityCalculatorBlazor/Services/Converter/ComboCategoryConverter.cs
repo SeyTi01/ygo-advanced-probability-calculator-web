@@ -6,22 +6,32 @@ namespace YGOProbabilityCalculatorBlazor.Services.Converter;
 
 public class ComboCategoryConverter : JsonConverter<ComboCategory>
 {
-    public override ComboCategory Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override ComboCategory Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
     {
         using JsonDocument doc = JsonDocument.ParseValue(ref reader);
         JsonElement root = doc.RootElement;
 
-        CategoryBase baseCategory = JsonSerializer.Deserialize<CategoryBase>(
-            root.GetProperty("BaseCategory").GetRawText(),
-            options
-        ) ?? throw new JsonException("BaseCategory is required");
+        CategoryBase baseCategory =
+            JsonSerializer.Deserialize<CategoryBase>(
+                root.GetProperty("BaseCategory").GetRawText(),
+                options
+            ) ?? throw new JsonException("BaseCategory is required");
 
         int minCount = root.GetProperty("MinCount").GetInt32();
         int maxCount = root.GetProperty("MaxCount").GetInt32();
 
         try
         {
-            return new ComboCategory(baseCategory, minCount, maxCount, RequirementMaximumModeJson.Read(root));
+            return new ComboCategory(
+                baseCategory,
+                minCount,
+                maxCount,
+                RequirementMaximumModeJson.Read(root)
+            );
         }
         catch (ArgumentException ex)
         {
@@ -29,7 +39,11 @@ public class ComboCategoryConverter : JsonConverter<ComboCategory>
         }
     }
 
-    public override void Write(Utf8JsonWriter writer, ComboCategory value, JsonSerializerOptions options)
+    public override void Write(
+        Utf8JsonWriter writer,
+        ComboCategory value,
+        JsonSerializerOptions options
+    )
     {
         writer.WriteStartObject();
         writer.WritePropertyName("BaseCategory");

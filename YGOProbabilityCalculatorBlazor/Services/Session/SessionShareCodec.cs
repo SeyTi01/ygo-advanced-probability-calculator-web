@@ -16,13 +16,18 @@ public static class SessionShareCodec
     private const int HeaderLength = 36;
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
-    private static readonly HashSet<string> Collections =
-        new([
-                "Cards", "Categories", "Combos", "ComboGroups", "ManualMetadataCategoryKeys", "AlternativeGroups",
-                "Alternatives"
-            ],
-            StringComparer.OrdinalIgnoreCase
-        );
+    private static readonly HashSet<string> Collections = new(
+        [
+            "Cards",
+            "Categories",
+            "Combos",
+            "ComboGroups",
+            "ManualMetadataCategoryKeys",
+            "AlternativeGroups",
+            "Alternatives",
+        ],
+        StringComparer.OrdinalIgnoreCase
+    );
 
     public static string CreateLink(string baseUri, string serializedSession)
     {
@@ -54,8 +59,14 @@ public static class SessionShareCodec
         BinaryPrimitives.WriteInt32LittleEndian(transport, json.Length);
         SHA256.HashData(compressedBytes, transport.AsSpan(4, 32));
         compressedBytes.CopyTo(transport, HeaderLength);
-        string payload = Convert.ToBase64String(transport).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        string origin = new UriBuilder(baseUri) { Query = "", Fragment = "" }.Uri.AbsoluteUri;
+        string payload = Convert
+            .ToBase64String(transport)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+        string origin = new UriBuilder(baseUri) { Query = "", Fragment = "" }
+            .Uri
+            .AbsoluteUri;
         string link = origin + Prefix + payload;
 
         if (link.Length > MaxUrlLength)
@@ -73,24 +84,27 @@ public static class SessionShareCodec
             throw TooLarge();
         }
 
-        if (! fragment.StartsWith(Prefix, StringComparison.Ordinal))
+        if (!fragment.StartsWith(Prefix, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Unsupported shared-link format version.");
         }
 
         string payload = fragment[Prefix.Length..];
 
-        if (payload.Length == 0 || payload.Length % 4 == 1 || payload.Any(c =>
-                ! char.IsAsciiLetterOrDigit(c) && c != '-' && c != '_'
-            ))
+        if (
+            payload.Length == 0
+            || payload.Length % 4 == 1
+            || payload.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-' && c != '_')
+        )
         {
             throw Invalid();
         }
 
         try
         {
-            byte[] transport = Convert.FromBase64String(payload.Replace('-', '+').Replace('_', '/') +
-                                                        new string('=', (4 - payload.Length % 4) % 4)
+            byte[] transport = Convert.FromBase64String(
+                payload.Replace('-', '+').Replace('_', '/')
+                    + new string('=', (4 - payload.Length % 4) % 4)
             );
 
             if (transport.Length <= HeaderLength)
@@ -109,14 +123,25 @@ public static class SessionShareCodec
             byte[] json = new byte[length];
             Span<byte> compressedBytes = transport.AsSpan(HeaderLength);
 
-            if (compressedBytes.Length < 18 || compressedBytes[0] != 0x1f || compressedBytes[1] != 0x8b ||
-                BinaryPrimitives.ReadUInt32LittleEndian(compressedBytes[^4..]) != length ||
-                ! CryptographicOperations.FixedTimeEquals(SHA256.HashData(compressedBytes), transport.AsSpan(4, 32)))
+            if (
+                compressedBytes.Length < 18
+                || compressedBytes[0] != 0x1f
+                || compressedBytes[1] != 0x8b
+                || BinaryPrimitives.ReadUInt32LittleEndian(compressedBytes[^4..]) != length
+                || !CryptographicOperations.FixedTimeEquals(
+                    SHA256.HashData(compressedBytes),
+                    transport.AsSpan(4, 32)
+                )
+            )
             {
                 throw Invalid();
             }
 
-            using MemoryStream input = new(transport, HeaderLength, transport.Length - HeaderLength);
+            using MemoryStream input = new(
+                transport,
+                HeaderLength,
+                transport.Length - HeaderLength
+            );
             using GZipStream decoder = new(input, CompressionMode.Decompress);
             decoder.ReadExactly(json);
 
@@ -130,8 +155,14 @@ public static class SessionShareCodec
 
             return text;
         }
-        catch (Exception ex) when (ex is FormatException or DecoderFallbackException or JsonException
-                                       or InvalidDataException or EndOfStreamException)
+        catch (Exception ex)
+            when (ex
+                    is FormatException
+                        or DecoderFallbackException
+                        or JsonException
+                        or InvalidDataException
+                        or EndOfStreamException
+            )
         {
             throw Invalid();
         }
@@ -175,28 +206,43 @@ public static class SessionShareCodec
 
                 foreach (JsonProperty property in element.EnumerateObject())
                 {
-                    if (property.Name.Length > 4096 || ! names.Add(property.Name))
+                    if (property.Name.Length > 4096 || !names.Add(property.Name))
                     {
                         throw Invalid();
                     }
 
                     // The file loader intentionally tolerates some absent fields. Explicit null
                     // model nodes must never reach application after result invalidation starts.
-                    if (Collections.Contains(property.Name) && property.Value.ValueKind != JsonValueKind.Array)
+                    if (
+                        Collections.Contains(property.Name)
+                        && property.Value.ValueKind != JsonValueKind.Array
+                    )
                     {
                         throw Invalid();
                     }
 
-                    if ((property.Name.Equals("BaseCategory", StringComparison.OrdinalIgnoreCase) ||
-                         property.Name.Equals("CategoryColorIndices", StringComparison.OrdinalIgnoreCase)) &&
-                        property.Value.ValueKind != JsonValueKind.Object)
+                    if (
+                        (
+                            property.Name.Equals("BaseCategory", StringComparison.OrdinalIgnoreCase)
+                            || property.Name.Equals(
+                                "CategoryColorIndices",
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
+                        && property.Value.ValueKind != JsonValueKind.Object
+                    )
                     {
                         throw Invalid();
                     }
 
-                    if (property.Name.Equals("Copies", StringComparison.OrdinalIgnoreCase) &&
-                        (property.Value.ValueKind != JsonValueKind.Number ||
-                         ! property.Value.TryGetInt32(out int copies) || copies is < -10000 or > 10000))
+                    if (
+                        property.Name.Equals("Copies", StringComparison.OrdinalIgnoreCase)
+                        && (
+                            property.Value.ValueKind != JsonValueKind.Number
+                            || !property.Value.TryGetInt32(out int copies)
+                            || copies is < -10000 or > 10000
+                        )
+                    )
                     {
                         throw Invalid();
                     }
@@ -235,5 +281,6 @@ public static class SessionShareCodec
     private static InvalidOperationException TooLarge() =>
         new("This session is too large for a share link. Share a normal session file instead.");
 
-    private static InvalidOperationException Invalid() => new("The shared session link is invalid or corrupted.");
+    private static InvalidOperationException Invalid() =>
+        new("The shared session link is invalid or corrupted.");
 }

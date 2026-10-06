@@ -1,11 +1,11 @@
-using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Shared;
@@ -31,7 +31,8 @@ public class ProbabilityResultLayoutTest
         Mock<IProbabilityCalculatorService> calculator = new();
         resultToReturn = new ProbabilityCalculationResult(0, []);
         calculator
-            .Setup(service => service.CalculateProbabilityResults(
+            .Setup(service =>
+                service.CalculateProbabilityResults(
                     It.IsAny<List<Card>>(),
                     It.IsAny<List<Combo>>(),
                     It.IsAny<int>(),
@@ -66,12 +67,12 @@ public class ProbabilityResultLayoutTest
                 new ComboProbabilityResult(1, "Loose route", 0.25),
                 new ComboProbabilityResult(2, "Second route", 0.382, "group-second"),
                 new ComboProbabilityResult(3, "Shared route", 0.51, "group-first"),
-                new ComboProbabilityResult(4, null, 0.08, "missing-group")
+                new ComboProbabilityResult(4, null, 0.08, "missing-group"),
             ],
             [
                 new GroupProbabilityResult("group-second", "Repeated name", 0.382, 1),
                 new GroupProbabilityResult("group-first", "Repeated name", 0.7234, 2),
-                new GroupProbabilityResult("empty-group", "Empty group", 0, 0)
+                new GroupProbabilityResult("empty-group", "Empty group", 0, 0),
             ]
         );
 
@@ -80,50 +81,63 @@ public class ProbabilityResultLayoutTest
 
         IElement results = cut.Find(".probability-results");
         Assert.That(results.QuerySelectorAll(".probability-total-value"), Has.Length.EqualTo(1));
-        Assert.That(results.QuerySelector(".probability-total-value")!.TextContent,
+        Assert.That(
+            results.QuerySelector(".probability-total-value")!.TextContent,
             Is.EqualTo(0.8361.ToString("P2"))
         );
 
         IHtmlCollection<IElement> groups = results.QuerySelectorAll(".probability-group-container");
         Assert.That(groups, Has.Length.EqualTo(3));
-        Assert.That(groups.Select(GroupName), Is.EqualTo(new[] { "Repeated name", "Repeated name", "Empty group" }));
-        Assert.That(groups.Select(GroupProbability),
-            Is.EqualTo(new[]
-                {
-                    0.382.ToString("P2"), 0.7234.ToString("P2"), 0.0.ToString("P2")
-                }
-            )
+        Assert.That(
+            groups.Select(GroupName),
+            Is.EqualTo(new[] { "Repeated name", "Repeated name", "Empty group" })
+        );
+        Assert.That(
+            groups.Select(GroupProbability),
+            Is.EqualTo(new[] { 0.382.ToString("P2"), 0.7234.ToString("P2"), 0.0.ToString("P2") })
         );
 
-        IHtmlCollection<IElement> secondGroupMembers =
-            groups[0].QuerySelectorAll(".probability-group-members .combo-probability-item");
+        IHtmlCollection<IElement> secondGroupMembers = groups[0]
+            .QuerySelectorAll(".probability-group-members .combo-probability-item");
         Assert.That(ComboNames(secondGroupMembers), Is.EqualTo(new[] { "Second route" }));
-        IHtmlCollection<IElement> firstGroupMembers =
-            groups[1].QuerySelectorAll(".probability-group-members .combo-probability-item");
-        Assert.That(ComboNames(firstGroupMembers), Is.EqualTo(new[] { "Shared route", "Shared route" }));
-        Assert.That(ComboProbabilities(firstGroupMembers),
+        IHtmlCollection<IElement> firstGroupMembers = groups[1]
+            .QuerySelectorAll(".probability-group-members .combo-probability-item");
+        Assert.That(
+            ComboNames(firstGroupMembers),
+            Is.EqualTo(new[] { "Shared route", "Shared route" })
+        );
+        Assert.That(
+            ComboProbabilities(firstGroupMembers),
             Is.EqualTo(new[] { 0.4.ToString("P2"), 0.51.ToString("P2") })
         );
-        Assert.That(groups[2].QuerySelectorAll(".combo-probability-item"),
+        Assert.That(
+            groups[2].QuerySelectorAll(".combo-probability-item"),
             Is.Empty,
             "an empty configured group still renders its aggregate without invented members"
         );
         Assert.That(groups[2].TextContent, Does.Contain("(0 active)"));
 
-        Assert.That(results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item"),
+        Assert.That(
+            results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item"),
             Has.Length.EqualTo(2)
         );
-        Assert.That(results.QuerySelector("h6:not(.probability-group-heading)")!.TextContent.Trim(),
+        Assert.That(
+            results.QuerySelector("h6:not(.probability-group-heading)")!.TextContent.Trim(),
             Is.EqualTo("Ungrouped combos")
         );
-        Assert.That(ComboNames(results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item")),
+        Assert.That(
+            ComboNames(
+                results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item")
+            ),
             Is.EqualTo(new[] { "Loose route", "Unnamed combo 5" })
         );
-        Assert.That(results.QuerySelectorAll(".combo-probability-item"),
+        Assert.That(
+            results.QuerySelectorAll(".combo-probability-item"),
             Has.Length.EqualTo(5),
             "grouped rows appear only beneath their group; ungrouped and orphan rows appear once after groups"
         );
-        Assert.That(results
+        Assert.That(
+            results
                 .QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item")
                 .Select(row => row.QuerySelector(".combo-probability-value")!.TextContent),
             Is.EqualTo(new[] { 0.25.ToString("P2"), 0.08.ToString("P2") })
@@ -138,7 +152,7 @@ public class ProbabilityResultLayoutTest
             [
                 new ComboProbabilityResult(0, "Duplicate", 0.4),
                 new ComboProbabilityResult(1, "Duplicate", 0.3),
-                new ComboProbabilityResult(2, null, 0.1)
+                new ComboProbabilityResult(2, null, 0.1),
             ]
         );
 
@@ -147,18 +161,20 @@ public class ProbabilityResultLayoutTest
 
         IElement results = cut.Find(".probability-results");
         Assert.That(results.QuerySelectorAll(".probability-group-container"), Is.Empty);
-        Assert.That(results.QuerySelector("h6:not(.probability-group-heading)")!.TextContent.Trim(),
+        Assert.That(
+            results.QuerySelector("h6:not(.probability-group-heading)")!.TextContent.Trim(),
             Is.EqualTo("Individual combos")
         );
-        IHtmlCollection<IElement> rows =
-            results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item");
-        Assert.That(ComboNames(rows), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
-        Assert.That(ComboProbabilities(rows),
-            Is.EqualTo(new[]
-                {
-                    0.4.ToString("P2"), 0.3.ToString("P2"), 0.1.ToString("P2")
-                }
-            )
+        IHtmlCollection<IElement> rows = results.QuerySelectorAll(
+            ".probability-ungrouped-combos .combo-probability-item"
+        );
+        Assert.That(
+            ComboNames(rows),
+            Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" })
+        );
+        Assert.That(
+            ComboProbabilities(rows),
+            Is.EqualTo(new[] { 0.4.ToString("P2"), 0.3.ToString("P2"), 0.1.ToString("P2") })
         );
         Assert.That(results.QuerySelectorAll(".probability-total-value"), Has.Length.EqualTo(1));
     }
@@ -166,17 +182,21 @@ public class ProbabilityResultLayoutTest
     [Test]
     public async Task StaleResultsKeepTheirCalculatedGroupSnapshotUntilRecalculation()
     {
-        ComboGroup[] groups = [new ComboGroup("group-a", "Alpha"), new ComboGroup("group-b", "Beta")];
+        ComboGroup[] groups =
+        [
+            new ComboGroup("group-a", "Alpha"),
+            new ComboGroup("group-b", "Beta"),
+        ];
         SessionState session = Session(groups, "group-a", "group-b");
         resultToReturn = new ProbabilityCalculationResult(
             0.9,
             [
                 new ComboProbabilityResult(0, "Move me", 0.7, "group-a"),
-                new ComboProbabilityResult(1, "Stay", 0.4, "group-b")
+                new ComboProbabilityResult(1, "Stay", 0.4, "group-b"),
             ],
             [
                 new GroupProbabilityResult("group-a", "Alpha", 0.7, 1),
-                new GroupProbabilityResult("group-b", "Beta", 0.4, 1)
+                new GroupProbabilityResult("group-b", "Beta", 0.4, 1),
             ]
         );
 
@@ -190,16 +210,28 @@ public class ProbabilityResultLayoutTest
         await groupName.InputAsync(new() { Value = "Alpha renamed" });
         await groupName.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
 
-        Assert.That(cut.Find(".probability-result-status .visually-hidden").TextContent.Trim(),
+        Assert.That(
+            cut.Find(".probability-result-status .visually-hidden").TextContent.Trim(),
             Is.EqualTo("Previous result · inputs changed")
         );
-        Assert.That(cut.Find("[aria-label='Group for Editor combo 1']").GetAttribute("value"), Is.EqualTo("group-b"));
+        Assert.That(
+            cut.Find("[aria-label='Group for Editor combo 1']").GetAttribute("value"),
+            Is.EqualTo("group-b")
+        );
         IElement[] staleGroups = ResultGroups(cut);
         Assert.That(staleGroups.Select(GroupName), Is.EqualTo(new[] { "Alpha", "Beta" }));
-        Assert.That(ComboNames(staleGroups[0].QuerySelectorAll(".probability-group-members .combo-probability-item")),
+        Assert.That(
+            ComboNames(
+                staleGroups[0]
+                    .QuerySelectorAll(".probability-group-members .combo-probability-item")
+            ),
             Is.EqualTo(new[] { "Move me" })
         );
-        Assert.That(ComboNames(staleGroups[1].QuerySelectorAll(".probability-group-members .combo-probability-item")),
+        Assert.That(
+            ComboNames(
+                staleGroups[1]
+                    .QuerySelectorAll(".probability-group-members .combo-probability-item")
+            ),
             Is.EqualTo(new[] { "Stay" })
         );
 
@@ -207,55 +239,78 @@ public class ProbabilityResultLayoutTest
             0.95,
             [
                 new ComboProbabilityResult(0, "Move me", 0.7, "group-b"),
-                new ComboProbabilityResult(1, "Stay", 0.4, "group-b")
+                new ComboProbabilityResult(1, "Stay", 0.4, "group-b"),
             ],
             [
                 new GroupProbabilityResult("group-a", "Alpha renamed", 0, 0),
-                new GroupProbabilityResult("group-b", "Beta", 0.8, 2)
+                new GroupProbabilityResult("group-b", "Beta", 0.8, 2),
             ]
         );
         await Calculate(cut);
 
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
         IElement[] recalculatedGroups = ResultGroups(cut);
-        Assert.That(recalculatedGroups.Select(GroupName), Is.EqualTo(new[] { "Alpha renamed", "Beta" }));
+        Assert.That(
+            recalculatedGroups.Select(GroupName),
+            Is.EqualTo(new[] { "Alpha renamed", "Beta" })
+        );
         Assert.That(recalculatedGroups[0].QuerySelectorAll(".combo-probability-item"), Is.Empty);
-        Assert.That(ComboNames(recalculatedGroups[1]
-                .QuerySelectorAll(".probability-group-members .combo-probability-item")
+        Assert.That(
+            ComboNames(
+                recalculatedGroups[1]
+                    .QuerySelectorAll(".probability-group-members .combo-probability-item")
             ),
             Is.EqualTo(new[] { "Move me", "Stay" })
         );
-        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.95.ToString("P2")));
+        Assert.That(
+            cut.Find(".probability-total-value").TextContent,
+            Is.EqualTo(0.95.ToString("P2"))
+        );
     }
 
     private IRenderedComponent<ProbabilityCalculatorComponent> Render(SessionState? session = null)
     {
-        context.Services.GetRequiredService<IPendingSessionService>().PendingSession = session ?? Session();
+        context.Services.GetRequiredService<IPendingSessionService>().PendingSession =
+            session ?? Session();
 
         return context.RenderComponent<ProbabilityCalculatorComponent>();
     }
 
     private static async Task Calculate(IRenderedComponent<ProbabilityCalculatorComponent> cut) =>
-        await cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").ClickAsync(new());
+        await cut.FindAll("button")
+            .Single(button => button.TextContent.Trim() == "Calculate")
+            .ClickAsync(new());
 
-    private static SessionState Session(IReadOnlyList<ComboGroup>? groups = null, params string?[] assignments) => new()
-    {
-        Cards = [new([requirement], 3, "Required piece")],
-        Combos = assignments.Length == 0
-            ? [new([new(requirement, 1, 1)], "Valid combo")]
-            :
-            [
-                .. assignments.Select((groupId, index) =>
-                    new Combo([new(requirement, 1, 1)], $"Editor combo {index + 1}", groupId: groupId)
-                )
-            ],
-        ComboGroups = groups?.ToList() ?? [],
-        HandSize = 1
-    };
+    private static SessionState Session(
+        IReadOnlyList<ComboGroup>? groups = null,
+        params string?[] assignments
+    ) =>
+        new()
+        {
+            Cards = [new([requirement], 3, "Required piece")],
+            Combos =
+                assignments.Length == 0
+                    ? [new([new(requirement, 1, 1)], "Valid combo")]
+                    :
+                    [
+                        .. assignments.Select(
+                            (groupId, index) =>
+                                new Combo(
+                                    [new(requirement, 1, 1)],
+                                    $"Editor combo {index + 1}",
+                                    groupId: groupId
+                                )
+                        ),
+                    ],
+            ComboGroups = groups?.ToList() ?? [],
+            HandSize = 1,
+        };
 
     private static string GroupName(IElement group)
     {
-        string text = group.QuerySelector(".probability-group-heading .combo-probability-name")!.TextContent.Trim();
+        string text = group
+            .QuerySelector(".probability-group-heading .combo-probability-name")!
+            .TextContent.Trim();
         int activeCount = text.LastIndexOf(" (", StringComparison.Ordinal);
 
         return activeCount < 0 ? text : text[..activeCount];

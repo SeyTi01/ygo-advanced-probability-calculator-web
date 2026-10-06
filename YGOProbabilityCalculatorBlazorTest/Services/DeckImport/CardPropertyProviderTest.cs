@@ -33,11 +33,19 @@ public class CardPropertyProviderTest
     [TestCase("XYZ Pendulum Effect Monster", "Xyz,Pendulum,Effect")]
     public void DocumentedMonsterTypesEmitOnlyStatedFacets(string type, string facets)
     {
-        IReadOnlyList<CategoryBase> actual = CardPropertyProvider.GetCategories(new() { Type = type });
-        IEnumerable<string> expected = facets.Split(',').Select(facet => $"{facet} Monster").Prepend("Monster");
+        IReadOnlyList<CategoryBase> actual = CardPropertyProvider.GetCategories(
+            new() { Type = type }
+        );
+        IEnumerable<string> expected = facets
+            .Split(',')
+            .Select(facet => $"{facet} Monster")
+            .Prepend("Monster");
         Assert.That(actual.Select(category => category.Name), Is.EquivalentTo(expected));
         Assert.That(actual.All(category => category.Source == CategorySource.Metadata), Is.True);
-        Assert.That(actual.Select(category => category.MetadataKey).Distinct().Count(), Is.EqualTo(actual.Count));
+        Assert.That(
+            actual.Select(category => category.MetadataKey).Distinct().Count(),
+            Is.EqualTo(actual.Count)
+        );
     }
 
     [TestCase("Spell Card", "Normal", "Spell", "Normal Spell")]
@@ -50,7 +58,10 @@ public class CardPropertyProviderTest
     [TestCase("Trap Card", "Continuous", "Trap", "Continuous Trap")]
     [TestCase("Trap Card", "Counter", "Trap", "Counter Trap")]
     public void SpellTrapSubtypesUseRace(string type, string race, string broad, string specific) =>
-        Assert.That(CardPropertyProvider.GetCategories(new() { Type = type, Race = race }).Select(c => c.Name),
+        Assert.That(
+            CardPropertyProvider
+                .GetCategories(new() { Type = type, Race = race })
+                .Select(c => c.Name),
             Is.EqualTo(new[] { broad, specific })
         );
 
@@ -65,30 +76,48 @@ public class CardPropertyProviderTest
     {
         CardInfo info = new()
         {
-            Type = "Pendulum Effect Monster", Race = "Warrior", Attribute = "FIRE",
-            Level = 5, Scale = 0, Archetype = "Vanquish Soul"
+            Type = "Pendulum Effect Monster",
+            Race = "Warrior",
+            Attribute = "FIRE",
+            Level = 5,
+            Scale = 0,
+            Archetype = "Vanquish Soul",
         };
         IReadOnlyList<CategoryBase> categories = CardPropertyProvider.GetCategories(info);
-        Assert.That(categories.Select(c => c.MetadataKey),
-            Is.EquivalentTo(new[]
+        Assert.That(
+            categories.Select(c => c.MetadataKey),
+            Is.EquivalentTo(
+                new[]
                 {
-                    "kind:monster", "monster-trait:pendulum", "monster-trait:effect", "monster-race:warrior",
-                    "attribute:fire", "level:5", "scale:0", "archetype:vanquish%20soul"
+                    "kind:monster",
+                    "monster-trait:pendulum",
+                    "monster-trait:effect",
+                    "monster-race:warrior",
+                    "attribute:fire",
+                    "level:5",
+                    "scale:0",
+                    "archetype:vanquish%20soul",
                 }
             )
         );
-        Assert.That(categories.Select(c => c.Name),
+        Assert.That(
+            categories.Select(c => c.Name),
             Does.Contain("Pendulum Scale 0").And.Contain("Archetype: Vanquish Soul")
         );
-        Assert.That(categories.Select(c => c.MetadataKey),
-            Is.EqualTo(CardPropertyProvider
-                .GetCategories(info with
-                    {
-                        Type = "PENDULUM EFFECT EFFECT MONSTER", Attribute = "fire", Race = "warrior",
-                        Archetype = "vanquish soul"
-                    }
-                )
-                .Select(c => c.MetadataKey)
+        Assert.That(
+            categories.Select(c => c.MetadataKey),
+            Is.EqualTo(
+                CardPropertyProvider
+                    .GetCategories(
+                        info with
+                        {
+                            Type = "PENDULUM EFFECT EFFECT MONSTER",
+                            Attribute = "fire",
+                            Race = "warrior",
+                            Archetype = "vanquish soul",
+                        }
+                    )
+                    .Select(c => c.MetadataKey)
             )
         );
     }
@@ -97,8 +126,15 @@ public class CardPropertyProviderTest
     [TestCase("Link Monster", "link", "Link 2")]
     public void ExtraDeckValuesDoNotBecomeLevels(string type, string frame, string expected)
     {
-        IReadOnlyList<CategoryBase> categories = CardPropertyProvider.GetCategories(new()
-            { Type = type, FrameType = frame, Level = 4, LinkVal = 2, Scale = 8 }
+        IReadOnlyList<CategoryBase> categories = CardPropertyProvider.GetCategories(
+            new()
+            {
+                Type = type,
+                FrameType = frame,
+                Level = 4,
+                LinkVal = 2,
+                Scale = 8,
+            }
         );
         Assert.That(categories.Select(c => c.Name), Does.Contain(expected));
         Assert.That(categories.Any(c => c.MetadataKey!.StartsWith("level:")), Is.False);
@@ -117,7 +153,8 @@ public class CardPropertyProviderTest
     [TestCase("spell", "Spell")]
     [TestCase("trap", "Trap")]
     public void FrameCanSupplyReliableBroadKindWhenTypeIsMissing(string frame, string label) =>
-        Assert.That(CardPropertyProvider.GetCategories(new() { FrameType = frame }).Select(c => c.Name),
+        Assert.That(
+            CardPropertyProvider.GetCategories(new() { FrameType = frame }).Select(c => c.Name),
             Is.EqualTo(new[] { label })
         );
 }

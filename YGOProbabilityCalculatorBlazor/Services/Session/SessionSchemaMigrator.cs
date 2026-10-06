@@ -14,7 +14,7 @@ public sealed class SessionSchemaMigrator
         {
             [0] = MigrateV0ToV1,
             [1] = MigrateV1ToV2,
-            [2] = root => SetSchemaVersion(root, 3)
+            [2] = root => SetSchemaVersion(root, 3),
         };
 
     public string MigrateToCurrent(string json)
@@ -31,11 +31,13 @@ public sealed class SessionSchemaMigrator
         [
             .. rootElement
                 .EnumerateObject()
-                .Where(property => string.Equals(property.Name,
+                .Where(property =>
+                    string.Equals(
+                        property.Name,
                         nameof(SessionState.SchemaVersion),
                         StringComparison.OrdinalIgnoreCase
                     )
-                )
+                ),
         ];
 
         if (schemaVersionProperties.Length > 1)
@@ -43,9 +45,10 @@ public sealed class SessionSchemaMigrator
             throw new JsonException("Session schema version field is duplicated.");
         }
 
-        int sourceVersion = schemaVersionProperties.Length == 0
-            ? 0
-            : ReadSchemaVersion(schemaVersionProperties[0].Value);
+        int sourceVersion =
+            schemaVersionProperties.Length == 0
+                ? 0
+                : ReadSchemaVersion(schemaVersionProperties[0].Value);
 
         if (sourceVersion < 0)
         {
@@ -62,14 +65,15 @@ public sealed class SessionSchemaMigrator
             return json;
         }
 
-        JsonObject root = JsonNode.Parse(json) as JsonObject
-                          ?? throw new JsonException("Session root must be a JSON object.");
+        JsonObject root =
+            JsonNode.Parse(json) as JsonObject
+            ?? throw new JsonException("Session root must be a JSON object.");
 
         int version = sourceVersion;
 
         while (version < SessionState.CurrentSchemaVersion)
         {
-            if (! Migrations.TryGetValue(version, out Action<JsonObject>? migration))
+            if (!Migrations.TryGetValue(version, out Action<JsonObject>? migration))
             {
                 throw UnsupportedVersion(version);
             }
@@ -83,7 +87,7 @@ public sealed class SessionSchemaMigrator
 
     private static int ReadSchemaVersion(JsonElement value)
     {
-        if (value.ValueKind != JsonValueKind.Number || ! value.TryGetInt32(out int version))
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out int version))
         {
             throw new JsonException("Session schema version must be a non-negative integer.");
         }
@@ -132,12 +136,11 @@ public sealed class SessionSchemaMigrator
                 return;
             }
 
-            foreach (string key in requirement
-                .Select(p => p.Key)
-                .Where(key =>
-                    key.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase)
-                )
-                .ToArray()
+            foreach (
+                string key in requirement
+                    .Select(p => p.Key)
+                    .Where(key => key.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase))
+                    .ToArray()
             )
             {
                 requirement.Remove(key);
@@ -153,13 +156,14 @@ public sealed class SessionSchemaMigrator
                 return;
             }
 
-            foreach (string key in category
-                .Select(p => p.Key)
-                .Where(key =>
-                    key.Equals("Source", StringComparison.OrdinalIgnoreCase) ||
-                    key.Equals("MetadataKey", StringComparison.OrdinalIgnoreCase)
-                )
-                .ToArray()
+            foreach (
+                string key in category
+                    .Select(p => p.Key)
+                    .Where(key =>
+                        key.Equals("Source", StringComparison.OrdinalIgnoreCase)
+                        || key.Equals("MetadataKey", StringComparison.OrdinalIgnoreCase)
+                    )
+                    .ToArray()
             )
             {
                 category.Remove(key);
@@ -168,9 +172,12 @@ public sealed class SessionSchemaMigrator
             category["Source"] = "User";
         }
 
-        static JsonNode? Property(JsonNode? node, string name) => node is JsonObject obj
-            ? obj.FirstOrDefault(p => p.Key.Equals(name, StringComparison.OrdinalIgnoreCase)).Value
-            : null;
+        static JsonNode? Property(JsonNode? node, string name) =>
+            node is JsonObject obj
+                ? obj.FirstOrDefault(p =>
+                    p.Key.Equals(name, StringComparison.OrdinalIgnoreCase)
+                ).Value
+                : null;
 
         static IEnumerable<JsonNode?> Array(JsonNode? node, string name) =>
             Property(node, name) is JsonArray array ? array : [];
@@ -178,10 +185,13 @@ public sealed class SessionSchemaMigrator
 
     private static void SetSchemaVersion(JsonObject root, int version)
     {
-        string? propertyName = root
-            .Select(property => property.Key)
+        string? propertyName = root.Select(property => property.Key)
             .SingleOrDefault(name =>
-                string.Equals(name, nameof(SessionState.SchemaVersion), StringComparison.OrdinalIgnoreCase)
+                string.Equals(
+                    name,
+                    nameof(SessionState.SchemaVersion),
+                    StringComparison.OrdinalIgnoreCase
+                )
             );
 
         root[propertyName ?? nameof(SessionState.SchemaVersion)] = version;

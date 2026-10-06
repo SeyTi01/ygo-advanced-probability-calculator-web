@@ -8,27 +8,31 @@ public static class CardPropertyColorPalette
     public const string GenericAttributeClass = "card-property-color-attribute";
     public const string MonsterTraitClass = "card-property-color-monster-trait";
 
-    private static readonly IReadOnlyDictionary<string, string> AttributeClasses =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["fire"] = "card-property-color-attribute-fire",
-            ["water"] = "card-property-color-attribute-water",
-            ["wind"] = "card-property-color-attribute-wind",
-            ["earth"] = "card-property-color-attribute-earth",
-            ["light"] = "card-property-color-attribute-light",
-            ["dark"] = "card-property-color-attribute-dark",
-            ["divine"] = "card-property-color-attribute-divine"
-        };
+    private static readonly IReadOnlyDictionary<string, string> AttributeClasses = new Dictionary<
+        string,
+        string
+    >(StringComparer.Ordinal)
+    {
+        ["fire"] = "card-property-color-attribute-fire",
+        ["water"] = "card-property-color-attribute-water",
+        ["wind"] = "card-property-color-attribute-wind",
+        ["earth"] = "card-property-color-attribute-earth",
+        ["light"] = "card-property-color-attribute-light",
+        ["dark"] = "card-property-color-attribute-dark",
+        ["divine"] = "card-property-color-attribute-divine",
+    };
 
-    private static readonly IReadOnlyDictionary<string, string> MonsterTypeClasses =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["ritual"] = "card-property-color-ritual",
-            ["fusion"] = "card-property-color-fusion",
-            ["synchro"] = "card-property-color-synchro",
-            ["xyz"] = "card-property-color-xyz",
-            ["link"] = "card-property-color-monster-link"
-        };
+    private static readonly IReadOnlyDictionary<string, string> MonsterTypeClasses = new Dictionary<
+        string,
+        string
+    >(StringComparer.Ordinal)
+    {
+        ["ritual"] = "card-property-color-ritual",
+        ["fusion"] = "card-property-color-fusion",
+        ["synchro"] = "card-property-color-synchro",
+        ["xyz"] = "card-property-color-xyz",
+        ["link"] = "card-property-color-monster-link",
+    };
 
     public static string GetCssClass(CategoryBase category) =>
         category.Source == CategorySource.Metadata
@@ -63,7 +67,7 @@ public static class CardPropertyColorPalette
                 "monster" => "card-property-color-monster",
                 "spell" => "card-property-color-spell",
                 "trap" => "card-property-color-trap",
-                _ => GenericMetadataClass
+                _ => GenericMetadataClass,
             },
             "spell-type" => "card-property-color-spell",
             "trap-type" => "card-property-color-trap",
@@ -77,15 +81,16 @@ public static class CardPropertyColorPalette
             "scale" => "card-property-color-scale",
             "monster-race" => "card-property-color-monster-race",
             "archetype" => "card-property-color-archetype",
-            _ => GenericMetadataClass
+            _ => GenericMetadataClass,
         };
     }
 
-    private static string GetMonsterTraitClass(string value) => value switch
-    {
-        "normal" => "card-property-color-normal",
-        "effect" => "card-property-color-effect",
-        "pendulum" => "card-property-color-pendulum",
-        _ => MonsterTraitClass
-    };
+    private static string GetMonsterTraitClass(string value) =>
+        value switch
+        {
+            "normal" => "card-property-color-normal",
+            "effect" => "card-property-color-effect",
+            "pendulum" => "card-property-color-pendulum",
+            _ => MonsterTraitClass,
+        };
 }

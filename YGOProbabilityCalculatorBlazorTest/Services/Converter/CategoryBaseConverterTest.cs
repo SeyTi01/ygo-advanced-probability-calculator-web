@@ -14,10 +14,7 @@ public class CategoryBaseConverterTests
     public void Setup()
     {
         _converter = new CategoryBaseConverter();
-        _options = new JsonSerializerOptions
-        {
-            Converters = { _converter }
-        };
+        _options = new JsonSerializerOptions { Converters = { _converter } };
     }
 
     [Test]
@@ -46,7 +43,9 @@ public class CategoryBaseConverterTests
     {
         const string json = "{}";
 
-        Assert.Throws<KeyNotFoundException>(() => JsonSerializer.Deserialize<CategoryBase>(json, _options));
+        Assert.Throws<KeyNotFoundException>(() =>
+            JsonSerializer.Deserialize<CategoryBase>(json, _options)
+        );
     }
 
     [Test]
@@ -54,7 +53,9 @@ public class CategoryBaseConverterTests
     {
         const string json = "{\"Name\":null}";
 
-        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<CategoryBase>(json, _options));
+        Assert.Throws<JsonException>(() =>
+            JsonSerializer.Deserialize<CategoryBase>(json, _options)
+        );
     }
 
     [TestCase("{\"Name\":\"Spell\",\"Source\":\"Metadata\"}")]
@@ -62,5 +63,7 @@ public class CategoryBaseConverterTests
     [TestCase("{\"Name\":\"Spell\",\"Source\":\"Unknown\"}")]
     [TestCase("{\"Name\":\"Spell\",\"Source\":42}")]
     public void InvalidCategoryIdentityIsRejected(string json) =>
-        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<CategoryBase>(json, _options));
+        Assert.Throws<JsonException>(() =>
+            JsonSerializer.Deserialize<CategoryBase>(json, _options)
+        );
 }

@@ -18,19 +18,21 @@ public static class ProbabilityResultSummaryFormatter
 
         IReadOnlyList<GroupProbabilityResult> groups =
             result.GroupProbabilities ?? Array.Empty<GroupProbabilityResult>();
-        HashSet<string> knownGroupIds = groups.Select(group => group.GroupId).ToHashSet(StringComparer.Ordinal);
+        HashSet<string> knownGroupIds = groups
+            .Select(group => group.GroupId)
+            .ToHashSet(StringComparer.Ordinal);
         List<ComboProbabilityResult> ungrouped =
         [
             .. result.ComboProbabilities.Where(combo =>
-                combo.GroupId is null || ! knownGroupIds.Contains(combo.GroupId)
-            )
+                combo.GroupId is null || !knownGroupIds.Contains(combo.GroupId)
+            ),
         ];
 
         List<string> lines =
         [
             "Probability results",
             $"Hand size: {handSize}",
-            $"Any active combo: {FormatProbability(result.TotalProbability, culture)}"
+            $"Any active combo: {FormatProbability(result.TotalProbability, culture)}",
         ];
 
         if (groups.Count == 0)
@@ -50,9 +52,11 @@ public static class ProbabilityResultSummaryFormatter
                     $"- **{NormalizeLabel(group.GroupName)}** — {FormatProbability(group.Probability, culture)} ({group.ActiveComboCount} active)"
                 );
 
-                foreach (ComboProbabilityResult combo in result.ComboProbabilities.Where(combo =>
-                             StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId)
-                         ))
+                foreach (
+                    ComboProbabilityResult combo in result.ComboProbabilities.Where(combo =>
+                        StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId)
+                    )
+                )
                 {
                     lines.Add(FormatCombo(combo, culture, indent: "  "));
                 }

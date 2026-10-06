@@ -22,7 +22,8 @@ public class CardArtworkLoadingTest
         return storage;
     }
 
-    private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> response) : HttpMessageHandler
+    private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> response)
+        : HttpMessageHandler
     {
         public List<string> Requests { get; } = [];
 
@@ -49,26 +50,36 @@ public class CardArtworkLoadingTest
         CardArtworkService service = new(info);
         Assert.That(await service.GetArtworkUrlAsync(1), Does.EndWith("/small/1.jpg"));
         Assert.That(await service.GetArtworkUrlAsync(1), Does.EndWith("/small/1.jpg"));
-        Assert.That(handler.Requests, Is.EqualTo(new[] { "https://db.ygoprodeck.com/api/v7/cardinfo.php?id=1" }));
+        Assert.That(
+            handler.Requests,
+            Is.EqualTo(new[] { "https://db.ygoprodeck.com/api/v7/cardinfo.php?id=1" })
+        );
     }
 
     [Test]
     public async Task ExpiredValidatedArtworkMetadataReusesRetainedIdentityWithoutCatalogRefresh()
     {
-        string cache = JsonSerializer.Serialize(new
+        string cache = JsonSerializer.Serialize(
+            new
             {
-                SchemaVersion = 2, LastFullRefreshUtc = DateTimeOffset.UtcNow.AddYears(-1),
+                SchemaVersion = 2,
+                LastFullRefreshUtc = DateTimeOffset.UtcNow.AddYears(-1),
                 Cards = new Dictionary<string, object>
                 {
                     ["2"] = new
                     {
-                        Id = 2, Name = "Alternate", CanonicalCardId = 1,
-                        ArtworkMetadataKnown = true, ArtworkImageIds = new[] { 1, 2 }
-                    }
-                }
+                        Id = 2,
+                        Name = "Alternate",
+                        CanonicalCardId = 1,
+                        ArtworkMetadataKnown = true,
+                        ArtworkImageIds = new[] { 1, 2 },
+                    },
+                },
             }
         );
-        using Handler handler = new(_ => throw new AssertionException("No metadata request expected"));
+        using Handler handler = new(_ =>
+            throw new AssertionException("No metadata request expected")
+        );
         using HttpClient http = new(handler);
         CardArtworkService service = new(new CardInfoService(Storage(cache).Object, http));
         Assert.That(await service.GetArtworkUrlAsync(2), Does.EndWith("/small/2.jpg"));
@@ -77,28 +88,31 @@ public class CardArtworkLoadingTest
 
     [TestCase(false)]
     [TestCase(true)]
-    public async Task TransientMetadataFailureIsRetryableAndExposesSecondsOrDateRetryAfter(bool date)
+    public async Task TransientMetadataFailureIsRetryableAndExposesSecondsOrDateRetryAfter(
+        bool date
+    )
     {
         int calls = 0;
         using Handler handler = new(_ =>
+        {
+            if (++calls > 1)
             {
-                if (++calls > 1)
-                {
-                    return Response(HttpStatusCode.OK, Json);
-                }
-
-                HttpResponseMessage response = Response(HttpStatusCode.TooManyRequests);
-                response.Headers.RetryAfter = date
-                    ? new RetryConditionHeaderValue(DateTimeOffset.UtcNow.AddMinutes(3))
-                    : new RetryConditionHeaderValue(TimeSpan.FromMinutes(3));
-
-                return response;
+                return Response(HttpStatusCode.OK, Json);
             }
-        );
+
+            HttpResponseMessage response = Response(HttpStatusCode.TooManyRequests);
+            response.Headers.RetryAfter = date
+                ? new RetryConditionHeaderValue(DateTimeOffset.UtcNow.AddMinutes(3))
+                : new RetryConditionHeaderValue(TimeSpan.FromMinutes(3));
+
+            return response;
+        });
         using HttpClient http = new(handler);
         CardArtworkService service = new(new CardInfoService(Storage().Object, http));
-        CardArtworkLookupException? error =
-            Assert.ThrowsAsync<CardArtworkLookupException>(async () => await service.GetArtworkUrlAsync(1));
+        CardArtworkLookupException? error = Assert.ThrowsAsync<CardArtworkLookupException>(
+            async () =>
+                await service.GetArtworkUrlAsync(1)
+        );
         Assert.That(error!.RetryAfter.TotalSeconds, Is.InRange(178, 181));
         Assert.That(await service.GetArtworkUrlAsync(1), Does.EndWith("/small/1.jpg"));
         Assert.That(handler.Requests, Has.Count.EqualTo(2));
@@ -107,8 +121,9 @@ public class CardArtworkLoadingTest
     [Test]
     public async Task SharedFailedMetadataTaskIsEvictedOnceAndNextConsumersShareRecovery()
     {
-        TaskCompletionSource<CardInfo> pending =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<CardInfo> pending = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         Mock<ICardInfoService> metadata = new();
         metadata.Setup(x => x.GetCardArtworkInfoAsync(1)).Returns(pending.Task);
         CardArtworkService service = new(metadata.Object);
@@ -119,8 +134,13 @@ public class CardArtworkLoadingTest
         Assert.ThrowsAsync<HttpRequestException>(async () => await second);
         metadata
             .Setup(x => x.GetCardArtworkInfoAsync(1))
-            .ReturnsAsync(new CardInfo
-                { Id = 1, ArtworkMetadataKnown = true, ArtworkImageIds = new[] { 1 } }
+            .ReturnsAsync(
+                new CardInfo
+                {
+                    Id = 1,
+                    ArtworkMetadataKnown = true,
+                    ArtworkImageIds = new[] { 1 },
+                }
             );
         Assert.That(await service.GetArtworkUrlAsync(1), Does.EndWith("/small/1.jpg"));
         Assert.That(await service.GetArtworkUrlAsync(1), Does.EndWith("/small/1.jpg"));
@@ -145,7 +165,8 @@ public class CardArtworkLoadingTest
         public TaskCompletionSource<HttpResponseMessage> Response { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Started { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -161,17 +182,23 @@ public class CardArtworkLoadingTest
     [Test]
     public async Task SlowArtworkMetadataDoesNotHoldImportOrSessionEnrichmentGate()
     {
-        string cache = JsonSerializer.Serialize(new
+        string cache = JsonSerializer.Serialize(
+            new
             {
-                SchemaVersion = 2, LastFullRefreshUtc = DateTimeOffset.UtcNow,
+                SchemaVersion = 2,
+                LastFullRefreshUtc = DateTimeOffset.UtcNow,
                 Cards = new Dictionary<string, object>
                 {
                     ["2"] = new
                     {
-                        Id = 2, Name = "Other", Type = "Spell Card", Race = "Normal",
-                        ArtworkMetadataKnown = true, ArtworkImageIds = new[] { 2 }
-                    }
-                }
+                        Id = 2,
+                        Name = "Other",
+                        Type = "Spell Card",
+                        Race = "Normal",
+                        ArtworkMetadataKnown = true,
+                        ArtworkImageIds = new[] { 2 },
+                    },
+                },
             }
         );
         using GateHandler handler = new();
@@ -179,8 +206,14 @@ public class CardArtworkLoadingTest
         CardInfoService service = new(Storage(cache).Object, http);
         Task<CardInfo> pending = service.GetCardArtworkInfoAsync(1);
         await handler.Started.Task;
-        Assert.That(await service.GetCardNameAsync(2).WaitAsync(TimeSpan.FromSeconds(1)), Is.EqualTo("Other"));
-        Assert.That((await service.GetCardArtworkInfoAsync(2).WaitAsync(TimeSpan.FromSeconds(1))).ArtworkImageIds,
+        Assert.That(
+            await service.GetCardNameAsync(2).WaitAsync(TimeSpan.FromSeconds(1)),
+            Is.EqualTo("Other")
+        );
+        Assert.That(
+            (
+                await service.GetCardArtworkInfoAsync(2).WaitAsync(TimeSpan.FromSeconds(1))
+            ).ArtworkImageIds,
             Is.EqualTo(new[] { 2 })
         );
         IReadOnlyDictionary<string, CardInfo> names = await service

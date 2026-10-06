@@ -9,7 +9,8 @@ public static class CategoryColorPalette
 {
     public const int PaletteSize = 12;
 
-    private static readonly IReadOnlyList<CategoryColorOption> Palette = Array.AsReadOnly<CategoryColorOption>([
+    private static readonly IReadOnlyList<CategoryColorOption> Palette =
+        Array.AsReadOnly<CategoryColorOption>([
             new(0, "Blue"),
             new(1, "Orange"),
             new(2, "Green"),
@@ -21,28 +22,35 @@ public static class CategoryColorPalette
             new(8, "Lime"),
             new(9, "Slate"),
             new(10, "Teal"),
-            new(11, "Magenta")
-        ]
-    );
+            new(11, "Magenta"),
+        ]);
 
     public static IReadOnlyList<CategoryColorOption> Options => Palette;
 
     public static bool IsValidIndex(int colorIndex) => colorIndex >= 0 && colorIndex < PaletteSize;
 
-    public static string GetCssClass(string categoryName, IReadOnlyDictionary<string, int> colorIndices)
+    public static string GetCssClass(
+        string categoryName,
+        IReadOnlyDictionary<string, int> colorIndices
+    )
     {
-        int colorIndex = colorIndices.TryGetValue(categoryName, out int assignedIndex) && IsValidIndex(assignedIndex)
-            ? assignedIndex
-            : 0;
+        int colorIndex =
+            colorIndices.TryGetValue(categoryName, out int assignedIndex)
+            && IsValidIndex(assignedIndex)
+                ? assignedIndex
+                : 0;
 
         return Palette[colorIndex].CssClass;
     }
 
-    public static int FirstAvailableIndex(IReadOnlySet<int> assignedIndices, int assignedCategoryCount = 0)
+    public static int FirstAvailableIndex(
+        IReadOnlySet<int> assignedIndices,
+        int assignedCategoryCount = 0
+    )
     {
         for (int candidate = 0; candidate < PaletteSize; candidate++)
         {
-            if (! assignedIndices.Contains(candidate))
+            if (!assignedIndices.Contains(candidate))
             {
                 return candidate;
             }

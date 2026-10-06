@@ -17,24 +17,33 @@ public class ComboCategory
         RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed
     )
     {
-        if (! Enum.IsDefined(maximumMode))
+        if (!Enum.IsDefined(maximumMode))
         {
             throw new ArgumentOutOfRangeException(nameof(maximumMode));
         }
 
         if (minCount < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(minCount), "Minimum count cannot be negative.");
+            throw new ArgumentOutOfRangeException(
+                nameof(minCount),
+                "Minimum count cannot be negative."
+            );
         }
 
         if (maxCount < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(maxCount), "Maximum count cannot be negative.");
+            throw new ArgumentOutOfRangeException(
+                nameof(maxCount),
+                "Maximum count cannot be negative."
+            );
         }
 
         if (maximumMode == RequirementMaximumMode.Fixed && maxCount < minCount)
         {
-            throw new ArgumentOutOfRangeException(nameof(maxCount), "Maximum count cannot be less than minimum count.");
+            throw new ArgumentOutOfRangeException(
+                nameof(maxCount),
+                "Maximum count cannot be less than minimum count."
+            );
         }
 
         BaseCategory = baseCategory;

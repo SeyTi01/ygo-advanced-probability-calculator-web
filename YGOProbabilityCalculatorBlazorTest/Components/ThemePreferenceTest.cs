@@ -20,12 +20,16 @@ public class ThemePreferenceTest
 
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>();
 
-        cut.WaitForAssertion(() => Assert.That(
+        cut.WaitForAssertion(() =>
+            Assert.That(
                 cut.Find("#theme-preference").GetAttribute("value"),
                 Is.EqualTo(expectedPreference)
             )
         );
-        Assert.That(cut.Find("#theme-preference").GetAttribute("aria-label"), Is.EqualTo("Color theme preference"));
+        Assert.That(
+            cut.Find("#theme-preference").GetAttribute("aria-label"),
+            Is.EqualTo("Color theme preference")
+        );
     }
 
     [Test]
@@ -43,7 +47,9 @@ public class ThemePreferenceTest
         await cut.Find("#theme-preference").ChangeAsync(new ChangeEventArgs { Value = "dark" });
 
         Assert.That(cut.Find("#theme-preference").GetAttribute("value"), Is.EqualTo("dark"));
-        JSRuntimeInvocation invocation = context.JSInterop.Invocations["ygoTheme.setPreference"].Single();
+        JSRuntimeInvocation invocation = context
+            .JSInterop.Invocations["ygoTheme.setPreference"]
+            .Single();
         Assert.That(invocation.Arguments.Single(), Is.EqualTo("dark"));
     }
 
@@ -57,7 +63,10 @@ public class ThemePreferenceTest
 
         Assert.That(cut.Find(".top-row .app-title").TagName, Is.EqualTo("H1"));
         Assert.That(cut.FindAll("h1"), Has.Count.EqualTo(1));
-        Assert.That(cut.Find("#theme-preference").GetAttribute("aria-label"), Is.EqualTo("Color theme preference"));
+        Assert.That(
+            cut.Find("#theme-preference").GetAttribute("aria-label"),
+            Is.EqualTo("Color theme preference")
+        );
         Assert.That(cut.Find("a[href='/help']").TextContent.Trim(), Is.EqualTo("Help"));
     }
 
@@ -68,7 +77,8 @@ public class ThemePreferenceTest
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Services.GetRequiredService<NavigationManager>().NavigateTo("/help");
 
-        IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>(parameters => parameters.Add(
+        IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>(parameters =>
+            parameters.Add(
                 layout => layout.Body,
                 builder => builder.AddMarkupContent(0, "<h1>Help page heading</h1>")
             )
@@ -77,7 +87,10 @@ public class ThemePreferenceTest
         Assert.That(cut.Find(".top-row .app-title").TagName, Is.EqualTo("DIV"));
         Assert.That(cut.FindAll("h1"), Has.Count.EqualTo(1));
         Assert.That(cut.Find("h1").TextContent, Is.EqualTo("Help page heading"));
-        Assert.That(cut.Find("#theme-preference").GetAttribute("aria-label"), Is.EqualTo("Color theme preference"));
+        Assert.That(
+            cut.Find("#theme-preference").GetAttribute("aria-label"),
+            Is.EqualTo("Color theme preference")
+        );
         Assert.That(cut.Find("a[href='/']").TextContent.Trim(), Is.EqualTo("Back"));
     }
 }

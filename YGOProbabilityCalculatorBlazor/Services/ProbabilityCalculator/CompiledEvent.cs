@@ -8,8 +8,8 @@ internal readonly record struct CountBound(BigInteger EligibleRows, int MinCount
 // equality and cached counts depend only on the compiled hand-wide bounds.
 internal sealed record CompiledEvent(CountBound[] Constraints, CountBound[]? Roles = null)
 {
-    public bool Equals(CompiledEvent? other) => other is not null &&
-                                                Constraints.AsSpan().SequenceEqual(other.Constraints);
+    public bool Equals(CompiledEvent? other) =>
+        other is not null && Constraints.AsSpan().SequenceEqual(other.Constraints);
 
     public override int GetHashCode()
     {

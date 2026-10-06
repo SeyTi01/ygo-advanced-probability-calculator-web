@@ -41,7 +41,8 @@ public class Card
     {
         List<CategoryBase> effective = [.. categories];
 
-        return new(effective,
+        return new(
+            effective,
             Copies,
             Name,
             Active,
@@ -60,7 +61,10 @@ public class Card
     {
         if (category.Source != CategorySource.Metadata)
         {
-            throw new ArgumentException("Manual card properties require a metadata category.", nameof(category));
+            throw new ArgumentException(
+                "Manual card properties require a metadata category.",
+                nameof(category)
+            );
         }
 
         // An existing objective membership must never become a removable override.
@@ -69,7 +73,8 @@ public class Card
             return this;
         }
 
-        return new(Categories.Concat([category]),
+        return new(
+            Categories.Concat([category]),
             Copies,
             Name,
             Active,
@@ -81,12 +86,13 @@ public class Card
 
     public Card WithoutManualMetadataCategory(string key)
     {
-        if (! ManualMetadataCategoryKeys.Contains(key))
+        if (!ManualMetadataCategoryKeys.Contains(key))
         {
             return this;
         }
 
-        return new(Categories.Where(c => c.Source != CategorySource.Metadata || c.MetadataKey != key),
+        return new(
+            Categories.Where(c => c.Source != CategorySource.Metadata || c.MetadataKey != key),
             Copies,
             Name,
             Active,
@@ -102,23 +108,32 @@ public class Card
 
         if (objective.Any(c => c.Source != CategorySource.Metadata))
         {
-            throw new ArgumentException("Objective card properties require metadata categories.", nameof(properties));
+            throw new ArgumentException(
+                "Objective card properties require metadata categories.",
+                nameof(properties)
+            );
         }
 
-        HashSet<string> objectiveKeys = objective.Select(c => c.MetadataKey!).ToHashSet(StringComparer.Ordinal);
+        HashSet<string> objectiveKeys = objective
+            .Select(c => c.MetadataKey!)
+            .ToHashSet(StringComparer.Ordinal);
         IEnumerable<CategoryBase> effective = Categories
-            .Where(c => c.Source == CategorySource.User || ManualMetadataCategoryKeys.Contains(c.MetadataKey!))
+            .Where(c =>
+                c.Source == CategorySource.User
+                || ManualMetadataCategoryKeys.Contains(c.MetadataKey!)
+            )
             .Concat(objective)
             .DistinctBy(c => c.Identity);
 
         // Once materialized objectively, an overlapping override is no longer removable.
-        return new(effective,
+        return new(
+            effective,
             Copies,
             Name,
             Active,
             Id,
             externalCardId,
-            ManualMetadataCategoryKeys.Where(key => ! objectiveKeys.Contains(key))
+            ManualMetadataCategoryKeys.Where(key => !objectiveKeys.Contains(key))
         );
     }
 
@@ -133,9 +148,10 @@ public class Card
             .Select(c => c.MetadataKey)
             .ToHashSet(StringComparer.Ordinal);
 
-        if (result.Any(key => string.IsNullOrWhiteSpace(key) || ! metadataKeys.Contains(key)))
+        if (result.Any(key => string.IsNullOrWhiteSpace(key) || !metadataKeys.Contains(key)))
         {
-            throw new ArgumentException("Manual card properties must refer to effective metadata categories.",
+            throw new ArgumentException(
+                "Manual card properties must refer to effective metadata categories.",
                 nameof(keys)
             );
         }

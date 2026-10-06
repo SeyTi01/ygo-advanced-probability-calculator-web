@@ -6,25 +6,40 @@ namespace YGOProbabilityCalculatorBlazor.Services.Converter;
 
 public class CategoryBaseConverter : JsonConverter<CategoryBase>
 {
-    public override CategoryBase Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override CategoryBase Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
     {
         using JsonDocument doc = JsonDocument.ParseValue(ref reader);
         JsonElement root = doc.RootElement;
         string? name = root.GetProperty("Name").GetString();
         CategorySource source = CategorySource.User;
 
-        if (root.TryGetProperty("Source", out JsonElement sourceProperty) &&
-            (sourceProperty.ValueKind != JsonValueKind.String ||
-             ! Enum.TryParse(sourceProperty.GetString(), out source) || ! Enum.IsDefined(source)))
+        if (
+            root.TryGetProperty("Source", out JsonElement sourceProperty)
+            && (
+                sourceProperty.ValueKind != JsonValueKind.String
+                || !Enum.TryParse(sourceProperty.GetString(), out source)
+                || !Enum.IsDefined(source)
+            )
+        )
         {
             throw new JsonException("Unknown category source.");
         }
 
-        string? key = root.TryGetProperty("MetadataKey", out JsonElement keyProperty) ? keyProperty.GetString() : null;
+        string? key = root.TryGetProperty("MetadataKey", out JsonElement keyProperty)
+            ? keyProperty.GetString()
+            : null;
 
         try
         {
-            return new CategoryBase(name ?? throw new JsonException("Name is required"), source, key);
+            return new CategoryBase(
+                name ?? throw new JsonException("Name is required"),
+                source,
+                key
+            );
         }
         catch (ArgumentException ex)
         {
@@ -32,7 +47,11 @@ public class CategoryBaseConverter : JsonConverter<CategoryBase>
         }
     }
 
-    public override void Write(Utf8JsonWriter writer, CategoryBase value, JsonSerializerOptions options)
+    public override void Write(
+        Utf8JsonWriter writer,
+        CategoryBase value,
+        JsonSerializerOptions options
+    )
     {
         writer.WriteStartObject();
         writer.WriteString("Name", value.Name);

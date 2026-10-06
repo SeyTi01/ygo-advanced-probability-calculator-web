@@ -1,6 +1,6 @@
 using Bunit;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -22,7 +22,14 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
         context.Services.AddSingleton(artwork.Object);
         SessionState session = Session();
         Card original = session.Cards[0];
-        session.Cards[0] = new Card(original.Categories, original.Copies, original.Name, false, original.Id, 1234);
+        session.Cards[0] = new Card(
+            original.Categories,
+            original.Copies,
+            original.Name,
+            false,
+            original.Id,
+            1234
+        );
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         Assert.That(cut.FindAll("img"), Is.Empty);
@@ -39,18 +46,29 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
         await thumbnail.InvokeAsync(() => thumbnail.Instance.ArtworkReady(1, resolved.Url));
         IRenderedComponent<CardArtwork> preview = editor.FindComponents<CardArtwork>().Last();
         await preview.InvokeAsync(() => preview.Instance.ArtworkReady(1, resolved.Url));
-        Assert.That(editor.Find("img").GetAttribute("src"),
+        Assert.That(
+            editor.Find("img").GetAttribute("src"),
             Is.EqualTo(CardArtworkService.ArtworkOrigin + "/small/1234.jpg")
         );
-        Assert.That(editor.Find(".card-artwork-preview img").GetAttribute("alt"), Does.Contain("First"));
+        Assert.That(
+            editor.Find(".card-artwork-preview img").GetAttribute("alt"),
+            Does.Contain("First")
+        );
         Assert.That(cut.Find(".probability-results").OuterHtml, Is.EqualTo(results));
         Assert.That(editor.Instance.Card.Active, Is.False);
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo(b.Identity));
         await Button(cut, "Save Session").ClickAsync(new());
         Assert.That(SavedSessionJson(1), Is.EqualTo(before));
-        Assert.That(before, Does.Not.Contain("image").And.Not.Contain("Artwork").And.Not.Contain("blob:"));
+        Assert.That(
+            before,
+            Does.Not.Contain("image").And.Not.Contain("Artwork").And.Not.Contain("blob:")
+        );
         await editor.Find(".accordion-button").ClickAsync(new());
-        Assert.That(cut.FindAll("img"), Has.Count.EqualTo(1), "The collapsed thumbnail remains visible");
+        Assert.That(
+            cut.FindAll("img"),
+            Has.Count.EqualTo(1),
+            "The collapsed thumbnail remains visible"
+        );
         await editor.Find(".accordion-button").ClickAsync(new());
         Assert.That(editor.FindAll("img"), Has.Count.EqualTo(1));
         artwork.Verify(x => x.GetArtworkUrlAsync(1234), Times.Once);
@@ -66,7 +84,14 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
         context.Services.AddSingleton(artwork.Object);
         SessionState session = Session();
         Card card = session.Cards[0];
-        session.Cards[0] = new Card(card.Categories, card.Copies, card.Name, card.Active, card.Id, 1234);
+        session.Cards[0] = new Card(
+            card.Categories,
+            card.Copies,
+            card.Name,
+            card.Active,
+            card.Id,
+            1234
+        );
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         await editor.Find(".accordion-button").ClickAsync(new());
@@ -80,7 +105,10 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
         Assert.That(editor.Find("img").GetAttribute("src"), Does.EndWith("/small/1234.jpg"));
         await editor.Find("[aria-label='Remove card']").ClickAsync(new());
         Assert.That(cut.FindAll("img"), Is.Empty);
-        Assert.That(cut.FindComponents<CardEditor>().Single().Instance.Card.Name, Is.EqualTo("Second"));
+        Assert.That(
+            cut.FindComponents<CardEditor>().Single().Instance.Card.Name,
+            Is.EqualTo("Second")
+        );
         artwork.Verify(x => x.GetArtworkUrlAsync(1234), Times.Once);
     }
 
@@ -88,8 +116,9 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
     [TestCase(true)]
     public async Task ActualRemovalOrSessionReplacementDiscardsLateArtwork(bool replaceSession)
     {
-        TaskCompletionSource<string?> pending =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<string?> pending = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         Mock<ICardArtworkService> artwork = new();
         artwork.Setup(x => x.GetArtworkUrlAsync(1234)).Returns(pending.Task);
         artwork
@@ -98,7 +127,14 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
         context.Services.AddSingleton(artwork.Object);
         SessionState session = Session();
         Card card = session.Cards[0];
-        session.Cards[0] = new Card(card.Categories, card.Copies, card.Name, card.Active, card.Id, 1234);
+        session.Cards[0] = new Card(
+            card.Categories,
+            card.Copies,
+            card.Name,
+            card.Active,
+            card.Id,
+            1234
+        );
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         CardArtwork old = editor.FindComponents<CardArtwork>().First().Instance;
@@ -107,13 +143,14 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
         if (replaceSession)
         {
             const string replacement = """
-                                       {"SchemaVersion":2,"Categories":[],"Cards":[{"Categories":[],"Copies":1,"Name":"Replacement",
-                                        "Id":"replacement","ExternalCardId":5678}],"Combos":[],"HandSize":5}
-                                       """;
+                {"SchemaVersion":2,"Categories":[],"Cards":[{"Categories":[],"Copies":1,"Name":"Replacement",
+                 "Id":"replacement","ExternalCardId":5678}],"Combos":[],"HandSize":5}
+                """;
             cut.FindComponents<InputFile>()[1]
                 .UploadFiles(InputFileContent.CreateFromText(replacement, "replacement.json"));
-            cut.WaitForState(() => cut.FindComponents<CardEditor>().Count == 1 &&
-                                   cut.FindComponent<CardEditor>().Instance.Card.Name == "Replacement"
+            cut.WaitForState(() =>
+                cut.FindComponents<CardEditor>().Count == 1
+                && cut.FindComponent<CardEditor>().Instance.Card.Name == "Replacement"
             );
         }
         else

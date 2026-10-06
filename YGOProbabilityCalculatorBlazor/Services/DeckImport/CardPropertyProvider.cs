@@ -8,15 +8,37 @@ public static class CardPropertyProvider
     // Tokens correspond to the documented API type vocabulary, including combined types.
     private static readonly string[] MonsterFacets =
     [
-        "Normal", "Effect", "Flip", "Tuner", "Gemini", "Pendulum", "Ritual",
-        "Spirit", "Toon", "Union", "Fusion", "Synchro", "Xyz", "Link"
+        "Normal",
+        "Effect",
+        "Flip",
+        "Tuner",
+        "Gemini",
+        "Pendulum",
+        "Ritual",
+        "Spirit",
+        "Toon",
+        "Union",
+        "Fusion",
+        "Synchro",
+        "Xyz",
+        "Link",
     ];
 
     private static readonly string[] MonsterFrames =
     [
-        "normal", "effect", "ritual", "fusion", "synchro", "xyz", "link",
-        "normal_pendulum", "effect_pendulum", "ritual_pendulum", "fusion_pendulum",
-        "synchro_pendulum", "xyz_pendulum"
+        "normal",
+        "effect",
+        "ritual",
+        "fusion",
+        "synchro",
+        "xyz",
+        "link",
+        "normal_pendulum",
+        "effect_pendulum",
+        "ritual_pendulum",
+        "fusion_pendulum",
+        "synchro_pendulum",
+        "xyz_pendulum",
     ];
 
     public static IReadOnlyList<CategoryBase> GetCategories(CardInfo info)
@@ -27,8 +49,12 @@ public static class CardPropertyProvider
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         string? frame = info.FrameType?.Trim().ToLowerInvariant();
         bool monster = tokens.Contains("Monster") || MonsterFrames.Contains(frame);
-        bool spell = string.Equals(info.Type, "Spell Card", StringComparison.OrdinalIgnoreCase) || frame == "spell";
-        bool trap = string.Equals(info.Type, "Trap Card", StringComparison.OrdinalIgnoreCase) || frame == "trap";
+        bool spell =
+            string.Equals(info.Type, "Spell Card", StringComparison.OrdinalIgnoreCase)
+            || frame == "spell";
+        bool trap =
+            string.Equals(info.Type, "Trap Card", StringComparison.OrdinalIgnoreCase)
+            || frame == "trap";
 
         if (monster)
         {
@@ -60,7 +86,10 @@ public static class CardPropertyProvider
                 Number("level", "Level", info.Level);
             }
 
-            if (tokens.Contains("Pendulum") || frame?.EndsWith("_pendulum", StringComparison.Ordinal) == true)
+            if (
+                tokens.Contains("Pendulum")
+                || frame?.EndsWith("_pendulum", StringComparison.Ordinal) == true
+            )
             {
                 Number("scale", "Pendulum Scale", info.Scale);
             }
@@ -87,7 +116,8 @@ public static class CardPropertyProvider
 
         return result.Values.ToArray();
 
-        void Add(string key, string label) => result.TryAdd(key, new(label, CategorySource.Metadata, key));
+        void Add(string key, string label) =>
+            result.TryAdd(key, new(label, CategorySource.Metadata, key));
 
         void Number(string key, string label, int? value)
         {

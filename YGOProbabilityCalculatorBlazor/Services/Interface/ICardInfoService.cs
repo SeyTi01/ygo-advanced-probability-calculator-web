@@ -10,5 +10,7 @@ public interface ICardInfoService
 
     Task<CardInfo> GetCardArtworkInfoAsync(int id) => GetCardInfoAsync(id);
 
-    Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names);
+    Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(
+        IEnumerable<string> names
+    );
 }

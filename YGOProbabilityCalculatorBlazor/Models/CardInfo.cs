@@ -17,11 +17,9 @@ public sealed record CardInfo
     public IReadOnlyList<int> ArtworkImageIds { get; init; } = Array.Empty<int>();
     public bool ArtworkMetadataKnown { get; init; }
 
-    public int? SelectArtworkImageId(int importedPasscode) => ArtworkImageIds.Contains(importedPasscode)
-        ? importedPasscode
-        : CanonicalCardId is { } canonical && ArtworkImageIds.Contains(canonical)
-            ? canonical
-            : ArtworkImageIds.Count > 0
-                ? ArtworkImageIds[0]
-                : null;
+    public int? SelectArtworkImageId(int importedPasscode) =>
+        ArtworkImageIds.Contains(importedPasscode) ? importedPasscode
+        : CanonicalCardId is { } canonical && ArtworkImageIds.Contains(canonical) ? canonical
+        : ArtworkImageIds.Count > 0 ? ArtworkImageIds[0]
+        : null;
 }

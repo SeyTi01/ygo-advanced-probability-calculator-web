@@ -6,15 +6,20 @@ namespace YGOProbabilityCalculatorBlazor.Services.Converter;
 
 public class CardConverter : JsonConverter<Card>
 {
-    public override Card Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override Card Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
     {
         using JsonDocument doc = JsonDocument.ParseValue(ref reader);
         JsonElement root = doc.RootElement;
 
-        List<CategoryBase> categories = JsonSerializer.Deserialize<List<CategoryBase>>(
-            root.GetProperty("Categories").GetRawText(),
-            options
-        ) ?? [];
+        List<CategoryBase> categories =
+            JsonSerializer.Deserialize<List<CategoryBase>>(
+                root.GetProperty("Categories").GetRawText(),
+                options
+            ) ?? [];
 
         if (categories.Any(category => category is null))
         {
@@ -24,26 +29,34 @@ public class CardConverter : JsonConverter<Card>
         int copies = root.GetProperty("Copies").GetInt32();
         string? name = root.GetProperty("Name").GetString();
         // Older session files predate Active; keep their entries enabled.
-        bool active = ! root.TryGetProperty("Active", out JsonElement activeProperty) || activeProperty.GetBoolean();
+        bool active =
+            !root.TryGetProperty("Active", out JsonElement activeProperty)
+            || activeProperty.GetBoolean();
 
         string? id = null;
 
         if (root.TryGetProperty("Id", out JsonElement idProperty))
         {
-            if (idProperty.ValueKind != JsonValueKind.String ||
-                string.IsNullOrWhiteSpace(id = idProperty.GetString()))
+            if (
+                idProperty.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(id = idProperty.GetString())
+            )
             {
                 throw new JsonException("Card ID must be a non-empty string.");
             }
         }
 
-        int? externalCardId = root.TryGetProperty("ExternalCardId", out JsonElement externalProperty) &&
-                              externalProperty.ValueKind != JsonValueKind.Null
-            ? externalProperty.GetInt32()
-            : null;
-        List<string> manualKeys = root.TryGetProperty("ManualMetadataCategoryKeys", out JsonElement manualProperty)
+        int? externalCardId =
+            root.TryGetProperty("ExternalCardId", out JsonElement externalProperty)
+            && externalProperty.ValueKind != JsonValueKind.Null
+                ? externalProperty.GetInt32()
+                : null;
+        List<string> manualKeys = root.TryGetProperty(
+            "ManualMetadataCategoryKeys",
+            out JsonElement manualProperty
+        )
             ? JsonSerializer.Deserialize<List<string>>(manualProperty.GetRawText(), options)
-              ?? throw new JsonException("Manual card properties must be an array.")
+                ?? throw new JsonException("Manual card properties must be an array.")
             : [];
 
         try
@@ -72,7 +85,11 @@ public class CardConverter : JsonConverter<Card>
         }
 
         writer.WritePropertyName("ManualMetadataCategoryKeys");
-        JsonSerializer.Serialize(writer, value.ManualMetadataCategoryKeys.Order(StringComparer.Ordinal), options);
+        JsonSerializer.Serialize(
+            writer,
+            value.ManualMetadataCategoryKeys.Order(StringComparer.Ordinal),
+            options
+        );
         writer.WriteEndObject();
     }
 }

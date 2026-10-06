@@ -7,8 +7,11 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 public partial class ProbabilityCalculatorComponent
 {
-    [Inject] private NavigationManager SharingNavigation { get; set; } = null!;
-    private string? sharedFragment, sharedJson, sharedError;
+    [Inject]
+    private NavigationManager SharingNavigation { get; set; } = null!;
+    private string? sharedFragment,
+        sharedJson,
+        sharedError;
     private bool sharedLoading;
     private SessionRecovery? sharingRecovery;
 
@@ -20,22 +23,24 @@ public partial class ProbabilityCalculatorComponent
 
     private void SharingLocationChanged(object? sender, LocationChangedEventArgs args) =>
         _ = InvokeAsync(() =>
+        {
+            if (!disposed)
             {
-                if (! disposed)
-                {
-                    ObserveShareLocation(args.Location);
-                    StateHasChanged();
-                }
+                ObserveShareLocation(args.Location);
+                StateHasChanged();
             }
-        );
+        });
 
     private void ObserveShareLocation(string location)
     {
         int start = location.IndexOf('#');
-        bool recognized = start >= 0 &&
-                          location.AsSpan(start).StartsWith(SessionShareCodec.Namespace, StringComparison.Ordinal);
+        bool recognized =
+            start >= 0
+            && location
+                .AsSpan(start)
+                .StartsWith(SessionShareCodec.Namespace, StringComparison.Ordinal);
 
-        if (! recognized)
+        if (!recognized)
         {
             if (sharedFragment is not null)
             {
@@ -113,7 +118,11 @@ public partial class ProbabilityCalculatorComponent
 
     private async Task LoadSharedSessionAsync()
     {
-        if (sharedJson is not { } json || sharedLoading || sharingRecovery?.InspectionComplete != true)
+        if (
+            sharedJson is not { } json
+            || sharedLoading
+            || sharingRecovery?.InspectionComplete != true
+        )
         {
             return;
         }
@@ -125,11 +134,12 @@ public partial class ProbabilityCalculatorComponent
         {
             SessionState session = await _sessionService.LoadSessionAsync(json);
 
-            if (! await RestoreSessionDataAsync(session, request))
+            if (!await RestoreSessionDataAsync(session, request))
             {
                 if (OwnsSessionLoad(request))
                 {
-                    sharedError = "Current work changed while loading. Review the shared session and load it again.";
+                    sharedError =
+                        "Current work changed while loading. Review the shared session and load it again.";
                 }
 
                 return;
@@ -170,7 +180,10 @@ public partial class ProbabilityCalculatorComponent
         string uri = SharingNavigation.Uri;
         int start = uri.IndexOf('#');
 
-        if (start >= 0 && uri.AsSpan(start).StartsWith(SessionShareCodec.Namespace, StringComparison.Ordinal))
+        if (
+            start >= 0
+            && uri.AsSpan(start).StartsWith(SessionShareCodec.Namespace, StringComparison.Ordinal)
+        )
         {
             SharingNavigation.NavigateTo(uri[..start], replace: true);
         }

@@ -31,7 +31,9 @@ public class RequirementMaximumModeTest
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new ComboCategory(new("Starter"), 0, 0, (RequirementMaximumMode)99)
         );
-        Assert.Throws<ArgumentOutOfRangeException>(() => new ComboCard("starter", 0, 0, (RequirementMaximumMode)99));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new ComboCard("starter", 0, 0, (RequirementMaximumMode)99)
+        );
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new ComboCategory(new("Starter"), 0, -1, RequirementMaximumMode.HandSize)
         );

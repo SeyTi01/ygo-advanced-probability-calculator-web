@@ -31,7 +31,10 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
 
                 if (card.Copies < 0)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(deck), "Copies cannot be negative.");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(deck),
+                        "Copies cannot be negative."
+                    );
                 }
 
                 deckSize = checked(deckSize + card.Copies);
@@ -82,10 +85,14 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
 
         int shift = (int)Math.Min(1074, 52 - exponent);
         WorkBudget.CheckStorage(1, (numeratorBits + shift + 31) / 32);
-        BigInteger significand = BigInteger.DivRem(successes << shift, denominator, out BigInteger remainder);
+        BigInteger significand = BigInteger.DivRem(
+            successes << shift,
+            denominator,
+            out BigInteger remainder
+        );
         int rounding = (remainder << 1).CompareTo(denominator);
 
-        if (rounding > 0 || (rounding == 0 && ! significand.IsEven))
+        if (rounding > 0 || (rounding == 0 && !significand.IsEven))
         {
             significand++;
         }
@@ -133,7 +140,10 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
             }
 
             cardMasks[mask] = cardMasks.GetValueOrDefault(mask) + card.Copies;
-            WorkBudget.CheckStorage(cardMasks.Count, (long)cardMasks.Count * (categories.Length + 1));
+            WorkBudget.CheckStorage(
+                cardMasks.Count,
+                (long)cardMasks.Count * (categories.Length + 1)
+            );
         }
 
         if (totalWays is null)
@@ -151,7 +161,10 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
         else
         {
             // Keep combinatorial weights integral, including beyond 2^53.
-            Dictionary<StateKey, BigInteger> states = new() { [new(0, new int[categories.Length])] = 1 };
+            Dictionary<StateKey, BigInteger> states = new()
+            {
+                [new(0, new int[categories.Length])] = 1,
+            };
             int[] remaining = new int[categories.Length];
 
             foreach ((BigInteger mask, int count) in cardMasks)
@@ -186,8 +199,12 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
             {
                 budget.Spend(categories.Length + 1L);
 
-                if (state.DrawnCards == handSize &&
-                    ! categories.Where((category, i) => state.CategoryCounts[i] < category.MinCount).Any())
+                if (
+                    state.DrawnCards == handSize
+                    && !categories
+                        .Where((category, i) => state.CategoryCounts[i] < category.MinCount)
+                        .Any()
+                )
                 {
                     successes += ways;
                 }
@@ -197,8 +214,11 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
         // A full cache only stops retaining entries; it never changes the result.
         long integerCells = WorkBudget.IntegerCells(successes);
 
-        if (counts.Count < 1024 && cachedConstraints + categories.Length <= 16384 &&
-            cachedIntegerCells + integerCells <= 262144)
+        if (
+            counts.Count < 1024
+            && cachedConstraints + categories.Length <= 16384
+            && cachedIntegerCells + integerCells <= 262144
+        )
         {
             counts.Add(predicate, successes);
             cachedConstraints += categories.Length;
@@ -218,7 +238,12 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
     )
     {
         Dictionary<StateKey, BigInteger> next = [];
-        int[] indices = [.. Enumerable.Range(0, categories.Length).Where(i => (pattern & (BigInteger.One << i)) != 0)];
+        int[] indices =
+        [
+            .. Enumerable
+                .Range(0, categories.Length)
+                .Where(i => (pattern & (BigInteger.One << i)) != 0),
+        ];
         int maxDraw = Math.Min(groupSize, handSize);
         // The same binomial row is used by every state in this convolution.
         budget.Spend(maxDraw + 1L);
@@ -260,9 +285,10 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
                     int count = counts[index] + draw;
                     // With no restrictive maximum, counts above the minimum
                     // are equivalent for all future transitions.
-                    counts[index] = categories[index].MaxCount == handSize
-                        ? Math.Min(count, categories[index].MinCount)
-                        : count;
+                    counts[index] =
+                        categories[index].MaxCount == handSize
+                            ? Math.Min(count, categories[index].MinCount)
+                            : count;
                 }
 
                 // Drop states whose minima cannot be reached by the remaining
@@ -281,7 +307,7 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
                     }
                 }
 
-                if (! feasible)
+                if (!feasible)
                 {
                     continue;
                 }
@@ -292,9 +318,13 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
                 bool existed = next.TryGetValue(key, out BigInteger previous);
                 BigInteger updated = previous + increment;
                 nextIntegerCells +=
-                    WorkBudget.IntegerCells(updated) - (existed ? WorkBudget.IntegerCells(previous) : 0);
+                    WorkBudget.IntegerCells(updated)
+                    - (existed ? WorkBudget.IntegerCells(previous) : 0);
                 int entries = next.Count + (existed ? 0 : 1);
-                WorkBudget.CheckStorage(entries, (long)entries * categories.Length + nextIntegerCells);
+                WorkBudget.CheckStorage(
+                    entries,
+                    (long)entries * categories.Length + nextIntegerCells
+                );
                 next[key] = updated;
             }
         }
@@ -325,10 +355,10 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
     // Counts are immutable after insertion; preserve structural state equality.
     private sealed record StateKey(int DrawnCards, int[] CategoryCounts)
     {
-        public bool Equals(StateKey? other) => other is not null &&
-                                               DrawnCards == other.DrawnCards && CategoryCounts
-                                                   .AsSpan()
-                                                   .SequenceEqual(other.CategoryCounts);
+        public bool Equals(StateKey? other) =>
+            other is not null
+            && DrawnCards == other.DrawnCards
+            && CategoryCounts.AsSpan().SequenceEqual(other.CategoryCounts);
 
         public override int GetHashCode()
         {

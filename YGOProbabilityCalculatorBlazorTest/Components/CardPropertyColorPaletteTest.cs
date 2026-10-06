@@ -50,22 +50,28 @@ public class CardPropertyColorPaletteTest
     [Test]
     public void NumericRaceAndArchetypeValuesShareTheirSemanticFamilyColor()
     {
-        Assert.That(CardPropertyColorPalette.GetCssClass("level:1"),
+        Assert.That(
+            CardPropertyColorPalette.GetCssClass("level:1"),
             Is.EqualTo(CardPropertyColorPalette.GetCssClass("level:12"))
         );
-        Assert.That(CardPropertyColorPalette.GetCssClass("rank:1"),
+        Assert.That(
+            CardPropertyColorPalette.GetCssClass("rank:1"),
             Is.EqualTo(CardPropertyColorPalette.GetCssClass("rank:13"))
         );
-        Assert.That(CardPropertyColorPalette.GetCssClass("link:1"),
+        Assert.That(
+            CardPropertyColorPalette.GetCssClass("link:1"),
             Is.EqualTo(CardPropertyColorPalette.GetCssClass("link:6"))
         );
-        Assert.That(CardPropertyColorPalette.GetCssClass("scale:0"),
+        Assert.That(
+            CardPropertyColorPalette.GetCssClass("scale:0"),
             Is.EqualTo(CardPropertyColorPalette.GetCssClass("scale:13"))
         );
-        Assert.That(CardPropertyColorPalette.GetCssClass("monster-race:warrior"),
+        Assert.That(
+            CardPropertyColorPalette.GetCssClass("monster-race:warrior"),
             Is.EqualTo(CardPropertyColorPalette.GetCssClass("monster-race:dragon"))
         );
-        Assert.That(CardPropertyColorPalette.GetCssClass("archetype:k9"),
+        Assert.That(
+            CardPropertyColorPalette.GetCssClass("archetype:k9"),
             Is.EqualTo(CardPropertyColorPalette.GetCssClass("archetype:vanquish%20soul"))
         );
     }
@@ -73,15 +79,27 @@ public class CardPropertyColorPaletteTest
     [Test]
     public void StableMetadataKeyDeterminesClassRegardlessOfDisplayName()
     {
-        CategoryBase fire =
-            new("Something with an unrelated label", CategorySource.Metadata, "attribute:fire");
-        CategoryBase misleadingLabel = new("Attribute: WATER", CategorySource.Metadata, "attribute:fire");
+        CategoryBase fire = new(
+            "Something with an unrelated label",
+            CategorySource.Metadata,
+            "attribute:fire"
+        );
+        CategoryBase misleadingLabel = new(
+            "Attribute: WATER",
+            CategorySource.Metadata,
+            "attribute:fire"
+        );
 
-        Assert.That(CardPropertyColorPalette.GetCssClass(fire), Is.EqualTo("card-property-color-attribute-fire"));
-        Assert.That(CardPropertyColorPalette.GetCssClass(misleadingLabel),
+        Assert.That(
+            CardPropertyColorPalette.GetCssClass(fire),
+            Is.EqualTo("card-property-color-attribute-fire")
+        );
+        Assert.That(
+            CardPropertyColorPalette.GetCssClass(misleadingLabel),
             Is.EqualTo(CardPropertyColorPalette.GetCssClass(fire))
         );
-        Assert.That(CardPropertyColorPalette.GetCssClass("future-family:water"),
+        Assert.That(
+            CardPropertyColorPalette.GetCssClass("future-family:water"),
             Is.EqualTo(CardPropertyColorPalette.GenericMetadataClass)
         );
     }

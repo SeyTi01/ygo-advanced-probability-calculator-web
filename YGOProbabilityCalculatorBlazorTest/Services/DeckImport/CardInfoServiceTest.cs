@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
+using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
-using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
@@ -13,23 +13,21 @@ public class CardInfoServiceTests
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 9, 0, 0, TimeSpan.Zero);
 
     private const string ArtworkCardJson = """
-                                           {"id":1234,"name":"Art","type":"Effect Monster","card_images":[
-                                             {"id":2222,"image_url_small":"https://images.ygoprodeck.com/images/cards_small/2222.jpg"},
-                                             {"id":1234,"image_url_small":"https://images.ygoprodeck.com/images/cards_small/1234.jpg"},
-                                             {"id":100000101,"image_url_small":"https://images.ygoprodeck.com/images/cards_small/100000101.jpg"},
-                                             {"id":6666,"image_url_small":"https://evil.test/6666.jpg"},
-                                             {"id":"bad"},null,42]}
-                                           """;
+        {"id":1234,"name":"Art","type":"Effect Monster","card_images":[
+          {"id":2222,"image_url_small":"https://images.ygoprodeck.com/images/cards_small/2222.jpg"},
+          {"id":1234,"image_url_small":"https://images.ygoprodeck.com/images/cards_small/1234.jpg"},
+          {"id":100000101,"image_url_small":"https://images.ygoprodeck.com/images/cards_small/100000101.jpg"},
+          {"id":6666,"image_url_small":"https://evil.test/6666.jpg"},
+          {"id":"bad"},null,42]}
+        """;
 
     [Test]
     public async Task ArtworkApiCacheRoundTripPreservesCanonicalAndAlternateIdsWithoutProviderUrls()
     {
         TestLocalStorage storage = new(null);
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK,
-                    "{\"data\":[" + ArtworkCardJson + "]}"
-                )
-            )
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + ArtworkCardJson + "]}"))
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
@@ -39,10 +37,13 @@ public class CardInfoServiceTests
         Assert.That(info.SelectArtworkImageId(1234), Is.EqualTo(1234));
         Assert.That(info.SelectArtworkImageId(2222), Is.EqualTo(2222));
         Assert.That(info.SelectArtworkImageId(5555), Is.EqualTo(1234));
-        Assert.That((info with { CanonicalCardId = 9999 }).SelectArtworkImageId(5555), Is.EqualTo(2222));
-        Assert.That(storage.RawCache,
-            Does
-                .Not.Contain("images.ygoprodeck")
+        Assert.That(
+            (info with { CanonicalCardId = 9999 }).SelectArtworkImageId(5555),
+            Is.EqualTo(2222)
+        );
+        Assert.That(
+            storage.RawCache,
+            Does.Not.Contain("images.ygoprodeck")
                 .And.Not.Contain("evil.test")
                 .And.Not.Contain("data:image")
                 .And.Not.Contain("blob:")
@@ -58,11 +59,9 @@ public class CardInfoServiceTests
     public async Task AlternateQueryPasscodeRemainsDistinctFromCanonicalAndInternalIdentity()
     {
         TestLocalStorage storage = new(CreateCacheJson(Now, (5678, "Other")));
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK,
-                    "{\"data\":[" + ArtworkCardJson + "]}"
-                )
-            )
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + ArtworkCardJson + "]}"))
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
@@ -80,14 +79,21 @@ public class CardInfoServiceTests
     [TestCase(",\"card_images\":42")]
     [TestCase(",\"card_images\":[]")]
     [TestCase(",\"card_images\":[{\"id\":1,\"image_url_small\":\"https://evil.test/image.jpg\"}]")]
-    public async Task AuthoritativeMissingOrMalformedArtworkPreservesCardAndDoesNotRefetch(string images)
+    public async Task AuthoritativeMissingOrMalformedArtworkPreservesCardAndDoesNotRefetch(
+        string images
+    )
     {
         TestLocalStorage storage = new(null);
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK,
-                    "{\"data\":[{\"id\":1234,\"name\":\"Spell\",\"type\":\"Spell Card\"" + images + "}]}"
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(
+                    Response(
+                        HttpStatusCode.OK,
+                        "{\"data\":[{\"id\":1234,\"name\":\"Spell\",\"type\":\"Spell Card\""
+                            + images
+                            + "}]}"
+                    )
                 )
-            )
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
@@ -106,20 +112,25 @@ public class CardInfoServiceTests
     public async Task FreshExistingV2CacheEnrichesOnlyRequestedArtworkOnce()
     {
         TestLocalStorage storage = new(CreateCacheJson(Now, (1234, "Saved"), (5678, "Other")));
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + ArtworkCardJson + "]}"))
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + ArtworkCardJson + "]}"))
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
         Assert.That((await service.GetCardInfoAsync(1234)).Name, Is.EqualTo("Saved"));
         Assert.That(handler.Requests, Is.Empty);
-        CardInfo[] results =
-            await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => service.GetCardArtworkInfoAsync(1234)));
+        CardInfo[] results = await Task.WhenAll(
+            Enumerable.Range(0, 10).Select(_ => service.GetCardArtworkInfoAsync(1234))
+        );
         Assert.That(results.All(info => info.ArtworkImageIds.Count == 3), Is.True);
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
         Assert.That(handler.Requests[0], Does.EndWith("?id=1234"));
         using JsonDocument doc = JsonDocument.Parse(storage.RawCache!);
-        Assert.That(doc.RootElement.GetProperty("LastFullRefreshUtc").GetDateTimeOffset(), Is.EqualTo(Now));
+        Assert.That(
+            doc.RootElement.GetProperty("LastFullRefreshUtc").GetDateTimeOffset(),
+            Is.EqualTo(Now)
+        );
         Assert.That((await service.GetCardInfoAsync(5678)).Name, Is.EqualTo("Other"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
     }
@@ -132,10 +143,13 @@ public class CardInfoServiceTests
         Task<string?> first = artwork.GetArtworkUrlAsync(1234);
         Task<string?> second = artwork.GetArtworkUrlAsync(1234);
         Assert.That(info.Calls, Is.EqualTo(1));
-        info.Result.SetResult(new CardInfo
+        info.Result.SetResult(
+            new CardInfo
             {
-                Id = 1234, CanonicalCardId = 1234,
-                ArtworkImageIds = new[] { 1234 }, ArtworkMetadataKnown = true
+                Id = 1234,
+                CanonicalCardId = 1234,
+                ArtworkImageIds = new[] { 1234 },
+                ArtworkMetadataKnown = true,
             }
         );
         Assert.That(await first, Is.EqualTo(CardArtworkService.ArtworkOrigin + "/small/1234.jpg"));
@@ -147,7 +161,8 @@ public class CardInfoServiceTests
     private sealed class MockCardInfo : ICardInfoService
     {
         public int Calls;
-        public TaskCompletionSource<CardInfo> Result { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<CardInfo> Result { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<CardInfo> GetCardInfoAsync(int id)
         {
@@ -158,15 +173,16 @@ public class CardInfoServiceTests
 
         public Task<string> GetCardNameAsync(int id) => throw new NotSupportedException();
 
-        public Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names) =>
-            throw new NotSupportedException();
+        public Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(
+            IEnumerable<string> names
+        ) => throw new NotSupportedException();
     }
 
     private const string RichCardJson = """
-                                        {"id":1234,"name":"Pendulum","type":"XYZ Pendulum Effect Monster","frameType":"xyz_pendulum",
-                                         "race":"Warrior","attribute":"FIRE","level":4,"linkval":2,"scale":8,"archetype":"Vanquish Soul",
-                                         "desc":"Not cached","card_prices":[{"price":"100"}],"card_images":[{"image_url":"not cached"}]}
-                                        """;
+        {"id":1234,"name":"Pendulum","type":"XYZ Pendulum Effect Monster","frameType":"xyz_pendulum",
+         "race":"Warrior","attribute":"FIRE","level":4,"linkval":2,"scale":8,"archetype":"Vanquish Soul",
+         "desc":"Not cached","card_prices":[{"price":"100"}],"card_images":[{"image_url":"not cached"}]}
+        """;
 
     [Test]
     public async Task ExactNamesReuseRichCacheIncludingStaleEntriesWithoutNetwork()
@@ -175,7 +191,10 @@ public class CardInfoServiceTests
         RecordingHttpMessageHandler handler = HandlerWithStatus(HttpStatusCode.ServiceUnavailable);
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
-        IReadOnlyDictionary<string, CardInfo> result = await service.GetCardInfoByExactNamesAsync(["Exact", "Exact"]);
+        IReadOnlyDictionary<string, CardInfo> result = await service.GetCardInfoByExactNamesAsync([
+            "Exact",
+            "Exact",
+        ]);
         Assert.That(result["Exact"].Id, Is.EqualTo(1234));
         Assert.That(handler.Requests, Is.Empty);
         Assert.That(storage.WriteCount, Is.Zero);
@@ -186,39 +205,55 @@ public class CardInfoServiceTests
     public async Task ExactNamesEnrichIncompleteCacheDeduplicateEscapeAndPersist(int version)
     {
         const string name = "Ash Blossom & Joyous Spring";
-        TestLocalStorage storage = new(JsonSerializer.Serialize(new
+        TestLocalStorage storage = new(
+            JsonSerializer.Serialize(
+                new
                 {
-                    SchemaVersion = version, LastFullRefreshUtc = Now,
-                    Cards = new Dictionary<int, object> { [14558127] = new { Name = name } }
+                    SchemaVersion = version,
+                    LastFullRefreshUtc = Now,
+                    Cards = new Dictionary<int, object> { [14558127] = new { Name = name } },
                 }
             )
         );
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK,
-                    "{\"data\":[{\"id\":14558127,\"name\":\"Ash Blossom & Joyous Spring\",\"type\":\"Tuner Monster\",\"level\":3}]}"
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(
+                    Response(
+                        HttpStatusCode.OK,
+                        "{\"data\":[{\"id\":14558127,\"name\":\"Ash Blossom & Joyous Spring\",\"type\":\"Tuner Monster\",\"level\":3}]}"
+                    )
                 )
-            )
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
-        IReadOnlyDictionary<string, CardInfo> result = await service.GetCardInfoByExactNamesAsync([name, name]);
+        IReadOnlyDictionary<string, CardInfo> result = await service.GetCardInfoByExactNamesAsync([
+            name,
+            name,
+        ]);
         Assert.That(result[name].Id, Is.EqualTo(14558127));
         Assert.That(result[name].Type, Is.EqualTo("Tuner Monster"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
-        Assert.That(Uri.UnescapeDataString(new Uri(handler.Requests.Single()).Query), Is.EqualTo("?name=" + name));
+        Assert.That(
+            Uri.UnescapeDataString(new Uri(handler.Requests.Single()).Query),
+            Is.EqualTo("?name=" + name)
+        );
         Assert.That(handler.Requests.Single(), Does.Not.Contain("fname=").And.Not.Contain("?id="));
         using JsonDocument document = JsonDocument.Parse(storage.RawCache!);
         Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
 
         if (version == 1)
         {
-            Assert.That(document.RootElement.GetProperty("LastFullRefreshUtc").ValueKind,
+            Assert.That(
+                document.RootElement.GetProperty("LastFullRefreshUtc").ValueKind,
                 Is.EqualTo(JsonValueKind.Null)
             );
         }
 
         CardInfoService next = new(storage, client, new TestTimeProvider(Now));
-        Assert.That((await next.GetCardInfoByExactNamesAsync([name]))[name], Is.EqualTo(result[name]));
+        Assert.That(
+            (await next.GetCardInfoByExactNamesAsync([name]))[name],
+            Is.EqualTo(result[name])
+        );
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
     }
 
@@ -230,11 +265,14 @@ public class CardInfoServiceTests
     )]
     [TestCase("{\"data\":[]}")]
     [TestCase("{bad")]
-    public async Task ExactNamesRejectNonmatchingAmbiguousIncompleteOrInvalidResponses(string response)
+    public async Task ExactNamesRejectNonmatchingAmbiguousIncompleteOrInvalidResponses(
+        string response
+    )
     {
         TestLocalStorage storage = new(null);
-        RecordingHttpMessageHandler handler =
-            new((_, _) => Task.FromResult(Response(HttpStatusCode.OK, response)));
+        RecordingHttpMessageHandler handler = new(
+            (_, _) => Task.FromResult(Response(HttpStatusCode.OK, response))
+        );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
         Assert.That(await service.GetCardInfoByExactNamesAsync(["Exact", "Exact"]), Is.Empty);
@@ -248,16 +286,20 @@ public class CardInfoServiceTests
     public async Task ExactNamesStorageFailuresDoNotLoseSuccessfulResolution(bool readFailure)
     {
         TestLocalStorage storage = new("{bad") { ThrowOnRead = readFailure, ThrowOnWrite = true };
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK,
-                    "{\"data\":[" + RichCardJson + "]}"
-                )
-            )
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + RichCardJson + "]}"))
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
-        Assert.That((await service.GetCardInfoByExactNamesAsync(["Pendulum"]))["Pendulum"].Id, Is.EqualTo(1234));
-        Assert.That((await service.GetCardInfoByExactNamesAsync(["Pendulum"]))["Pendulum"].Type, Is.Not.Null);
+        Assert.That(
+            (await service.GetCardInfoByExactNamesAsync(["Pendulum"]))["Pendulum"].Id,
+            Is.EqualTo(1234)
+        );
+        Assert.That(
+            (await service.GetCardInfoByExactNamesAsync(["Pendulum"]))["Pendulum"].Type,
+            Is.Not.Null
+        );
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
     }
 
@@ -265,7 +307,8 @@ public class CardInfoServiceTests
     [TestCase(true)]
     public async Task ExactNamesNetworkFailuresDoNotFailTheOtherNames(bool throws)
     {
-        RecordingHttpMessageHandler handler = new((request, _) =>
+        RecordingHttpMessageHandler handler = new(
+            (request, _) =>
             {
                 if (request.RequestUri!.Query.Contains("Missing"))
                 {
@@ -277,13 +320,21 @@ public class CardInfoServiceTests
                     return Task.FromResult(Response(HttpStatusCode.NotFound, "{}"));
                 }
 
-                return Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + RichCardJson + "]}"));
+                return Task.FromResult(
+                    Response(HttpStatusCode.OK, "{\"data\":[" + RichCardJson + "]}")
+                );
             }
         );
         using HttpClient client = new(handler);
-        CardInfoService service = new(new TestLocalStorage(null), client, new TestTimeProvider(Now));
-        IReadOnlyDictionary<string, CardInfo> result =
-            await service.GetCardInfoByExactNamesAsync(["Missing", "Pendulum"]);
+        CardInfoService service = new(
+            new TestLocalStorage(null),
+            client,
+            new TestTimeProvider(Now)
+        );
+        IReadOnlyDictionary<string, CardInfo> result = await service.GetCardInfoByExactNamesAsync([
+            "Missing",
+            "Pendulum",
+        ]);
         Assert.That(result.Keys, Is.EqualTo(new[] { "Pendulum" }));
         Assert.That(handler.Requests, Has.Length.EqualTo(2));
     }
@@ -293,31 +344,44 @@ public class CardInfoServiceTests
     public async Task BulkAndSingleEndpointsParseTheSameReusableMetadata(bool single)
     {
         TestLocalStorage storage = new(single ? CreateCacheJson(Now, (5678, "Other")) : null);
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK,
-                    "{\"data\":[" + RichCardJson + "]}"
-                )
-            )
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + RichCardJson + "]}"))
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
         CardInfo info = await service.GetCardInfoAsync(1234);
-        Assert.That(info,
-            Is.EqualTo(new CardInfo
+        Assert.That(
+            info,
+            Is.EqualTo(
+                new CardInfo
                 {
-                    Id = 1234, Name = "Pendulum", Type = "XYZ Pendulum Effect Monster",
-                    FrameType = "xyz_pendulum", Race = "Warrior", Attribute = "FIRE", Level = 4, LinkVal = 2, Scale = 8,
+                    Id = 1234,
+                    Name = "Pendulum",
+                    Type = "XYZ Pendulum Effect Monster",
+                    FrameType = "xyz_pendulum",
+                    Race = "Warrior",
+                    Attribute = "FIRE",
+                    Level = 4,
+                    LinkVal = 2,
+                    Scale = 8,
                     Archetype = "Vanquish Soul",
-                    CanonicalCardId = 1234, ArtworkMetadataKnown = true
+                    CanonicalCardId = 1234,
+                    ArtworkMetadataKnown = true,
                 }
             )
         );
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
         Assert.That(handler.Requests[0].EndsWith(single ? "?id=1234" : "cardinfo.php"), Is.True);
-        Assert.That(storage.RawCache,
-            Does.Not.Contain("Not cached").And.Not.Contain("card_prices").And.Not.Contain("image_url")
+        Assert.That(
+            storage.RawCache,
+            Does.Not.Contain("Not cached")
+                .And.Not.Contain("card_prices")
+                .And.Not.Contain("image_url")
         );
-        RecordingHttpMessageHandler nextHandler = HandlerWithStatus(HttpStatusCode.ServiceUnavailable);
+        RecordingHttpMessageHandler nextHandler = HandlerWithStatus(
+            HttpStatusCode.ServiceUnavailable
+        );
         using HttpClient nextClient = new(nextHandler);
         CardInfoService next = new(storage, nextClient, new TestTimeProvider(Now));
         Assert.That(await next.GetCardInfoAsync(1234), Is.EqualTo(info));
@@ -328,11 +392,9 @@ public class CardInfoServiceTests
     public async Task FreshV1NameCacheRequiresMetadataRefreshAndUpgradesToV2()
     {
         TestLocalStorage storage = new(CreateV1CacheJson());
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK,
-                    "{\"data\":[" + RichCardJson + "]}"
-                )
-            )
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[" + RichCardJson + "]}"))
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
@@ -355,7 +417,8 @@ public class CardInfoServiceTests
         Assert.That(CardPropertyProvider.GetCategories(info), Is.Empty);
         Assert.That(storage.RawCache, Is.EqualTo(original));
         Assert.That(await service.GetCardInfoAsync(1234), Is.EqualTo(info));
-        Assert.That(handler.Requests,
+        Assert.That(
+            handler.Requests,
             Has.Length.EqualTo(2),
             "One bulk attempt and one per-card attempt shared by later lookups."
         );
@@ -365,19 +428,29 @@ public class CardInfoServiceTests
     public async Task PerCardV1EnrichmentDoesNotClaimAFullMetadataRefresh()
     {
         TestLocalStorage storage = new(CreateV1CacheJson());
-        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(
-                request.RequestUri!.Query.Length == 0
-                    ? Response(HttpStatusCode.ServiceUnavailable, "{}")
-                    : Response(HttpStatusCode.OK, "{\"data\":[" + RichCardJson + "]}")
-            )
+        RecordingHttpMessageHandler handler = new(
+            (request, _) =>
+                Task.FromResult(
+                    request.RequestUri!.Query.Length == 0
+                        ? Response(HttpStatusCode.ServiceUnavailable, "{}")
+                        : Response(HttpStatusCode.OK, "{\"data\":[" + RichCardJson + "]}")
+                )
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
         Assert.That((await service.GetCardInfoAsync(1234)).Scale, Is.EqualTo(8));
         using JsonDocument document = JsonDocument.Parse(storage.RawCache!);
         Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
-        Assert.That(document.RootElement.GetProperty("LastFullRefreshUtc").ValueKind, Is.EqualTo(JsonValueKind.Null));
-        Assert.That(document.RootElement.GetProperty("Cards").GetProperty("5678").GetProperty("Name").GetString(),
+        Assert.That(
+            document.RootElement.GetProperty("LastFullRefreshUtc").ValueKind,
+            Is.EqualTo(JsonValueKind.Null)
+        );
+        Assert.That(
+            document
+                .RootElement.GetProperty("Cards")
+                .GetProperty("5678")
+                .GetProperty("Name")
+                .GetString(),
             Is.EqualTo("Other old name")
         );
         RecordingHttpMessageHandler nextHandler = HandlerWithBulk(200, (1234, "Current"));
@@ -390,30 +463,44 @@ public class CardInfoServiceTests
     [Test]
     public async Task OptionalMalformedFieldsDoNotDiscardReliableNameOrType()
     {
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK,
-                    "{\"data\":[{\"id\":\"bad\",\"name\":\"Skip\"},{\"id\":1234,\"name\":\"Spell\",\"type\":\"Spell Card\",\"race\":\"Quick-Play\",\"level\":\"bad\",\"scale\":{},\"attribute\":42}]}"
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(
+                    Response(
+                        HttpStatusCode.OK,
+                        "{\"data\":[{\"id\":\"bad\",\"name\":\"Skip\"},{\"id\":1234,\"name\":\"Spell\",\"type\":\"Spell Card\",\"race\":\"Quick-Play\",\"level\":\"bad\",\"scale\":{},\"attribute\":42}]}"
+                    )
                 )
-            )
         );
         using HttpClient client = new(handler);
-        CardInfoService service = new(new TestLocalStorage(null), client, new TestTimeProvider(Now));
+        CardInfoService service = new(
+            new TestLocalStorage(null),
+            client,
+            new TestTimeProvider(Now)
+        );
         CardInfo info = await service.GetCardInfoAsync(1234);
         Assert.That(info.Name, Is.EqualTo("Spell"));
         Assert.That(info.Level, Is.Null);
         Assert.That(info.Attribute, Is.Null);
-        Assert.That(CardPropertyProvider.GetCategories(info).Select(c => c.Name),
+        Assert.That(
+            CardPropertyProvider.GetCategories(info).Select(c => c.Name),
             Is.EqualTo(new[] { "Spell", "Quick-Play Spell" })
         );
     }
 
-    private static string CreateV1CacheJson() => JsonSerializer.Serialize(new
-        {
-            SchemaVersion = 1, LastFullRefreshUtc = Now,
-            Cards = new Dictionary<string, object>
-                { ["1234"] = new { Name = "Old name" }, ["5678"] = new { Name = "Other old name" } }
-        }
-    );
+    private static string CreateV1CacheJson() =>
+        JsonSerializer.Serialize(
+            new
+            {
+                SchemaVersion = 1,
+                LastFullRefreshUtc = Now,
+                Cards = new Dictionary<string, object>
+                {
+                    ["1234"] = new { Name = "Old name" },
+                    ["5678"] = new { Name = "Other old name" },
+                },
+            }
+        );
 
     [Test]
     public async Task ServiceConstructionDoesNotStartAnApiRequestForSavedSessions()
@@ -431,11 +518,14 @@ public class CardInfoServiceTests
     public async Task SingleCardLookupKeepsQueriedPasscodeAndReliableNameFallback()
     {
         TestLocalStorage storage = new(CreateCacheJson(Now, (5678, "Other")));
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.OK,
-                    "{\"data\":[{\"id\":4321,\"name\":\"Alternate passcode\",\"type\":\"Normal Monster\"}]}"
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
+                Task.FromResult(
+                    Response(
+                        HttpStatusCode.OK,
+                        "{\"data\":[{\"id\":4321,\"name\":\"Alternate passcode\",\"type\":\"Normal Monster\"}]}"
+                    )
                 )
-            )
         );
         using HttpClient client = new(handler);
         CardInfoService service = new(storage, client, new TestTimeProvider(Now));
@@ -449,10 +539,11 @@ public class CardInfoServiceTests
     [Test]
     public async Task FreshCurrentCache_ReturnsCachedNameWithoutBulkRequest()
     {
-        TestLocalStorage storage =
-            new(CreateCacheJson(Now.AddDays(-7).AddHours(1), (1234, "Blue-Eyes White Dragon")));
-        RecordingHttpMessageHandler handler = new((_, _) =>
-            Task.FromResult(Response(HttpStatusCode.InternalServerError, "{}"))
+        TestLocalStorage storage = new(
+            CreateCacheJson(Now.AddDays(-7).AddHours(1), (1234, "Blue-Eyes White Dragon"))
+        );
+        RecordingHttpMessageHandler handler = new(
+            (_, _) => Task.FromResult(Response(HttpStatusCode.InternalServerError, "{}"))
         );
 
         using HttpClient httpClient = new(handler);
@@ -468,7 +559,11 @@ public class CardInfoServiceTests
     public async Task ExpiredCache_RefreshesOnceAndPersistsCurrentEnvelope()
     {
         TestLocalStorage storage = new(CreateCacheJson(Now.AddDays(-7), (1234, "Old Name")));
-        RecordingHttpMessageHandler handler = HandlerWithBulk(200, (1234, "Updated Name"), (5678, "Dark Magician"));
+        RecordingHttpMessageHandler handler = HandlerWithBulk(
+            200,
+            (1234, "Updated Name"),
+            (5678, "Dark Magician")
+        );
 
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
@@ -477,7 +572,12 @@ public class CardInfoServiceTests
 
         Assert.That(result, Is.EqualTo("Updated Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
-        AssertPersistedCache(storage.RawCache, Now, (1234, "Updated Name"), (5678, "Dark Magician"));
+        AssertPersistedCache(
+            storage.RawCache,
+            Now,
+            (1234, "Updated Name"),
+            (5678, "Dark Magician")
+        );
     }
 
     [Test]
@@ -504,8 +604,9 @@ public class CardInfoServiceTests
     {
         string originalJson = CreateCacheJson(Now.AddDays(-9), (1234, "Stale Name"));
         TestLocalStorage storage = new(originalJson);
-        RecordingHttpMessageHandler handler =
-            new((_, _) => Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[]}")));
+        RecordingHttpMessageHandler handler = new(
+            (_, _) => Task.FromResult(Response(HttpStatusCode.OK, "{\"data\":[]}"))
+        );
 
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
@@ -584,8 +685,9 @@ public class CardInfoServiceTests
     [Test]
     public async Task UnsupportedCacheVersion_IsDiscardedAndRefreshed()
     {
-        TestLocalStorage storage =
-            new("{\"SchemaVersion\":99,\"Cards\":{\"1234\":{\"Name\":\"Future Name\"}}}");
+        TestLocalStorage storage = new(
+            "{\"SchemaVersion\":99,\"Cards\":{\"1234\":{\"Name\":\"Future Name\"}}}"
+        );
         RecordingHttpMessageHandler handler = HandlerWithBulk(200, (5678, "Dark Magician"));
 
         using HttpClient httpClient = new(handler);
@@ -601,10 +703,9 @@ public class CardInfoServiceTests
     [Test]
     public async Task MalformedEnvelopeWithFreshTimestamp_IsDiscardedAndRefreshed()
     {
-        TestLocalStorage storage =
-            new(
-                "{\"SchemaVersion\":1,\"LastFullRefreshUtc\":\"2026-10-01T09:00:00Z\",\"Cards\":{\"not-a-card-id\":{\"Name\":\"Unusable\"}}}"
-            );
+        TestLocalStorage storage = new(
+            "{\"SchemaVersion\":1,\"LastFullRefreshUtc\":\"2026-10-01T09:00:00Z\",\"Cards\":{\"not-a-card-id\":{\"Name\":\"Unusable\"}}}"
+        );
         RecordingHttpMessageHandler handler = HandlerWithBulk(200, (5678, "Dark Magician"));
 
         using HttpClient httpClient = new(handler);
@@ -620,13 +721,16 @@ public class CardInfoServiceTests
     {
         DateTimeOffset refreshedAt = Now.AddDays(-2);
         TestLocalStorage storage = new(CreateCacheJson(refreshedAt, (1234, "Known Card")));
-        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(
-                request.RequestUri!.Query == "?id=5678"
-                    ? Response(HttpStatusCode.OK,
-                        "{\"data\":[{\"id\":5678,\"name\":\"Dark Magician\",\"type\":\"Normal Monster\"}]}"
-                    )
-                    : Response(HttpStatusCode.InternalServerError, "{}")
-            )
+        RecordingHttpMessageHandler handler = new(
+            (request, _) =>
+                Task.FromResult(
+                    request.RequestUri!.Query == "?id=5678"
+                        ? Response(
+                            HttpStatusCode.OK,
+                            "{\"data\":[{\"id\":5678,\"name\":\"Dark Magician\",\"type\":\"Normal Monster\"}]}"
+                        )
+                        : Response(HttpStatusCode.InternalServerError, "{}")
+                )
         );
 
         using HttpClient httpClient = new(handler);
@@ -636,7 +740,12 @@ public class CardInfoServiceTests
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
-        AssertPersistedCache(storage.RawCache, refreshedAt, (1234, "Known Card"), (5678, "Dark Magician"));
+        AssertPersistedCache(
+            storage.RawCache,
+            refreshedAt,
+            (1234, "Known Card"),
+            (5678, "Dark Magician")
+        );
     }
 
     [Test]
@@ -644,11 +753,16 @@ public class CardInfoServiceTests
     {
         DateTimeOffset refreshedAt = Now.AddDays(-6);
         TestLocalStorage storage = new(CreateCacheJson(refreshedAt, (1234, "Known Card")));
-        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(
-                request.RequestUri!.Query == "?id=5678"
-                    ? Response(HttpStatusCode.OK, "{\"data\":[{\"id\":5678,\"name\":\"New Card\"}]}")
-                    : Response(HttpStatusCode.InternalServerError, "{}")
-            )
+        RecordingHttpMessageHandler handler = new(
+            (request, _) =>
+                Task.FromResult(
+                    request.RequestUri!.Query == "?id=5678"
+                        ? Response(
+                            HttpStatusCode.OK,
+                            "{\"data\":[{\"id\":5678,\"name\":\"New Card\"}]}"
+                        )
+                        : Response(HttpStatusCode.InternalServerError, "{}")
+                )
         );
 
         using HttpClient httpClient = new(handler);
@@ -657,18 +771,28 @@ public class CardInfoServiceTests
         string result = await service.GetCardNameAsync(5678);
 
         Assert.That(result, Is.EqualTo("New Card"));
-        AssertPersistedCache(storage.RawCache, refreshedAt, (1234, "Known Card"), (5678, "New Card"));
+        AssertPersistedCache(
+            storage.RawCache,
+            refreshedAt,
+            (1234, "Known Card"),
+            (5678, "New Card")
+        );
     }
 
     [Test]
     public async Task SingleCardFetchAfterLegacyBulkFailure_PersistsUnknownTimestampAndNextInstanceRetriesBulk()
     {
         TestLocalStorage storage = new("{\"1234\":\"Legacy Name\"}");
-        RecordingHttpMessageHandler firstHandler = new((request, _) => Task.FromResult(
-                request.RequestUri!.Query.Length == 0
-                    ? Response(HttpStatusCode.ServiceUnavailable, "{}")
-                    : Response(HttpStatusCode.OK, "{\"data\":[{\"id\":5678,\"name\":\"New Card\"}]}")
-            )
+        RecordingHttpMessageHandler firstHandler = new(
+            (request, _) =>
+                Task.FromResult(
+                    request.RequestUri!.Query.Length == 0
+                        ? Response(HttpStatusCode.ServiceUnavailable, "{}")
+                        : Response(
+                            HttpStatusCode.OK,
+                            "{\"data\":[{\"id\":5678,\"name\":\"New Card\"}]}"
+                        )
+                )
         );
 
         using (HttpClient firstHttpClient = new(firstHandler))
@@ -681,11 +805,16 @@ public class CardInfoServiceTests
         {
             JsonElement root = document.RootElement;
             Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
-            Assert.That(root.GetProperty("LastFullRefreshUtc").ValueKind, Is.EqualTo(JsonValueKind.Null));
-            Assert.That(root.GetProperty("Cards").GetProperty("1234").GetProperty("Name").GetString(),
+            Assert.That(
+                root.GetProperty("LastFullRefreshUtc").ValueKind,
+                Is.EqualTo(JsonValueKind.Null)
+            );
+            Assert.That(
+                root.GetProperty("Cards").GetProperty("1234").GetProperty("Name").GetString(),
                 Is.EqualTo("Legacy Name")
             );
-            Assert.That(root.GetProperty("Cards").GetProperty("5678").GetProperty("Name").GetString(),
+            Assert.That(
+                root.GetProperty("Cards").GetProperty("5678").GetProperty("Name").GetString(),
                 Is.EqualTo("New Card")
             );
         }
@@ -732,13 +861,17 @@ public class CardInfoServiceTests
     [Test]
     public async Task ParallelStartupLookups_ShareOneBulkRefresh()
     {
-        TestLocalStorage storage =
-            new(CreateCacheJson(Now.AddDays(-8), (1234, "Old A"), (5678, "Old B")));
-        TaskCompletionSource<bool> requestStarted =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource<HttpResponseMessage> releaseResponse =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-        RecordingHttpMessageHandler handler = new((_, _) =>
+        TestLocalStorage storage = new(
+            CreateCacheJson(Now.AddDays(-8), (1234, "Old A"), (5678, "Old B"))
+        );
+        TaskCompletionSource<bool> requestStarted = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        TaskCompletionSource<HttpResponseMessage> releaseResponse = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        RecordingHttpMessageHandler handler = new(
+            (_, _) =>
             {
                 requestStarted.TrySetResult(true);
 
@@ -754,44 +887,65 @@ public class CardInfoServiceTests
         await requestStarted.Task;
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
 
-        releaseResponse.SetResult(Response(HttpStatusCode.OK, CreateBulkJson((1234, "New A"), (5678, "New B"))));
+        releaseResponse.SetResult(
+            Response(HttpStatusCode.OK, CreateBulkJson((1234, "New A"), (5678, "New B")))
+        );
         string[] results = await Task.WhenAll(firstLookup, secondLookup);
 
         Assert.That(results, Is.EqualTo(new[] { "New A", "New B" }));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
     }
 
-    private static RecordingHttpMessageHandler HandlerWithBulk(int statusCode, params (int Id, string Name)[] cards) =>
-        new((request, _) => Task.FromResult(request.RequestUri!.Query.Length == 0
-                ? Response((HttpStatusCode)statusCode, CreateBulkJson(cards))
-                : Response(HttpStatusCode.InternalServerError, "{}")
-            )
+    private static RecordingHttpMessageHandler HandlerWithBulk(
+        int statusCode,
+        params (int Id, string Name)[] cards
+    ) =>
+        new(
+            (request, _) =>
+                Task.FromResult(
+                    request.RequestUri!.Query.Length == 0
+                        ? Response((HttpStatusCode)statusCode, CreateBulkJson(cards))
+                        : Response(HttpStatusCode.InternalServerError, "{}")
+                )
         );
 
     private static RecordingHttpMessageHandler HandlerWithStatus(HttpStatusCode statusCode) =>
         new((_, _) => Task.FromResult(Response(statusCode, "{}")));
 
-    private static HttpResponseMessage Response(HttpStatusCode statusCode, string json) => new()
-    {
-        StatusCode = statusCode,
-        Content = new StringContent(json)
-    };
+    private static HttpResponseMessage Response(HttpStatusCode statusCode, string json) =>
+        new() { StatusCode = statusCode, Content = new StringContent(json) };
 
     private static string CreateBulkJson(params (int Id, string Name)[] cards) =>
-        JsonSerializer.Serialize(new
+        JsonSerializer.Serialize(
+            new
             {
-                data = cards.Select(card => new { id = card.Id, name = card.Name, type = "Effect Monster" })
+                data = cards.Select(card => new
+                {
+                    id = card.Id,
+                    name = card.Name,
+                    type = "Effect Monster",
+                }),
             }
         );
 
-    private static string CreateCacheJson(DateTimeOffset refreshedAt, params (int Id, string Name)[] cards) =>
-        JsonSerializer.Serialize(new
+    private static string CreateCacheJson(
+        DateTimeOffset refreshedAt,
+        params (int Id, string Name)[] cards
+    ) =>
+        JsonSerializer.Serialize(
+            new
             {
                 SchemaVersion = 2,
                 LastFullRefreshUtc = refreshedAt,
-                Cards = cards.ToDictionary(card => card.Id.ToString(),
-                    card => new { Id = card.Id, Name = card.Name, Type = "Effect Monster" }
-                )
+                Cards = cards.ToDictionary(
+                    card => card.Id.ToString(),
+                    card => new
+                    {
+                        Id = card.Id,
+                        Name = card.Name,
+                        Type = "Effect Monster",
+                    }
+                ),
             }
         );
 
@@ -805,13 +959,19 @@ public class CardInfoServiceTests
         using JsonDocument document = JsonDocument.Parse(json!);
         JsonElement root = document.RootElement;
         Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
-        Assert.That(root.GetProperty("LastFullRefreshUtc").GetDateTimeOffset(), Is.EqualTo(expectedTimestamp));
+        Assert.That(
+            root.GetProperty("LastFullRefreshUtc").GetDateTimeOffset(),
+            Is.EqualTo(expectedTimestamp)
+        );
         JsonElement cards = root.GetProperty("Cards");
         Assert.That(cards.EnumerateObject().Count(), Is.EqualTo(expectedCards.Length));
 
         foreach ((int id, string name) in expectedCards)
         {
-            Assert.That(cards.GetProperty(id.ToString()).GetProperty("Name").GetString(), Is.EqualTo(name));
+            Assert.That(
+                cards.GetProperty(id.ToString()).GetProperty("Name").GetString(),
+                Is.EqualTo(name)
+            );
         }
     }
 

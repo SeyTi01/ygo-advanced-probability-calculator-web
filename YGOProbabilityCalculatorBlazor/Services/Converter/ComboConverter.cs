@@ -6,16 +6,21 @@ namespace YGOProbabilityCalculatorBlazor.Services.Converter;
 
 public class ComboConverter : JsonConverter<Combo>
 {
-    public override Combo Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override Combo Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
     {
         using JsonDocument doc = JsonDocument.ParseValue(ref reader);
         JsonElement root = doc.RootElement;
 
         CheckFields(root, "Categories", "Cards", "Name", "Active", "GroupId", "AlternativeGroups");
-        List<ComboCategory> categories = JsonSerializer.Deserialize<List<ComboCategory>>(
-            root.GetProperty("Categories").GetRawText(),
-            options
-        ) ?? [];
+        List<ComboCategory> categories =
+            JsonSerializer.Deserialize<List<ComboCategory>>(
+                root.GetProperty("Categories").GetRawText(),
+                options
+            ) ?? [];
         List<ComboCard> cards = root.TryGetProperty("Cards", out JsonElement cardsProperty)
             ? JsonSerializer.Deserialize<List<ComboCard>>(cardsProperty.GetRawText(), options) ?? []
             : [];
@@ -24,7 +29,9 @@ public class ComboConverter : JsonConverter<Combo>
             ? nameProperty.GetString()
             : null;
         // Older session files predate Active; keep their entries enabled.
-        bool active = ! root.TryGetProperty("Active", out JsonElement activeProperty) || activeProperty.GetBoolean();
+        bool active =
+            !root.TryGetProperty("Active", out JsonElement activeProperty)
+            || activeProperty.GetBoolean();
         string? groupId = root.TryGetProperty("GroupId", out JsonElement groupProperty)
             ? groupProperty.GetString()
             : null;
@@ -43,9 +50,11 @@ public class ComboConverter : JsonConverter<Combo>
             {
                 CheckFields(group, "Alternatives");
 
-                if (! group.TryGetProperty("Alternatives", out JsonElement alternatives) ||
-                    alternatives.ValueKind != JsonValueKind.Array ||
-                    alternatives.GetArrayLength() is 0 or > 2048)
+                if (
+                    !group.TryGetProperty("Alternatives", out JsonElement alternatives)
+                    || alternatives.ValueKind != JsonValueKind.Array
+                    || alternatives.GetArrayLength() is 0 or > 2048
+                )
                 {
                     throw new JsonException("An OR group requires alternatives.");
                 }
@@ -63,7 +72,7 @@ public class ComboConverter : JsonConverter<Combo>
                 {
                     CheckFields(leaf, "Kind", "Category", "Card");
 
-                    if (! leaf.TryGetProperty("Kind", out JsonElement kind))
+                    if (!leaf.TryGetProperty("Kind", out JsonElement kind))
                     {
                         throw new JsonException("Alternative kind is required.");
                     }
@@ -73,7 +82,13 @@ public class ComboConverter : JsonConverter<Combo>
 
                     if (hasCategory)
                     {
-                        CheckFields(category, "BaseCategory", "MinCount", "MaxCount", "MaximumMode");
+                        CheckFields(
+                            category,
+                            "BaseCategory",
+                            "MinCount",
+                            "MaxCount",
+                            "MaximumMode"
+                        );
                     }
 
                     if (hasCard)
@@ -86,19 +101,23 @@ public class ComboConverter : JsonConverter<Combo>
                         throw new JsonException("Invalid alternative kind.");
                     }
 
-                    if (kind.GetString() == "Category" && hasCategory && ! hasCard)
+                    if (kind.GetString() == "Category" && hasCategory && !hasCard)
                     {
-                        leaves.Add(ComboAlternative.For(
-                                JsonSerializer.Deserialize<ComboCategory>(category.GetRawText(), options)
-                                ?? throw new JsonException("Missing category alternative.")
+                        leaves.Add(
+                            ComboAlternative.For(
+                                JsonSerializer.Deserialize<ComboCategory>(
+                                    category.GetRawText(),
+                                    options
+                                ) ?? throw new JsonException("Missing category alternative.")
                             )
                         );
                     }
-                    else if (kind.GetString() == "Card" && hasCard && ! hasCategory)
+                    else if (kind.GetString() == "Card" && hasCard && !hasCategory)
                     {
-                        leaves.Add(ComboAlternative.For(
+                        leaves.Add(
+                            ComboAlternative.For(
                                 JsonSerializer.Deserialize<ComboCard>(card.GetRawText(), options)
-                                ?? throw new JsonException("Missing card alternative.")
+                                    ?? throw new JsonException("Missing card alternative.")
                             )
                         );
                     }
@@ -126,7 +145,7 @@ public class ComboConverter : JsonConverter<Combo>
 
         foreach (JsonProperty property in element.EnumerateObject())
         {
-            if (! allowed.Contains(property.Name) || ! seen.Add(property.Name))
+            if (!allowed.Contains(property.Name) || !seen.Add(property.Name))
             {
                 throw new JsonException("Unknown or duplicate expression field.");
             }

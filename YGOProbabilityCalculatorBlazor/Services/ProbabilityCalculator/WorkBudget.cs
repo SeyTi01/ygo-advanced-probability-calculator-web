@@ -32,11 +32,14 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy)
     {
         if (entries > 32768 || cells > 262144)
         {
-            throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
+            throw new ProbabilityCalculationLimitException(
+                ProbabilityCalculationLimitReason.Storage
+            );
         }
     }
 
     // Count retained BigInteger payload in 32-bit cells as well as count vectors.
     // This is still a per-structure bound, not a total process-byte ceiling.
-    public static long IntegerCells(BigInteger value) => (BigInteger.Abs(value).GetBitLength() + 31) / 32;
+    public static long IntegerCells(BigInteger value) =>
+        (BigInteger.Abs(value).GetBitLength() + 31) / 32;
 }

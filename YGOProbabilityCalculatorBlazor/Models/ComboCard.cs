@@ -17,7 +17,7 @@ public class ComboCard
         RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed
     )
     {
-        if (! Enum.IsDefined(maximumMode))
+        if (!Enum.IsDefined(maximumMode))
         {
             throw new ArgumentOutOfRangeException(nameof(maximumMode));
         }

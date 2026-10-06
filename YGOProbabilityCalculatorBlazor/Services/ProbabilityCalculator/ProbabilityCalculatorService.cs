@@ -5,8 +5,11 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 public class ProbabilityCalculatorService : IProbabilityCalculatorService
 {
-    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) =>
-        CalculateProbabilityForCombos(deck, combos, handSize, CalculationWorkPolicy.Default);
+    public double CalculateProbabilityForCombos(
+        List<Card> deck,
+        List<Combo> combos,
+        int handSize
+    ) => CalculateProbabilityForCombos(deck, combos, handSize, CalculationWorkPolicy.Default);
 
     public double CalculateProbabilityForCombos(
         List<Card> deck,
@@ -27,8 +30,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService
         List<Combo> combos,
         int handSize,
         IReadOnlyList<ComboGroup>? groups = null
-    ) =>
-        CalculateProbabilityResults(deck, combos, handSize, groups, CalculationWorkPolicy.Default);
+    ) => CalculateProbabilityResults(deck, combos, handSize, groups, CalculationWorkPolicy.Default);
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
         List<Card> deck,
@@ -42,14 +44,18 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService
         ValidateComboCount(combos);
         ValidateCardIds(deck);
 
-        return new ProbabilityCalculation(deck, handSize, workPolicy).CalculateResults(combos, groups);
+        return new ProbabilityCalculation(deck, handSize, workPolicy).CalculateResults(
+            combos,
+            groups
+        );
     }
 
     private static void ValidateComboCount(List<Combo> combos)
     {
         if (combos.Count > IProbabilityCalculatorService.MaxComboCount)
         {
-            throw new ArgumentOutOfRangeException(nameof(combos),
+            throw new ArgumentOutOfRangeException(
+                nameof(combos),
                 $"Calculation supports at most {IProbabilityCalculatorService.MaxComboCount} combos."
             );
         }

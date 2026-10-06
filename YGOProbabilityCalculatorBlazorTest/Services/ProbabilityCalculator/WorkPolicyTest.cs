@@ -16,37 +16,55 @@ public class WorkPolicyTest
         List<Combo> combos =
         [
             new([new(a, 1, 2), new(b, 1, 2)], "Both", groupId: "g"),
-            new([new(b, 0, 0)], "Without B", groupId: "g")
+            new([new(b, 0, 0)], "Without B", groupId: "g"),
         ];
         List<ComboGroup> groups = [new("g", "Group"), new("empty", "Empty")];
         ProbabilityCalculatorService service = new();
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            service.CalculateProbabilityResults(deck, combos, 2, groups, new(1))
-        );
+        ProbabilityCalculationLimitException? error =
+            Assert.Throws<ProbabilityCalculationLimitException>(() =>
+                service.CalculateProbabilityResults(deck, combos, 2, groups, new(1))
+            );
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
 
-        foreach (CalculationWorkPolicy policy in new[]
-                 {
-                     new CalculationWorkPolicy(100_000), CalculationWorkPolicy.Default,
-                     CalculationWorkPolicy.Interactive, new(long.MaxValue)
-                 })
+        foreach (
+            CalculationWorkPolicy policy in new[]
+            {
+                new CalculationWorkPolicy(100_000),
+                CalculationWorkPolicy.Default,
+                CalculationWorkPolicy.Interactive,
+                new(long.MaxValue),
+            }
+        )
         {
-            ProbabilityCalculationResult result = service.CalculateProbabilityResults(deck, combos, 2, groups, policy);
-            Assert.That(result.TotalProbability,
+            ProbabilityCalculationResult result = service.CalculateProbabilityResults(
+                deck,
+                combos,
+                2,
+                groups,
+                policy
+            );
+            Assert.That(
+                result.TotalProbability,
                 Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, 2)).Within(1e-12)
             );
-            Assert.That(result.GroupProbabilities![0].Probability, Is.EqualTo(result.TotalProbability));
+            Assert.That(
+                result.GroupProbabilities![0].Probability,
+                Is.EqualTo(result.TotalProbability)
+            );
             Assert.That(result.GroupProbabilities[1].Probability, Is.Zero);
 
             for (int i = 0; i < combos.Count; i++)
             {
-                Assert.That(result.ComboProbabilities[i].Probability,
-                    Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], 2)).Within(1e-12)
+                Assert.That(
+                    result.ComboProbabilities[i].Probability,
+                    Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], 2))
+                        .Within(1e-12)
                 );
             }
         }
 
-        Assert.That(service.CalculateProbabilityResults(deck, combos, 2, groups).TotalProbability,
+        Assert.That(
+            service.CalculateProbabilityResults(deck, combos, 2, groups).TotalProbability,
             Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, 2)).Within(1e-12)
         );
         Assert.Throws<ProbabilityCalculationLimitException>(() =>
@@ -57,16 +75,21 @@ public class WorkPolicyTest
     [Test]
     public void DefaultPolicyStopsARealisticMultiRouteRequestAtItsWorkLimit()
     {
-        CategoryBase[] categories = [.. Enumerable.Range(0, 20).Select(i => new CategoryBase($"Role{i}"))];
+        CategoryBase[] categories =
+        [
+            .. Enumerable.Range(0, 20).Select(i => new CategoryBase($"Role{i}")),
+        ];
         List<Card> deck =
         [
-            .. categories.Select((category, i) => new Card([category], 2, id: $"c{i}")), new Card([], 20, id: "blank")
+            .. categories.Select((category, i) => new Card([category], 2, id: $"c{i}")),
+            new Card([], 20, id: "blank"),
         ];
         List<Combo> combos = [.. categories.Select(category => new Combo([new(category, 1, 1)]))];
 
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5)
-        );
+        ProbabilityCalculationLimitException? error =
+            Assert.Throws<ProbabilityCalculationLimitException>(() =>
+                new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5)
+            );
 
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
     }
@@ -74,24 +97,29 @@ public class WorkPolicyTest
     [Test]
     public void RedundantZeroMaximumRoutesStopAtTheStorageLimit()
     {
-        CategoryBase[] categories = [.. Enumerable.Range(0, 15).Select(i => new CategoryBase($"Excluded{i}"))];
+        CategoryBase[] categories =
+        [
+            .. Enumerable.Range(0, 15).Select(i => new CategoryBase($"Excluded{i}")),
+        ];
         List<Card> deck =
         [
-            .. categories.SelectMany((category, i) =>
-                Enumerable.Range(0, 4).Select(j => new Card([category], id: $"c{i}-{j}"))
-            )
+            .. categories.SelectMany(
+                (category, i) =>
+                    Enumerable.Range(0, 4).Select(j => new Card([category], id: $"c{i}-{j}"))
+            ),
         ];
         List<Combo> combos = [.. categories.Select(category => new Combo([new(category, 0, 0)]))];
 
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculatorService().CalculateProbabilityResults(
-                deck,
-                combos,
-                9,
-                null,
-                CalculationWorkPolicy.Interactive
-            )
-        );
+        ProbabilityCalculationLimitException? error =
+            Assert.Throws<ProbabilityCalculationLimitException>(() =>
+                new ProbabilityCalculatorService().CalculateProbabilityResults(
+                    deck,
+                    combos,
+                    9,
+                    null,
+                    CalculationWorkPolicy.Interactive
+                )
+            );
 
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }
@@ -103,21 +131,32 @@ public class WorkPolicyTest
         Assert.Throws<ArgumentOutOfRangeException>(() => new CalculationWorkPolicy(units));
 
     [Test]
-    public void NullExplicitPolicyIsRejected() => Assert.Throws<ArgumentNullException>(() =>
-        new ProbabilityCalculatorService().CalculateProbabilityForCombos([], [], 1, null!)
-    );
+    public void NullExplicitPolicyIsRejected() =>
+        Assert.Throws<ArgumentNullException>(() =>
+            new ProbabilityCalculatorService().CalculateProbabilityForCombos([], [], 1, null!)
+        );
 
     [Test]
     public void HallSubsetStorageStopsBeforeWorkExhaustion()
     {
         // 16 independent positive roles generate 65,536 Hall subsets. The
         // unchanged 32,768-entry bound stops compilation with ample work left.
-        CategoryBase[] categories = [.. Enumerable.Range(0, 16).Select(i => new CategoryBase($"R{i}"))];
+        CategoryBase[] categories =
+        [
+            .. Enumerable.Range(0, 16).Select(i => new CategoryBase($"R{i}")),
+        ];
         List<Card> deck = [.. categories.Select(c => new Card([c], 2))];
         List<Combo> combos = [new(categories.Select(c => new ComboCategory(c, 1, 16)))];
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 16, null, new(5_000_000))
-        );
+        ProbabilityCalculationLimitException? error =
+            Assert.Throws<ProbabilityCalculationLimitException>(() =>
+                new ProbabilityCalculatorService().CalculateProbabilityResults(
+                    deck,
+                    combos,
+                    16,
+                    null,
+                    new(5_000_000)
+                )
+            );
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }
 
@@ -125,14 +164,17 @@ public class WorkPolicyTest
     public void ComboCompatibilityAndDeckOverflowDoNotBecomeResourceErrors()
     {
         ProbabilityCalculatorService service = new();
-        Assert.Throws<ArgumentOutOfRangeException>(() => service.CalculateProbabilityResults([],
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            service.CalculateProbabilityResults(
+                [],
                 [.. Enumerable.Range(0, 31).Select(_ => new Combo([]))],
                 1,
                 null,
                 CalculationWorkPolicy.Interactive
             )
         );
-        Assert.Throws<OverflowException>(() => service.CalculateProbabilityForCombos(
+        Assert.Throws<OverflowException>(() =>
+            service.CalculateProbabilityForCombos(
                 [new([], int.MaxValue), new([], 1)],
                 [new([])],
                 1,
@@ -147,14 +189,15 @@ public class WorkPolicyTest
         // Count vectors alone fit, but the products retained by the distribution
         // exceed the existing cell bound. No physical deck is allocated.
         CategoryBase role = new("Large multiplicity");
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculatorService().CalculateProbabilityForCombos(
-                [new([role], 100_000), new([], 100_000)],
-                [new([new(role, 0, 999)])],
-                1000,
-                new(5_000_000)
-            )
-        );
+        ProbabilityCalculationLimitException? error =
+            Assert.Throws<ProbabilityCalculationLimitException>(() =>
+                new ProbabilityCalculatorService().CalculateProbabilityForCombos(
+                    [new([role], 100_000), new([], 100_000)],
+                    [new([new(role, 0, 999)])],
+                    1000,
+                    new(5_000_000)
+                )
+            );
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }
 
@@ -164,14 +207,15 @@ public class WorkPolicyTest
         // Independently counted: this 2,001-entry row requires 490,231 cells,
         // including integer payload, exceeding 262,144 before DP transitions.
         CategoryBase role = new("Large multiplicity");
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculatorService().CalculateProbabilityForCombos(
-                [new([role], 100_000), new([], 100_000)],
-                [new([new(role, 0, 1999)])],
-                2000,
-                new(5_000_000)
-            )
-        );
+        ProbabilityCalculationLimitException? error =
+            Assert.Throws<ProbabilityCalculationLimitException>(() =>
+                new ProbabilityCalculatorService().CalculateProbabilityForCombos(
+                    [new([role], 100_000), new([], 100_000)],
+                    [new([new(role, 0, 1999)])],
+                    2000,
+                    new(5_000_000)
+                )
+            );
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }
 }

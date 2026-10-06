@@ -4,21 +4,21 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.Session;
 
-public class LegacyCardMetadataEnricher(ICardInfoService cardInfoService) : ILegacyCardMetadataEnricher
+public class LegacyCardMetadataEnricher(ICardInfoService cardInfoService)
+    : ILegacyCardMetadataEnricher
 {
     public async Task EnrichAsync(SessionState session)
     {
         Card[] candidates =
         [
-            .. session.Cards.Where(card => card.ExternalCardId is null &&
-                                           ! card.Categories.Any(category =>
-                                               category.Source == CategorySource.Metadata &&
-                                               ! card.ManualMetadataCategoryKeys.Contains(
-                                                   category.MetadataKey!
-                                               )
-                                           ) &&
-                                           ! string.IsNullOrWhiteSpace(card.Name)
-            )
+            .. session.Cards.Where(card =>
+                card.ExternalCardId is null
+                && !card.Categories.Any(category =>
+                    category.Source == CategorySource.Metadata
+                    && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)
+                )
+                && !string.IsNullOrWhiteSpace(card.Name)
+            ),
         ];
 
         if (candidates.Length == 0)
@@ -44,8 +44,12 @@ public class LegacyCardMetadataEnricher(ICardInfoService cardInfoService) : ILeg
         {
             Card card = session.Cards[i];
 
-            if (! candidates.Contains(card) || ! resolved.TryGetValue(card.Name!, out CardInfo? info) ||
-                info.Id <= 0 || ! string.Equals(info.Name, card.Name, StringComparison.Ordinal))
+            if (
+                !candidates.Contains(card)
+                || !resolved.TryGetValue(card.Name!, out CardInfo? info)
+                || info.Id <= 0
+                || !string.Equals(info.Name, card.Name, StringComparison.Ordinal)
+            )
             {
                 continue;
             }

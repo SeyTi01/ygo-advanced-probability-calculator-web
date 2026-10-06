@@ -17,20 +17,44 @@ public class WorkPolicyBenchmark
             $"{RuntimeInformation.FrameworkDescription}; {RuntimeInformation.OSDescription}; {RuntimeInformation.ProcessArchitecture}; CPUs={Environment.ProcessorCount}"
         );
 
-        foreach ((int count, int hand) in new[]
-                     { (18, 5), (20, 5), (21, 5), (18, 6), (16, 7), (15, 9), (15, 15), (15, 30), (22, 5) })
+        foreach (
+            (int count, int hand) in new[]
+            {
+                (18, 5),
+                (20, 5),
+                (21, 5),
+                (18, 6),
+                (16, 7),
+                (15, 9),
+                (15, 15),
+                (15, 30),
+                (22, 5),
+            }
+        )
         {
-            CategoryBase[] categories = [.. Enumerable.Range(0, count).Select(i => new CategoryBase($"Role{i}"))];
+            CategoryBase[] categories =
+            [
+                .. Enumerable.Range(0, count).Select(i => new CategoryBase($"Role{i}")),
+            ];
             List<Card> deck =
             [
-                .. categories.Select((c, i) => new Card([c], 2, id: $"c{i}")), new Card([], 60 - count * 2, id: "blank")
+                .. categories.Select((c, i) => new Card([c], 2, id: $"c{i}")),
+                new Card([], 60 - count * 2, id: "blank"),
             ];
-            List<Combo> combos = [.. categories.Select((c, i) => new Combo([new(c, 1, 1)], groupId: $"g{i % 2}"))];
+            List<Combo> combos =
+            [
+                .. categories.Select((c, i) => new Combo([new(c, 1, 1)], groupId: $"g{i % 2}")),
+            ];
             List<ComboGroup> groups = [new("g0", "Even"), new("g1", "Odd")];
             ProbabilityCalculatorService service = new();
 
-            foreach (long units in new[]
-                         { CalculationWorkPolicy.Default.WorkUnits, CalculationWorkPolicy.Interactive.WorkUnits })
+            foreach (
+                long units in new[]
+                {
+                    CalculationWorkPolicy.Default.WorkUnits,
+                    CalculationWorkPolicy.Interactive.WorkUnits,
+                }
+            )
             {
                 long before = GC.GetAllocatedBytesForCurrentThread();
                 Stopwatch timer = Stopwatch.StartNew();
@@ -38,9 +62,16 @@ public class WorkPolicyBenchmark
 
                 try
                 {
-                    ProbabilityCalculationResult result = units == CalculationWorkPolicy.Default.WorkUnits
-                        ? service.CalculateProbabilityResults(deck, combos, hand, groups)
-                        : service.CalculateProbabilityResults(deck, combos, hand, groups, new(units));
+                    ProbabilityCalculationResult result =
+                        units == CalculationWorkPolicy.Default.WorkUnits
+                            ? service.CalculateProbabilityResults(deck, combos, hand, groups)
+                            : service.CalculateProbabilityResults(
+                                deck,
+                                combos,
+                                hand,
+                                groups,
+                                new(units)
+                            );
                     // Independently count the complement: draws from each two-copy
                     // role must be zero or two, with the remaining draws all blank.
                     long denominator = Choose(60, hand);
@@ -51,7 +82,10 @@ public class WorkPolicyBenchmark
                         failed += Choose(count, pairs) * Choose(60 - count * 2, hand - 2 * pairs);
                     }
 
-                    Assert.That(result.TotalProbability, Is.EqualTo(1d - (double)failed / denominator).Within(1e-12));
+                    Assert.That(
+                        result.TotalProbability,
+                        Is.EqualTo(1d - (double)failed / denominator).Within(1e-12)
+                    );
                     outcome = $"success p={result.TotalProbability:R}";
                 }
                 catch (ProbabilityCalculationLimitException ex)
@@ -67,7 +101,8 @@ public class WorkPolicyBenchmark
 
             if ((count, hand) is (20, 5) or (18, 6) or (15, 15))
             {
-                long low = 0, high = 100_000_000;
+                long low = 0,
+                    high = 100_000_000;
 
                 while (high - low > 100_000)
                 {
@@ -75,16 +110,22 @@ public class WorkPolicyBenchmark
 
                     try
                     {
-                        service.CalculateProbabilityResults(deck, combos, hand, groups, new(midpoint));
+                        service.CalculateProbabilityResults(
+                            deck,
+                            combos,
+                            hand,
+                            groups,
+                            new(midpoint)
+                        );
                         high = midpoint;
                     }
-                    catch (ProbabilityCalculationLimitException ex) when (ex.Reason ==
-                                                                          ProbabilityCalculationLimitReason.Work)
+                    catch (ProbabilityCalculationLimitException ex)
+                        when (ex.Reason == ProbabilityCalculationLimitReason.Work)
                     {
                         low = midpoint;
                     }
-                    catch (ProbabilityCalculationLimitException ex) when (ex.Reason ==
-                                                                          ProbabilityCalculationLimitReason.Storage)
+                    catch (ProbabilityCalculationLimitException ex)
+                        when (ex.Reason == ProbabilityCalculationLimitReason.Storage)
                     {
                         // More work cannot bypass the independent storage ceiling.
                         // Report it and continue measuring the remaining scenarios.
