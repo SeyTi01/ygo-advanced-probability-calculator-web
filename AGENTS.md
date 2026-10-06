@@ -62,6 +62,10 @@ At the start of implementation or test work, run `dotnet --info` and `dotnet --l
 
 `.github/workflows/tests.yml` runs the full regular test suite on every branch push, including feature branches, `dev`, and `main`. CI complements rather than replaces local verification: run relevant tests locally before pushing and report the exact local commands and results in pull requests. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
 
+### Release WebAssembly publishing
+
+Install the `wasm-tools` workload for the exact .NET SDK that runs a Release publish. The workload is scoped to that SDK; the GitHub Actions publish and `YGOProbabilityCalculatorBlazor/build.sh` install it explicitly. This enables the normal WebAssembly build optimizations and does not enable AOT.
+
 
 ### Restricted Linux and ChatGPT Work: .NET 10 SDK bootstrap
 
