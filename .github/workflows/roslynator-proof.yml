@@ -7,7 +7,7 @@ permissions:
 jobs:
   proof:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -22,8 +22,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Could not create disposable worktree.' }
           Set-Location $root
           ./scripts/style/fix.ps1
-          ./scripts/style/check.ps1
           git diff --binary --output="$env:RUNNER_TEMP/style-cleanup.patch"
+          ./scripts/style/check.ps1
           ./scripts/style/fix.ps1
           ./scripts/style/check.ps1
           git diff --binary --output="$env:RUNNER_TEMP/style-second.patch"

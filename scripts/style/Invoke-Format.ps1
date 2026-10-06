@@ -20,12 +20,17 @@ try {
     & dotnet restore $solution
     if ($LASTEXITCODE -ne 0) { throw 'Style dependency restore failed.' }
 
-    $arguments = @('format', $solution, '--no-restore', '--severity', 'info', '--verbosity', 'minimal')
-    if ($Verify) { $arguments += '--verify-no-changes' }
-    $arguments += @('--diagnostics') + $diagnostics
-    & dotnet @arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "C# style command failed. Run pwsh -NoProfile -File scripts/style/fix.ps1, then re-run check.ps1."
+    foreach ($stage in @('style', 'analyzers', 'whitespace')) {
+        $arguments = @('format', $stage, $solution, '--no-restore', '--verbosity', 'minimal')
+        if ($Verify) { $arguments += '--verify-no-changes' }
+        if ($stage -ne 'whitespace') {
+            $prefix = if ($stage -eq 'style') { 'IDE' } else { 'RCS' }
+            $arguments += @('--severity', 'info', '--diagnostics') + @($diagnostics | Where-Object { $_.StartsWith($prefix) })
+        }
+        & dotnet @arguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "C# $stage command failed. Run pwsh -NoProfile -File scripts/style/fix.ps1, then re-run check.ps1."
+        }
     }
 }
 finally {
