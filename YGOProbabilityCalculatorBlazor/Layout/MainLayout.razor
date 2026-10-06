@@ -41,7 +41,8 @@
 </div>
 
 @code {
-    private bool IsHelpPage => NavigationManager.Uri.EndsWith("/help", StringComparison.OrdinalIgnoreCase);
+    private bool IsHelpPage => new Uri(NavigationManager.Uri).AbsolutePath.TrimEnd('/')
+        .Equals("/help", StringComparison.OrdinalIgnoreCase);
     private string ThemePreference { get; set; } = "system";
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

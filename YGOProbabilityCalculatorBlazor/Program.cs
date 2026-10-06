@@ -15,19 +15,24 @@ public static class Program {
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-        builder.Services.AddScoped<IDeckImportService, DeckImportService>();
-        builder.Services.AddScoped<ISessionService, SessionService>();
-        builder.Services.AddScoped<ILegacyCardMetadataEnricher, LegacyCardMetadataEnricher>();
-        builder.Services.AddScoped<ICardInfoService, CardInfoService>();
-        builder.Services.AddScoped<ICardArtworkService, CardArtworkService>();
-        builder.Services.AddScoped<IFileService, FileService>();
-        builder.Services.AddScoped<ISerializer, JsonSerializer>();
-        builder.Services.AddScoped<IPendingSessionService, PendingSessionService>();
-        builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
-        builder.Services.AddScoped<IProbabilityCalculatorService, ProbabilityCalculatorService>();
-        builder.Services.AddScoped<IBackgroundCalculator, BackgroundCalculator>();
+        ConfigureServices(builder.Services, builder.HostEnvironment.BaseAddress);
 
         await builder.Build().RunAsync();
+    }
+
+    // The publish-time prerenderer calls this hook too; keep runtime registrations shared.
+    public static void ConfigureServices(IServiceCollection services, string baseAddress) {
+        services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(baseAddress) });
+        services.AddScoped<IDeckImportService, DeckImportService>();
+        services.AddScoped<ISessionService, SessionService>();
+        services.AddScoped<ILegacyCardMetadataEnricher, LegacyCardMetadataEnricher>();
+        services.AddScoped<ICardInfoService, CardInfoService>();
+        services.AddScoped<ICardArtworkService, CardArtworkService>();
+        services.AddScoped<IFileService, FileService>();
+        services.AddScoped<ISerializer, JsonSerializer>();
+        services.AddScoped<IPendingSessionService, PendingSessionService>();
+        services.AddScoped<ILocalStorageService, LocalStorageService>();
+        services.AddScoped<IProbabilityCalculatorService, ProbabilityCalculatorService>();
+        services.AddScoped<IBackgroundCalculator, BackgroundCalculator>();
     }
 }
