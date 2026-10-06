@@ -8,6 +8,8 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <!-- Keep public routes in the publish output even if navigation links change. -->
         <BlazorWasmPrerenderingUrlPathToExplicitFetch>/help</BlazorWasmPrerenderingUrlPathToExplicitFetch>
+        <!-- Cloudflare Pages serves help.html directly at the canonical /help URL. -->
+        <BlazorWasmPrerenderingOutputStyle>AppendHtmlExtension</BlazorWasmPrerenderingOutputStyle>
     </PropertyGroup>
 
     <ItemGroup>
