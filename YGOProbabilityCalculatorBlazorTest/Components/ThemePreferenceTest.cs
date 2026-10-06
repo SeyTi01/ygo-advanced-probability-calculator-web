@@ -52,11 +52,14 @@ public class ThemePreferenceTest {
         Assert.That(cut.Find("a[href='/help']").TextContent.Trim(), Is.EqualTo("Help"));
     }
 
-    [Test]
-    public void HelpHeaderDoesNotDuplicateItsContentHeading() {
+    [TestCase("/help")]
+    [TestCase("/help/")]
+    [TestCase("/help/?from=search")]
+    [TestCase("/help#examples")]
+    public void HelpHeaderDoesNotDuplicateItsContentHeading(string path) {
         using var context = new Bunit.TestContext();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
-        context.Services.GetRequiredService<NavigationManager>().NavigateTo("/help");
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo(path);
 
         var cut = context.RenderComponent<MainLayout>(parameters => parameters.Add(
             layout => layout.Body,
