@@ -49,3 +49,9 @@ jobs:
 
       - name: JavaScript tests
         run: node --test
+
+      - name: Publish prerendered site
+        run: dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release --no-restore
+
+      - name: Verify published SEO HTML
+        run: sh scripts/verify-published-seo.sh
