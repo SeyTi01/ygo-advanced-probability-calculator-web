@@ -10,7 +10,7 @@ $diagnostics = @(
     'IDE0001', 'IDE0002', 'IDE0003', 'IDE0004', 'IDE0005', 'IDE0008',
     'IDE0011', 'IDE0028', 'IDE0034', 'IDE0075', 'IDE0090',
     'IDE0300', 'IDE0301', 'IDE0302', 'IDE0303', 'IDE0304', 'IDE0305', 'IDE0306',
-    'RCS0008', 'RCS0010', 'RCS0058', 'RCS0063'
+    'RCS0008', 'RCS0058', 'RCS0063'
 )
 $solution = 'YGOProbabilityCalculatorBlazor.sln'
 $timer = [Diagnostics.Stopwatch]::StartNew()
