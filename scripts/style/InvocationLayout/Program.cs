@@ -3,13 +3,17 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-if (args.Length == 0)
+bool checkOnly = args.Length > 0 && args[0] == "--check";
+string[] paths = checkOnly ? args[1..] : args;
+
+if (paths.Length == 0)
 {
-    return;
+    return 0;
 }
 
 CSharpParseOptions parseOptions = new(LanguageVersion.Latest);
-foreach (string path in args)
+bool hasDifferences = false;
+foreach (string path in paths)
 {
     string source = File.ReadAllText(path, Encoding.UTF8);
     SyntaxNode root = CSharpSyntaxTree.ParseText(source, parseOptions, path).GetRoot();
@@ -17,9 +21,19 @@ foreach (string path in args)
     string output = formatted.ToFullString();
     if (!string.Equals(source, output, StringComparison.Ordinal))
     {
-        File.WriteAllText(path, output, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        if (checkOnly)
+        {
+            Console.Error.WriteLine($"Invocation layout would change: {path}");
+            hasDifferences = true;
+        }
+        else
+        {
+            File.WriteAllText(path, output, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        }
     }
 }
+
+return hasDifferences ? 1 : 0;
 
 internal sealed class ForeachChainLayoutRewriter : CSharpSyntaxRewriter
 {

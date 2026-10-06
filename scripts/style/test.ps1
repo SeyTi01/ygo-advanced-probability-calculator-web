@@ -1,10 +1,32 @@
 #Requires -Version 5.1
 # Exercise the actual solution and canonical fixer without committing a probe source file.
 [CmdletBinding()]
-param([string[]] $MSBuildArguments = @())
+param(
+    [string[]] $MSBuildArguments = @(),
+    [string] $RepositoryRoot
+)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+
+$scriptRepositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+. (Join-Path $PSScriptRoot 'Policy.ps1')
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+    $RepositoryRoot = Join-Path ([IO.Path]::GetTempPath()) ("ygo-style-regression-" + [Guid]::NewGuid().ToString('N'))
+    try {
+        Copy-StyleValidationTree -SourceRoot $scriptRepositoryRoot -DestinationRoot $RepositoryRoot
+        $isolatedScript = Join-Path $RepositoryRoot 'scripts/style/test.ps1'
+        & $isolatedScript -MSBuildArguments $MSBuildArguments -RepositoryRoot $RepositoryRoot
+        return
+    }
+    finally {
+        if (Test-Path -LiteralPath $RepositoryRoot) {
+            Remove-Item -LiteralPath $RepositoryRoot -Recurse -Force
+        }
+    }
+}
+
+$repoRoot = [IO.Path]::GetFullPath($RepositoryRoot)
+$styleRoot = Join-Path $repoRoot 'scripts/style'
 $probe = Join-Path $repoRoot 'YGOProbabilityCalculatorBlazor/AutofixProbe.cs'
 if (Test-Path $probe) { throw "Probe path already exists: $probe" }
 $source = @'
@@ -86,7 +108,7 @@ Push-Location $repoRoot
 try {
     # Include CRLF, trailing whitespace and a missing final newline in the dirty input.
     [IO.File]::WriteAllText($probe, $source.Replace("`n", "  `r`n"), [Text.UTF8Encoding]::new($true))
-    & "$PSScriptRoot/fix.ps1" -MSBuildArguments $MSBuildArguments
+    & (Join-Path $styleRoot 'fix.ps1') -MSBuildArguments $MSBuildArguments
     $fixed = [IO.File]::ReadAllText($probe)
     Write-Host $fixed
     $bytes = [IO.File]::ReadAllBytes($probe)
@@ -131,6 +153,31 @@ try {
         throw 'Automatic fix did not match the expected multiline invocation layout.'
     }
     Write-Host 'PASS: chained calls and nested closing delimiters match the golden layout'
+
+    # The custom layout tool must report dirty input without writing to it.
+    $layoutProject = Join-Path $styleRoot 'InvocationLayout/InvocationLayout.csproj'
+    $layoutCheckArguments = @('run', '--project', $layoutProject, '--no-launch-profile', '--', '--check', $probe)
+    & dotnet @layoutCheckArguments
+    if ($LASTEXITCODE -ne 0) { throw 'Invocation layout check rejected the canonical fixture.' }
+    $canonicalOuterClosing = "        )`n        {`n            sourceCategory.Remove(key);"
+    $misalignedOuterClosing = "            )`n        {`n            sourceCategory.Remove(key);"
+    $dirtyLayout = $fixed.Replace($canonicalOuterClosing, $misalignedOuterClosing)
+    if ($dirtyLayout -ceq $fixed) { throw 'Could not prepare the noncanonical invocation fixture.' }
+    [IO.File]::WriteAllText($probe, $dirtyLayout, [Text.UTF8Encoding]::new($false))
+    $beforeCheckOnly = [IO.File]::ReadAllBytes($probe)
+    & dotnet @layoutCheckArguments
+    if ($LASTEXITCODE -eq 0) { throw 'Invocation layout check accepted noncanonical input.' }
+    $afterCheckOnly = [IO.File]::ReadAllBytes($probe)
+    if ([Convert]::ToBase64String($beforeCheckOnly) -cne [Convert]::ToBase64String($afterCheckOnly)) {
+        throw 'Invocation layout check modified its input.'
+    }
+    $layoutFixArguments = @('run', '--project', $layoutProject, '--no-launch-profile', '--', $probe)
+    & dotnet @layoutFixArguments
+    if ($LASTEXITCODE -ne 0 -or [IO.File]::ReadAllText($probe) -cne $fixed) {
+        throw 'Invocation layout fixer did not restore the golden fixture.'
+    }
+    Write-Host 'PASS: invocation layout --check detects differences without writing'
+
     Assert-Pattern $fixed 'Property = value;' 'field/property qualification simplification'
     Assert-Pattern $fixed '(?m)^\s*Changed\?\.Invoke\(\);' 'event qualification simplification'
     Assert-Pattern $fixed 'if \(! condition\)\s*\{' 'logical NOT spacing and braces'
@@ -149,14 +196,34 @@ try {
     Assert-Pattern $fixed 'LongParameters\(\s*\n' 'parameter wrapping'
     Assert-Pattern $fixed '(?s)LongParameters\([^)]*fifthParameterWithAVeryLongName\r?\n[ \t]+\)\r?\n[ \t]+\{' 'multiline declaration closing parenthesis alignment'
     Assert-Pattern $fixed '(?s)LongParameters\([^;]*\n\s*secondParameterWithAVeryLongName:' 'argument wrapping'
-    $before = git -c "safe.directory=$repoRoot" diff --binary
-    if ($LASTEXITCODE -ne 0) { throw 'Could not snapshot tracked cleanup output.' }
-    & "$PSScriptRoot/fix.ps1" -MSBuildArguments $MSBuildArguments
-    $after = git -c "safe.directory=$repoRoot" diff --binary
-    if ($LASTEXITCODE -ne 0) { throw 'Could not check tracked cleanup output.' }
-    if ($fixed -cne [IO.File]::ReadAllText($probe) -or ($before -join "`n") -cne ($after -join "`n")) {
+    $canonicalSnapshot = Get-StyleSourceSnapshot -RepositoryRoot $repoRoot
+
+    # A text-policy failure must not alter the checkout; the fixer then restores it.
+    [IO.File]::AppendAllText($probe, ' ')
+    $dirtySnapshot = Get-StyleSourceSnapshot -RepositoryRoot $repoRoot
+    $checkerFailed = $false
+    $checkerMessage = ''
+    try {
+        & (Join-Path $styleRoot 'check.ps1') -Full -RepositoryRoot $repoRoot
+    }
+    catch {
+        $checkerFailed = $true
+        $checkerMessage = $_.Exception.Message
+    }
+    if (-not $checkerFailed -or $checkerMessage -notmatch 'trailing whitespace') {
+        throw "Non-mutating checker did not reject the dirty fixture for trailing whitespace: $checkerMessage"
+    }
+    if ((Get-StyleSourceSnapshot -RepositoryRoot $repoRoot) -cne $dirtySnapshot) {
+        throw 'Non-mutating checker changed C# sources in its checkout.'
+    }
+    Write-Host 'PASS: style checker reports a text violation without modifying C# sources'
+
+    & (Join-Path $styleRoot 'fix.ps1') -MSBuildArguments $MSBuildArguments
+    if ([IO.File]::ReadAllText($probe) -cne $fixed -or
+        (Get-StyleSourceSnapshot -RepositoryRoot $repoRoot) -cne $canonicalSnapshot) {
         throw 'Canonical fixer is not idempotent.'
     }
+    & (Join-Path $styleRoot 'check.ps1') -Full -RepositoryRoot $repoRoot
     Write-Host 'PASS: second canonical run is unchanged for probe and actual solution'
 }
 finally {

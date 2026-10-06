@@ -36,21 +36,31 @@ dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 
 ## Linting and cleanup tools
 
-Run the one canonical fixer from the repository root (PowerShell 5.1+ on Windows, `pwsh` on Linux):
+Before final verification or publication of C# changes, run the canonical fixer from the repository root (PowerShell 5.1+ on Windows, `pwsh` on Linux):
 
 ```powershell
 pwsh -NoProfile -File scripts/style/fix.ps1
 ```
 
-Windows PowerShell users can run `powershell -NoProfile -File scripts/style/fix.ps1`. The script restores the pinned SDK-compatible tools/packages, builds to resolve references, applies the narrow JetBrains explicit-type/braces/formatting profile, repeats the explicitly enabled Roslyn style fixes until the C# file hashes stop changing, then restores JetBrains formatting and removes UTF-8 BOMs. `global.json` pins Roslyn's SDK; the tool manifest pins ReSharper. Only noninteractive, safely auto-fixable rules belong in `.editorconfig`; adding a rule requires proving its fix with this command. C# source is the enforced scope; unrelated file formats have no formatter gate.
+Inspect the formatter output and keep its C# changes. Then run the read-only verifier:
 
-CI runs this same script and asserts `git diff --exit-code` on a clean checkout. Run it and commit its output to satisfy lint/style CI; build, .NET tests, and JavaScript tests independently check functional correctness and can still fail on broken code. Review the generated diff. Keep logs and probe files outside the repository. CI attaches `lint-fixes.patch` if cleanup changes tracked files.
+```powershell
+pwsh -NoProfile -File scripts/style/check.ps1
+```
+
+Publish only when the verifier passes. CI checks style and never fixes source files; do not rely on CI to generate, attach, or provide formatting fixes after publication. The verifier shares policy with the fixer: it reads `.editorconfig` for Roslyn rule IDs and text settings, uses `scripts/style/Cleanup.DotSettings` for ReSharper, and invokes the custom `InvocationLayout` tool in check-only mode. It checks files changed by the event for ordinary PRs and pushes; PR checks compare the base SHA with `GITHUB_SHA`, while push checks compare `event.before` with `GITHUB_SHA`. If the event SHAs are unavailable or the push is a new branch, it checks the full repository. Manual dispatch checks the full repository. Changes to formatter infrastructure trigger full style verification.
+
+The checker copies its validation inputs to a disposable directory, runs formatters there, compares the copied C# files, and verifies the original checkout's Git status is unchanged. It reports changed files and the affected style rule group with the canonical fix command. `scripts/style/test.ps1` exercises the fixer and checker in a disposable copy; CI runs it only when `.editorconfig`, `global.json`, `.config/dotnet-tools.json`, `scripts/style/**`, or `.github/workflows/tests.yml` changes. It is not part of ordinary application-code CI runs.
+
+Windows PowerShell users can run `powershell -NoProfile -File scripts/style/fix.ps1`. The fixer restores the pinned SDK-compatible tools/packages, builds to resolve references, applies the narrow JetBrains explicit-type/braces/formatting profile, repeats the explicitly enabled Roslyn style fixes until the C# file hashes stop changing, then restores JetBrains formatting and removes UTF-8 BOMs. `global.json` pins Roslyn's SDK; the tool manifest pins ReSharper. Only noninteractive, safely auto-fixable rules belong in `.editorconfig`; adding a rule requires proving its fix with this command. C# source is the enforced scope; unrelated file formats have no formatter gate.
+
+If the local environment genuinely blocks the fixer because of the documented managed-workspace Roslyn/MSBuild restriction, use the recovery path below and document the exact failure. CI may help diagnose that environment-specific failure, but must not be treated as the normal way to find or apply formatting fixes.
 
 `inspectcode` is optional diagnostic tooling, never an enforcement gate for manual-only findings. Unused parameter/delegate names, repeated enumeration, nullability-based constant conditions, and all static candidates are outside the explicit lint policy. Do not use the default Full Cleanup profile. After an actual managed-workspace MSBuild failure, pass verification-only flags with `-MSBuildArguments` (for example `-m:1`, `-p:UseSharedCompilation=false`, and the temporary task override described below). If this workspace blocks Roslyn's build-host Unix pipe, report the local limitation and review the output of the identical fixer from CI; do not bypass the restriction or invent replacement source rewrites.
 
 At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work. If no usable .NET 10 SDK is available, follow the restricted Linux / ChatGPT Work bootstrap below before continuing. Missing .NET 10 is not, by itself, sufficient reason to skip local verification; attempt the documented nonprivileged bootstrap first. Only report .NET verification as blocked after that attempt fails because of a real environment restriction, and include the exact failed command and error. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 
-`.github/workflows/tests.yml` runs the full regular test suite on every branch push, including feature branches, `dev`, and `main`. CI complements rather than replaces local verification: run relevant tests locally before pushing and report the exact local commands and results in pull requests. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
+`.github/workflows/tests.yml` runs PR checks for pull requests targeting `dev`, push checks on `dev` and `main`, and supports manual dispatch. Feature branches do not receive a second push-triggered run. Style verification and the full functional test suite are independent jobs and can run in parallel; the functional job preserves the normal restore, build, .NET tests, and JavaScript tests. CI complements rather than replaces local verification: run relevant tests locally before pushing and report the exact local commands and results in pull requests. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
 
 
 ### Restricted Linux and ChatGPT Work: .NET 10 SDK bootstrap
