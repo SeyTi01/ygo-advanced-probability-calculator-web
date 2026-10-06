@@ -20,7 +20,7 @@ try {
     & dotnet restore $solution
     if ($LASTEXITCODE -ne 0) { throw 'Style dependency restore failed.' }
 
-    foreach ($stage in @('style', 'analyzers', 'whitespace')) {
+    foreach ($stage in @('whitespace', 'style', 'analyzers', 'whitespace')) {
         $arguments = @('format', $stage, $solution, '--no-restore', '--verbosity', 'minimal')
         if ($Verify) { $arguments += '--verify-no-changes' }
         if ($stage -ne 'whitespace') {
