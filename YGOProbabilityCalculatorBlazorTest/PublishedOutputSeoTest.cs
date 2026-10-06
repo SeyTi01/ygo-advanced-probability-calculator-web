@@ -34,14 +34,14 @@ public class PublishedOutputSeoTest {
             ["og:description"] = description,
             ["og:url"] = canonical,
             ["og:image"] = "https://ygo-calculator.pages.dev/social-preview.png",
-            ["og:image:alt"] = "Dark calculator interface with Fire, Dark and Earth categories, two Razen combo examples, and exact opening-hand probability results.",
+            ["og:image:alt"] = "Dark calculator interface showing Vanquish Soul Razen with VS Monster and VS Starter roles, a VS Starter plus FIRE-or-DARK combo expression, and exact Full VS probability results.",
             ["og:image:width"] = "1280",
             ["og:image:height"] = "640",
             ["twitter:card"] = "summary_large_image",
             ["twitter:title"] = title,
             ["twitter:description"] = description,
             ["twitter:image"] = "https://ygo-calculator.pages.dev/social-preview.png",
-            ["twitter:image:alt"] = "Dark calculator interface with Fire, Dark and Earth categories, two Razen combo examples, and exact opening-hand probability results."
+            ["twitter:image:alt"] = "Dark calculator interface showing Vanquish Soul Razen with VS Monster and VS Starter roles, a VS Starter plus FIRE-or-DARK combo expression, and exact Full VS probability results."
         };
         foreach (var (name, value) in metadata) {
             var attribute = name.StartsWith("og:", StringComparison.Ordinal) ? "property" : "name";
