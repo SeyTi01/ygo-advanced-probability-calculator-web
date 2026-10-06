@@ -36,7 +36,8 @@ public class DistinctPhysicalCardTest
         // Three total eligible cards is insufficient when two roles share only one.
         AssertHand([dual, new([Earth]), new([Earth])],
             new([new(Fire, 1, 3), new(Dark, 1, 3), new(Earth, 1, 3)]),
-            false);
+            false
+        );
         AssertHand([razen, fire], new([], cards: [new(razen.Id, 1, 2), new(fire.Id, 1, 2)]), true);
         AssertHand([razen, fire], new([], cards: [new(razen.Id, 1, 2), new(razen.Id, 1, 1)]), true);
     }
@@ -103,29 +104,43 @@ public class DistinctPhysicalCardTest
         {
             List<Card> deck =
             [
-                .. Enumerable.Range(0, 4).Select(_ => new Card(
-                    categories.Where(_ => random.Next(2) == 0),
-                    random.Next(1, 3),
-                    "Same name"))
+                .. Enumerable
+                    .Range(0, 4)
+                    .Select(_ => new Card(
+                            categories.Where(_ => random.Next(2) == 0),
+                            random.Next(1, 3),
+                            "Same name"
+                        )
+                    )
             ];
             int size = random.Next(1, Math.Min(5, deck.Sum(c => c.Copies)) + 1);
             List<Combo> combos =
             [
-                .. Enumerable.Range(0, 4).Select(index => new Combo(
-                    categories.Where(_ => random.Next(2) == 0).Select(c =>
-                    {
-                        int min = random.Next(3);
+                .. Enumerable
+                    .Range(0, 4)
+                    .Select(index => new Combo(
+                            categories
+                                .Where(_ => random.Next(2) == 0)
+                                .Select(c =>
+                                    {
+                                        int min = random.Next(3);
 
-                        return new ComboCategory(c, min, random.Next(min, size + 3));
-                    }),
-                    "Duplicate",
-                    groupId: index % 2 == 0 ? "a" : "b",
-                    cards: deck.Where(_ => random.Next(3) == 0).Select(c =>
-                    {
-                        int min = random.Next(3);
+                                        return new ComboCategory(c, min, random.Next(min, size + 3));
+                                    }
+                                ),
+                            "Duplicate",
+                            groupId: index % 2 == 0 ? "a" : "b",
+                            cards: deck
+                                .Where(_ => random.Next(3) == 0)
+                                .Select(c =>
+                                    {
+                                        int min = random.Next(3);
 
-                        return new ComboCard(c.Id, min, random.Next(min, size + 3));
-                    })))
+                                        return new ComboCard(c.Id, min, random.Next(min, size + 3));
+                                    }
+                                )
+                        )
+                    )
             ];
             CheckAllResults(deck, combos, size);
         }
@@ -135,10 +150,13 @@ public class DistinctPhysicalCardTest
     public async Task ReportedSavedSessionAndThirtyOverlappingCombosMatchPhysicalEnumeration()
     {
         string json = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory,
-            "Fixtures",
-            "razen_session.json"));
+                "Fixtures",
+                "razen_session.json"
+            )
+        );
         SessionState session = await new SessionService(Mock.Of<IJSRuntime>(),
-            new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()).LoadSessionAsync(json);
+            new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()
+        ).LoadSessionAsync(json);
         List<Card> deck = [.. session.Cards.Where(c => c.Active)];
         List<Combo> combos = [.. session.Combos.Where(c => c.Active)];
         Assert.That(deck.Sum(c => c.Copies), Is.EqualTo(40));
@@ -154,11 +172,13 @@ public class DistinctPhysicalCardTest
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck,
             repeated,
             5,
-            [new("a", "First"), new("b", "Second")]);
+            [new("a", "First"), new("b", "Second")]
+        );
         timer.Stop();
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         TestContext.Out.WriteLine(
-            $"Reported 40-card session / 30 overlapping mixed combos: {timer.Elapsed.TotalMilliseconds:F1} ms, {allocated:N0} bytes");
+            $"Reported 40-card session / 30 overlapping mixed combos: {timer.Elapsed.TotalMilliseconds:F1} ms, {allocated:N0} bytes"
+        );
         Assert.That(result.TotalProbability, Is.EqualTo(expected).Within(1e-12));
         Assert.That(result.GroupProbabilities!.Select(g => g.Probability), Is.All.EqualTo(expected).Within(1e-12));
 
@@ -178,7 +198,8 @@ public class DistinctPhysicalCardTest
         List<Combo> combos = [new([new(Fire, 1, 2)], cards: [new(deck[0].Id, 1, 2)])];
         CheckAllResults(deck, combos, 2);
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 2),
-            Is.EqualTo(1.0 / 2080).Within(1e-12));
+            Is.EqualTo(1.0 / 2080).Within(1e-12)
+        );
     }
 
     [Test]
@@ -188,7 +209,8 @@ public class DistinctPhysicalCardTest
         List<Card> deck = [.. categories.Select(c => new Card([c]))];
         Combo combo = new(categories.Select(c => new ComboCategory(c, 1, 20)));
         ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculatorService().CalculateProbabilityResults(deck, [combo], 20));
+            new ProbabilityCalculatorService().CalculateProbabilityResults(deck, [combo], 20)
+        );
         Assert.That(error!.Message, Does.Contain("Calculation stopped"));
     }
 
@@ -197,7 +219,8 @@ public class DistinctPhysicalCardTest
         Assert.That(SmallDeckOracle.MatchesHand(hand, combo), Is.EqualTo(expected), "Independent slot assignment");
         List<Card> deck = [.. hand.GroupBy(c => c.Id).Select(g => g.First().WithCopies(g.Count()))];
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, [combo], hand.Count),
-            Is.EqualTo(expected ? 1 : 0).Within(1e-12));
+            Is.EqualTo(expected ? 1 : 0).Within(1e-12)
+        );
     }
 
     private static void CheckAllResults(List<Card> deck, List<Combo> combos, int size)
@@ -205,22 +228,30 @@ public class DistinctPhysicalCardTest
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck,
             combos,
             size,
-            [new("a", "First"), new("b", "Second"), new("empty", "Empty")]);
+            [new("a", "First"), new("b", "Second"), new("empty", "Empty")]
+        );
         Assert.That(result.TotalProbability,
-            Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, size)).Within(1e-12));
+            Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, size)).Within(1e-12)
+        );
 
         for (int i = 0; i < combos.Count; i++)
         {
             Assert.That(result.ComboProbabilities[i].Probability,
-                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], size)).Within(1e-12));
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], size)).Within(1e-12)
+            );
         }
 
         foreach (GroupProbabilityResult group in result.GroupProbabilities!)
         {
             Assert.That(group.Probability,
-                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck,
-                    [.. combos.Where(c => c.GroupId == group.GroupId)],
-                    size)).Within(1e-12));
+                Is
+                    .EqualTo(SmallDeckOracle.EnumerateProbability(deck,
+                            [.. combos.Where(c => c.GroupId == group.GroupId)],
+                            size
+                        )
+                    )
+                    .Within(1e-12)
+            );
         }
     }
 }

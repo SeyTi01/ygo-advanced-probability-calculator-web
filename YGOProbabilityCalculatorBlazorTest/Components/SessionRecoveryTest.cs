@@ -53,15 +53,19 @@ public class SessionRecoveryTest
         ComboGroups = [new("group", "Group")], CategoryColorIndices = new() { ["Role"] = 3 }
     };
 
-    private void Recovery(string payload) => context.JSInterop
+    private void Recovery(string payload) => context
+        .JSInterop
         .Setup<SessionRecovery.Inspection?>("sessionRecovery.initialize", _ => true)
         .SetResult(new() { Exists = true, Payload = payload, SavedAt = "2026-10-03T08:00:00Z" });
 
     private IRenderedComponent<SessionRecovery> Render(
         SessionState session,
-        Func<SessionState, Task<bool>>? apply = null) =>
-        context.RenderComponent<SessionRecovery>(p => p.Add(x => x.Session, session)
-            .Add(x => x.ApplyRecovery, apply ?? (_ => Task.FromResult(true))));
+        Func<SessionState, Task<bool>>? apply = null
+    ) =>
+        context.RenderComponent<SessionRecovery>(p => p
+            .Add(x => x.Session, session)
+            .Add(x => x.ApplyRecovery, apply ?? (_ => Task.FromResult(true)))
+        );
 
     private string LastSnapshot() =>
         (string)context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!;
@@ -72,13 +76,16 @@ public class SessionRecoveryTest
     {
         TaskCompletionSource<string> queued =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
-        context.JSInterop.SetupVoid("sessionRecovery.update",
-            invocation =>
-            {
-                queued.TrySetResult((string)invocation.Arguments[2]!);
+        context
+            .JSInterop.SetupVoid("sessionRecovery.update",
+                invocation =>
+                {
+                    queued.TrySetResult((string)invocation.Arguments[2]!);
 
-                return true;
-            }).SetVoidResult();
+                    return true;
+                }
+            )
+            .SetVoidResult();
 
         return queued.Task;
     }
@@ -137,7 +144,8 @@ public class SessionRecoveryTest
             "Route",
             false,
             "group",
-            [new("stable-id", 1, 0, RequirementMaximumMode.HandSize)]);
+            [new("stable-id", 1, 0, RequirementMaximumMode.HandSize)]
+        );
         string json = sessions.SerializeSession(previous);
         Recovery(json);
         SessionState? applied = null;
@@ -147,7 +155,8 @@ public class SessionRecoveryTest
                 applied = s;
 
                 return Task.FromResult(true);
-            });
+            }
+        );
         Assert.That(applied, Is.Null);
         Assert.That(Writes, Is.Zero);
         await Button(cut, "Restore previous session").ClickAsync(new());
@@ -168,13 +177,17 @@ public class SessionRecoveryTest
                 applied++;
 
                 return Task.FromResult(true);
-            });
+            }
+        );
         await Button(cut, "Dismiss").ClickAsync(new());
         IElement dismissed = cut.Find(".session-recovery-dismissed");
         Assert.That(dismissed.ClassList, Does.Contain("mb-3"));
         Assert.That(dismissed.TextContent,
-            Does.Contain("Recovery draft kept; autosave paused.")
-                .And.Contain("Show recovery").And.Contain("Use this workspace for recovery"));
+            Does
+                .Contain("Recovery draft kept; autosave paused.")
+                .And.Contain("Show recovery")
+                .And.Contain("Use this workspace for recovery")
+        );
         session.Cards.Add(new([], 1, "New"));
         cut.SetParametersAndRender(p => p.Add(x => x.Session, session));
         Assert.That(Writes, Is.Zero);
@@ -195,7 +208,8 @@ public class SessionRecoveryTest
         await cut.InvokeAsync(() => cut.Instance.AutosaveStatus(1, "Local recovery could not be saved."));
         Assert.That(cut.Find(".session-recovery-dismissed").ClassList, Does.Contain("mb-3"));
         Assert.That(cut.Find(".alert-warning").TextContent,
-            Does.Contain("Local recovery could not be saved."));
+            Does.Contain("Local recovery could not be saved.")
+        );
         Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
     }
 
@@ -211,10 +225,12 @@ public class SessionRecoveryTest
                 applied = true;
 
                 return Task.FromResult(true);
-            });
+            }
+        );
         Assert.That(cut.Markup, Does.Contain("The local draft is invalid"));
         Assert.That(cut.FindAll("button").Any(button => button.TextContent.Trim() == "Restore previous session"),
-            Is.False);
+            Is.False
+        );
         Assert.That(applied, Is.False);
         Assert.That(Writes, Is.Zero);
         Assert.That(context.JSInterop.Invocations["sessionRecovery.discard"], Is.Empty);
@@ -327,12 +343,15 @@ public class SessionRecoveryTest
         Card original = source.Cards[0];
         TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(async (SessionState session) =>
-        {
-            started.SetResult();
-            await completion.Task;
-            session.Cards[0] = session.Cards[0].WithName("Enriched fixture");
-        });
+        enricher
+            .Setup(x => x.EnrichAsync(It.IsAny<SessionState>()))
+            .Returns(async (SessionState session) =>
+                {
+                    started.SetResult();
+                    await completion.Task;
+                    session.Cards[0] = session.Cards[0].WithName("Enriched fixture");
+                }
+            );
         context.Services.GetRequiredService<IPendingSessionService>().PendingSession = source;
         Task<string> update = ObserveNextRecoveryUpdate();
         IRenderedComponent<ProbabilityCalculatorComponent> cut =
@@ -386,13 +405,16 @@ public class SessionRecoveryTest
         SessionState source = Working();
         SessionState? enrichmentInput = null;
         TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(async (SessionState session) =>
-        {
-            enrichmentInput = session;
-            await completion.Task;
-            session.Cards[0].Categories.Add(new("Late category"));
-            session.Cards[0] = session.Cards[0].WithName("Late enrichment");
-        });
+        enricher
+            .Setup(x => x.EnrichAsync(It.IsAny<SessionState>()))
+            .Returns(async (SessionState session) =>
+                {
+                    enrichmentInput = session;
+                    await completion.Task;
+                    session.Cards[0].Categories.Add(new("Late category"));
+                    session.Cards[0] = session.Cards[0].WithName("Late enrichment");
+                }
+            );
         context.Services.GetRequiredService<IPendingSessionService>().PendingSession = source;
         Task<string> update = ObserveNextRecoveryUpdate();
         IRenderedComponent<ProbabilityCalculatorComponent> cut =
@@ -440,7 +462,8 @@ public class SessionRecoveryTest
                     inspectionStarted.TrySetResult(true);
 
                     return true;
-                });
+                }
+            );
         Task<string> update = ObserveNextRecoveryUpdate();
         TaskCompletionSource response = new(TaskCreationOptions.RunContinuationsAsynchronously);
         enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(response.Task);
@@ -457,7 +480,8 @@ public class SessionRecoveryTest
         try
         {
             cut.WaitForState(() =>
-                cut.Markup.Contains("Current work changed while loading the example", StringComparison.Ordinal));
+                cut.Markup.Contains("Current work changed while loading the example", StringComparison.Ordinal)
+            );
             Assert.That(cut.Markup, Does.Contain("Current work changed while loading the example"));
             Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("6"));
             Assert.That(cut.FindComponents<CardEditor>(), Is.Empty);
@@ -496,8 +520,10 @@ public class SessionRecoveryTest
     {
         Recovery(sessions.SerializeSession(Working()));
         TaskCompletionSource response = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        enricher.SetupSequence(x => x.EnrichAsync(It.IsAny<SessionState>()))
-            .Returns(response.Task).Returns(Task.CompletedTask);
+        enricher
+            .SetupSequence(x => x.EnrichAsync(It.IsAny<SessionState>()))
+            .Returns(response.Task)
+            .Returns(Task.CompletedTask);
         IRenderedComponent<ProbabilityCalculatorComponent> cut =
             context.RenderComponent<ProbabilityCalculatorComponent>();
         Task restore = Button(cut, "Restore previous session").ClickAsync(new());
@@ -533,7 +559,9 @@ public class SessionRecoveryTest
     {
         Recovery(sessions.SerializeSession(Working()));
         TaskCompletionSource response = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        enricher.SetupSequence(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(response.Task)
+        enricher
+            .SetupSequence(x => x.EnrichAsync(It.IsAny<SessionState>()))
+            .Returns(response.Task)
             .Returns(Task.CompletedTask);
         IRenderedComponent<RecoveryHost> host = context.RenderComponent<RecoveryHost>(p => p.Add(x => x.Visible, true));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = host.FindComponent<ProbabilityCalculatorComponent>();
@@ -544,9 +572,13 @@ public class SessionRecoveryTest
         IRenderedComponent<ProbabilityCalculatorComponent> next =
             context.RenderComponent<ProbabilityCalculatorComponent>();
         Assert.That(next.Markup, Does.Contain("Restore previous session"));
-        Assert.That(context.JSInterop.Invocations["sessionRecovery.initialize"].Select(x => x.Arguments[0]).Distinct()
+        Assert.That(context
+                .JSInterop.Invocations["sessionRecovery.initialize"]
+                .Select(x => x.Arguments[0])
+                .Distinct()
                 .Count(),
-            Is.EqualTo(2));
+            Is.EqualTo(2)
+        );
         Assert.That(Writes, Is.Zero);
     }
 

@@ -214,7 +214,8 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
         int groupSize,
         CountBound[] categories,
         int[] remaining,
-        int remainingCards)
+        int remainingCards
+    )
     {
         Dictionary<StateKey, BigInteger> next = [];
         int[] indices = [.. Enumerable.Range(0, categories.Length).Where(i => (pattern & (BigInteger.One << i)) != 0)];
@@ -325,7 +326,8 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
     private sealed record StateKey(int DrawnCards, int[] CategoryCounts)
     {
         public bool Equals(StateKey? other) => other is not null &&
-                                               DrawnCards == other.DrawnCards && CategoryCounts.AsSpan()
+                                               DrawnCards == other.DrawnCards && CategoryCounts
+                                                   .AsSpan()
                                                    .SequenceEqual(other.CategoryCounts);
 
         public override int GetHashCode()

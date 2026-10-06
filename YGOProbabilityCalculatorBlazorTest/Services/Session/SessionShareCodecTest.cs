@@ -19,7 +19,8 @@ public class SessionShareCodecTest
     {
         context = new();
         sessions = new SessionService(context.JSInterop.JSRuntime,
-            new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+            new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()
+        );
     }
 
     [TearDown]
@@ -126,9 +127,11 @@ public class SessionShareCodecTest
         Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(fragment[..^3]));
         Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(fragment[..^8] + "AAAAAAAA"));
         Assert.Throws<InvalidOperationException>(() =>
-            SessionShareCodec.Decode(SessionShareCodec.Prefix + new string('a', SessionShareCodec.MaxUrlLength)));
+            SessionShareCodec.Decode(SessionShareCodec.Prefix + new string('a', SessionShareCodec.MaxUrlLength))
+        );
         Assert.Throws<InvalidOperationException>(() =>
-            SessionShareCodec.Decode(Payload([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x31, 0x7d])));
+            SessionShareCodec.Decode(Payload([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x31, 0x7d]))
+        );
     }
 
     [Test]
@@ -155,11 +158,14 @@ public class SessionShareCodecTest
     public void RejectsExcessiveDepthStringsAndCollections()
     {
         Assert.Throws<InvalidOperationException>(() =>
-            SessionShareCodec.Decode(Payload("{\"x\":" + new string('[', 33) + "0" + new string(']', 33) + "}")));
+            SessionShareCodec.Decode(Payload("{\"x\":" + new string('[', 33) + "0" + new string(']', 33) + "}"))
+        );
         Assert.Throws<InvalidOperationException>(() =>
-            SessionShareCodec.Decode(Payload("{\"x\":\"" + new string('a', 4097) + "\"}")));
+            SessionShareCodec.Decode(Payload("{\"x\":\"" + new string('a', 4097) + "\"}"))
+        );
         Assert.Throws<InvalidOperationException>(() =>
-            SessionShareCodec.Decode(Payload("{\"Cards\":[" + string.Join(',', Enumerable.Repeat("{}", 2049)) + "]}")));
+            SessionShareCodec.Decode(Payload("{\"Cards\":[" + string.Join(',', Enumerable.Repeat("{}", 2049)) + "]}"))
+        );
     }
 
     [Test]
@@ -173,8 +179,10 @@ public class SessionShareCodecTest
     public async Task MeasuredExamplesFitAndUrlBoundaryNeverTruncates()
     {
         string json = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory,
-            "Fixtures",
-            "example_session_state.json"));
+                "Fixtures",
+                "example_session_state.json"
+            )
+        );
         SessionState session = await sessions.LoadSessionAsync(json);
         string bundled = SessionShareCodec.CreateLink("https://dev.example.test/", sessions.SerializeSession(session));
         CategoryBase[] roles = [.. Enumerable.Range(0, 30).Select(i => new CategoryBase($"Role {i}"))];
@@ -183,39 +191,52 @@ public class SessionShareCodecTest
             HandSize = 5, Categories = [.. roles],
             Cards =
             [
-                .. Enumerable.Range(0, 100).Select(i =>
-                    new Card([roles[i % 30], roles[(i + 7) % 30], roles[(i + 13) % 30]],
-                        3,
-                        $"Realistic card {i}",
-                        true,
-                        $"id-{i}"))
+                .. Enumerable
+                    .Range(0, 100)
+                    .Select(i =>
+                        new Card([roles[i % 30], roles[(i + 7) % 30], roles[(i + 13) % 30]],
+                            3,
+                            $"Realistic card {i}",
+                            true,
+                            $"id-{i}"
+                        )
+                    )
             ],
             Combos =
             [
-                .. Enumerable.Range(0, 50).Select(i => new Combo([
-                        new(roles[i % 30], 1, 0, RequirementMaximumMode.HandSize),
-                        new(roles[(i + 5) % 30], 0, 0)
-                    ],
-                    $"Route {i}",
-                    i % 2 == 0,
-                    $"group-{i % 5}",
-                    [new($"id-{i}", 0, 2)]))
+                .. Enumerable
+                    .Range(0, 50)
+                    .Select(i => new Combo([
+                                new(roles[i % 30], 1, 0, RequirementMaximumMode.HandSize),
+                                new(roles[(i + 5) % 30], 0, 0)
+                            ],
+                            $"Route {i}",
+                            i % 2 == 0,
+                            $"group-{i % 5}",
+                            [new($"id-{i}", 0, 2)]
+                        )
+                    )
             ],
             ComboGroups = [.. Enumerable.Range(0, 5).Select(i => new ComboGroup($"group-{i}", $"Group {i}"))]
         };
         string big = SessionShareCodec.CreateLink("https://dev.example.test/", sessions.SerializeSession(larger));
         TestContext.Out.WriteLine(
-            $"Bundled example URL: {bundled.Length} characters; 100-card/50-combo URL: {big.Length} characters.");
+            $"Bundled example URL: {bundled.Length} characters; 100-card/50-combo URL: {big.Length} characters."
+        );
         Assert.That(bundled.Length, Is.LessThan(SessionShareCodec.MaxUrlLength));
         Assert.That(big.Length, Is.LessThan(SessionShareCodec.MaxUrlLength));
         string fragment = Fragment(big);
         string baseAtLimit = "https://example.test/" + new string('a',
-            SessionShareCodec.MaxUrlLength - fragment.Length - "https://example.test/".Length);
+            SessionShareCodec.MaxUrlLength - fragment.Length - "https://example.test/".Length
+        );
         Assert.That(SessionShareCodec.CreateLink(baseAtLimit, sessions.SerializeSession(larger)).Length,
-            Is.EqualTo(SessionShareCodec.MaxUrlLength));
+            Is.EqualTo(SessionShareCodec.MaxUrlLength)
+        );
         Assert.Throws<InvalidOperationException>(() =>
-            SessionShareCodec.CreateLink(baseAtLimit + "a", sessions.SerializeSession(larger)));
+            SessionShareCodec.CreateLink(baseAtLimit + "a", sessions.SerializeSession(larger))
+        );
         Assert.Throws<InvalidOperationException>(() =>
-            SessionShareCodec.CreateLink("https://example.test/", new string('x', SessionShareCodec.MaxJsonBytes + 1)));
+            SessionShareCodec.CreateLink("https://example.test/", new string('x', SessionShareCodec.MaxJsonBytes + 1))
+        );
     }
 }

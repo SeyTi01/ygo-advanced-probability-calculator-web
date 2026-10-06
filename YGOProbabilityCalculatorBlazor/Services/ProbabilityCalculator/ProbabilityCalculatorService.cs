@@ -12,7 +12,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService
         List<Card> deck,
         List<Combo> combos,
         int handSize,
-        CalculationWorkPolicy workPolicy)
+        CalculationWorkPolicy workPolicy
+    )
     {
         ArgumentNullException.ThrowIfNull(workPolicy);
         ValidateComboCount(combos);
@@ -25,7 +26,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService
         List<Card> deck,
         List<Combo> combos,
         int handSize,
-        IReadOnlyList<ComboGroup>? groups = null) =>
+        IReadOnlyList<ComboGroup>? groups = null
+    ) =>
         CalculateProbabilityResults(deck, combos, handSize, groups, CalculationWorkPolicy.Default);
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
@@ -33,7 +35,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService
         List<Combo> combos,
         int handSize,
         IReadOnlyList<ComboGroup>? groups,
-        CalculationWorkPolicy workPolicy)
+        CalculationWorkPolicy workPolicy
+    )
     {
         ArgumentNullException.ThrowIfNull(workPolicy);
         ValidateComboCount(combos);
@@ -47,7 +50,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService
         if (combos.Count > IProbabilityCalculatorService.MaxComboCount)
         {
             throw new ArgumentOutOfRangeException(nameof(combos),
-                $"Calculation supports at most {IProbabilityCalculatorService.MaxComboCount} combos.");
+                $"Calculation supports at most {IProbabilityCalculatorService.MaxComboCount} combos."
+            );
         }
     }
 

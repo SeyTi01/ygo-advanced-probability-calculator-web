@@ -51,7 +51,8 @@ public class ProbabilityResultExportTest
                 new ComboProbabilityResult(2, null, 0.0, "orphan"),
                 new ComboProbabilityResult(0, "Second route", 1.0),
                 new ComboProbabilityResult(1, "First route", 0.25)
-            ]);
+            ]
+        );
 
         string summary = ProbabilityResultSummaryFormatter.Format(result, 7, CultureInfo.GetCultureInfo("en-US"));
 
@@ -59,9 +60,11 @@ public class ProbabilityResultExportTest
         Assert.That(summary, Does.Contain("Individual combos:"));
         Assert.That(summary, Does.Contain("Unnamed combo 3"));
         Assert.That(summary.IndexOf("Unnamed combo 3", StringComparison.Ordinal),
-            Is.LessThan(summary.IndexOf("Second route", StringComparison.Ordinal)));
+            Is.LessThan(summary.IndexOf("Second route", StringComparison.Ordinal))
+        );
         Assert.That(summary.IndexOf("Second route", StringComparison.Ordinal),
-            Is.LessThan(summary.IndexOf("First route", StringComparison.Ordinal)));
+            Is.LessThan(summary.IndexOf("First route", StringComparison.Ordinal))
+        );
         Assert.That(summary, Does.Contain("100.00%"));
         Assert.That(summary, Does.Contain("25.00%"));
     }
@@ -81,7 +84,8 @@ public class ProbabilityResultExportTest
                 new GroupProbabilityResult("right", "Route group", 0.61, 1),
                 new GroupProbabilityResult("left", "Route group", 0.5, 2),
                 new GroupProbabilityResult("empty", "Empty group", 0.0, 0)
-            ]);
+            ]
+        );
 
         string summary = ProbabilityResultSummaryFormatter.Format(result, 6, CultureInfo.GetCultureInfo("en-US"));
 
@@ -91,13 +95,17 @@ public class ProbabilityResultExportTest
         Assert.That(summary, Does.Contain("**Route group** — 61.00% (1 active)\n  - **Second group route** — 40.00%"));
         Assert.That(summary,
             Does.Contain(
-                "**Route group** — 50.00% (2 active)\n  - **Same route** — 75.00%\n  - **Same route** — 50.00%"));
+                "**Route group** — 50.00% (2 active)\n  - **Same route** — 75.00%\n  - **Same route** — 50.00%"
+            )
+        );
         Assert.That(summary, Does.Contain("**Empty group** — 0.00% (0 active)"));
         Assert.That(summary, Does.Contain("Ungrouped combos:\n- **Orphan route** — 25.00%"));
         Assert.That(summary.IndexOf("Second group route", StringComparison.Ordinal),
-            Is.LessThan(summary.IndexOf("Same route", StringComparison.Ordinal)));
+            Is.LessThan(summary.IndexOf("Same route", StringComparison.Ordinal))
+        );
         Assert.That(summary.IndexOf("Empty group", StringComparison.Ordinal),
-            Is.LessThan(summary.IndexOf("Orphan route", StringComparison.Ordinal)));
+            Is.LessThan(summary.IndexOf("Orphan route", StringComparison.Ordinal))
+        );
     }
 
     [Test]
@@ -111,7 +119,8 @@ public class ProbabilityResultExportTest
                 new ComboProbabilityResult(2, "Zero", 0.0),
                 new ComboProbabilityResult(3, "One", 1.0),
                 new ComboProbabilityResult(4, "Small", 0.00006)
-            ]);
+            ]
+        );
 
         string english = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("en-US"));
         string german = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("de-DE"));
@@ -136,9 +145,11 @@ public class ProbabilityResultExportTest
                 new ComboProbabilityResult(0,
                     "Café 🌟\r\n# forged\n*header* <b>x</b> A+B.! (C) [D] _E_ \"F\" \\path\u0001",
                     0.5,
-                    "group")
+                    "group"
+                )
             ],
-            [new GroupProbabilityResult("group", "Tier\n## Other\r\nSecond\u0000", 0.5, 1)]);
+            [new GroupProbabilityResult("group", "Tier\n## Other\r\nSecond\u0000", 0.5, 1)]
+        );
 
         string summary = ProbabilityResultSummaryFormatter.Format(result, 4, CultureInfo.GetCultureInfo("en-US"));
 
@@ -193,7 +204,8 @@ public class ProbabilityResultExportTest
             Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
             Assert.That(clipboard.LastCopiedText, Is.EqualTo(ExpectedGermanSummary()));
             Assert.That(cut.Find("button[title='Copy a summary of these results']").TextContent.Trim(),
-                Is.EqualTo("Copy results"));
+                Is.EqualTo("Copy results")
+            );
             Assert.That(cut.FindAll(".probability-result-copy-rest-icon"), Is.Empty);
             Assert.That(cut.FindAll(".probability-result-copy-success-icon").Count, Is.EqualTo(1));
             Assert.That(cut.Find(".probability-result-copy-icon-slot").GetAttribute("aria-hidden"), Is.EqualTo("true"));
@@ -221,7 +233,9 @@ public class ProbabilityResultExportTest
             await copied.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
             Assert.That(clipboard.LastCopiedText,
                 Is.EqualTo((stale ? "Previous result — current inputs have changed.\n" : "") +
-                           ExpectedGermanSummary()));
+                           ExpectedGermanSummary()
+                )
+            );
 
             copied.Dispose();
             clipboard.Copy = _ => Task.FromResult(false);
@@ -230,7 +244,9 @@ public class ProbabilityResultExportTest
 
             Assert.That(fallback.Find("textarea[readonly]").TextContent,
                 Is.EqualTo((stale ? "Previous result — current inputs have changed.\n" : "") +
-                           ExpectedGermanSummary()));
+                           ExpectedGermanSummary()
+                )
+            );
             Assert.That(fallback.FindAll("img"), Is.Empty, "summary labels remain plain text in the textarea");
             Assert.That(fallback.FindAll(".probability-result-copy-success-icon"), Is.Empty);
         }
@@ -253,7 +269,8 @@ public class ProbabilityResultExportTest
         Assert.That(textArea.TextContent, Does.Contain("Fallback combo"));
         Assert.That(cut.Find("label[for]").TextContent, Is.EqualTo("Result summary"));
         Assert.That(cut.Find("#" + textArea.Id).GetAttribute("aria-describedby"),
-            Does.Contain("copy-fallback-instruction"));
+            Does.Contain("copy-fallback-instruction")
+        );
         Assert.That(clipboard.FocusAttempts, Is.EqualTo(1));
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Is.Empty);
 
@@ -270,7 +287,8 @@ public class ProbabilityResultExportTest
         clipboard.FailCopy = true;
         IRenderedComponent<ProbabilityResultExport> failedCopy = Render(Result(0.42, "Denied"),
             handSize: 5,
-            isStale: stale);
+            isStale: stale
+        );
         await failedCopy.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         Assert.That(failedCopy.Find("textarea[readonly]").TextContent, Does.Contain("Denied"));
         Assert.That(failedCopy.FindAll(".probability-result-copy-success-icon"), Is.Empty);
@@ -280,7 +298,8 @@ public class ProbabilityResultExportTest
         clipboard.FailImport = true;
         IRenderedComponent<ProbabilityResultExport> unavailableClipboard =
             Render(Result(0.35, "Unavailable"), handSize: 4, isStale: stale);
-        await unavailableClipboard.Find("button[title='Copy a summary of these results']")
+        await unavailableClipboard
+            .Find("button[title='Copy a summary of these results']")
             .ClickAsync(new MouseEventArgs());
         Assert.That(unavailableClipboard.Find("textarea[readonly]").TextContent, Does.Contain("Unavailable"));
         Assert.That(unavailableClipboard.FindAll(".probability-result-copy-success-icon"), Is.Empty);
@@ -302,7 +321,8 @@ public class ProbabilityResultExportTest
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Has.Count.EqualTo(1));
 
         cut.SetParametersAndRender(parameters => parameters
-            .Add(component => component.IsCalculating, true));
+            .Add(component => component.IsCalculating, true)
+        );
 
         button = cut.Find(buttonSelector);
         AssertDisabledDescription(cut, button, "Wait for the calculation to finish before copying results.");
@@ -312,25 +332,29 @@ public class ProbabilityResultExportTest
         Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
 
         cut.SetParametersAndRender(parameters => parameters
-            .Add(component => component.IsCalculating, false));
+            .Add(component => component.IsCalculating, false)
+        );
 
         button = cut.Find(buttonSelector);
         Assert.That(button.HasAttribute("disabled"), Is.False);
         Assert.That(cut.FindAll(".probability-result-export-toolbar > small:not(.visually-hidden)"), Is.Empty);
 
         cut.SetParametersAndRender(parameters => parameters
-            .Add(component => component.IsStale, true));
+            .Add(component => component.IsStale, true)
+        );
 
         button = cut.Find(buttonSelector);
         Assert.That(button.HasAttribute("disabled"), Is.False);
         await button.ClickAsync(new MouseEventArgs());
         Assert.That(clipboard.CopyAttempts, Is.EqualTo(2));
         Assert.That(clipboard.LastCopiedText,
-            Does.StartWith("Previous result — current inputs have changed.\nProbability results\nHand size: 5"));
+            Does.StartWith("Previous result — current inputs have changed.\nProbability results\nHand size: 5")
+        );
 
         cut.SetParametersAndRender(parameters => parameters
             .Add(component => component.Result, Result(0.87, "Recalculated"))
-            .Add(component => component.IsStale, false));
+            .Add(component => component.IsStale, false)
+        );
 
         button = cut.Find(buttonSelector);
         Assert.That(button.HasAttribute("disabled"), Is.False);
@@ -347,7 +371,8 @@ public class ProbabilityResultExportTest
     private static void AssertDisabledDescription(
         IRenderedComponent<ProbabilityResultExport> cut,
         IElement button,
-        string expectedDescription)
+        string expectedDescription
+    )
     {
         Assert.That(button.HasAttribute("disabled"), Is.True);
         Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
@@ -360,7 +385,8 @@ public class ProbabilityResultExportTest
         Assert.That(description.TextContent.Trim(), Is.EqualTo(expectedDescription));
         Assert.That(cut.FindAll(".probability-result-export-toolbar > small:not(.visually-hidden)"),
             Is.Empty,
-            "the unavailable description is retained for assistive technology without a visible toolbar item");
+            "the unavailable description is retained for assistive technology without a visible toolbar item"
+        );
     }
 
     [TestCase(true)]
@@ -406,11 +432,14 @@ public class ProbabilityResultExportTest
         Assert.That(clipboard.LastCopiedText, Does.Contain("Hand size: 5"));
         Assert.That(clipboard.LastCopiedText,
             Is.EqualTo(
-                ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.CurrentCulture)));
+                ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.CurrentCulture)
+            )
+        );
 
         cut.SetParametersAndRender(parameters => parameters
             .Add(component => component.HandSize, 6)
-            .Add(component => component.IsStale, true));
+            .Add(component => component.IsStale, true)
+        );
         Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
 
         pendingCopy.SetResult(copied);
@@ -429,12 +458,14 @@ public class ProbabilityResultExportTest
         clipboard.Copy = _ => Task.FromResult(false);
         IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Old result"),
             handSize: 5,
-            isStale: stale);
+            isStale: stale
+        );
         await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         Assert.That(cut.Find("textarea[readonly]").TextContent, Does.Contain("Old result"));
 
         cut.SetParametersAndRender(parameters => parameters
-            .Add(component => component.Result, Result(0.87, "New result")));
+            .Add(component => component.Result, Result(0.87, "New result"))
+        );
 
         Assert.That(cut.FindAll("textarea[readonly]"), Is.Empty);
         Assert.That(cut.FindAll("[role='status']"), Is.Empty);
@@ -448,7 +479,8 @@ public class ProbabilityResultExportTest
         ManualTimeProvider clock = new();
         IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Repeated result"),
             feedbackTimeProvider: clock,
-            isStale: stale);
+            isStale: stale
+        );
         string buttonSelector = "button[title='Copy a summary of these results']";
 
         await cut.Find(buttonSelector).ClickAsync(new MouseEventArgs());
@@ -461,14 +493,17 @@ public class ProbabilityResultExportTest
         clock.Advance(TimeSpan.FromMilliseconds(300));
         Assert.That(cut.FindAll(".probability-result-copy-success-icon").Count,
             Is.EqualTo(1),
-            "the first timeout must not erase the restarted success feedback");
+            "the first timeout must not erase the restarted success feedback"
+        );
 
         clock.Advance(TimeSpan.FromMilliseconds(1450));
         cut.WaitForAssertion(
             () => Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Is.Empty),
-            TimeSpan.FromSeconds(2));
+            TimeSpan.FromSeconds(2)
+        );
         Assert.That(cut.Find("button[title='Copy a summary of these results']").TextContent.Trim(),
-            Is.EqualTo("Copy results"));
+            Is.EqualTo("Copy results")
+        );
     }
 
     [Test]
@@ -521,14 +556,16 @@ public class ProbabilityResultExportTest
         await changedInputs.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         changedInputs.SetParametersAndRender(parameters => parameters
             .Add(component => component.HandSize, 6)
-            .Add(component => component.IsStale, true));
+            .Add(component => component.IsStale, true)
+        );
         Assert.That(changedInputs.FindAll(".probability-result-copy-success-icon"), Is.Empty);
         Assert.That(changedInputs.FindAll("[role='status']"), Is.Empty);
 
         IRenderedComponent<ProbabilityResultExport> changedResult = Render(Result(0.42, "Previous result"));
         await changedResult.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         changedResult.SetParametersAndRender(parameters => parameters
-            .Add(component => component.Result, Result(0.87, "New accepted result")));
+            .Add(component => component.Result, Result(0.87, "New accepted result"))
+        );
         Assert.That(changedResult.FindAll(".probability-result-copy-success-icon"), Is.Empty);
         Assert.That(changedResult.FindAll("[role='status']"), Is.Empty);
     }
@@ -540,7 +577,8 @@ public class ProbabilityResultExportTest
         ManualTimeProvider clock = new();
         IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Dispose reset"),
             feedbackTimeProvider: clock,
-            isStale: stale);
+            isStale: stale
+        );
         await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         Assert.That(clock.ActiveTimerCount, Is.EqualTo(1));
 
@@ -575,20 +613,22 @@ public class ProbabilityResultExportTest
         int handSize = 5,
         bool isStale = false,
         bool isCalculating = false,
-        TimeProvider? feedbackTimeProvider = null) =>
+        TimeProvider? feedbackTimeProvider = null
+    ) =>
         context.RenderComponent<ProbabilityResultExport>(parameters =>
-        {
-            parameters
-                .Add(component => component.Result, result)
-                .Add(component => component.HandSize, handSize)
-                .Add(component => component.IsStale, isStale)
-                .Add(component => component.IsCalculating, isCalculating);
-
-            if (feedbackTimeProvider is not null)
             {
-                parameters.Add(component => component.FeedbackTimeProvider, feedbackTimeProvider);
+                parameters
+                    .Add(component => component.Result, result)
+                    .Add(component => component.HandSize, handSize)
+                    .Add(component => component.IsStale, isStale)
+                    .Add(component => component.IsCalculating, isCalculating);
+
+                if (feedbackTimeProvider is not null)
+                {
+                    parameters.Add(component => component.FeedbackTimeProvider, feedbackTimeProvider);
+                }
             }
-        });
+        );
 
     private static ProbabilityCalculationResult GermanExampleResult() => new(
         0.8361,
@@ -600,7 +640,8 @@ public class ProbabilityResultExportTest
         [
             new GroupProbabilityResult("vs", "Full VS", 0.6107, 6),
             new GroupProbabilityResult("k9", "Full K9", 0.4884, 3)
-        ]);
+        ]
+    );
 
     private static string ExpectedGermanSummary() => string.Join('\n',
         new[]
@@ -615,7 +656,8 @@ public class ProbabilityResultExportTest
             "- **Full K9** — 48,84 % (3 active)",
             "  - **K9 Starter + Lv. 5** — 48,02 %",
             "  - **Izuna + Sue + 2 x Lv. 5** — 2,50 %"
-        });
+        }
+    );
 
     private static ProbabilityCalculationResult Result(double total, string comboName) =>
         new(total, [new ComboProbabilityResult(0, comboName, total)]);
@@ -751,7 +793,8 @@ public class ProbabilityResultExportTest
         public ValueTask<TValue> InvokeAsync<TValue>(
             string identifier,
             CancellationToken cancellationToken,
-            object?[]? args)
+            object?[]? args
+        )
         {
             if (identifier == "import")
             {
@@ -808,7 +851,8 @@ public class ProbabilityResultExportTest
             public ValueTask<TValue> InvokeAsync<TValue>(
                 string identifier,
                 CancellationToken cancellationToken,
-                object?[]? args) =>
+                object?[]? args
+            ) =>
                 owner.InvokeModuleAsync<TValue>(identifier, args);
 
             public ValueTask DisposeAsync()

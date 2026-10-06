@@ -20,13 +20,14 @@ public partial class ProbabilityCalculatorComponent
 
     private void SharingLocationChanged(object? sender, LocationChangedEventArgs args) =>
         _ = InvokeAsync(() =>
-        {
-            if (! disposed)
             {
-                ObserveShareLocation(args.Location);
-                StateHasChanged();
+                if (! disposed)
+                {
+                    ObserveShareLocation(args.Location);
+                    StateHasChanged();
+                }
             }
-        });
+        );
 
     private void ObserveShareLocation(string location)
     {

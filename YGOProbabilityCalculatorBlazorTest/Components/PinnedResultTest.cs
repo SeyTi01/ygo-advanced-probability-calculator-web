@@ -44,7 +44,8 @@ public class PinnedResultTest
         worker = new();
         context.Services.AddSingleton<IBackgroundCalculator>(worker);
         context.Services.AddSingleton<IPendingSessionService>(
-            new PendingSessionService { PendingSession = Workspace() });
+            new PendingSessionService { PendingSession = Workspace() }
+        );
         clipboard = context.JSInterop.SetupModule("./js/probabilityResultExport.js");
         clipboard.Mode = JSRuntimeMode.Loose;
         clipboard.Setup<bool>("copyText", _ => true).SetResult(true);
@@ -76,18 +77,21 @@ public class PinnedResultTest
         (T)typeof(ProbabilityCalculatorComponent).GetField(name, Private)!.GetValue(cut.Instance)!;
 
     private Task Call(string name, params object[] args) => cut.InvokeAsync(async () =>
-    {
-        object? result = typeof(ProbabilityCalculatorComponent).GetMethod(name, Private)!.Invoke(cut.Instance, args);
-
-        if (result is Task task)
         {
-            await task;
-        }
+            object? result =
+                typeof(ProbabilityCalculatorComponent).GetMethod(name, Private)!.Invoke(cut.Instance, args);
 
-        typeof(ComponentBase).GetMethod("StateHasChanged", Private)!.Invoke(
-            cut.Instance,
-            null);
-    });
+            if (result is Task task)
+            {
+                await task;
+            }
+
+            typeof(ComponentBase).GetMethod("StateHasChanged", Private)!.Invoke(
+                cut.Instance,
+                null
+            );
+        }
+    );
 
     private Task Start() => cut.Find(".calculate-action > button").ClickAsync(new());
 
@@ -96,18 +100,21 @@ public class PinnedResultTest
     {
         Combo original = Field<List<Combo>>("combos")[0];
         ComboAlternativeGroup first = new([
-            ComboAlternative.For(new ComboCard("a", 1, 5)), ComboAlternative.For(new ComboCategory(role, 1, 5))
-        ]);
+                ComboAlternative.For(new ComboCard("a", 1, 5)), ComboAlternative.For(new ComboCategory(role, 1, 5))
+            ]
+        );
         ComboAlternativeGroup second = new([
-            ComboAlternative.For(new ComboCard("b", 0, 0)), ComboAlternative.For(new ComboCard("a", 0, 0))
-        ]);
+                ComboAlternative.For(new ComboCard("b", 0, 0)), ComboAlternative.For(new ComboCard("a", 0, 0))
+            ]
+        );
         Combo grouped = original.WithCards([]).WithAlternativeGroups([first, second]);
         await Call("ReplaceCombo", (0, grouped));
         await Accept();
         await Pin();
         string signature = Pinned.Combos[0].Definition!.Signature;
         await Call("ReplaceCombo",
-            (0, grouped.WithAlternativeGroups([second, new(first.Alternatives.Reverse().ToArray())])));
+            (0, grouped.WithAlternativeGroups([second, new(first.Alternatives.Reverse().ToArray())]))
+        );
         await Accept();
         Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Definition changed"));
         Combo edited = grouped.WithAlternativeGroups([new([first.Alternatives[0]]), second]);
@@ -133,13 +140,17 @@ public class PinnedResultTest
         Assert.That(actual.Current, Is.EqualTo(current));
         Assert.That(actual.Pinned, Is.EqualTo(pinned));
         Assert.That(cut.Find(".probability-results > p.small").GetAttribute("class"),
-            Is.EqualTo("small text-body-secondary mb-2"));
+            Is.EqualTo("small text-body-secondary mb-2")
+        );
         Assert.That(cut.FindComponent<PinnedResultPanel>().Find(".pinned-result > p.small").GetAttribute("class"),
-            Is.EqualTo("small text-body-secondary mb-2"));
+            Is.EqualTo("small text-body-secondary mb-2")
+        );
         Assert.That(actual.Current,
-            Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition"));
+            Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition")
+        );
         Assert.That(actual.Pinned,
-            Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition"));
+            Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition")
+        );
     }
 
     private ProbabilityCalculationResult Result(int job, double total)
@@ -149,8 +160,12 @@ public class PinnedResultTest
 
         return new(total,
             input.Combos.Select((c, i) => new ComboProbabilityResult(i, c.Name, total, c.GroupId)).ToList(),
-            input.Groups.Select(g =>
-                new GroupProbabilityResult(g.Id, g.Name, total, input.Combos.Count(c => c.GroupId == g.Id))).ToList());
+            input
+                .Groups.Select(g =>
+                    new GroupProbabilityResult(g.Id, g.Name, total, input.Combos.Count(c => c.GroupId == g.Id))
+                )
+                .ToList()
+        );
     }
 
     private async Task Accept(double probability = .814)
@@ -171,13 +186,17 @@ public class PinnedResultTest
             Assert.That(difference.TextContent, Is.EqualTo(text));
             Assert.That(difference.ClassList, Does.Contain(cssClass));
             Assert.That(difference.GetAttribute("aria-label"),
-                Is.EqualTo($"Absolute change from pinned result: {text}"));
+                Is.EqualTo($"Absolute change from pinned result: {text}")
+            );
         }
     }
 
-    private Task Upload(SessionState session) => cut.InvokeAsync(() => cut.FindComponents<InputFile>()[1].Instance
+    private Task Upload(SessionState session) => cut.InvokeAsync(() => cut.FindComponents<InputFile>()[1]
+        .Instance
         .OnChange.InvokeAsync(
-            new InputFileChangeEventArgs([new SessionFile(sessions.SerializeSession(session))])));
+            new InputFileChangeEventArgs([new SessionFile(sessions.SerializeSession(session))])
+        )
+    );
 
     [Test]
     public async Task PinReplaceClearAreExplicitAndDoNotChangeSessionAutosaveOrCalculationVersion()
@@ -192,7 +211,8 @@ public class PinnedResultTest
         await Pin();
         PinnedResultSnapshot first = Pinned;
         AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards",
-            "Hand size 2 · 8 active copies · 2 active cards");
+            "Hand size 2 · 8 active copies · 2 active cards"
+        );
         await Accept(.842);
         Assert.That(Pinned, Is.SameAs(first));
         Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
@@ -209,7 +229,8 @@ public class PinnedResultTest
 
     private SessionState FieldSession() =>
         (SessionState)typeof(ProbabilityCalculatorComponent).GetMethod("CaptureSession", Private)!.Invoke(cut.Instance,
-            null)!;
+            null
+        )!;
 
     [Test]
     public async Task PinOwnsRequestContextAndCopiesMutableResultsAndNestedDefinitions()
@@ -218,7 +239,8 @@ public class PinnedResultTest
         CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(worker.Inputs[0].Json)!;
         Assert.That(input.WorkUnits,
             Is.EqualTo(50_000_000),
-            "ordinary Calculate selects the interactive policy on its first request");
+            "ordinary Calculate selects the interactive policy on its first request"
+        );
         Assert.That(input.HandSize, Is.EqualTo(2));
         ProbabilityCalculationResult result = Result(0, .814);
         // An unannounced edit specifically verifies capture timing, independent of invalidation.
@@ -314,7 +336,8 @@ public class PinnedResultTest
     public async Task AcceptedComparisonRowsRemainVisibleWhenDisplayedResultBecomesStale(
         double probability,
         string delta,
-        string cssClass)
+        string cssClass
+    )
     {
         await Accept();
         await Pin();
@@ -405,10 +428,14 @@ public class PinnedResultTest
         }
         else if (completion.EndsWith("limit"))
         {
-            worker.Jobs[2].SetException(new ProbabilityCalculationLimitException(
-                completion == "work-limit"
-                    ? ProbabilityCalculationLimitReason.Work
-                    : ProbabilityCalculationLimitReason.Storage));
+            worker
+                .Jobs[2]
+                .SetException(new ProbabilityCalculationLimitException(
+                        completion == "work-limit"
+                            ? ProbabilityCalculationLimitReason.Work
+                            : ProbabilityCalculationLimitReason.Storage
+                    )
+                );
         }
         else
         {
@@ -444,11 +471,13 @@ public class PinnedResultTest
         await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
         Task current = Start();
         Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(worker.Inputs[2].Json)!.WorkUnits,
-            Is.EqualTo(50_000_000));
+            Is.EqualTo(50_000_000)
+        );
 
         if (limit)
         {
-            worker.Jobs[1]
+            worker
+                .Jobs[1]
                 .SetException(new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage));
         }
         else
@@ -486,9 +515,11 @@ public class PinnedResultTest
         Assert.That(current.CompareCombo(current.Combos[1], original, true), Is.EqualTo("+2.8%"));
         Assert.That(current.CompareGroup(current.Groups[0], original, true), Is.EqualTo("+2.8%"));
         AssertContextDescriptions("Hand size 2 · 7 active copies · 2 active cards",
-            "Hand size 2 · 8 active copies · 2 active cards");
+            "Hand size 2 · 8 active copies · 2 active cards"
+        );
         Assert.That(Pinned.Combos.Select(c => c.Label),
-            Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
+            Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" })
+        );
     }
 
     [Test]
@@ -497,28 +528,34 @@ public class PinnedResultTest
         await Accept(.814);
         await Pin();
         AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards",
-            "Hand size 2 · 8 active copies · 2 active cards");
+            "Hand size 2 · 8 active copies · 2 active cards"
+        );
 
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         await Accept(.842);
         AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards",
-            "Hand size 2 · 8 active copies · 2 active cards");
+            "Hand size 2 · 8 active copies · 2 active cards"
+        );
 
         await Call("ReplaceCard", (0, Field<List<Card>>("cards")[0].WithCopies(3)));
         await Call("ReplaceCard", (1, Field<List<Card>>("cards")[1].WithActive(false)));
         // Pending edits do not leak into the last accepted result or the explicit pin.
         AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards",
-            "Hand size 2 · 8 active copies · 2 active cards");
+            "Hand size 2 · 8 active copies · 2 active cards"
+        );
         await Accept(.786);
         AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards",
-            "Hand size 2 · 8 active copies · 2 active cards");
+            "Hand size 2 · 8 active copies · 2 active cards"
+        );
 
         await Pin();
         AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards",
-            "Hand size 3 · 3 active copies · 1 active cards");
+            "Hand size 3 · 3 active copies · 1 active cards"
+        );
         Assert.That(cut.FindAll(".result-difference-neutral"),
             Has.Count.EqualTo(5),
-            "removing the context note does not alter the inline comparison rows");
+            "removing the context note does not alter the inline comparison rows"
+        );
     }
 
     [TestCase("requirement")]
@@ -554,7 +591,8 @@ public class PinnedResultTest
         Assert.That(current.CompareGroup(current.Groups[0], Pinned, true), Is.EqualTo("Composition changed"));
         Assert.That(cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
         Assert.That(cut.FindAll(".result-row-comparison").Select(x => x.TextContent),
-            Does.Contain("Definition changed").And.Contain("Composition changed"));
+            Does.Contain("Definition changed").And.Contain("Composition changed")
+        );
     }
 
     [Test]
@@ -635,8 +673,11 @@ public class PinnedResultTest
         else if (load == "ydk")
         {
             imports.Setup(x => x.ImportDeckFromYdkAsync(It.IsAny<IBrowserFile>())).ReturnsAsync(replacement.Cards);
-            await cut.InvokeAsync(() => cut.FindComponents<InputFile>()[0].Instance.OnChange.InvokeAsync(
-                new InputFileChangeEventArgs([new SessionFile("fixture")])));
+            await cut.InvokeAsync(() => cut.FindComponents<InputFile>()[0]
+                .Instance.OnChange.InvokeAsync(
+                    new InputFileChangeEventArgs([new SessionFile("fixture")])
+                )
+            );
         }
         else if (load == "recovery")
         {
@@ -646,7 +687,8 @@ public class PinnedResultTest
         {
             object request =
                 typeof(ProbabilityCalculatorComponent).GetMethod("BeginSessionLoad", Private)!.Invoke(cut.Instance,
-                    null)!;
+                    null
+                )!;
             await Call("RestoreSessionDataAsync", replacement, request);
         }
 
@@ -662,7 +704,8 @@ public class PinnedResultTest
         AssertContextDescriptions(load == "ydk"
                 ? "Hand size 2 · 8 active copies · 2 active cards"
                 : "Hand size 3 · 8 active copies · 2 active cards",
-            "Hand size 2 · 8 active copies · 2 active cards");
+            "Hand size 2 · 8 active copies · 2 active cards"
+        );
     }
 
     [Test]
@@ -758,7 +801,8 @@ public class PinnedResultTest
         Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         Assert.That(
             typeof(ProbabilityCalculatorComponent).GetField("acceptedComparison", Private)!.GetValue(cut.Instance),
-            Is.Null);
+            Is.Null
+        );
         worker.Jobs[1].SetResult(Result(1, .1));
         await oldWork;
         delayed.SetResult(false);
@@ -768,14 +812,20 @@ public class PinnedResultTest
         await Accept(.842);
         await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
         Assert.That(clipboard.Invocations["copyText"].Last().Arguments[0],
-            Does.StartWith("Probability results\nHand size: 6\nAny active combo: 84.20%"));
+            Does.StartWith("Probability results\nHand size: 6\nAny active combo: 84.20%")
+        );
         string shared = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         Assert.That(shared, Is.EqualTo(sessions.SerializeSession(FieldSession())));
         Assert.That(shared,
-            Does.Not.Contain("acceptedComparison").And.Not.Contain("pinnedResult").And.Not.Contain("Previous result")
-                .And.Not.Contain("84.20%"));
+            Does
+                .Not.Contain("acceptedComparison")
+                .And.Not.Contain("pinnedResult")
+                .And.Not.Contain("Previous result")
+                .And.Not.Contain("84.20%")
+        );
         Assert.That(cut.FindAll(".result-row-comparison").Select(x => x.TextContent),
-            Does.Contain("Unrelated session"));
+            Does.Contain("Unrelated session")
+        );
     }
 
     [TestCase("edit")]
@@ -792,17 +842,23 @@ public class PinnedResultTest
         replacement.Combos[0] = replacement.Combos[0].WithName("Obsolete shared route");
         await cut.InvokeAsync(() =>
             navigation.NavigateTo(SessionShareCodec.CreateLink(navigation.BaseUri,
-                sessions.SerializeSession(replacement))));
+                    sessions.SerializeSession(replacement)
+                )
+            )
+        );
         cut.WaitForState(() => cut.FindComponent<SessionRecovery>().Instance.InspectionComplete);
         TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        Mock.Get(context.Services.GetRequiredService<ILegacyCardMetadataEnricher>())
-            .Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(() =>
-            {
-                started.SetResult();
+        Mock
+            .Get(context.Services.GetRequiredService<ILegacyCardMetadataEnricher>())
+            .Setup(x => x.EnrichAsync(It.IsAny<SessionState>()))
+            .Returns(() =>
+                {
+                    started.SetResult();
 
-                return gate.Task;
-            });
+                    return gate.Task;
+                }
+            );
         Task loading = Call("LoadSharedSessionAsync");
         await started.Task.WaitAsync(TimeSpan.FromSeconds(1));
 
@@ -829,7 +885,8 @@ public class PinnedResultTest
         Assert.That(sessions.SerializeSession(FieldSession()), Does.Not.Contain("Obsolete shared route"));
         await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
         Assert.That(clipboard.Invocations["copyText"].Last().Arguments[0],
-            Does.Contain("Hand size: 2").And.Not.Contain("Obsolete shared route"));
+            Does.Contain("Hand size: 2").And.Not.Contain("Obsolete shared route")
+        );
     }
 
     [Test]
@@ -862,7 +919,8 @@ public class PinnedResultTest
         {
             TaskCompletionSource<ProbabilityCalculationResult> source =
                 new(TaskCreationOptions
-                    .RunContinuationsAsynchronously);
+                    .RunContinuationsAsynchronously
+                );
             Inputs.Add(snapshot);
             Jobs.Add(source);
 

@@ -9,7 +9,8 @@ internal sealed class EventUnionEvaluator(
     int handSize,
     WorkBudget budget,
     ComboEventCompiler compiler,
-    ExactHandCounter counter)
+    ExactHandCounter counter
+)
 {
     internal double Union(List<CompiledEvent?> events)
     {
@@ -60,7 +61,8 @@ internal sealed class EventUnionEvaluator(
         {
             BigInteger count = counter.Count(intersection);
             budget.Spend(
-                1 + count.GetBitLength() / 64 + successes.GetBitLength() / 64 + coefficient.GetBitLength() / 64);
+                1 + count.GetBitLength() / 64 + successes.GetBitLength() / 64 + coefficient.GetBitLength() / 64
+            );
             successes += coefficient * count;
             WorkBudget.CheckStorage(1, WorkBudget.IntegerCells(successes));
         }
@@ -145,7 +147,8 @@ internal sealed class EventUnionEvaluator(
         Dictionary<CompiledEvent, BigInteger> terms,
         CompiledEvent key,
         BigInteger coefficient,
-        ref long storedConstraints)
+        ref long storedConstraints
+    )
     {
         budget.Spend(key.Constraints.Length + 1L + coefficient.GetBitLength() / 32);
 
@@ -170,7 +173,8 @@ internal sealed class EventUnionEvaluator(
         else if (coefficient != 0)
         {
             WorkBudget.CheckStorage(terms.Count + 1,
-                storedConstraints + key.Constraints.Length + WorkBudget.IntegerCells(coefficient));
+                storedConstraints + key.Constraints.Length + WorkBudget.IntegerCells(coefficient)
+            );
             terms.Add(key, coefficient);
             storedConstraints += key.Constraints.Length + WorkBudget.IntegerCells(coefficient);
         }

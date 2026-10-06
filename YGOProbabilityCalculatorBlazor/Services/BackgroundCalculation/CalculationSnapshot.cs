@@ -15,26 +15,38 @@ public sealed record CalculationSnapshot(string Json)
         IEnumerable<Combo> combos,
         int handSize,
         IEnumerable<ComboGroup> groups,
-        CalculationWorkPolicy? workPolicy = null) => new(JsonSerializer.Serialize(new CalculationInput(
-            [
-                .. cards.Where(c => c.Active).Select(c => new WorkerCard(c.Id,
-                    c.Copies,
-                    c.Name,
-                    c.ExternalCardId,
-                    [.. c.Categories],
-                    [.. c.ManualMetadataCategoryKeys]))
-            ],
-            [
-                .. combos.Where(c => c.Active).Select(c => new WorkerCombo(c.Name,
-                    c.GroupId,
-                    [.. c.Categories],
-                    [.. c.Cards],
-                    [.. c.AlternativeGroups]))
-            ],
-            handSize,
-            [.. groups],
-            (workPolicy ?? CalculationWorkPolicy.Default).WorkUnits),
-        CalculationJsonContext.Default.CalculationInput));
+        CalculationWorkPolicy? workPolicy = null
+    ) => new(JsonSerializer.Serialize(new CalculationInput(
+                [
+                    .. cards
+                        .Where(c => c.Active)
+                        .Select(c => new WorkerCard(c.Id,
+                                c.Copies,
+                                c.Name,
+                                c.ExternalCardId,
+                                [.. c.Categories],
+                                [.. c.ManualMetadataCategoryKeys]
+                            )
+                        )
+                ],
+                [
+                    .. combos
+                        .Where(c => c.Active)
+                        .Select(c => new WorkerCombo(c.Name,
+                                c.GroupId,
+                                [.. c.Categories],
+                                [.. c.Cards],
+                                [.. c.AlternativeGroups]
+                            )
+                        )
+                ],
+                handSize,
+                [.. groups],
+                (workPolicy ?? CalculationWorkPolicy.Default).WorkUnits
+            ),
+            CalculationJsonContext.Default.CalculationInput
+        )
+    );
 }
 
 public sealed record WorkerCard(
@@ -43,21 +55,24 @@ public sealed record WorkerCard(
     string? Name,
     int? ExternalCardId,
     CategoryBase[] Categories,
-    string[] ManualMetadataCategoryKeys);
+    string[] ManualMetadataCategoryKeys
+);
 
 public sealed record WorkerCombo(
     string? Name,
     string? GroupId,
     ComboCategory[] Categories,
     ComboCard[] Cards,
-    ComboAlternativeGroup[]? AlternativeGroups = null);
+    ComboAlternativeGroup[]? AlternativeGroups = null
+);
 
 public sealed record CalculationInput(
     WorkerCard[] Cards,
     WorkerCombo[] Combos,
     int HandSize,
     ComboGroup[] Groups,
-    long? WorkUnits = null);
+    long? WorkUnits = null
+);
 
 public enum CalculationFailureKind
 {
@@ -69,7 +84,8 @@ public sealed record CalculationResponse(
     ProbabilityCalculationResult? Result,
     string? Error,
     ProbabilityCalculationLimitReason? LimitReason = null,
-    CalculationFailureKind? FailureKind = null);
+    CalculationFailureKind? FailureKind = null
+);
 
 public static class CalculationWire
 {
@@ -84,25 +100,30 @@ public static class CalculationWire
             List<Card> cards =
             [
                 .. input.Cards.Select(c => new Card(c.Categories,
-                    c.Copies,
-                    c.Name,
-                    true,
-                    c.Id,
-                    c.ExternalCardId,
-                    c.ManualMetadataCategoryKeys))
+                        c.Copies,
+                        c.Name,
+                        true,
+                        c.Id,
+                        c.ExternalCardId,
+                        c.ManualMetadataCategoryKeys
+                    )
+                )
             ];
             List<Combo> combos =
             [
                 .. input.Combos.Select(c =>
-                    new Combo(c.Categories, c.Name, true, c.GroupId, c.Cards, c.AlternativeGroups))
+                    new Combo(c.Categories, c.Name, true, c.GroupId, c.Cards, c.AlternativeGroups)
+                )
             ];
             response = new(new ProbabilityCalculatorService().CalculateProbabilityResults(
                     cards,
                     combos,
                     input.HandSize,
                     input.Groups,
-                    input.WorkUnits is { } units ? new CalculationWorkPolicy(units) : CalculationWorkPolicy.Default),
-                null);
+                    input.WorkUnits is { } units ? new CalculationWorkPolicy(units) : CalculationWorkPolicy.Default
+                ),
+                null
+            );
         }
         catch (ProbabilityCalculationLimitException ex)
         {

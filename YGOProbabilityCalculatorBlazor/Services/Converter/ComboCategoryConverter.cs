@@ -13,7 +13,8 @@ public class ComboCategoryConverter : JsonConverter<ComboCategory>
 
         CategoryBase baseCategory = JsonSerializer.Deserialize<CategoryBase>(
             root.GetProperty("BaseCategory").GetRawText(),
-            options) ?? throw new JsonException("BaseCategory is required");
+            options
+        ) ?? throw new JsonException("BaseCategory is required");
 
         int minCount = root.GetProperty("MinCount").GetInt32();
         int maxCount = root.GetProperty("MaxCount").GetInt32();

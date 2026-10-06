@@ -27,8 +27,12 @@ public class CardArtworkTest
     public void TearDown() => context.Dispose();
 
     private IRenderedComponent<CardArtwork> Render(int id = 1234) => context.RenderComponent<CardArtwork>(p =>
-        p.Add(x => x.CardId, "row").Add(x => x.ExternalCardId, id).Add(x => x.Name, "Card")
-            .Add(x => x.Thumbnail, true));
+        p
+            .Add(x => x.CardId, "row")
+            .Add(x => x.ExternalCardId, id)
+            .Add(x => x.Name, "Card")
+            .Add(x => x.Thumbnail, true)
+    );
 
     private static string Url(int id) => $"{CardArtworkService.ArtworkOrigin}/small/{id}.jpg";
 
@@ -93,13 +97,15 @@ public class CardArtworkTest
     [Test]
     public async Task TransientMetadataFailureExposesRetryAfterAndProviderUrlsAreRejected()
     {
-        service.Setup(x => x.GetArtworkUrlAsync(1234))
+        service
+            .Setup(x => x.GetArtworkUrlAsync(1234))
             .ThrowsAsync(new CardArtworkLookupException(TimeSpan.FromSeconds(180)));
         IRenderedComponent<CardArtwork> cut = Render();
         CardArtwork.ArtworkResolution result = await cut.Instance.ResolveArtwork(1);
         Assert.That(result.RetryAfter, Is.EqualTo(180000));
         await cut.InvokeAsync(() =>
-            cut.Instance.ArtworkReady(1, "https://images.ygoprodeck.com/images/cards_small/1234.jpg"));
+            cut.Instance.ArtworkReady(1, "https://images.ygoprodeck.com/images/cards_small/1234.jpg")
+        );
         Assert.That(cut.FindAll("img"), Is.Empty);
     }
 }

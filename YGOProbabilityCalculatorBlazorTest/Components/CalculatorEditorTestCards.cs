@@ -27,12 +27,15 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
 
         if (editAfterLoad)
         {
-            await cut.FindComponent<CardEditor>().Find("#cardCopies0")
+            await cut
+                .FindComponent<CardEditor>()
+                .Find("#cardCopies0")
                 .InputAsync(new() { Value = int.MaxValue.ToString() });
         }
 
         Assert.That(cut.FindComponent<CardListEditor>().Find("h4").TextContent,
-            Is.EqualTo("Deck (2147483649)"));
+            Is.EqualTo("Deck (2147483649)")
+        );
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Markup, Does.Contain("The active deck is too large to calculate"));
 
@@ -55,10 +58,11 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
             new([new(c, 1, 1)], "", groupId: "g3")
         ];
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-        {
-            Categories = [a, b, c], Cards = cards,
-            Combos = combos, ComboGroups = groups, HandSize = 1
-        });
+            {
+                Categories = [a, b, c], Cards = cards,
+                Combos = combos, ComboGroups = groups, HandSize = 1
+            }
+        );
 
         Assert.That(cut.FindComponent<CategoryListEditor>().FindAll(".category-chip .reorder-controls"), Is.Empty);
         Assert.That(cut.FindComponent<ComboListEditor>().FindAll(".combo-group-chip .reorder-controls"), Is.Empty);
@@ -97,23 +101,30 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         await cut.Find("[aria-label='Move combo Combo 2, row 2 up']").ClickAsync(new());
 
         Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Select(x => x.Name),
-            Is.EqualTo(new[] { "C", "B", "A" }));
+            Is.EqualTo(new[] { "C", "B", "A" })
+        );
         Assert.That(cut.FindComponents<CardEditor>().Select(x => x.Instance.Card.Id),
-            Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id }));
+            Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id })
+        );
         Assert.That(cut.FindComponents<ComboEditor>().Select(x => x.Instance.Combo),
-            Is.EqualTo(new[] { combos[2], combos[1], combos[0] }));
+            Is.EqualTo(new[] { combos[2], combos[1], combos[0] })
+        );
         Assert.That(cut.FindComponent<ComboListEditor>().Instance.ComboGroups.Select(x => x.Id),
-            Is.EqualTo(new[] { "g3", "g2", "g1" }));
+            Is.EqualTo(new[] { "g3", "g2", "g1" })
+        );
         Assert.That(cut.FindComponents<ComboEditor>()[2].Instance.Combo.Cards.Single().CardId, Is.EqualTo(cards[0].Id));
         Assert.That(cut.FindComponents<ComboEditor>()[2].Instance.Combo.GroupId, Is.EqualTo("g1"));
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(totalBeforeMove));
-        Assert.That(cut.FindAll(".probability-group .combo-probability-name")
+        Assert.That(cut
+                .FindAll(".probability-group .combo-probability-name")
                 .Select(x => x.TextContent.Trim().Split(' ')[0]),
-            Is.EqualTo(new[] { "Three", "Two", "One" }));
+            Is.EqualTo(new[] { "Three", "Two", "One" })
+        );
         Assert.That(cut.FindAll(".combo-probability-item .combo-probability-name").ToArray()[0].TextContent,
-            Does.Contain("Unnamed combo 1"));
+            Does.Contain("Unnamed combo 1")
+        );
 
         await Button(cut, "Save Session").ClickAsync(new());
         JSRuntimeInvocation invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
@@ -123,24 +134,32 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         {
             JsonElement root = document.RootElement;
             Assert.That(root.GetProperty("Categories").EnumerateArray().Select(x => x.GetProperty("Name").GetString()),
-                Is.EqualTo(new[] { "C", "B", "A" }));
+                Is.EqualTo(new[] { "C", "B", "A" })
+            );
             Assert.That(root.GetProperty("Cards").EnumerateArray().Select(x => x.GetProperty("Id").GetString()),
-                Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id }));
+                Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id })
+            );
             Assert.That(root.GetProperty("Combos").EnumerateArray().Select(x => x.GetProperty("Name").GetString()),
-                Is.EqualTo(new[] { "", "Same", "Same" }));
+                Is.EqualTo(new[] { "", "Same", "Same" })
+            );
             Assert.That(root.GetProperty("ComboGroups").EnumerateArray().Select(x => x.GetProperty("Id").GetString()),
-                Is.EqualTo(new[] { "g3", "g2", "g1" }));
+                Is.EqualTo(new[] { "g3", "g2", "g1" })
+            );
         }
 
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "ordered.json"));
         Assert.That(cut.FindComponents<CardEditor>().Select(x => x.Instance.Card.Id),
-            Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id }));
+            Is.EqualTo(new[] { cards[2].Id, cards[1].Id, cards[0].Id })
+        );
         Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Select(x => x.Name),
-            Is.EqualTo(new[] { "C", "B", "A" }));
+            Is.EqualTo(new[] { "C", "B", "A" })
+        );
         Assert.That(cut.FindComponent<ComboListEditor>().Instance.ComboGroups.Select(x => x.Id),
-            Is.EqualTo(new[] { "g3", "g2", "g1" }));
+            Is.EqualTo(new[] { "g3", "g2", "g1" })
+        );
         Assert.That(cut.FindComponents<ComboEditor>().Select(x => x.Instance.Combo.GroupId),
-            Is.EqualTo(new[] { "g3", "g2", "g1" }));
+            Is.EqualTo(new[] { "g3", "g2", "g1" })
+        );
     }
 
     [Test]
@@ -160,12 +179,15 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         cut.Find("[aria-label='Move combo First combo, row 1 down']").Click();
         Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.Name, Is.EqualTo("First"));
         Assert.That(cut.FindComponents<CardEditor>()[1].Find(".accordion-button").GetAttribute("aria-expanded"),
-            Is.EqualTo("true"));
+            Is.EqualTo("true")
+        );
         Assert.That(cut.FindComponents<CardEditor>()[1].Find("#cardCategory1").GetAttribute("value"),
-            Is.EqualTo("user:B"));
+            Is.EqualTo("user:B")
+        );
         Assert.That(cut.FindComponents<ComboEditor>()[1].Instance.Combo.Name, Is.EqualTo("First combo"));
         Assert.That(cut.FindComponents<ComboEditor>()[1].Find(".accordion-button").GetAttribute("aria-expanded"),
-            Is.EqualTo("true"));
+            Is.EqualTo("true")
+        );
         Assert.That(cut.FindComponents<ComboEditor>()[1].Find("#minCount1").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.FindComponents<CardEditor>()[1].Find("#cardName1").Input("Moved card");
@@ -192,27 +214,37 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         cut.Find("[aria-label='Edit category A']").Click();
         cut.Find("[aria-label='New name for category A']").Input("Renamed");
-        IElement categoryChip = cut.FindAll(".category-chip").Single(chip =>
-            chip.QuerySelector("[aria-label='New name for category A']") is not null);
+        IElement categoryChip = cut
+            .FindAll(".category-chip")
+            .Single(chip =>
+                chip.QuerySelector("[aria-label='New name for category A']") is not null
+            );
         Assert.That(categoryChip.QuerySelectorAll("button").Select(x => x.GetAttribute("aria-label")),
             Is.EqualTo(new[]
-            {
-                "Save category name", "Move category A left", "Move category A right", "Exit category edit mode",
-                "Choose color for category A", "Remove category A"
-            }));
+                {
+                    "Save category name", "Move category A left", "Move category A right", "Exit category edit mode",
+                    "Choose color for category A", "Remove category A"
+                }
+            )
+        );
         cut.Find("[aria-label='Move category A right']").Click();
         Assert.That(cut.Find("[aria-label='New name for category A']").GetAttribute("value"), Is.EqualTo("Renamed"));
         cut.Find("[aria-label='Save category name']").Click();
         cut.Find("[aria-label='Edit group One']").Click();
         cut.Find("[aria-label='New name for group One']").Input("Updated");
-        IElement groupChip = cut.FindAll(".combo-group-chip").Single(chip =>
-            chip.QuerySelector("[aria-label='New name for group One']") is not null);
+        IElement groupChip = cut
+            .FindAll(".combo-group-chip")
+            .Single(chip =>
+                chip.QuerySelector("[aria-label='New name for group One']") is not null
+            );
         Assert.That(groupChip.QuerySelectorAll("button").Select(x => x.GetAttribute("aria-label")),
             Is.EqualTo(new[]
-            {
-                "Save group name", "Move group One left", "Move group One right", "Exit group edit mode",
-                "Remove group One"
-            }));
+                {
+                    "Save group name", "Move group One left", "Move group One right", "Exit group edit mode",
+                    "Remove group One"
+                }
+            )
+        );
         cut.Find("[aria-label='Move group One right']").Click();
         Assert.That(cut.Find("[aria-label='New name for group One']").GetAttribute("value"), Is.EqualTo("Updated"));
         cut.Find("[aria-label='Save group name']").Click();
@@ -221,30 +253,43 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
         cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").Click();
         Assert.That(cut.Find("#cardCategory0").QuerySelectorAll("option").Skip(1).Select(x => x.TextContent.Trim()),
-            Is.EqualTo(new[] { "B", "Renamed" }));
+            Is.EqualTo(new[] { "B", "Renamed" })
+        );
         Assert.That(cut.Find("#comboGroup0").QuerySelectorAll("option").Skip(1).Select(x => x.TextContent.Trim()),
-            Is.EqualTo(new[] { "Two", "Updated" }));
+            Is.EqualTo(new[] { "Two", "Updated" })
+        );
         Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Categories.Single().Name, Is.EqualTo("Renamed"));
         Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.Categories.Single().BaseCategory.Name,
-            Is.EqualTo("Renamed"));
+            Is.EqualTo("Renamed")
+        );
 
         cut.Find("[aria-label='Edit category B']").Click();
         cut.Find("[aria-label='New name for category B']").Input("Discarded");
         cut.Find("[aria-label='Move category B right']").Click();
-        cut.Find("[aria-label='New name for category B']")
+        cut
+            .Find("[aria-label='New name for category B']")
             .KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
-        Assert.That(cut.FindComponent<CategoryListEditor>().FindAll(".category-chip").Select(chip =>
-                chip.QuerySelector(".category-name-trigger")?.TextContent.Trim()),
-            Is.EqualTo(new[] { "Renamed", "B" }));
+        Assert.That(cut
+                .FindComponent<CategoryListEditor>()
+                .FindAll(".category-chip")
+                .Select(chip =>
+                    chip.QuerySelector(".category-name-trigger")?.TextContent.Trim()
+                ),
+            Is.EqualTo(new[] { "Renamed", "B" })
+        );
         Assert.That(cut.FindAll(".category-chip .reorder-controls"), Is.Empty);
 
         cut.Find("[aria-label='Edit group Two']").Click();
         cut.Find("[aria-label='New name for group Two']").Input("Discarded");
         cut.Find("[aria-label='Move group Two right']").Click();
         cut.Find("[aria-label='Exit group edit mode']").Click();
-        Assert.That(cut.FindAll(".combo-group-chip").Select(chip =>
-                chip.QuerySelector(".category-name-trigger")?.TextContent.Trim()),
-            Is.EqualTo(new[] { "Updated", "Two" }));
+        Assert.That(cut
+                .FindAll(".combo-group-chip")
+                .Select(chip =>
+                    chip.QuerySelector(".category-name-trigger")?.TextContent.Trim()
+                ),
+            Is.EqualTo(new[] { "Updated", "Two" })
+        );
         Assert.That(cut.FindAll(".combo-group-chip .reorder-controls"), Is.Empty);
     }
 
@@ -267,9 +312,10 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         string[] deckOrder = [.. cards.Select(card => card.Id)];
         Combo combo = new([], "Direct", cards: [new("missing-card", 1, 1)]);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-        {
-            Categories = [zetaCategory, alphaCategory], Cards = cards, Combos = [combo], HandSize = 1
-        });
+            {
+                Categories = [zetaCategory, alphaCategory], Cards = cards, Combos = [combo], HandSize = 1
+            }
+        );
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         Assert.That(editor.Find("[role='status']").TextContent, Does.Contain("Missing card reference"));
@@ -278,32 +324,43 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         IElement selector = editor.Find("#comboCard0");
         Assert.That(selector.QuerySelectorAll("option").Select(option => option.TextContent.Trim()),
             Is.EqualTo(new[]
-            {
-                "Select card…", "alpha #2", "Alpha #3", "beta #4", "Beta #5", "beta #6", "zebra #1",
-                "Unnamed card #7", "Unnamed card #8"
-            }));
+                {
+                    "Select card…", "alpha #2", "Alpha #3", "beta #4", "Beta #5", "beta #6", "zebra #1",
+                    "Unnamed card #7", "Unnamed card #8"
+                }
+            )
+        );
         Assert.That(selector.QuerySelectorAll("option").Select(option => option.GetAttribute("value")),
             Is.EqualTo(new[]
-            {
-                "", "alpha-lower", "alpha-upper", "beta-first", "beta-case", "beta-second", "zebra",
-                "unnamed-first", "unnamed-second"
-            }));
+                {
+                    "", "alpha-lower", "alpha-upper", "beta-first", "beta-case", "beta-second", "zebra",
+                    "unnamed-first", "unnamed-second"
+                }
+            )
+        );
         Assert.That(selector.QuerySelectorAll("option").Any(option => option.GetAttribute("value") == "missing-card"),
-            Is.False);
+            Is.False
+        );
         Assert.That(cut.FindComponents<CardEditor>().Select(cardEditor => cardEditor.Instance.Card.Id),
-            Is.EqualTo(deckOrder));
+            Is.EqualTo(deckOrder)
+        );
 
         await selector.ChangeAsync(new() { Value = "beta-case" });
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
         Assert.That(editor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo("beta-case"));
 
         await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Category" });
-        Assert.That(editor.Find("#comboCategory0").QuerySelectorAll("option").Skip(1)
+        Assert.That(editor
+                .Find("#comboCategory0")
+                .QuerySelectorAll("option")
+                .Skip(1)
                 .Select(option => option.TextContent.Trim()),
             Is.EqualTo(new[] { "Zeta", "Alpha" }),
-            "category selectors retain configured category order");
+            "category selectors retain configured category order"
+        );
         Assert.That(cut.FindComponents<CardEditor>().Select(cardEditor => cardEditor.Instance.Card.Id),
-            Is.EqualTo(deckOrder));
+            Is.EqualTo(deckOrder)
+        );
     }
 
     [Test]
@@ -330,21 +387,30 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
                 card.Active,
                 card.ExternalCardId,
                 CategoryIdentities: card.Categories.Select(category => category.Identity).ToArray(),
-                ManualKeys: card.ManualMetadataCategoryKeys.ToArray()));
+                ManualKeys: card.ManualMetadataCategoryKeys.ToArray())
+        );
         Combo combo = new([], "Direct", cards: [new(zebra.Id, 0, 0)]);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-        {
-            Categories = [draftCategory, otherCategory], Cards = cards, Combos = [combo], HandSize = 1
-        });
+            {
+                Categories = [draftCategory, otherCategory], Cards = cards, Combos = [combo], HandSize = 1
+            }
+        );
         IRenderedComponent<CardListEditor> deckEditor = cut.FindComponent<CardListEditor>();
         Assert.That(deckEditor.FindAll("button").Count(button => button.TextContent.Trim() == "Sort A–Z"),
-            Is.EqualTo(1));
-        Assert.That(cut.FindComponent<CategoryListEditor>().FindAll("button")
+            Is.EqualTo(1)
+        );
+        Assert.That(cut
+                .FindComponent<CategoryListEditor>()
+                .FindAll("button")
                 .Any(button => button.TextContent.Trim() == "Sort A–Z"),
-            Is.False);
-        Assert.That(cut.FindComponent<ComboListEditor>().FindAll("button")
+            Is.False
+        );
+        Assert.That(cut
+                .FindComponent<ComboListEditor>()
+                .FindAll("button")
                 .Any(button => button.TextContent.Trim() == "Sort A–Z"),
-            Is.False);
+            Is.False
+        );
         IElement sortButton = deckEditor.Find("button[aria-label='Sort deck A–Z']");
         Assert.That(sortButton.GetAttribute("title"), Is.EqualTo("Sort deck A–Z"));
 
@@ -366,15 +432,18 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         IReadOnlyList<IRenderedComponent<CardEditor>> sortedEditors = cut.FindComponents<CardEditor>();
         Assert.That(sortedEditors.Select(editor => editor.Instance.Card.Id),
             Is.EqualTo(new[]
-            {
-                alphaLower.Id, alphaUpper.Id, betaFirst.Id, betaCase.Id, betaSecond.Id, zebra.Id,
-                unnamedFirst.Id, unnamedSecond.Id
-            }));
+                {
+                    alphaLower.Id, alphaUpper.Id, betaFirst.Id, betaCase.Id, betaSecond.Id, zebra.Id,
+                    unnamedFirst.Id, unnamedSecond.Id
+                }
+            )
+        );
 
         foreach (Card card in cards)
         {
             Assert.That(sortedEditors.Single(editor => editor.Instance.Card.Id == card.Id).Instance.Card,
-                Is.SameAs(card));
+                Is.SameAs(card)
+            );
         }
 
         zebraEditor = sortedEditors.Single(editor => editor.Instance.Card.Id == zebra.Id);
@@ -386,9 +455,11 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         Assert.That(zebraEditor.Find("#cardCopies5").GetAttribute("value"), Is.EqualTo("3"));
         Assert.That(zebraEditor.Instance.Card, Is.SameAs(zebra));
         Assert.That((zebra.Copies, zebra.Name, zebra.Active, zebra.ExternalCardId),
-            Is.EqualTo((3, "Zebra", false, (int?)123)));
+            Is.EqualTo((3, "Zebra", false, (int?)123))
+        );
         Assert.That(zebra.Categories.Select(category => category.Identity),
-            Is.EqualTo(originalState[zebra.Id].CategoryIdentities));
+            Is.EqualTo(originalState[zebra.Id].CategoryIdentities)
+        );
         Assert.That(zebra.ManualMetadataCategoryKeys, Is.EquivalentTo(originalState[zebra.Id].ManualKeys));
 
         foreach (IRenderedComponent<CardEditor> editor in sortedEditors)
@@ -397,7 +468,8 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
             (string? Name, int Copies, bool Active, int? ExternalCardId, string[] CategoryIdentities, string[]
                 ManualKeys) before = originalState[card.Id];
             Assert.That((card.Name, card.Copies, card.Active, card.ExternalCardId),
-                Is.EqualTo((before.Name, before.Copies, before.Active, before.ExternalCardId)));
+                Is.EqualTo((before.Name, before.Copies, before.Active, before.ExternalCardId))
+            );
             Assert.That(card.Categories.Select(category => category.Identity), Is.EqualTo(before.CategoryIdentities));
             Assert.That(card.ManualMetadataCategoryKeys, Is.EquivalentTo(before.ManualKeys));
         }
@@ -411,10 +483,12 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         await cut.Find("[aria-label='Move card alpha, row 1 down']").ClickAsync(new());
         Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id),
             Is.EqualTo(new[]
-            {
-                alphaUpper.Id, alphaLower.Id, betaFirst.Id, betaCase.Id, betaSecond.Id, zebra.Id,
-                unnamedFirst.Id, unnamedSecond.Id
-            }));
+                {
+                    alphaUpper.Id, alphaLower.Id, betaFirst.Id, betaCase.Id, betaSecond.Id, zebra.Id,
+                    unnamedFirst.Id, unnamedSecond.Id
+                }
+            )
+        );
         Assert.That(zebraEditor.Find("#cardCategory5").GetAttribute("value"), Is.EqualTo(otherCategory.Identity));
     }
 
@@ -426,9 +500,10 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         CountingProbabilityCalculator calculator = new();
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-        {
-            Categories = [a], Cards = [zebra, alpha], Combos = [new([new(a, 1, 2)], "Any A")], HandSize = 2
-        });
+            {
+                Categories = [a], Cards = [zebra, alpha], Combos = [new([new(a, 1, 2)], "Any A")], HandSize = 2
+            }
+        );
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
         Assert.That(calculator.CallCount, Is.EqualTo(1));
@@ -437,7 +512,8 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         AssertPreviousResult(cut);
         Assert.That(calculator.CallCount, Is.EqualTo(1), "sorting marks the result stale without calculating again");
         Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id),
-            Is.EqualTo(new[] { alpha.Id, zebra.Id }));
+            Is.EqualTo(new[] { alpha.Id, zebra.Id })
+        );
         await Button(cut, "Save Session").ClickAsync(new());
         string firstSave = SavedSessionJson();
 
@@ -445,24 +521,31 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         {
             JsonElement root = document.RootElement;
             Assert.That(root.GetProperty("Cards").EnumerateArray().Select(card => card.GetProperty("Id").GetString()),
-                Is.EqualTo(new[] { alpha.Id, zebra.Id }));
+                Is.EqualTo(new[] { alpha.Id, zebra.Id })
+            );
             Assert.That(root.TryGetProperty("SortMode", out _), Is.False);
         }
 
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(firstSave, "sorted.json"));
         cut.WaitForAssertion(() =>
             Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id),
-                Is.EqualTo(new[] { alpha.Id, zebra.Id })));
+                Is.EqualTo(new[] { alpha.Id, zebra.Id })
+            )
+        );
 
         await cut.Find("[aria-label='Move card Alpha, row 1 down']").ClickAsync(new());
         Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id),
-            Is.EqualTo(new[] { zebra.Id, alpha.Id }));
+            Is.EqualTo(new[] { zebra.Id, alpha.Id })
+        );
         await Button(cut, "Save Session").ClickAsync(new());
         string secondSave = SavedSessionJson(1);
         using JsonDocument secondDocument = JsonDocument.Parse(secondSave);
-        Assert.That(secondDocument.RootElement.GetProperty("Cards").EnumerateArray()
+        Assert.That(secondDocument
+                .RootElement.GetProperty("Cards")
+                .EnumerateArray()
                 .Select(card => card.GetProperty("Id").GetString()),
-            Is.EqualTo(new[] { zebra.Id, alpha.Id }));
+            Is.EqualTo(new[] { zebra.Id, alpha.Id })
+        );
     }
 
     [Test]
@@ -500,10 +583,12 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase
         SessionState session = Session();
         IRenderedComponent<CardListEditor> cards = context.RenderComponent<CardListEditor>(p => p
             .Add(x => x.Cards, session.Cards)
-            .Add(x => x.CategoryBases, session.Categories));
+            .Add(x => x.CategoryBases, session.Categories)
+        );
         IRenderedComponent<ComboListEditor> combos = context.RenderComponent<ComboListEditor>(p => p
             .Add(x => x.Combos, session.Combos)
-            .Add(x => x.CategoryBases, session.Categories));
+            .Add(x => x.CategoryBases, session.Categories)
+        );
         cards.FindComponents<CardEditor>()[0].Find("select").Change("user:B");
         combos.FindComponents<ComboEditor>()[0].Find("select").Change("user:B");
         combos.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");

@@ -14,7 +14,8 @@ public class ComboConverter : JsonConverter<Combo>
         CheckFields(root, "Categories", "Cards", "Name", "Active", "GroupId", "AlternativeGroups");
         List<ComboCategory> categories = JsonSerializer.Deserialize<List<ComboCategory>>(
             root.GetProperty("Categories").GetRawText(),
-            options) ?? [];
+            options
+        ) ?? [];
         List<ComboCard> cards = root.TryGetProperty("Cards", out JsonElement cardsProperty)
             ? JsonSerializer.Deserialize<List<ComboCard>>(cardsProperty.GetRawText(), options) ?? []
             : [];
@@ -88,14 +89,18 @@ public class ComboConverter : JsonConverter<Combo>
                     if (kind.GetString() == "Category" && hasCategory && ! hasCard)
                     {
                         leaves.Add(ComboAlternative.For(
-                            JsonSerializer.Deserialize<ComboCategory>(category.GetRawText(), options)
-                            ?? throw new JsonException("Missing category alternative.")));
+                                JsonSerializer.Deserialize<ComboCategory>(category.GetRawText(), options)
+                                ?? throw new JsonException("Missing category alternative.")
+                            )
+                        );
                     }
                     else if (kind.GetString() == "Card" && hasCard && ! hasCategory)
                     {
                         leaves.Add(ComboAlternative.For(
-                            JsonSerializer.Deserialize<ComboCard>(card.GetRawText(), options)
-                            ?? throw new JsonException("Missing card alternative.")));
+                                JsonSerializer.Deserialize<ComboCard>(card.GetRawText(), options)
+                                ?? throw new JsonException("Missing card alternative.")
+                            )
+                        );
                     }
                     else
                     {

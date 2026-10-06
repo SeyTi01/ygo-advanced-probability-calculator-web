@@ -13,7 +13,8 @@ public class CardConverter : JsonConverter<Card>
 
         List<CategoryBase> categories = JsonSerializer.Deserialize<List<CategoryBase>>(
             root.GetProperty("Categories").GetRawText(),
-            options) ?? [];
+            options
+        ) ?? [];
 
         if (categories.Any(category => category is null))
         {

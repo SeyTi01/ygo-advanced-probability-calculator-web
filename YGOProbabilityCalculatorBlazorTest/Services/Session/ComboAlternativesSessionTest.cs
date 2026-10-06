@@ -20,7 +20,9 @@ public class ComboAlternativesSessionTest
     {
         CategoryBase metadata = new("Fire", CategorySource.Metadata, "attribute:fire");
         Combo combo = Or(Direct("a"), Cat(metadata, 0, 0, RequirementMaximumMode.Fixed), Cat(new("Fire"), 2))
-            .WithName("Mixed").WithActive(false).WithGroup("g");
+            .WithName("Mixed")
+            .WithActive(false)
+            .WithGroup("g");
         SessionState session = new()
         {
             Cards = [new([metadata], id: "a", manualMetadataCategoryKeys: ["attribute:fire"])],
@@ -35,7 +37,8 @@ public class ComboAlternativesSessionTest
         SessionState shared = await Codec().LoadSessionAsync(SessionShareCodec.Decode(new Uri(link).Fragment));
         Assert.That(Codec().SerializeSession(shared), Is.EqualTo(json));
         Assert.That(shared.Combos[0].AlternativeGroups[0].Alternatives.Select(a => a.Kind),
-            Is.EqualTo(new[] { "Card", "Category", "Category" }));
+            Is.EqualTo(new[] { "Card", "Category", "Category" })
+        );
     }
 
     [Test]
@@ -52,7 +55,8 @@ public class ComboAlternativesSessionTest
                     alternativeGroups:
                     [
                         new([ComboAlternative.For(categoryLeaf)]), new([ComboAlternative.For(cardLeaf)])
-                    ])
+                    ]
+                )
             ]
         };
         SessionService codec = Codec();
@@ -63,9 +67,11 @@ public class ComboAlternativesSessionTest
         Assert.That(loaded.SchemaVersion, Is.EqualTo(3));
         Assert.That(loaded.Combos[0].AlternativeGroups, Has.Count.EqualTo(2));
         Assert.That(loaded.Combos[0].AlternativeGroups.Select(group => group.Alternatives.Count),
-            Is.EqualTo(new[] { 1, 1 }));
+            Is.EqualTo(new[] { 1, 1 })
+        );
         Assert.That(loaded.Combos[0].AlternativeGroups[0].Alternatives[0].Category!.MaximumMode,
-            Is.EqualTo(RequirementMaximumMode.HandSize));
+            Is.EqualTo(RequirementMaximumMode.HandSize)
+        );
         Assert.That(loaded.Combos[0].AlternativeGroups[0].Alternatives[0].Category!.MaxCount, Is.Zero);
         Assert.That(loaded.Combos[0].AlternativeGroups[1].Alternatives[0].Card!.MaxCount, Is.Zero);
         Assert.That(codec.SerializeSession(loaded), Is.EqualTo(json));
@@ -76,7 +82,8 @@ public class ComboAlternativesSessionTest
     [TestCase("[{\"Alternatives\":[]}]")]
     [TestCase("[{\"Operator\":\"AND\",\"Alternatives\":[]}]")]
     [TestCase(
-        "[{\"Alternatives\":[{\"Kind\":\"Unknown\",\"Card\":{\"CardId\":\"a\",\"MinCount\":1,\"MaxCount\":2}}]}]")]
+        "[{\"Alternatives\":[{\"Kind\":\"Unknown\",\"Card\":{\"CardId\":\"a\",\"MinCount\":1,\"MaxCount\":2}}]}]"
+    )]
     [TestCase("[{\"Alternatives\":[{\"Kind\":\"Card\",\"Card\":null}]}]")]
     [TestCase("[{\"Alternatives\":[{\"Kind\":\"Card\",\"Card\":{\"CardId\":\"a\",\"MinCount\":2,\"MaxCount\":1}}]}]")]
     [TestCase("[{\"Alternatives\":[{\"Kind\":\"Card\",\"Alternatives\":[]}]}]")]
@@ -110,40 +117,48 @@ public class ComboAlternativesSessionTest
         List<Combo> routes =
         [
             .. alternatives.Select((alternative, index) => new Combo(
-                combined.Categories.Concat([alternative.Category!]),
-                $"Underlying route {index + 1}",
-                combined.Active,
-                combined.GroupId,
-                combined.Cards))
+                    combined.Categories.Concat([alternative.Category!]),
+                    $"Underlying route {index + 1}",
+                    combined.Active,
+                    combined.GroupId,
+                    combined.Cards
+                )
+            )
         ];
         List<Combo> expanded = [.. routes, .. original.Combos.Skip(1)];
         ProbabilityCalculatorService service = new();
         ProbabilityCalculationResult bundled = service.CalculateProbabilityResults(original.Cards,
             original.Combos,
             original.HandSize,
-            original.ComboGroups);
+            original.ComboGroups
+        );
         ProbabilityCalculationResult expandedResult =
             service.CalculateProbabilityResults(original.Cards, expanded, original.HandSize, original.ComboGroups);
 
         Assert.That(expandedResult.TotalProbability, Is.EqualTo(bundled.TotalProbability));
         Assert.That(expandedResult.GroupProbabilities!.Select(group => group.Probability),
-            Is.EqualTo(bundled.GroupProbabilities!.Select(group => group.Probability)));
+            Is.EqualTo(bundled.GroupProbabilities!.Select(group => group.Probability))
+        );
         Assert.That(service.CalculateProbabilityForCombos(original.Cards, routes, original.HandSize),
-            Is.EqualTo(bundled.ComboProbabilities.Single(result => result.ComboName == combined.Name).Probability));
+            Is.EqualTo(bundled.ComboProbabilities.Single(result => result.ComboName == combined.Name).Probability)
+        );
         Assert.That(bundled.ComboProbabilities, Has.Count.EqualTo(8));
         Assert.That(expandedResult.ComboProbabilities, Has.Count.EqualTo(9));
         Assert.That(bundled.GroupProbabilities!.Single(group => group.GroupId == combined.GroupId).ActiveComboCount,
-            Is.EqualTo(5));
+            Is.EqualTo(5)
+        );
         Assert.That(expandedResult.GroupProbabilities!.Single(group => group.GroupId == combined.GroupId)
                 .ActiveComboCount,
-            Is.EqualTo(6));
+            Is.EqualTo(6)
+        );
     }
 
     [Test, Explicit("Set YGO_OR_SESSION to an available supplied session; no fixture is modified.")]
     public async Task SuppliedExampleHasParity()
     {
         await VerifyCombinedExample(Environment.GetEnvironmentVariable("YGO_OR_SESSION")
-                                    ?? throw new InvalidOperationException("YGO_OR_SESSION is required."));
+                                    ?? throw new InvalidOperationException("YGO_OR_SESSION is required.")
+        );
     }
 
     private static async Task VerifyCombinedExample(string path)
@@ -154,11 +169,13 @@ public class ComboAlternativesSessionTest
         List<ComboCategory> common =
         [
             .. first.Categories.Where(a =>
-                second.Categories.Any(b => a.BaseCategory.Identity == b.BaseCategory.Identity))
+                second.Categories.Any(b => a.BaseCategory.Identity == b.BaseCategory.Identity)
+            )
         ];
         ComboAlternative[] leaves =
         [
-            .. first.Categories.Concat(second.Categories)
+            .. first
+                .Categories.Concat(second.Categories)
                 .Where(c => ! common.Any(x => x.BaseCategory.Identity == c.BaseCategory.Identity))
                 .Select(ComboAlternative.For)
         ];
@@ -169,18 +186,22 @@ public class ComboAlternativesSessionTest
         ProbabilityCalculationResult before = service.CalculateProbabilityResults(original.Cards,
             original.Combos,
             original.HandSize,
-            original.ComboGroups);
+            original.ComboGroups
+        );
         ProbabilityCalculationResult after =
             service.CalculateProbabilityResults(original.Cards, changed, original.HandSize, original.ComboGroups);
         Assert.That(after.TotalProbability, Is.EqualTo(before.TotalProbability));
         Assert.That(after.GroupProbabilities!.Select(g => g.Probability),
-            Is.EqualTo(before.GroupProbabilities!.Select(g => g.Probability)));
+            Is.EqualTo(before.GroupProbabilities!.Select(g => g.Probability))
+        );
         Assert.That(after.ComboProbabilities, Has.Count.EqualTo(8));
         Assert.That(after.ComboProbabilities[0].Probability,
-            Is.EqualTo(service.CalculateProbabilityForCombos(original.Cards, [first, second], original.HandSize)));
+            Is.EqualTo(service.CalculateProbabilityForCombos(original.Cards, [first, second], original.HandSize))
+        );
         Assert.That(before.GroupProbabilities!.First(g => g.GroupId == first.GroupId).ActiveComboCount, Is.EqualTo(6));
         Assert.That(after.GroupProbabilities!.First(g => g.GroupId == first.GroupId).ActiveComboCount, Is.EqualTo(5));
         TestContext.Out.WriteLine(
-            $"Before/after total: {before.TotalProbability:R}; combined individual: {after.ComboProbabilities[0].Probability:R}");
+            $"Before/after total: {before.TotalProbability:R}; combined individual: {after.ComboProbabilities[0].Probability:R}"
+        );
     }
 }

@@ -7,7 +7,8 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IBackgroundCalculator
 {
     public async Task<ProbabilityCalculationResult> CalculateAsync(
         CalculationSnapshot snapshot,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         // Do not abandon an import/create invocation: a late handle still needs disposing.

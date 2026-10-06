@@ -19,11 +19,14 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase
     {
         SessionService codec = new(context.JSInterop.JSRuntime, new JsonSerializer());
         Mock<ISessionService> sessionService = new();
-        sessionService.Setup(service => service.SerializeSession(It.IsAny<SessionState>()))
+        sessionService
+            .Setup(service => service.SerializeSession(It.IsAny<SessionState>()))
             .Returns<SessionState>(codec.SerializeSession);
-        sessionService.Setup(service => service.LoadSessionAsync(It.IsAny<string>()))
+        sessionService
+            .Setup(service => service.LoadSessionAsync(It.IsAny<string>()))
             .Returns<string>(codec.LoadSessionAsync);
-        sessionService.Setup(service => service.SaveSessionAsync(It.IsAny<SessionState>(), It.IsAny<string>()))
+        sessionService
+            .Setup(service => service.SaveSessionAsync(It.IsAny<SessionState>(), It.IsAny<string>()))
             .Returns(Task.CompletedTask);
         context.Services.AddSingleton(sessionService.Object);
 
@@ -34,8 +37,11 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase
                 It.IsAny<SessionState>(),
                 It.Is<string>(name =>
                     name.StartsWith("calculator_session_", StringComparison.Ordinal) &&
-                    name.EndsWith(".json", StringComparison.Ordinal))),
-            Times.Once);
+                    name.EndsWith(".json", StringComparison.Ordinal)
+                )
+            ),
+            Times.Once
+        );
         Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
     }
 
@@ -44,11 +50,14 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase
     {
         SessionService codec = new(context.JSInterop.JSRuntime, new JsonSerializer());
         Mock<ISessionService> sessionService = new();
-        sessionService.Setup(service => service.SerializeSession(It.IsAny<SessionState>()))
+        sessionService
+            .Setup(service => service.SerializeSession(It.IsAny<SessionState>()))
             .Returns<SessionState>(codec.SerializeSession);
-        sessionService.Setup(service => service.LoadSessionAsync(It.IsAny<string>()))
+        sessionService
+            .Setup(service => service.LoadSessionAsync(It.IsAny<string>()))
             .Returns<string>(codec.LoadSessionAsync);
-        sessionService.Setup(service => service.SaveSessionAsync(It.IsAny<SessionState>(), It.IsAny<string>()))
+        sessionService
+            .Setup(service => service.SaveSessionAsync(It.IsAny<SessionState>(), It.IsAny<string>()))
             .ThrowsAsync(new JSException("Session file write failed."));
         context.Services.AddSingleton(sessionService.Object);
 
@@ -56,7 +65,8 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase
         await Button(cut, "Save Session").ClickAsync(new());
 
         Assert.That(cut.Find("[role='alert']").TextContent,
-            Does.Contain("Failed to save session: Session file write failed."));
+            Does.Contain("Failed to save session: Session file write failed.")
+        );
     }
 
     [Test]
@@ -65,15 +75,19 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase
         SessionState session = Session();
         Combo source = new([new(a, 1, 5, RequirementMaximumMode.HandSize), new(b, 0, 0)],
             "Modes",
-            cards: [new(session.Cards[0].Id, 1, 5, RequirementMaximumMode.HandSize), new(session.Cards[1].Id, 1, 5)]);
+            cards: [new(session.Cards[0].Id, 1, 5, RequirementMaximumMode.HandSize), new(session.Cards[1].Id, 1, 5)]
+        );
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-            { Categories = session.Categories, Cards = session.Cards, Combos = [source], HandSize = 5 });
+            { Categories = session.Categories, Cards = session.Cards, Combos = [source], HandSize = 5 }
+        );
         await DuplicateComboAsync(cut, 0);
         IReadOnlyList<IRenderedComponent<ComboEditor>> editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors[1].Instance.Combo.Categories.Select(c => c.MaximumMode),
-            Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed }));
+            Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed })
+        );
         Assert.That(editors[1].Instance.Combo.Cards.Select(c => c.MaximumMode),
-            Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed }));
+            Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed })
+        );
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Renamed" });
         await cut.Find("[aria-label='Save category name']").ClickAsync(new());
@@ -93,11 +107,14 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase
         foreach (IRenderedComponent<ComboEditor> editor in cut.FindComponents<ComboEditor>())
         {
             Assert.That(editor.Instance.Combo.Categories.Select(c => c.MaximumMode),
-                Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed }));
+                Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed })
+            );
             Assert.That(editor.Instance.Combo.Cards.Select(c => c.MaximumMode),
-                Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed }));
+                Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed })
+            );
             Assert.That(editor.Instance.Combo.Categories.Select(c => c.GetEffectiveMaximum(6)),
-                Is.EqualTo(new[] { 6, 0 }));
+                Is.EqualTo(new[] { 6, 0 })
+            );
             Assert.That(editor.Instance.Combo.Cards.Select(c => c.GetEffectiveMaximum(6)), Is.EqualTo(new[] { 6, 5 }));
             await editor.Find("#constraintKind" + editor.Instance.Index).ChangeAsync(new() { Value = "Card" });
             await editor.Find("#comboCard" + editor.Instance.Index).ChangeAsync(new() { Value = session.Cards[1].Id });
@@ -125,9 +142,12 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase
         string result = cut.Find(".probability-results").TextContent;
         PinnedResultSnapshot pinned = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
         int writes = context.JSInterop.Invocations["sessionRecovery.update"].Count;
-        cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(
-            $"{{\"SchemaVersion\":3,{invalidField}}}",
-            "invalid.json"));
+        cut.FindComponents<InputFile>()[1]
+            .UploadFiles(InputFileContent.CreateFromText(
+                    $"{{\"SchemaVersion\":3,{invalidField}}}",
+                    "invalid.json"
+                )
+            );
         cut.WaitForState(() => cut.Markup.Contains("Failed to load session", StringComparison.Ordinal));
 
         Assert.That(cut.FindComponent<SessionShareButton>().Instance.Snapshot, Is.EqualTo(before));
@@ -167,7 +187,8 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase
         await cut.Find("#handSize").ChangeAsync(new() { Value = "2" });
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total").TextContent,
-            Does.Contain(1.0.ToString("P2")));
+            Does.Contain(1.0.ToString("P2"))
+        );
     }
 
     [Test]
@@ -202,6 +223,7 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase
         await cut.Find("[aria-label='Remove category A']").ClickAsync(new());
         Assert.That(
             cut.FindComponent<CategoryListEditor>().Find("[role=alert]").TextContent,
-            Does.Contain("still used"));
+            Does.Contain("still used")
+        );
     }
 }

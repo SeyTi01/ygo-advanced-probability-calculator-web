@@ -42,11 +42,12 @@ public class ComboCategoryConverterTests
 
         Assert.That(comboCategory, Is.Not.Null);
         Assert.Multiple(() =>
-        {
-            Assert.That(comboCategory!.BaseCategory.Name, Is.EqualTo("TestCategory"));
-            Assert.That(comboCategory.MinCount, Is.EqualTo(1));
-            Assert.That(comboCategory.MaxCount, Is.EqualTo(3));
-        });
+            {
+                Assert.That(comboCategory!.BaseCategory.Name, Is.EqualTo("TestCategory"));
+                Assert.That(comboCategory.MinCount, Is.EqualTo(1));
+                Assert.That(comboCategory.MaxCount, Is.EqualTo(3));
+            }
+        );
     }
 
     [Test]

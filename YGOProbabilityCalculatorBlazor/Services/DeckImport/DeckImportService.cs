@@ -90,10 +90,12 @@ public class DeckImportService(ICardInfoService cardInfoService, IFileService fi
             }
 
             cards.Add(new Card(
-                CardPropertyProvider.GetCategories(info),
-                cardCounts[id],
-                info.Name,
-                externalCardId: id));
+                    CardPropertyProvider.GetCategories(info),
+                    cardCounts[id],
+                    info.Name,
+                    externalCardId: id
+                )
+            );
         }
 
         return cards;

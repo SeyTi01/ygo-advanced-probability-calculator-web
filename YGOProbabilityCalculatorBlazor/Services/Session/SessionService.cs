@@ -70,7 +70,8 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             }
 
             if (session.Combos.Any(combo => combo.Categories.Any(category => category is null) ||
-                                            combo.Cards.Any(card => card is null)))
+                                            combo.Cards.Any(card => card is null)
+                ))
             {
                 throw new JsonException("Session contains missing combo requirements.");
             }

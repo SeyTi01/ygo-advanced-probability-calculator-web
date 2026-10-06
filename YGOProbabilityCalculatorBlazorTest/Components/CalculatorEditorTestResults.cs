@@ -18,7 +18,8 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase
     {
         SequencedProbabilityCalculator calculator = new(
             new ProbabilityCalculationResult(0.9, [new ComboProbabilityResult(0, "Old session", 0.8)]),
-            failSecond: failCalculation);
+            failSecond: failCalculation
+        );
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
@@ -77,7 +78,8 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase
         double[] expectedStandalone =
         [
             .. session.Combos.Select(combo =>
-                SmallDeckOracle.EnumerateProbability(session.Cards, [combo], session.HandSize))
+                SmallDeckOracle.EnumerateProbability(session.Cards, [combo], session.HandSize)
+            )
         ];
 
         await Button(cut, "Calculate").ClickAsync(new());
@@ -88,22 +90,27 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase
             Assert.That(totalRow.ClassList.Contains("combo-probability-row"), Is.True);
             Assert.That(totalRow.ParentElement!.ClassList.Contains("probability-results"),
                 Is.True,
-                "the summary row must sit outside the numbered combo list");
+                "the summary row must sit outside the numbered combo list"
+            );
             Assert.That(totalRow.QuerySelector(".combo-probability-name")!.TextContent.Trim(),
-                Is.EqualTo("Any active combo"));
+                Is.EqualTo("Any active combo")
+            );
             Assert.That(totalRow.QuerySelector(".combo-probability-value")!.TextContent,
-                Is.EqualTo(expectedTotal.ToString("P2")));
+                Is.EqualTo(expectedTotal.ToString("P2"))
+            );
 
             IHtmlCollection<IElement> rows = result.QuerySelectorAll(".combo-probability-item");
             Assert.That(rows.Length, Is.EqualTo(3));
             Assert.That(rows.All(row => row.QuerySelector(".combo-probability-row") is not null), Is.True);
             Assert.That(rows.Select(row => row.QuerySelector(".combo-probability-name")!.TextContent),
-                Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
+                Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" })
+            );
 
             for (int index = 0; index < rows.Length; index++)
             {
                 Assert.That(rows[index].QuerySelector(".combo-probability-value")!.TextContent,
-                    Is.EqualTo(expectedStandalone[index].ToString("P2")));
+                    Is.EqualTo(expectedStandalone[index].ToString("P2"))
+                );
             }
         }
     }
@@ -128,7 +135,8 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(
             cut.Find(".probability-total").TextContent,
-            Does.Contain(expected.ToString("P2")));
+            Does.Contain(expected.ToString("P2"))
+        );
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
     }
 
@@ -138,7 +146,9 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase
         SequencedProbabilityCalculator calculator = new(
             new ProbabilityCalculationResult(
                 0.75,
-                [new ComboProbabilityResult(0, "Updated combo", 0.6)]));
+                [new ComboProbabilityResult(0, "Updated combo", 0.6)]
+            )
+        );
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
 
@@ -186,7 +196,9 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase
         SequencedProbabilityCalculator calculator = new(
             new ProbabilityCalculationResult(
                 0.9,
-                [new ComboProbabilityResult(0, "Stale completion", 0.8)]));
+                [new ComboProbabilityResult(0, "Stale completion", 0.8)]
+            )
+        );
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
 
@@ -221,8 +233,10 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase
         SequencedProbabilityCalculator calculator = new(
             new ProbabilityCalculationResult(
                 0.9,
-                [new ComboProbabilityResult(0, "Unused result", 0.8)]),
-            failSecond: true);
+                [new ComboProbabilityResult(0, "Unused result", 0.8)]
+            ),
+            failSecond: true
+        );
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
 
@@ -272,7 +286,8 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase
 
         Assert.That(calculation.IsCompletedSuccessfully,
             Is.True,
-            "the stale event handler must finish before checking its result");
+            "the stale event handler must finish before checking its result"
+        );
         Assert.That(cut.FindAll(".probability-results"), Is.Empty);
     }
 

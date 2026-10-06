@@ -25,17 +25,20 @@ public class CardArtworkOwnershipTest
             [];
         List<CancellationToken> tokens = [];
         Mock<IBackgroundCalculator> calculator = new();
-        calculator.Setup(x => x.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
+        calculator
+            .Setup(x => x.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
             .Returns((CalculationSnapshot _, CancellationToken token) =>
-            {
-                TaskCompletionSource<ProbabilityCalculationResult> pending =
-                    new(TaskCreationOptions
-                        .RunContinuationsAsynchronously);
-                jobs.Add(pending);
-                tokens.Add(token);
+                {
+                    TaskCompletionSource<ProbabilityCalculationResult> pending =
+                        new(TaskCreationOptions
+                            .RunContinuationsAsynchronously
+                        );
+                    jobs.Add(pending);
+                    tokens.Add(token);
 
-                return pending.Task;
-            });
+                    return pending.Task;
+                }
+            );
         context.Services.AddSingleton(calculator.Object);
         context.Services.AddSingleton<ISerializer, JsonSerializer>();
         context.Services.AddSingleton<ISessionService, SessionService>();
@@ -64,15 +67,18 @@ public class CardArtworkOwnershipTest
         string bytes = context.Services.GetRequiredService<ISessionService>().SerializeSession(session);
         IRenderedComponent<CardArtwork> thumbnail = editor.FindComponents<CardArtwork>().First();
         await thumbnail.InvokeAsync(() =>
-            thumbnail.Instance.ArtworkReady(1, success ? CardArtworkService.ArtworkOrigin + "/small/1234.jpg" : null));
+            thumbnail.Instance.ArtworkReady(1, success ? CardArtworkService.ArtworkOrigin + "/small/1234.jpg" : null)
+        );
         Assert.That(tokens[1].IsCancellationRequested, Is.False);
         Assert.That(cut.FindAll("[aria-label='Cancel calculation']"), Has.Count.EqualTo(1));
         Assert.That(cut.Find(".probability-results").OuterHtml, Is.EqualTo(resultMarkup));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo(category.Identity));
         Assert.That(context.Services.GetRequiredService<ISessionService>().SerializeSession(session),
-            Is.EqualTo(bytes));
+            Is.EqualTo(bytes)
+        );
         Assert.That(context.JSInterop.Invocations["sessionRecovery.update"].Select(x => (string)x.Arguments[2]!),
-            Is.EqualTo(recovery));
+            Is.EqualTo(recovery)
+        );
         jobs[1].SetResult(new(0.5, [new(0, "Route", 0.5)]));
         await second;
     }

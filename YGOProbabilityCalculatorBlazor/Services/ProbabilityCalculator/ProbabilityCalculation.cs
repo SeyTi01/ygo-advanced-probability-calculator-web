@@ -29,25 +29,29 @@ internal sealed class ProbabilityCalculation
         List<ComboProbabilityResult> comboProbabilities =
         [
             .. combos.Select((combo, index) =>
-                new ComboProbabilityResult(index, combo.Name, unionEvaluator.Union(ownedEvents[index]), combo.GroupId))
+                new ComboProbabilityResult(index, combo.Name, unionEvaluator.Union(ownedEvents[index]), combo.GroupId)
+            )
         ];
         List<GroupProbabilityResult> groupProbabilities =
         [
             .. (groups ?? []).Select(group =>
-            {
-                List<List<CompiledEvent?>> members =
-                    [.. ownedEvents.Where((_, index) => combos[index].GroupId == group.Id)];
+                {
+                    List<List<CompiledEvent?>> members =
+                        [.. ownedEvents.Where((_, index) => combos[index].GroupId == group.Id)];
 
-                return new GroupProbabilityResult(group.Id,
-                    group.Name,
-                    unionEvaluator.Union([.. members.SelectMany(e => e)]),
-                    members.Count);
-            })
+                    return new GroupProbabilityResult(group.Id,
+                        group.Name,
+                        unionEvaluator.Union([.. members.SelectMany(e => e)]),
+                        members.Count
+                    );
+                }
+            )
         ];
 
         return new ProbabilityCalculationResult(
             totalProbability,
             comboProbabilities.AsReadOnly(),
-            groupProbabilities.AsReadOnly());
+            groupProbabilities.AsReadOnly()
+        );
     }
 }

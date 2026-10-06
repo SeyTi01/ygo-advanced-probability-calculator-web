@@ -63,13 +63,14 @@ public class ComboConverterTests
 
         Assert.That(combo, Is.Not.Null);
         Assert.Multiple(() =>
-        {
-            Assert.That(combo!.Categories, Has.Count.EqualTo(1));
-            Assert.That(combo.Categories[0].BaseCategory.Name, Is.EqualTo("TestCategory"));
-            Assert.That(combo.Categories[0].MinCount, Is.EqualTo(1));
-            Assert.That(combo.Categories[0].MaxCount, Is.EqualTo(3));
-            Assert.That(combo.Name, Is.Null);
-        });
+            {
+                Assert.That(combo!.Categories, Has.Count.EqualTo(1));
+                Assert.That(combo.Categories[0].BaseCategory.Name, Is.EqualTo("TestCategory"));
+                Assert.That(combo.Categories[0].MinCount, Is.EqualTo(1));
+                Assert.That(combo.Categories[0].MaxCount, Is.EqualTo(3));
+                Assert.That(combo.Name, Is.Null);
+            }
+        );
     }
 
     [Test]
@@ -81,10 +82,11 @@ public class ComboConverterTests
 
         Assert.That(combo, Is.Not.Null);
         Assert.Multiple(() =>
-        {
-            Assert.That(combo!.Categories, Is.Empty);
-            Assert.That(combo.Name, Is.Null);
-        });
+            {
+                Assert.That(combo!.Categories, Is.Empty);
+                Assert.That(combo.Name, Is.Null);
+            }
+        );
     }
 
     [Test]
@@ -112,13 +114,15 @@ public class ComboConverterTests
             "Mixed",
             true,
             "g",
-            [new(card.Id, 1, 2)]);
+            [new(card.Id, 1, 2)]
+        );
         Combo loaded = JsonSerializer.Deserialize<Combo>(JsonSerializer.Serialize(combo, _options), _options)!;
         Assert.That(loaded.Cards.Single().CardId, Is.EqualTo(card.Id));
         Assert.That(loaded.Cards.Single().MinCount, Is.EqualTo(1));
         Assert.That(loaded.Categories, Has.Count.EqualTo(1));
         Assert.That(loaded.WithName("Other").WithActive(false).WithGroup(null).WithCategories([]).Cards,
-            Has.Count.EqualTo(1));
+            Has.Count.EqualTo(1)
+        );
         Assert.That(loaded.WithCards([]).Categories, Has.Count.EqualTo(1));
     }
 }

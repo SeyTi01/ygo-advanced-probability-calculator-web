@@ -28,9 +28,11 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
                               """;
         TaskCompletionSource<IReadOnlyDictionary<string, CardInfo>> release =
             new(TaskCreationOptions
-                .RunContinuationsAsynchronously);
+                .RunContinuationsAsynchronously
+            );
         Mock<ICardInfoService> cardInfo = new();
-        cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+        cardInfo
+            .Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .Returns(release.Task);
         context.Services.AddSingleton(cardInfo.Object);
         IRenderedComponent<ProbabilityCalculatorComponent> cut;
@@ -39,7 +41,8 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         if (fromHelp)
         {
             Mock<IFileService> files = new();
-            files.Setup(service => service.ReadAllTextAsync("sample-data/example_session_state.json"))
+            files
+                .Setup(service => service.ReadAllTextAsync("sample-data/example_session_state.json"))
                 .ReturnsAsync(legacy);
             context.Services.AddSingleton(files.Object);
             IRenderedComponent<Help> help = context.RenderComponent<Help>();
@@ -51,26 +54,34 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         {
             cut = Render();
             Mock<IBrowserFile> file = new();
-            file.Setup(file => file.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            file
+                .Setup(file => file.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
                 .Returns(() => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(legacy)));
-            upload = cut.InvokeAsync(() => cut.FindComponents<InputFile>()[1].Instance.OnChange
-                .InvokeAsync(new InputFileChangeEventArgs([file.Object])));
+            upload = cut.InvokeAsync(() => cut.FindComponents<InputFile>()[1]
+                .Instance.OnChange
+                .InvokeAsync(new InputFileChangeEventArgs([file.Object]))
+            );
         }
 
         cut.WaitForAssertion(() =>
             cardInfo.Verify(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()),
-                Times.Once));
+                Times.Once
+            )
+        );
         Assert.That(cut.FindComponents<CardEditor>(),
             Is.Empty,
-            "Restoration waits for the asynchronous best-effort step.");
+            "Restoration waits for the asynchronous best-effort step."
+        );
         await cut.InvokeAsync(() => release.SetResult(new Dictionary<string, CardInfo>(StringComparer.Ordinal)
-        {
-            ["Ash Blossom & Joyous Spring"] = new()
-            {
-                Id = 14558127, Name = "Ash Blossom & Joyous Spring", Type = "Tuner Monster", Attribute = "FIRE",
-                Race = "Zombie", Level = 3
-            }
-        }));
+                {
+                    ["Ash Blossom & Joyous Spring"] = new()
+                    {
+                        Id = 14558127, Name = "Ash Blossom & Joyous Spring", Type = "Tuner Monster", Attribute = "FIRE",
+                        Race = "Zombie", Level = 3
+                    }
+                }
+            )
+        );
 
         if (upload is not null)
         {
@@ -79,8 +90,11 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
 
         cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(2)));
         cardInfo.Verify(service => service.GetCardInfoByExactNamesAsync(It.Is<IEnumerable<string>>(names =>
-                names.SequenceEqual(new[] { "Ash Blossom & Joyous Spring", "My Custom Card" }))),
-            Times.Once);
+                    names.SequenceEqual(new[] { "Ash Blossom & Joyous Spring", "My Custom Card" })
+                )
+            ),
+            Times.Once
+        );
         List<Card> cards = [.. cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)];
         Assert.That(cards[0].ExternalCardId, Is.EqualTo(14558127));
         Assert.That(cards[1].ExternalCardId, Is.Null);
@@ -88,10 +102,12 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(cards.Select(card => card.Id), Is.EqualTo(new[] { "ash", "custom" }));
         Assert.That(
             cut.FindComponent<CategoryListEditor>().FindAll(".category-chip").Select(chip => chip.TextContent.Trim()),
-            Is.EqualTo(new[] { "Monster" }));
+            Is.EqualTo(new[] { "Monster" })
+        );
         IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
         Assert.That(combo.FindAll("optgroup[label='Card properties'] option").Select(option => option.TextContent),
-            Does.Contain("Tuner Monster"));
+            Does.Contain("Tuner Monster")
+        );
         Assert.That(combo.Instance.Combo.Categories.Single().BaseCategory.Source, Is.EqualTo(CategorySource.User));
         double expected = SmallDeckOracle.EnumerateProbability(cards, [combo.Instance.Combo], 1);
         await Button(cut, "Calculate").ClickAsync(new());
@@ -101,16 +117,22 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         string saved = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
         using JsonDocument document = JsonDocument.Parse(saved);
         Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(),
-            Is.EqualTo(SessionState.CurrentSchemaVersion));
+            Is.EqualTo(SessionState.CurrentSchemaVersion)
+        );
         Assert.That(document.RootElement.GetProperty("Cards")[0].GetProperty("ExternalCardId").GetInt32(),
-            Is.EqualTo(14558127));
-        cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+            Is.EqualTo(14558127)
+        );
+        cardInfo
+            .Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ThrowsAsync(new HttpRequestException("Offline"));
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(saved, "saved.json"));
         cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Is.Empty));
         cardInfo.Verify(service => service.GetCardInfoByExactNamesAsync(It.Is<IEnumerable<string>>(names =>
-                names.SequenceEqual(new[] { "My Custom Card" }))),
-            Times.Once);
+                    names.SequenceEqual(new[] { "My Custom Card" })
+                )
+            ),
+            Times.Once
+        );
         Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.ExternalCardId, Is.EqualTo(14558127));
         Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
         await Button(cut, "Calculate").ClickAsync(new());
@@ -121,9 +143,11 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
     public async Task BundledHelpExampleTransfersSelfContainedPropertiesWithoutMetadataLookup()
     {
         string source = await File.ReadAllTextAsync(Path.Combine(
-            NUnit.Framework.TestContext.CurrentContext.TestDirectory,
-            "Fixtures",
-            "example_session_state.json"));
+                NUnit.Framework.TestContext.CurrentContext.TestDirectory,
+                "Fixtures",
+                "example_session_state.json"
+            )
+        );
         Mock<IFileService> files = new();
         files.Setup(service => service.ReadAllTextAsync("sample-data/example_session_state.json")).ReturnsAsync(source);
         Mock<ICardInfoService> offline = new(MockBehavior.Strict);
@@ -134,9 +158,12 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         IRenderedComponent<ProbabilityCalculatorComponent> cut =
             context.RenderComponent<ProbabilityCalculatorComponent>();
         cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(25)));
-        Assert.That(cut.FindComponent<ComboEditor>().FindAll("optgroup[label='Card properties'] option")
+        Assert.That(cut
+                .FindComponent<ComboEditor>()
+                .FindAll("optgroup[label='Card properties'] option")
                 .Select(option => option.TextContent),
-            Does.Contain("Monster").And.Contain("Quick-Play Spell"));
+            Does.Contain("Monster").And.Contain("Quick-Play Spell")
+        );
         Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
         offline.VerifyNoOtherCalls();
     }
@@ -149,11 +176,12 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         CategoryBase quick = new("Quick-Play Spell", CategorySource.Metadata, "spell-type:quick-play");
         CategoryBase orphan = new("Monster", CategorySource.Metadata, "kind:monster");
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-        {
-            Categories = [user, b], Cards = [new([spell, quick], 2, "Imported", externalCardId: 123)],
-            Combos = [new([new(orphan, 0, 0)]), new([])], HandSize = 1,
-            CategoryColorIndices = new() { ["Spell"] = 5, ["B"] = 2 }
-        });
+            {
+                Categories = [user, b], Cards = [new([spell, quick], 2, "Imported", externalCardId: 123)],
+                Combos = [new([new(orphan, 0, 0)]), new([])], HandSize = 1,
+                CategoryColorIndices = new() { ["Spell"] = 5, ["B"] = 2 }
+            }
+        );
         IRenderedComponent<CategoryListEditor> categories = cut.FindComponent<CategoryListEditor>();
         Assert.That(categories.FindAll(".category-chip"), Has.Count.EqualTo(2));
         IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
@@ -161,29 +189,38 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         IElement propertyInspector = card.Find("details.card-property-inspector");
         Assert.That(propertyInspector.HasAttribute("open"), Is.False);
         Assert.That(propertyInspector.QuerySelector("summary")!.TextContent.Trim(), Is.EqualTo("Card properties (2)"));
-        Assert.That(propertyInspector.QuerySelectorAll(".detected-card-property")
+        Assert.That(propertyInspector
+                .QuerySelectorAll(".detected-card-property")
                 .Select(property => property.TextContent.Trim()),
-            Is.EquivalentTo(new[] { spell.Name, quick.Name }));
+            Is.EquivalentTo(new[] { spell.Name, quick.Name })
+        );
         Assert.That(card.Find(".accordion-button").TextContent,
-            Does.Not.Contain(spell.Name).And.Not.Contain(quick.Name));
+            Does.Not.Contain(spell.Name).And.Not.Contain(quick.Name)
+        );
         Assert.That(card.FindAll("optgroup[label='User categories'] option").Select(o => o.GetAttribute("value")),
-            Is.EqualTo(new[] { "user:Spell", "user:B" }));
+            Is.EqualTo(new[] { "user:Spell", "user:B" })
+        );
         Assert.That(card.FindAll("optgroup[label='Card properties'] option").Select(o => o.GetAttribute("value")),
-            Is.EqualTo(new[] { orphan.Identity }));
+            Is.EqualTo(new[] { orphan.Identity })
+        );
         IRenderedComponent<ComboEditor> combo = cut.FindComponents<ComboEditor>()[1];
         Assert.That(combo.FindAll("optgroup").Select(g => g.GetAttribute("label")),
-            Is.EqualTo(new[] { "User categories", "Card properties" }));
+            Is.EqualTo(new[] { "User categories", "Card properties" })
+        );
         Assert.That(combo.FindAll("optgroup[label='Card properties'] option").Select(o => o.TextContent),
-            Is.EqualTo(new[] { "Monster", "Quick-Play Spell", "Spell" }));
+            Is.EqualTo(new[] { "Monster", "Quick-Play Spell", "Spell" })
+        );
         Assert.That(combo.FindAll("option").Where(o => o.TextContent == "Spell").Select(o => o.GetAttribute("value")),
-            Is.EquivalentTo(new[] { "user:Spell", "metadata:kind:spell" }));
+            Is.EquivalentTo(new[] { "user:Spell", "metadata:kind:spell" })
+        );
 
         await combo.Find("#comboCategory1").ChangeAsync(new() { Value = spell.Identity });
         await Button(combo, "Add").ClickAsync(new());
         await combo.Find("#comboCategory1").ChangeAsync(new() { Value = user.Identity });
         await Button(combo, "Add").ClickAsync(new());
         Assert.That(combo.Instance.Combo.Categories.Select(c => c.BaseCategory.Source),
-            Is.EqualTo(new[] { CategorySource.Metadata, CategorySource.User }));
+            Is.EqualTo(new[] { CategorySource.Metadata, CategorySource.User })
+        );
         await combo.Find("#comboCategory1").ChangeAsync(new() { Value = spell.Identity });
         await combo.Find("#minCount1").InputAsync(new() { Value = "0" });
         await combo.Find("#maxCount1").InputAsync(new() { Value = "0" });
@@ -201,14 +238,16 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         await categories.Find("[aria-label='Save category name']").ClickAsync(new());
         Assert.That(combo.Find("#comboCategory1").GetAttribute("value"), Is.EqualTo(spell.Identity));
         Assert.That(combo.Instance.Combo.Categories.Select(c => c.BaseCategory.Name),
-            Is.EqualTo(new[] { "Spell", "Role" }));
+            Is.EqualTo(new[] { "Spell", "Role" })
+        );
         Assert.That(card.Instance.Card.Categories[0], Is.EqualTo(spell));
         Assert.That(card.Instance.Card.Categories[2].Name, Is.EqualTo("Role"));
         await card.Find("[aria-label='Remove category Role from card Imported']").ClickAsync(new());
         Assert.That(card.Instance.Card.Categories, Is.EqualTo(new[] { spell, quick }));
         Assert.That(combo.FindAll(".accordion-body .card-property-tag"), Has.Count.EqualTo(1));
         Assert.That(combo.Find(".accordion-body .card-property-tag").ClassList,
-            Does.Contain("card-property-color-spell"));
+            Does.Contain("card-property-color-spell")
+        );
         Assert.That(combo.FindAll(".accordion-body [class*='category-color-']"), Has.Count.EqualTo(1));
 
         await combo.Find("[aria-label='Remove category Role from combo Combo 2']").ClickAsync(new());
@@ -217,7 +256,8 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(combo.Instance.Combo.Categories.Single().BaseCategory, Is.EqualTo(spell));
         await cut.Find("[aria-label='Remove card']").ClickAsync(new());
         Assert.That(combo.FindAll("optgroup[label='Card properties'] option").Select(o => o.GetAttribute("value")),
-            Is.EquivalentTo(new[] { orphan.Identity, spell.Identity }));
+            Is.EquivalentTo(new[] { orphan.Identity, spell.Identity })
+        );
         await combo.Find("#comboCategory1").ChangeAsync(new() { Value = spell.Identity });
         Assert.That(Button(combo, "Update"), Is.Not.Null);
     }
@@ -228,7 +268,9 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         CategoryBase property = new("Spell", CategorySource.Metadata, "kind:spell");
         IRenderedComponent<CategoryListEditor> cut = context.RenderComponent<CategoryListEditor>(p => p
             .Add(x => x.CategoryBases, [a, property])
-            .Add(x => x.Cards, []).Add(x => x.Combos, []));
+            .Add(x => x.Cards, [])
+            .Add(x => x.Combos, [])
+        );
         Assert.That(cut.FindAll(".category-chip"), Has.Count.EqualTo(1));
         Assert.That(cut.FindAll("[aria-label='Edit category Spell']"), Is.Empty);
     }
@@ -241,39 +283,49 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         CategoryBase monster = new("Monster", CategorySource.Metadata, "kind:monster");
         Card card = new([user, fire, fire, monster],
             name: "Reinforcement of the Army",
-            manualMetadataCategoryKeys: [fire.MetadataKey!]);
+            manualMetadataCategoryKeys: [fire.MetadataKey!]
+        );
         Card manualOnly = new([fire, fire],
             name: "Manual only",
-            manualMetadataCategoryKeys: [fire.MetadataKey!]);
+            manualMetadataCategoryKeys: [fire.MetadataKey!]
+        );
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-            { Categories = [user], Cards = [card, manualOnly] });
+            { Categories = [user], Cards = [card, manualOnly] }
+        );
 
         IElement header = cut.FindComponents<CardEditor>()[0].Find(".accordion-button");
         Assert.That(header.QuerySelectorAll(".category-tag").Select(badge => badge.TextContent.Trim()),
-            Is.EqualTo(new[] { user.Name, fire.Name }));
+            Is.EqualTo(new[] { user.Name, fire.Name })
+        );
         Assert.That(header.QuerySelectorAll(".manual-property-header-badge").Length, Is.EqualTo(1));
         Assert.That(header.QuerySelectorAll(".category-tag").Select(badge => badge.TextContent.Trim()),
-            Does.Not.Contain(monster.Name));
-        Assert.That(cut.FindComponents<CardEditor>()[0].Find("details.card-property-inspector summary").TextContent
+            Does.Not.Contain(monster.Name)
+        );
+        Assert.That(cut.FindComponents<CardEditor>()[0]
+                .Find("details.card-property-inspector summary")
+                .TextContent
                 .Trim(),
-            Is.EqualTo("Card properties (2)"));
+            Is.EqualTo("Card properties (2)")
+        );
 
         IElement manualHeader = cut.FindComponents<CardEditor>()[1].Find(".accordion-button");
         Assert.That(manualHeader.QuerySelectorAll(".category-tag").Length, Is.EqualTo(1));
         Assert.That(manualHeader.QuerySelector(".card-header-name")?.TextContent.Trim(), Is.EqualTo("Manual only (1)"));
         Assert.That(manualHeader.QuerySelector(".manual-property-header-badge")?.TextContent.Trim(),
-            Is.EqualTo(fire.Name));
+            Is.EqualTo(fire.Name)
+        );
     }
 
     [Test]
     public void ResponsiveEntryHeadersKeepActionsOutsideTheHeadingAndDoNotToggleTheAccordion()
     {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-        {
-            Categories = [a],
-            Cards = [new([a], 3, "Starter")],
-            Combos = [new([new ComboCategory(a, 1, 5)], "Route")]
-        });
+            {
+                Categories = [a],
+                Cards = [new([a], 3, "Starter")],
+                Combos = [new([new ComboCategory(a, 1, 5)], "Route")]
+            }
+        );
 
         foreach (string kind in new[] { "card", "combo" })
         {
@@ -290,7 +342,8 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
             Assert.That(header.QuerySelector(".accordion-button")?.TextContent, Does.Contain("Inactive"));
             header.QuerySelector(".accordion-button")!.Click();
             Assert.That(cut.Find($".{kind}-editor .accordion-button").GetAttribute("aria-expanded"),
-                Is.EqualTo("true"));
+                Is.EqualTo("true")
+            );
         }
     }
 
@@ -334,39 +387,49 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
             new("Archetype: Vanquish Soul", CategorySource.Metadata, "archetype:vanquish-soul");
         Card card = new([user, .. detected, manual],
             name: "Vanquish Soul Razen",
-            manualMetadataCategoryKeys: [manual.MetadataKey!]);
+            manualMetadataCategoryKeys: [manual.MetadataKey!]
+        );
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-            { Categories = [user], Cards = [card] });
+            { Categories = [user], Cards = [card] }
+        );
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
         IElement inspector = editor.Find("details.card-property-inspector");
 
         Assert.That(inspector.HasAttribute("open"), Is.False);
         Assert.That(inspector.QuerySelector("summary")!.TextContent.Trim(), Is.EqualTo("Card properties (6)"));
         Assert.That(inspector.QuerySelector(".detected-card-properties .form-text")!.TextContent.Trim(),
-            Is.EqualTo("Detected from card data"));
+            Is.EqualTo("Detected from card data")
+        );
         Assert.That(inspector.QuerySelector(".manual-card-properties .form-text")!.TextContent.Trim(),
-            Is.EqualTo("Added manually"));
-        Assert.That(inspector.QuerySelectorAll(".detected-card-property")
+            Is.EqualTo("Added manually")
+        );
+        Assert.That(inspector
+                .QuerySelectorAll(".detected-card-property")
                 .Select(property => property.TextContent.Trim()),
-            Is.EquivalentTo(detected.Select(property => property.Name)));
+            Is.EquivalentTo(detected.Select(property => property.Name))
+        );
         Assert.That(inspector.QuerySelectorAll(".detected-card-properties button.btn-close"), Is.Empty);
         Assert.That(inspector.QuerySelectorAll(".manual-card-property").Select(property => property.TextContent.Trim()),
-            Is.EqualTo(new[] { manual.Name }));
+            Is.EqualTo(new[] { manual.Name })
+        );
         Assert.That(inspector.QuerySelector(".manual-card-property button.btn-close")!.GetAttribute("aria-label"),
-            Is.EqualTo($"Remove manually added card property {manual.Name} from card {card.Name}"));
+            Is.EqualTo($"Remove manually added card property {manual.Name} from card {card.Name}")
+        );
 
         await inspector.QuerySelector(".manual-card-property button.btn-close")!.ClickAsync(new());
 
         Assert.That(editor.Instance.Card.Categories, Does.Not.Contain(manual));
         Assert.That(editor.Instance.Card.ManualMetadataCategoryKeys, Is.Empty);
         Assert.That(editor.Find("details.card-property-inspector summary").TextContent.Trim(),
-            Is.EqualTo("Card properties (5)"));
+            Is.EqualTo("Card properties (5)")
+        );
         Assert.That(editor.FindAll(".manual-card-properties"), Is.Empty);
         Assert.That(editor.FindAll(".manual-property-header-badge"), Is.Empty);
         Assert.That(editor.FindAll(".detected-card-properties button.btn-close"), Is.Empty);
         Assert.That(editor.Find("[aria-label='Remove category VS Monster from card Vanquish Soul Razen']"),
             Is.Not.Null,
-            "user-category editing remains available");
+            "user-category editing remains available"
+        );
     }
 
     [Test]
@@ -381,9 +444,11 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         IElement inspector = editor.Find("details.card-property-inspector");
 
         Assert.That(editor.Instance.Card.ManualMetadataCategoryKeys, Is.Empty);
-        Assert.That(inspector.QuerySelectorAll(".detected-card-property")
+        Assert.That(inspector
+                .QuerySelectorAll(".detected-card-property")
                 .Select(property => property.TextContent.Trim()),
-            Is.EqualTo(new[] { fire.Name }));
+            Is.EqualTo(new[] { fire.Name })
+        );
         Assert.That(inspector.QuerySelectorAll(".manual-card-property"), Is.Empty);
         Assert.That(inspector.QuerySelectorAll("button.btn-close"), Is.Empty);
     }
@@ -395,10 +460,11 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         CategoryBase level = new("Level 5", CategorySource.Metadata, "level:5");
         Card originalCard = new([], name: "Custom");
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-        {
-            Cards = [originalCard],
-            Combos = [new([new(fire, 1, 1), new(level, 1, 1)])], HandSize = 1
-        });
+            {
+                Cards = [originalCard],
+                Combos = [new([new(fire, 1, 1), new(level, 1, 1)])], HandSize = 1
+            }
+        );
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
         CardEditor originalEditor = editor.Instance;
 
@@ -409,9 +475,11 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(editor.Instance, Is.SameAs(originalEditor));
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(originalCard.Id));
         Assert.That(editor.Find(".accordion-button .manual-property-header-badge").TextContent.Trim(),
-            Is.EqualTo(fire.Name));
+            Is.EqualTo(fire.Name)
+        );
         Assert.That(editor.Find("details.card-property-inspector summary").TextContent.Trim(),
-            Is.EqualTo("Card properties (1)"));
+            Is.EqualTo("Card properties (1)")
+        );
 
         await editor.Find("#cardCategory0").ChangeAsync(new() { Value = level.Identity });
         await editor.Find("#cardName0").InputAsync(new() { Value = "Renamed" });
@@ -420,23 +488,29 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(editor.Instance, Is.SameAs(originalEditor));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo(level.Identity));
         Assert.That(editor.Find(".accordion-button .manual-property-header-badge").TextContent.Trim(),
-            Is.EqualTo(fire.Name));
+            Is.EqualTo(fire.Name)
+        );
         await Button(editor, "Add").ClickAsync(new());
 
         Assert.That(editor.Instance.Card.ManualMetadataCategoryKeys,
-            Is.EquivalentTo(new[] { fire.MetadataKey, level.MetadataKey }));
-        Assert.That(editor.FindAll(".accordion-button .manual-property-header-badge")
+            Is.EquivalentTo(new[] { fire.MetadataKey, level.MetadataKey })
+        );
+        Assert.That(editor
+                .FindAll(".accordion-button .manual-property-header-badge")
                 .Select(badge => badge.TextContent.Trim()),
-            Is.EquivalentTo(new[] { fire.Name, level.Name }));
+            Is.EquivalentTo(new[] { fire.Name, level.Name })
+        );
         Assert.That(editor.Find("details.card-property-inspector summary").TextContent.Trim(),
-            Is.EqualTo("Card properties (2)"));
+            Is.EqualTo("Card properties (2)")
+        );
     }
 
     [Test]
     public async Task ManualCardPropertyWorkflowPreservesUserIdentityResultsAndOfflineSession()
     {
         Mock<ICardInfoService> offline = new();
-        offline.Setup(s => s.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+        offline
+            .Setup(s => s.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ThrowsAsync(new HttpRequestException("Offline"));
         context.Services.AddSingleton(offline.Object);
         CategoryBase fire = new("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
@@ -444,17 +518,20 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Card objective = new([fire], 2, "Objective", externalCardId: 123);
         Card custom = new([], 2, "Custom");
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-        {
-            Categories = [user], Cards = [objective, custom],
-            Combos = [new([new(fire, 1, 1)])], HandSize = 1
-        });
+            {
+                Categories = [user], Cards = [objective, custom],
+                Combos = [new([new(fire, 1, 1)])], HandSize = 1
+            }
+        );
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[1];
         await editor.Find(".accordion-button").ClickAsync(new());
         Assert.That(editor.FindAll("optgroup").Select(g => g.GetAttribute("label")),
-            Is.EqualTo(new[] { "User categories", "Card properties" }));
+            Is.EqualTo(new[] { "User categories", "Card properties" })
+        );
         Assert.That(
             editor.FindAll("option").Where(o => o.TextContent == fire.Name).Select(o => o.GetAttribute("value")),
-            Is.EquivalentTo(new[] { user.Identity, fire.Identity }));
+            Is.EquivalentTo(new[] { user.Identity, fire.Identity })
+        );
         await Button(cut, "Calculate").ClickAsync(new());
         string before = cut.Find(".probability-total-value").TextContent;
         await editor.Find("select").ChangeAsync(new() { Value = fire.Identity });
@@ -465,11 +542,14 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(editor.Instance.Card.ExternalCardId, Is.Null);
         Assert.That(editor.FindAll("optgroup[label='Card properties'] option"), Is.Empty);
         Assert.That(editor.Find(".manual-card-properties").TextContent,
-            Does.Contain("Added manually").And.Contain(fire.Name));
+            Does.Contain("Added manually").And.Contain(fire.Name)
+        );
         Assert.That(editor.FindAll(".accordion-button .category-tag").Select(badge => badge.TextContent.Trim()),
-            Is.EqualTo(new[] { fire.Name }));
+            Is.EqualTo(new[] { fire.Name })
+        );
         Assert.That(editor.Find(".manual-property-header-badge").ClassList,
-            Does.Contain("card-property-tag").And.Contain("card-property-color-attribute-fire"));
+            Does.Contain("card-property-tag").And.Contain("card-property-color-attribute-fire")
+        );
         // A stale/forged selection cannot add another membership or change provenance.
         await editor.Find("select").ChangeAsync(new() { Value = fire.Identity });
         await Button(editor, "Add").ClickAsync(new());
@@ -489,17 +569,23 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(editor.FindAll(".accordion-button .manual-property-header-badge"), Has.Count.EqualTo(1));
         await Button(cut, "Save Session").ClickAsync(new());
         string saved = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(
-            (string)context.JSInterop.Invocations["saveSessionFile"].Single().Arguments[1]!));
+                (string)context.JSInterop.Invocations["saveSessionFile"].Single().Arguments[1]!
+            )
+        );
         Mock<IBrowserFile> file = new();
-        file.Setup(f => f.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+        file
+            .Setup(f => f.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(() => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(saved)));
         await cut.InvokeAsync(() =>
-            cut.FindComponents<InputFile>()[1].Instance.OnChange
-                .InvokeAsync(new InputFileChangeEventArgs([file.Object])));
+            cut.FindComponents<InputFile>()[1]
+                .Instance.OnChange
+                .InvokeAsync(new InputFileChangeEventArgs([file.Object]))
+        );
         editor = cut.FindComponents<CardEditor>()[1];
         Assert.That(editor.Instance.Card.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { fire.MetadataKey }));
         Assert.That((editor.Instance.Card.Id, editor.Instance.Card.Copies, editor.Instance.Card.Name),
-            Is.EqualTo((custom.Id, 3, "Renamed")));
+            Is.EqualTo((custom.Id, 3, "Renamed"))
+        );
         IRenderedComponent<CardEditor> objectiveEditor = cut.FindComponents<CardEditor>()[0];
         Assert.That(objectiveEditor.FindAll(".manual-card-properties, .accordion-body button.btn-close"), Is.Empty);
         Assert.That(objectiveEditor.FindAll(".detected-card-property"), Has.Count.EqualTo(1));
@@ -509,7 +595,8 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(objectiveEditor.Instance.Card.ManualMetadataCategoryKeys, Is.Empty);
         Assert.That(objectiveEditor.Instance.Card.Categories, Is.EqualTo(new[] { fire }));
         await Button(cut, "Calculate").ClickAsync(new());
-        await editor.Find("[aria-label='Remove manually added card property Attribute: FIRE from card Renamed']")
+        await editor
+            .Find("[aria-label='Remove manually added card property Attribute: FIRE from card Renamed']")
             .ClickAsync(new());
         AssertPreviousResult(cut);
         Assert.That(editor.Instance.Card.ManualMetadataCategoryKeys, Is.Empty);
@@ -518,10 +605,15 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent,
             Is.EqualTo(
-                SmallDeckOracle.EnumerateProbability(
-                    [.. cut.FindComponents<CardEditor>().Select(e => e.Instance.Card)],
-                    [.. cut.FindComponents<ComboEditor>().Select(e => e.Instance.Combo)],
-                    1).ToString("P2")));
+                SmallDeckOracle
+                    .EnumerateProbability(
+                        [.. cut.FindComponents<CardEditor>().Select(e => e.Instance.Card)],
+                        [.. cut.FindComponents<ComboEditor>().Select(e => e.Instance.Combo)],
+                        1
+                    )
+                    .ToString("P2")
+            )
+        );
     }
 
     [Test]
@@ -529,18 +621,21 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
     {
         CategoryBase property = new("Level 5", CategorySource.Metadata, "level:5");
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState
-        {
-            Cards = [new([], name: "Custom"), new([], name: "Other")],
-            Combos = [new([new(property, 1, 1)])], HandSize = 1
-        });
+            {
+                Cards = [new([], name: "Custom"), new([], name: "Other")],
+                Combos = [new([new(property, 1, 1)])], HandSize = 1
+            }
+        );
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         Assert.That(editor.FindAll("optgroup[label='Card properties'] option").Select(o => o.TextContent),
-            Is.EqualTo(new[] { property.Name }));
+            Is.EqualTo(new[] { property.Name })
+        );
         await editor.Find("select").ChangeAsync(new() { Value = property.Identity });
         await editor.Find("[aria-label='Move card Custom, row 1 down']").ClickAsync(new());
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.ManualMetadataCategoryKeys,
-            Is.EquivalentTo(new[] { property.MetadataKey }));
+            Is.EquivalentTo(new[] { property.MetadataKey })
+        );
         Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Categories, Is.Empty);
     }
 }

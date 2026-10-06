@@ -30,10 +30,12 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
 
         Assert.That(result.TotalProbability, Is.EqualTo(expectedTotal).Within(1e-12));
         Assert.That(result.ComboProbabilities.Select(combo => combo.Probability),
-            Is.EqualTo(expectedStandalone).Within(1e-12));
+            Is.EqualTo(expectedStandalone).Within(1e-12)
+        );
         Assert.That(result.TotalProbability, Is.LessThan(expectedStandalone.Sum()));
         Assert.That(result.ComboProbabilities.Select(combo => combo.ComboName),
-            Is.EqualTo(new[] { "Duplicate", "Duplicate" }));
+            Is.EqualTo(new[] { "Duplicate", "Duplicate" })
+        );
     }
 
     [Test]
@@ -65,10 +67,15 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
         double expectedTotal = SmallDeckOracle.EnumerateProbability(deck, active, handSize);
         Assert.That(result.TotalProbability, Is.EqualTo(expectedTotal).Within(1e-12));
         Assert.That(result.TotalProbability,
-            Is.EqualTo(service.CalculateProbabilityForCombos(
-                deck,
-                [.. active.Select(combo => combo.WithGroup(null))],
-                handSize)).Within(1e-12));
+            Is
+                .EqualTo(service.CalculateProbabilityForCombos(
+                        deck,
+                        [.. active.Select(combo => combo.WithGroup(null))],
+                        handSize
+                    )
+                )
+                .Within(1e-12)
+        );
 
         Assert.That(result.GroupProbabilities, Has.Count.EqualTo(3));
 
@@ -83,9 +90,11 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
         }
 
         Assert.That(result.GroupProbabilities![0].Probability,
-            Is.LessThan(result.ComboProbabilities[0].Probability + result.ComboProbabilities[1].Probability));
+            Is.LessThan(result.ComboProbabilities[0].Probability + result.ComboProbabilities[1].Probability)
+        );
         Assert.That(result.ComboProbabilities.Select(combo => combo.GroupId),
-            Is.EqualTo(active.Select(combo => combo.GroupId)));
+            Is.EqualTo(active.Select(combo => combo.GroupId))
+        );
     }
 
     [Test]
@@ -101,18 +110,26 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
             int handSize = random.Next(1, 4);
             List<Combo> combos =
             [
-                .. Enumerable.Range(0, random.Next(1, 4)).Select(_ => new Combo(
-                    categories.Where(_ => random.Next(2) == 1).Select(category =>
-                    {
-                        int min = random.Next(handSize + 1);
+                .. Enumerable
+                    .Range(0, random.Next(1, 4))
+                    .Select(_ => new Combo(
+                            categories
+                                .Where(_ => random.Next(2) == 1)
+                                .Select(category =>
+                                    {
+                                        int min = random.Next(handSize + 1);
 
-                        return new ComboCategory(category, min, random.Next(min, handSize + 1));
-                    })))
+                                        return new ComboCategory(category, min, random.Next(min, handSize + 1));
+                                    }
+                                )
+                        )
+                    )
             ];
             double actual = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, handSize);
             Assert.That(actual,
                 Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, handSize)).Within(1e-12),
-                $"Seed 120925, sample {sample}, hand size {handSize}");
+                $"Seed 120925, sample {sample}, hand size {handSize}"
+            );
             List<Combo> grouped =
                 [.. combos.Select((combo, index) => combo.WithGroup(index % 3 == 2 ? null : $"g{index % 2}"))];
             List<ComboGroup> groups = [new("g0", "First"), new("g1", "Second"), new("empty", "Empty")];
@@ -123,15 +140,21 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
             for (int index = 0; index < combos.Count; index++)
             {
                 Assert.That(results.ComboProbabilities[index].Probability,
-                    Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[index]], handSize)).Within(1e-12));
+                    Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[index]], handSize)).Within(1e-12)
+                );
             }
 
             foreach (GroupProbabilityResult group in results.GroupProbabilities!)
             {
                 Assert.That(group.Probability,
-                    Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck,
-                        [.. grouped.Where(combo => combo.GroupId == group.GroupId)],
-                        handSize)).Within(1e-12));
+                    Is
+                        .EqualTo(SmallDeckOracle.EnumerateProbability(deck,
+                                [.. grouped.Where(combo => combo.GroupId == group.GroupId)],
+                                handSize
+                            )
+                        )
+                        .Within(1e-12)
+                );
             }
         }
     }
@@ -154,13 +177,17 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
         {
             List<Card> deck =
             [
-                .. Enumerable.Range(0, 5).Select(i => new Card(
-                    selectors.Where(_ => random.Next(2) == 0),
-                    random.Next(3),
-                    "Same",
-                    active: i != 4,
-                    id: $"row{i}",
-                    externalCardId: 123))
+                .. Enumerable
+                    .Range(0, 5)
+                    .Select(i => new Card(
+                            selectors.Where(_ => random.Next(2) == 0),
+                            random.Next(3),
+                            "Same",
+                            active: i != 4,
+                            id: $"row{i}",
+                            externalCardId: 123
+                        )
+                    )
             ];
             int population = deck.Sum(c => c.Copies);
             int hand = (sample % 4) switch
@@ -169,20 +196,30 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
             };
             List<Combo> combos =
             [
-                .. Enumerable.Range(0, 4).Select(i =>
-                {
-                    ComboAlternative[] required = [.. Enumerable.Range(0, random.Next(3)).Select(_ => Leaf())];
-                    IEnumerable<ComboAlternativeGroup> alternatives = Enumerable.Range(0, random.Next(1, 3)).Select(_ =>
-                        new ComboAlternativeGroup(Enumerable.Range(0, random.Next(1, 4)).Select(_ => Leaf())
-                            .ToArray()));
+                .. Enumerable
+                    .Range(0, 4)
+                    .Select(i =>
+                        {
+                            ComboAlternative[] required = [.. Enumerable.Range(0, random.Next(3)).Select(_ => Leaf())];
+                            IEnumerable<ComboAlternativeGroup> alternatives = Enumerable
+                                .Range(0, random.Next(1, 3))
+                                .Select(_ =>
+                                    new ComboAlternativeGroup(Enumerable
+                                        .Range(0, random.Next(1, 4))
+                                        .Select(_ => Leaf())
+                                        .ToArray()
+                                    )
+                                );
 
-                    return new Combo(required.Where(r => r.Category is not null).Select(r => r.Category!),
-                        "Same",
-                        active: i != 3,
-                        groupId: i % 3 == 2 ? null : $"g{i % 2}",
-                        cards: required.Where(r => r.Card is not null).Select(r => r.Card!),
-                        alternativeGroups: alternatives);
-                })
+                            return new Combo(required.Where(r => r.Category is not null).Select(r => r.Category!),
+                                "Same",
+                                active: i != 3,
+                                groupId: i % 3 == 2 ? null : $"g{i % 2}",
+                                cards: required.Where(r => r.Card is not null).Select(r => r.Card!),
+                                alternativeGroups: alternatives
+                            );
+                        }
+                    )
             ];
             combos.Add(combos[0].WithGroup("g1"));
             string context = $"Seed {seed}, sample {sample}, hand {hand}";
@@ -192,21 +229,29 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
                 [.. deck.AsEnumerable().Reverse().Select(c => c.WithCategories(c.Categories.AsEnumerable().Reverse()))];
             List<Combo> reversedCombos =
             [
-                .. combos.AsEnumerable().Reverse().Select(c => new Combo(
-                    c.Categories.AsEnumerable().Reverse(),
-                    c.Name,
-                    c.Active,
-                    c.GroupId,
-                    c.Cards.AsEnumerable().Reverse(),
-                    c.AlternativeGroups.AsEnumerable().Reverse()
-                        .Select(g => new ComboAlternativeGroup(g.Alternatives.Reverse().ToArray()))))
+                .. combos
+                    .AsEnumerable()
+                    .Reverse()
+                    .Select(c => new Combo(
+                            c.Categories.AsEnumerable().Reverse(),
+                            c.Name,
+                            c.Active,
+                            c.GroupId,
+                            c.Cards.AsEnumerable().Reverse(),
+                            c
+                                .AlternativeGroups.AsEnumerable()
+                                .Reverse()
+                                .Select(g => new ComboAlternativeGroup(g.Alternatives.Reverse().ToArray()))
+                        )
+                    )
             ];
             Check(service.CalculateProbabilityResults(reversedDeck, reversedCombos, hand, groups),
                 reversedDeck,
                 reversedCombos,
                 hand,
                 groups,
-                context + ", permuted");
+                context + ", permuted"
+            );
 
             List<Card> activeDeck = [.. deck.Where(c => c.Active)];
             List<Combo> activeCombos = [.. combos.Where(c => c.Active)];
@@ -217,7 +262,8 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
                 activeCombos,
                 activeHand,
                 groups,
-                context + ", filtered wire");
+                context + ", filtered wire"
+            );
 
             ComboAlternative Leaf()
             {
@@ -238,11 +284,13 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
             List<Combo> combos,
             int hand,
             List<ComboGroup> groups,
-            string context)
+            string context
+        )
         {
             Assert.That(result.TotalProbability,
                 Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, hand)).Within(1e-12),
-                context);
+                context
+            );
             Assert.That(result.ComboProbabilities, Has.Count.EqualTo(combos.Count), context);
 
             for (int i = 0; i < combos.Count; i++)
@@ -250,15 +298,18 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
                 ComboProbabilityResult actual = result.ComboProbabilities[i];
                 Assert.That((actual.ComboIndex, actual.ComboName, actual.GroupId),
                     Is.EqualTo((i, combos[i].Name, combos[i].GroupId)),
-                    context);
+                    context
+                );
                 Assert.That(actual.Probability,
                     Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], hand)).Within(1e-12),
-                    context + $", combo {i}");
+                    context + $", combo {i}"
+                );
             }
 
             Assert.That(result.GroupProbabilities!.Select(g => (g.GroupId, g.GroupName)),
                 Is.EqualTo(groups.Select(g => (g.Id, g.Name))),
-                context);
+                context
+            );
 
             foreach (GroupProbabilityResult group in result.GroupProbabilities!)
             {
@@ -266,7 +317,8 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
                 Assert.That(group.ActiveComboCount, Is.EqualTo(members.Count), context);
                 Assert.That(group.Probability,
                     Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, members, hand)).Within(1e-12),
-                    context + $", group {group.GroupId}");
+                    context + $", group {group.GroupId}"
+                );
             }
         }
     }
@@ -282,10 +334,14 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
         {
             List<Card> deck =
             [
-                .. Enumerable.Range(0, 3).Select(row => new Card(
-                    roles.Where((_, role) => (pattern & (1 << (row * 3 + role))) != 0),
-                    row == 0 ? 2 : 1,
-                    id: $"row{row}"))
+                .. Enumerable
+                    .Range(0, 3)
+                    .Select(row => new Card(
+                            roles.Where((_, role) => (pattern & (1 << (row * 3 + role))) != 0),
+                            row == 0 ? 2 : 1,
+                            id: $"row{row}"
+                        )
+                    )
             ];
             List<Combo> combos =
             [
@@ -299,13 +355,15 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
                     new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, hand);
                 Assert.That(result.TotalProbability,
                     Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, hand)).Within(1e-12),
-                    $"Pattern {pattern}, hand {hand}");
+                    $"Pattern {pattern}, hand {hand}"
+                );
 
                 for (int i = 0; i < combos.Count; i++)
                 {
                     Assert.That(result.ComboProbabilities[i].Probability,
                         Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], hand)).Within(1e-12),
-                        $"Pattern {pattern}, hand {hand}, combo {i}");
+                        $"Pattern {pattern}, hand {hand}, combo {i}"
+                    );
                 }
             }
         }
@@ -317,12 +375,16 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
         List<Card> deck = [new([A], 2), new([B]), new([A, B]), new([C]), new([], 2)];
         List<Combo> combos =
         [
-            .. Enumerable.Range(0, 30).Select(i => new Combo(i % 2 == 0
-                    ? new ComboCategory[] { new(A, 1, 3), new(B, 0, 0), new(A, 0, 1), new(C, 0, 99) }
-                    : [new(B, 0, 0), new(A, 1, 1)],
-                $"Combo {i}",
-                i % 4 != 0,
-                i % 3 == 2 ? null : $"g{i % 2}"))
+            .. Enumerable
+                .Range(0, 30)
+                .Select(i => new Combo(i % 2 == 0
+                            ? new ComboCategory[] { new(A, 1, 3), new(B, 0, 0), new(A, 0, 1), new(C, 0, 99) }
+                            : [new(B, 0, 0), new(A, 1, 1)],
+                        $"Combo {i}",
+                        i % 4 != 0,
+                        i % 3 == 2 ? null : $"g{i % 2}"
+                    )
+                )
         ];
         List<ComboGroup> groups = [new("g0", "First"), new("g1", "Second"), new("empty", "Empty")];
         long allocated = GC.GetAllocatedBytesForCurrentThread();
@@ -332,7 +394,8 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
         // Also proves that direct callers evaluate inactive entries they supply.
         Assert.That(result.ComboProbabilities, Has.Count.EqualTo(30));
         Assert.That(result.TotalProbability,
-            Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, 3)).Within(1e-12));
+            Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, 3)).Within(1e-12)
+        );
 
         for (int i = 0; i < combos.Count; i++)
         {
@@ -340,7 +403,8 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
             Assert.That(result.ComboProbabilities[i].ComboName, Is.EqualTo(combos[i].Name));
             Assert.That(result.ComboProbabilities[i].GroupId, Is.EqualTo(combos[i].GroupId));
             Assert.That(result.ComboProbabilities[i].Probability,
-                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], 3)).Within(1e-12));
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], 3)).Within(1e-12)
+            );
         }
 
         foreach (GroupProbabilityResult group in result.GroupProbabilities!)
@@ -348,7 +412,8 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
             List<Combo> members = [.. combos.Where(c => c.GroupId == group.GroupId)];
             Assert.That(group.ActiveComboCount, Is.EqualTo(members.Count));
             Assert.That(group.Probability,
-                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, members, 3)).Within(1e-12));
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, members, 3)).Within(1e-12)
+            );
         }
 
         Assert.That(bytes, Is.LessThan(2 * 1024 * 1024), "Duplicate unions must not enumerate 2^30 subsets.");
@@ -389,7 +454,8 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
             foreach (int h in new[] { 1, 2 })
             {
                 Assert.That(service.CalculateProbabilityResults(deck, combos, h).TotalProbability,
-                    Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, h)).Within(1e-12));
+                    Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, combos, h)).Within(1e-12)
+                );
             }
         }
     }
@@ -419,7 +485,8 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
         // the same physical hands before changing its expected behavior.
         double expected = SmallDeckOracle.EnumerateProbability(deck, combos, 5);
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5).TotalProbability,
-            Is.EqualTo(expected).Within(1e-12));
+            Is.EqualTo(expected).Within(1e-12)
+        );
     }
 
     [Test]
@@ -430,7 +497,8 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
         List<Combo> combos = [.. categories.Select(c => new Combo([new(c, 0, 0)]))];
         ProbabilityCalculationLimitException? exception =
             Assert.Throws<ProbabilityCalculationLimitException>(() =>
-                new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5));
+                new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5)
+            );
         Assert.That(exception!.Message, Does.Contain("Calculation stopped"));
     }
 
@@ -451,6 +519,7 @@ public sealed class SmallDeckOracleTestUnions : SmallDeckOracleTestBase
         List<Card> deck = [.. categories.Select(c => new Card([c], 2))];
         List<Combo> combos = [new(categories.Select(c => new ComboCategory(c, 0, 1)))];
         Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 9));
+            new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 9)
+        );
     }
 }

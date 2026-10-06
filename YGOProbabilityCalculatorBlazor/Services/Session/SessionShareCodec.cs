@@ -21,7 +21,8 @@ public static class SessionShareCodec
                 "Cards", "Categories", "Combos", "ComboGroups", "ManualMetadataCategoryKeys", "AlternativeGroups",
                 "Alternatives"
             ],
-            StringComparer.OrdinalIgnoreCase);
+            StringComparer.OrdinalIgnoreCase
+        );
 
     public static string CreateLink(string baseUri, string serializedSession)
     {
@@ -80,7 +81,8 @@ public static class SessionShareCodec
         string payload = fragment[Prefix.Length..];
 
         if (payload.Length == 0 || payload.Length % 4 == 1 || payload.Any(c =>
-                ! char.IsAsciiLetterOrDigit(c) && c != '-' && c != '_'))
+                ! char.IsAsciiLetterOrDigit(c) && c != '-' && c != '_'
+            ))
         {
             throw Invalid();
         }
@@ -88,7 +90,8 @@ public static class SessionShareCodec
         try
         {
             byte[] transport = Convert.FromBase64String(payload.Replace('-', '+').Replace('_', '/') +
-                                                        new string('=', (4 - payload.Length % 4) % 4));
+                                                        new string('=', (4 - payload.Length % 4) % 4)
+            );
 
             if (transport.Length <= HeaderLength)
             {

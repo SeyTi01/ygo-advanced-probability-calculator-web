@@ -14,7 +14,8 @@ public class ComboCategory
         CategoryBase baseCategory,
         int minCount,
         int maxCount,
-        RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed)
+        RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed
+    )
     {
         if (! Enum.IsDefined(maximumMode))
         {

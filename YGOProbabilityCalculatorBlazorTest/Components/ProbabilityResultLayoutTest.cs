@@ -30,11 +30,14 @@ public class ProbabilityResultLayoutTest
 
         Mock<IProbabilityCalculatorService> calculator = new();
         resultToReturn = new ProbabilityCalculationResult(0, []);
-        calculator.Setup(service => service.CalculateProbabilityResults(
-                It.IsAny<List<Card>>(),
-                It.IsAny<List<Combo>>(),
-                It.IsAny<int>(),
-                It.IsAny<IReadOnlyList<ComboGroup>?>()))
+        calculator
+            .Setup(service => service.CalculateProbabilityResults(
+                    It.IsAny<List<Card>>(),
+                    It.IsAny<List<Combo>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<IReadOnlyList<ComboGroup>?>()
+                )
+            )
             .Returns(() => resultToReturn);
         context.Services.AddSingleton(calculator.Object);
 
@@ -43,7 +46,8 @@ public class ProbabilityResultLayoutTest
         context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
         context.Services.AddSingleton(Mock.Of<IDeckImportService>());
         Mock<ICardInfoService> cardInfo = new();
-        cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+        cardInfo
+            .Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(new Dictionary<string, CardInfo>(StringComparer.Ordinal));
         context.Services.AddSingleton(cardInfo.Object);
         context.Services.AddSingleton<ILegacyCardMetadataEnricher, LegacyCardMetadataEnricher>();
@@ -68,7 +72,8 @@ public class ProbabilityResultLayoutTest
                 new GroupProbabilityResult("group-second", "Repeated name", 0.382, 1),
                 new GroupProbabilityResult("group-first", "Repeated name", 0.7234, 2),
                 new GroupProbabilityResult("empty-group", "Empty group", 0, 0)
-            ]);
+            ]
+        );
 
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
         await Calculate(cut);
@@ -76,16 +81,19 @@ public class ProbabilityResultLayoutTest
         IElement results = cut.Find(".probability-results");
         Assert.That(results.QuerySelectorAll(".probability-total-value"), Has.Length.EqualTo(1));
         Assert.That(results.QuerySelector(".probability-total-value")!.TextContent,
-            Is.EqualTo(0.8361.ToString("P2")));
+            Is.EqualTo(0.8361.ToString("P2"))
+        );
 
         IHtmlCollection<IElement> groups = results.QuerySelectorAll(".probability-group-container");
         Assert.That(groups, Has.Length.EqualTo(3));
         Assert.That(groups.Select(GroupName), Is.EqualTo(new[] { "Repeated name", "Repeated name", "Empty group" }));
         Assert.That(groups.Select(GroupProbability),
             Is.EqualTo(new[]
-            {
-                0.382.ToString("P2"), 0.7234.ToString("P2"), 0.0.ToString("P2")
-            }));
+                {
+                    0.382.ToString("P2"), 0.7234.ToString("P2"), 0.0.ToString("P2")
+                }
+            )
+        );
 
         IHtmlCollection<IElement> secondGroupMembers =
             groups[0].QuerySelectorAll(".probability-group-members .combo-probability-item");
@@ -94,24 +102,32 @@ public class ProbabilityResultLayoutTest
             groups[1].QuerySelectorAll(".probability-group-members .combo-probability-item");
         Assert.That(ComboNames(firstGroupMembers), Is.EqualTo(new[] { "Shared route", "Shared route" }));
         Assert.That(ComboProbabilities(firstGroupMembers),
-            Is.EqualTo(new[] { 0.4.ToString("P2"), 0.51.ToString("P2") }));
+            Is.EqualTo(new[] { 0.4.ToString("P2"), 0.51.ToString("P2") })
+        );
         Assert.That(groups[2].QuerySelectorAll(".combo-probability-item"),
             Is.Empty,
-            "an empty configured group still renders its aggregate without invented members");
+            "an empty configured group still renders its aggregate without invented members"
+        );
         Assert.That(groups[2].TextContent, Does.Contain("(0 active)"));
 
         Assert.That(results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item"),
-            Has.Length.EqualTo(2));
+            Has.Length.EqualTo(2)
+        );
         Assert.That(results.QuerySelector("h6:not(.probability-group-heading)")!.TextContent.Trim(),
-            Is.EqualTo("Ungrouped combos"));
+            Is.EqualTo("Ungrouped combos")
+        );
         Assert.That(ComboNames(results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item")),
-            Is.EqualTo(new[] { "Loose route", "Unnamed combo 5" }));
+            Is.EqualTo(new[] { "Loose route", "Unnamed combo 5" })
+        );
         Assert.That(results.QuerySelectorAll(".combo-probability-item"),
             Has.Length.EqualTo(5),
-            "grouped rows appear only beneath their group; ungrouped and orphan rows appear once after groups");
-        Assert.That(results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item")
+            "grouped rows appear only beneath their group; ungrouped and orphan rows appear once after groups"
+        );
+        Assert.That(results
+                .QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item")
                 .Select(row => row.QuerySelector(".combo-probability-value")!.TextContent),
-            Is.EqualTo(new[] { 0.25.ToString("P2"), 0.08.ToString("P2") }));
+            Is.EqualTo(new[] { 0.25.ToString("P2"), 0.08.ToString("P2") })
+        );
     }
 
     [Test]
@@ -123,7 +139,8 @@ public class ProbabilityResultLayoutTest
                 new ComboProbabilityResult(0, "Duplicate", 0.4),
                 new ComboProbabilityResult(1, "Duplicate", 0.3),
                 new ComboProbabilityResult(2, null, 0.1)
-            ]);
+            ]
+        );
 
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
         await Calculate(cut);
@@ -131,15 +148,18 @@ public class ProbabilityResultLayoutTest
         IElement results = cut.Find(".probability-results");
         Assert.That(results.QuerySelectorAll(".probability-group-container"), Is.Empty);
         Assert.That(results.QuerySelector("h6:not(.probability-group-heading)")!.TextContent.Trim(),
-            Is.EqualTo("Individual combos"));
+            Is.EqualTo("Individual combos")
+        );
         IHtmlCollection<IElement> rows =
             results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item");
         Assert.That(ComboNames(rows), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
         Assert.That(ComboProbabilities(rows),
             Is.EqualTo(new[]
-            {
-                0.4.ToString("P2"), 0.3.ToString("P2"), 0.1.ToString("P2")
-            }));
+                {
+                    0.4.ToString("P2"), 0.3.ToString("P2"), 0.1.ToString("P2")
+                }
+            )
+        );
         Assert.That(results.QuerySelectorAll(".probability-total-value"), Has.Length.EqualTo(1));
     }
 
@@ -157,7 +177,8 @@ public class ProbabilityResultLayoutTest
             [
                 new GroupProbabilityResult("group-a", "Alpha", 0.7, 1),
                 new GroupProbabilityResult("group-b", "Beta", 0.4, 1)
-            ]);
+            ]
+        );
 
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         await Calculate(cut);
@@ -170,14 +191,17 @@ public class ProbabilityResultLayoutTest
         await groupName.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
 
         Assert.That(cut.Find(".probability-result-status .visually-hidden").TextContent.Trim(),
-            Is.EqualTo("Previous result · inputs changed"));
+            Is.EqualTo("Previous result · inputs changed")
+        );
         Assert.That(cut.Find("[aria-label='Group for Editor combo 1']").GetAttribute("value"), Is.EqualTo("group-b"));
         IElement[] staleGroups = ResultGroups(cut);
         Assert.That(staleGroups.Select(GroupName), Is.EqualTo(new[] { "Alpha", "Beta" }));
         Assert.That(ComboNames(staleGroups[0].QuerySelectorAll(".probability-group-members .combo-probability-item")),
-            Is.EqualTo(new[] { "Move me" }));
+            Is.EqualTo(new[] { "Move me" })
+        );
         Assert.That(ComboNames(staleGroups[1].QuerySelectorAll(".probability-group-members .combo-probability-item")),
-            Is.EqualTo(new[] { "Stay" }));
+            Is.EqualTo(new[] { "Stay" })
+        );
 
         resultToReturn = new ProbabilityCalculationResult(
             0.95,
@@ -188,7 +212,8 @@ public class ProbabilityResultLayoutTest
             [
                 new GroupProbabilityResult("group-a", "Alpha renamed", 0, 0),
                 new GroupProbabilityResult("group-b", "Beta", 0.8, 2)
-            ]);
+            ]
+        );
         await Calculate(cut);
 
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
@@ -196,8 +221,10 @@ public class ProbabilityResultLayoutTest
         Assert.That(recalculatedGroups.Select(GroupName), Is.EqualTo(new[] { "Alpha renamed", "Beta" }));
         Assert.That(recalculatedGroups[0].QuerySelectorAll(".combo-probability-item"), Is.Empty);
         Assert.That(ComboNames(recalculatedGroups[1]
-                .QuerySelectorAll(".probability-group-members .combo-probability-item")),
-            Is.EqualTo(new[] { "Move me", "Stay" }));
+                .QuerySelectorAll(".probability-group-members .combo-probability-item")
+            ),
+            Is.EqualTo(new[] { "Move me", "Stay" })
+        );
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.95.ToString("P2")));
     }
 
@@ -219,7 +246,8 @@ public class ProbabilityResultLayoutTest
             :
             [
                 .. assignments.Select((groupId, index) =>
-                    new Combo([new(requirement, 1, 1)], $"Editor combo {index + 1}", groupId: groupId))
+                    new Combo([new(requirement, 1, 1)], $"Editor combo {index + 1}", groupId: groupId)
+                )
             ],
         ComboGroups = groups?.ToList() ?? [],
         HandSize = 1

@@ -6,5 +6,6 @@ public interface IBackgroundCalculator
 {
     Task<ProbabilityCalculationResult> CalculateAsync(
         CalculationSnapshot snapshot,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }

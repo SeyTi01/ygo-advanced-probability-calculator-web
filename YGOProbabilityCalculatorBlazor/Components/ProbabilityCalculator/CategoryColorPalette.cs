@@ -10,19 +10,20 @@ public static class CategoryColorPalette
     public const int PaletteSize = 12;
 
     private static readonly IReadOnlyList<CategoryColorOption> Palette = Array.AsReadOnly<CategoryColorOption>([
-        new(0, "Blue"),
-        new(1, "Orange"),
-        new(2, "Green"),
-        new(3, "Purple"),
-        new(4, "Red"),
-        new(5, "Cyan"),
-        new(6, "Gold"),
-        new(7, "Pink"),
-        new(8, "Lime"),
-        new(9, "Slate"),
-        new(10, "Teal"),
-        new(11, "Magenta")
-    ]);
+            new(0, "Blue"),
+            new(1, "Orange"),
+            new(2, "Green"),
+            new(3, "Purple"),
+            new(4, "Red"),
+            new(5, "Cyan"),
+            new(6, "Gold"),
+            new(7, "Pink"),
+            new(8, "Lime"),
+            new(9, "Slate"),
+            new(10, "Teal"),
+            new(11, "Magenta")
+        ]
+    );
 
     public static IReadOnlyList<CategoryColorOption> Options => Palette;
 

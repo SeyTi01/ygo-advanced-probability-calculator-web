@@ -82,7 +82,8 @@ public class CategoryRenameTest
             .. session.Combos.Select(combo => combo
                 .Categories
                 .Select(category => (category.BaseCategory.Name, category.MinCount, category.MaxCount))
-                .ToArray())
+                .ToArray()
+            )
         ];
         double oracleProbability =
             SmallDeckOracle.EnumerateProbability(session.Cards, session.Combos, session.HandSize);
@@ -117,21 +118,35 @@ public class CategoryRenameTest
         List<CategoryBase> definitions = cut.FindComponent<CategoryListEditor>().Instance.CategoryBases;
         Assert.That(definitions.Select(category => category.Name), Is.EqualTo(new[] { "Renamed", "Other" }));
         Assert.That(session.Cards.SelectMany(item => item.Categories).Any(category => category.Name == "Old"),
-            Is.False);
-        Assert.That(session.Combos.SelectMany(item => item.Categories)
+            Is.False
+        );
+        Assert.That(session
+                .Combos.SelectMany(item => item.Categories)
                 .Any(category => category.BaseCategory.Name == "Old"),
-            Is.False);
+            Is.False
+        );
         Assert.That(session.Cards.SelectMany(item => item.Categories).Count(category => category.Name == "Renamed"),
-            Is.EqualTo(2));
+            Is.EqualTo(2)
+        );
         Assert.That(session.Cards[0].Categories.Select(category => category.Name),
-            Is.EqualTo(new[] { "Renamed", "Other" }));
-        Assert.That(session.Combos.Select(comboItem => comboItem.Categories
-                .Select(category => (category.BaseCategory.Name, category.MinCount, category.MaxCount)).ToArray()),
+            Is.EqualTo(new[] { "Renamed", "Other" })
+        );
+        Assert.That(session.Combos.Select(comboItem => comboItem
+                .Categories
+                .Select(category => (category.BaseCategory.Name, category.MinCount, category.MaxCount))
+                .ToArray()
+            ),
             Is.EqualTo(expectedConstraints.Select(constraints => constraints
-                .Select(category => (category.Name == "Old" ? "Renamed" : category.Name, category.MinCount,
-                    category.MaxCount)).ToArray())));
+                    .Select(category => (category.Name == "Old" ? "Renamed" : category.Name, category.MinCount,
+                        category.MaxCount)
+                    )
+                    .ToArray()
+                )
+            )
+        );
         Assert.That(session.Combos[2].Categories.Select(category => category.BaseCategory.Name),
-            Is.EqualTo(new[] { "Renamed", "Renamed" }));
+            Is.EqualTo(new[] { "Renamed", "Renamed" })
+        );
 
         double probabilityAfter =
             calculator.CalculateProbabilityForCombos(session.Cards, session.Combos, session.HandSize);
@@ -185,7 +200,8 @@ public class CategoryRenameTest
         Assert.That(cut.FindAll("[aria-label='New name for category Old']"), Is.Empty);
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
         Assert.That(cut.Find("[aria-label='Remove category Old']").GetAttribute("title"),
-            Is.EqualTo("Remove category Old"));
+            Is.EqualTo("Remove category Old")
+        );
 
         categoryName = cut.Find("[aria-label='Edit category Old']");
         categoryName.Click();
@@ -207,7 +223,8 @@ public class CategoryRenameTest
 
         cut.Find("[aria-label='Edit category Other']").Click();
         cut.Find("[aria-label='New name for category Other']").Input("Discarded");
-        cut.Find("[aria-label='New name for category Other']")
+        cut
+            .Find("[aria-label='New name for category Other']")
             .KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
         Assert.That(cut.Find("[aria-label='Edit category Other']").TextContent.Trim(), Is.EqualTo("Other"));
         Assert.That(cut.FindAll("[aria-label='New name for category Other']"), Is.Empty);
@@ -239,21 +256,28 @@ public class CategoryRenameTest
         Card loadedCard = cut.FindComponent<CardEditor>().Instance.Card;
         Combo loadedCombo = cut.FindComponent<ComboEditor>().Instance.Combo;
         Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Single().Name,
-            Is.EqualTo("Renamed"));
+            Is.EqualTo("Renamed")
+        );
         Assert.That(loadedCard.Categories.Select(category => category.Name), Is.EqualTo(new[] { "Renamed" }));
         Assert.That(loadedCombo.Categories.Select(category => category.BaseCategory.Name),
-            Is.EqualTo(new[] { "Renamed" }));
+            Is.EqualTo(new[] { "Renamed" })
+        );
         Assert.That(loadedCombo.Name, Is.Null);
         Assert.That(ReferenceEquals(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Single(),
-                loadedCard.Categories[0]),
-            Is.False);
+                loadedCard.Categories[0]
+            ),
+            Is.False
+        );
         Assert.That(ReferenceEquals(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Single(),
-                loadedCombo.Categories[0].BaseCategory),
-            Is.False);
+                loadedCombo.Categories[0].BaseCategory
+            ),
+            Is.False
+        );
 
         cut.Find("[aria-label='Remove category Renamed']").Click();
         Assert.That(cut.FindComponent<CategoryListEditor>().Find("[role=alert]").TextContent,
-            Does.Contain("still used"));
+            Does.Contain("still used")
+        );
     }
 
     private static void RenameCategory(IRenderedFragment cut, string oldName, string newName)
@@ -267,8 +291,11 @@ public class CategoryRenameTest
         cut.Find($"[aria-label='Edit category {name}']").Click();
 
     private static IElement Button(IRenderedFragment cut, string accessibleName) =>
-        cut.FindAll("button").Single(button =>
-            button.GetAttribute("aria-label") == accessibleName || button.TextContent.Trim() == accessibleName);
+        cut
+            .FindAll("button")
+            .Single(button =>
+                button.GetAttribute("aria-label") == accessibleName || button.TextContent.Trim() == accessibleName
+            );
 
     private static void AssertIconButton(IRenderedFragment cut, string accessibleName)
     {
@@ -282,6 +309,7 @@ public class CategoryRenameTest
     {
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "session.json"));
         cut.WaitForAssertion(() =>
-            Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Legacy card")));
+            Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Legacy card"))
+        );
     }
 }

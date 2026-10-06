@@ -34,7 +34,8 @@ public abstract class CalculatorEditorTestBase
         context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
         context.Services.AddSingleton(Mock.Of<IDeckImportService>());
         Mock<ICardInfoService> cardInfo = new();
-        cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+        cardInfo
+            .Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(new Dictionary<string, CardInfo>(StringComparer.Ordinal));
         context.Services.AddSingleton(cardInfo.Object);
         context.Services.AddSingleton<ICardArtworkService, CardArtworkService>();
@@ -84,16 +85,19 @@ public abstract class CalculatorEditorTestBase
     {
         Assert.That(fragment.FindAll(".probability-results"), Has.Count.EqualTo(1));
         Assert.That(fragment.Find(".probability-result-status .visually-hidden").TextContent.Trim(),
-            Is.EqualTo("Previous result · inputs changed"));
+            Is.EqualTo("Previous result · inputs changed")
+        );
     }
 
     protected string SavedSessionJson(int saveNumber = 0)
     {
-        JSRuntimeInvocation invocation = context.JSInterop.Invocations
+        JSRuntimeInvocation invocation = context
+            .JSInterop.Invocations
             .Where(invocation => invocation.Arguments.Count == 2 &&
                                  invocation.Arguments[0] is string fileName &&
                                  fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase) &&
-                                 invocation.Arguments[1] is string)
+                                 invocation.Arguments[1] is string
+            )
             .ElementAt(saveNumber);
 
         return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
@@ -123,13 +127,15 @@ public abstract class CalculatorEditorTestBase
             List<Card> deck,
             List<Combo> combos,
             int handSize,
-            IReadOnlyList<ComboGroup>? groups = null)
+            IReadOnlyList<ComboGroup>? groups = null
+        )
         {
             CallCount++;
 
             return new ProbabilityCalculationResult(
                 0.25,
-                [new ComboProbabilityResult(0, "Any A", 0.25)]);
+                [new ComboProbabilityResult(0, "Any A", 0.25)]
+            );
         }
     }
 
@@ -145,7 +151,8 @@ public abstract class CalculatorEditorTestBase
             List<Card> deck,
             List<Combo> combos,
             int handSize,
-            IReadOnlyList<ComboGroup>? groups = null)
+            IReadOnlyList<ComboGroup>? groups = null
+        )
         {
             Started.SetResult();
 
@@ -161,13 +168,15 @@ public abstract class CalculatorEditorTestBase
 
             return new ProbabilityCalculationResult(
                 0.75,
-                [new ComboProbabilityResult(0, "Stale combo", 0.5)]);
+                [new ComboProbabilityResult(0, "Stale combo", 0.5)]
+            );
         }
     }
 
     protected sealed class SequencedProbabilityCalculator(
         ProbabilityCalculationResult secondResult,
-        bool failSecond = false) : IProbabilityCalculatorService
+        bool failSecond = false
+    ) : IProbabilityCalculatorService
     {
         private int callCount;
 
@@ -181,7 +190,8 @@ public abstract class CalculatorEditorTestBase
             List<Card> deck,
             List<Combo> combos,
             int handSize,
-            IReadOnlyList<ComboGroup>? groups = null)
+            IReadOnlyList<ComboGroup>? groups = null
+        )
         {
             int call = Interlocked.Increment(ref callCount);
 
@@ -189,7 +199,8 @@ public abstract class CalculatorEditorTestBase
             {
                 return new ProbabilityCalculationResult(
                     0.25,
-                    [new ComboProbabilityResult(0, "Original combo", 0.2)]);
+                    [new ComboProbabilityResult(0, "Original combo", 0.2)]
+                );
             }
 
             SecondStarted.SetResult();

@@ -15,7 +15,8 @@ public abstract class SmallDeckOracleTestBase
     protected static void AssertTotalAndStandaloneResultsMatchEveryPhysicalHand(
         List<Card> deck,
         List<Combo> combos,
-        int handSize)
+        int handSize
+    )
     {
         double expectedTotal = SmallDeckOracle.EnumerateProbability(deck, combos, handSize);
         ProbabilityCalculationResult result =
@@ -31,7 +32,8 @@ public abstract class SmallDeckOracleTestBase
             Assert.That(comboResult.ComboName, Is.EqualTo(combos[index].Name));
             Assert.That(comboResult.Probability,
                 Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[index]], handSize)).Within(1e-12),
-                $"Standalone result for combo at index {index}");
+                $"Standalone result for combo at index {index}"
+            );
         }
     }
 }

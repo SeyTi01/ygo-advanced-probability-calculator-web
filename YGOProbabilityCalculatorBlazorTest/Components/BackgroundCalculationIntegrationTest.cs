@@ -87,20 +87,26 @@ public class BackgroundCalculationIntegrationTest
     private Task File(SessionState session, int input = 1) => Upload(sessions.SerializeSession(session), input);
 
     private Task Upload(string json, int input = 1) => cut.InvokeAsync(() =>
-        cut.FindComponents<InputFile>()[input].Instance.OnChange.InvokeAsync(
-            new InputFileChangeEventArgs([new SessionFile(json)])));
+        cut.FindComponents<InputFile>()[input]
+            .Instance.OnChange.InvokeAsync(
+                new InputFileChangeEventArgs([new SessionFile(json)])
+            )
+    );
 
     private Task<string> NextUpdate()
     {
         TaskCompletionSource<string> queued =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
-        context.JSInterop.SetupVoid("sessionRecovery.update",
-            invocation =>
-            {
-                queued.TrySetResult((string)invocation.Arguments[2]!);
+        context
+            .JSInterop.SetupVoid("sessionRecovery.update",
+                invocation =>
+                {
+                    queued.TrySetResult((string)invocation.Arguments[2]!);
 
-                return true;
-            }).SetVoidResult();
+                    return true;
+                }
+            )
+            .SetVoidResult();
 
         return queued.Task;
     }
@@ -122,17 +128,20 @@ public class BackgroundCalculationIntegrationTest
         TaskCompletionSource gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<bool> started =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
-        enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns<SessionState>(session =>
-        {
-            if (session.Cards[0].Name != "Delayed load")
-            {
-                return Task.CompletedTask;
-            }
+        enricher
+            .Setup(x => x.EnrichAsync(It.IsAny<SessionState>()))
+            .Returns<SessionState>(session =>
+                {
+                    if (session.Cards[0].Name != "Delayed load")
+                    {
+                        return Task.CompletedTask;
+                    }
 
-            started.TrySetResult(true);
+                    started.TrySetResult(true);
 
-            return gate.Task;
-        });
+                    return gate.Task;
+                }
+            );
 
         return (gate, started.Task);
     }
@@ -160,7 +169,8 @@ public class BackgroundCalculationIntegrationTest
         else if (kind == "recovery")
         {
             bool accepted = await cut.InvokeAsync(() =>
-                cut.FindComponent<SessionRecovery>().Instance.ApplyRecovery(replacement));
+                cut.FindComponent<SessionRecovery>().Instance.ApplyRecovery(replacement)
+            );
             Assert.That(accepted, Is.True);
         }
         else if (kind == "ydk")
@@ -182,7 +192,8 @@ public class BackgroundCalculationIntegrationTest
         Assert.That(calculator.Tokens[1].IsCancellationRequested, Is.True);
         Assert.That(cut.FindAll(".probability-results"),
             Is.Empty,
-            "accepting a different workspace clears old results");
+            "accepting a different workspace clears old results"
+        );
         Task newer = Start();
 
         if (error)
@@ -256,7 +267,8 @@ public class BackgroundCalculationIntegrationTest
         await export.Find("button").ClickAsync(new());
         Assert.That(export.FindAll(".probability-result-copy-success-icon"), Has.Count.EqualTo(1));
         Assert.That(context.JSInterop.Invocations["copyText"].Single().Arguments[0],
-            Does.Contain("Readable **route** \\ path"));
+            Does.Contain("Readable **route** \\ path")
+        );
         await export.InvokeAsync(clock.Expire);
         export.WaitForState(() => export.FindAll(".probability-result-copy-success-icon").Count == 0);
         Task cancelled = Start();
@@ -267,7 +279,8 @@ public class BackgroundCalculationIntegrationTest
         await cancelled;
         Assert.That(Writes, Is.EqualTo(writes));
         Assert.That((string)context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!,
-            Is.EqualTo(initialBytes));
+            Is.EqualTo(initialBytes)
+        );
         Task worker = Start();
         Task<string> update = NextUpdate();
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
@@ -279,7 +292,8 @@ public class BackgroundCalculationIntegrationTest
         Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
         await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
         Assert.That(context.JSInterop.Invocations["copyText"].Last().Arguments[0],
-            Does.StartWith("Previous result — current inputs have changed.\nProbability results\nHand size: 2"));
+            Does.StartWith("Previous result — current inputs have changed.\nProbability results\nHand size: 2")
+        );
         Task latest = Start();
         calculator.Jobs[2].SetException(new InvalidOperationException("Late edit error"));
         await worker;
@@ -304,9 +318,11 @@ public class BackgroundCalculationIntegrationTest
         host.SetParametersAndRender(p => p.Add(x => x.Visible, false));
         await host.InvokeAsync(oldInstance.Dispose); // Repeated disposal must be harmless.
         Assert.That(calculator.Tokens[0].IsCancellationRequested, Is.True);
-        Assert.That(context.JSInterop.Invocations["sessionRecovery.dispose"]
+        Assert.That(context
+                .JSInterop.Invocations["sessionRecovery.dispose"]
                 .Count(x => Equals(x.Arguments[0], oldOwner)),
-            Is.EqualTo(1));
+            Is.EqualTo(1)
+        );
         Task<string> update = NextUpdate();
         pending.PendingSession = Workspace("New example");
         host.SetParametersAndRender(p => p.Add(x => x.Visible, true));
@@ -318,7 +334,8 @@ public class BackgroundCalculationIntegrationTest
         await load;
         Assert.That(oldSession.Cards[0].Name,
             Is.EqualTo("Initial"),
-            "disposed load owner must reject enrichment completion");
+            "disposed load owner must reject enrichment completion"
+        );
         Task latest = Start();
 
         if (error)
@@ -334,9 +351,13 @@ public class BackgroundCalculationIntegrationTest
         Assert.That(cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
         await Complete(1, latest, "New example result");
         Assert.That(cut.Markup, Does.Contain("New example result").And.Not.Contain("Disposed worker"));
-        Assert.That(context.JSInterop.Invocations["sessionRecovery.initialize"].Select(x => x.Arguments[0]).Distinct()
+        Assert.That(context
+                .JSInterop.Invocations["sessionRecovery.initialize"]
+                .Select(x => x.Arguments[0])
+                .Distinct()
                 .Count(),
-            Is.EqualTo(2));
+            Is.EqualTo(2)
+        );
     }
 
     [Test]
@@ -363,12 +384,15 @@ public class BackgroundCalculationIntegrationTest
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<bool> started =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
-        imports.Setup(x => x.ImportDeckFromYdkeAsync(It.IsAny<string>())).Returns(() =>
-        {
-            started.TrySetResult(true);
+        imports
+            .Setup(x => x.ImportDeckFromYdkeAsync(It.IsAny<string>()))
+            .Returns(() =>
+                {
+                    started.TrySetResult(true);
 
-            return response.Task;
-        });
+                    return response.Task;
+                }
+            );
         await cut.FindAll("button").Single(x => x.TextContent.Trim() == "Import YDKe").ClickAsync(new());
         await cut.Find("#ydkeCodeInput").InputAsync(new() { Value = "fixture" });
         Task import = cut.Find("form[aria-label='YDKe deck import']").TriggerEventAsync("onsubmit", EventArgs.Empty);
@@ -420,7 +444,8 @@ public class BackgroundCalculationIntegrationTest
         {
             TaskCompletionSource<ProbabilityCalculationResult> job =
                 new(TaskCreationOptions
-                    .RunContinuationsAsynchronously);
+                    .RunContinuationsAsynchronously
+                );
             Jobs.Add(job);
             Tokens.Add(token);
 

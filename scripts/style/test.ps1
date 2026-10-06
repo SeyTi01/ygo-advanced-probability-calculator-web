@@ -1,13 +1,14 @@
 #Requires -Version 5.1
 # Exercise the actual solution and canonical fixer without committing a probe source file.
 [CmdletBinding()]
-param()
+param([string[]] $MSBuildArguments = @())
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $probe = Join-Path $repoRoot 'YGOProbabilityCalculatorBlazor/AutofixProbe.cs'
 if (Test-Path $probe) { throw "Probe path already exists: $probe" }
 $source = @'
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 namespace AutofixValidation;
@@ -44,6 +45,13 @@ public class AutofixProbe {
   int n = default(int);
   object o = new object();
   AutofixProbe.Noop();
+  Dictionary<string, string> sourceCategory = new();
+  sourceCategory.Add("Source", "old");
+  sourceCategory.Add("MetadataKey", "old");
+  foreach (string key in sourceCategory.Select(p => p.Key).Where(key => key.Equals("Source", StringComparison.OrdinalIgnoreCase) || key.Equals("MetadataKey", StringComparison.OrdinalIgnoreCase)).ToArray())
+  {
+   sourceCategory.Remove(key);
+  }
   this.Property = this.value;
   this.Changed?.Invoke();
   if (!condition) value = n;
@@ -78,7 +86,7 @@ Push-Location $repoRoot
 try {
     # Include CRLF, trailing whitespace and a missing final newline in the dirty input.
     [IO.File]::WriteAllText($probe, $source.Replace("`n", "  `r`n"), [Text.UTF8Encoding]::new($true))
-    & "$PSScriptRoot/fix.ps1"
+    & "$PSScriptRoot/fix.ps1" -MSBuildArguments $MSBuildArguments
     $fixed = [IO.File]::ReadAllText($probe)
     Write-Host $fixed
     $bytes = [IO.File]::ReadAllBytes($probe)
@@ -102,9 +110,27 @@ try {
     Assert-Pattern $fixed 'int n = default;' 'default literal'
     Assert-Pattern $fixed 'private int PrivateCandidate' 'private instance API preserved'
     Assert-Pattern $fixed 'public int PublicCandidate' 'public API preserved'
+    Assert-Pattern $fixed '(?m)^[ \t]*public int PublicCandidate\(int x\) => x \+ 1;$' 'short method declaration stays on one line'
     Assert-Pattern $fixed 'internal int InternalCandidate' 'internal API preserved'
     Assert-Pattern $fixed 'new AutofixProbe\(\).PrivateCandidate\(1\)' 'qualified instance call preserved'
     Assert-Pattern $fixed '(?m)^\s*Noop\(\);' 'static qualification simplification'
+    $expectedInvocation = @'
+        foreach (string key in sourceCategory
+            .Select(p => p.Key)
+            .Where(key =>
+                key.Equals("Source", StringComparison.OrdinalIgnoreCase) ||
+                key.Equals("MetadataKey", StringComparison.OrdinalIgnoreCase)
+            )
+            .ToArray()
+        )
+        {
+            sourceCategory.Remove(key);
+        }
+'@
+    if ($fixed.IndexOf($expectedInvocation, [StringComparison]::Ordinal) -lt 0) {
+        throw 'Automatic fix did not match the expected multiline invocation layout.'
+    }
+    Write-Host 'PASS: chained calls and nested closing delimiters match the golden layout'
     Assert-Pattern $fixed 'Property = value;' 'field/property qualification simplification'
     Assert-Pattern $fixed '(?m)^\s*Changed\?\.Invoke\(\);' 'event qualification simplification'
     Assert-Pattern $fixed 'if \(! condition\)\s*\{' 'logical NOT spacing and braces'
@@ -121,10 +147,11 @@ try {
         throw 'Import removal or C# text/blank-line formatting failed.'
     }
     Assert-Pattern $fixed 'LongParameters\(\s*\n' 'parameter wrapping'
+    Assert-Pattern $fixed '(?s)LongParameters\([^)]*fifthParameterWithAVeryLongName\r?\n[ \t]+\)\r?\n[ \t]+\{' 'multiline declaration closing parenthesis alignment'
     Assert-Pattern $fixed '(?s)LongParameters\([^;]*\n\s*secondParameterWithAVeryLongName:' 'argument wrapping'
     $before = git -c "safe.directory=$repoRoot" diff --binary
     if ($LASTEXITCODE -ne 0) { throw 'Could not snapshot tracked cleanup output.' }
-    & "$PSScriptRoot/fix.ps1"
+    & "$PSScriptRoot/fix.ps1" -MSBuildArguments $MSBuildArguments
     $after = git -c "safe.directory=$repoRoot" diff --binary
     if ($LASTEXITCODE -ne 0) { throw 'Could not check tracked cleanup output.' }
     if ($fixed -cne [IO.File]::ReadAllText($probe) -or ($before -join "`n") -cne ($after -join "`n")) {

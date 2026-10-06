@@ -82,7 +82,8 @@ public class CardInfoService : ICardInfoService
             using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(15));
             using HttpResponseMessage response =
                 await _httpClient.GetAsync(string.Format(CultureInfo.InvariantCulture, SingleApiTemplate, id),
-                    timeout.Token);
+                    timeout.Token
+                );
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
@@ -98,7 +99,8 @@ public class CardInfoService : ICardInfoService
                 throw new CardArtworkLookupException(retry?.Delta ??
                                                      (retry?.Date is { } date
                                                          ? date - _timeProvider.GetUtcNow()
-                                                         : TimeSpan.FromMinutes(1)));
+                                                         : TimeSpan.FromMinutes(1))
+                );
             }
 
             await using Stream stream = await response.Content.ReadAsStreamAsync();
@@ -111,7 +113,9 @@ public class CardInfoService : ICardInfoService
                 throw new CardArtworkLookupException(TimeSpan.FromMinutes(1));
             }
 
-            CardInfo? info = data.EnumerateArray().Select(item => ReadCardInfo(item, id))
+            CardInfo? info = data
+                .EnumerateArray()
+                .Select(item => ReadCardInfo(item, id))
                 .FirstOrDefault(card => card is not null);
 
             if (info is null)
@@ -184,7 +188,8 @@ public class CardInfoService : ICardInfoService
     public CardInfoService(
         ILocalStorageService localStorage,
         HttpClient? httpClient = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null
+    )
     {
         _localStorage = localStorage;
         _httpClient = httpClient ?? new HttpClient();
@@ -288,7 +293,8 @@ public class CardInfoService : ICardInfoService
         try
         {
             using HttpResponseMessage response = await _httpClient
-                .GetAsync($"{BulkApiUrl}?name={Uri.EscapeDataString(name)}").ConfigureAwait(false);
+                .GetAsync($"{BulkApiUrl}?name={Uri.EscapeDataString(name)}")
+                .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             await using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
             using JsonDocument document = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
@@ -302,8 +308,12 @@ public class CardInfoService : ICardInfoService
 
             CardInfo?[] matches =
             [
-                .. data.EnumerateArray().Select(item => ReadCardInfo(item)).Where(info =>
-                    info is not null && info.Name.Equals(name, StringComparison.Ordinal))
+                .. data
+                    .EnumerateArray()
+                    .Select(item => ReadCardInfo(item))
+                    .Where(info =>
+                        info is not null && info.Name.Equals(name, StringComparison.Ordinal)
+                    )
             ];
 
             if (matches.Length != 1 || ! HasMetadata(matches[0]!))
@@ -398,7 +408,8 @@ public class CardInfoService : ICardInfoService
         try
         {
             using HttpResponseMessage response = await _httpClient
-                .GetAsync(string.Format(CultureInfo.InvariantCulture, SingleApiTemplate, id)).ConfigureAwait(false);
+                .GetAsync(string.Format(CultureInfo.InvariantCulture, SingleApiTemplate, id))
+                .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             await using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
@@ -409,7 +420,9 @@ public class CardInfoService : ICardInfoService
                 data.ValueKind == JsonValueKind.Array)
             {
                 // The query passcode remains the cache identity, including alternate passcodes.
-                CardInfo? info = data.EnumerateArray().Select(item => ReadCardInfo(item, id))
+                CardInfo? info = data
+                    .EnumerateArray()
+                    .Select(item => ReadCardInfo(item, id))
                     .FirstOrDefault(card => card is not null);
 
                 if (info is not null)
@@ -490,7 +503,8 @@ public class CardInfoService : ICardInfoService
             DateTimeOffset.TryParse(timestampProperty.GetString(),
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                out DateTimeOffset parsedTimestamp))
+                out DateTimeOffset parsedTimestamp
+            ))
         {
             lastFullRefreshUtc = parsedTimestamp;
         }

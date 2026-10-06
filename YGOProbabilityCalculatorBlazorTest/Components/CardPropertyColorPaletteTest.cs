@@ -51,17 +51,23 @@ public class CardPropertyColorPaletteTest
     public void NumericRaceAndArchetypeValuesShareTheirSemanticFamilyColor()
     {
         Assert.That(CardPropertyColorPalette.GetCssClass("level:1"),
-            Is.EqualTo(CardPropertyColorPalette.GetCssClass("level:12")));
+            Is.EqualTo(CardPropertyColorPalette.GetCssClass("level:12"))
+        );
         Assert.That(CardPropertyColorPalette.GetCssClass("rank:1"),
-            Is.EqualTo(CardPropertyColorPalette.GetCssClass("rank:13")));
+            Is.EqualTo(CardPropertyColorPalette.GetCssClass("rank:13"))
+        );
         Assert.That(CardPropertyColorPalette.GetCssClass("link:1"),
-            Is.EqualTo(CardPropertyColorPalette.GetCssClass("link:6")));
+            Is.EqualTo(CardPropertyColorPalette.GetCssClass("link:6"))
+        );
         Assert.That(CardPropertyColorPalette.GetCssClass("scale:0"),
-            Is.EqualTo(CardPropertyColorPalette.GetCssClass("scale:13")));
+            Is.EqualTo(CardPropertyColorPalette.GetCssClass("scale:13"))
+        );
         Assert.That(CardPropertyColorPalette.GetCssClass("monster-race:warrior"),
-            Is.EqualTo(CardPropertyColorPalette.GetCssClass("monster-race:dragon")));
+            Is.EqualTo(CardPropertyColorPalette.GetCssClass("monster-race:dragon"))
+        );
         Assert.That(CardPropertyColorPalette.GetCssClass("archetype:k9"),
-            Is.EqualTo(CardPropertyColorPalette.GetCssClass("archetype:vanquish%20soul")));
+            Is.EqualTo(CardPropertyColorPalette.GetCssClass("archetype:vanquish%20soul"))
+        );
     }
 
     [Test]
@@ -73,8 +79,10 @@ public class CardPropertyColorPaletteTest
 
         Assert.That(CardPropertyColorPalette.GetCssClass(fire), Is.EqualTo("card-property-color-attribute-fire"));
         Assert.That(CardPropertyColorPalette.GetCssClass(misleadingLabel),
-            Is.EqualTo(CardPropertyColorPalette.GetCssClass(fire)));
+            Is.EqualTo(CardPropertyColorPalette.GetCssClass(fire))
+        );
         Assert.That(CardPropertyColorPalette.GetCssClass("future-family:water"),
-            Is.EqualTo(CardPropertyColorPalette.GenericMetadataClass));
+            Is.EqualTo(CardPropertyColorPalette.GenericMetadataClass)
+        );
     }
 }

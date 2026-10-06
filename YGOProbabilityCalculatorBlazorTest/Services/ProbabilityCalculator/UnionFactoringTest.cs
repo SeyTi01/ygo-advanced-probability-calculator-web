@@ -13,10 +13,13 @@ public class UnionFactoringTest
     public void UniversalEventDoesNotNeedAnEnormousBinomialDenominator()
     {
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityResults(
-                [new([], int.MaxValue)],
-                [new([])],
-                int.MaxValue / 2).TotalProbability,
-            Is.EqualTo(1));
+                    [new([], int.MaxValue)],
+                    [new([])],
+                    int.MaxValue / 2
+                )
+                .TotalProbability,
+            Is.EqualTo(1)
+        );
     }
 
     [Test]
@@ -24,17 +27,22 @@ public class UnionFactoringTest
     {
         List<Card> deck =
         [
-            .. Enumerable.Range(0, 66).Select(i => new Card(i >= 64 ? [A] : [],
-                name: "Same",
-                active: i != 65,
-                id: $"row{i}"))
+            .. Enumerable
+                .Range(0, 66)
+                .Select(i => new Card(i >= 64 ? [A] : [],
+                        name: "Same",
+                        active: i != 65,
+                        id: $"row{i}"
+                    )
+                )
         ];
         Check(deck,
             [
                 new([new(A, 1, 2)], groupId: "g0", cards: [new(deck[0].Id, 1, 2)]),
                 new([new(A, 1, 2)], groupId: "g1", cards: [new(deck[65].Id, 1, 2)])
             ],
-            2);
+            2
+        );
     }
 
     [Test]
@@ -51,10 +59,12 @@ public class UnionFactoringTest
         // independent assignment for every one of the 658,008 physical hands.
         Assert.That(result.TotalProbability, Is.EqualTo(525176.0 / 658008).Within(1e-12));
         Assert.That(result.GroupProbabilities!.Select(g => g.Probability),
-            Is.EqualTo(new[] { 362986.0 / 658008, 315996.0 / 658008 }).Within(1e-12));
+            Is.EqualTo(new[] { 362986.0 / 658008, 315996.0 / 658008 }).Within(1e-12)
+        );
         long[] successes = [93136, 128466, 150480, 117819, 54846, 67301, 71625, 134814, 134814, 71625];
         Assert.That(result.ComboProbabilities.Select(c => c.Probability),
-            Is.EqualTo(successes.Select(n => (double)n / 658008)).Within(1e-12));
+            Is.EqualTo(successes.Select(n => (double)n / 658008)).Within(1e-12)
+        );
         Assert.That(allocated, Is.LessThan(2 * 1024 * 1024));
     }
 
@@ -71,8 +81,10 @@ public class UnionFactoringTest
             [.. deck.Select(c => c.Categories.Contains(C) ? c : c.WithCategories([unionCategory]))];
         Assert.That(SmallDeckOracle.EnumerateProbability(rewrittenDeck,
                 [new([new(C, 1, 3), new(unionCategory, 2, 3)])],
-                3),
-            Is.EqualTo(1));
+                3
+            ),
+            Is.EqualTo(1)
+        );
     }
 
     [Test]
@@ -87,7 +99,8 @@ public class UnionFactoringTest
                 new([new(C, 1, 3), new(A, 1, 3), new(B, 0, 0)]),
                 new([new(C, 1, 3), new(B, 1, 3), new(A, 0, 0)])
             ],
-            3);
+            3
+        );
         Check(deck, [new([new(C, 1, 3), new(A, 1, 1)]), new([new(C, 1, 3), new(B, 1, 3)])], 3);
     }
 
@@ -110,9 +123,11 @@ public class UnionFactoringTest
         Check(deck, combos, 3);
         Check([.. deck.Where(c => c.Id != first.Id)], combos, 3);
         Assert.Throws<ArgumentException>(() => new ProbabilityCalculatorService().CalculateProbabilityResults(
-            [first, first.WithName("Another")],
-            combos,
-            3));
+                [first, first.WithName("Another")],
+                combos,
+                3
+            )
+        );
     }
 
     [Test]
@@ -125,25 +140,38 @@ public class UnionFactoringTest
         {
             List<Card> deck =
             [
-                .. Enumerable.Range(0, 5).Select(i => new Card(
-                    categories.Where(_ => random.Next(2) == 0),
-                    random.Next(1, 3),
-                    "Same",
-                    id: $"row{i}"))
+                .. Enumerable
+                    .Range(0, 5)
+                    .Select(i => new Card(
+                            categories.Where(_ => random.Next(2) == 0),
+                            random.Next(1, 3),
+                            "Same",
+                            id: $"row{i}"
+                        )
+                    )
             ];
             int handSize = random.Next(2, 5);
             int commonMin = random.Next(1, 3);
             List<Combo> combos =
             [
-                .. categories.Skip(1).Select((c, i) => new Combo(
-                    [new(A, commonMin, handSize), new(c, 1, handSize)],
-                    "Same",
-                    groupId: $"g{i % 2}"))
+                .. categories
+                    .Skip(1)
+                    .Select((c, i) => new Combo(
+                            [new(A, commonMin, handSize), new(c, 1, handSize)],
+                            "Same",
+                            groupId: $"g{i % 2}"
+                        )
+                    )
             ];
-            combos.AddRange(deck.Take(2).Select((c, i) => new Combo([new(A, commonMin, handSize)],
-                "Same",
-                groupId: $"g{i}",
-                cards: [new(c.Id, 1, handSize)])));
+            combos.AddRange(deck
+                .Take(2)
+                .Select((c, i) => new Combo([new(A, commonMin, handSize)],
+                        "Same",
+                        groupId: $"g{i}",
+                        cards: [new(c.Id, 1, handSize)]
+                    )
+                )
+            );
             combos.Add(combos[0].WithGroup("g1"));
 
             if (sample % 3 == 0)
@@ -190,7 +218,8 @@ public class UnionFactoringTest
         // count*C(58,3) - C(count,2)*56. A hand can contain at most two pairs.
         // Denominator C(60,5)=5,461,512; no production Hall/DP helpers used.
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 5).TotalProbability,
-            Is.EqualTo((double)successes / 5461512).Within(1e-12));
+            Is.EqualTo((double)successes / 5461512).Within(1e-12)
+        );
     }
 
     private static void Check(List<Card> deck, List<Combo> combos, int handSize)
@@ -208,7 +237,8 @@ public class UnionFactoringTest
             Assert.That(result.ComboProbabilities[i].ComboName, Is.EqualTo(combos[i].Name));
             Assert.That(result.ComboProbabilities[i].GroupId, Is.EqualTo(combos[i].GroupId));
             Assert.That(result.ComboProbabilities[i].Probability,
-                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], handSize)).Within(1e-12));
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], handSize)).Within(1e-12)
+            );
         }
 
         foreach (GroupProbabilityResult group in result.GroupProbabilities!)
@@ -216,7 +246,8 @@ public class UnionFactoringTest
             List<Combo> members = [.. combos.Where(c => c.GroupId == group.GroupId)];
             Assert.That(group.ActiveComboCount, Is.EqualTo(members.Count));
             Assert.That(group.Probability,
-                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, members, handSize)).Within(1e-12));
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, members, handSize)).Within(1e-12)
+            );
         }
     }
 }

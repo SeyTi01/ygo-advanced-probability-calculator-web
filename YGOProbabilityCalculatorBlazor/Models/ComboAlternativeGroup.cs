@@ -15,7 +15,8 @@ public sealed class ComboAlternative
                 : kind != "Card" || card is null || category is not null)
         {
             throw new ArgumentException(
-                "An alternative must contain exactly one matching Category or Card requirement.");
+                "An alternative must contain exactly one matching Category or Card requirement."
+            );
         }
 
         Kind = kind;

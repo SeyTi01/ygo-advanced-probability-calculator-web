@@ -55,10 +55,11 @@ public class ProbabilityCalculatorServiceTest
         ];
 
         Combo combo = new([
-            new ComboCategory(categoryA, 0, handSize),
-            new ComboCategory(categoryB, 0, handSize),
-            new ComboCategory(categoryC, 0, handSize)
-        ]);
+                new ComboCategory(categoryA, 0, handSize),
+                new ComboCategory(categoryB, 0, handSize),
+                new ComboCategory(categoryC, 0, handSize)
+            ]
+        );
 
         double probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], handSize);
         Assert.That(probability, Is.EqualTo(1.0).Within(Tolerance));
@@ -84,9 +85,10 @@ public class ProbabilityCalculatorServiceTest
 
         Combo comboA = new([new ComboCategory(categoryA, 1, 1)]);
         Combo comboAb = new([
-            new ComboCategory(categoryA, 1, 1),
-            new ComboCategory(categoryB, 1, 1)
-        ]);
+                new ComboCategory(categoryA, 1, 1),
+                new ComboCategory(categoryB, 1, 1)
+            ]
+        );
 
         double probA = _probabilityCalculator.CalculateProbabilityForCombos(deck, [comboA], handSize);
         double probBoth = _probabilityCalculator.CalculateProbabilityForCombos(deck, [comboA, comboAb], handSize);
@@ -111,9 +113,10 @@ public class ProbabilityCalculatorServiceTest
 
         Combo combo1 = new([new ComboCategory(categoryA, 1, 1)]);
         Combo combo2 = new([
-            new ComboCategory(categoryB, 1, 1),
-            new ComboCategory(categoryC, 1, 1)
-        ]);
+                new ComboCategory(categoryB, 1, 1),
+                new ComboCategory(categoryC, 1, 1)
+            ]
+        );
 
         double probability = _probabilityCalculator.CalculateProbabilityForCombos(cards, [combo1, combo2], 2);
         Assert.That(probability, Is.EqualTo(0.5 + 1.0 / 6.0).Within(Tolerance));
@@ -133,9 +136,10 @@ public class ProbabilityCalculatorServiceTest
         ];
 
         Combo combo = new([
-            new ComboCategory(starterCat, 1, 1),
-            new ComboCategory(extenderCat, 1, 1)
-        ]);
+                new ComboCategory(starterCat, 1, 1),
+                new ComboCategory(extenderCat, 1, 1)
+            ]
+        );
 
         double probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], 2);
         // Only the two starter-only + extender-only hands meet both exact-one limits.
@@ -180,10 +184,11 @@ public class ProbabilityCalculatorServiceTest
         ];
 
         Combo combo = new([
-            new ComboCategory(starterCat, 1, handSize),
-            new ComboCategory(extenderCat, 1, handSize),
-            new ComboCategory(comboCat, 1, handSize)
-        ]);
+                new ComboCategory(starterCat, 1, handSize),
+                new ComboCategory(extenderCat, 1, handSize),
+                new ComboCategory(comboCat, 1, handSize)
+            ]
+        );
 
         double probability = _probabilityCalculator.CalculateProbabilityForCombos(deck, [combo], handSize);
         // Exhaustive physical-hand slot assignment: the four 3-subsets of the
@@ -222,7 +227,8 @@ public class ProbabilityCalculatorServiceTest
         Stopwatch timer = Stopwatch.StartNew();
         double actual = _probabilityCalculator.CalculateProbabilityForCombos(deck, combos, 5);
         TestContext.Out.WriteLine(
-            $"40 cards / {comboCount} duplicate combos: {timer.Elapsed.TotalMilliseconds:F1} ms; error {actual - 667.0 / 1976.0:E3}");
+            $"40 cards / {comboCount} duplicate combos: {timer.Elapsed.TotalMilliseconds:F1} ms; error {actual - 667.0 / 1976.0:E3}"
+        );
         // Wolfram: 1-C(37,5)/C(40,5), irrespective of duplicate count.
         Assert.That(actual, Is.EqualTo(667.0 / 1976.0).Within(Tolerance));
         Assert.That(double.IsFinite(actual) && actual is >= 0 and <= 1, Is.True);
@@ -236,7 +242,8 @@ public class ProbabilityCalculatorServiceTest
         int n,
         int h,
         double numerator,
-        double denominator)
+        double denominator
+    )
     {
         CategoryBase a = new("A"), b = new("B"), c = new("C"), d = new("D");
         List<Card> deck =
@@ -255,7 +262,8 @@ public class ProbabilityCalculatorServiceTest
         // backtracking physical-slot assignment and product-of-binomial weights.
         double expected = numerator / denominator;
         Assert.That(_probabilityCalculator.CalculateProbabilityForCombos(deck, combos, h),
-            Is.EqualTo(expected).Within(expected * Tolerance));
+            Is.EqualTo(expected).Within(expected * Tolerance)
+        );
     }
 
     [Test]
@@ -288,17 +296,22 @@ public class ProbabilityCalculatorServiceTest
         ProbabilityCalculationResult result = _probabilityCalculator.CalculateProbabilityResults(deck,
             combos,
             handSize,
-            [new("present", "Present"), new("absent", "Absent")]);
+            [new("present", "Present"), new("absent", "Absent")]
+        );
         Assert.Multiple(() =>
-        {
-            Assert.That(result.TotalProbability, Is.EqualTo(1));
-            Assert.That(result.ComboProbabilities.Select(c => c.Probability),
-                Is.EqualTo(new[] { expected, 1 - expected }).Within(Tolerance));
-            Assert.That(result.GroupProbabilities!.Select(g => g.Probability),
-                Is.EqualTo(new[] { expected, 1 - expected }).Within(Tolerance));
-            Assert.That(_probabilityCalculator.CalculateProbabilityForCombos(deck, [combos[0]], handSize),
-                Is.EqualTo(expected).Within(Tolerance));
-        });
+            {
+                Assert.That(result.TotalProbability, Is.EqualTo(1));
+                Assert.That(result.ComboProbabilities.Select(c => c.Probability),
+                    Is.EqualTo(new[] { expected, 1 - expected }).Within(Tolerance)
+                );
+                Assert.That(result.GroupProbabilities!.Select(g => g.Probability),
+                    Is.EqualTo(new[] { expected, 1 - expected }).Within(Tolerance)
+                );
+                Assert.That(_probabilityCalculator.CalculateProbabilityForCombos(deck, [combos[0]], handSize),
+                    Is.EqualTo(expected).Within(Tolerance)
+                );
+            }
+        );
     }
 
     [TestCase(1030, 3.496941992245984e-309)]
@@ -316,7 +329,8 @@ public class ProbabilityCalculatorServiceTest
         double actual = _probabilityCalculator.CalculateProbabilityForCombos(
             [new([a], hand), new([], hand)],
             [new([new(a, hand, hand)])],
-            hand);
+            hand
+        );
         Assert.That(actual, Is.EqualTo(expected));
     }
 
@@ -330,7 +344,8 @@ public class ProbabilityCalculatorServiceTest
         double actual = _probabilityCalculator.CalculateProbabilityForCombos(
             [new([a], 1000), new([], 100)],
             [new([new(a, 550, 550)])],
-            550);
+            550
+        );
         Assert.That(actual, Is.EqualTo(expected).Within(expected * Tolerance));
     }
 }

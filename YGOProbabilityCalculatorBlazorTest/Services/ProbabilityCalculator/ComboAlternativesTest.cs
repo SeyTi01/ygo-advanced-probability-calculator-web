@@ -16,7 +16,8 @@ public class ComboAlternativesTest
         CategoryBase c,
         int min = 1,
         int max = 5,
-        RequirementMaximumMode mode = RequirementMaximumMode.HandSize) =>
+        RequirementMaximumMode mode = RequirementMaximumMode.HandSize
+    ) =>
         ComboAlternative.For(new ComboCategory(c, min, max, mode));
 
     internal static ComboAlternative Direct(string id, int min = 1) =>
@@ -59,7 +60,8 @@ public class ComboAlternativesTest
             }
 
             TestContext.Out.WriteLine(
-                $"{name}: median {times.Order().ElementAt(5):F4} ms, {bytes.Order().ElementAt(5)} allocated bytes");
+                $"{name}: median {times.Order().ElementAt(5):F4} ms, {bytes.Order().ElementAt(5)} allocated bytes"
+            );
         }
     }
 
@@ -87,21 +89,24 @@ public class ComboAlternativesTest
         [Or(Cat(Fire, 2, 2, RequirementMaximumMode.Fixed), Cat(Dark, 2, 2, RequirementMaximumMode.Fixed))],
         2,
         2,
-        6);
+        6
+    );
 
     [Test]
     public void ZeroBoundsAreAUnionOfExclusions() => Verify([new([Fire]), new([Dark]), new([])],
         [Or(Cat(Fire, 0, 0, RequirementMaximumMode.Fixed), Cat(Dark, 0, 0, RequirementMaximumMode.Fixed))],
         2,
         2,
-        3);
+        3
+    );
 
     [Test]
     public void OverlappingBoundedAlternativesNeedSignedInclusionExclusion() => Verify(Deck(),
         [Or(Cat(Fire, 1, 1, RequirementMaximumMode.Fixed), Cat(Dark, 1, 1, RequirementMaximumMode.Fixed))],
         2,
         5,
-        6);
+        6
+    );
 
     [Test]
     public void MultipleMixedGroupsRepeatedKeysAndImpossibleBranchesMatchOracle()
@@ -140,29 +145,36 @@ public class ComboAlternativesTest
             new ProbabilityCalculatorService().CalculateProbabilityResults(deck,
                 [combo, second],
                 1,
-                [new("g", "Group")]);
+                [new("g", "Group")]
+            );
         Assert.Multiple(() =>
-        {
-            Assert.That(result.TotalProbability, Is.EqualTo(36d / 37).Within(1e-12));
-            Assert.That(result.ComboProbabilities.Select(c => c.ComboName),
-                Is.EqualTo(new[] { "Many alternatives", "Overlap" }));
-            Assert.That(result.ComboProbabilities.Select(c => c.Probability),
-                Is.EqualTo(new[] { 36d / 37, 2d / 37 }).Within(1e-12));
-            Assert.That(result.GroupProbabilities![0].ActiveComboCount, Is.EqualTo(2));
-            Assert.That(result.GroupProbabilities[0].Probability, Is.EqualTo(36d / 37).Within(1e-12));
-        });
+            {
+                Assert.That(result.TotalProbability, Is.EqualTo(36d / 37).Within(1e-12));
+                Assert.That(result.ComboProbabilities.Select(c => c.ComboName),
+                    Is.EqualTo(new[] { "Many alternatives", "Overlap" })
+                );
+                Assert.That(result.ComboProbabilities.Select(c => c.Probability),
+                    Is.EqualTo(new[] { 36d / 37, 2d / 37 }).Within(1e-12)
+                );
+                Assert.That(result.GroupProbabilities![0].ActiveComboCount, Is.EqualTo(2));
+                Assert.That(result.GroupProbabilities[0].Probability, Is.EqualTo(36d / 37).Within(1e-12));
+            }
+        );
     }
 
     [Test]
     public void ExpansionAndSharedWorkBudgetFailExplicitlyThenNextRequestSucceeds()
     {
         Combo large = new([],
-            alternativeGroups: Enumerable.Range(0, 16).Select(_ => new ComboAlternativeGroup([Cat(Fire), Cat(Dark)])));
+            alternativeGroups: Enumerable.Range(0, 16).Select(_ => new ComboAlternativeGroup([Cat(Fire), Cat(Dark)]))
+        );
         ProbabilityCalculatorService service = new();
         Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            service.CalculateProbabilityResults(Deck(), [large], 2));
+            service.CalculateProbabilityResults(Deck(), [large], 2)
+        );
         Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            service.CalculateProbabilityResults(Deck(), [Or(Cat(Fire), Cat(Dark))], 2, null, new(1)));
+            service.CalculateProbabilityResults(Deck(), [Or(Cat(Fire), Cat(Dark))], 2, null, new(1))
+        );
         Verify(Deck(), [Or(Cat(Fire), Cat(Dark))], 2, 6, 6);
     }
 
@@ -185,7 +197,8 @@ public class ComboAlternativesTest
         {
             Assert.That(expected,
                 Is.EqualTo((success.Value, total!.Value)),
-                "Independently enumerate the stated physical hands.");
+                "Independently enumerate the stated physical hands."
+            );
         }
 
         ProbabilityCalculationResult result =
@@ -195,7 +208,8 @@ public class ComboAlternativesTest
         for (int i = 0; i < combos.Count; i++)
         {
             Assert.That(result.ComboProbabilities[i].Probability,
-                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], hand)).Within(1e-12));
+                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[i]], hand)).Within(1e-12)
+            );
         }
     }
 }

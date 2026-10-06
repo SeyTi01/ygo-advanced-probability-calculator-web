@@ -65,6 +65,11 @@ resharper_condition_is_always_true_or_false_highlighting = none
 resharper_condition_is_always_true_or_false_according_to_nullable_api_contract_highlighting = none
 
 # Keep invocation arguments and formal parameters together or chop them one per line.
+# Keep long fluent chains compact until wrapping, with leading dots and aligned closures.
+resharper_csharp_wrap_chained_method_calls = chop_if_long
+resharper_csharp_wrap_after_dot_in_method_calls = false
+resharper_csharp_wrap_before_invocation_rpar = true
+resharper_csharp_wrap_before_declaration_rpar = true
 resharper_csharp_wrap_arguments_style = chop_if_long
 resharper_csharp_wrap_parameters_style = chop_if_long
 resharper_csharp_wrap_after_declaration_lpar = true

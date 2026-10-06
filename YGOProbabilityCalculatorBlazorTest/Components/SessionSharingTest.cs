@@ -36,10 +36,13 @@ public class SessionSharingTest
         context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
         context.Services.AddSingleton<IProbabilityCalculatorService, ProbabilityCalculatorService>();
         background = new();
-        background.Setup(x => x.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
+        background
+            .Setup(x => x.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
             .Returns((CalculationSnapshot snapshot, CancellationToken cancellation) =>
                 new BackgroundCalculatorTestAdapter(new ProbabilityCalculatorService()).CalculateAsync(snapshot,
-                    cancellation));
+                    cancellation
+                )
+            );
         context.Services.AddSingleton(background.Object);
         context.Services.AddSingleton(Mock.Of<IDeckImportService>());
         context.Services.AddSingleton(Mock.Of<ICardArtworkService>());
@@ -63,11 +66,13 @@ public class SessionSharingTest
     private string Link(SessionState session) =>
         SessionShareCodec.CreateLink(navigation.BaseUri, sessions.SerializeSession(session));
 
-    private void Recovery(string name = "Recovered") => context.JSInterop
+    private void Recovery(string name = "Recovered") => context
+        .JSInterop
         .Setup<SessionRecovery.Inspection?>("sessionRecovery.initialize", _ => true)
         .SetResult(new() { Exists = true, Payload = sessions.SerializeSession(Session(name)) });
 
-    private static IElement Button(IRenderedFragment cut, string text) => cut.FindAll("button")
+    private static IElement Button(IRenderedFragment cut, string text) => cut
+        .FindAll("button")
         .Single(x => x.TextContent.Trim().EndsWith(text, StringComparison.Ordinal));
 
     private static string Snapshot(IRenderedComponent<ProbabilityCalculatorComponent> cut) =>
@@ -78,12 +83,15 @@ public class SessionSharingTest
     private Task LoadFile(IRenderedComponent<ProbabilityCalculatorComponent> cut, string json)
     {
         Mock<IBrowserFile> file = new();
-        file.Setup(x => x.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+        file
+            .Setup(x => x.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(() => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json)));
 
         return cut.InvokeAsync(() =>
-            cut.FindComponents<InputFile>()[1].Instance.OnChange
-                .InvokeAsync(new InputFileChangeEventArgs([file.Object])));
+            cut.FindComponents<InputFile>()[1]
+                .Instance.OnChange
+                .InvokeAsync(new InputFileChangeEventArgs([file.Object]))
+        );
     }
 
     [Test]
@@ -99,13 +107,16 @@ public class SessionSharingTest
         Assert.That(Writes, Is.Zero);
         TaskCompletionSource<string> queued =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
-        context.JSInterop.SetupVoid("sessionRecovery.update",
-            invocation =>
-            {
-                queued.TrySetResult((string)invocation.Arguments[2]!);
+        context
+            .JSInterop.SetupVoid("sessionRecovery.update",
+                invocation =>
+                {
+                    queued.TrySetResult((string)invocation.Arguments[2]!);
 
-                return true;
-            }).SetVoidResult();
+                    return true;
+                }
+            )
+            .SetVoidResult();
         await Button(cut, "Load shared session").ClickAsync(new());
         string bytes = await queued.Task.WaitAsync(TimeSpan.FromSeconds(1));
         Assert.That(bytes, Is.EqualTo(sessions.SerializeSession(Session())));
@@ -170,13 +181,15 @@ public class SessionSharingTest
         IRenderedComponent<ProbabilityCalculatorComponent> cut = host.FindComponent<ProbabilityCalculatorComponent>();
         TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        enricher.Setup(x => x.EnrichAsync(It.Is<SessionState>(s => s.Cards[0].Name == "Old link")))
+        enricher
+            .Setup(x => x.EnrichAsync(It.Is<SessionState>(s => s.Cards[0].Name == "Old link")))
             .Returns(() =>
-            {
-                started.SetResult();
+                {
+                    started.SetResult();
 
-                return completion.Task;
-            });
+                    return completion.Task;
+                }
+            );
         Task loading = Button(cut, "Load shared session").ClickAsync(new());
         await started.Task.WaitAsync(TimeSpan.FromSeconds(1));
         Assert.That(cut.FindComponents<CardEditor>(), Is.Empty);
@@ -197,7 +210,9 @@ public class SessionSharingTest
             case "file":
                 cut.FindComponents<InputFile>()[1]
                     .UploadFiles(InputFileContent.CreateFromText(sessions.SerializeSession(Session("File")),
-                        "session.json")); break;
+                            "session.json"
+                        )
+                    ); break;
             case "recovery": await Button(cut, "Restore previous session").ClickAsync(new()); break;
             case "dismiss": await Button(cut, "Dismiss shared link").ClickAsync(new()); break;
             case "dispose": host.SetParametersAndRender(p => p.Add(x => x.Visible, false)); break;
@@ -240,12 +255,15 @@ public class SessionSharingTest
             context.RenderComponent<ProbabilityCalculatorComponent>();
         TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(() =>
-        {
-            started.TrySetResult();
+        enricher
+            .Setup(x => x.EnrichAsync(It.IsAny<SessionState>()))
+            .Returns(() =>
+                {
+                    started.TrySetResult();
 
-            return completion.Task;
-        });
+                    return completion.Task;
+                }
+            );
         Task file = LoadFile(cut, sessions.SerializeSession(Session("Old file")));
         await started.Task.WaitAsync(TimeSpan.FromSeconds(1));
         await cut.InvokeAsync(() => navigation.NavigateTo(Link(Session())));
@@ -317,13 +335,15 @@ public class SessionSharingTest
         TaskCompletionSource<ProbabilityCalculationResult> result =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken token = default;
-        background.Setup(x => x.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
+        background
+            .Setup(x => x.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
             .Returns((CalculationSnapshot _, CancellationToken cancellation) =>
-            {
-                token = cancellation;
+                {
+                    token = cancellation;
 
-                return result.Task;
-            });
+                    return result.Task;
+                }
+            );
         IRenderedComponent<ProbabilityCalculatorComponent> cut =
             context.RenderComponent<ProbabilityCalculatorComponent>();
         Task calculation = Button(cut, "Calculate").ClickAsync(new());
@@ -365,7 +385,8 @@ public class SessionSharingTest
         string snapshot = sessions.SerializeSession(Session());
         IRenderedComponent<SessionShareButton> cut =
             context.RenderComponent<SessionShareButton>(p =>
-                p.Add(x => x.Snapshot, snapshot).Add(x => x.Capture, () => snapshot));
+                p.Add(x => x.Snapshot, snapshot).Add(x => x.Capture, () => snapshot)
+            );
         Task copy = Button(cut, "Copy share link").ClickAsync(new());
         snapshot = sessions.SerializeSession(Session("Newer accepted state"));
         cut.SetParametersAndRender(p => p.Add(x => x.Snapshot, snapshot));
@@ -381,7 +402,8 @@ public class SessionSharingTest
         string snapshot = new('a', SessionShareCodec.MaxJsonBytes + 1);
         IRenderedComponent<SessionShareButton> cut =
             context.RenderComponent<SessionShareButton>(p =>
-                p.Add(x => x.Snapshot, snapshot).Add(x => x.Capture, () => snapshot));
+                p.Add(x => x.Snapshot, snapshot).Add(x => x.Capture, () => snapshot)
+            );
         await Button(cut, "Copy share link").ClickAsync(new());
         Assert.That(cut.Markup, Does.Contain("Share a normal session file instead"));
         Assert.That(context.JSInterop.Invocations["sessionSharing.copy"], Is.Empty);
@@ -405,13 +427,16 @@ public class SessionSharingTest
         }
 
         TaskCompletionSource saved = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        context.JSInterop.SetupVoid("sessionRecovery.update",
-            _ =>
-            {
-                saved.TrySetResult();
+        context
+            .JSInterop.SetupVoid("sessionRecovery.update",
+                _ =>
+                {
+                    saved.TrySetResult();
 
-                return true;
-            }).SetVoidResult();
+                    return true;
+                }
+            )
+            .SetVoidResult();
         CategoryBase role = new("Role");
         context.Services.GetRequiredService<IPendingSessionService>().PendingSession = new()
         {
@@ -468,9 +493,12 @@ public class SessionSharingTest
             Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current, Is.Not.Null);
             Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!.Total, Is.EqualTo(currentTotal));
             Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!.Context, Is.EqualTo(currentContext));
-            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!.Context.Combos
-                    .Select(row => (row.Lineage, row.Signature)).ToArray(),
-                Is.EqualTo(currentComboDefinitions));
+            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!
+                    .Context.Combos
+                    .Select(row => (row.Lineage, row.Signature))
+                    .ToArray(),
+                Is.EqualTo(currentComboDefinitions)
+            );
             Assert.That(CurrentRows(cut), Is.EqualTo(currentRows));
             Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pin));
             AssertPinnedValues(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, pinnedValues);
@@ -508,11 +536,13 @@ public class SessionSharingTest
         int history = ((FakeNavigationManager)navigation).History.Count;
         IElement incoming = cut.Find("[aria-label='Shared session']");
         Assert.That(incoming.QuerySelector("[role='status']")!.TextContent,
-            Is.EqualTo("A shared session is available."));
+            Is.EqualTo("A shared session is available.")
+        );
         await Button(cut, "Copy share link").ClickAsync(new());
         Assert.That(cut.FindAll("[aria-label='Shared session']"), Has.Count.EqualTo(1));
         Assert.That(cut.Find("[aria-label='Shared session'] [role='status']").TextContent,
-            Is.EqualTo("A shared session is available."));
+            Is.EqualTo("A shared session is available.")
+        );
         Assert.That(Button(cut, "Load shared session").HasAttribute("disabled"), Is.False);
         Assert.That(navigation.Uri, Is.EqualTo(uri));
         Assert.That(((FakeNavigationManager)navigation).History, Has.Count.EqualTo(history));
@@ -542,19 +572,23 @@ public class SessionSharingTest
         context.JSInterop.Setup<bool>("sessionSharing.copy", _ => true).SetResult(true);
         await Button(cut, "Copy share link").ClickAsync(new());
         Assert.That(cut.Find("[aria-label='Shared session'] [role='status']").TextContent,
-            Is.EqualTo("A shared session is available."));
+            Is.EqualTo("A shared session is available.")
+        );
         Assert.That(Button(cut, "Load shared session").HasAttribute("disabled"), Is.False);
         Assert.That(Snapshot(cut), Is.Not.EqualTo(incomingJson));
 
         TaskCompletionSource<string> saved =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
-        context.JSInterop.SetupVoid("sessionRecovery.update",
-            invocation =>
-            {
-                saved.TrySetResult((string)invocation.Arguments[2]!);
+        context
+            .JSInterop.SetupVoid("sessionRecovery.update",
+                invocation =>
+                {
+                    saved.TrySetResult((string)invocation.Arguments[2]!);
 
-                return true;
-            }).SetVoidResult();
+                    return true;
+                }
+            )
+            .SetVoidResult();
         await Button(cut, "Load shared session").ClickAsync(new());
         string applied = await saved.Task.WaitAsync(TimeSpan.FromSeconds(1));
 
@@ -574,7 +608,8 @@ public class SessionSharingTest
     [TestCase(false, "dispose")]
     public async Task DelayedCopyCompletionDoesNotOwnIncomingNavigationOrResurrectConsumedOffers(
         bool success,
-        string action)
+        string action
+    )
     {
         Recovery();
         TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -584,7 +619,8 @@ public class SessionSharingTest
                 started.TrySetResult();
 
                 return true;
-            });
+            }
+        );
         IRenderedComponent<SharingHost> host = context.RenderComponent<SharingHost>(p => p.Add(x => x.Visible, true));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = host.FindComponent<ProbabilityCalculatorComponent>();
         string before = Snapshot(cut);
@@ -673,33 +709,44 @@ public class SessionSharingTest
         double Total,
         string Description,
         (int Index, string Label, double Probability, string? GroupId, Guid? Lineage, string? Signature)[] Combos,
-        (string Id, string Label, double Probability, int ActiveCount)[] Groups);
+        (string Id, string Label, double Probability, int ActiveCount)[] Groups
+    );
 
     private static ResultObservation[] CurrentRows(IRenderedFragment cut) =>
     [
-        .. cut.FindAll(".combo-probability-item")
+        .. cut
+            .FindAll(".combo-probability-item")
             .Select(row => new ResultObservation(row.QuerySelector(".combo-probability-name")!.TextContent.Trim(),
-                row.QuerySelector(".combo-probability-value")!.TextContent.Trim(),
-                row.QuerySelector(".result-row-comparison")?.TextContent.Trim()))
+                    row.QuerySelector(".combo-probability-value")!.TextContent.Trim(),
+                    row.QuerySelector(".result-row-comparison")?.TextContent.Trim()
+                )
+            )
     ];
 
     private static PinnedObservation PinnedValues(PinnedResultSnapshot pin) => new(pin.Total,
         pin.Context.Description,
         [
             .. pin.Combos.Select(row => (row.Index, row.Label, row.Probability, row.GroupId, row.Definition?.Lineage,
-                row.Definition?.Signature))
+                row.Definition?.Signature)
+            )
         ],
-        [.. pin.Groups.Select(row => (row.Id, row.Label, row.Probability, row.ActiveCount))]);
+        [.. pin.Groups.Select(row => (row.Id, row.Label, row.Probability, row.ActiveCount))]
+    );
 
     private static void AssertPinnedValues(PinnedResultSnapshot actual, PinnedObservation expected)
     {
         Assert.That(actual.Total, Is.EqualTo(expected.Total));
         Assert.That(actual.Context.Description, Is.EqualTo(expected.Description));
-        Assert.That(actual.Combos.Select(row => (row.Index, row.Label, row.Probability, row.GroupId,
-                row.Definition?.Lineage, row.Definition?.Signature)).ToArray(),
-            Is.EqualTo(expected.Combos));
+        Assert.That(actual
+                .Combos.Select(row => (row.Index, row.Label, row.Probability, row.GroupId,
+                    row.Definition?.Lineage, row.Definition?.Signature)
+                )
+                .ToArray(),
+            Is.EqualTo(expected.Combos)
+        );
         Assert.That(actual.Groups.Select(row => (row.Id, row.Label, row.Probability, row.ActiveCount)).ToArray(),
-            Is.EqualTo(expected.Groups));
+            Is.EqualTo(expected.Groups)
+        );
     }
 
     public sealed class SharingHost : ComponentBase

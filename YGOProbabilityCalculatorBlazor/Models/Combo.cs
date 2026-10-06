@@ -6,17 +6,24 @@ public class Combo(
     bool active = true,
     string? groupId = null,
     IEnumerable<ComboCard>? cards = null,
-    IEnumerable<ComboAlternativeGroup>? alternativeGroups = null)
+    IEnumerable<ComboAlternativeGroup>? alternativeGroups = null
+)
 {
     public List<ComboCategory> Categories { get; } = [.. categories];
     public List<ComboCard> Cards { get; } = cards?.ToList() ?? [];
     public List<ComboAlternativeGroup> AlternativeGroups { get; } = alternativeGroups?.ToList() ?? [];
 
     public IEnumerable<ComboCategory> AllCategories => Categories.Concat(AlternativeGroups
-        .SelectMany(g => g.Alternatives).Where(a => a.Category is not null).Select(a => a.Category!));
+        .SelectMany(g => g.Alternatives)
+        .Where(a => a.Category is not null)
+        .Select(a => a.Category!)
+    );
 
-    public IEnumerable<ComboCard> AllCards => Cards.Concat(AlternativeGroups.SelectMany(g => g.Alternatives)
-        .Where(a => a.Card is not null).Select(a => a.Card!));
+    public IEnumerable<ComboCard> AllCards => Cards.Concat(AlternativeGroups
+        .SelectMany(g => g.Alternatives)
+        .Where(a => a.Card is not null)
+        .Select(a => a.Card!)
+    );
 
     public int RequirementCount => Categories.Count + Cards.Count + AlternativeGroups.Count;
 

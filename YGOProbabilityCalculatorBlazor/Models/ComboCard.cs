@@ -14,7 +14,8 @@ public class ComboCard
         string cardId,
         int minCount,
         int maxCount,
-        RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed)
+        RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed
+    )
     {
         if (! Enum.IsDefined(maximumMode))
         {

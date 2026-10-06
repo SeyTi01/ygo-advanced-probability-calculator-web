@@ -19,7 +19,8 @@ public sealed record PinnedCalculationContext(
     int CardCount,
     string DeckDefinition,
     ImmutableArray<PinnedComboDefinition> Combos,
-    ImmutableDictionary<string, PinnedGroupDefinition> Groups)
+    ImmutableDictionary<string, PinnedGroupDefinition> Groups
+)
 {
     public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards";
 
@@ -30,49 +31,76 @@ public sealed record PinnedCalculationContext(
         IReadOnlyList<Combo> combos,
         IReadOnlyList<ComboGroup> groups,
         Func<Combo, Guid> comboLineage,
-        Func<string, Guid> groupLineage)
+        Func<string, Guid> groupLineage
+    )
     {
         // Sorted structured JSON avoids delimiter collisions; repeated constraints remain repeated.
         // Counts/active flags are deck context. Category membership is part of a route definition.
         string AlternativeSignature(ComboAlternative a) => a.Category is { } c
             ? Pack([
-                "category", c.BaseCategory.Identity, Number(c.MinCount), c.MaximumMode.ToString(),
-                Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0),
-                Pack(cards.Where(card => card.Categories.Any(x => x.Identity == c.BaseCategory.Identity))
-                    .Select(card => card.Id).Order(StringComparer.Ordinal))
-            ])
+                    "category", c.BaseCategory.Identity, Number(c.MinCount), c.MaximumMode.ToString(),
+                    Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0),
+                    Pack(cards
+                        .Where(card => card.Categories.Any(x => x.Identity == c.BaseCategory.Identity))
+                        .Select(card => card.Id)
+                        .Order(StringComparer.Ordinal)
+                    )
+                ]
+            )
             : Pack([
-                "card", a.Card!.CardId, Number(a.Card.MinCount), a.Card.MaximumMode.ToString(),
-                Number(a.Card.MaximumMode == RequirementMaximumMode.Fixed ? a.Card.MaxCount : 0)
-            ]);
+                    "card", a.Card!.CardId, Number(a.Card.MinCount), a.Card.MaximumMode.ToString(),
+                    Number(a.Card.MaximumMode == RequirementMaximumMode.Fixed ? a.Card.MaxCount : 0)
+                ]
+            );
 
         string Signature(Combo combo) => Pack([
-            combo.GroupId ?? "",
-            Pack(combo.Categories.Select(c => Pack([
-                "category", c.BaseCategory.Identity, Number(c.MinCount),
-                c.MaximumMode.ToString(), Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0),
-                Pack(cards.Where(card => card.Categories.Any(x => x.Identity == c.BaseCategory.Identity))
-                    .Select(card => card.Id).Order(StringComparer.Ordinal))
-            ])).Order(StringComparer.Ordinal)),
-            Pack(combo.Cards.Select(c => Pack([
-                "card", c.CardId, Number(c.MinCount), c.MaximumMode.ToString(),
-                Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0)
-            ])).Order(StringComparer.Ordinal)),
-            Pack(combo.AlternativeGroups
-                .Select(g => Pack(g.Alternatives.Select(AlternativeSignature).Order(StringComparer.Ordinal)))
-                .Order(StringComparer.Ordinal))
-        ]);
+                combo.GroupId ?? "",
+                Pack(combo
+                    .Categories.Select(c => Pack([
+                                "category", c.BaseCategory.Identity, Number(c.MinCount),
+                                c.MaximumMode.ToString(),
+                                Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0),
+                                Pack(cards
+                                    .Where(card => card.Categories.Any(x => x.Identity == c.BaseCategory.Identity))
+                                    .Select(card => card.Id)
+                                    .Order(StringComparer.Ordinal)
+                                )
+                            ]
+                        )
+                    )
+                    .Order(StringComparer.Ordinal)
+                ),
+                Pack(combo
+                    .Cards.Select(c => Pack([
+                                "card", c.CardId, Number(c.MinCount), c.MaximumMode.ToString(),
+                                Number(c.MaximumMode == RequirementMaximumMode.Fixed ? c.MaxCount : 0)
+                            ]
+                        )
+                    )
+                    .Order(StringComparer.Ordinal)
+                ),
+                Pack(combo
+                    .AlternativeGroups
+                    .Select(g => Pack(g.Alternatives.Select(AlternativeSignature).Order(StringComparer.Ordinal)))
+                    .Order(StringComparer.Ordinal)
+                )
+            ]
+        );
 
         Combo[] active = [.. combos.Where(c => c.Active)];
         ImmutableArray<PinnedComboDefinition> definitions =
             [.. active.Select(c => new PinnedComboDefinition(comboLineage(c), Signature(c)))];
         ImmutableDictionary<string, PinnedGroupDefinition> groupDefinitions = groups.ToImmutableDictionary(g => g.Id,
             g => new PinnedGroupDefinition(groupLineage(g.Id),
-                Pack(active.Select((c, i) => (Combo: c, Definition: definitions[i]))
+                Pack(active
+                    .Select((c, i) => (Combo: c, Definition: definitions[i]))
                     .Where(x => x.Combo.GroupId == g.Id)
                     .Select(x => Pack([x.Definition.Lineage.ToString("N"), x.Definition.Signature]))
-                    .Order(StringComparer.Ordinal))),
-            StringComparer.Ordinal);
+                    .Order(StringComparer.Ordinal)
+                )
+            ),
+            StringComparer.Ordinal
+        );
         Card[] deck = [.. cards.Where(c => c.Active).OrderBy(c => c.Id, StringComparer.Ordinal)];
 
         return new(epoch,
@@ -80,11 +108,15 @@ public sealed record PinnedCalculationContext(
             deck.Sum(c => c.Copies),
             deck.Length,
             Pack(deck.Select(c => Pack([
-                c.Id, c.Name ?? "", Number(c.Copies),
-                Pack(c.Categories.Select(x => x.Identity).Order(StringComparer.Ordinal))
-            ]))),
+                            c.Id, c.Name ?? "", Number(c.Copies),
+                            Pack(c.Categories.Select(x => x.Identity).Order(StringComparer.Ordinal))
+                        ]
+                    )
+                )
+            ),
             definitions,
-            groupDefinitions);
+            groupDefinitions
+        );
     }
 
     private static string Number(int value) => value.ToString(CultureInfo.InvariantCulture);
@@ -101,14 +133,16 @@ public sealed record PinnedComboRow(
     string Label,
     double Probability,
     string? GroupId,
-    PinnedComboDefinition? Definition);
+    PinnedComboDefinition? Definition
+);
 
 public sealed record PinnedGroupRow(
     string Id,
     string Label,
     double Probability,
     int ActiveCount,
-    PinnedGroupDefinition? Definition);
+    PinnedGroupDefinition? Definition
+);
 
 public sealed record PinnedResultDifference(decimal RoundedPercentagePoints, string Text)
 {
@@ -133,7 +167,8 @@ public sealed record PinnedResultSnapshot(
     PinnedCalculationContext Context,
     double Total,
     ImmutableArray<PinnedComboRow> Combos,
-    ImmutableArray<PinnedGroupRow> Groups)
+    ImmutableArray<PinnedGroupRow> Groups
+)
 {
     public static PinnedResultSnapshot Capture(PinnedCalculationContext context, ProbabilityCalculationResult result) =>
         new(
@@ -141,20 +176,25 @@ public sealed record PinnedResultSnapshot(
             result.TotalProbability,
             [
                 .. result.ComboProbabilities.Select(c => new PinnedComboRow(c.ComboIndex,
-                    string.IsNullOrWhiteSpace(c.ComboName) ? $"Unnamed combo {c.ComboIndex + 1}" : c.ComboName,
-                    c.Probability,
-                    c.GroupId,
-                    c.ComboIndex >= 0 && c.ComboIndex < context.Combos.Length
-                        ? context.Combos[c.ComboIndex]
-                        : null))
+                        string.IsNullOrWhiteSpace(c.ComboName) ? $"Unnamed combo {c.ComboIndex + 1}" : c.ComboName,
+                        c.Probability,
+                        c.GroupId,
+                        c.ComboIndex >= 0 && c.ComboIndex < context.Combos.Length
+                            ? context.Combos[c.ComboIndex]
+                            : null
+                    )
+                )
             ],
             [
                 .. (result.GroupProbabilities ?? []).Select(g => new PinnedGroupRow(g.GroupId,
-                    g.GroupName,
-                    g.Probability,
-                    g.ActiveComboCount,
-                    context.Groups.GetValueOrDefault(g.GroupId)))
-            ]);
+                        g.GroupName,
+                        g.Probability,
+                        g.ActiveComboCount,
+                        context.Groups.GetValueOrDefault(g.GroupId)
+                    )
+                )
+            ]
+        );
 
     public bool IsValid =>
         Valid(Total) && Combos.All(c => Valid(c.Probability)) && Groups.All(g => Valid(g.Probability));
@@ -166,7 +206,8 @@ public sealed record PinnedResultSnapshot(
     public PinnedResultComparison CompareComboPresentation(
         PinnedComboRow row,
         PinnedResultSnapshot other,
-        bool currentSide)
+        bool currentSide
+    )
     {
         if (Context.Epoch != other.Context.Epoch)
         {
@@ -197,7 +238,8 @@ public sealed record PinnedResultSnapshot(
     public PinnedResultComparison CompareGroupPresentation(
         PinnedGroupRow row,
         PinnedResultSnapshot other,
-        bool currentSide)
+        bool currentSide
+    )
     {
         if (Context.Epoch != other.Context.Epoch)
         {

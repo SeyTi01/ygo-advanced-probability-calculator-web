@@ -63,29 +63,40 @@ public class LegacyCardMetadataEnricherTest
         await new LegacyCardMetadataEnricher(metadata.Object).EnrichAsync(session);
 
         metadata.Verify(service => service.GetCardInfoByExactNamesAsync(It.Is<IEnumerable<string>>(names =>
-                names.SequenceEqual(new[] { Ash.Name, Maxx.Name, "My Custom Card" }))),
-            Times.Once);
+                    names.SequenceEqual(new[] { Ash.Name, Maxx.Name, "My Custom Card" })
+                )
+            ),
+            Times.Once
+        );
         Assert.That(session.Cards.Select(card => (card.Id, card.Name, card.Copies, card.Active)),
-            Is.EqualTo(originalCards.Select(card => (card.Id, card.Name, card.Copies, card.Active))));
+            Is.EqualTo(originalCards.Select(card => (card.Id, card.Name, card.Copies, card.Active)))
+        );
 
         for (int i = 0; i < originalCards.Length; i++)
         {
             Assert.That(session.Cards[i].Categories.Where(category => category.Source == CategorySource.User),
-                Is.EqualTo(originalCards[i].Categories));
+                Is.EqualTo(originalCards[i].Categories)
+            );
         }
 
         Assert.That(session.Categories, Is.EqualTo(originalCategories));
         Assert.That(session.Combos, Is.EqualTo(originalCombos));
         Assert.That(session.ComboGroups, Is.EqualTo(originalGroups));
         Assert.That(session.CategoryColorIndices,
-            Is.EquivalentTo(new Dictionary<string, int> { ["Monster"] = 3, ["Starter"] = 1 }));
+            Is.EquivalentTo(new Dictionary<string, int> { ["Monster"] = 3, ["Starter"] = 1 })
+        );
         Assert.That(session.Cards.Select(card => card.ExternalCardId),
-            Is.EqualTo(new int?[] { Ash.Id, Maxx.Id, Ash.Id, null }));
-        Assert.That(session.Cards[0].Categories.Where(category => category.Name == "Monster")
+            Is.EqualTo(new int?[] { Ash.Id, Maxx.Id, Ash.Id, null })
+        );
+        Assert.That(session
+                .Cards[0]
+                .Categories.Where(category => category.Name == "Monster")
                 .Select(category => category.Source),
-            Is.EqualTo(new[] { CategorySource.User, CategorySource.Metadata }));
+            Is.EqualTo(new[] { CategorySource.User, CategorySource.Metadata })
+        );
         Assert.That(session.Cards[0].Categories.Select(category => category.Identity).Distinct().Count(),
-            Is.EqualTo(session.Cards[0].Categories.Count));
+            Is.EqualTo(session.Cards[0].Categories.Count)
+        );
         Assert.That(session.Cards[3], Is.SameAs(originalCards[3]));
         List<Card> enrichedActive = [.. session.Cards.Where(card => card.Active)];
         double oracleAfter = SmallDeckOracle.EnumerateProbability(enrichedActive, session.Combos, session.HandSize);
@@ -95,24 +106,31 @@ public class LegacyCardMetadataEnricherTest
         Assert.That(before.TotalProbability, Is.EqualTo(oracleBefore).Within(1e-12));
         Assert.That(after.TotalProbability, Is.EqualTo(oracleAfter).Within(1e-12));
         Assert.That(after.ComboProbabilities.Select(result => result.Probability),
-            Is.EqualTo(before.ComboProbabilities.Select(result => result.Probability)));
+            Is.EqualTo(before.ComboProbabilities.Select(result => result.Probability))
+        );
         Assert.That(after.GroupProbabilities!.Select(result => result.Probability),
-            Is.EqualTo(before.GroupProbabilities!.Select(result => result.Probability)));
+            Is.EqualTo(before.GroupProbabilities!.Select(result => result.Probability))
+        );
 
         await sessions.SaveSessionAsync(session, "enriched.json");
         using JsonDocument saved = JsonDocument.Parse(js.Json);
         Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(),
-            Is.EqualTo(SessionState.CurrentSchemaVersion));
+            Is.EqualTo(SessionState.CurrentSchemaVersion)
+        );
         SessionState reloaded = await sessions.LoadSessionAsync(js.Json);
         Mock<ICardInfoService> offline = new(MockBehavior.Strict);
         // The custom card still gets a best-effort attempt; even a thrown lookup cannot lose saved memberships.
         await new LegacyCardMetadataEnricher(offline.Object).EnrichAsync(reloaded);
         offline.Verify(service => service.GetCardInfoByExactNamesAsync(It.Is<IEnumerable<string>>(names =>
-                names.SequenceEqual(new[] { "My Custom Card" }))),
-            Times.Once);
+                    names.SequenceEqual(new[] { "My Custom Card" })
+                )
+            ),
+            Times.Once
+        );
         Assert.That(reloaded.Cards[0].ExternalCardId, Is.EqualTo(Ash.Id));
         Assert.That(reloaded.Cards[0].Categories.Select(category => category.Identity),
-            Is.EqualTo(session.Cards[0].Categories.Select(category => category.Identity)));
+            Is.EqualTo(session.Cards[0].Categories.Select(category => category.Identity))
+        );
     }
 
     [Test]
@@ -120,8 +138,10 @@ public class LegacyCardMetadataEnricherTest
     {
         SessionService sessions = new(new CaptureJs(), new Serializer());
         string source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory,
-            "Fixtures",
-            "legacy_v1_2_example_session.json"));
+                "Fixtures",
+                "legacy_v1_2_example_session.json"
+            )
+        );
         SessionState session = await sessions.LoadSessionAsync(source);
         string original = JsonSerializer.Serialize(session);
         Card[] originalCards = [.. session.Cards];
@@ -135,15 +155,19 @@ public class LegacyCardMetadataEnricherTest
                     card.Copies,
                     card.Name,
                     card.Active,
-                    card.Id))
+                    card.Id
+                )
+            )
         ];
         Assert.That(JsonSerializer.Serialize(new SessionState
-            {
-                Cards = restoredCards, Categories = session.Categories,
-                Combos = session.Combos, ComboGroups = session.ComboGroups, HandSize = session.HandSize,
-                CategoryColorIndices = session.CategoryColorIndices
-            }),
-            Is.EqualTo(original));
+                {
+                    Cards = restoredCards, Categories = session.Categories,
+                    Combos = session.Combos, ComboGroups = session.ComboGroups, HandSize = session.HandSize,
+                    CategoryColorIndices = session.CategoryColorIndices
+                }
+            ),
+            Is.EqualTo(original)
+        );
         Assert.That(session.Cards.Select(card => card.Id), Is.EqualTo(originalCards.Select(card => card.Id)));
     }
 
@@ -153,11 +177,13 @@ public class LegacyCardMetadataEnricherTest
         Card card = new([], 3, Ash.Name, active: false);
         SessionState session = new() { Cards = [card] };
         Mock<ICardInfoService> wrong = MatchingService(Maxx);
-        wrong.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+        wrong
+            .Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(new Dictionary<string, CardInfo> { [Ash.Name] = Maxx });
         await new LegacyCardMetadataEnricher(wrong.Object).EnrichAsync(session);
         Assert.That(session.Cards[0], Is.SameAs(card));
-        wrong.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+        wrong
+            .Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ThrowsAsync(new HttpRequestException("Offline"));
         await new LegacyCardMetadataEnricher(wrong.Object).EnrichAsync(session);
         Assert.That(session.Cards[0], Is.SameAs(card));
@@ -167,29 +193,40 @@ public class LegacyCardMetadataEnricherTest
     public async Task CompleteBundledExampleIsCurrentSchemaAndRequiresNoMetadataServiceOrApi()
     {
         string source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory,
-            "Fixtures",
-            "example_session_state.json"));
+                "Fixtures",
+                "example_session_state.json"
+            )
+        );
         using JsonDocument document = JsonDocument.Parse(source);
         Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(),
-            Is.EqualTo(SessionState.CurrentSchemaVersion));
+            Is.EqualTo(SessionState.CurrentSchemaVersion)
+        );
         SessionState session = await new SessionService(new CaptureJs(), new Serializer()).LoadSessionAsync(source);
         Assert.That(session.Cards, Has.Count.EqualTo(25));
         Assert.That(session.Categories.Select(category => category.Name),
-            Is.EqualTo(new[] { "VS Monster", "VS Starter", "K9 Starter" }));
+            Is.EqualTo(new[] { "VS Monster", "VS Starter", "K9 Starter" })
+        );
         Assert.That(session.Cards.All(card =>
                 card.ExternalCardId is > 0 &&
-                card.Categories.Any(category => category.Source == CategorySource.Metadata)),
-            Is.True);
+                card.Categories.Any(category => category.Source == CategorySource.Metadata)
+            ),
+            Is.True
+        );
         Assert.That(session.Combos, Has.Count.EqualTo(8));
         Assert.That(session.HandSize, Is.EqualTo(5));
         Card ash = session.Cards.Single(card => card.Name == Ash.Name);
         Assert.That(ash.ExternalCardId, Is.EqualTo(Ash.Id));
         Assert.That(ash.Categories.Select(category => category.Identity),
-            Does.Contain("metadata:monster-trait:tuner").And.Contain("metadata:attribute:fire").And.Not
-                .Contain("user:Fire"));
+            Does
+                .Contain("metadata:monster-trait:tuner")
+                .And.Contain("metadata:attribute:fire")
+                .And.Not
+                .Contain("user:Fire")
+        );
         Card spell = session.Cards.Single(card => card.Name == "K9-X Forced Release");
         Assert.That(spell.Categories.Select(category => category.Identity),
-            Does.Contain("metadata:kind:spell").And.Contain("metadata:spell-type:quick-play"));
+            Does.Contain("metadata:kind:spell").And.Contain("metadata:spell-type:quick-play")
+        );
         Mock<ICardInfoService> offline = new(MockBehavior.Strict);
         await new LegacyCardMetadataEnricher(offline.Object).EnrichAsync(session);
         offline.VerifyNoOtherCalls();
@@ -198,7 +235,8 @@ public class LegacyCardMetadataEnricherTest
     private static Mock<ICardInfoService> MatchingService(params CardInfo[] cards)
     {
         Mock<ICardInfoService> service = new();
-        service.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+        service
+            .Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(cards.ToDictionary(card => card.Name, StringComparer.Ordinal));
 
         return service;
@@ -218,15 +256,20 @@ public class LegacyCardMetadataEnricherTest
         await new LegacyCardMetadataEnricher(service.Object).EnrichAsync(session);
         service.Verify(s =>
                 s.GetCardInfoByExactNamesAsync(It.Is<IEnumerable<string>>(names =>
-                    names.SequenceEqual(new[] { Ash.Name }))),
-            Times.Once);
+                        names.SequenceEqual(new[] { Ash.Name })
+                    )
+                ),
+            Times.Once
+        );
         Card enriched = session.Cards.Single();
         Assert.That((enriched.Id, enriched.Name, enriched.Copies, enriched.Active),
-            Is.EqualTo((original.Id, original.Name, original.Copies, original.Active)));
+            Is.EqualTo((original.Id, original.Name, original.Copies, original.Active))
+        );
         Assert.That(enriched.ExternalCardId, Is.EqualTo(Ash.Id));
         Assert.That(enriched.Categories, Does.Contain(user).And.Contain(property));
         Assert.That(enriched.Categories.Select(c => c.Identity).Distinct().Count(),
-            Is.EqualTo(enriched.Categories.Count));
+            Is.EqualTo(enriched.Categories.Count)
+        );
         Assert.That(enriched.ManualMetadataCategoryKeys.Contains(property.MetadataKey!), Is.EqualTo(! overlapping));
         Card removed = enriched.WithoutManualMetadataCategory(property.MetadataKey!);
         Assert.That(removed.Categories.Contains(property), Is.EqualTo(overlapping));
@@ -246,36 +289,46 @@ public class LegacyCardMetadataEnricherTest
         Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(3));
         using JsonDocument saved = JsonDocument.Parse(js.Json);
         Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(),
-            Is.EqualTo(SessionState.CurrentSchemaVersion));
+            Is.EqualTo(SessionState.CurrentSchemaVersion)
+        );
         SessionState loaded = await sessions.LoadSessionAsync(js.Json);
         Mock<ICardInfoService> offline = new(MockBehavior.Strict);
-        offline.Setup(s => s.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+        offline
+            .Setup(s => s.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ThrowsAsync(new HttpRequestException("Offline"));
         await new LegacyCardMetadataEnricher(offline.Object).EnrichAsync(loaded);
         Card card = loaded.Cards.Single();
         Assert.That(card.ManualMetadataCategoryKeys, Is.EquivalentTo(original.ManualMetadataCategoryKeys));
         Assert.That(card.Categories, Is.EqualTo(original.Categories));
         Assert.That((card.Id, card.ExternalCardId, card.Copies, card.Name, card.Active),
-            Is.EqualTo((original.Id, original.ExternalCardId, original.Copies, original.Name, original.Active)));
+            Is.EqualTo((original.Id, original.ExternalCardId, original.Copies, original.Name, original.Active))
+        );
         offline.Verify(s => s.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()),
-            externalId ? Times.Never() : Times.Once());
+            externalId ? Times.Never() : Times.Once()
+        );
     }
 
     [Test]
     public async Task PreviewV2WithoutProvenanceLoadsWithNoManualProperties()
     {
         string source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory,
-            "Fixtures",
-            "example_session_state.json"));
+                "Fixtures",
+                "example_session_state.json"
+            )
+        );
         source = System.Text.RegularExpressions.Regex.Replace(
             source,
             @",\s*""ManualMetadataCategoryKeys"":\s*\[[^\]]*\]",
             "",
-            System.Text.RegularExpressions.RegexOptions.Singleline);
+            System.Text.RegularExpressions.RegexOptions.Singleline
+        );
         using JsonDocument document = JsonDocument.Parse(source);
-        Assert.That(document.RootElement.GetProperty("Cards").EnumerateArray()
+        Assert.That(document
+                .RootElement.GetProperty("Cards")
+                .EnumerateArray()
                 .All(c => ! c.TryGetProperty("ManualMetadataCategoryKeys", out _)),
-            Is.True);
+            Is.True
+        );
         SessionState session = await new SessionService(new CaptureJs(), new Serializer()).LoadSessionAsync(source);
         Assert.That(session.Cards.All(c => c.ManualMetadataCategoryKeys.Count == 0), Is.True);
         Assert.That(session.Cards.All(c => c.Categories.Any(p => p.Source == CategorySource.Metadata)), Is.True);
@@ -295,6 +348,7 @@ public class LegacyCardMetadataEnricherTest
         public ValueTask<TValue> InvokeAsync<TValue>(
             string identifier,
             CancellationToken cancellationToken,
-            object?[]? args) => InvokeAsync<TValue>(identifier, args);
+            object?[]? args
+        ) => InvokeAsync<TValue>(identifier, args);
     }
 }

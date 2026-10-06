@@ -91,19 +91,22 @@ public partial class ProbabilityCalculatorComponent
         combos,
         comboGroups,
         ComboLineage,
-        GroupLineage);
+        GroupLineage
+    );
 
     private PinnedResultComparison? CurrentComboComparison(int index) => CanCompareDisplayedResult &&
                                                                          pinnedResult is not null &&
                                                                          acceptedComparison!.Combos.SingleOrDefault(c =>
-                                                                             c.Index == index) is { } row
+                                                                             c.Index == index
+                                                                         ) is { } row
         ? acceptedComparison.CompareComboPresentation(row, pinnedResult, true)
         : null;
 
     private PinnedResultComparison? CurrentGroupComparison(string id) => CanCompareDisplayedResult &&
                                                                          pinnedResult is not null &&
                                                                          acceptedComparison!.Groups.SingleOrDefault(g =>
-                                                                             g.Id == id) is { } row
+                                                                             g.Id == id
+                                                                         ) is { } row
         ? acceptedComparison.CompareGroupPresentation(row, pinnedResult, true)
         : null;
 }

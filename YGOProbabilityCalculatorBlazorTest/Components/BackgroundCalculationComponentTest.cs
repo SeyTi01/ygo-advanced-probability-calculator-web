@@ -36,13 +36,14 @@ public class BackgroundCalculationComponentTest
         context.Services.AddSingleton(sessions.Object);
         context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
         context.Services.AddSingleton<IPendingSessionService>(new PendingSessionService
-        {
-            PendingSession = new SessionState
             {
-                Cards = [new([], 4, "A", id: "a"), new([], 4, "B", id: "b")],
-                Combos = [new([], "Direct", cards: [new("a", 1, 5)])], HandSize = 2
+                PendingSession = new SessionState
+                {
+                    Cards = [new([], 4, "A", id: "a"), new([], 4, "B", id: "b")],
+                    Combos = [new([], "Direct", cards: [new("a", 1, 5)])], HandSize = 2
+                }
             }
-        });
+        );
         cut = context.RenderComponent<ProbabilityCalculatorComponent>();
     }
 
@@ -66,7 +67,8 @@ public class BackgroundCalculationComponentTest
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         SessionService codec = new(context.JSInterop.JSRuntime, new JsonSerializer());
         string before = codec.SerializeSession(new SessionState
-            { Cards = [.. editor.Instance.Cards], Combos = [editor.Instance.Combo], HandSize = 2 });
+            { Cards = [.. editor.Instance.Cards], Combos = [editor.Instance.Combo], HandSize = 2 }
+        );
         int recoveryWrites = context.JSInterop.Invocations["sessionRecovery.update"].Count;
         string result = cut.Find(".probability-results").OuterHtml;
         string pin = cut.Find(".pinned-result").OuterHtml;
@@ -87,8 +89,10 @@ public class BackgroundCalculationComponentTest
         }
 
         Assert.That(codec.SerializeSession(new SessionState
-                { Cards = [.. editor.Instance.Cards], Combos = [editor.Instance.Combo], HandSize = 2 }),
-            Is.EqualTo(before));
+                { Cards = [.. editor.Instance.Cards], Combos = [editor.Instance.Combo], HandSize = 2 }
+            ),
+            Is.EqualTo(before)
+        );
         Assert.That(context.JSInterop.Invocations["sessionRecovery.update"].Count, Is.EqualTo(recoveryWrites));
         Assert.That(cut.Find(".probability-results").OuterHtml, Is.EqualTo(result));
         Assert.That(cut.Find(".pinned-result").OuterHtml, Is.EqualTo(pin));
@@ -135,14 +139,17 @@ public class BackgroundCalculationComponentTest
     private Task Cancel() => cut.Find(".calculate-action > button[aria-label='Cancel calculation']").ClickAsync(new());
 
     private Task SetHandSizeWithoutInvalidating(int value) => cut.InvokeAsync(() =>
-    {
-        typeof(ProbabilityCalculatorComponent).GetField("handSize",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .SetValue(cut.Instance, value);
-        typeof(Microsoft.AspNetCore.Components.ComponentBase).GetMethod("StateHasChanged",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .Invoke(cut.Instance, null);
-    });
+        {
+            typeof(ProbabilityCalculatorComponent).GetField("handSize",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .SetValue(cut.Instance, value);
+            typeof(Microsoft.AspNetCore.Components.ComponentBase).GetMethod("StateHasChanged",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .Invoke(cut.Instance, null);
+        }
+    );
 
     private static ProbabilityCalculationResult Result(string name) => new(0.5, [new(0, name, 0.5)]);
 
@@ -225,7 +232,8 @@ public class BackgroundCalculationComponentTest
 
         Assert.That(cut.FindAll(".calculate-action > button"), Has.Count.EqualTo(1));
         Assert.That(cut.Find(".calculate-action > button").GetAttribute("aria-label"),
-            Is.EqualTo("Cancel calculation"));
+            Is.EqualTo("Cancel calculation")
+        );
         await Cancel();
         Assert.That(calculator.Tokens[1].IsCancellationRequested, Is.True);
         Assert.That(cut.Find(".calculate-action > button").TextContent, Does.Contain("Calculate"));
@@ -233,10 +241,13 @@ public class BackgroundCalculationComponentTest
         Assert.That(cut.FindAll(".probability-result-status"), Has.Count.EqualTo(stale ? 1 : 0));
         Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
         Assert.That(cut.Markup,
-            Does.Not.Contain("Calculation was cancelled.").And.Not.Contain("Calculation was canceled."));
-        Assert.That(cut.FindAll("[role='status']")
+            Does.Not.Contain("Calculation was cancelled.").And.Not.Contain("Calculation was canceled.")
+        );
+        Assert.That(cut
+                .FindAll("[role='status']")
                 .Any(status => status.TextContent.Contains("cancel", StringComparison.OrdinalIgnoreCase)),
-            Is.False);
+            Is.False
+        );
 
         // The worker may report cancellation after the user has already returned the control to idle.
         calculator.Jobs[1].SetCanceled();
@@ -272,16 +283,21 @@ public class BackgroundCalculationComponentTest
         await calculation;
 
         Assert.That(cut.Find("[role='alert']").TextContent,
-            Does.Contain("Calculation failed: worker transport failed"));
+            Does.Contain("Calculation failed: worker transport failed")
+        );
     }
 
     [Test]
     public async Task DuplicateClickDoesNotStartAnotherJob()
     {
         Task first = Start();
-        await cut.InvokeAsync(() => cut.Instance.GetType().GetMethod("Calculate",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .Invoke(cut.Instance, null));
+        await cut.InvokeAsync(() => cut
+            .Instance.GetType()
+            .GetMethod("Calculate",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+            )!
+            .Invoke(cut.Instance, null)
+        );
         Assert.That(calculator.Jobs, Has.Count.EqualTo(1));
         calculator.Jobs[0].SetResult(Result("done"));
         await first;
@@ -336,7 +352,9 @@ public class BackgroundCalculationComponentTest
         Task first = Start();
         cut.FindComponents<InputFile>()[1]
             .UploadFiles(InputFileContent.CreateFromText(sessions.Object.SerializeSession(replacement),
-                "session.json"));
+                    "session.json"
+                )
+            );
         cut.WaitForState(() => calculator.Tokens[0].IsCancellationRequested);
         Assert.That(calculator.Tokens[0].IsCancellationRequested, Is.True);
         calculator.Jobs[0].SetResult(Result("old workspace"));
@@ -383,7 +401,8 @@ public class BackgroundCalculationComponentTest
         {
             TaskCompletionSource<ProbabilityCalculationResult> source =
                 new(TaskCreationOptions
-                    .RunContinuationsAsynchronously);
+                    .RunContinuationsAsynchronously
+                );
             Jobs.Add(source);
             Tokens.Add(token);
 

@@ -11,11 +11,12 @@ public class YdkeParserTest
         YdkeDeck deck = YdkeParser.Parse("ydke://o6lXBZyFNAI=!viOnAg==!7ydRAA==!");
 
         Assert.Multiple(() =>
-        {
-            Assert.That(deck.MainDeck, Is.EqualTo(new uint[] { 89631139, 36996508 }));
-            Assert.That(deck.ExtraDeck, Is.EqualTo(new uint[] { 44508094 }));
-            Assert.That(deck.SideDeck, Is.EqualTo(new uint[] { 5318639 }));
-        });
+            {
+                Assert.That(deck.MainDeck, Is.EqualTo(new uint[] { 89631139, 36996508 }));
+                Assert.That(deck.ExtraDeck, Is.EqualTo(new uint[] { 44508094 }));
+                Assert.That(deck.SideDeck, Is.EqualTo(new uint[] { 5318639 }));
+            }
+        );
     }
 
     [Test]

@@ -17,7 +17,8 @@ public class ComboCardConverter : JsonConverter<ComboCard>
                 root.GetProperty("CardId").GetString() ?? throw new JsonException("CardId is required."),
                 root.GetProperty("MinCount").GetInt32(),
                 root.GetProperty("MaxCount").GetInt32(),
-                RequirementMaximumModeJson.Read(root));
+                RequirementMaximumModeJson.Read(root)
+            );
         }
         catch (ArgumentException ex)
         {

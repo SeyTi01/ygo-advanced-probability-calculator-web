@@ -29,10 +29,13 @@ public sealed class SessionSchemaMigrator
 
         JsonProperty[] schemaVersionProperties =
         [
-            .. rootElement.EnumerateObject()
+            .. rootElement
+                .EnumerateObject()
                 .Where(property => string.Equals(property.Name,
-                    nameof(SessionState.SchemaVersion),
-                    StringComparison.OrdinalIgnoreCase))
+                        nameof(SessionState.SchemaVersion),
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
         ];
 
         if (schemaVersionProperties.Length > 1)
@@ -129,8 +132,13 @@ public sealed class SessionSchemaMigrator
                 return;
             }
 
-            foreach (string key in requirement.Select(p => p.Key).Where(key =>
-                         key.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase)).ToArray())
+            foreach (string key in requirement
+                .Select(p => p.Key)
+                .Where(key =>
+                    key.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase)
+                )
+                .ToArray()
+            )
             {
                 requirement.Remove(key);
             }
@@ -145,9 +153,14 @@ public sealed class SessionSchemaMigrator
                 return;
             }
 
-            foreach (string key in category.Select(p => p.Key).Where(key =>
-                         key.Equals("Source", StringComparison.OrdinalIgnoreCase) ||
-                         key.Equals("MetadataKey", StringComparison.OrdinalIgnoreCase)).ToArray())
+            foreach (string key in category
+                .Select(p => p.Key)
+                .Where(key =>
+                    key.Equals("Source", StringComparison.OrdinalIgnoreCase) ||
+                    key.Equals("MetadataKey", StringComparison.OrdinalIgnoreCase)
+                )
+                .ToArray()
+            )
             {
                 category.Remove(key);
             }
@@ -165,14 +178,17 @@ public sealed class SessionSchemaMigrator
 
     private static void SetSchemaVersion(JsonObject root, int version)
     {
-        string? propertyName = root.Select(property => property.Key)
+        string? propertyName = root
+            .Select(property => property.Key)
             .SingleOrDefault(name =>
-                string.Equals(name, nameof(SessionState.SchemaVersion), StringComparison.OrdinalIgnoreCase));
+                string.Equals(name, nameof(SessionState.SchemaVersion), StringComparison.OrdinalIgnoreCase)
+            );
 
         root[propertyName ?? nameof(SessionState.SchemaVersion)] = version;
     }
 
     private static InvalidOperationException UnsupportedVersion(int version) =>
         new(
-            $"Unsupported session schema version {version}. This application supports session schema version {SessionState.CurrentSchemaVersion}.");
+            $"Unsupported session schema version {version}. This application supports session schema version {SessionState.CurrentSchemaVersion}."
+        );
 }

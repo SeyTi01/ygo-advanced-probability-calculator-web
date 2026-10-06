@@ -10,7 +10,8 @@ public static class ProbabilityResultSummaryFormatter
     public static string Format(
         ProbabilityCalculationResult result,
         int handSize,
-        CultureInfo culture)
+        CultureInfo culture
+    )
     {
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(culture);
@@ -21,7 +22,8 @@ public static class ProbabilityResultSummaryFormatter
         List<ComboProbabilityResult> ungrouped =
         [
             .. result.ComboProbabilities.Where(combo =>
-                combo.GroupId is null || ! knownGroupIds.Contains(combo.GroupId))
+                combo.GroupId is null || ! knownGroupIds.Contains(combo.GroupId)
+            )
         ];
 
         List<string> lines =
@@ -45,10 +47,12 @@ public static class ProbabilityResultSummaryFormatter
             foreach (GroupProbabilityResult group in groups)
             {
                 lines.Add(
-                    $"- **{NormalizeLabel(group.GroupName)}** — {FormatProbability(group.Probability, culture)} ({group.ActiveComboCount} active)");
+                    $"- **{NormalizeLabel(group.GroupName)}** — {FormatProbability(group.Probability, culture)} ({group.ActiveComboCount} active)"
+                );
 
                 foreach (ComboProbabilityResult combo in result.ComboProbabilities.Where(combo =>
-                             StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId)))
+                             StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId)
+                         ))
                 {
                     lines.Add(FormatCombo(combo, culture, indent: "  "));
                 }
@@ -68,7 +72,8 @@ public static class ProbabilityResultSummaryFormatter
     private static string FormatCombo(
         ComboProbabilityResult combo,
         CultureInfo culture,
-        string indent = "")
+        string indent = ""
+    )
     {
         string name = string.IsNullOrWhiteSpace(combo.ComboName)
             ? $"Unnamed combo {combo.ComboIndex + 1}"

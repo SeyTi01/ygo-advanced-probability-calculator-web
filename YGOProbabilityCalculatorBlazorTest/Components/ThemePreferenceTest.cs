@@ -21,8 +21,10 @@ public class ThemePreferenceTest
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>();
 
         cut.WaitForAssertion(() => Assert.That(
-            cut.Find("#theme-preference").GetAttribute("value"),
-            Is.EqualTo(expectedPreference)));
+                cut.Find("#theme-preference").GetAttribute("value"),
+                Is.EqualTo(expectedPreference)
+            )
+        );
         Assert.That(cut.Find("#theme-preference").GetAttribute("aria-label"), Is.EqualTo("Color theme preference"));
     }
 
@@ -35,7 +37,8 @@ public class ThemePreferenceTest
 
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>();
         cut.WaitForAssertion(() =>
-            Assert.That(cut.Find("#theme-preference").GetAttribute("value"), Is.EqualTo("system")));
+            Assert.That(cut.Find("#theme-preference").GetAttribute("value"), Is.EqualTo("system"))
+        );
 
         await cut.Find("#theme-preference").ChangeAsync(new ChangeEventArgs { Value = "dark" });
 
@@ -66,8 +69,10 @@ public class ThemePreferenceTest
         context.Services.GetRequiredService<NavigationManager>().NavigateTo("/help");
 
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>(parameters => parameters.Add(
-            layout => layout.Body,
-            builder => builder.AddMarkupContent(0, "<h1>Help page heading</h1>")));
+                layout => layout.Body,
+                builder => builder.AddMarkupContent(0, "<h1>Help page heading</h1>")
+            )
+        );
 
         Assert.That(cut.Find(".top-row .app-title").TagName, Is.EqualTo("DIV"));
         Assert.That(cut.FindAll("h1"), Has.Count.EqualTo(1));

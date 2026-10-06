@@ -58,21 +58,25 @@ internal static class SmallDeckOracle
                      (c.BaseCategory.Source,
                          Key: c.BaseCategory.Source == CategorySource.User
                              ? c.BaseCategory.Name
-                             : c.BaseCategory.MetadataKey)))
+                             : c.BaseCategory.MetadataKey)
+                 ))
         {
             roles.Add((
-                card => card.Categories.Any(c =>
-                    c.Source == group.Key.Source &&
-                    (c.Source == CategorySource.User ? c.Name : c.MetadataKey) == group.Key.Key),
-                group.Max(c => c.MinCount),
-                group.Min(c => c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount)));
+                    card => card.Categories.Any(c =>
+                        c.Source == group.Key.Source &&
+                        (c.Source == CategorySource.User ? c.Name : c.MetadataKey) == group.Key.Key
+                    ),
+                    group.Max(c => c.MinCount),
+                    group.Min(c => c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount))
+            );
         }
 
         foreach (IGrouping<string, ComboCard> group in combo.Cards.GroupBy(c => c.CardId))
         {
             roles.Add((card => card.Id == group.Key,
-                group.Max(c => c.MinCount),
-                group.Min(c => c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount)));
+                    group.Max(c => c.MinCount),
+                    group.Min(c => c.MaximumMode == RequirementMaximumMode.HandSize ? handSize : c.MaxCount))
+            );
         }
 
         Func<Card, bool>[] slots = [.. roles.SelectMany(role => Enumerable.Repeat(role.Matches, role.Min))];

@@ -14,7 +14,8 @@ public class WorkPolicyWireTest
         [new Combo([], cards: [new("card", 1, 1)])],
         1,
         [],
-        policy);
+        policy
+    );
 
     [Test]
     public void WorkReasonAndInteractivePolicySurviveSourceGeneratedWire()
@@ -24,11 +25,14 @@ public class WorkPolicyWireTest
             Assert.Throws<ProbabilityCalculationLimitException>(() => CalculationWire.ReadResult(response));
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(Snapshot().Json)).TotalProbability,
-            Is.EqualTo(1));
+            Is.EqualTo(1)
+        );
         Assert.That(JsonNode.Parse(Snapshot(CalculationWorkPolicy.Interactive).Json)!["WorkUnits"]!.GetValue<long>(),
-            Is.EqualTo(CalculationWorkPolicy.Interactive.WorkUnits));
+            Is.EqualTo(CalculationWorkPolicy.Interactive.WorkUnits)
+        );
         Assert.That(JsonNode.Parse(Snapshot().Json)!["WorkUnits"]!.GetValue<long>(),
-            Is.EqualTo(CalculationWorkPolicy.Default.WorkUnits));
+            Is.EqualTo(CalculationWorkPolicy.Default.WorkUnits)
+        );
     }
 
     [Test]
@@ -39,9 +43,11 @@ public class WorkPolicyWireTest
             [new Combo(categories.Select(c => new ComboCategory(c, 1, 16)))],
             16,
             [],
-            new(5_000_000));
+            new(5_000_000)
+        );
         ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
+            CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json))
+        );
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }
 
@@ -56,7 +62,8 @@ public class WorkPolicyWireTest
         input["WorkUnits"] = JsonNode.Parse(value);
         string response = CalculationWire.Execute(input.ToJsonString());
         Assert.That(() => CalculationWire.ReadResult(response),
-            Throws.Exception.TypeOf<ArgumentException>().Or.TypeOf<InvalidOperationException>());
+            Throws.Exception.TypeOf<ArgumentException>().Or.TypeOf<InvalidOperationException>()
+        );
         Assert.That(JsonNode.Parse(response)!["LimitReason"], Is.Null);
     }
 
@@ -66,7 +73,8 @@ public class WorkPolicyWireTest
         JsonObject input = JsonNode.Parse(Snapshot().Json)!.AsObject();
         input.Remove("WorkUnits");
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(input.ToJsonString())).TotalProbability,
-            Is.EqualTo(1));
+            Is.EqualTo(1)
+        );
         CalculationSnapshot snapshot =
             CalculationSnapshot.Capture([], Enumerable.Range(0, 31).Select(_ => new Combo([])), 1, []);
         Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
@@ -85,7 +93,8 @@ public class WorkPolicyWireTest
     public void GenericErrorsRemainGenericAndConflictingSuccessIsRejected()
     {
         Assert.Throws<InvalidOperationException>(() =>
-            CalculationWire.ReadResult("{\"Error\":\"ordinary failure\",\"FailureKind\":2}"));
+            CalculationWire.ReadResult("{\"Error\":\"ordinary failure\",\"FailureKind\":2}")
+        );
         JsonNode success = JsonNode.Parse(CalculationWire.Execute(Snapshot().Json))!;
         success["Error"] = "conflicting error";
         Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(success.ToJsonString()));

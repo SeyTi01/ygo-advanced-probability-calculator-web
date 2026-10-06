@@ -22,7 +22,8 @@ public static class CardPropertyProvider
     public static IReadOnlyList<CategoryBase> GetCategories(CardInfo info)
     {
         Dictionary<string, CategoryBase> result = new(StringComparer.Ordinal);
-        HashSet<string> tokens = (info.Type ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        HashSet<string> tokens = (info.Type ?? "")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         string? frame = info.FrameType?.Trim().ToLowerInvariant();
         bool monster = tokens.Contains("Monster") || MonsterFrames.Contains(frame);
@@ -73,7 +74,8 @@ public static class CardPropertyProvider
                 ? ["Normal", "Field", "Equip", "Continuous", "Quick-Play", "Ritual"]
                 : ["Normal", "Continuous", "Counter"];
             string? subtype = subtypes.FirstOrDefault(value =>
-                string.Equals(value, info.Race?.Trim(), StringComparison.OrdinalIgnoreCase));
+                string.Equals(value, info.Race?.Trim(), StringComparison.OrdinalIgnoreCase)
+            );
 
             if (subtype is not null)
             {

@@ -16,7 +16,8 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
     public async Task AutomaticArtworkKeepsResultsDraftsActiveStateAndSessionUnchanged()
     {
         Mock<ICardArtworkService> artwork = new();
-        artwork.Setup(x => x.GetArtworkUrlAsync(1234))
+        artwork
+            .Setup(x => x.GetArtworkUrlAsync(1234))
             .ReturnsAsync(CardArtworkService.ArtworkOrigin + "/small/1234.jpg");
         context.Services.AddSingleton(artwork.Object);
         SessionState session = Session();
@@ -39,7 +40,8 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
         IRenderedComponent<CardArtwork> preview = editor.FindComponents<CardArtwork>().Last();
         await preview.InvokeAsync(() => preview.Instance.ArtworkReady(1, resolved.Url));
         Assert.That(editor.Find("img").GetAttribute("src"),
-            Is.EqualTo(CardArtworkService.ArtworkOrigin + "/small/1234.jpg"));
+            Is.EqualTo(CardArtworkService.ArtworkOrigin + "/small/1234.jpg")
+        );
         Assert.That(editor.Find(".card-artwork-preview img").GetAttribute("alt"), Does.Contain("First"));
         Assert.That(cut.Find(".probability-results").OuterHtml, Is.EqualTo(results));
         Assert.That(editor.Instance.Card.Active, Is.False);
@@ -58,7 +60,8 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
     public async Task ArtworkFollowsStableEditorThroughReorderingAndDisappearsOnDeletion()
     {
         Mock<ICardArtworkService> artwork = new();
-        artwork.Setup(x => x.GetArtworkUrlAsync(1234))
+        artwork
+            .Setup(x => x.GetArtworkUrlAsync(1234))
             .ReturnsAsync(CardArtworkService.ArtworkOrigin + "/small/1234.jpg");
         context.Services.AddSingleton(artwork.Object);
         SessionState session = Session();
@@ -89,7 +92,8 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         Mock<ICardArtworkService> artwork = new();
         artwork.Setup(x => x.GetArtworkUrlAsync(1234)).Returns(pending.Task);
-        artwork.Setup(x => x.GetArtworkUrlAsync(5678))
+        artwork
+            .Setup(x => x.GetArtworkUrlAsync(5678))
             .ReturnsAsync(CardArtworkService.ArtworkOrigin + "/small/5678.jpg");
         context.Services.AddSingleton(artwork.Object);
         SessionState session = Session();
@@ -109,7 +113,8 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase
             cut.FindComponents<InputFile>()[1]
                 .UploadFiles(InputFileContent.CreateFromText(replacement, "replacement.json"));
             cut.WaitForState(() => cut.FindComponents<CardEditor>().Count == 1 &&
-                                   cut.FindComponent<CardEditor>().Instance.Card.Name == "Replacement");
+                                   cut.FindComponent<CardEditor>().Instance.Card.Name == "Replacement"
+            );
         }
         else
         {

@@ -43,7 +43,8 @@ public record CategoryBase
     public virtual bool Equals(CategoryBase? other) => other is not null &&
                                                        string.Equals(Identity,
                                                            other.Identity,
-                                                           StringComparison.Ordinal);
+                                                           StringComparison.Ordinal
+                                                       );
 
     public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Identity);
 }

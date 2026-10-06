@@ -19,11 +19,14 @@ public class UnionBenchmark
     {
         string json =
             await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory,
-                "Fixtures",
-                "vsmodel.json"));
+                    "Fixtures",
+                    "vsmodel.json"
+                )
+            );
 
         return await new SessionService(Mock.Of<IJSRuntime>(),
-            new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()).LoadSessionAsync(json);
+            new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()
+        ).LoadSessionAsync(json);
     }
 
     [Test]
@@ -42,25 +45,29 @@ public class UnionBenchmark
         bool[] matches = new bool[combos.Count];
         Visit(0);
         TestContext.Out.WriteLine(
-            $"Exact counts: denominator={total}, total={union}, groups=[{string.Join(",", grouped)}], individual=[{string.Join(",", individual)}]");
+            $"Exact counts: denominator={total}, total={union}, groups=[{string.Join(",", grouped)}], individual=[{string.Join(",", individual)}]"
+        );
         Assert.That(total, Is.EqualTo(658008));
         ProbabilityCalculationResult actual =
             new ProbabilityCalculatorService().CalculateProbabilityResults(deck,
                 combos,
                 session.HandSize,
-                session.ComboGroups);
+                session.ComboGroups
+            );
         Assert.That(actual.TotalProbability, Is.EqualTo((double)union / total).Within(1e-12));
 
         for (int i = 0; i < combos.Count; i++)
         {
             Assert.That(actual.ComboProbabilities[i].Probability,
-                Is.EqualTo((double)individual[i] / total).Within(1e-12));
+                Is.EqualTo((double)individual[i] / total).Within(1e-12)
+            );
         }
 
         for (int i = 0; i < grouped.Length; i++)
         {
             Assert.That(actual.GroupProbabilities![i].Probability,
-                Is.EqualTo((double)grouped[i] / total).Within(1e-12));
+                Is.EqualTo((double)grouped[i] / total).Within(1e-12)
+            );
         }
 
         void Visit(int start)
@@ -86,7 +93,8 @@ public class UnionBenchmark
 
                 for (int g = 0; g < grouped.Length; g++)
                 {
-                    if (Enumerable.Range(0, combos.Count)
+                    if (Enumerable
+                        .Range(0, combos.Count)
                         .Any(i => matches[i] && combos[i].GroupId == session.ComboGroups[g].Id))
                     {
                         grouped[g]++;
@@ -109,7 +117,8 @@ public class UnionBenchmark
     public async Task MeasureFixedWorkloads()
     {
         TestContext.Out.WriteLine(
-            $"{RuntimeInformation.FrameworkDescription}; {RuntimeInformation.OSDescription}; {RuntimeInformation.ProcessArchitecture}; CPUs={Environment.ProcessorCount}");
+            $"{RuntimeInformation.FrameworkDescription}; {RuntimeInformation.OSDescription}; {RuntimeInformation.ProcessArchitecture}; CPUs={Environment.ProcessorCount}"
+        );
         SessionState session = await LoadModel();
         List<Card> deck = [.. session.Cards.Where(c => c.Active)];
         List<Combo> combos = [.. session.Combos.Where(c => c.Active)];
@@ -118,16 +127,21 @@ public class UnionBenchmark
             deck,
             [.. Enumerable.Range(0, 30).Select(i => combos[i % 10])],
             5,
-            session.ComboGroups);
+            session.ComboGroups
+        );
 
         foreach (int count in new[] { 10, 15, 20, 30 })
         {
             List<Combo> alternatives =
             [
-                .. deck.Take(count - 5).Select((c, i) =>
-                    new Combo([new(session.Categories[0], 1, 5)],
-                        groupId: session.ComboGroups[i % 2].Id,
-                        cards: [new(c.Id, 1, 5)]))
+                .. deck
+                    .Take(count - 5)
+                    .Select((c, i) =>
+                        new Combo([new(session.Categories[0], 1, 5)],
+                            groupId: session.ComboGroups[i % 2].Id,
+                            cards: [new(c.Id, 1, 5)]
+                        )
+                    )
             ];
             alternatives.AddRange(combos.Take(5));
             Measure($"VS/K9-{alternatives.Count}-alternatives", deck, alternatives, 5, session.ComboGroups);
@@ -151,7 +165,8 @@ public class UnionBenchmark
                     distinctDeck,
                     [.. categories.Select(c => new Combo([new(c, 0, 0)]))],
                     5,
-                    []);
+                    []
+                );
             }
         }
     }
@@ -169,7 +184,8 @@ public class UnionBenchmark
         (double Ms, long Bytes, string Outcome)[] trials = [.. Enumerable.Range(0, 7).Select(_ => Run())];
         double[] times = [.. trials.Select(t => t.Ms).Order()];
         TestContext.Out.WriteLine(
-            $"{name}: cold={cold.Ms:F3}ms; median={times[3]:F3}ms range={times[0]:F3}..{times[^1]:F3}; bytes={trials[0].Bytes}; {trials[0].Outcome}");
+            $"{name}: cold={cold.Ms:F3}ms; median={times[3]:F3}ms range={times[0]:F3}..{times[^1]:F3}; bytes={trials[0].Bytes}; {trials[0].Outcome}"
+        );
 
         (double Ms, long Bytes, string Outcome) Run()
         {

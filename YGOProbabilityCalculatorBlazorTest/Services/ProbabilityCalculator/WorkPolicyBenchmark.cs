@@ -14,7 +14,8 @@ public class WorkPolicyBenchmark
     public void MeasureRestrictiveRoutes()
     {
         TestContext.Out.WriteLine(
-            $"{RuntimeInformation.FrameworkDescription}; {RuntimeInformation.OSDescription}; {RuntimeInformation.ProcessArchitecture}; CPUs={Environment.ProcessorCount}");
+            $"{RuntimeInformation.FrameworkDescription}; {RuntimeInformation.OSDescription}; {RuntimeInformation.ProcessArchitecture}; CPUs={Environment.ProcessorCount}"
+        );
 
         foreach ((int count, int hand) in new[]
                      { (18, 5), (20, 5), (21, 5), (18, 6), (16, 7), (15, 9), (15, 15), (15, 30), (22, 5) })
@@ -60,7 +61,8 @@ public class WorkPolicyBenchmark
 
                 timer.Stop();
                 TestContext.Out.WriteLine(
-                    $"routes={count}; hand={hand}; deck=60; units={units}; ms={timer.Elapsed.TotalMilliseconds:F2}; allocatedBytes={GC.GetAllocatedBytesForCurrentThread() - before}; {outcome}");
+                    $"routes={count}; hand={hand}; deck=60; units={units}; ms={timer.Elapsed.TotalMilliseconds:F2}; allocatedBytes={GC.GetAllocatedBytesForCurrentThread() - before}; {outcome}"
+                );
             }
 
             if ((count, hand) is (20, 5) or (18, 6) or (15, 15))
@@ -87,7 +89,8 @@ public class WorkPolicyBenchmark
                         // More work cannot bypass the independent storage ceiling.
                         // Report it and continue measuring the remaining scenarios.
                         TestContext.Out.WriteLine(
-                            $"routes={count}; hand={hand}; chargedWork=unavailable (storage limit)");
+                            $"routes={count}; hand={hand}; chargedWork=unavailable (storage limit)"
+                        );
 
                         break;
                     }
@@ -96,7 +99,8 @@ public class WorkPolicyBenchmark
                 if (high - low <= 100_000)
                 {
                     TestContext.Out.WriteLine(
-                        $"routes={count}; hand={hand}; chargedWork=({low},{high}]; processWorkingSetBytes={Process.GetCurrentProcess().WorkingSet64}; managedHeapBytes={GC.GetTotalMemory(false)}");
+                        $"routes={count}; hand={hand}; chargedWork=({low},{high}]; processWorkingSetBytes={Process.GetCurrentProcess().WorkingSet64}; managedHeapBytes={GC.GetTotalMemory(false)}"
+                    );
                 }
             }
         }

@@ -5,7 +5,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 public sealed record YdkeDeck(
     IReadOnlyList<uint> MainDeck,
     IReadOnlyList<uint> ExtraDeck,
-    IReadOnlyList<uint> SideDeck);
+    IReadOnlyList<uint> SideDeck
+);
 
 public static class YdkeParser
 {
@@ -36,7 +37,8 @@ public static class YdkeParser
         return new YdkeDeck(
             DecodeSection(sections[0], "main"),
             DecodeSection(sections[1], "extra"),
-            DecodeSection(sections[2], "side"));
+            DecodeSection(sections[2], "side")
+        );
     }
 
     private static IReadOnlyList<uint> DecodeSection(string encoded, string sectionName)
@@ -55,7 +57,8 @@ public static class YdkeParser
         if (bytes.Length % sizeof(uint) != 0)
         {
             throw new FormatException(
-                $"The decoded YDKe {sectionName}-deck section length must be divisible by four bytes.");
+                $"The decoded YDKe {sectionName}-deck section length must be divisible by four bytes."
+            );
         }
 
         uint[] cardIds = new uint[bytes.Length / sizeof(uint)];
@@ -63,7 +66,8 @@ public static class YdkeParser
         for (int index = 0; index < cardIds.Length; index++)
         {
             cardIds[index] = BinaryPrimitives.ReadUInt32LittleEndian(
-                bytes.AsSpan(index * sizeof(uint), sizeof(uint)));
+                bytes.AsSpan(index * sizeof(uint), sizeof(uint))
+            );
         }
 
         return Array.AsReadOnly(cardIds);

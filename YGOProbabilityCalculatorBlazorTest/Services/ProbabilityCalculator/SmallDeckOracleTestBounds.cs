@@ -48,7 +48,8 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
             new([new(A, 0, 0), new(B, 1, 0, RequirementMaximumMode.HandSize)]),
             new([], cards: [new(starter.Id, 0, 0)]),
             new([new(A, 1, 0, RequirementMaximumMode.HandSize), new(B, 1, 0, RequirementMaximumMode.HandSize)],
-                cards: [new(starter.Id, 1, 0, RequirementMaximumMode.HandSize)]),
+                cards: [new(starter.Id, 1, 0, RequirementMaximumMode.HandSize)]
+            ),
             new([new(A, 4, 0, RequirementMaximumMode.HandSize)]),
             new([], cards: [new(starter.Id, 4, 0, RequirementMaximumMode.HandSize)])
         ];
@@ -102,17 +103,22 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
     public async Task BundledExampleUsesCurrentRolesAndMetadataOverrides()
     {
         string source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory,
-            "Fixtures",
-            "example_session_state.json"));
+                "Fixtures",
+                "example_session_state.json"
+            )
+        );
         SessionState session = await new YGOProbabilityCalculatorBlazor.Services.Session.SessionService(
             Moq.Mock.Of<Microsoft.JSInterop.IJSRuntime>(),
-            new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()).LoadSessionAsync(source);
+            new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()
+        ).LoadSessionAsync(source);
 
         Assert.That(session.Categories.Select(c => c.Identity),
             Is.EquivalentTo(new[]
-            {
-                "user:VS Monster", "user:VS Starter", "user:K9 Starter"
-            }));
+                {
+                    "user:VS Monster", "user:VS Starter", "user:K9 Starter"
+                }
+            )
+        );
         Assert.That(session.Combos, Has.Count.EqualTo(8));
         Assert.That(session.Combos.All(combo => combo.Active), Is.True);
 
@@ -126,24 +132,30 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         IReadOnlyList<ComboAlternative> alternatives = fireOrDark.AlternativeGroups.Single().Alternatives;
         Assert.That(alternatives, Has.Count.EqualTo(2));
         Assert.That(alternatives.Select(alternative => alternative.Category!.BaseCategory.Identity),
-            Is.EquivalentTo(new[] { "metadata:attribute:fire", "metadata:attribute:dark" }));
+            Is.EquivalentTo(new[] { "metadata:attribute:fire", "metadata:attribute:dark" })
+        );
         Assert.That(alternatives.All(alternative => alternative.Category!.MinCount == 1
                                                     && alternative.Category.MaximumMode ==
-                                                    RequirementMaximumMode.HandSize),
-            Is.True);
+                                                    RequirementMaximumMode.HandSize
+            ),
+            Is.True
+        );
 
         Card rota = session.Cards.Single(c => c.Name == "Reinforcement of the Army");
         Assert.That(rota.Categories.Select(c => c.Identity),
-            Does.Contain("user:VS Monster").And.Contain("user:VS Starter").And.Contain("metadata:attribute:fire"));
+            Does.Contain("user:VS Monster").And.Contain("user:VS Starter").And.Contain("metadata:attribute:fire")
+        );
         Assert.That(rota.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { "attribute:fire" }));
 
         Card chaoticElements = session.Cards.Single(c => c.Name == "Chaotic Elements");
         Assert.That(chaoticElements.ManualMetadataCategoryKeys,
-            Is.EquivalentTo(new[] { "attribute:dark", "attribute:earth", "level:5" }));
+            Is.EquivalentTo(new[] { "attribute:dark", "attribute:earth", "level:5" })
+        );
 
         Card caseForK9 = session.Cards.Single(c => c.Name == "\"A Case for K9\"");
         Assert.That(caseForK9.ManualMetadataCategoryKeys,
-            Is.EquivalentTo(new[] { "attribute:dark", "attribute:earth", "level:5" }));
+            Is.EquivalentTo(new[] { "attribute:dark", "attribute:earth", "level:5" })
+        );
 
         Combo izunaSue = session.Combos.Single(c => c.Name == "Izuna + Sue + 2 x Lv. 5");
         ComboCategory levelFive = izunaSue.Categories.Single(c => c.BaseCategory.Identity == "metadata:level:5");
@@ -153,7 +165,8 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
             [.. session.Cards.Where(card => card.Active)],
             [.. session.Combos.Where(combo => combo.Active)],
             session.HandSize,
-            session.ComboGroups);
+            session.ComboGroups
+        );
         Assert.That(result.TotalProbability * 100, Is.EqualTo(83.61).Within(0.005));
     }
 
@@ -188,7 +201,8 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         Combo relabeledCombo = new([new(relabeled, 1, 3)]);
         AssertTotalAndStandaloneResultsMatchEveryPhysicalHand(deck, [relabeledCombo], 2);
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, [relabeledCombo], 2),
-            Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[1]], 2)));
+            Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck, [combos[1]], 2))
+        );
     }
 
     [Test]
@@ -205,12 +219,20 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         List<Combo> propertyCombos =
         [
             .. userCombos.Select(combo => combo.WithCategories(combo.Categories.Select(c =>
-                new ComboCategory(c.BaseCategory == A ? propertyA : propertyB, c.MinCount, c.MaxCount, c.MaximumMode))))
+                        new ComboCategory(c.BaseCategory == A ? propertyA : propertyB,
+                            c.MinCount,
+                            c.MaxCount,
+                            c.MaximumMode
+                        )
+                    )
+                )
+            )
         ];
         AssertTotalAndStandaloneResultsMatchEveryPhysicalHand(userDeck, userCombos, 2);
         AssertTotalAndStandaloneResultsMatchEveryPhysicalHand(propertyDeck, propertyCombos, 2);
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(propertyDeck, propertyCombos, 2),
-            Is.EqualTo(SmallDeckOracle.EnumerateProbability(userDeck, userCombos, 2)));
+            Is.EqualTo(SmallDeckOracle.EnumerateProbability(userDeck, userCombos, 2))
+        );
     }
 
     [Test]
@@ -236,11 +258,17 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
             ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck,
                 combos,
                 handSize,
-                [new("g", "Grouped")]);
+                [new("g", "Grouped")]
+            );
             Assert.That(result.GroupProbabilities![0].Probability,
-                Is.EqualTo(SmallDeckOracle.EnumerateProbability(deck,
-                    [.. combos.Where(combo => combo.GroupId == "g")],
-                    handSize)).Within(1e-12));
+                Is
+                    .EqualTo(SmallDeckOracle.EnumerateProbability(deck,
+                            [.. combos.Where(combo => combo.GroupId == "g")],
+                            handSize
+                        )
+                    )
+                    .Within(1e-12)
+            );
         }
 
         List<Card> activeDeck = [.. deck.Where(card => card != first)];
@@ -264,7 +292,8 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
                 new([new(A, 1, 3), new(C, 1, 3)]),
                 new([new(B, 1, 3), new(C, 1, 3)])
             ],
-            3);
+            3
+        );
         yield return Case("subset combos", deck, [new([new(A, 1, 2)]), new([new(A, 1, 2), new(B, 1, 2)])], 2);
         yield return Case("disjoint ranges", deck, [new([new(A, 0, 0)]), new([new(A, 2, 2)])], 2);
         yield return Case("duplicate combos",
@@ -273,7 +302,8 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
                 new([new(A, 1, 2)], "Same name"),
                 new([new(A, 1, 2)], "Same name")
             ],
-            2);
+            2
+        );
         yield return Case("minimum above available copies", deck, [new([new(C, 2, 3)])], 3);
         yield return Case("unconstrained combo", deck, [new([])], 3);
         yield return Case("no combos", deck, [], 2);
@@ -281,11 +311,13 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         yield return Case("repeated names and constraints",
             [new([A, new("A")], 2), new([B]), new([])],
             [new([new(A, 1, 2), new(new("A"), 0, 1)])],
-            2);
+            2
+        );
         yield return Case("contradictory repeated constraints",
             deck,
             [new([new(A, 0, 0), new(new("A"), 1, 2)])],
-            2);
+            2
+        );
         yield return Case("empty hand with zero bounds", deck, [new([new(A, 0, 0)])], 0);
         yield return Case("empty deck and unconstrained combo", [], [new([])], 0);
     }
@@ -300,7 +332,9 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         List<Combo> combos =
         [
             new(categories.Select((category, index) =>
-                new ComboCategory(category, index == 0 ? 1 : 0, index == 0 ? 1 : 0)))
+                    new ComboCategory(category, index == 0 ? 1 : 0, index == 0 ? 1 : 0)
+                )
+            )
         ];
         AssertTotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, 1);
     }
@@ -312,8 +346,12 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         List<Card> deck = [new([categories[0]]), new([categories[32]]), new([])];
         List<Combo> combos =
         [
-            new(categories.Take(16).Select((category, index) =>
-                new ComboCategory(category, index == 0 ? 1 : 0, index == 0 ? 1 : 0))),
+            new(categories
+                .Take(16)
+                .Select((category, index) =>
+                    new ComboCategory(category, index == 0 ? 1 : 0, index == 0 ? 1 : 0)
+                )
+            ),
             new(categories.Skip(16).Select(category => new ComboCategory(category, 0, 0)))
         ];
         AssertTotalAndStandaloneResultsMatchEveryPhysicalHand(deck, combos, 1);
@@ -341,8 +379,11 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         CategoryBase[] categories = [.. Enumerable.Range(0, 5).Select(i => new CategoryBase($"C{i}"))];
         List<Card> deck =
         [
-            .. Enumerable.Range(0, 20).Select(pattern =>
-                new Card(categories.Where((_, index) => (pattern & (1 << index)) != 0), 2))
+            .. Enumerable
+                .Range(0, 20)
+                .Select(pattern =>
+                    new Card(categories.Where((_, index) => (pattern & (1 << index)) != 0), 2)
+                )
         ];
         List<Combo> combos = [new(categories.Select(category => new ComboCategory(category, 0, 5)))];
         long allocated = GC.GetAllocatedBytesForCurrentThread();
@@ -351,7 +392,8 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         timer.Stop();
         long allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocated;
         TestContext.Out.WriteLine(
-            $"40 cards / 20 patterns / hand 5: {timer.Elapsed.TotalMilliseconds:F1} ms, {allocatedBytes:N0} allocated bytes");
+            $"40 cards / 20 patterns / hand 5: {timer.Elapsed.TotalMilliseconds:F1} ms, {allocatedBytes:N0} allocated bytes"
+        );
         Assert.That(probability, Is.EqualTo(1).Within(1e-12));
         // Generous regression budget: about 9.5 MB with equivalent states merged,
         // versus 62.7 MB when array reference equality prevents merging. No timing gate.
@@ -362,8 +404,11 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         combos =
         [
             new(categories.Select((category, index) => new ComboCategory(category,
-                index == 0 ? 1 : 0,
-                index == 0 ? 2 : index == 2 ? 0 : 5)))
+                        index == 0 ? 1 : 0,
+                        index == 0 ? 2 : index == 2 ? 0 : 5
+                    )
+                )
+            )
         ];
         probability = new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, 5);
         Assert.That(probability, Is.EqualTo(1705.0 / 54834.0).Within(1e-12));
@@ -388,22 +433,39 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         Dictionary<string, CategoryBase> renamed = new() { ["A"] = new("Renamed A"), ["B"] = new("Renamed B") };
         List<Card> splitDeck =
         [
-            .. deck.AsEnumerable().Reverse().SelectMany(card => Enumerable.Range(0, card.Copies)
-                .Select(_ =>
-                    new Card(card.Categories.AsEnumerable().Reverse().Select(category => renamed[category.Name]))))
+            .. deck
+                .AsEnumerable()
+                .Reverse()
+                .SelectMany(card => Enumerable
+                    .Range(0, card.Copies)
+                    .Select(_ =>
+                        new Card(card.Categories.AsEnumerable().Reverse().Select(category => renamed[category.Name]))
+                    )
+                )
         ];
         List<Combo> changedCombos =
         [
-            .. combos.AsEnumerable().Reverse().Select(combo => new Combo(
-                combo.Categories.AsEnumerable().Reverse().Select(constraint => new ComboCategory(
-                    renamed[constraint.BaseCategory.Name],
-                    constraint.MinCount,
-                    constraint.MaxCount,
-                    constraint.MaximumMode)),
-                groupId: "g"))
+            .. combos
+                .AsEnumerable()
+                .Reverse()
+                .Select(combo => new Combo(
+                        combo
+                            .Categories.AsEnumerable()
+                            .Reverse()
+                            .Select(constraint => new ComboCategory(
+                                    renamed[constraint.BaseCategory.Name],
+                                    constraint.MinCount,
+                                    constraint.MaxCount,
+                                    constraint.MaximumMode
+                                )
+                            ),
+                        groupId: "g"
+                    )
+                )
         ];
         Assert.That(service.CalculateProbabilityForCombos(splitDeck, changedCombos, 2),
-            Is.EqualTo(expected).Within(1e-12));
+            Is.EqualTo(expected).Within(1e-12)
+        );
         // Adding a duplicate or a subset must not enlarge the union.
         changedCombos.Add(changedCombos[0]);
         changedCombos.Add(new Combo([new(renamed["A"], 1, 1), new(renamed["B"], 1, 1)]));
@@ -415,7 +477,8 @@ public sealed class SmallDeckOracleTestBounds : SmallDeckOracleTestBase
         double enlarged = service.CalculateProbabilityForCombos(splitDeck, changedCombos, 2);
         Assert.That(enlarged, Is.GreaterThanOrEqualTo(expected - 1e-12));
         Assert.That(enlarged,
-            Is.EqualTo(SmallDeckOracle.EnumerateProbability(splitDeck, changedCombos, 2)).Within(1e-12));
+            Is.EqualTo(SmallDeckOracle.EnumerateProbability(splitDeck, changedCombos, 2)).Within(1e-12)
+        );
     }
 
     private static TestCaseData Case(string name, List<Card> deck, List<Combo> combos, int size) =>

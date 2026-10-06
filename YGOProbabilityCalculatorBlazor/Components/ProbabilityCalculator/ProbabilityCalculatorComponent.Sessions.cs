@@ -29,7 +29,8 @@ public partial class ProbabilityCalculatorComponent : IDisposable
 
     private SessionLoadRequest BeginSessionLoad() => new(++sessionLoadVersion,
         workspaceEditVersion,
-        _sessionService.SerializeSession(CaptureSession()));
+        _sessionService.SerializeSession(CaptureSession())
+    );
 
     private bool OwnsSessionLoad(long version) => ! disposed && version == sessionLoadVersion;
 

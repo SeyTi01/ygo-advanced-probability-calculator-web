@@ -8,7 +8,8 @@ internal static class CardOrdering
         .Select((card, deckIndex) => (Card: card, DeckIndex: deckIndex))
         .OrderBy(entry => string.IsNullOrWhiteSpace(entry.Card.Name))
         .ThenBy(entry => string.IsNullOrWhiteSpace(entry.Card.Name) ? string.Empty : entry.Card.Name,
-            StringComparer.OrdinalIgnoreCase)
+            StringComparer.OrdinalIgnoreCase
+        )
         .ThenBy(entry => entry.DeckIndex)
         .Select(entry => entry.Card);
 }

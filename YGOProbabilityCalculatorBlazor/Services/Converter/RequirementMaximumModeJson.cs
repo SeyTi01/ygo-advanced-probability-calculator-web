@@ -9,8 +9,11 @@ internal static class RequirementMaximumModeJson
     {
         JsonProperty[] properties =
         [
-            .. root.EnumerateObject().Where(property =>
-                property.Name.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase))
+            .. root
+                .EnumerateObject()
+                .Where(property =>
+                    property.Name.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase)
+                )
         ];
 
         if (properties.Length == 0)

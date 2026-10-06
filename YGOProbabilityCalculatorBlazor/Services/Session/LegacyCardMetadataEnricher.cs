@@ -14,8 +14,11 @@ public class LegacyCardMetadataEnricher(ICardInfoService cardInfoService) : ILeg
                                            ! card.Categories.Any(category =>
                                                category.Source == CategorySource.Metadata &&
                                                ! card.ManualMetadataCategoryKeys.Contains(
-                                                   category.MetadataKey!)) &&
-                                           ! string.IsNullOrWhiteSpace(card.Name))
+                                                   category.MetadataKey!
+                                               )
+                                           ) &&
+                                           ! string.IsNullOrWhiteSpace(card.Name)
+            )
         ];
 
         if (candidates.Length == 0)
@@ -28,7 +31,8 @@ public class LegacyCardMetadataEnricher(ICardInfoService cardInfoService) : ILeg
         try
         {
             resolved = await cardInfoService.GetCardInfoByExactNamesAsync(
-                candidates.Select(card => card.Name!).Distinct(StringComparer.Ordinal));
+                candidates.Select(card => card.Name!).Distinct(StringComparer.Ordinal)
+            );
         }
         catch
         {

@@ -53,6 +53,13 @@ try {
     # Restore JetBrains spacing after Roslyn's code fixes.
     Invoke-CleanupCode
 
+    # ReSharper has no foreach-header closer or receiver-relative chain indentation setting.
+    $invocationLayoutArguments = @(
+        'run', '--project', 'scripts/style/InvocationLayout/InvocationLayout.csproj',
+        '--no-launch-profile', '--'
+    ) + @($sources | ForEach-Object { $_.FullName })
+    Invoke-Dotnet -Arguments $invocationLayoutArguments
+
     # CleanupCode preserves existing BOMs; charset=utf-8 requires UTF-8 without one.
     foreach ($source in $sources) {
         $bytes = [IO.File]::ReadAllBytes($source.FullName)

@@ -15,5 +15,6 @@ public interface IProbabilityCalculatorService
         List<Card> deck,
         List<Combo> combos,
         int handSize,
-        IReadOnlyList<ComboGroup>? groups = null);
+        IReadOnlyList<ComboGroup>? groups = null
+    );
 }
