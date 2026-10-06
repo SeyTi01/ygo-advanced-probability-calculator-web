@@ -198,25 +198,42 @@ try {
     Assert-Pattern $fixed '(?s)LongParameters\([^;]*\n\s*secondParameterWithAVeryLongName:' 'argument wrapping'
     $canonicalSnapshot = Get-StyleSourceSnapshot -RepositoryRoot $repoRoot
 
-    # A text-policy failure must not alter the checkout; the fixer then restores it.
-    [IO.File]::AppendAllText($probe, ' ')
-    $dirtySnapshot = Get-StyleSourceSnapshot -RepositoryRoot $repoRoot
-    $checkerFailed = $false
-    $checkerMessage = ''
-    try {
-        & (Join-Path $styleRoot 'check.ps1') -Full -RepositoryRoot $repoRoot
+    # Each CI family must reject a dirty probe without writing any source bytes.
+    # Keep cases independent so an earlier text/syntax failure cannot mask another family.
+    $cases = @(
+        @{ Name = 'text'; Pattern = 'trailing whitespace'; Transform = { param($text) $text + ' ' } },
+        @{ Name = 'Roslyn'; Pattern = 'Roslyn style verification failed'; Transform = { param($text) $text.Replace('int number = 1;', 'var number = 1;') } },
+        @{ Name = 'braces'; Pattern = 'braces required'; Transform = { param($text) [regex]::Replace($text, '(if \(! condition\))\s*\{\s*(value = n;)\s*\}', '$1 $2') } },
+        @{ Name = 'NOT spacing'; Pattern = 'space required after logical NOT'; Transform = { param($text) $text.Replace('! condition', '!condition') } },
+        @{ Name = 'blank-line cap'; Pattern = 'at most one consecutive blank line'; Transform = { param($text) "`n`n`n" + $text } },
+        @{ Name = 'member separation'; Pattern = 'blank line around invocable member'; Transform = { param($text) $text.Replace("private int value;`n`n", "private int value;`n") } },
+        @{ Name = 'local method separation'; Pattern = 'blank line around local method'; Transform = { param($text) [regex]::Replace($text, '\n\n(?=[ \t]+void Local\()', "`n") } },
+        @{ Name = 'block separation'; Pattern = 'blank line around block statement'; Transform = { param($text) $text.Replace("Changed?.Invoke();`n`n", "Changed?.Invoke();`n") } },
+        @{ Name = 'control transfer separation'; Pattern = 'blank line before control transfer'; Transform = { param($text) [regex]::Replace($text, '\n\n(?=[ \t]+return kind)', "`n") } },
+        @{ Name = 'wrapped closer'; Pattern = 'closing parenthesis on a separate line'; Transform = { param($text) [regex]::Replace($text, '(int fifthParameterWithAVeryLongName)\n[ \t]+\)', '$1)') } },
+        @{ Name = 'wrapped item separation'; Pattern = 'one item per line'; Transform = { param($text) [regex]::Replace($text, '(int firstParameterWithAVeryLongName,)\n[ \t]+(int secondParameterWithAVeryLongName)', '$1 $2') } },
+        @{ Name = 'leading chain dot'; Pattern = 'leading dot'; Transform = { param($text) $text.Replace('.Where(key =>', ".`n            Where(key =>") } },
+        @{ Name = 'foreach invocation layout'; Pattern = 'Invocation layout would change'; Transform = { param($text) $text.Replace($canonicalOuterClosing, $misalignedOuterClosing) } }
+    )
+    $combinedDirty = $fixed
+    foreach ($case in $cases) {
+        $dirty = & $case.Transform $fixed
+        if ($dirty -ceq $fixed) { throw "Could not prepare $($case.Name) negative case." }
+        [IO.File]::WriteAllText($probe, $dirty, [Text.UTF8Encoding]::new($false))
+        $dirtySnapshot = Get-StyleSourceSnapshot -RepositoryRoot $repoRoot
+        $checkerMessage = ''
+        try { & (Join-Path $styleRoot 'check.ps1') -Full -RepositoryRoot $repoRoot }
+        catch { $checkerMessage = $_.Exception.Message }
+        if ($checkerMessage -notmatch $case.Pattern) {
+            throw "Checker did not reject $($case.Name) for the expected rule: $checkerMessage"
+        }
+        if ((Get-StyleSourceSnapshot -RepositoryRoot $repoRoot) -cne $dirtySnapshot) {
+            throw "Checker modified source in $($case.Name) negative case."
+        }
+        Write-Host "PASS: $($case.Name) is detected without source writes"
+        $combinedDirty = & $case.Transform $combinedDirty
     }
-    catch {
-        $checkerFailed = $true
-        $checkerMessage = $_.Exception.Message
-    }
-    if (-not $checkerFailed -or $checkerMessage -notmatch 'trailing whitespace') {
-        throw "Non-mutating checker did not reject the dirty fixture for trailing whitespace: $checkerMessage"
-    }
-    if ((Get-StyleSourceSnapshot -RepositoryRoot $repoRoot) -cne $dirtySnapshot) {
-        throw 'Non-mutating checker changed C# sources in its checkout.'
-    }
-    Write-Host 'PASS: style checker reports a text violation without modifying C# sources'
+    [IO.File]::WriteAllText($probe, $combinedDirty, [Text.UTF8Encoding]::new($false))
 
     & (Join-Path $styleRoot 'fix.ps1') -MSBuildArguments $MSBuildArguments
     if ([IO.File]::ReadAllText($probe) -cne $fixed -or

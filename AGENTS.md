@@ -48,9 +48,31 @@ Inspect the formatter output and keep its C# changes. Then run the read-only ver
 pwsh -NoProfile -File scripts/style/check.ps1
 ```
 
-Publish only when the verifier passes. CI checks style and never fixes source files; do not rely on CI to generate, attach, or provide formatting fixes after publication. The verifier shares policy with the fixer: it reads `.editorconfig` for Roslyn rule IDs and text settings, uses `scripts/style/Cleanup.DotSettings` for ReSharper, and invokes the custom `InvocationLayout` tool in check-only mode. It checks files changed by the event for ordinary PRs and pushes; PR checks compare the base SHA with `GITHUB_SHA`, while push checks compare `event.before` with `GITHUB_SHA`. If the event SHAs are unavailable or the push is a new branch, it checks the full repository. Manual dispatch checks the full repository. Changes to formatter infrastructure trigger full style verification.
+Publish only when the verifier passes. CI is not a formatting service. Agents are responsible for applying cleanup before publication.
 
-The checker copies its validation inputs to a disposable directory, runs formatters there, compares the copied C# files, and verifies the original checkout's Git status is unchanged. It reports changed files and the affected style rule group with the canonical fix command. `scripts/style/test.ps1` exercises the fixer and checker in a disposable copy; CI runs it only when `.editorconfig`, `global.json`, `.config/dotnet-tools.json`, `scripts/style/**`, or `.github/workflows/tests.yml` changes. It is not part of ordinary application-code CI runs.
+The checker reads the existing source directly. It never invokes CleanupCode or the fixer, copies a source tree, writes transformed source, or applies a non-verifying formatter. Its stages are direct UTF-8/BOM/LF/trailing-whitespace/final-newline checks, SDK-local Roslyn syntax/trivia and `InvocationLayout --check`, then `dotnet format style --verify-no-changes` using the EditorConfig-derived diagnostic allowlist. The helper build does not build the application. Roslyn semantic diagnostics require restored project references: existing app/test assets enable `--no-restore`; a fresh checkout lets `dotnet format` restore its workspace. Only ignored build/restore assets are written. Source hashes and Git status are checked before and after, including on failure.
+
+| Accepted policy | CI verification |
+| --- | --- |
+| IDE0001–0005, IDE0008, IDE0011, IDE0028, IDE0034, IDE0075, IDE0090, IDE0300–0306 | Roslyn style verify mode: simplifications, explicit types, braces, exact-type collections |
+| Ordinary control-flow braces (including using/lock/fixed/do) and logical NOT spacing | Direct syntax/token checks derived from JetBrains EditorConfig settings |
+| UTF-8/BOM, LF, trailing whitespace, final newline | Direct byte/text checks |
+| Maximum one blank line; blank lines around invocable members/local methods, compound statements and before control transfers | Syntax/trivia checks; standalone scopes and consecutive yields retain canonical exceptions; literal contents are excluded |
+| Already wrapped arguments/parameters, declaration opening/closing lines, leading method-chain dots | Direct syntax/trivia checks: one item per line, separate closer, declaration closer alignment |
+| Multiline foreach lambda chains | Existing trivia-only `InvocationLayout --check`, including receiver-relative dots and nested/outer closers |
+| ReSharper decisions about when line length requires wrapping (`chop_if_long`), generic continuation/argument indentation, and remaining general reformatting | Local fixer only: duplicating the formatter's context-sensitive layout engine would defeat lightweight verification |
+
+The local-only preferences remain in `.editorconfig` and the canonical fixer; CI verifies the explicit invariants above and does not claim complete CleanupCode equivalence. Wrapped single-item expressions, comments and raw-string contents retain their syntax; wrapping selection stays a local preference. Adding an accepted rule requires both an automatic fix proof and an explicit decision about its verification family.
+
+Ordinary PR checks compare `pull_request.base.sha` with `pull_request.head.sha`; pushes compare `event.before` with `GITHUB_SHA`. Deleted files are skipped and renames include their existing destination. Missing/zero SHAs fall back to a full scan without fetching. No C# changes skip verification. Manual dispatch and formatter infrastructure changes check all app/test C# sources.
+
+For changes to `.editorconfig`, `global.json`, `.config/dotnet-tools.json`, `scripts/style/**`, formatter configuration, or style workflow logic, additionally run the local infrastructure regression suite before publication:
+
+```powershell
+pwsh -NoProfile -File scripts/style/test.ps1
+```
+
+This suite exercises dirty-source detection, canonical fixing and idempotence in a disposable copy. Report its local result in the PR. It is never an ordinary Actions job. The workflow has exactly two independent jobs: C# style verification and Full test suite.
 
 Windows PowerShell users can run `powershell -NoProfile -File scripts/style/fix.ps1`. The fixer restores the pinned SDK-compatible tools/packages, builds to resolve references, applies the narrow JetBrains explicit-type/braces/formatting profile, repeats the explicitly enabled Roslyn style fixes until the C# file hashes stop changing, then restores JetBrains formatting and removes UTF-8 BOMs. `global.json` pins Roslyn's SDK; the tool manifest pins ReSharper. Only noninteractive, safely auto-fixable rules belong in `.editorconfig`; adding a rule requires proving its fix with this command. C# source is the enforced scope; unrelated file formats have no formatter gate.
 

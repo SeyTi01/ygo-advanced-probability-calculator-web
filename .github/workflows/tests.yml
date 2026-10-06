@@ -23,9 +23,7 @@ jobs:
   style:
     name: C# style verification
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    outputs:
-      infrastructure_changed: ${{ steps.check.outputs.infrastructureChanged }}
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository history
@@ -39,29 +37,8 @@ jobs:
           global-json-file: global.json
 
       - name: Verify C# style without changing the checkout
-        id: check
         shell: pwsh
         run: ./scripts/style/check.ps1
-
-  style-infrastructure-regression:
-    name: Style infrastructure regression
-    needs: style
-    if: ${{ !cancelled() && needs.style.outputs.infrastructure_changed == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up pinned .NET SDK
-        uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
-
-      - name: Exercise fixer and checker regression suite
-        shell: pwsh
-        run: pwsh -NoProfile -File scripts/style/test.ps1
 
   test:
     name: Full test suite

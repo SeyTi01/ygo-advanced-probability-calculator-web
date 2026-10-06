@@ -5,6 +5,12 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 bool checkOnly = args.Length > 0 && args[0] == "--check";
 string[] paths = checkOnly ? args[1..] : args;
+StyleVerifier? verifier = null;
+if (checkOnly && paths.Length >= 2 && paths[0] == "--policy")
+{
+    verifier = new StyleVerifier(paths[1]);
+    paths = paths[2..];
+}
 
 if (paths.Length == 0)
 {
@@ -17,6 +23,11 @@ foreach (string path in paths)
 {
     string source = File.ReadAllText(path, Encoding.UTF8);
     SyntaxNode root = CSharpSyntaxTree.ParseText(source, parseOptions, path).GetRoot();
+    if (verifier is not null && !verifier.Check(root, source, path))
+    {
+        hasDifferences = true;
+    }
+
     SyntaxNode formatted = new ForeachChainLayoutRewriter().Visit(root)!;
     string output = formatted.ToFullString();
     if (!string.Equals(source, output, StringComparison.Ordinal))
