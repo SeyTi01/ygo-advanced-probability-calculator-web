@@ -1,4 +1,5 @@
 using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using YGOProbabilityCalculatorBlazor.Constants;
 
@@ -15,13 +16,13 @@ public class PublishedOutputSeoTest {
         "Help and usage guide for the Yu-Gi-Oh! Advanced Probability Calculator, including cards, categories, combo requirements, constraints, and probability results.",
         "https://ygo-calculator.pages.dev/help")]
     public async Task PublicRouteContainsCompleteInitialHtml(string relativePath, string title, string description, string canonical) {
-        var publishRoot = Environment.GetEnvironmentVariable("YGO_PUBLISH_ROOT");
+        string? publishRoot = Environment.GetEnvironmentVariable("YGO_PUBLISH_ROOT");
         Assert.That(publishRoot, Is.Not.Null.And.Not.Empty, "Set YGO_PUBLISH_ROOT to the published wwwroot directory.");
-        var path = Path.Combine(publishRoot!, relativePath);
+        string path = Path.Combine(publishRoot!, relativePath);
         Assert.That(File.Exists(path), Is.True, $"Missing prerendered route: {path}");
 
         // Parse the deployable file only. Do not execute JavaScript or render Razor components.
-        using var document = await new HtmlParser().ParseDocumentAsync(await File.ReadAllTextAsync(path));
+        using IHtmlDocument document = await new HtmlParser().ParseDocumentAsync(await File.ReadAllTextAsync(path));
         AssertSeo(document, relativePath, title, description, canonical);
         Assert.That(File.Exists(Path.Combine(publishRoot!, "help", "index.html")), Is.False,
             "A directory-index Help asset makes Cloudflare redirect the canonical /help route.");
@@ -31,14 +32,14 @@ public class PublishedOutputSeoTest {
     [TestCase("/help")]
     [TestCase("/help/")]
     public async Task PublicHttpRouteContainsCompleteInitialHtml(string route) {
-        var baseUrl = Environment.GetEnvironmentVariable("YGO_SEO_BASE_URL");
+        string? baseUrl = Environment.GetEnvironmentVariable("YGO_SEO_BASE_URL");
         if (string.IsNullOrEmpty(baseUrl)) {
             Assert.Ignore("Set YGO_SEO_BASE_URL to a local Pages server or Cloudflare preview URL to verify HTTP routing.");
         }
 
-        using var handler = new HttpClientHandler { AllowAutoRedirect = false };
-        using var client = new HttpClient(handler) { BaseAddress = new Uri(baseUrl!) };
-        using var response = await client.GetAsync(route);
+        using HttpClientHandler handler = new() { AllowAutoRedirect = false };
+        using HttpClient client = new(handler) { BaseAddress = new Uri(baseUrl!) };
+        using HttpResponseMessage response = await client.GetAsync(route);
         TestContext.Out.WriteLine($"GET {route}: {(int)response.StatusCode}; Location: {response.Headers.Location}");
         if (route == "/help/") {
             Assert.That((int)response.StatusCode, Is.AnyOf(301, 302, 307, 308));
@@ -51,8 +52,8 @@ public class PublishedOutputSeoTest {
         Assert.That(response.StatusCode, Is.EqualTo(System.Net.HttpStatusCode.OK), "The canonical route must return direct HTML.");
         Assert.That(response.Headers.Location, Is.Null);
         Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("text/html"));
-        using var document = await new HtmlParser().ParseDocumentAsync(await response.Content.ReadAsStringAsync());
-        var isRoot = route == "/";
+        using IHtmlDocument document = await new HtmlParser().ParseDocumentAsync(await response.Content.ReadAsStringAsync());
+        bool isRoot = route == "/";
         AssertSeo(document, isRoot ? "index.html" : "help.html", isRoot ? AppTitle : "Help | " + AppTitle,
             isRoot
                 ? "Calculate exact Yu-Gi-Oh! opening-hand and deck-combo probabilities with overlapping card categories, direct card requirements, and custom constraints."
@@ -66,7 +67,7 @@ public class PublishedOutputSeoTest {
         AssertAttribute(document, "head link[rel='canonical']", "href", canonical);
         AssertSingle(document, "h1", relativePath == "index.html" ? AppTitle : $"{AppTitle} v{ProjectConstants.Version}");
 
-        var metadata = new Dictionary<string, string> {
+        Dictionary<string, string> metadata = new() {
             ["og:type"] = "website",
             ["og:site_name"] = AppTitle,
             ["og:title"] = title,
@@ -82,9 +83,9 @@ public class PublishedOutputSeoTest {
             ["twitter:image"] = "https://ygo-calculator.pages.dev/social-preview.png",
             ["twitter:image:alt"] = "Dark calculator interface showing Vanquish Soul Razen with VS Monster and VS Starter roles, a VS Starter plus FIRE-or-DARK combo expression, and exact Full VS probability results."
         };
-        foreach (var (name, value) in metadata) {
-            var attribute = name.StartsWith("og:", StringComparison.Ordinal) ? "property" : "name";
-            AssertAttribute(document, $"head meta[{attribute}='{name}']", "content", value);
+        foreach (KeyValuePair<string, string> metadataEntry in metadata) {
+            string attribute = metadataEntry.Key.StartsWith("og:", StringComparison.Ordinal) ? "property" : "name";
+            AssertAttribute(document, $"head meta[{attribute}='{metadataEntry.Key}']", "content", metadataEntry.Value);
         }
 
         Assert.That(document.QuerySelector("#app main"), Is.Not.Null, "The page body must be prerendered inside the normal app root.");
@@ -92,7 +93,7 @@ public class PublishedOutputSeoTest {
     }
 
     private static IElement Single(IDocument document, string selector) {
-        var matches = document.QuerySelectorAll(selector);
+        IHtmlCollection<IElement> matches = document.QuerySelectorAll(selector);
         Assert.That(matches, Has.Length.EqualTo(1), selector);
         return matches[0];
     }

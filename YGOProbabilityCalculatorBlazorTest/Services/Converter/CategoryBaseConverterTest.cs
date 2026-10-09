@@ -19,9 +19,9 @@ public class CategoryBaseConverterTests {
 
     [Test]
     public void Serialize_ValidCategoryBase_ReturnsCorrectJson() {
-        var category = new CategoryBase("TestCategory");
+        CategoryBase category = new("TestCategory");
 
-        var json = JsonSerializer.Serialize(category, _options);
+        string json = JsonSerializer.Serialize(category, _options);
 
         Assert.That(json, Is.EqualTo("{\"Name\":\"TestCategory\",\"Source\":\"User\"}"));
     }
@@ -30,7 +30,7 @@ public class CategoryBaseConverterTests {
     public void Deserialize_ValidJson_ReturnsCategoryBase() {
         const string json = "{\"Name\":\"TestCategory\"}";
 
-        var category = JsonSerializer.Deserialize<CategoryBase>(json, _options);
+        CategoryBase? category = JsonSerializer.Deserialize<CategoryBase>(json, _options);
 
         Assert.That(category, Is.Not.Null);
         Assert.That(category!.Name, Is.EqualTo("TestCategory"));

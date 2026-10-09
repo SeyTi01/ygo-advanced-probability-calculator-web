@@ -7,41 +7,50 @@
     <div class="pinned-row pinned-total">
         <span>Any active combo</span><strong>@Snapshot.Total.ToString("P2")</strong>
     </div>
-    @foreach (var group in Snapshot.Groups) {
+    @foreach (PinnedGroupRow group in Snapshot.Groups) {
         <section class="pinned-group">
             <h6 class="pinned-row">
                 <span>@group.Label <small class="text-body-secondary fw-normal">(@group.ActiveCount active)</small></span>
                 <strong>@group.Probability.ToString("P2")</strong>
             </h6>
-            @if (Current is not null && Snapshot.CompareGroup(group, Current, false) is var groupMatch && groupMatch != "Comparable") {
-                <small class="pinned-match">@groupMatch</small>
+            @if (Current is not null) {
+                string groupMatch = Snapshot.CompareGroup(group, Current, false);
+                if (groupMatch != "Comparable") {
+                    <small class="pinned-match">@groupMatch</small>
+                }
             }
             <ol class="pinned-list pinned-members">
-                @foreach (var row in Snapshot.Combos.Where(c => c.GroupId == group.Id)) {
+                @foreach (PinnedComboRow row in Snapshot.Combos.Where(combo => combo.GroupId == group.Id)) {
                     <li>
                         <div class="pinned-row">
                             <span>@row.Label</span>
                             <strong>@row.Probability.ToString("P2")</strong>
                         </div>
-                        @if (Current is not null && Snapshot.CompareCombo(row, Current, false) is var match && match != "Comparable") {
-                            <small class="pinned-match">@match</small>
+                        @if (Current is not null) {
+                            string match = Snapshot.CompareCombo(row, Current, false);
+                            if (match != "Comparable") {
+                                <small class="pinned-match">@match</small>
+                            }
                         }
                     </li>
                 }
             </ol>
         </section>
     }
-    @if (Snapshot.Groups.IsEmpty || Snapshot.Combos.Any(c => c.GroupId is null || !Snapshot.Groups.Any(g => g.Id == c.GroupId))) {
+    @if (Snapshot.Groups.IsEmpty || Snapshot.Combos.Any(combo => combo.GroupId is null || !Snapshot.Groups.Any(group => group.Id == combo.GroupId))) {
         <h6>@(Snapshot.Groups.IsEmpty ? "Individual combos" : "Ungrouped combos")</h6>
         <ol class="pinned-list">
-            @foreach (var row in Snapshot.Combos.Where(c => c.GroupId is null || !Snapshot.Groups.Any(g => g.Id == c.GroupId))) {
+            @foreach (PinnedComboRow row in Snapshot.Combos.Where(combo => combo.GroupId is null || !Snapshot.Groups.Any(group => group.Id == combo.GroupId))) {
                 <li>
                     <div class="pinned-row">
                         <span>@row.Label</span>
                         <strong>@row.Probability.ToString("P2")</strong>
                     </div>
-                    @if (Current is not null && Snapshot.CompareCombo(row, Current, false) is var match && match != "Comparable") {
-                        <small class="pinned-match">@match</small>
+                    @if (Current is not null) {
+                        string match = Snapshot.CompareCombo(row, Current, false);
+                        if (match != "Comparable") {
+                            <small class="pinned-match">@match</small>
+                        }
                     }
                 </li>
             }

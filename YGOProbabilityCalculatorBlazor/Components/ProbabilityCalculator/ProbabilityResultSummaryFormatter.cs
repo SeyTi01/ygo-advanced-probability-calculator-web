@@ -6,24 +6,21 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 /// <summary>Formats an accepted probability result as a readable, shareable plain-text summary.</summary>
 public static class ProbabilityResultSummaryFormatter {
-    public static string Format(
-        ProbabilityCalculationResult result,
-        int handSize,
-        CultureInfo culture) {
+    public static string Format(ProbabilityCalculationResult result, int handSize, CultureInfo culture) {
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(culture);
 
-        var groups = result.GroupProbabilities ?? Array.Empty<GroupProbabilityResult>();
-        var knownGroupIds = groups.Select(group => group.GroupId).ToHashSet(StringComparer.Ordinal);
-        var ungrouped = result.ComboProbabilities
+        IReadOnlyList<GroupProbabilityResult> groups = result.GroupProbabilities ?? Array.Empty<GroupProbabilityResult>();
+        HashSet<string> knownGroupIds = groups.Select(group => group.GroupId).ToHashSet(StringComparer.Ordinal);
+        List<ComboProbabilityResult> ungrouped = result.ComboProbabilities
             .Where(combo => combo.GroupId is null || !knownGroupIds.Contains(combo.GroupId))
             .ToList();
 
-        var lines = new List<string> {
+        List<string> lines = [
             "Probability results",
             $"Hand size: {handSize}",
             $"Any active combo: {FormatProbability(result.TotalProbability, culture)}"
-        };
+        ];
 
         if (groups.Count == 0) {
             lines.Add(string.Empty);
@@ -33,12 +30,12 @@ public static class ProbabilityResultSummaryFormatter {
         else {
             lines.Add(string.Empty);
             lines.Add("Group probabilities:");
-            foreach (var group in groups) {
-                lines.Add(
-                    $"- **{NormalizeLabel(group.GroupName)}** — {FormatProbability(group.Probability, culture)} ({group.ActiveComboCount} active)");
 
-                foreach (var combo in result.ComboProbabilities.Where(combo =>
-                             StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId))) {
+            foreach (GroupProbabilityResult group in groups) {
+                lines.Add($"- **{NormalizeLabel(group.GroupName)}** — {FormatProbability(group.Probability, culture)} ({group.ActiveComboCount} active)");
+                IEnumerable<ComboProbabilityResult> groupCombos = result.ComboProbabilities.Where(combo => StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId));
+
+                foreach (ComboProbabilityResult combo in groupCombos) {
                     lines.Add(FormatCombo(combo, culture, indent: "  "));
                 }
             }
@@ -53,11 +50,8 @@ public static class ProbabilityResultSummaryFormatter {
         return string.Join('\n', lines);
     }
 
-    private static string FormatCombo(
-        ComboProbabilityResult combo,
-        CultureInfo culture,
-        string indent = "") {
-        var name = string.IsNullOrWhiteSpace(combo.ComboName)
+    private static string FormatCombo(ComboProbabilityResult combo, CultureInfo culture, string indent = "") {
+        string? name = string.IsNullOrWhiteSpace(combo.ComboName)
             ? $"Unnamed combo {combo.ComboIndex + 1}"
             : combo.ComboName;
 
@@ -68,11 +62,14 @@ public static class ProbabilityResultSummaryFormatter {
         probability.ToString("P2", culture);
 
     private static string NormalizeLabel(string? value) {
-        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        if (string.IsNullOrWhiteSpace(value)) {
+            return string.Empty;
+        }
 
-        var normalized = new StringBuilder(value.Length);
-        var hasPendingSpace = false;
-        foreach (var character in value) {
+        StringBuilder normalized = new(value.Length);
+        bool hasPendingSpace = false;
+
+        foreach (char character in value) {
             if (char.IsControl(character) || char.IsWhiteSpace(character)) {
                 hasPendingSpace = normalized.Length > 0;
                 continue;

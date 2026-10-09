@@ -19,12 +19,12 @@ public class CardConverterTests {
 
     [Test]
     public void Serialize_ValidCard_ReturnsCorrectJson() {
-        var categories = new List<CategoryBase> { new("Category1") };
-        var card = new Card(categories, 3, "TestCard");
+        List<CategoryBase> categories = [new("Category1")];
+        Card card = new(categories, 3, "TestCard");
 
-        var json = JsonSerializer.Serialize(card, _options);
+        string json = JsonSerializer.Serialize(card, _options);
 
-        var expectedJson = $"{{\"Categories\":[{{\"Name\":\"Category1\",\"Source\":\"User\"}}],\"Copies\":3,\"Name\":\"TestCard\",\"Active\":true,\"Id\":\"{card.Id}\",\"ManualMetadataCategoryKeys\":[]}}";
+        string expectedJson = $"{{\"Categories\":[{{\"Name\":\"Category1\",\"Source\":\"User\"}}],\"Copies\":3,\"Name\":\"TestCard\",\"Active\":true,\"Id\":\"{card.Id}\",\"ManualMetadataCategoryKeys\":[]}}";
         Assert.That(json, Is.EqualTo(expectedJson));
     }
 
@@ -32,7 +32,7 @@ public class CardConverterTests {
     public void Deserialize_ValidJson_ReturnsCard() {
         const string json = "{\"Categories\":[{\"Name\":\"Category1\"}],\"Copies\":3,\"Name\":\"TestCard\"}";
 
-        var card = JsonSerializer.Deserialize<Card>(json, _options);
+        Card? card = JsonSerializer.Deserialize<Card>(json, _options);
 
         Assert.That(card, Is.Not.Null);
         Assert.That(card.Categories.First().Name, Is.EqualTo("Category1"));
@@ -47,7 +47,7 @@ public class CardConverterTests {
     public void Deserialize_EmptyCategories_ReturnsCardWithEmptyCategories() {
         const string json = "{\"Categories\":[],\"Copies\":1,\"Name\":\"TestCard\"}";
 
-        var card = JsonSerializer.Deserialize<Card>(json, _options);
+        Card? card = JsonSerializer.Deserialize<Card>(json, _options);
 
         Assert.That(card, Is.Not.Null);
         Assert.That(card!.Categories, Is.Empty);
@@ -55,13 +55,13 @@ public class CardConverterTests {
 
     [Test]
     public void CardIdentityRoundTripsAndLegacyCardsGetDifferentIds() {
-        var card = new Card([], 2, "Twin");
-        var loaded = JsonSerializer.Deserialize<Card>(JsonSerializer.Serialize(card, _options), _options)!;
+        Card card = new([], 2, "Twin");
+        Card loaded = JsonSerializer.Deserialize<Card>(JsonSerializer.Serialize(card, _options), _options)!;
         Assert.That(loaded.Id, Is.EqualTo(card.Id));
         Assert.That(loaded.WithName("Renamed").WithActive(false).Id, Is.EqualTo(card.Id));
         const string legacy = "{\"Categories\":[],\"Copies\":1,\"Name\":\"Twin\"}";
-        var first = JsonSerializer.Deserialize<Card>(legacy, _options)!;
-        var second = JsonSerializer.Deserialize<Card>(legacy, _options)!;
+        Card first = JsonSerializer.Deserialize<Card>(legacy, _options)!;
+        Card second = JsonSerializer.Deserialize<Card>(legacy, _options)!;
         Assert.That(first.Id, Is.Not.Empty.And.Not.EqualTo(second.Id));
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Card>(
             "{\"Categories\":[],\"Copies\":1,\"Name\":null,\"Id\":\"\"}", _options));
@@ -69,17 +69,17 @@ public class CardConverterTests {
 
     [Test]
     public void ManualPropertiesRoundTripAndMissingFieldMeansObjectiveMembership() {
-        var fire = new CategoryBase("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
-        var card = new Card([], 3, "ROTA", false, "rota", 32807846).WithManualMetadataCategory(fire);
-        var json = JsonSerializer.Serialize(card, _options);
-        var loaded = JsonSerializer.Deserialize<Card>(json, _options)!;
+        CategoryBase fire = new("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
+        Card card = new Card([], 3, "ROTA", false, "rota", 32807846).WithManualMetadataCategory(fire);
+        string json = JsonSerializer.Serialize(card, _options);
+        Card loaded = JsonSerializer.Deserialize<Card>(json, _options)!;
         Assert.That(loaded.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { fire.MetadataKey }));
         Assert.That(loaded.Categories, Is.EqualTo(card.Categories));
         Assert.That((loaded.Id, loaded.ExternalCardId, loaded.Copies, loaded.Name, loaded.Active),
             Is.EqualTo((card.Id, card.ExternalCardId, card.Copies, card.Name, card.Active)));
-        var previewV2 = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        System.Text.Json.Nodes.JsonNode previewV2 = System.Text.Json.Nodes.JsonNode.Parse(json)!;
         previewV2.AsObject().Remove("ManualMetadataCategoryKeys");
-        var preview = JsonSerializer.Deserialize<Card>(previewV2.ToJsonString(), _options)!;
+        Card preview = JsonSerializer.Deserialize<Card>(previewV2.ToJsonString(), _options)!;
         Assert.That(preview.ManualMetadataCategoryKeys, Is.Empty);
         Assert.That(preview.WithoutManualMetadataCategory(fire.MetadataKey!).Categories, Does.Contain(fire));
     }
@@ -91,7 +91,7 @@ public class CardConverterTests {
     [TestCase("[\"attribute:water\"]")]
     [TestCase("[123]")]
     public void MalformedManualPropertiesAreRejected(string keys) {
-        var json = """
+        string json = """
             {"Categories":[{"Name":"Attribute: FIRE","Source":"Metadata","MetadataKey":"attribute:fire"}],
              "Copies":1,"Name":"ROTA","ManualMetadataCategoryKeys":
             """ + keys + "}";
@@ -100,7 +100,7 @@ public class CardConverterTests {
 
     [Test]
     public void PersistedDuplicateManualKeysAreNormalized() {
-        var json = """
+        string json = """
             {"Categories":[{"Name":"Attribute: FIRE","Source":"Metadata","MetadataKey":"attribute:fire"}],
              "Copies":1,"Name":"ROTA","ManualMetadataCategoryKeys":["attribute:fire","attribute:fire"]}
             """;

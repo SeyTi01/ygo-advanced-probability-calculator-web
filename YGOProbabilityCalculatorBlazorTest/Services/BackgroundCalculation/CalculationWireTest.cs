@@ -10,11 +10,11 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.BackgroundCalculation;
 public class CalculationWireTest {
     [Test]
     public void LargeFiniteProbabilitySurvivesWorkerSerialization() {
-        var a = new CategoryBase("A");
-        var snapshot = CalculationSnapshot.Capture([new([a]), new([], 1099)],
+        CategoryBase a = new("A");
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture([new([a]), new([], 1099)],
             [new([new(a, 1, 1)], groupId: "g")], 550, [new("g", "Group")]);
         // A distinguished copy occurs in exactly h/n = 550/1100 of all hands.
-        var result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
+        ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
         Assert.That(result.TotalProbability, Is.EqualTo(0.5));
         Assert.That(result.ComboProbabilities.Single().Probability, Is.EqualTo(0.5));
         Assert.That(result.GroupProbabilities!.Single().Probability, Is.EqualTo(0.5));
@@ -22,22 +22,22 @@ public class CalculationWireTest {
 
     [Test]
     public void SnapshotFiltersActiveInputsAndOwnsNestedValuesAndGroupOrder() {
-        var role = new CategoryBase("Role");
-        var property = new CategoryBase("FIRE", CategorySource.Metadata, "attribute:fire");
+        CategoryBase role = new("Role");
+        CategoryBase property = new("FIRE", CategorySource.Metadata, "attribute:fire");
         List<Card> cards = [new([role, property], 2, "Card", id: "stable", externalCardId: 123,
             manualMetadataCategoryKeys: [property.MetadataKey!]), new([], 2, "Blank", id: "blank"), new([], 10, active: false)];
         List<Combo> combos = [new([new(property, 0, 2, RequirementMaximumMode.HandSize)], "Combo", groupId: "g",
             cards: [new("stable", 1, 2)]), new([new(role, 0, 0)], active: false)];
         List<ComboGroup> groups = [new("other", "Other"), new("g", "Group")];
-        var expected = SmallDeckOracle.EnumerateProbability(cards.Where(c => c.Active).ToList(), [combos[0]], 2);
-        var snapshot = CalculationSnapshot.Capture(cards, combos, 2, groups);
+        double expected = SmallDeckOracle.EnumerateProbability(cards.Where(c => c.Active).ToList(), [combos[0]], 2);
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, combos, 2, groups);
         cards[0].Categories.Clear();
         combos[0].Categories.Clear();
         combos[0].Cards.Clear();
         combos[0].GroupId = "changed";
         groups.Reverse();
-        var input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
-        var result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
+        CalculationInput input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
+        ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
         Assert.Multiple(() => {
             Assert.That(input.Cards, Has.Length.EqualTo(2));
             Assert.That(input.Cards[0].Id, Is.EqualTo("stable"));
@@ -54,30 +54,31 @@ public class CalculationWireTest {
 
     [Test]
     public void OverlappingDistinctRequirementsAndZeroMaximumMatchIndependentPhysicalOracle() {
-        var a = new CategoryBase("A");
-        var b = new CategoryBase("B");
+        CategoryBase a = new("A");
+        CategoryBase b = new("B");
         List<Card> cards = [new([a, b], 2, id: "ab"), new([a], id: "a"), new([], id: "blank")];
         List<Combo> combos = [new([new(a, 1, 2), new(b, 1, 2)], "Both"),
             new([new(b, 0, 0)], "Direct", cards: [new("a", 1, 2, RequirementMaximumMode.HandSize)])];
-        var result = CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(cards, combos, 2, []).Json));
+        ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(cards, combos, 2, []).Json));
         Assert.That(result.TotalProbability, Is.EqualTo(SmallDeckOracle.EnumerateProbability(cards, combos, 2)).Within(1e-12));
-        for (var i = 0; i < combos.Count; i++)
+        for (int i = 0; i < combos.Count; i++) {
             Assert.That(result.ComboProbabilities[i].Probability,
                 Is.EqualTo(SmallDeckOracle.EnumerateProbability(cards, [combos[i]], 2)).Within(1e-12));
+        }
     }
 
     [Test]
     public void ActualEngineLimitRetainsItsTypeAndMeaningAcrossTheWire() {
-        var categories = Enumerable.Range(0, 18).Select(i => new CategoryBase($"C{i}")).ToArray();
-        var cards = categories.Select(c => new Card([c])).Append(new Card([], 22));
-        var combos = categories.Select(c => new Combo([new(c, 0, 0)]));
-        var response = CalculationWire.Execute(CalculationSnapshot.Capture(cards, combos, 5, []).Json);
+        CategoryBase[] categories = Enumerable.Range(0, 18).Select(i => new CategoryBase($"C{i}")).ToArray();
+        IEnumerable<Card> cards = categories.Select(c => new Card([c])).Append(new Card([], 22));
+        IEnumerable<Combo> combos = categories.Select(c => new Combo([new(c, 0, 0)]));
+        string response = CalculationWire.Execute(CalculationSnapshot.Capture(cards, combos, 5, []).Json);
         Assert.Throws<ProbabilityCalculationLimitException>(() => CalculationWire.ReadResult(response));
     }
 
     [Test]
     public void OrdinaryAndMalformedResponsesNeverBecomeZeroResults() {
-        var response = CalculationWire.Execute("not JSON");
+        string response = CalculationWire.Execute("not JSON");
         Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(response));
         Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult("{}"));
         Assert.Throws<JsonException>(() => CalculationWire.ReadResult("not JSON"));

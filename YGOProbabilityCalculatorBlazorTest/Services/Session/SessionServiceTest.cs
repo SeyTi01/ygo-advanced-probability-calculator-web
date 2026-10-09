@@ -27,57 +27,66 @@ public class SessionServiceTests {
 
     [Test]
     public async Task SaveSessionAsync_WithValidFileName_CallsSerializerAndJsRuntime() {
-        var session = new SessionState();
+        SessionState session = new();
         const string fileName = "test";
         const string serializedJson = "{}";
         const string expectedFileName = "test.json";
-        var expectedBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(serializedJson));
+        string expectedBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(serializedJson));
 
         _serializerMock.Setup(x => x.Serialize(It.IsAny<SessionState>(), It.IsAny<JsonSerializerOptions>()))
             .Returns(serializedJson);
 
         await _sessionService.SaveSessionAsync(session, fileName);
 
-        _serializerMock.Verify(x => x.Serialize(
-            It.Is<SessionState>(saved => saved.SchemaVersion == SessionState.CurrentSchemaVersion),
-            It.IsAny<JsonSerializerOptions>()), Times.Once);
-        _jsRuntimeMock.Verify(x => x.InvokeAsync<object>(
-            "saveSessionFile",
-            It.Is<object[]>(args =>
-                args.Length == 2 &&
-                args[0].ToString() == expectedFileName &&
-                args[1].ToString() == expectedBase64
-            )
-        ), Times.Once);
+        _serializerMock.Verify(
+            serializer => serializer.Serialize(
+                It.Is<SessionState>(saved => saved.SchemaVersion == SessionState.CurrentSchemaVersion),
+                It.IsAny<JsonSerializerOptions>()
+            ),
+            Times.Once
+        );
+        _jsRuntimeMock.Verify(
+            runtime => runtime.InvokeAsync<object>(
+                "saveSessionFile",
+                It.Is<object[]>(arguments =>
+                    arguments.Length == 2
+                    && arguments[0].ToString() == expectedFileName
+                    && arguments[1].ToString() == expectedBase64
+                )
+            ),
+            Times.Once
+        );
     }
-
 
     [Test]
     public async Task SaveSessionAsync_WithJsonExtension_DoesNotAppendExtension() {
-        var session = new SessionState();
+        SessionState session = new();
         const string fileName = "test.json";
         const string serializedJson = "{}";
-        var expectedBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(serializedJson));
+        string expectedBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(serializedJson));
 
         _serializerMock.Setup(x => x.Serialize(It.IsAny<SessionState>(), It.IsAny<JsonSerializerOptions>()))
             .Returns(serializedJson);
 
         await _sessionService.SaveSessionAsync(session, fileName);
 
-        _jsRuntimeMock.Verify(x => x.InvokeAsync<object>(
-            "saveSessionFile",
-            It.Is<object[]>(args =>
-                args.Length == 2 &&
-                args[0].ToString() == fileName &&
-                args[1].ToString() == expectedBase64
-            )
-        ), Times.Once);
+        _jsRuntimeMock.Verify(
+            runtime => runtime.InvokeAsync<object>(
+                "saveSessionFile",
+                It.Is<object[]>(arguments =>
+                    arguments.Length == 2
+                    && arguments[0].ToString() == fileName
+                    && arguments[1].ToString() == expectedBase64
+                )
+            ),
+            Times.Once
+        );
     }
 
     [Test]
     public async Task SaveSessionAsync_WhenInteropResolvesNormally_CompletesSuccessfully() {
-        var runtime = new CapturingJsRuntime();
-        var service = new SessionService(runtime, new RealJsonSerializer());
+        CapturingJsRuntime runtime = new();
+        SessionService service = new(runtime, new RealJsonSerializer());
 
         await service.SaveSessionAsync(new SessionState(), "cancelled");
 
@@ -86,9 +95,9 @@ public class SessionServiceTests {
 
     [Test]
     public void SaveSessionAsync_WhenJavaScriptInteropFails_PropagatesTheFailure() {
-        var service = new SessionService(new FailingJsRuntime(), new RealJsonSerializer());
+        SessionService service = new(new FailingJsRuntime(), new RealJsonSerializer());
 
-        var exception = Assert.ThrowsAsync<JSException>(async () =>
+        JSException exception = Assert.ThrowsAsync<JSException>(async () =>
             await service.SaveSessionAsync(new SessionState(), "write-failure"));
 
         Assert.That(exception!.Message, Is.EqualTo("Session file write failed."));
@@ -97,18 +106,21 @@ public class SessionServiceTests {
     [Test]
     public async Task LoadSessionAsync_WithValidJson_ReturnsDeserializedSession() {
         const string fileContent = "{}";
-        var expectedSession = new SessionState();
+        SessionState expectedSession = new();
 
         _serializerMock.Setup(x => x.Deserialize<SessionState>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
             .Returns(expectedSession);
 
-        var result = await _sessionService.LoadSessionAsync(fileContent);
+        SessionState result = await _sessionService.LoadSessionAsync(fileContent);
 
         Assert.That(result, Is.SameAs(expectedSession));
-        _serializerMock.Verify(x => x.Deserialize<SessionState>(
-            It.Is<string>(json => JsonDocument.Parse(json).RootElement.GetProperty("SchemaVersion").GetInt32() == SessionState.CurrentSchemaVersion),
-            It.IsAny<JsonSerializerOptions>()
-        ), Times.Once);
+        _serializerMock.Verify(
+            serializer => serializer.Deserialize<SessionState>(
+                It.Is<string>(json => JsonDocument.Parse(json).RootElement.GetProperty("SchemaVersion").GetInt32() == SessionState.CurrentSchemaVersion),
+                It.IsAny<JsonSerializerOptions>()
+            ),
+            Times.Once
+        );
     }
 
     [Test]
@@ -117,7 +129,7 @@ public class SessionServiceTests {
         _serializerMock.Setup(x => x.Deserialize<SessionState>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
             .Returns((SessionState?)null);
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _sessionService.LoadSessionAsync(fileContent));
         Assert.That(exception.Message, Is.EqualTo("Failed to deserialize session data"));
     }
@@ -128,19 +140,19 @@ public class SessionServiceTests {
         _serializerMock.Setup(x => x.Deserialize<SessionState>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
             .Throws(new JsonException("Invalid JSON"));
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _sessionService.LoadSessionAsync(fileContent));
         Assert.That(exception.Message, Is.EqualTo("Invalid session file format"));
     }
 
     [Test]
     public void LoadSessionAsync_RejectsDuplicateCardIds() {
-        var original = new Card([], 1, "First");
-        var duplicate = new Card([], 1, "Second", id: original.Id);
-        var session = new SessionState { Cards = [original, duplicate] };
+        Card original = new([], 1, "First");
+        Card duplicate = new([], 1, "Second", id: original.Id);
+        SessionState session = new() { Cards = [original, duplicate] };
         _serializerMock.Setup(x => x.Deserialize<SessionState>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
             .Returns(session);
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _sessionService.LoadSessionAsync("{}"));
         Assert.That(exception!.Message, Does.Contain("duplicate card IDs"));
     }
@@ -153,16 +165,16 @@ public class SessionServiceTests {
     [TestCase("Combos", "[null]")]
     [TestCase("ComboGroups", "[null]")]
     public void LoadSessionAsync_RejectsMissingModelCollectionsAndEntries(string field, string value) {
-        var service = new SessionService(_jsRuntimeMock.Object, new RealJsonSerializer());
-        var json = $"{{\"SchemaVersion\":3,\"{field}\":{value}}}";
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(() => service.LoadSessionAsync(json));
+        SessionService service = new(_jsRuntimeMock.Object, new RealJsonSerializer());
+        string json = $"{{\"SchemaVersion\":3,\"{field}\":{value}}}";
+        InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(() => service.LoadSessionAsync(json));
         Assert.That(exception!.Message, Is.EqualTo("Invalid session file format"));
     }
 
     [Test]
     public async Task LoadSessionAsync_AbsentCollectionsAndLegacyNullOptionalFieldsRemainSupported() {
-        var service = new SessionService(_jsRuntimeMock.Object, new RealJsonSerializer());
-        var session = await service.LoadSessionAsync("{\"ComboGroups\":null,\"CategoryColorIndices\":null}");
+        SessionService service = new(_jsRuntimeMock.Object, new RealJsonSerializer());
+        SessionState session = await service.LoadSessionAsync("{\"ComboGroups\":null,\"CategoryColorIndices\":null}");
         Assert.That(session.Categories, Is.Empty);
         Assert.That(session.Cards, Is.Empty);
         Assert.That(session.Combos, Is.Empty);
@@ -179,8 +191,8 @@ public class SessionServiceTests {
     [TestCase("\"ComboGroups\":[{\"Id\":\"g\",\"Name\":null}]")]
     [TestCase("\"ComboGroups\":[{\"Id\":\"g\",\"Name\":\" \"}]")]
     public void LoadSessionAsync_RejectsInvalidNestedEntriesAndEditorIdentities(string invalidField) {
-        var service = new SessionService(_jsRuntimeMock.Object, new RealJsonSerializer());
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
+        SessionService service = new(_jsRuntimeMock.Object, new RealJsonSerializer());
+        InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.LoadSessionAsync($"{{\"SchemaVersion\":3,{invalidField}}}"));
         Assert.That(exception!.Message, Is.EqualTo("Invalid session file format"));
     }
@@ -188,23 +200,23 @@ public class SessionServiceTests {
     [Test]
     public async Task LoadSessionAsync_HistoricalV1_2UnversionedFixture_MigratesAndPreservesLegacySession() {
         // Unchanged bundled Fiendsmith/Bystial example from the v1.2.0 release.
-        var fileContent = await ReadSessionFixture("legacy_v1_2_example_session.json");
-        using var document = JsonDocument.Parse(fileContent);
-        var root = document.RootElement;
+        string fileContent = await ReadSessionFixture("legacy_v1_2_example_session.json");
+        using JsonDocument document = JsonDocument.Parse(fileContent);
+        JsonElement root = document.RootElement;
         Assert.That(root.TryGetProperty(nameof(SessionState.SchemaVersion), out _), Is.False);
         Assert.That(root.TryGetProperty("ComboGroups", out _), Is.False);
         Assert.That(root.TryGetProperty("CategoryColorIndices", out _), Is.False);
-        foreach (var card in root.GetProperty("Cards").EnumerateArray()) {
+        foreach (JsonElement card in root.GetProperty("Cards").EnumerateArray()) {
             Assert.That(card.TryGetProperty("Id", out _), Is.False);
             Assert.That(card.TryGetProperty("Active", out _), Is.False);
         }
-        foreach (var combo in root.GetProperty("Combos").EnumerateArray()) {
+        foreach (JsonElement combo in root.GetProperty("Combos").EnumerateArray()) {
             Assert.That(combo.TryGetProperty("Cards", out _), Is.False);
             Assert.That(combo.TryGetProperty("Active", out _), Is.False);
             Assert.That(combo.TryGetProperty("GroupId", out _), Is.False);
         }
 
-        var session = await CreateRealSerializerSessionService().LoadSessionAsync(fileContent);
+        SessionState session = await CreateRealSerializerSessionService().LoadSessionAsync(fileContent);
 
         Assert.That(session.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(session.Categories.Select(category => category.Name), Is.EqualTo(new[] {
@@ -251,23 +263,23 @@ public class SessionServiceTests {
         Assert.That(session.Combos.All(combo => combo.Cards.Count == 0 && combo.GroupId == null), Is.True);
         Assert.That(session.ComboGroups, Is.Empty);
         Assert.That(session.CategoryColorIndices, Is.Empty);
-        Assert.That(session.Cards.All(card => Guid.TryParseExact(card.Id, "N", out var id) && id != Guid.Empty), Is.True);
+        Assert.That(session.Cards.All(card => Guid.TryParseExact(card.Id, "N", out Guid id) && id != Guid.Empty), Is.True);
         Assert.That(session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count(),
             Is.EqualTo(session.Cards.Count));
     }
 
     [Test]
     public async Task LoadSessionAsync_CurrentEraUnversionedFixture_PreservesModernSessionData() {
-        var fileContent = await ReadSessionFixture("vsmodel.json");
-        var root = JsonNode.Parse(fileContent)!.AsObject();
+        string fileContent = await ReadSessionFixture("vsmodel.json");
+        JsonObject root = JsonNode.Parse(fileContent)!.AsObject();
         Assert.That(root.ContainsKey(nameof(SessionState.SchemaVersion)), Is.False);
 
         // Exercise inactive state as well as the active values in the real persisted fixture.
         root["Cards"]![1]!["Active"] = false;
         root["Combos"]![0]!["Active"] = false;
 
-        var service = CreateRealSerializerSessionService();
-        var session = await service.LoadSessionAsync(root.ToJsonString());
+        SessionService service = CreateRealSerializerSessionService();
+        SessionState session = await service.LoadSessionAsync(root.ToJsonString());
 
         Assert.That(session.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(session.Categories.Select(category => category.Name), Is.EqualTo(new[] { "Fire", "Dark", "Earth", "Level 5" }));
@@ -301,12 +313,12 @@ public class SessionServiceTests {
     [TestCase("razen_session.json")]
     [TestCase("vsmodel.json")]
     public async Task LoadSessionAsync_CurrentEraUnversionedRepositoryFixturesStillLoad(string fixtureName) {
-        var fileContent = await File.ReadAllTextAsync(
+        string fileContent = await File.ReadAllTextAsync(
             Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", fixtureName));
-        using var document = JsonDocument.Parse(fileContent);
+        using JsonDocument document = JsonDocument.Parse(fileContent);
         Assert.That(document.RootElement.TryGetProperty(nameof(SessionState.SchemaVersion), out _), Is.False);
 
-        var session = await CreateRealSerializerSessionService().LoadSessionAsync(fileContent);
+        SessionState session = await CreateRealSerializerSessionService().LoadSessionAsync(fileContent);
 
         Assert.That(session.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(session.Cards, Has.Count.EqualTo(25));
@@ -315,22 +327,22 @@ public class SessionServiceTests {
     [TestCase("legacy_v1_2_example_session.json")]
     [TestCase("vsmodel.json")]
     public async Task SaveSessionAsync_WritesCurrentVersionAndRoundTripsThroughRealSerializer(string fixtureName) {
-        var fileContent = await ReadSessionFixture(fixtureName);
-        var loadService = CreateRealSerializerSessionService();
-        var loadedSession = await loadService.LoadSessionAsync(fileContent);
-        var sessionWithLegacyVersion = CopySession(loadedSession, schemaVersion: 0);
-        var jsRuntime = new CapturingJsRuntime();
-        var saveService = new SessionService(jsRuntime, new RealJsonSerializer());
+        string fileContent = await ReadSessionFixture(fixtureName);
+        SessionService loadService = CreateRealSerializerSessionService();
+        SessionState loadedSession = await loadService.LoadSessionAsync(fileContent);
+        SessionState sessionWithLegacyVersion = CopySession(loadedSession, schemaVersion: 0);
+        CapturingJsRuntime jsRuntime = new();
+        SessionService saveService = new(jsRuntime, new RealJsonSerializer());
 
         await saveService.SaveSessionAsync(sessionWithLegacyVersion, "round-trip");
 
-        var savedJson = jsRuntime.DownloadedJson;
-        using var savedDocument = JsonDocument.Parse(savedJson);
+        string savedJson = jsRuntime.DownloadedJson;
+        using JsonDocument savedDocument = JsonDocument.Parse(savedJson);
         Assert.That(savedDocument.RootElement.GetProperty(nameof(SessionState.SchemaVersion)).GetInt32(),
             Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(sessionWithLegacyVersion.SchemaVersion, Is.EqualTo(0), "Saving should not mutate the caller's session state.");
 
-        var reloaded = await loadService.LoadSessionAsync(savedJson);
+        SessionState reloaded = await loadService.LoadSessionAsync(savedJson);
         Assert.That(reloaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(reloaded.Categories.Select(category => category.Name),
             Is.EqualTo(loadedSession.Categories.Select(category => category.Name)));
@@ -358,8 +370,8 @@ public class SessionServiceTests {
             }
             """;
 
-        var service = CreateRealSerializerSessionService();
-        var session = await service.LoadSessionAsync(currentSessionJson);
+        SessionService service = CreateRealSerializerSessionService();
+        SessionState session = await service.LoadSessionAsync(currentSessionJson);
 
         Assert.That(session.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(session.Cards[0].Active, Is.False);
@@ -376,17 +388,17 @@ public class SessionServiceTests {
 
     [Test]
     public async Task MetadataSessionRoundTripsWithoutExternalLookupOrTopLevelPropertyDefinitions() {
-        var user = new CategoryBase("Spell");
-        var property = new CategoryBase("Spell", CategorySource.Metadata, "kind:spell");
-        var session = new SessionState {
+        CategoryBase user = new("Spell");
+        CategoryBase property = new("Spell", CategorySource.Metadata, "kind:spell");
+        SessionState session = new() {
             Categories = [user], Cards = [new([user, property], 2, "Quick spell", externalCardId: 123)],
             Combos = [new([new(user, 1, 2), new(property, 1, 2)], "Two copies")],
             HandSize = 2, CategoryColorIndices = new() { ["Spell"] = 7 }
         };
-        var runtime = new CapturingJsRuntime();
-        var service = new SessionService(runtime, new RealJsonSerializer());
+        CapturingJsRuntime runtime = new();
+        SessionService service = new(runtime, new RealJsonSerializer());
         await service.SaveSessionAsync(session, "metadata");
-        var loaded = await service.LoadSessionAsync(runtime.DownloadedJson);
+        SessionState loaded = await service.LoadSessionAsync(runtime.DownloadedJson);
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Categories, Is.EqualTo(new[] { user }));
         Assert.That(loaded.Cards[0].Categories, Is.EqualTo(new[] { user, property }));
@@ -401,18 +413,18 @@ public class SessionServiceTests {
     [TestCase(0)]
     [TestCase(1)]
     public void MigrationExplicitlyClassifiesAllPreV2CategoryLocations(int version) {
-        var json = $$$"""
+        string json = $$$"""
             { "SchemaVersion": {{{version}}}, "Categories": [{"Name":"Top", "Source":"Metadata", "MetadataKey":"spoof"}],
               "Cards": [{"Categories":[{"Name":"On card"}]}],
               "Combos": [{"Categories":[{"BaseCategory":{"Name":"On combo"}}]}] }
             """;
-        var migrated = new SessionSchemaMigrator().MigrateToCurrent(json);
-        using var document = JsonDocument.Parse(migrated);
-        var root = document.RootElement;
+        string migrated = new SessionSchemaMigrator().MigrateToCurrent(json);
+        using JsonDocument document = JsonDocument.Parse(migrated);
+        JsonElement root = document.RootElement;
         Assert.That(root.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
-        var locations = new[] { root.GetProperty("Categories")[0], root.GetProperty("Cards")[0].GetProperty("Categories")[0],
-            root.GetProperty("Combos")[0].GetProperty("Categories")[0].GetProperty("BaseCategory") };
-        foreach (var category in locations) {
+        JsonElement[] locations = [root.GetProperty("Categories")[0], root.GetProperty("Cards")[0].GetProperty("Categories")[0],
+            root.GetProperty("Combos")[0].GetProperty("Categories")[0].GetProperty("BaseCategory")];
+        foreach (JsonElement category in locations) {
             Assert.That(category.GetProperty("Source").GetString(), Is.EqualTo("User"));
             Assert.That(category.TryGetProperty("MetadataKey", out _), Is.False);
         }
@@ -421,7 +433,7 @@ public class SessionServiceTests {
 
     [Test]
     public void LoadSessionAsync_FutureSchemaVersion_IsRejectedClearly() {
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await CreateRealSerializerSessionService().LoadSessionAsync("{ \"SchemaVersion\": 4 }"));
 
         Assert.That(exception!.Message, Does.Contain("Unsupported session schema version 4"));
@@ -437,7 +449,7 @@ public class SessionServiceTests {
     [TestCase("null")]
     [TestCase("invalid json")]
     public void LoadSessionAsync_MalformedSchemaOrRoot_IsRejectedAsInvalidSession(string fileContent) {
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await CreateRealSerializerSessionService().LoadSessionAsync(fileContent));
 
         Assert.That(exception!.Message, Is.EqualTo("Invalid session file format"));
@@ -445,11 +457,11 @@ public class SessionServiceTests {
 
     [Test]
     public async Task LoadSessionAsync_CurrentEraUnversionedFixtureStillRejectsDuplicateCardIds() {
-        var root = JsonNode.Parse(await ReadSessionFixture("vsmodel.json"))!.AsObject();
-        var cards = root["Cards"]!.AsArray();
+        JsonObject root = JsonNode.Parse(await ReadSessionFixture("vsmodel.json"))!.AsObject();
+        JsonArray cards = root["Cards"]!.AsArray();
         cards.Add(cards[0]!.DeepClone());
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await CreateRealSerializerSessionService().LoadSessionAsync(root.ToJsonString()));
 
         Assert.That(exception!.Message, Does.Contain("duplicate card IDs"));
@@ -460,8 +472,8 @@ public class SessionServiceTests {
     [TestCase(2)]
     [TestCase(3)]
     public async Task MissingMaximumModeLoadsFixedForEveryHistoricalSchema(int version) {
-        var versionField = version == 0 ? "" : $"\"SchemaVersion\":{version},";
-        var json = $$"""
+        string versionField = version == 0 ? "" : $"\"SchemaVersion\":{version},";
+        string json = $$"""
             { {{versionField}} "Categories":[{"Name":"Starter"}],
               "Cards":[{"Id":"starter","Name":"Starter","Copies":6,"Categories":[{"Name":"Starter"}]}],
               "Combos":[{"Categories":[{"BaseCategory":{"Name":"Starter"},"MinCount":1,"MaxCount":5},
@@ -469,18 +481,19 @@ public class SessionServiceTests {
                          "Cards":[{"CardId":"starter","MinCount":1,"MaxCount":5},
                                    {"CardId":"starter","MinCount":0,"MaxCount":0}]}],"HandSize":5 }
             """;
-        var migrated = new SessionSchemaMigrator().MigrateToCurrent(json);
-        using var document = JsonDocument.Parse(migrated);
-        var requirements = document.RootElement.GetProperty("Combos")[0];
+        string migrated = new SessionSchemaMigrator().MigrateToCurrent(json);
+        using JsonDocument document = JsonDocument.Parse(migrated);
+        JsonElement requirements = document.RootElement.GetProperty("Combos")[0];
         if (version < 2) {
             Assert.That(requirements.GetProperty("Categories")[0].GetProperty("MaximumMode").GetString(), Is.EqualTo("Fixed"));
             Assert.That(requirements.GetProperty("Cards")[0].GetProperty("MaximumMode").GetString(), Is.EqualTo("Fixed"));
+        } else if (version == SessionState.CurrentSchemaVersion) {
+            Assert.That(migrated, Is.EqualTo(json), "Current-version sessions bypass migration.");
         }
-        else if (version == SessionState.CurrentSchemaVersion) Assert.That(migrated, Is.EqualTo(json), "Current-version sessions bypass migration.");
         Assert.That(new SessionSchemaMigrator().MigrateToCurrent(migrated), Is.EqualTo(migrated));
-        var loaded = await CreateRealSerializerSessionService().LoadSessionAsync(json);
-        var category = loaded.Combos[0].Categories[0];
-        var card = loaded.Combos[0].Cards[0];
+        SessionState loaded = await CreateRealSerializerSessionService().LoadSessionAsync(json);
+        ComboCategory category = loaded.Combos[0].Categories[0];
+        ComboCard card = loaded.Combos[0].Cards[0];
         Assert.That(category.MaximumMode, Is.EqualTo(RequirementMaximumMode.Fixed));
         Assert.That(category.MaxCount, Is.EqualTo(5));
         Assert.That(category.GetEffectiveMaximum(6), Is.EqualTo(5));
@@ -494,20 +507,20 @@ public class SessionServiceTests {
 
     [Test]
     public async Task DynamicAndFixedV2RequirementsRoundTripIncludingImpossibleMinimumAndZero() {
-        var category = new CategoryBase("Starter");
-        var card = new Card([category], 6, "Starter");
-        var session = new SessionState {
+        CategoryBase category = new("Starter");
+        Card card = new([category], 6, "Starter");
+        SessionState session = new() {
             Categories = [category], Cards = [card], HandSize = 5,
             Combos = [new([new(category, 1, 5, RequirementMaximumMode.HandSize), new(category, 0, 0)],
                 cards: [new(card.Id, 1, 5, RequirementMaximumMode.HandSize), new(card.Id, 1, 5), new(card.Id, 0, 0)]),
                 new([new(category, 6, 5, RequirementMaximumMode.HandSize)],
                     cards: [new(card.Id, 6, 5, RequirementMaximumMode.HandSize)])]
         };
-        var runtime = new CapturingJsRuntime();
-        var service = new SessionService(runtime, new RealJsonSerializer());
+        CapturingJsRuntime runtime = new();
+        SessionService service = new(runtime, new RealJsonSerializer());
         await service.SaveSessionAsync(session, "modes");
         Assert.That(runtime.DownloadedJson, Does.Contain("\"MaximumMode\": \"HandSize\"").And.Contain("\"MaximumMode\": \"Fixed\""));
-        var loaded = await service.LoadSessionAsync(runtime.DownloadedJson);
+        SessionState loaded = await service.LoadSessionAsync(runtime.DownloadedJson);
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Combos[0].Categories.Select(c => (c.MinCount, c.MaxCount, c.MaximumMode)),
             Is.EqualTo(session.Combos[0].Categories.Select(c => (c.MinCount, c.MaxCount, c.MaximumMode))));
@@ -527,14 +540,16 @@ public class SessionServiceTests {
     [TestCase("true")]
     [TestCase("\"HandSize\",\"maximumMode\":\"Fixed\"")]
     public void MalformedMaximumModeIsRejectedForBothRequirementKinds(string mode) {
-        foreach (var kind in new[] { "Categories", "Cards" }) {
-            var selector = kind == "Categories" ? "\"BaseCategory\":{\"Name\":\"A\"}" : "\"CardId\":\"a\"";
-            var json = $$"""
+        foreach (string kind in new[] { "Categories", "Cards" }) {
+            string selector = kind == "Categories" ? "\"BaseCategory\":{\"Name\":\"A\"}" : "\"CardId\":\"a\"";
+            string json = $$"""
                 {"SchemaVersion":2,"Combos":[{"Categories":[],"{{kind}}":[{ {{selector}},"MinCount":0,"MaxCount":0,"MaximumMode":{{mode}} }]}]}
                 """;
             // Avoid a duplicate Categories property when testing category constraints.
-            if (kind == "Categories") json = json.Replace("\"Categories\":[],", "");
-            var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            if (kind == "Categories") {
+                json = json.Replace("\"Categories\":[],", "");
+            }
+            InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 await CreateRealSerializerSessionService().LoadSessionAsync(json));
             Assert.That(exception!.Message, Is.EqualTo("Invalid session file format"));
             Assert.That(exception.InnerException, Is.TypeOf<JsonException>());

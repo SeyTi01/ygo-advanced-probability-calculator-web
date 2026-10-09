@@ -18,32 +18,32 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
 public class CategoryRenameTest {
-    private TestContext context = null!;
+    private TestContext _context = null!;
 
     [SetUp]
     public void SetUp() {
-        context = new TestContext();
-        context.JSInterop.Mode = JSRuntimeMode.Loose;
-        context.Services.AddSingleton<IBackgroundCalculator, BackgroundCalculatorTestAdapter>();
-        context.Services.AddSingleton<IProbabilityCalculatorService, ProbabilityCalculatorService>();
-        context.Services.AddSingleton<ISerializer, JsonSerializer>();
-        context.Services.AddSingleton<ISessionService, SessionService>();
-        context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
-        context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
-        context.Services.AddSingleton<IDeckImportService>(Mock.Of<IDeckImportService>());
+        _context = new TestContext();
+        _context.JSInterop.Mode = JSRuntimeMode.Loose;
+        _context.Services.AddSingleton<IBackgroundCalculator, BackgroundCalculatorTestAdapter>();
+        _context.Services.AddSingleton<IProbabilityCalculatorService, ProbabilityCalculatorService>();
+        _context.Services.AddSingleton<ISerializer, JsonSerializer>();
+        _context.Services.AddSingleton<ISessionService, SessionService>();
+        _context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
+        _context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
+        _context.Services.AddSingleton<IDeckImportService>(Mock.Of<IDeckImportService>());
     }
 
     [TearDown]
-    public void TearDown() => context.Dispose();
+    public void TearDown() => _context.Dispose();
 
     private IRenderedComponent<ProbabilityCalculatorComponent> Render(SessionState? session = null) {
-        context.Services.GetRequiredService<IPendingSessionService>().PendingSession = session;
-        return context.RenderComponent<ProbabilityCalculatorComponent>();
+        _context.Services.GetRequiredService<IPendingSessionService>().PendingSession = session;
+        return _context.RenderComponent<ProbabilityCalculatorComponent>();
     }
 
     private static SessionState SessionWithOverlappingReferences() {
-        var category = new CategoryBase("Old");
-        var otherCategory = new CategoryBase("Other");
+        CategoryBase category = new("Old");
+        CategoryBase otherCategory = new("Other");
 
         // Reference objects are deliberately independent of the definitions, as they are
         // after deserializing a saved session with the existing JSON converters.
@@ -66,19 +66,30 @@ public class CategoryRenameTest {
 
     [Test]
     public void RenameReplacesLogicalReferencesAndPreservesProbabilityAndEditorDrafts() {
-        var session = SessionWithOverlappingReferences();
-        var originalCards = session.Cards.ToArray();
-        var originalCombos = session.Combos.ToArray();
-        var expectedConstraints = session.Combos.Select(combo => combo.Categories
-            .Select(category => (category.BaseCategory.Name, category.MinCount, category.MaxCount)).ToArray()).ToArray();
-        var oracleProbability = SmallDeckOracle.EnumerateProbability(session.Cards, session.Combos, session.HandSize);
-        var calculator = new ProbabilityCalculatorService();
-        var probabilityBefore = calculator.CalculateProbabilityForCombos(session.Cards, session.Combos, session.HandSize);
+        SessionState session = SessionWithOverlappingReferences();
+        Card[] originalCards = session.Cards.ToArray();
+        Combo[] originalCombos = session.Combos.ToArray();
+        (string Name, int MinCount, int MaxCount)[][] expectedConstraints = session.Combos
+            .Select(combo => combo.Categories
+                .Select(category => (category.BaseCategory.Name, category.MinCount, category.MaxCount))
+                .ToArray())
+            .ToArray();
+        (string Name, int MinCount, int MaxCount)[][] expectedRenamedConstraints = expectedConstraints
+            .Select(constraints => constraints
+                .Select(constraint => (
+                    constraint.Name == "Old" ? "Renamed" : constraint.Name,
+                    constraint.MinCount,
+                    constraint.MaxCount))
+                .ToArray())
+            .ToArray();
+        double oracleProbability = SmallDeckOracle.EnumerateProbability(session.Cards, session.Combos, session.HandSize);
+        ProbabilityCalculatorService calculator = new();
+        double probabilityBefore = calculator.CalculateProbabilityForCombos(session.Cards, session.Combos, session.HandSize);
         Assert.That(probabilityBefore, Is.EqualTo(oracleProbability).Within(1e-12));
 
-        var cut = Render(session);
-        var card = cut.FindComponents<CardEditor>()[0];
-        var combo = cut.FindComponents<ComboEditor>()[0];
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        IRenderedComponent<CardEditor> card = cut.FindComponents<CardEditor>()[0];
+        IRenderedComponent<ComboEditor> combo = cut.FindComponents<ComboEditor>()[0];
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select").Change("user:Old");
@@ -99,20 +110,22 @@ public class CategoryRenameTest {
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
 
-        var definitions = cut.FindComponent<CategoryListEditor>().Instance.CategoryBases;
+        IReadOnlyList<CategoryBase> definitions = cut.FindComponent<CategoryListEditor>().Instance.CategoryBases;
         Assert.That(definitions.Select(category => category.Name), Is.EqualTo(new[] { "Renamed", "Other" }));
         Assert.That(session.Cards.SelectMany(item => item.Categories).Any(category => category.Name == "Old"), Is.False);
         Assert.That(session.Combos.SelectMany(item => item.Categories).Any(category => category.BaseCategory.Name == "Old"), Is.False);
         Assert.That(session.Cards.SelectMany(item => item.Categories).Count(category => category.Name == "Renamed"), Is.EqualTo(2));
         Assert.That(session.Cards[0].Categories.Select(category => category.Name), Is.EqualTo(new[] { "Renamed", "Other" }));
-        Assert.That(session.Combos.Select(comboItem => comboItem.Categories
-            .Select(category => (category.BaseCategory.Name, category.MinCount, category.MaxCount)).ToArray()),
-            Is.EqualTo(expectedConstraints.Select(constraints => constraints
-                .Select(category => (category.Name == "Old" ? "Renamed" : category.Name, category.MinCount, category.MaxCount)).ToArray())));
+        (string Name, int MinCount, int MaxCount)[][] actualConstraints = session.Combos
+            .Select(combo => combo.Categories
+                .Select(category => (category.BaseCategory.Name, category.MinCount, category.MaxCount))
+                .ToArray())
+            .ToArray();
+        Assert.That(actualConstraints, Is.EqualTo(expectedRenamedConstraints));
         Assert.That(session.Combos[2].Categories.Select(category => category.BaseCategory.Name),
             Is.EqualTo(new[] { "Renamed", "Renamed" }));
 
-        var probabilityAfter = calculator.CalculateProbabilityForCombos(session.Cards, session.Combos, session.HandSize);
+        double probabilityAfter = calculator.CalculateProbabilityForCombos(session.Cards, session.Combos, session.HandSize);
         Assert.That(probabilityAfter, Is.EqualTo(oracleProbability).Within(1e-12));
         Assert.That(probabilityAfter, Is.EqualTo(probabilityBefore).Within(1e-12));
 
@@ -123,7 +136,7 @@ public class CategoryRenameTest {
 
     [Test]
     public void RenameRejectsBlankAndCaseInsensitiveDuplicateNamesButAllowsCancelAndCaseOnlyRename() {
-        var cut = Render(SessionWithOverlappingReferences());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(SessionWithOverlappingReferences());
         BeginRename(cut, "Old");
 
         AssertIconButton(cut, "Save category name");
@@ -152,8 +165,8 @@ public class CategoryRenameTest {
 
     [Test]
     public void CategoryNameStartsRenameAndDeleteCrossRemainsASeparateAction() {
-        var cut = Render(SessionWithOverlappingReferences());
-        var categoryName = cut.Find("[aria-label='Edit category Old']");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(SessionWithOverlappingReferences());
+        IElement categoryName = cut.Find("[aria-label='Edit category Old']");
         Assert.That(categoryName.TextContent.Trim(), Is.EqualTo("Old"));
         Assert.That(cut.FindAll("button").Any(button => button.TextContent.Trim() == "Rename"), Is.False);
 
@@ -173,9 +186,9 @@ public class CategoryRenameTest {
 
     [Test]
     public void EnterSavesAndEscapeReturnsToTheCategoryNameTrigger() {
-        var cut = Render(SessionWithOverlappingReferences());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(SessionWithOverlappingReferences());
         BeginRename(cut, "Old");
-        var input = cut.Find("[aria-label='New name for category Old']");
+        IElement input = cut.Find("[aria-label='New name for category Old']");
         input.Input("Saved");
         input.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
         Assert.That(cut.Find("[aria-label='Edit category Saved']").TextContent.Trim(), Is.EqualTo("Saved"));
@@ -190,7 +203,7 @@ public class CategoryRenameTest {
 
     [Test]
     public void RenamedLegacySessionRoundTripsWithoutStaleReferencesAndStillBlocksDeletion() {
-        var cut = Render();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
         const string legacySession = """
             {
               "Categories": [{ "Name": "Old" }],
@@ -203,14 +216,13 @@ public class CategoryRenameTest {
         LoadSession(cut, legacySession);
         RenameCategory(cut, "Old", "Renamed");
         Button(cut, "Save Session").Click();
-        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
-        var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        string savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)_context.JSInterop.Invocations["saveSessionFile"].Single().Arguments[1]!));
         Assert.That(savedJson, Does.Contain("Renamed"));
         Assert.That(savedJson, Does.Not.Contain("\"Name\": \"Old\""));
 
         LoadSession(cut, savedJson);
-        var loadedCard = cut.FindComponent<CardEditor>().Instance.Card;
-        var loadedCombo = cut.FindComponent<ComboEditor>().Instance.Combo;
+        Card loadedCard = cut.FindComponent<CardEditor>().Instance.Card;
+        Combo loadedCombo = cut.FindComponent<ComboEditor>().Instance.Combo;
         Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Single().Name, Is.EqualTo("Renamed"));
         Assert.That(loadedCard.Categories.Select(category => category.Name), Is.EqualTo(new[] { "Renamed" }));
         Assert.That(loadedCombo.Categories.Select(category => category.BaseCategory.Name), Is.EqualTo(new[] { "Renamed" }));
@@ -236,7 +248,7 @@ public class CategoryRenameTest {
             button.GetAttribute("aria-label") == accessibleName || button.TextContent.Trim() == accessibleName);
 
     private static void AssertIconButton(IRenderedFragment cut, string accessibleName) {
-        var button = Button(cut, accessibleName);
+        IElement button = Button(cut, accessibleName);
         Assert.That(button.TextContent.Trim(), Is.Empty);
         Assert.That(button.GetAttribute("title"), Is.EqualTo(accessibleName));
         Assert.That(button.QuerySelector("svg[aria-hidden='true']"), Is.Not.Null);

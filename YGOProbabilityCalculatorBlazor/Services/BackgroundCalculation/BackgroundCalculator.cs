@@ -4,17 +4,18 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 namespace YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 
 public sealed class BackgroundCalculator(IJSRuntime js) : IBackgroundCalculator {
-    public async Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot,
-        CancellationToken cancellationToken) {
+    public async Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         // Do not abandon an import/create invocation: a late handle still needs disposing.
-        await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./js/background-calculation.js");
+        await using IJSObjectReference module = await js.InvokeAsync<IJSObjectReference>("import", "./js/background-calculation.js");
         cancellationToken.ThrowIfCancellationRequested();
-        await using var job = await module.InvokeAsync<IJSObjectReference>("createJob");
+        await using IJSObjectReference job = await module.InvokeAsync<IJSObjectReference>("createJob");
+
         try {
             cancellationToken.ThrowIfCancellationRequested();
-            var response = await job.InvokeAsync<string>("run", cancellationToken, snapshot.Json);
+            string response = await job.InvokeAsync<string>("run", cancellationToken, snapshot.Json);
             cancellationToken.ThrowIfCancellationRequested();
+
             return CalculationWire.ReadResult(response);
         }
         finally {

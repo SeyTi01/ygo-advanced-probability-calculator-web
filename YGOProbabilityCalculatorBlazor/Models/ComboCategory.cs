@@ -8,15 +8,27 @@ public class ComboCategory {
 
     public int GetEffectiveMaximum(int handSize) => MaximumMode == RequirementMaximumMode.HandSize ? handSize : MaxCount;
 
-    public ComboCategory(CategoryBase baseCategory, int minCount, int maxCount,
-        RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed) {
-        if (!Enum.IsDefined(maximumMode)) throw new ArgumentOutOfRangeException(nameof(maximumMode));
-        if (minCount < 0)
+    public ComboCategory(
+        CategoryBase baseCategory,
+        int minCount,
+        int maxCount,
+        RequirementMaximumMode maximumMode = RequirementMaximumMode.Fixed
+    ) {
+        if (!Enum.IsDefined(maximumMode)) {
+            throw new ArgumentOutOfRangeException(nameof(maximumMode));
+        }
+
+        if (minCount < 0) {
             throw new ArgumentOutOfRangeException(nameof(minCount), "Minimum count cannot be negative.");
-        if (maxCount < 0)
+        }
+
+        if (maxCount < 0) {
             throw new ArgumentOutOfRangeException(nameof(maxCount), "Maximum count cannot be negative.");
-        if (maximumMode == RequirementMaximumMode.Fixed && maxCount < minCount)
+        }
+
+        if (maximumMode == RequirementMaximumMode.Fixed && maxCount < minCount) {
             throw new ArgumentOutOfRangeException(nameof(maxCount), "Maximum count cannot be less than minimum count.");
+        }
 
         BaseCategory = baseCategory;
         MinCount = minCount;

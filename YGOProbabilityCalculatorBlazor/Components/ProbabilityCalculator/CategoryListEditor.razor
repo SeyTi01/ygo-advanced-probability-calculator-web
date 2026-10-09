@@ -6,10 +6,12 @@
         <h4>Categories</h4>
         <div class="editor-add-row">
             <div class="editor-select-field">
-                <input @bind="newCategoryName"
+                <input @bind="_newCategoryName"
                        @bind:event="oninput"
                        @onkeyup="@(async e => {
-                                     if (e.Key == "Enter") await AddCategoryBase();
+                                     if (e.Key == "Enter") {
+                                         await AddCategoryBase();
+                                     }
                                  })"
                        class="form-control"
                        aria-label="Category name"
@@ -21,22 +23,25 @@
         </div>
     </div>
 
-    @if (categoryError is not null) {
+    @if (_categoryError is not null) {
         <div class="mt-2 category-validation-alert">
-            <DismissibleAlert Message="@categoryError" OnDismiss="@(() => categoryError = null)"/>
+            <DismissibleAlert Message="@_categoryError" OnDismiss="@(() => _categoryError = null)"/>
         </div>
     }
 
     <div class="mt-2">
-        @for (var index = 0; index < CategoryBases.Count; index++) {
-            var category = CategoryBases[index];
-            if (category.Source != CategorySource.User) continue;
+        @for (int index = 0; index < CategoryBases.Count; index++) {
+            CategoryBase category = CategoryBases[index];
+            if (category.Source != CategorySource.User) {
+                continue;
+            }
+
             <span @key="category" class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
-                @if (ReferenceEquals(editingCategory, category)) {
-                    <input @ref="renameInputReference"
+                @if (ReferenceEquals(_editingCategory, category)) {
+                    <input @ref="_renameInputReference"
                            class="form-control form-control-sm category-rename-input"
                            aria-label="@($"New name for category {category.Name}")"
-                           @bind="editingCategoryName"
+                           @bind="_editingCategoryName"
                            @bind:event="oninput"
                            @onkeydown="HandleRenameKeyDown"/>
                     <button type="button" class="category-icon-button"
@@ -63,14 +68,14 @@
                     <button type="button" class="category-icon-button category-color-picker-trigger"
                             aria-label="@($"Choose color for category {category.Name}")"
                             title="@($"Choose color for category {category.Name}")"
-                            aria-expanded="@(colorPickerExpanded ? "true" : "false")"
+                            aria-expanded="@(_colorPickerExpanded ? "true" : "false")"
                             aria-controls="@($"categoryColorPalette{index}")"
                             @onclick="ToggleColorPicker">
                         <span class="category-color-trigger-swatch @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)" aria-hidden="true"></span>
                     </button>
                 }
                 else {
-                    <button @ref="categoryNameButtonReferences[category.Name]"
+                    <button @ref="_categoryNameButtonReferences[category.Name]"
                             type="button"
                             class="category-name-trigger"
                             aria-label="@($"Edit category {category.Name}")"
@@ -82,11 +87,11 @@
                         title="@($"Remove category {category.Name}")"
                         @onclick="() => RemoveCategoryBase(category)"></button>
             </span>
-            @if (ReferenceEquals(editingCategory, category) && colorPickerExpanded) {
+            @if (ReferenceEquals(_editingCategory, category) && _colorPickerExpanded) {
                 <div id="categoryColorPalette@(index)" class="category-color-palette mt-2" role="group"
                      aria-label="@($"Choose a color for category {category.Name}")">
-                    @foreach (var color in CategoryColorPalette.Options) {
-                        var isSelected = SelectedColorIndex(category) == color.Index;
+                    @foreach (CategoryColorOption color in CategoryColorPalette.Options) {
+                        bool isSelected = SelectedColorIndex(category) == color.Index;
                         <button type="button" class="category-color-swatch @color.CssClass"
                                 aria-label="@($"Set {category.Name} color to {color.Name}")"
                                 title="@($"Set {category.Name} color to {color.Name}")"
@@ -117,128 +122,158 @@
     [Parameter] public EventCallback<(int From, int To)> OnMoveCategory { get; set; }
     [Parameter] public EventCallback<(CategoryBase OldCategory, CategoryBase NewCategory)> OnRenameCategory { get; set; }
 
-    private string? newCategoryName;
-    private string? categoryError;
-    private CategoryBase? editingCategory;
-    private string? editingCategoryName;
-    private ElementReference renameInputReference;
-    private readonly Dictionary<string, ElementReference> categoryNameButtonReferences = new(StringComparer.Ordinal);
-    private bool focusRenameInput;
-    private string? pendingCategoryNameFocus;
-    private bool colorPickerExpanded;
+    private string? _newCategoryName;
+    private string? _categoryError;
+    private CategoryBase? _editingCategory;
+    private string? _editingCategoryName;
+    private ElementReference _renameInputReference;
+    private readonly Dictionary<string, ElementReference> _categoryNameButtonReferences = new(StringComparer.Ordinal);
+    private bool _focusRenameInput;
+    private string? _pendingCategoryNameFocus;
+    private bool _colorPickerExpanded;
 
     private int SelectedColorIndex(CategoryBase category) =>
-        CategoryColorIndices.TryGetValue(category.Name, out var colorIndex) && CategoryColorPalette.IsValidIndex(colorIndex)
+        CategoryColorIndices.TryGetValue(category.Name, out int colorIndex) && CategoryColorPalette.IsValidIndex(colorIndex)
             ? colorIndex
             : 0;
 
-    private void ToggleColorPicker() => colorPickerExpanded = !colorPickerExpanded;
+    private void ToggleColorPicker() => _colorPickerExpanded = !_colorPickerExpanded;
 
     private Task ChangeCategoryColor(CategoryBase category, int colorIndex) {
-        if (category.Source != CategorySource.User || !CategoryColorPalette.IsValidIndex(colorIndex))
+        if (category.Source != CategorySource.User || !CategoryColorPalette.IsValidIndex(colorIndex)) {
             return Task.CompletedTask;
+        }
 
-        colorPickerExpanded = false;
+        _colorPickerExpanded = false;
+
         return OnCategoryColorChanged.InvokeAsync((category.Name, colorIndex));
     }
 
     private async Task AddCategoryBase() {
-        if (string.IsNullOrWhiteSpace(newCategoryName)) {
-            categoryError = "Category name cannot be empty.";
+        if (string.IsNullOrWhiteSpace(_newCategoryName)) {
+            _categoryError = "Category name cannot be empty.";
+
             return;
         }
 
         try {
-            if (CategoryBases.Any(c => c.Source == CategorySource.User && c.Name.Equals(newCategoryName, StringComparison.OrdinalIgnoreCase))) {
-                categoryError = "A category with this name already exists.";
+            bool hasDuplicateName = CategoryBases.Any(category =>
+                category.Source == CategorySource.User
+                && category.Name.Equals(_newCategoryName, StringComparison.OrdinalIgnoreCase));
+
+            if (hasDuplicateName) {
+                _categoryError = "A category with this name already exists.";
+
                 return;
             }
 
-            var categoryBase = new CategoryBase(newCategoryName);
+            CategoryBase categoryBase = new(_newCategoryName);
             CategoryBases.Add(categoryBase);
 
-            newCategoryName = string.Empty;
-            categoryError = null;
+            _newCategoryName = string.Empty;
+            _categoryError = null;
             await OnCategoriesChanged.InvokeAsync();
         }
-        catch (ArgumentException ex) {
-            categoryError = ex.Message;
+        catch (ArgumentException exception) {
+            _categoryError = exception.Message;
         }
     }
 
     private async Task RemoveCategoryBase(CategoryBase category) {
-        var usedInCombos = Combos.Any(c => c.AllCategories.Any(cc => cc.BaseCategory.Identity == category.Identity));
-        var usedInCards = Cards.Any(c => c.Categories.Any(item => item.Identity == category.Identity));
-        if (usedInCombos || usedInCards) {
-            categoryError = "This category is still used by a card or combo.";
+        bool isUsedInCombo = Combos.Any(combo => combo.AllCategories.Any(constraint => constraint.BaseCategory.Identity == category.Identity));
+        bool isUsedOnCard = Cards.Any(card => card.Categories.Any(cardCategory => cardCategory.Identity == category.Identity));
+
+        if (isUsedInCombo || isUsedOnCard) {
+            _categoryError = "This category is still used by a card or combo.";
+
             return;
         }
+
         CategoryBases.Remove(category);
-        if (ReferenceEquals(editingCategory, category)) CancelCategoryRename();
-        categoryError = null;
+
+        if (ReferenceEquals(_editingCategory, category)) {
+            CancelCategoryRename();
+        }
+
+        _categoryError = null;
         await OnCategoriesChanged.InvokeAsync();
     }
 
     private void BeginCategoryRename(CategoryBase category) {
-        editingCategory = category;
-        editingCategoryName = category.Name;
-        colorPickerExpanded = false;
-        categoryError = null;
-        pendingCategoryNameFocus = null;
-        focusRenameInput = true;
+        _editingCategory = category;
+        _editingCategoryName = category.Name;
+        _colorPickerExpanded = false;
+        _categoryError = null;
+        _pendingCategoryNameFocus = null;
+        _focusRenameInput = true;
     }
 
     private void CancelCategoryRename() {
-        pendingCategoryNameFocus = editingCategory?.Name;
-        colorPickerExpanded = false;
+        _pendingCategoryNameFocus = _editingCategory?.Name;
+        _colorPickerExpanded = false;
         ClearCategoryRename();
     }
 
     private void ClearCategoryRename() {
-        editingCategory = null;
-        editingCategoryName = null;
-        colorPickerExpanded = false;
-        categoryError = null;
+        _editingCategory = null;
+        _editingCategoryName = null;
+        _colorPickerExpanded = false;
+        _categoryError = null;
     }
 
     private async Task SaveCategoryName() {
-        if (editingCategory is null) return;
-
-        if (string.IsNullOrWhiteSpace(editingCategoryName)) {
-            categoryError = "Category name cannot be empty.";
+        if (_editingCategory is null) {
             return;
         }
 
-        if (CategoryBases.Any(c => c.Source == CategorySource.User && !ReferenceEquals(c, editingCategory) &&
-                                   c.Name.Equals(editingCategoryName, StringComparison.OrdinalIgnoreCase))) {
-            categoryError = "A category with this name already exists.";
+        if (string.IsNullOrWhiteSpace(_editingCategoryName)) {
+            _categoryError = "Category name cannot be empty.";
+
             return;
         }
 
-        var oldCategory = editingCategory;
-        var newCategory = new CategoryBase(editingCategoryName);
+        bool hasDuplicateName = CategoryBases.Any(category =>
+            category.Source == CategorySource.User
+            && !ReferenceEquals(category, _editingCategory)
+            && category.Name.Equals(_editingCategoryName, StringComparison.OrdinalIgnoreCase));
+
+        if (hasDuplicateName) {
+            _categoryError = "A category with this name already exists.";
+
+            return;
+        }
+
+        CategoryBase oldCategory = _editingCategory;
+        CategoryBase newCategory = new(_editingCategoryName);
         await OnRenameCategory.InvokeAsync((oldCategory, newCategory));
-        pendingCategoryNameFocus = newCategory.Name;
+        _pendingCategoryNameFocus = newCategory.Name;
         ClearCategoryRename();
         await OnCategoriesChanged.InvokeAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (focusRenameInput) {
-            focusRenameInput = false;
-            await renameInputReference.FocusAsync();
+        if (_focusRenameInput) {
+            _focusRenameInput = false;
+            await _renameInputReference.FocusAsync();
+
             return;
         }
 
-        if (pendingCategoryNameFocus is { } name && categoryNameButtonReferences.TryGetValue(name, out var button)) {
-            pendingCategoryNameFocus = null;
+        if (_pendingCategoryNameFocus is string name && _categoryNameButtonReferences.TryGetValue(name, out ElementReference button)) {
+            _pendingCategoryNameFocus = null;
             await button.FocusAsync();
         }
     }
 
     private Task HandleRenameKeyDown(KeyboardEventArgs e) {
-        if (e.Key == "Enter") return SaveCategoryName();
-        if (e.Key == "Escape") CancelCategoryRename();
+        if (e.Key == "Enter") {
+            return SaveCategoryName();
+        }
+
+        if (e.Key == "Escape") {
+            CancelCategoryRename();
+        }
+
         return Task.CompletedTask;
     }
 }

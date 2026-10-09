@@ -31,16 +31,22 @@ public static class CardPropertyColorPalette {
             : GenericMetadataClass;
 
     public static string GetCssClass(string? metadataKey) {
-        if (string.IsNullOrWhiteSpace(metadataKey)) return GenericMetadataClass;
+        if (string.IsNullOrWhiteSpace(metadataKey)) {
+            return GenericMetadataClass;
+        }
 
-        var key = metadataKey.Trim().ToLowerInvariant();
-        var separator = key.IndexOf(':');
-        if (separator <= 0 || separator == key.Length - 1) return GenericMetadataClass;
+        string key = metadataKey.Trim().ToLowerInvariant();
+        int separator = key.IndexOf(':');
 
-        var family = key[..separator];
-        var value = key[(separator + 1)..];
+        if (separator <= 0 || separator == key.Length - 1) {
+            return GenericMetadataClass;
+        }
+
+        string family = key[..separator];
+        string value = key[(separator + 1)..];
+
         return family switch {
-            "attribute" => AttributeClasses.TryGetValue(value, out var attributeClass) ? attributeClass : GenericAttributeClass,
+            "attribute" => AttributeClasses.GetValueOrDefault(value, GenericAttributeClass),
             "kind" => value switch {
                 "monster" => "card-property-color-monster",
                 "spell" => "card-property-color-spell",
@@ -50,9 +56,7 @@ public static class CardPropertyColorPalette {
             "spell-type" => "card-property-color-spell",
             "trap-type" => "card-property-color-trap",
             "monster-trait" => GetMonsterTraitClass(value),
-            "monster-type" => MonsterTypeClasses.TryGetValue(value, out var monsterTypeClass)
-                ? monsterTypeClass
-                : GenericMetadataClass,
+            "monster-type" => MonsterTypeClasses.GetValueOrDefault(value, GenericMetadataClass),
             "level" => "card-property-color-level",
             "rank" => "card-property-color-rank",
             "link" => "card-property-color-link-rating",

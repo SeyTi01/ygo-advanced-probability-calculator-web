@@ -46,10 +46,12 @@
     private string ThemePreference { get; set; } = "system";
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender) return;
+        if (!firstRender) {
+            return;
+        }
 
         try {
-            var preference = NormalizeThemePreference(await JSRuntime.InvokeAsync<string>("ygoTheme.getPreference"));
+            string preference = NormalizeThemePreference(await JSRuntime.InvokeAsync<string>("ygoTheme.getPreference"));
             if (ThemePreference != preference) {
                 ThemePreference = preference;
                 StateHasChanged();
@@ -61,7 +63,7 @@
     }
 
     private async Task ChangeThemePreference(ChangeEventArgs args) {
-        var preference = NormalizeThemePreference(args.Value?.ToString());
+        string preference = NormalizeThemePreference(args.Value?.ToString());
         ThemePreference = preference;
 
         try {

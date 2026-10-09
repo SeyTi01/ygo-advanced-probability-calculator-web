@@ -23,11 +23,11 @@ public class ComboConverterTests {
 
     [Test]
     public void Serialize_ValidCombo_ReturnsCorrectJson() {
-        var baseCategory = new CategoryBase("TestCategory");
-        var comboCategory = new ComboCategory(baseCategory, 1, 3);
-        var combo = new Combo([comboCategory]);
+        CategoryBase baseCategory = new("TestCategory");
+        ComboCategory comboCategory = new(baseCategory, 1, 3);
+        Combo combo = new([comboCategory]);
 
-        var json = JsonSerializer.Serialize(combo, _options);
+        string json = JsonSerializer.Serialize(combo, _options);
 
         const string expectedJson =
             "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\",\"Source\":\"User\"},\"MinCount\":1,\"MaxCount\":3,\"MaximumMode\":\"Fixed\"}],\"Active\":true}";
@@ -36,11 +36,11 @@ public class ComboConverterTests {
 
     [Test]
     public void Serialize_ComboWithName_ReturnsCorrectJson() {
-        var baseCategory = new CategoryBase("TestCategory");
-        var comboCategory = new ComboCategory(baseCategory, 1, 3);
-        var combo = new Combo([comboCategory], "Test Combo");
+        CategoryBase baseCategory = new("TestCategory");
+        ComboCategory comboCategory = new(baseCategory, 1, 3);
+        Combo combo = new([comboCategory], "Test Combo");
 
-        var json = JsonSerializer.Serialize(combo, _options);
+        string json = JsonSerializer.Serialize(combo, _options);
 
         const string expectedJson =
             "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\",\"Source\":\"User\"},\"MinCount\":1,\"MaxCount\":3,\"MaximumMode\":\"Fixed\"}],\"Name\":\"Test Combo\",\"Active\":true}";
@@ -52,7 +52,7 @@ public class ComboConverterTests {
         const string json =
             "{\"Categories\":[{\"BaseCategory\":{\"Name\":\"TestCategory\",\"Source\":\"User\"},\"MinCount\":1,\"MaxCount\":3}]}";
 
-        var combo = JsonSerializer.Deserialize<Combo>(json, _options);
+        Combo? combo = JsonSerializer.Deserialize<Combo>(json, _options);
 
         Assert.That(combo, Is.Not.Null);
         Assert.Multiple(() => {
@@ -68,7 +68,7 @@ public class ComboConverterTests {
     public void Deserialize_EmptyCategories_ReturnsComboWithEmptyCategories() {
         const string json = "{\"Categories\":[]}";
 
-        var combo = JsonSerializer.Deserialize<Combo>(json, _options);
+        Combo? combo = JsonSerializer.Deserialize<Combo>(json, _options);
 
         Assert.That(combo, Is.Not.Null);
         Assert.Multiple(() => {
@@ -79,26 +79,26 @@ public class ComboConverterTests {
 
     [Test]
     public void GroupMembershipAndInactiveStateRoundTripWithoutChangingLegacyJson() {
-        var combo = new Combo([], "Grouped", false, "stable-group-id");
-        var json = JsonSerializer.Serialize(combo, _options);
+        Combo combo = new([], "Grouped", false, "stable-group-id");
+        string json = JsonSerializer.Serialize(combo, _options);
         Assert.That(json, Does.Contain("\"GroupId\":\"stable-group-id\"").And.Contain("\"Active\":false"));
-        var loaded = JsonSerializer.Deserialize<Combo>(json, _options)!;
+        Combo loaded = JsonSerializer.Deserialize<Combo>(json, _options)!;
         Assert.That(loaded.GroupId, Is.EqualTo("stable-group-id"));
         Assert.That(loaded.Active, Is.False);
         Assert.That(loaded.WithName("Renamed").GroupId, Is.EqualTo("stable-group-id"));
         Assert.That(loaded.WithCategories([]).GroupId, Is.EqualTo("stable-group-id"));
 
-        var legacy = JsonSerializer.Deserialize<Combo>("{\"Categories\":[]}", _options)!;
+        Combo legacy = JsonSerializer.Deserialize<Combo>("{\"Categories\":[]}", _options)!;
         Assert.That(legacy.GroupId, Is.Null);
         Assert.That(legacy.Active, Is.True);
     }
 
     [Test]
     public void MixedRequirementsRoundTripThroughAllReplacementOperations() {
-        var card = new Card([], 2, "Card");
-        var combo = new Combo([new(new CategoryBase("Role"), 0, 2)], "Mixed", true, "g",
+        Card card = new([], 2, "Card");
+        Combo combo = new([new(new CategoryBase("Role"), 0, 2)], "Mixed", true, "g",
             [new(card.Id, 1, 2)]);
-        var loaded = JsonSerializer.Deserialize<Combo>(JsonSerializer.Serialize(combo, _options), _options)!;
+        Combo loaded = JsonSerializer.Deserialize<Combo>(JsonSerializer.Serialize(combo, _options), _options)!;
         Assert.That(loaded.Cards.Single().CardId, Is.EqualTo(card.Id));
         Assert.That(loaded.Cards.Single().MinCount, Is.EqualTo(1));
         Assert.That(loaded.Categories, Has.Count.EqualTo(1));

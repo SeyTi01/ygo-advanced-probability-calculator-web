@@ -22,22 +22,22 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
 
     [Test]
     public void CategoryColorsStayConsistentAcrossViewsThroughRenameAndUnrelatedDeletion() {
-        var categoryA = new CategoryBase("A");
-        var categoryB = new CategoryBase("B");
-        var categoryC = new CategoryBase("C");
-        var session = new SessionState {
+        CategoryBase categoryA = new("A");
+        CategoryBase categoryB = new("B");
+        CategoryBase categoryC = new("C");
+        SessionState session = new() {
             Categories = [categoryA, categoryB, categoryC],
             Cards = [new([categoryA, categoryC], 3, "Card")],
             Combos = [new([new(categoryA, 1, 3), new(categoryC, 1, 3)], "Combo")],
             HandSize = 3
         };
 
-        var cut = Render(session);
-        var categoryList = cut.FindComponent<CategoryListEditor>();
-        var card = cut.FindComponent<CardEditor>();
-        var combo = cut.FindComponent<ComboEditor>();
-        var colorA = CategoryColorClass(categoryList, ".category-chip", "A");
-        var colorC = CategoryColorClass(categoryList, ".category-chip", "C");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        IRenderedComponent<CategoryListEditor> categoryList = cut.FindComponent<CategoryListEditor>();
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
+        IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
+        string colorA = CategoryColorClass(categoryList, ".category-chip", "A");
+        string colorC = CategoryColorClass(categoryList, ".category-chip", "C");
 
         Assert.That(colorA, Is.Not.EqualTo(colorC));
         Assert.That(CategoryColorClass(card, ".accordion-button .category-tag", "A"), Is.EqualTo(colorA));
@@ -64,29 +64,29 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
 
         cut.Find("[placeholder='Category name']").Input("D");
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
-        var colorD = CategoryColorClass(categoryList, ".category-chip", "D");
+        string colorD = CategoryColorClass(categoryList, ".category-chip", "D");
         Assert.That(colorD, Is.Not.EqualTo(colorA).And.Not.EqualTo(colorC));
     }
 
     [Test]
     public void CategoryColorsRoundTripAndLegacySessionsReceiveDistinctAssignments() {
-        var cut = Render(Session());
-        var categories = cut.FindComponent<CategoryListEditor>();
-        var firstColor = CategoryColorClass(categories, ".category-chip", "A");
-        var secondColor = CategoryColorClass(categories, ".category-chip", "B");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
+        IRenderedComponent<CategoryListEditor> categories = cut.FindComponent<CategoryListEditor>();
+        string firstColor = CategoryColorClass(categories, ".category-chip", "A");
+        string secondColor = CategoryColorClass(categories, ".category-chip", "B");
         Assert.That(firstColor, Is.Not.EqualTo(secondColor));
 
         Button(cut, "Save Session").Click();
-        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
-        var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
-        using (var document = System.Text.Json.JsonDocument.Parse(savedJson)) {
-            var savedColors = document.RootElement.GetProperty("CategoryColorIndices");
+        JSRuntimeInvocation invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
+        string savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        using (System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(savedJson)) {
+            System.Text.Json.JsonElement savedColors = document.RootElement.GetProperty("CategoryColorIndices");
             Assert.That(savedColors.GetProperty("A").GetInt32(), Is.Not.EqualTo(savedColors.GetProperty("B").GetInt32()));
         }
 
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(savedJson, "session.json"));
         cut.WaitForAssertion(() => {
-            var loadedCategories = cut.FindComponent<CategoryListEditor>();
+            IRenderedComponent<CategoryListEditor> loadedCategories = cut.FindComponent<CategoryListEditor>();
             Assert.That(CategoryColorClass(loadedCategories, ".category-chip", "A"), Is.EqualTo(firstColor));
             Assert.That(CategoryColorClass(loadedCategories, ".category-chip", "B"), Is.EqualTo(secondColor));
             Assert.That(CategoryColorClass(cut.FindComponent<CardEditor>(), ".accordion-body .category-tag", "A"), Is.EqualTo(firstColor));
@@ -103,33 +103,33 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
             """;
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(legacySession, "legacy-session.json"));
         cut.WaitForAssertion(() => {
-            var legacyCategories = cut.FindComponent<CategoryListEditor>();
-            var legacyAColor = CategoryColorClass(legacyCategories, ".category-chip", "Legacy A");
-            var legacyBColor = CategoryColorClass(legacyCategories, ".category-chip", "Legacy B");
+            IRenderedComponent<CategoryListEditor> legacyCategories = cut.FindComponent<CategoryListEditor>();
+            string legacyAColor = CategoryColorClass(legacyCategories, ".category-chip", "Legacy A");
+            string legacyBColor = CategoryColorClass(legacyCategories, ".category-chip", "Legacy B");
             Assert.That(legacyAColor, Is.Not.EqualTo(legacyBColor));
         });
     }
 
     [Test]
     public async Task CategoryColorPickerUpdatesEveryViewPreservesRenameDraftAndRoundTripsDuplicates() {
-        var vsStarter = new CategoryBase("VS Starter");
-        var k9Starter = new CategoryBase("K9 Starter");
-        var cut = Render(new SessionState {
+        CategoryBase vsStarter = new("VS Starter");
+        CategoryBase k9Starter = new("K9 Starter");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
             Categories = [vsStarter, k9Starter],
             Cards = [new([vsStarter, k9Starter], 2, "Starter card")],
             Combos = [new([new(vsStarter, 1, 2), new(k9Starter, 1, 2)], "Starter route")],
             HandSize = 2,
             CategoryColorIndices = new(StringComparer.Ordinal) { [vsStarter.Name] = 0, [k9Starter.Name] = 1 }
         });
-        var categories = cut.FindComponent<CategoryListEditor>();
-        var card = cut.FindComponent<CardEditor>();
-        var combo = cut.FindComponent<ComboEditor>();
+        IRenderedComponent<CategoryListEditor> categories = cut.FindComponent<CategoryListEditor>();
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
+        IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
 
         Assert.That(categories.FindAll(".category-color-swatch"), Is.Empty);
         Assert.That(CategoryColorClass(categories, ".category-chip", vsStarter.Name), Is.EqualTo("category-color-0"));
         await categories.Find("[aria-label='Edit category K9 Starter']").ClickAsync(new());
         await categories.Find("[aria-label='Choose color for category K9 Starter']").ClickAsync(new());
-        var k9Swatches = categories.FindAll(".category-color-swatch");
+        IRefreshableElementCollection<IElement> k9Swatches = categories.FindAll(".category-color-swatch");
         Assert.That(k9Swatches, Has.Count.EqualTo(CategoryColorPalette.PaletteSize));
         Assert.That(k9Swatches.Select(button => button.GetAttribute("aria-label")),
             Is.EqualTo(CategoryColorPalette.Options.Select(color => $"Set K9 Starter color to {color.Name}")));
@@ -153,7 +153,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         await categories.Find("[aria-label='Set VS Starter color to Green']").ClickAsync(new());
 
         categories = cut.FindComponent<CategoryListEditor>();
-        var renameInput = categories.Find("[aria-label='New name for category VS Starter']");
+        IElement renameInput = categories.Find("[aria-label='New name for category VS Starter']");
         Assert.That(renameInput.GetAttribute("value"), Is.EqualTo("VS Starter renamed"));
         Assert.That(categories.FindAll("[aria-label='Edit category VS Starter renamed']"), Is.Empty,
             "choosing a color must not commit the pending rename");
@@ -169,24 +169,24 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", "VS Starter renamed"), Is.EqualTo("category-color-2"));
 
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
-        var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
-        using (var document = System.Text.Json.JsonDocument.Parse(savedJson)) {
-            var savedColors = document.RootElement.GetProperty("CategoryColorIndices");
+        JSRuntimeInvocation invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
+        string savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        using (System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(savedJson)) {
+            System.Text.Json.JsonElement savedColors = document.RootElement.GetProperty("CategoryColorIndices");
             Assert.That(savedColors.GetProperty("VS Starter renamed").GetInt32(), Is.EqualTo(2));
             Assert.That(savedColors.GetProperty("K9 Starter").GetInt32(), Is.EqualTo(2),
                 "manually chosen duplicate palette colors are allowed and saved");
         }
 
-        var sessionFile = new Mock<IBrowserFile>();
+        Mock<IBrowserFile> sessionFile = new();
         sessionFile.Setup(file => file.Name).Returns("session.json");
         sessionFile.Setup(file => file.Size).Returns(System.Text.Encoding.UTF8.GetByteCount(savedJson));
         sessionFile.Setup(file => file.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(() => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(savedJson)));
-        var sessionFileInput = cut.FindComponents<InputFile>()[1];
+        IRenderedComponent<InputFile> sessionFileInput = cut.FindComponents<InputFile>()[1];
         await cut.InvokeAsync(() => sessionFileInput.Instance.OnChange.InvokeAsync(new InputFileChangeEventArgs([sessionFile.Object])));
         cut.WaitForAssertion(() => {
-            var loadedCategories = cut.FindComponent<CategoryListEditor>();
+            IRenderedComponent<CategoryListEditor> loadedCategories = cut.FindComponent<CategoryListEditor>();
             Assert.That(CategoryColorClass(loadedCategories, ".category-chip", "VS Starter renamed"), Is.EqualTo("category-color-2"));
             Assert.That(CategoryColorClass(loadedCategories, ".category-chip", "K9 Starter"), Is.EqualTo("category-color-2"));
             Assert.That(CategoryColorClass(cut.FindComponent<CardEditor>(), ".accordion-body .category-tag", "VS Starter renamed"), Is.EqualTo("category-color-2"));
@@ -196,10 +196,10 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
 
     [Test]
     public async Task InvalidAndMissingCategoryColorsAreRepairedWithoutChangingValidDuplicates() {
-        var aCategory = new CategoryBase("A");
-        var bCategory = new CategoryBase("B");
-        var cCategory = new CategoryBase("C");
-        var cut = Render(new SessionState {
+        CategoryBase aCategory = new("A");
+        CategoryBase bCategory = new("B");
+        CategoryBase cCategory = new("C");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
             Categories = [aCategory, bCategory, cCategory],
             CategoryColorIndices = new(StringComparer.Ordinal) {
                 ["A"] = 7,
@@ -208,7 +208,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
                 ["Removed"] = 4
             }
         });
-        var categories = cut.FindComponent<CategoryListEditor>();
+        IRenderedComponent<CategoryListEditor> categories = cut.FindComponent<CategoryListEditor>();
 
         Assert.That(CategoryColorClass(categories, ".category-chip", "A"), Is.EqualTo("category-color-7"));
         Assert.That(CategoryColorClass(categories, ".category-chip", "B"), Is.EqualTo("category-color-7"));
@@ -220,10 +220,10 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
             "automatic assignment uses the first unused palette slot after existing duplicate choices");
 
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
-        var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
-        using var document = System.Text.Json.JsonDocument.Parse(savedJson);
-        var savedColors = document.RootElement.GetProperty("CategoryColorIndices");
+        JSRuntimeInvocation invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
+        string savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(savedJson);
+        System.Text.Json.JsonElement savedColors = document.RootElement.GetProperty("CategoryColorIndices");
         Assert.That(savedColors.GetProperty("A").GetInt32(), Is.EqualTo(7));
         Assert.That(savedColors.GetProperty("B").GetInt32(), Is.EqualTo(7));
         Assert.That(savedColors.GetProperty("C").GetInt32(), Is.EqualTo(0));
@@ -233,15 +233,19 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
 
     [Test]
     public void MetadataPropertyColorsAreConsistentAcrossCardAndComboChipContexts() {
-        var fire = new CategoryBase("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
-        var detectedCard = new Card([fire], name: "Detected FIRE");
-        var manualCard = new Card([fire], name: "Manual FIRE", manualMetadataCategoryKeys: [fire.MetadataKey!]);
-        var combo = new Combo([new(fire, 1, 5)], "FIRE route");
-        var cut = Render(new SessionState { Cards = [detectedCard, manualCard], Combos = [combo], HandSize = 5 });
-        var detected = cut.FindComponents<CardEditor>()[0];
-        var manual = cut.FindComponents<CardEditor>()[1];
-        var comboEditor = cut.FindComponent<ComboEditor>();
-        var expectedClass = "card-property-color-attribute-fire";
+        CategoryBase fire = new("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
+        Card detectedCard = new([fire], name: "Detected FIRE");
+        Card manualCard = new([fire], name: "Manual FIRE", manualMetadataCategoryKeys: [fire.MetadataKey!]);
+        Combo combo = new([new(fire, 1, 5)], "FIRE route");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Cards = [detectedCard, manualCard],
+            Combos = [combo],
+            HandSize = 5
+        });
+        IRenderedComponent<CardEditor> detected = cut.FindComponents<CardEditor>()[0];
+        IRenderedComponent<CardEditor> manual = cut.FindComponents<CardEditor>()[1];
+        IRenderedComponent<ComboEditor> comboEditor = cut.FindComponent<ComboEditor>();
+        const string expectedClass = "card-property-color-attribute-fire";
 
         Assert.That(detected.Find(".detected-card-property").ClassList,
             Does.Contain("card-property-tag").And.Contain(expectedClass));
@@ -260,7 +264,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
 
     [Test]
     public void CategoriesRefreshSiblingSelectorsAndRejectEmptyDuplicateOrUsedNames() {
-        var cut = Render();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
         Button(cut, "Add New Card").Click();
         Button(cut, "Add New Combo").Click();
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
@@ -271,7 +275,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         cut.Find("[placeholder='Category name']").Input("a");
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("already exists"));
-        var card = cut.FindComponent<CardEditor>();
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
         card.Find("select").Change("user:A");
         Button(card, "Add").Click();
         cut.Find("[aria-label='Remove category A']").Click();
@@ -283,9 +287,9 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
 
     [Test]
     public void LoadedComboAlonePreventsCategoryDeletionUntilConstraintIsRemoved() {
-        var session = Session();
+        SessionState session = Session();
         session.Cards.Clear();
-        var cut = Render(session);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         cut.Find("[aria-label='Remove category A']").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
         cut.FindComponents<ComboEditor>()[0].Find(".accordion-body .badge button").Click();

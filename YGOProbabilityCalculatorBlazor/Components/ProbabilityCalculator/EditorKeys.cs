@@ -2,21 +2,25 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 // Model references identify rows on load/reorder; edits explicitly transfer their UI identity.
 internal sealed class EditorKeys<T> where T : class {
-    private readonly Dictionary<T, object> keys = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<T, object> _keys = new(ReferenceEqualityComparer.Instance);
 
-    public object this[T item] => keys[item];
+    public object this[T item] => _keys[item];
 
     public void Synchronize(IReadOnlyList<T> items) {
-        var current = new HashSet<T>(items, ReferenceEqualityComparer.Instance);
-        foreach (var removed in keys.Keys.Where(item => !current.Contains(item)).ToList())
-            keys.Remove(removed);
-        foreach (var item in items)
-            keys.TryAdd(item, new object());
+        HashSet<T> current = new(items, ReferenceEqualityComparer.Instance);
+
+        foreach (T removed in _keys.Keys.Where(item => !current.Contains(item)).ToList()) {
+            _keys.Remove(removed);
+        }
+
+        foreach (T item in items) {
+            _keys.TryAdd(item, new object());
+        }
     }
 
     public void Replace(T oldItem, T newItem) {
-        var key = keys[oldItem];
-        keys.Remove(oldItem);
-        keys[newItem] = key;
+        object key = _keys[oldItem];
+        _keys.Remove(oldItem);
+        _keys[newItem] = key;
     }
 }

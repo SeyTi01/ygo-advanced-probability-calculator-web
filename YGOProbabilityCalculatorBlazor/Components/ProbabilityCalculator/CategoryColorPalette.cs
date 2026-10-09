@@ -27,7 +27,7 @@ public static class CategoryColorPalette {
     public static bool IsValidIndex(int colorIndex) => colorIndex >= 0 && colorIndex < PaletteSize;
 
     public static string GetCssClass(string categoryName, IReadOnlyDictionary<string, int> colorIndices) {
-        var colorIndex = colorIndices.TryGetValue(categoryName, out var assignedIndex) && IsValidIndex(assignedIndex)
+        int colorIndex = colorIndices.TryGetValue(categoryName, out int assignedIndex) && IsValidIndex(assignedIndex)
             ? assignedIndex
             : 0;
 
@@ -35,8 +35,10 @@ public static class CategoryColorPalette {
     }
 
     public static int FirstAvailableIndex(IReadOnlySet<int> assignedIndices, int assignedCategoryCount = 0) {
-        for (var candidate = 0; candidate < PaletteSize; candidate++) {
-            if (!assignedIndices.Contains(candidate)) return candidate;
+        for (int candidate = 0; candidate < PaletteSize; candidate++) {
+            if (!assignedIndices.Contains(candidate)) {
+                return candidate;
+            }
         }
 
         // Once every palette slot is used, repeat deterministically while keeping saved indices in range.

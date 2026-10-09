@@ -12,22 +12,24 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
     private readonly SessionSchemaMigrator _schemaMigrator = new();
 
     public async Task SaveSessionAsync(SessionState session, string fileName) {
-        if (string.IsNullOrWhiteSpace(fileName))
+        if (string.IsNullOrWhiteSpace(fileName)) {
             throw new ArgumentException("File name cannot be empty", nameof(fileName));
+        }
 
-        if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) {
             fileName += ".json";
+        }
 
-        var json = SerializeSession(session);
-        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var base64 = Convert.ToBase64String(bytes);
+        string json = SerializeSession(session);
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        string base64 = Convert.ToBase64String(bytes);
 
         await jsRuntime.InvokeVoidAsync("saveSessionFile", fileName, base64);
     }
 
     // Offline codec shared by file saving and recovery; never opens a picker.
     public string SerializeSession(SessionState session) {
-        var sessionToSave = new SessionState {
+        SessionState sessionToSave = new() {
             SchemaVersion = SessionState.CurrentSchemaVersion,
             Categories = session.Categories,
             Cards = session.Cards,
@@ -36,39 +38,68 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             HandSize = session.HandSize,
             CategoryColorIndices = session.CategoryColorIndices
         };
+
         return serializer.Serialize(sessionToSave, _serializerOptions);
     }
 
     public Task<SessionState> LoadSessionAsync(string fileContent) {
         try {
-            var migratedJson = _schemaMigrator.MigrateToCurrent(fileContent);
-            var session = serializer.Deserialize<SessionState>(migratedJson, _serializerOptions);
-
-            if (session == null)
-                throw new InvalidOperationException("Failed to deserialize session data");
+            string migratedJson = _schemaMigrator.MigrateToCurrent(fileContent);
+            SessionState session = serializer.Deserialize<SessionState>(migratedJson, _serializerOptions) ?? throw new InvalidOperationException("Failed to deserialize session data");
 
             // Reject incomplete model graphs before any caller begins replacing its workspace.
             // Omitted collections retain defaults; optional legacy groups/colors may still be null.
-            if (session.Categories is null || session.Cards is null || session.Combos is null ||
-                session.Categories.Any(category => category is null) || session.Cards.Any(card => card is null) ||
-                session.Combos.Any(combo => combo is null) || session.ComboGroups?.Any(group => group is null) == true)
-                throw new JsonException("Session contains missing model collections or entries.");
+            bool hasMissingCollectionsOrEntries = session.Categories is null
+                || session.Cards is null
+                || session.Combos is null
+                || session.Categories.Any(category => category is null)
+                || session.Cards.Any(card => card is null)
+                || session.Combos.Any(combo => combo is null)
+                || session.ComboGroups?.Any(group => group is null) == true;
 
-            if (session.Combos.Any(combo => combo.Categories.Any(category => category is null) ||
-                combo.Cards.Any(card => card is null)))
+            if (hasMissingCollectionsOrEntries) {
+                throw new JsonException("Session contains missing model collections or entries.");
+            }
+
+            bool hasMissingComboRequirements = session.Combos.Any(combo =>
+                combo.Categories.Any(category => category is null) || combo.Cards.Any(card => card is null)
+            );
+
+            if (hasMissingComboRequirements) {
                 throw new JsonException("Session contains missing combo requirements.");
+            }
 
             // These identities are rendered as sibling keys and used for editor references.
             // Reject ambiguity before the caller clears its accepted workspace.
-            if (session.Categories.Select(category => category.Identity).Distinct(StringComparer.Ordinal).Count() != session.Categories.Count)
-                throw new JsonException("Session contains duplicate category identities.");
-            if (session.ComboGroups is { } groups &&
-                (groups.Any(group => string.IsNullOrWhiteSpace(group.Id) || string.IsNullOrWhiteSpace(group.Name)) ||
-                 groups.Select(group => group.Id).Distinct(StringComparer.Ordinal).Count() != groups.Count))
-                throw new JsonException("Session contains invalid or duplicate combo group identities.");
+            bool hasDuplicateCategoryIdentities = session.Categories
+                .Select(static category => category.Identity)
+                .Distinct(StringComparer.Ordinal)
+                .Count() != session.Categories.Count;
 
-            if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
+            if (hasDuplicateCategoryIdentities) {
+                throw new JsonException("Session contains duplicate category identities.");
+            }
+
+            if (session.ComboGroups is { } groups) {
+                bool hasInvalidComboGroup = groups.Any(group => string.IsNullOrWhiteSpace(group.Id)
+                    || string.IsNullOrWhiteSpace(group.Name))
+                    || groups.Select(static group => group.Id)
+                        .Distinct(StringComparer.Ordinal)
+                        .Count() != groups.Count;
+
+                if (hasInvalidComboGroup) {
+                    throw new JsonException("Session contains invalid or duplicate combo group identities.");
+                }
+            }
+
+            bool hasDuplicateCardIds = session.Cards
+                .Select(static card => card.Id)
+                .Distinct(StringComparer.Ordinal)
+                .Count() != session.Cards.Count;
+
+            if (hasDuplicateCardIds) {
                 throw new InvalidOperationException("Session contains duplicate card IDs.");
+            }
 
             return Task.FromResult(session);
         }

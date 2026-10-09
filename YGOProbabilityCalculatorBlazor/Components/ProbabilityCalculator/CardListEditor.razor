@@ -12,11 +12,11 @@
         </button>
     </div>
     <div class="accordion" id="cardsAccordion">
-        @for (var index = 0; index < Cards.Count; index++) {
-            <CardEditor @key="editorKeys[Cards[index]]"
+        @for (int index = 0; index < Cards.Count; index++) {
+            <CardEditor @key="_editorKeys[Cards[index]]"
                 Index="index"
                 Card="Cards[index]"
-                CategoryBases="availableCategories"
+                CategoryBases="_availableCategories"
                 CategoryColorIndices="CategoryColorIndices"
                 CategoryRename="CategoryRename"
                 ActiveCardIndex="ActiveCardIndex"
@@ -50,17 +50,20 @@
     [Parameter] public EventCallback<(int From, int To)> OnMoveCard { get; set; }
     [Parameter] public EventCallback OnSortAlphabetically { get; set; }
 
-    private readonly EditorKeys<Card> editorKeys = new();
-    private IReadOnlyList<CategoryBase> availableCategories = [];
+    private readonly EditorKeys<Card> _editorKeys = new();
+    private IReadOnlyList<CategoryBase> _availableCategories = [];
+
     private long ActiveCopies => Cards.Where(card => card.Active).Sum(card => (long)card.Copies);
 
     protected override void OnParametersSet() {
-        editorKeys.Synchronize(Cards);
-        availableCategories = CategoryCatalog.Build(CategoryBases, Cards, Combos);
+        _editorKeys.Synchronize(Cards);
+
+        _availableCategories = CategoryCatalog.Build(CategoryBases, Cards, Combos);
     }
 
     private Task ReplaceCard((int Index, Card NewCard) payload) {
-        editorKeys.Replace(Cards[payload.Index], payload.NewCard);
+        _editorKeys.Replace(Cards[payload.Index], payload.NewCard);
+
         return OnReplaceCard.InvokeAsync(payload);
     }
 }

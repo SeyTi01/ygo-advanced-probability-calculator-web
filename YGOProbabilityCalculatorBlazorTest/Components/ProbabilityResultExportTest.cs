@@ -11,36 +11,36 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
 public class ProbabilityResultExportTest {
-    private TestContext context = null!;
-    private ClipboardInterop clipboard = null!;
+    private TestContext _context = null!;
+    private ClipboardInterop _clipboard = null!;
 
     [SetUp]
     public void SetUp() {
-        context = new TestContext();
-        clipboard = new ClipboardInterop();
-        context.Services.AddSingleton<IJSRuntime>(clipboard);
+        _context = new TestContext();
+        _clipboard = new ClipboardInterop();
+        _context.Services.AddSingleton<IJSRuntime>(_clipboard);
     }
 
     [TearDown]
-    public void TearDown() => context.Dispose();
+    public void TearDown() => _context.Dispose();
 
     [Test]
     public async Task DisposalDuringImportReleasesTheLateModuleExactlyOnce() {
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        clipboard.ImportDelay = completion.Task;
-        var cut = Render(Result(0.42, "Late import"));
+        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _clipboard.ImportDelay = completion.Task;
+        IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Late import"));
         await cut.Instance.DisposeAsync();
         completion.SetResult();
-        await clipboard.ModuleDisposed.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await _clipboard.ModuleDisposed.Task.WaitAsync(TimeSpan.FromSeconds(1));
         await cut.Instance.DisposeAsync();
-        Assert.That(clipboard.DisposalCount, Is.EqualTo(1));
-        Assert.That(clipboard.CopyAttempts, Is.Zero);
-        Assert.That(clipboard.FocusAttempts, Is.Zero);
+        Assert.That(_clipboard.DisposalCount, Is.EqualTo(1));
+        Assert.That(_clipboard.CopyAttempts, Is.Zero);
+        Assert.That(_clipboard.FocusAttempts, Is.Zero);
     }
 
     [Test]
     public void UngroupedSummaryUsesExactHandSizeComboOrderAndUnnamedFallback() {
-        var result = new ProbabilityCalculationResult(
+        ProbabilityCalculationResult result = new(
             0.123456,
             [
                 new ComboProbabilityResult(2, null, 0.0, "orphan"),
@@ -48,7 +48,7 @@ public class ProbabilityResultExportTest {
                 new ComboProbabilityResult(1, "First route", 0.25)
             ]);
 
-        var summary = ProbabilityResultSummaryFormatter.Format(result, 7, CultureInfo.GetCultureInfo("en-US"));
+        string summary = ProbabilityResultSummaryFormatter.Format(result, 7, CultureInfo.GetCultureInfo("en-US"));
 
         Assert.That(summary, Does.StartWith("Probability results\nHand size: 7\nAny active combo: 12.35%"));
         Assert.That(summary, Does.Contain("Individual combos:"));
@@ -61,7 +61,7 @@ public class ProbabilityResultExportTest {
 
     [Test]
     public void GroupedSummaryPreservesStableMembershipOrderCountsDuplicatesAndEmptyGroups() {
-        var result = new ProbabilityCalculationResult(
+        ProbabilityCalculationResult result = new(
             0.87,
             [
                 new ComboProbabilityResult(0, "Same route", 0.75, "left"),
@@ -75,7 +75,7 @@ public class ProbabilityResultExportTest {
                 new GroupProbabilityResult("empty", "Empty group", 0.0, 0)
             ]);
 
-        var summary = ProbabilityResultSummaryFormatter.Format(result, 6, CultureInfo.GetCultureInfo("en-US"));
+        string summary = ProbabilityResultSummaryFormatter.Format(result, 6, CultureInfo.GetCultureInfo("en-US"));
 
         Assert.That(summary, Does.Contain("Hand size: 6"));
         Assert.That(summary, Does.Contain("Any active combo: 87.00%"));
@@ -90,7 +90,7 @@ public class ProbabilityResultExportTest {
 
     [Test]
     public void FormatterUsesExplicitEnglishAndGermanCulturesAndRoundsFractionalValues() {
-        var result = new ProbabilityCalculationResult(
+        ProbabilityCalculationResult result = new(
             0.125,
             [
                 new ComboProbabilityResult(0, "Below rounding boundary", 0.123449),
@@ -100,8 +100,8 @@ public class ProbabilityResultExportTest {
                 new ComboProbabilityResult(4, "Small", 0.00006)
             ]);
 
-        var english = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("en-US"));
-        var german = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("de-DE"));
+        string english = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("en-US"));
+        string german = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("de-DE"));
 
         Assert.That(english, Does.Contain("Any active combo: 12.50%"));
         Assert.That(english, Does.Contain("Below rounding boundary** — 12.34%"));
@@ -116,12 +116,12 @@ public class ProbabilityResultExportTest {
 
     [Test]
     public void UserLabelsCannotAddMarkdownHeadingsOrBreakTheSummaryStructure() {
-        var result = new ProbabilityCalculationResult(
+        ProbabilityCalculationResult result = new(
             0.5,
             [new ComboProbabilityResult(0, "Café 🌟\r\n# forged\n*header* <b>x</b> A+B.! (C) [D] _E_ \"F\" \\path\u0001", 0.5, "group")],
             [new GroupProbabilityResult("group", "Tier\n## Other\r\nSecond\u0000", 0.5, 1)]);
 
-        var summary = ProbabilityResultSummaryFormatter.Format(result, 4, CultureInfo.GetCultureInfo("en-US"));
+        string summary = ProbabilityResultSummaryFormatter.Format(result, 4, CultureInfo.GetCultureInfo("en-US"));
 
         Assert.That(summary, Does.Contain("**Tier ## Other Second**"));
         Assert.That(summary, Does.Contain("Café 🌟 # forged *header* <b>x</b> A+B.! (C) [D] _E_ \"F\" \\path"));
@@ -131,9 +131,9 @@ public class ProbabilityResultExportTest {
 
     [Test]
     public async Task ManualFallbackKeepsMarkupLikeNamesAsPlainText() {
-        clipboard.Copy = _ => Task.FromResult(false);
-        var result = Result(0.5, "<b>route</b> + [name]");
-        var cut = Render(result);
+        _clipboard.Copy = _ => Task.FromResult(false);
+        ProbabilityCalculationResult result = Result(0.5, "<b>route</b> + [name]");
+        IRenderedComponent<ProbabilityResultExport> cut = Render(result);
 
         await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
 
@@ -143,9 +143,9 @@ public class ProbabilityResultExportTest {
 
     [Test]
     public void FormatterPreservesRepresentativeNamesAndGermanPercentagesExactly() {
-        var result = GermanExampleResult();
+        ProbabilityCalculationResult result = GermanExampleResult();
 
-        var summary = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("de-DE"));
+        string summary = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("de-DE"));
 
         Assert.That(summary, Is.EqualTo(ExpectedGermanSummary()));
         Assert.That(summary, Does.Not.Contain("\\+"));
@@ -154,11 +154,11 @@ public class ProbabilityResultExportTest {
 
     [Test]
     public async Task CopyUsesCapturedCurrentPlainTextAndShowsVisibleIconWithHiddenAnnouncement() {
-        var previousCulture = CultureInfo.CurrentCulture;
+        CultureInfo previousCulture = CultureInfo.CurrentCulture;
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
         try {
-            var cut = Render(GermanExampleResult(), handSize: 5);
-            var button = cut.Find("button[title='Copy a summary of these results']");
+            IRenderedComponent<ProbabilityResultExport> cut = Render(GermanExampleResult(), handSize: 5);
+            AngleSharp.Dom.IElement button = cut.Find("button[title='Copy a summary of these results']");
 
             Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
             Assert.That(cut.FindAll(".probability-result-copy-rest-icon").Count, Is.EqualTo(1));
@@ -166,8 +166,8 @@ public class ProbabilityResultExportTest {
 
             await button.ClickAsync(new MouseEventArgs());
 
-            Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
-            Assert.That(clipboard.LastCopiedText, Is.EqualTo(ExpectedGermanSummary()));
+            Assert.That(_clipboard.CopyAttempts, Is.EqualTo(1));
+            Assert.That(_clipboard.LastCopiedText, Is.EqualTo(ExpectedGermanSummary()));
             Assert.That(cut.Find("button[title='Copy a summary of these results']").TextContent.Trim(), Is.EqualTo("Copy results"));
             Assert.That(cut.FindAll(".probability-result-copy-rest-icon"), Is.Empty);
             Assert.That(cut.FindAll(".probability-result-copy-success-icon").Count, Is.EqualTo(1));
@@ -184,17 +184,17 @@ public class ProbabilityResultExportTest {
     [TestCase(false)]
     [TestCase(true)]
     public async Task ClipboardAndManualFallbackContainTheSameIndependentlyExpectedText(bool stale) {
-        var previousCulture = CultureInfo.CurrentCulture;
+        CultureInfo previousCulture = CultureInfo.CurrentCulture;
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
         try {
-            var result = GermanExampleResult();
-            var copied = Render(result, handSize: 5, isStale: stale);
+            ProbabilityCalculationResult result = GermanExampleResult();
+            IRenderedComponent<ProbabilityResultExport> copied = Render(result, handSize: 5, isStale: stale);
             await copied.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
-            Assert.That(clipboard.LastCopiedText, Is.EqualTo((stale ? "Previous result — current inputs have changed.\n" : "") + ExpectedGermanSummary()));
+            Assert.That(_clipboard.LastCopiedText, Is.EqualTo((stale ? "Previous result — current inputs have changed.\n" : "") + ExpectedGermanSummary()));
 
             copied.Dispose();
-            clipboard.Copy = _ => Task.FromResult(false);
-            var fallback = Render(result, handSize: 5, isStale: stale);
+            _clipboard.Copy = _ => Task.FromResult(false);
+            IRenderedComponent<ProbabilityResultExport> fallback = Render(result, handSize: 5, isStale: stale);
             await fallback.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
 
             Assert.That(fallback.Find("textarea[readonly]").TextContent, Is.EqualTo((stale ? "Previous result — current inputs have changed.\n" : "") + ExpectedGermanSummary()));
@@ -208,109 +208,112 @@ public class ProbabilityResultExportTest {
 
     [Test]
     public async Task ClipboardDenialShowsSelectableFallbackWhichCanBeDismissed() {
-        clipboard.Copy = _ => Task.FromResult(false);
-        var cut = Render(Result(0.42, "Fallback combo"), handSize: 5);
+        _clipboard.Copy = _ => Task.FromResult(false);
+        IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Fallback combo"), handSize: 5);
 
         await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
 
-        var textArea = cut.Find("textarea[readonly]");
+        AngleSharp.Dom.IElement textArea = cut.Find("textarea[readonly]");
         Assert.That(textArea.TextContent, Does.Contain("Hand size: 5"));
         Assert.That(textArea.TextContent, Does.Contain("Fallback combo"));
         Assert.That(cut.Find("label[for]").TextContent, Is.EqualTo("Result summary"));
         Assert.That(cut.Find("#" + textArea.Id).GetAttribute("aria-describedby"), Does.Contain("copy-fallback-instruction"));
-        Assert.That(clipboard.FocusAttempts, Is.EqualTo(1));
+        Assert.That(_clipboard.FocusAttempts, Is.EqualTo(1));
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Is.Empty);
 
         await cut.Find("[aria-label='Close copy fallback']").ClickAsync(new MouseEventArgs());
 
         Assert.That(cut.FindAll("textarea[readonly]"), Is.Empty);
-        Assert.That(clipboard.FocusAttempts, Is.EqualTo(2));
+        Assert.That(_clipboard.FocusAttempts, Is.EqualTo(2));
     }
 
     [TestCase(false)]
     [TestCase(true)]
     public async Task ClipboardExceptionsAndUnavailableJavaScriptBothRevealFallback(bool stale) {
-        clipboard.FailCopy = true;
-        var failedCopy = Render(Result(0.42, "Denied"), handSize: 5, isStale: stale);
+        _clipboard.FailCopy = true;
+        IRenderedComponent<ProbabilityResultExport> failedCopy = Render(Result(0.42, "Denied"), handSize: 5, isStale: stale);
         await failedCopy.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         Assert.That(failedCopy.Find("textarea[readonly]").TextContent, Does.Contain("Denied"));
         Assert.That(failedCopy.FindAll(".probability-result-copy-success-icon"), Is.Empty);
 
         failedCopy.Dispose();
-        clipboard.FailCopy = false;
-        clipboard.FailImport = true;
-        var unavailableClipboard = Render(Result(0.35, "Unavailable"), handSize: 4, isStale: stale);
+        _clipboard.FailCopy = false;
+        _clipboard.FailImport = true;
+        IRenderedComponent<ProbabilityResultExport> unavailableClipboard = Render(Result(0.35, "Unavailable"), handSize: 4, isStale: stale);
         await unavailableClipboard.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         Assert.That(unavailableClipboard.Find("textarea[readonly]").TextContent, Does.Contain("Unavailable"));
         Assert.That(unavailableClipboard.FindAll(".probability-result-copy-success-icon"), Is.Empty);
-        Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
+        Assert.That(_clipboard.CopyAttempts, Is.EqualTo(1));
     }
 
     [Test]
     public async Task BusyCopyDescriptionStaysNonvisualAndStaleCopyRemainsAvailable() {
-        var result = Result(0.42, "Not current");
-        var cut = Render(result);
+        ProbabilityCalculationResult result = Result(0.42, "Not current");
+        IRenderedComponent<ProbabilityResultExport> cut = Render(result);
         const string buttonSelector = "button[title='Copy a summary of these results']";
-        var button = cut.Find(buttonSelector);
+        AngleSharp.Dom.IElement button = cut.Find(buttonSelector);
 
         Assert.That(button.HasAttribute("disabled"), Is.False);
         Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
         await button.ClickAsync(new MouseEventArgs());
-        Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
+        Assert.That(_clipboard.CopyAttempts, Is.EqualTo(1));
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Has.Count.EqualTo(1));
 
         cut.SetParametersAndRender(parameters => parameters
-            .Add(component => component.IsCalculating, true));
+            .Add(component => component.IsCalculating, true)
+        );
 
         button = cut.Find(buttonSelector);
         AssertDisabledDescription(cut, button, "Wait for the calculation to finish before copying results.");
         Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Is.Empty);
         await button.ClickAsync(new MouseEventArgs());
-        Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
+        Assert.That(_clipboard.CopyAttempts, Is.EqualTo(1));
 
         cut.SetParametersAndRender(parameters => parameters
-            .Add(component => component.IsCalculating, false));
+            .Add(component => component.IsCalculating, false)
+        );
 
         button = cut.Find(buttonSelector);
         Assert.That(button.HasAttribute("disabled"), Is.False);
         Assert.That(cut.FindAll(".probability-result-export-toolbar > small:not(.visually-hidden)"), Is.Empty);
 
-        cut.SetParametersAndRender(parameters => parameters
-            .Add(component => component.IsStale, true));
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.IsStale, true));
 
         button = cut.Find(buttonSelector);
         Assert.That(button.HasAttribute("disabled"), Is.False);
         await button.ClickAsync(new MouseEventArgs());
-        Assert.That(clipboard.CopyAttempts, Is.EqualTo(2));
-        Assert.That(clipboard.LastCopiedText, Does.StartWith("Previous result — current inputs have changed.\nProbability results\nHand size: 5"));
+        Assert.That(_clipboard.CopyAttempts, Is.EqualTo(2));
+        Assert.That(_clipboard.LastCopiedText, Does.StartWith("Previous result — current inputs have changed.\nProbability results\nHand size: 5"));
 
         cut.SetParametersAndRender(parameters => parameters
             .Add(component => component.Result, Result(0.87, "Recalculated"))
-            .Add(component => component.IsStale, false));
+            .Add(component => component.IsStale, false)
+        );
 
         button = cut.Find(buttonSelector);
         Assert.That(button.HasAttribute("disabled"), Is.False);
         Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
         Assert.That(cut.FindAll(".probability-result-export-toolbar > small:not(.visually-hidden)"), Is.Empty);
 
-        var empty = Render(null);
+        IRenderedComponent<ProbabilityResultExport> empty = Render(null);
         Assert.That(empty.FindAll("button"), Is.Empty);
-        Assert.That(clipboard.CopyAttempts, Is.EqualTo(2));
-        var unknown = Render(result, handSize: 0, isStale: true);
+        Assert.That(_clipboard.CopyAttempts, Is.EqualTo(2));
+        IRenderedComponent<ProbabilityResultExport> unknown = Render(result, handSize: 0, isStale: true);
         AssertDisabledDescription(unknown, unknown.Find(buttonSelector), "The original result context is unavailable.");
     }
 
     private static void AssertDisabledDescription(
         IRenderedComponent<ProbabilityResultExport> cut,
         AngleSharp.Dom.IElement button,
-        string expectedDescription) {
+        string expectedDescription
+    ) {
         Assert.That(button.HasAttribute("disabled"), Is.True);
         Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
 
-        var descriptionId = button.GetAttribute("aria-describedby");
+        string? descriptionId = button.GetAttribute("aria-describedby");
         Assert.That(descriptionId, Is.Not.Null.And.Not.Empty);
-        var description = cut.Find("#" + descriptionId);
+        AngleSharp.Dom.IElement description = cut.Find("#" + descriptionId);
         Assert.That(description.TagName, Is.EqualTo("SMALL"));
         Assert.That(description.GetAttribute("class"), Is.EqualTo("visually-hidden"));
         Assert.That(description.TextContent.Trim(), Is.EqualTo(expectedDescription));
@@ -318,39 +321,46 @@ public class ProbabilityResultExportTest {
             "the unavailable description is retained for assistive technology without a visible toolbar item");
     }
 
-    [TestCase(true)] [TestCase(false)]
+    [TestCase(true)]
+    [TestCase(false)]
     public async Task DelayedStaleCopyKeepsCapturedBytesAndFeedbackForTheSameSnapshot(bool copied) {
-        var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        clipboard.Copy = _ => pending.Task;
-        var cut = Render(Result(.42, "Old route"), handSize: 5, isStale: true);
-        var action = cut.Find("button").ClickAsync(new());
-        var probability = .42.ToString("P2", CultureInfo.CurrentCulture);
-        var expected = $"Previous result — current inputs have changed.\nProbability results\nHand size: 5\nAny active combo: {probability}\n\nIndividual combos:\n- **Old route** — {probability}";
-        Assert.That(clipboard.LastCopiedText, Is.EqualTo(expected));
+        TaskCompletionSource<bool> pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _clipboard.Copy = _ => pending.Task;
+        IRenderedComponent<ProbabilityResultExport> cut = Render(Result(.42, "Old route"), handSize: 5, isStale: true);
+        Task action = cut.Find("button").ClickAsync(new());
+        string probability = .42.ToString("P2", CultureInfo.CurrentCulture);
+        string expected = $"Previous result — current inputs have changed.\nProbability results\nHand size: 5\nAny active combo: {probability}\n\nIndividual combos:\n- **Old route** — {probability}";
+        Assert.That(_clipboard.LastCopiedText, Is.EqualTo(expected));
         // Re-rendering an unchanged historical snapshot must not invalidate its copy feedback.
-        cut.SetParametersAndRender(p => p.Add(x => x.IsStale, true));
-        pending.SetResult(copied); await action;
-        if (copied) Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Has.Count.EqualTo(1));
-        else Assert.That(cut.Find("textarea[readonly]").TextContent, Is.EqualTo(expected));
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.IsStale, true));
+        pending.SetResult(copied);
+        await action;
+        if (copied) {
+            Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Has.Count.EqualTo(1));
+        }
+        else {
+            Assert.That(cut.Find("textarea[readonly]").TextContent, Is.EqualTo(expected));
+        }
     }
 
     [TestCase(true)]
     [TestCase(false)]
     public async Task LateClipboardCompletionAfterInputChangeCannotReportForCurrentResults(bool copied) {
-        var pendingCopy = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        clipboard.Copy = _ => pendingCopy.Task;
-        var result = Result(0.42, "Captured old result");
-        var cut = Render(result, handSize: 5);
+        TaskCompletionSource<bool> pendingCopy = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _clipboard.Copy = _ => pendingCopy.Task;
+        ProbabilityCalculationResult result = Result(0.42, "Captured old result");
+        IRenderedComponent<ProbabilityResultExport> cut = Render(result, handSize: 5);
 
-        var clickTask = cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
-        Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
-        Assert.That(clipboard.LastCopiedText, Does.Contain("Hand size: 5"));
-        Assert.That(clipboard.LastCopiedText, Is.EqualTo(
+        Task clickTask = cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
+        Assert.That(_clipboard.CopyAttempts, Is.EqualTo(1));
+        Assert.That(_clipboard.LastCopiedText, Does.Contain("Hand size: 5"));
+        Assert.That(_clipboard.LastCopiedText, Is.EqualTo(
             ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.CurrentCulture)));
 
         cut.SetParametersAndRender(parameters => parameters
             .Add(component => component.HandSize, 6)
-            .Add(component => component.IsStale, true));
+            .Add(component => component.IsStale, true)
+        );
         Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
 
         pendingCopy.SetResult(copied);
@@ -358,20 +368,21 @@ public class ProbabilityResultExportTest {
 
         Assert.That(cut.FindAll("[role='status']"), Is.Empty);
         Assert.That(cut.FindAll("textarea[readonly]"), Is.Empty);
-        Assert.That(clipboard.LastCopiedText, Does.Not.Contain("Hand size: 6"));
+        Assert.That(_clipboard.LastCopiedText, Does.Not.Contain("Hand size: 6"));
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Is.Empty);
     }
 
     [TestCase(false)]
     [TestCase(true)]
     public async Task ANewerResultClearsPreviousCopyFallback(bool stale) {
-        clipboard.Copy = _ => Task.FromResult(false);
-        var cut = Render(Result(0.42, "Old result"), handSize: 5, isStale: stale);
+        _clipboard.Copy = _ => Task.FromResult(false);
+        IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Old result"), handSize: 5, isStale: stale);
         await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         Assert.That(cut.Find("textarea[readonly]").TextContent, Does.Contain("Old result"));
 
         cut.SetParametersAndRender(parameters => parameters
-            .Add(component => component.Result, Result(0.87, "New result")));
+            .Add(component => component.Result, Result(0.87, "New result"))
+        );
 
         Assert.That(cut.FindAll("textarea[readonly]"), Is.Empty);
         Assert.That(cut.FindAll("[role='status']"), Is.Empty);
@@ -381,9 +392,9 @@ public class ProbabilityResultExportTest {
     [TestCase(false)]
     [TestCase(true)]
     public async Task SuccessfulFeedbackResetsAndARepeatedCopyRestartsItsInterval(bool stale) {
-        var clock = new ManualTimeProvider();
-        var cut = Render(Result(0.42, "Repeated result"), feedbackTimeProvider: clock, isStale: stale);
-        var buttonSelector = "button[title='Copy a summary of these results']";
+        ManualTimeProvider clock = new();
+        IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Repeated result"), feedbackTimeProvider: clock, isStale: stale);
+        const string buttonSelector = "button[title='Copy a summary of these results']";
 
         await cut.Find(buttonSelector).ClickAsync(new MouseEventArgs());
         Assert.That(cut.FindAll(".probability-result-copy-success-icon").Count, Is.EqualTo(1));
@@ -405,10 +416,10 @@ public class ProbabilityResultExportTest {
 
     [Test]
     public async Task AFailedRetryClearsEarlierSuccessAndShowsTheExistingFallback() {
-        var copyCount = 0;
-        clipboard.Copy = _ => Task.FromResult(++copyCount == 1);
-        var cut = Render(Result(0.42, "Retry route"));
-        var buttonSelector = "button[title='Copy a summary of these results']";
+        int copyCount = 0;
+        _clipboard.Copy = _ => Task.FromResult(++copyCount == 1);
+        IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Retry route"));
+        const string buttonSelector = "button[title='Copy a summary of these results']";
 
         await cut.Find(buttonSelector).ClickAsync(new MouseEventArgs());
         Assert.That(cut.FindAll(".probability-result-copy-success-icon").Count, Is.EqualTo(1));
@@ -424,15 +435,15 @@ public class ProbabilityResultExportTest {
     [TestCase(false)]
     [TestCase(true)]
     public async Task AnOlderPendingCopyCannotOverrideANewerFailedAttempt(bool stale) {
-        var earlierCopy = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var copyCount = 0;
-        clipboard.Copy = _ => ++copyCount == 1 ? earlierCopy.Task : Task.FromResult(false);
-        var cut = Render(Result(0.42, "Newest attempt"), isStale: stale);
-        var buttonSelector = "button[title='Copy a summary of these results']";
+        TaskCompletionSource<bool> earlierCopy = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int copyCount = 0;
+        _clipboard.Copy = _ => ++copyCount == 1 ? earlierCopy.Task : Task.FromResult(false);
+        IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Newest attempt"), isStale: stale);
+        const string buttonSelector = "button[title='Copy a summary of these results']";
 
-        var earlierClick = cut.Find(buttonSelector).ClickAsync(new MouseEventArgs());
+        Task earlierClick = cut.Find(buttonSelector).ClickAsync(new MouseEventArgs());
         await cut.Find(buttonSelector).ClickAsync(new MouseEventArgs());
-        var expectedFallback = cut.Find("textarea[readonly]").TextContent;
+        string expectedFallback = cut.Find("textarea[readonly]").TextContent;
         Assert.That(expectedFallback, Does.Contain("Newest attempt"));
 
         earlierCopy.SetResult(true);
@@ -444,18 +455,20 @@ public class ProbabilityResultExportTest {
 
     [Test]
     public async Task ChangingInputsOrAcceptedResultClearsVisibleSuccess() {
-        var changedInputs = Render(Result(0.42, "Previous inputs"), handSize: 5);
+        IRenderedComponent<ProbabilityResultExport> changedInputs = Render(Result(0.42, "Previous inputs"), handSize: 5);
         await changedInputs.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         changedInputs.SetParametersAndRender(parameters => parameters
             .Add(component => component.HandSize, 6)
-            .Add(component => component.IsStale, true));
+            .Add(component => component.IsStale, true)
+        );
         Assert.That(changedInputs.FindAll(".probability-result-copy-success-icon"), Is.Empty);
         Assert.That(changedInputs.FindAll("[role='status']"), Is.Empty);
 
-        var changedResult = Render(Result(0.42, "Previous result"));
+        IRenderedComponent<ProbabilityResultExport> changedResult = Render(Result(0.42, "Previous result"));
         await changedResult.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         changedResult.SetParametersAndRender(parameters => parameters
-            .Add(component => component.Result, Result(0.87, "New accepted result")));
+            .Add(component => component.Result, Result(0.87, "New accepted result"))
+        );
         Assert.That(changedResult.FindAll(".probability-result-copy-success-icon"), Is.Empty);
         Assert.That(changedResult.FindAll("[role='status']"), Is.Empty);
     }
@@ -463,8 +476,8 @@ public class ProbabilityResultExportTest {
     [TestCase(false)]
     [TestCase(true)]
     public async Task DisposingTheComponentCancelsItsPendingFeedbackReset(bool stale) {
-        var clock = new ManualTimeProvider();
-        var cut = Render(Result(0.42, "Dispose reset"), feedbackTimeProvider: clock, isStale: stale);
+        ManualTimeProvider clock = new();
+        IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Dispose reset"), feedbackTimeProvider: clock, isStale: stale);
         await cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
         Assert.That(clock.ActiveTimerCount, Is.EqualTo(1));
 
@@ -477,16 +490,16 @@ public class ProbabilityResultExportTest {
     [TestCase(false)]
     [TestCase(true)]
     public async Task DisposingDuringClipboardWriteDiscardsItsLateSuccess(bool stale) {
-        var pendingCopy = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        clipboard.Copy = _ => pendingCopy.Task;
-        var cut = Render(Result(0.42, "Disposed write"), isStale: stale);
-        var clickTask = cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
+        TaskCompletionSource<bool> pendingCopy = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _clipboard.Copy = _ => pendingCopy.Task;
+        IRenderedComponent<ProbabilityResultExport> cut = Render(Result(0.42, "Disposed write"), isStale: stale);
+        Task clickTask = cut.Find("button[title='Copy a summary of these results']").ClickAsync(new MouseEventArgs());
 
         await cut.Instance.DisposeAsync();
         pendingCopy.SetResult(true);
         await clickTask;
 
-        Assert.That(clipboard.CopyAttempts, Is.EqualTo(1));
+        Assert.That(_clipboard.CopyAttempts, Is.EqualTo(1));
         Assert.That(clickTask.IsCompletedSuccessfully, Is.True);
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Is.Empty);
         Assert.That(cut.FindAll("textarea[readonly]"), Is.Empty);
@@ -497,15 +510,17 @@ public class ProbabilityResultExportTest {
         int handSize = 5,
         bool isStale = false,
         bool isCalculating = false,
-        TimeProvider? feedbackTimeProvider = null) =>
-        context.RenderComponent<ProbabilityResultExport>(parameters => {
+        TimeProvider? feedbackTimeProvider = null
+    ) =>
+        _context.RenderComponent<ProbabilityResultExport>(parameters => {
             parameters
                 .Add(component => component.Result, result)
                 .Add(component => component.HandSize, handSize)
                 .Add(component => component.IsStale, isStale)
                 .Add(component => component.IsCalculating, isCalculating);
-            if (feedbackTimeProvider is not null)
+            if (feedbackTimeProvider is not null) {
                 parameters.Add(component => component.FeedbackTimeProvider, feedbackTimeProvider);
+            }
         });
 
     private static ProbabilityCalculationResult GermanExampleResult() => new(
@@ -540,53 +555,64 @@ public class ProbabilityResultExportTest {
         value.Split(search, StringSplitOptions.None).Length - 1;
 
     private sealed class ManualTimeProvider : TimeProvider {
-        private readonly List<ManualTimer> timers = [];
-        private DateTimeOffset utcNow = DateTimeOffset.UnixEpoch;
+        private readonly List<ManualTimer> _timers = [];
+        private DateTimeOffset _utcNow = DateTimeOffset.UnixEpoch;
 
-        public int ActiveTimerCount => timers.Count(timer => timer.IsActive);
+        public int ActiveTimerCount => _timers.Count(timer => timer.IsActive);
         public int CallbackCount { get; private set; }
 
-        public override DateTimeOffset GetUtcNow() => utcNow;
+        public override DateTimeOffset GetUtcNow() => _utcNow;
 
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) {
-            var timer = new ManualTimer(this, callback, state);
+            ManualTimer timer = new(this, callback, state);
             timer.Change(dueTime, period);
-            timers.Add(timer);
+            _timers.Add(timer);
             return timer;
         }
 
         public void Advance(TimeSpan amount) {
-            if (amount < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(amount));
+            if (amount < TimeSpan.Zero) {
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            }
 
-            utcNow += amount;
-            foreach (var timer in timers.ToArray()) {
-                if (!timer.FireIfDue(utcNow)) continue;
+            _utcNow += amount;
+            foreach (ManualTimer timer in _timers.ToArray()) {
+                if (!timer.FireIfDue(_utcNow)) {
+                    continue;
+                }
+
                 CallbackCount++;
             }
         }
 
         private sealed class ManualTimer(ManualTimeProvider owner, TimerCallback callback, object? state) : ITimer {
-            private DateTimeOffset? dueAt;
-            private TimeSpan period;
-            private bool disposed;
+            private DateTimeOffset? _dueAt;
+            private TimeSpan _period;
+            private bool _disposed;
 
-            public bool IsActive => !disposed && dueAt.HasValue;
+            public bool IsActive => !_disposed && _dueAt.HasValue;
 
             public bool Change(TimeSpan dueTime, TimeSpan period) {
-                if (disposed) return false;
-                if (dueTime < TimeSpan.Zero && dueTime != Timeout.InfiniteTimeSpan)
-                    throw new ArgumentOutOfRangeException(nameof(dueTime));
-                if (period < TimeSpan.Zero && period != Timeout.InfiniteTimeSpan)
-                    throw new ArgumentOutOfRangeException(nameof(period));
+                if (_disposed) {
+                    return false;
+                }
 
-                this.period = period;
-                dueAt = dueTime == Timeout.InfiniteTimeSpan ? null : owner.utcNow + dueTime;
+                if (dueTime < TimeSpan.Zero && dueTime != Timeout.InfiniteTimeSpan) {
+                    throw new ArgumentOutOfRangeException(nameof(dueTime));
+                }
+
+                if (period < TimeSpan.Zero && period != Timeout.InfiniteTimeSpan) {
+                    throw new ArgumentOutOfRangeException(nameof(period));
+                }
+
+                _period = period;
+                _dueAt = dueTime == Timeout.InfiniteTimeSpan ? null : owner._utcNow + dueTime;
                 return true;
             }
 
             public void Dispose() {
-                disposed = true;
-                dueAt = null;
+                _disposed = true;
+                _dueAt = null;
             }
 
             public ValueTask DisposeAsync() {
@@ -595,10 +621,16 @@ public class ProbabilityResultExportTest {
             }
 
             public bool FireIfDue(DateTimeOffset now) {
-                if (!IsActive || dueAt > now) return false;
+                if (!IsActive || _dueAt > now) {
+                    return false;
+                }
 
-                if (period == Timeout.InfiniteTimeSpan || period == TimeSpan.Zero) dueAt = null;
-                else dueAt += period;
+                if (_period == Timeout.InfiniteTimeSpan || _period == TimeSpan.Zero) {
+                    _dueAt = null;
+                }
+                else {
+                    _dueAt += _period;
+                }
 
                 callback(state);
                 return true;
@@ -607,9 +639,9 @@ public class ProbabilityResultExportTest {
     }
 
     private sealed class ClipboardInterop : IJSRuntime {
-        private readonly ClipboardModule module;
+        private readonly ClipboardModule _module;
 
-        public ClipboardInterop() => module = new ClipboardModule(this);
+        public ClipboardInterop() => _module = new ClipboardModule(this);
 
         public Func<string, Task<bool>> Copy { get; set; } = _ => Task.FromResult(true);
         public bool FailImport { get; set; }
@@ -626,8 +658,9 @@ public class ProbabilityResultExportTest {
 
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) {
             if (identifier == "import") {
-                if (FailImport)
+                if (FailImport) {
                     return ValueTask.FromException<TValue>(new JSException("Module load failed."));
+                }
 
                 return new ValueTask<TValue>(ImportAsync<TValue>());
             }
@@ -636,17 +669,19 @@ public class ProbabilityResultExportTest {
         }
 
         private async Task<TValue> ImportAsync<TValue>() {
-            if (ImportDelay is not null) await ImportDelay;
-            return (TValue)(object)module;
+            if (ImportDelay is not null) {
+                await ImportDelay;
+            }
+
+            return (TValue)(object)_module;
         }
 
         private ValueTask<TValue> InvokeModuleAsync<TValue>(string identifier, object?[]? args) {
-
             if (identifier == "copyText") {
-                var text = (string)args![0]!;
+                string text = (string)args![0]!;
                 CopyAttempts++;
                 LastCopiedText = text;
-                var copyTask = FailCopy
+                Task<bool> copyTask = FailCopy
                     ? Task.FromException<bool>(new JSException("Clipboard access was denied."))
                     : Copy(text);
                 return (ValueTask<TValue>)(object)new ValueTask<bool>(copyTask);

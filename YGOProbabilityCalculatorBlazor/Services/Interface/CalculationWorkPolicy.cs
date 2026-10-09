@@ -9,7 +9,10 @@ public sealed class CalculationWorkPolicy {
     public long WorkUnits { get; }
 
     public CalculationWorkPolicy(long workUnits) {
-        if (workUnits <= 0) throw new ArgumentOutOfRangeException(nameof(workUnits), "Work allowance must be positive.");
+        if (workUnits <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(workUnits), "Work allowance must be positive.");
+        }
+
         WorkUnits = workUnits;
     }
 }
