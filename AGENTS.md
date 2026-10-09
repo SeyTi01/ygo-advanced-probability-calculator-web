@@ -34,29 +34,21 @@ Run the app locally with `dotnet run --project YGOProbabilityCalculatorBlazor/YG
 dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
 ```
 
-## Linting and cleanup tools
+## C# style and readability
 
-Restore the pinned JetBrains tools with `dotnet tool restore`. `inspectcode` is the non-mutating inspection command. Write its SARIF output outside the repository:
-
-```powershell
-dotnet tool run jb -- inspectcode YGOProbabilityCalculatorBlazor.sln -o="$env:TEMP\ygo-inspections.sarif"
-```
-
-```sh
-dotnet tool run jb -- inspectcode YGOProbabilityCalculatorBlazor.sln -o="${TMPDIR:-/tmp}/ygo-inspections.sarif"
-```
-
-`cleanupcode` and `dotnet format style` modify tracked source. Run them only when the task explicitly calls for cleanup/formatting, or in a disposable worktree/copy for validation. Style cleanup is not enforced in CI yet. Keep generated SARIF, logs, and profiler output outside the repository; do not commit them.
-
-For an explicitly requested cleanup, use both stages: JetBrains CleanupCode for ReSharper formatting and syntax style, then Roslyn style fixes at suggestion/Info severity:
-
-```sh
-dotnet tool restore
-dotnet tool run jb -- cleanupcode YGOProbabilityCalculatorBlazor.sln --profile="Built-in: Reformat & Apply Syntax Style"
-dotnet format style YGOProbabilityCalculatorBlazor.sln --severity info --no-restore
-```
-
-Review the diff after both commands. Do not use CleanupCode's default Full Cleanup profile.
+- Apply these rules to ordinary C# files and C# embedded in Razor, including `@code` blocks; preserve markup and layout during readability work.
+- Use braces for ordinary control flow, with opening braces on the declaration/control line. Keep normal `!condition` spacing.
+- Separate distinct logical blocks and methods with one blank line; separate fields from the next member, and terminal flow where it clarifies structure. Keep related declarations compact and avoid multiple blank lines.
+- Use explicit local types, including in loops; reserve `var` for anonymous or otherwise impractical-to-name types. Use target-typed `new()` when the declared type is explicit.
+- Name private instance fields `_camelCase`; do not apply this convention to methods, properties, parameters, or locals.
+- Extract visually dense conditions into meaningfully named booleans. Prefer clear switch expressions or local steps over hard-to-read nested ternaries.
+- Line length is advisory: short readable declarations, calls, and expression-bodied members may remain on one line, even slightly beyond normal page width. Incidental guard/storage/log calls may stay compact.
+- When a declaration genuinely needs wrapping, use one parameter per line and a separate closing `) {` line aligned with the declaration. Apply this to constructors, primary constructors, and local functions too. For significant wrapped calls, use one argument per line and a separate closing `)` line; avoid arbitrary partial wrapping.
+- Use descriptive lambda names in meaningful chains and split dense fluent expressions into readable stages; keep short obvious expressions and conventional numeric loop indices compact.
+- Use modern C# syntax only when it clarifies intent and preserves behavior. Preserve defensive runtime checks, collection order, exception meaning, serialized data, and test expectations.
+- Nullable annotations document contracts; both projects use `Nullable=annotations` to disable nullable flow warnings while retaining other compiler/analyzer diagnostics.
+- Apply human judgment for readability changes. CleanupCode, `dotnet format`, and analyzer quick fixes are not the style authority; never automatically run them for a requested cleanup. Targeted non-mutating diagnostics may be useful.
+- Analyzer suggestions about `static`, accessibility, nullability, or impossible-looking defensive states require verification of call sites and framework, serialization, DI, and build contracts before any change. Do not remove defensive validation to satisfy analysis.
 
 At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work. If no usable .NET 10 SDK is available, follow the restricted Linux / ChatGPT Work bootstrap below before continuing. Missing .NET 10 is not, by itself, sufficient reason to skip local verification; attempt the documented nonprivileged bootstrap first. Only report .NET verification as blocked after that attempt fails because of a real environment restriction, and include the exact failed command and error. Check CLI Git credentials early when a task needs a command-line push or rebase; GitHub plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets, and do not claim tests that could not run.
 

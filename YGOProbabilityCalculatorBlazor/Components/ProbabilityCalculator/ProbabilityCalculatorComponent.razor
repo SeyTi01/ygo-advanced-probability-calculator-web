@@ -16,7 +16,7 @@
                 Import YDK
                 <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="session-file-input" id="fileInput" aria-label="Import YDK"/>
             </label>
-            <button type="button" class="btn btn-outline-primary" @onclick="OpenYdkeImport" disabled="@isYdkeImportOpen">
+            <button type="button" class="btn btn-outline-primary" @onclick="OpenYdkeImport" disabled="@_isYdkeImportOpen">
                 Import YDKe
             </button>
             <button class="btn btn-secondary" @onclick="SaveCurrentSession">
@@ -27,7 +27,7 @@
                 <InputFile OnChange="@LoadSessionFile" accept=".json" class="session-file-input" id="sessionFileInput" aria-label="Load Session"/>
             </label>
             <SessionShareButton Snapshot="@_sessionService.SerializeSession(CaptureSession())" Capture="@(() => _sessionService.SerializeSession(CaptureSession()))" />
-            @if (isYdkeImportOpen) {
+            @if (_isYdkeImportOpen) {
                 <form class="ydke-import-form"
                       aria-label="YDKe deck import"
                       @onsubmit="ImportYdkeAsync"
@@ -39,7 +39,7 @@
                            autocomplete="off"
                            aria-label="YDKe deck code"
                            placeholder="Paste ydke://..."
-                           @bind="ydkeCode"
+                           @bind="_ydkeCode"
                            @bind:event="oninput"/>
                     <button type="submit" class="btn btn-primary">Import</button>
                     <button type="button" class="btn btn-outline-secondary" @onclick="CancelYdkeImport">Cancel</button>
@@ -52,51 +52,51 @@
             <input type="number"
                    id="handSize"
                    class="form-control"
-                   @bind="handSize"
+                   @bind="_handSize"
                    @bind:after="OnHandSizeChanged"
                    min="1"/>
         </div>
     </div>
-    @if (importError is not null) {
-        <DismissibleAlert Message="@importError" OnDismiss="@(() => importError = null)"/>
+    @if (_importError is not null) {
+        <DismissibleAlert Message="@_importError" OnDismiss="@(() => _importError = null)"/>
     }
 
-    @if (sharedFragment is not null) {
+    @if (_sharedFragment is not null) {
         <section class="alert alert-secondary mt-3" aria-label="Shared session">
-            <p class="mb-2" role="status">@(sharedError ?? "A shared session is available.")</p>
+            <p class="mb-2" role="status">@(_sharedError ?? "A shared session is available.")</p>
             <p class="mb-2">Loading replaces this workspace, including editor drafts, and any saved recovery draft. You can dismiss this link or restore the local draft below instead.</p>
             <div class="d-flex flex-wrap gap-2">
-                @if (sharedJson is not null) {
-                    <button type="button" class="btn btn-primary" disabled="@(sharedLoading || sharingRecovery?.InspectionComplete != true)" @onclick="LoadSharedSessionAsync">Load shared session</button>
+                @if (_sharedJson is not null) {
+                    <button type="button" class="btn btn-primary" disabled="@(_sharedLoading || _sharingRecovery?.InspectionComplete != true)" @onclick="LoadSharedSessionAsync">Load shared session</button>
                 }
                 <button type="button" class="btn btn-secondary" @onclick="DismissSharedSession">Dismiss shared link</button>
             </div>
             <p class="form-text mb-0">Links are not encrypted. Anyone with this link or access to browser history can read the session.</p>
         </section>
     }
-    @if (sessionInitialized) {
-        <SessionRecovery @ref="sharingRecovery" Session="CaptureSession()" ReplacementVersion="autosaveReplacementVersion" EditVersion="workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" Suspended="@(sharedFragment is not null)" OnInspectionComplete="@(() => StateHasChanged())" />
+    @if (_sessionInitialized) {
+        <SessionRecovery @ref="_sharingRecovery" Session="CaptureSession()" ReplacementVersion="_autosaveReplacementVersion" EditVersion="_workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" Suspended="@(_sharedFragment is not null)" OnInspectionComplete="@(() => StateHasChanged())" />
     }
 
-    <CategoryListEditor @key="sessionVersion"
+    <CategoryListEditor @key="_sessionVersion"
         OnCategoriesChanged="HandleCategoriesChanged"
         OnCategoryColorChanged="SetCategoryColor"
         OnRenameCategory="RenameCategoryBase"
-        CategoryBases="categoryBases"
-        CategoryColorIndices="categoryColorIndices"
-        Combos="combos"
-        Cards="cards"
+        CategoryBases="_categoryBases"
+        CategoryColorIndices="_categoryColorIndices"
+        Combos="_combos"
+        Cards="_cards"
         OnMoveCategory="MoveCategory"
     />
 
     <CardListEditor
-        Cards="cards"
-        Combos="combos"
-        CategoryBases="categoryBases"
-        CategoryColorIndices="categoryColorIndices"
-        CategoryRename="categoryRename"
-        ActiveCardIndex="activeCardIndex"
-        ActiveCardIndexChanged="@(i => activeCardIndex = i)"
+        Cards="_cards"
+        Combos="_combos"
+        CategoryBases="_categoryBases"
+        CategoryColorIndices="_categoryColorIndices"
+        CategoryRename="_categoryRename"
+        ActiveCardIndex="_activeCardIndex"
+        ActiveCardIndexChanged="@(i => _activeCardIndex = i)"
         OnReplaceCard="ReplaceCard"
         OnRemoveCard="@(i => RemoveCard(i))"
         OnAddNewCard="AddNewCard"
@@ -105,14 +105,14 @@
     />
 
     <ComboListEditor
-        Combos="combos"
-        Cards="cards"
-        ComboGroups="comboGroups"
-        CategoryBases="categoryBases"
-        CategoryColorIndices="categoryColorIndices"
-        CategoryRename="categoryRename"
-        ActiveComboIndex="activeComboIndex"
-        ActiveComboIndexChanged="@(i => activeComboIndex = i)"
+        Combos="_combos"
+        Cards="_cards"
+        ComboGroups="_comboGroups"
+        CategoryBases="_categoryBases"
+        CategoryColorIndices="_categoryColorIndices"
+        CategoryRename="_categoryRename"
+        ActiveComboIndex="_activeComboIndex"
+        ActiveComboIndexChanged="@(i => _activeComboIndex = i)"
         OnReplaceCombo="ReplaceCombo"
         OnRemoveCombo="@(i => RemoveCombo(i))"
         OnDuplicateCombo="DuplicateCombo"
@@ -122,20 +122,20 @@
         OnRemoveGroup="RemoveGroup"
         OnMoveGroup="MoveGroup"
         OnMoveCombo="MoveCombo"
-        HandSize="handSize"
+        HandSize="_handSize"
     />
 
     <div class="results-section">
         <div class="calculation-controls">
         <div class="calculate-action">
             <button type="button"
-                    class="btn btn-lg w-100 @(isCalculating ? "btn-outline-secondary" : "btn-primary")"
-                    aria-label="@(isCalculating ? "Cancel calculation" : null)"
-                    title="@(isCalculating ? "Cancel calculation" : null)"
-                    aria-busy="@(isCalculating ? "true" : "false")"
+                    class="btn btn-lg w-100 @(_isCalculating ? "btn-outline-secondary" : "btn-primary")"
+                    aria-label="@(_isCalculating ? "Cancel calculation" : null)"
+                    title="@(_isCalculating ? "Cancel calculation" : null)"
+                    aria-busy="@(_isCalculating ? "true" : "false")"
                     @onclick="HandleCalculationAction"
-                    disabled="@(!isCalculating && !CanCalculate)">
-                @if (isCalculating) {
+                    disabled="@(!_isCalculating && !CanCalculate)">
+                @if (_isCalculating) {
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     <span class="ms-1">Cancel</span>
                 }
@@ -145,10 +145,10 @@
             </button>
         </div>
         <button type="button" class="btn btn-outline-primary pin-result-action" disabled="@(!CanPin)"
-                aria-label="@(pinnedResult is null ? "Pin result" : "Replace pin with current result")"
-                title="@(pinnedResult is null ? "Pin result" : "Replace pin with current result")"
+                aria-label="@(_pinnedResult is null ? "Pin result" : "Replace pin with current result")"
+                title="@(_pinnedResult is null ? "Pin result" : "Replace pin with current result")"
                 aria-describedby="@(!CanPin ? "pinUnavailableReason" : null)" @onclick="PinCurrentResult">
-            @(pinnedResult is null ? "Pin result" : "Replace pin")
+            @(_pinnedResult is null ? "Pin result" : "Replace pin")
         </button>
         <span id="pinUnavailableReason" class="visually-hidden">@PinUnavailableReason</span>
         </div>
@@ -157,19 +157,19 @@
             <p class="form-text mt-2" role="status" aria-live="polite">@unavailableMessage</p>
         }
 
-        @if (errorMessage is not null) {
-            <DismissibleAlert Message="@errorMessage" OnDismiss="@(() => errorMessage = null)"/>
+        @if (_errorMessage is not null) {
+            <DismissibleAlert Message="@_errorMessage" OnDismiss="@(() => _errorMessage = null)"/>
         }
 
-        <div class="@(pinnedResult is null ? null : "result-comparison")">
-        @if (calculationResult is { } result) {
+        <div class="@(_pinnedResult is null ? null : "result-comparison")">
+        @if (_calculationResult is { } result) {
             <section class="alert alert-primary mt-3 probability-results"
                      role="region"
                      aria-labelledby="probabilityResultsHeading"
                      aria-live="polite">
                 <div class="probability-results-heading">
-                    <h5 id="probabilityResultsHeading">@(pinnedResult is null ? "Results" : "Current result")</h5>
-                    @if (calculationResultIsStale) {
+                    <h5 id="probabilityResultsHeading">@(_pinnedResult is null ? "Results" : "Current result")</h5>
+                    @if (_calculationResultIsStale) {
                         <small class="probability-result-status text-body-secondary fw-normal"
                                role="status"
                                aria-live="polite">
@@ -179,36 +179,43 @@
                         </small>
                     }
                     <ProbabilityResultExport Result="result"
-                                             HandSize="@(acceptedComparison?.Context.HandSize ?? 0)"
-                                             IsStale="calculationResultIsStale"
-                                             IsCalculating="isCalculating" />
+                                             HandSize="@(_acceptedComparison?.Context.HandSize ?? 0)"
+                                             IsStale="_calculationResultIsStale"
+                                             IsCalculating="_isCalculating" />
                 </div>
-                @if (pinnedResult is not null && acceptedComparison is { } accepted) {
+                @if (_pinnedResult is not null && _acceptedComparison is { } accepted) {
                     <p class="small text-body-secondary mb-2">@accepted.Context.Description</p>
+                }
+                @{
+                    PinnedResultDifference? totalDifference = _pinnedResult is not null && CanCompareDisplayedResult
+                        ? PinnedResultSnapshot.DifferencePresentation(_acceptedComparison!.Total, _pinnedResult.Total)
+                        : null;
                 }
                 <div class="combo-probability-row probability-total">
                     <span class="combo-probability-name">Any active combo</span>
                     <div class="comparison-value result-value-group">
                         <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
-                        @if (pinnedResult is not null && CanCompareDisplayedResult && PinnedResultSnapshot.DifferencePresentation(acceptedComparison!.Total, pinnedResult.Total) is { } totalDifference) {
-                            <small class="result-difference @totalDifference.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {totalDifference.Text}")">@totalDifference.Text</small>
+                        @if (totalDifference is { } difference) {
+                            <small class="result-difference @difference.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {difference.Text}")">@difference.Text</small>
                         }
                     </div>
                 </div>
                 @{
-                    var groupResults = result.GroupProbabilities ?? Array.Empty<GroupProbabilityResult>();
-                    var renderedGroupIds = groupResults.Select(group => group.GroupId).ToHashSet(StringComparer.Ordinal);
-                    var ungroupedComboResults = result.ComboProbabilities
+                    IReadOnlyList<GroupProbabilityResult> groupResults = result.GroupProbabilities ?? Array.Empty<GroupProbabilityResult>();
+                    HashSet<string> renderedGroupIds = groupResults
+                        .Select(group => group.GroupId)
+                        .ToHashSet(StringComparer.Ordinal);
+                    List<ComboProbabilityResult> ungroupedComboResults = result.ComboProbabilities
                         .Where(comboResult => comboResult.GroupId is null || !renderedGroupIds.Contains(comboResult.GroupId))
                         .ToList();
                 }
                 @if (groupResults.Count > 0) {
                     <div class="probability-groups @(ungroupedComboResults.Count == 0 ? "probability-groups-last" : null)">
-                        @foreach (var group in groupResults) {
-                            var groupComboResults = result.ComboProbabilities
+                        @foreach (GroupProbabilityResult group in groupResults) {
+                            List<ComboProbabilityResult> groupComboResults = result.ComboProbabilities
                                 .Where(comboResult => comboResult.GroupId == group.GroupId)
                                 .ToList();
-                            var groupComparison = CurrentGroupComparison(group.GroupId);
+                            PinnedResultComparison? groupComparison = CurrentGroupComparison(group.GroupId);
                             <section class="probability-group-container">
                                 <h6 class="combo-probability-row probability-group probability-group-heading">
                                     <span class="combo-probability-name">
@@ -221,11 +228,13 @@
                                         }
                                     </span>
                                 </h6>
-                                @if (groupComparison?.Status is { } groupStatus) { <small class="result-row-comparison" role="note">@groupStatus</small> }
+                                @if (groupComparison?.Status is { } groupStatus) {
+                                    <small class="result-row-comparison" role="note">@groupStatus</small>
+                                }
                                 @if (groupComboResults.Count > 0) {
                                     <ol class="combo-probability-list probability-group-members">
-                                        @foreach (var comboResult in groupComboResults) {
-                                            var comboComparison = CurrentComboComparison(comboResult.ComboIndex);
+                                        @foreach (ComboProbabilityResult comboResult in groupComboResults) {
+                                            PinnedResultComparison? comboComparison = CurrentComboComparison(comboResult.ComboIndex);
                                             <li class="combo-probability-item">
                                                 <div class="combo-probability-row">
                                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
@@ -236,7 +245,9 @@
                                                         }
                                                     </span>
                                                 </div>
-                                                @if (comboComparison?.Status is { } comboStatus) { <small class="result-row-comparison" role="note">@comboStatus</small> }
+                                                @if (comboComparison?.Status is { } comboStatus) {
+                                                    <small class="result-row-comparison" role="note">@comboStatus</small>
+                                                }
                                             </li>
                                         }
                                     </ol>
@@ -248,8 +259,8 @@
                 @if (ungroupedComboResults.Count > 0 || groupResults.Count == 0) {
                     <h6 class="@(groupResults.Count > 0 ? "fw-bold" : null)">@(groupResults.Count > 0 ? "Ungrouped combos" : "Individual combos")</h6>
                     <ol class="combo-probability-list probability-ungrouped-combos">
-                        @foreach (var comboResult in ungroupedComboResults) {
-                            var comboComparison = CurrentComboComparison(comboResult.ComboIndex);
+                        @foreach (ComboProbabilityResult comboResult in ungroupedComboResults) {
+                            PinnedResultComparison? comboComparison = CurrentComboComparison(comboResult.ComboIndex);
                             <li class="combo-probability-item">
                                 <div class="combo-probability-row">
                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
@@ -260,15 +271,17 @@
                                         }
                                     </span>
                                 </div>
-                                @if (comboComparison?.Status is { } comboStatus) { <small class="result-row-comparison" role="note">@comboStatus</small> }
+                                @if (comboComparison?.Status is { } comboStatus) {
+                                    <small class="result-row-comparison" role="note">@comboStatus</small>
+                                }
                             </li>
                         }
                     </ol>
                 }
             </section>
         }
-        @if (pinnedResult is { } pinned) {
-            <PinnedResultPanel Snapshot="pinned" Current="@(CanCompareDisplayedResult ? acceptedComparison : null)" OnClear="ClearPinnedResult" />
+        @if (_pinnedResult is { } pinned) {
+            <PinnedResultPanel Snapshot="pinned" Current="@(CanCompareDisplayedResult ? _acceptedComparison : null)" OnClear="ClearPinnedResult" />
         }
         </div>
     </div>
@@ -276,53 +289,75 @@
 
 @code {
 
-    private readonly List<CategoryBase> categoryBases = [];
-    private readonly List<Card> cards = [];
-    private readonly List<Combo> combos = [];
-    private readonly List<ComboGroup> comboGroups = [];
-    private readonly Dictionary<string, int> categoryColorIndices = new(StringComparer.Ordinal);
+    private readonly List<CategoryBase> _categoryBases = [];
+    private readonly List<Card> _cards = [];
+    private readonly List<Combo> _combos = [];
+    private readonly List<ComboGroup> _comboGroups = [];
+    private readonly Dictionary<string, int> _categoryColorIndices = new(StringComparer.Ordinal);
 
-    private int activeComboIndex = -1;
-    private int activeCardIndex = -1;
+    private int _activeComboIndex = -1;
+    private int _activeCardIndex = -1;
 
-    private int sessionVersion;
-    private int categoryRenameVersion;
-    private CategoryRenameNotice? categoryRename;
-    private int handSize = 5;
-    private bool isCalculating;
-    private long calculationVersion;
-    private long calculationRequestId;
-    private CancellationTokenSource? calculationCancellation;
-    private bool disposed;
-    private string? errorMessage;
-    private string? importError;
-    private bool isYdkeImportOpen;
-    private string ydkeCode = string.Empty;
-    private ProbabilityCalculationResult? calculationResult;
-    private bool calculationResultIsStale;
+    private int _sessionVersion;
+    private int _categoryRenameVersion;
+    private CategoryRenameNotice? _categoryRename;
+    private int _handSize = 5;
+    private bool _isCalculating;
+    private long _calculationVersion;
+    private long _calculationRequestId;
+    private CancellationTokenSource? _calculationCancellation;
+    private bool _disposed;
+    private string? _errorMessage;
+    private string? _importError;
+    private bool _isYdkeImportOpen;
+    private string _ydkeCode = string.Empty;
+    private ProbabilityCalculationResult? _calculationResult;
+    private bool _calculationResultIsStale;
 
-    private int ActiveCardCount => cards.Count(card => card.Active);
-    private long ActiveCardCopies => cards.Where(card => card.Active).Sum(card => (long)card.Copies);
-    private int ActiveComboCount => combos.Count(combo => combo.Active);
+    private int ActiveCardCount => _cards.Count(card => card.Active);
+    private long ActiveCardCopies => _cards.Where(card => card.Active).Sum(card => (long)card.Copies);
+    private int ActiveComboCount => _combos.Count(combo => combo.Active);
 
     private string? CalculationUnavailableMessage {
         get {
-            if (handSize < 1) return "Hand size must be at least 1.";
-            if (combos.Any(combo => combo.Active && combo.AllCards.Any(requirement =>
-                cards.Count(card => card.Id == requirement.CardId) != 1)))
+            if (_handSize < 1) {
+                return "Hand size must be at least 1.";
+            }
+
+            bool hasMissingActiveCardReference = _combos.Any(combo => combo.Active && combo.AllCards.Any(requirement =>
+                _cards.Count(card => card.Id == requirement.CardId) != 1));
+            if (hasMissingActiveCardReference) {
                 return "An active combo has a missing card reference. Repair or remove it, or deactivate the combo.";
-            if (ActiveCardCount == 0) return "Activate at least one card to calculate.";
-            if (cards.Any(card => card.Active && card.Copies < 1))
+            }
+
+            if (ActiveCardCount == 0) {
+                return "Activate at least one card to calculate.";
+            }
+
+            if (_cards.Any(card => card.Active && card.Copies < 1)) {
                 return "Each active card must have at least one copy, or be deactivated.";
-            if (ActiveCardCopies > int.MaxValue)
+            }
+
+            if (ActiveCardCopies > int.MaxValue) {
                 return "The active deck is too large to calculate. Reduce the number of copies or deactivate cards.";
-            if (ActiveCardCopies < handSize)
-                return $"The active deck has {ActiveCardCopies} copies, fewer than the hand size of {handSize}.";
-            if (ActiveComboCount == 0) return "Activate at least one combo to calculate.";
-            if (ActiveComboCount > IProbabilityCalculatorService.MaxComboCount)
+            }
+
+            if (ActiveCardCopies < _handSize) {
+                return $"The active deck has {ActiveCardCopies} copies, fewer than the hand size of {_handSize}.";
+            }
+
+            if (ActiveComboCount == 0) {
+                return "Activate at least one combo to calculate.";
+            }
+
+            if (ActiveComboCount > IProbabilityCalculatorService.MaxComboCount) {
                 return $"Calculate with at most {IProbabilityCalculatorService.MaxComboCount} active combos. Deactivate or remove extra combos.";
-            if (combos.Any(combo => combo.Active && combo.RequirementCount == 0))
+            }
+
+            if (_combos.Any(combo => combo.Active && combo.RequirementCount == 0)) {
                 return "Complete or deactivate every incomplete active combo before calculating.";
+            }
+
             return null;
         }
     }
@@ -335,181 +370,275 @@
             : result.ComboName;
 
     private Task ReplaceCard((int Index, Card NewCard) payload) {
-        var (i, newCard) = payload;
-        cards[i] = newCard;
+        (int index, Card newCard) = payload;
+        _cards[index] = newCard;
         InvalidateCalculation();
         StateHasChanged();
+
         return Task.CompletedTask;
     }
 
     private void MoveCategory((int From, int To) move) {
-        if (ListMove.TryMove(categoryBases, move.From, move.To)) InvalidateCalculation();
+        if (ListMove.TryMove(_categoryBases, move.From, move.To)) {
+            InvalidateCalculation();
+        }
     }
 
     private void MoveCard((int From, int To) move) {
-        if (!ListMove.TryMove(cards, move.From, move.To)) return;
-        activeCardIndex = ListMove.AdjustActiveIndex(activeCardIndex, move.From, move.To);
+        if (!ListMove.TryMove(_cards, move.From, move.To)) {
+            return;
+        }
+
+        _activeCardIndex = ListMove.AdjustActiveIndex(_activeCardIndex, move.From, move.To);
         InvalidateCalculation();
     }
 
     private void SortCardsAlphabetically() {
-        var activeCardId = activeCardIndex >= 0 && activeCardIndex < cards.Count
-            ? cards[activeCardIndex].Id
+        string? activeCardId = _activeCardIndex >= 0 && _activeCardIndex < _cards.Count
+            ? _cards[_activeCardIndex].Id
             : null;
-        var sortedCards = CardOrdering.Alphabetize(cards).ToList();
-        if (cards.SequenceEqual(sortedCards)) return;
 
-        cards.Clear();
-        cards.AddRange(sortedCards);
-        activeCardIndex = activeCardId is null
+        List<Card> sortedCards = CardOrdering.Alphabetize(_cards).ToList();
+
+        if (_cards.SequenceEqual(sortedCards)) {
+            return;
+        }
+
+        _cards.Clear();
+        _cards.AddRange(sortedCards);
+        _activeCardIndex = activeCardId is null
             ? -1
-            : cards.FindIndex(card => card.Id == activeCardId);
+            : _cards.FindIndex(card => card.Id == activeCardId);
+
         InvalidateCalculation();
     }
 
     private void MoveCombo((int From, int To) move) {
-        if (!ListMove.TryMove(combos, move.From, move.To)) return;
-        activeComboIndex = ListMove.AdjustActiveIndex(activeComboIndex, move.From, move.To);
+        if (!ListMove.TryMove(_combos, move.From, move.To)) {
+            return;
+        }
+
+        _activeComboIndex = ListMove.AdjustActiveIndex(_activeComboIndex, move.From, move.To);
         InvalidateCalculation();
     }
 
     private void MoveGroup((int From, int To) move) {
-        if (ListMove.TryMove(comboGroups, move.From, move.To)) InvalidateCalculation();
+        if (ListMove.TryMove(_comboGroups, move.From, move.To)) {
+            InvalidateCalculation();
+        }
     }
 
     private void RemoveCard(int index) {
-        if (index < 0 || index >= cards.Count) return;
-        cards.RemoveAt(index);
+        if (index < 0 || index >= _cards.Count) {
+            return;
+        }
+
+        _cards.RemoveAt(index);
         InvalidateCalculation();
-        if (activeCardIndex == index) activeCardIndex = -1;
-        else if (activeCardIndex > index) activeCardIndex--;
+
+        if (_activeCardIndex == index) {
+            _activeCardIndex = -1;
+        }
+        else if (_activeCardIndex > index) {
+            _activeCardIndex--;
+        }
     }
 
     private void AddNewCard() {
-        cards.Add(new Card([]));
+        _cards.Add(new Card([]));
         InvalidateCalculation();
-        activeCardIndex = cards.Count - 1;
+        _activeCardIndex = _cards.Count - 1;
     }
 
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
-        var (i, newCombo) = payload;
-        TransferComparisonLineage(combos[i], newCombo);
-        combos[i] = newCombo;
+        (int index, Combo newCombo) = payload;
+        TransferComparisonLineage(_combos[index], newCombo);
+        _combos[index] = newCombo;
         InvalidateCalculation();
         StateHasChanged();
+
         return Task.CompletedTask;
     }
 
     private void RemoveCombo(int index) {
-        if (index < 0 || index >= combos.Count) return;
-        combos.RemoveAt(index);
+        if (index < 0 || index >= _combos.Count) {
+            return;
+        }
+
+        _combos.RemoveAt(index);
         InvalidateCalculation();
-        if (activeComboIndex == index) activeComboIndex = -1;
-        else if (activeComboIndex > index) activeComboIndex--;
+
+        if (_activeComboIndex == index) {
+            _activeComboIndex = -1;
+        }
+        else if (_activeComboIndex > index) {
+            _activeComboIndex--;
+        }
     }
 
     private void AddNewCombo() {
-        combos.Add(new Combo(new List<ComboCategory>()));
+        _combos.Add(new Combo(new List<ComboCategory>()));
         InvalidateCalculation();
-        activeComboIndex = combos.Count - 1;
+        _activeComboIndex = _combos.Count - 1;
     }
 
     private void DuplicateCombo(int index) {
-        if (index < 0 || index >= combos.Count) return;
+        if (index < 0 || index >= _combos.Count) {
+            return;
+        }
 
-        var source = combos[index];
-        var duplicate = new Combo(
-            source.Categories.Select(category => new ComboCategory(
-                category.BaseCategory,
-                category.MinCount,
-                category.MaxCount, category.MaximumMode)),
+        Combo source = _combos[index];
+        Combo duplicate = new(
+            source.Categories.Select(
+                category => new ComboCategory(
+                    category.BaseCategory,
+                    category.MinCount,
+                    category.MaxCount,
+                    category.MaximumMode
+                )
+            ),
             GetDuplicateComboName(source.Name),
             source.Active,
             source.GroupId,
-            source.Cards.Select(card => new ComboCard(card.CardId, card.MinCount, card.MaxCount, card.MaximumMode)), source.AlternativeGroups);
+            source.Cards.Select(
+                card => new ComboCard(
+                    card.CardId,
+                    card.MinCount,
+                    card.MaxCount,
+                    card.MaximumMode
+                )
+            ),
+            source.AlternativeGroups
+        );
 
-        var duplicateIndex = index + 1;
-        combos.Insert(duplicateIndex, duplicate);
+        int duplicateIndex = index + 1;
+        _combos.Insert(duplicateIndex, duplicate);
         InvalidateCalculation();
-        activeComboIndex = duplicateIndex;
+        _activeComboIndex = duplicateIndex;
     }
 
     private string? GetDuplicateComboName(string? sourceName) {
-        if (string.IsNullOrWhiteSpace(sourceName)) return null;
+        if (string.IsNullOrWhiteSpace(sourceName)) {
+            return null;
+        }
 
-        var usedNames = combos
+        HashSet<string> usedNames = _combos
             .Where(combo => !string.IsNullOrWhiteSpace(combo.Name))
             .Select(combo => combo.Name!)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var baseName = $"{sourceName} copy";
-        if (!usedNames.Contains(baseName)) return baseName;
 
-        for (var suffix = 2L; ; suffix++) {
-            var candidate = $"{baseName} {suffix}";
-            if (!usedNames.Contains(candidate)) return candidate;
+        string baseName = $"{sourceName} copy";
+
+        if (!usedNames.Contains(baseName)) {
+            return baseName;
+        }
+
+        for (long suffix = 2L; ; suffix++) {
+            string candidate = $"{baseName} {suffix}";
+
+            if (!usedNames.Contains(candidate)) {
+                return candidate;
+            }
         }
     }
 
     private void AddGroup(string name) {
-        comboGroups.Add(new ComboGroup(Guid.NewGuid().ToString("N"), name));
+        _comboGroups.Add(new ComboGroup(Guid.NewGuid().ToString("N"), name));
         InvalidateCalculation();
         StateHasChanged();
     }
 
     private void RenameGroup((string Id, string Name) payload) {
-        var index = comboGroups.FindIndex(group => group.Id == payload.Id);
-        if (index < 0) return;
-        comboGroups[index] = comboGroups[index] with { Name = payload.Name };
+        int index = _comboGroups.FindIndex(group => group.Id == payload.Id);
+
+        if (index < 0) {
+            return;
+        }
+
+        _comboGroups[index] = _comboGroups[index] with { Name = payload.Name };
         InvalidateCalculation();
         StateHasChanged();
     }
 
     private void RemoveGroup(string id) {
-        if (comboGroups.RemoveAll(group => group.Id == id) == 0) return;
-        foreach (var combo in combos.Where(combo => combo.GroupId == id))
+        if (_comboGroups.RemoveAll(group => group.Id == id) == 0) {
+            return;
+        }
+
+        foreach (Combo combo in _combos.Where(combo => combo.GroupId == id)) {
             combo.GroupId = null;
+        }
+
         InvalidateCalculation();
         StateHasChanged();
     }
 
     private Task RenameCategoryBase((CategoryBase OldCategory, CategoryBase NewCategory) payload) {
-        var (oldCategory, newCategory) = payload;
-        if (oldCategory.Source != CategorySource.User || newCategory.Source != CategorySource.User) return Task.CompletedTask;
-        var categoryIndex = categoryBases.FindIndex(category => ReferenceEquals(category, oldCategory));
-        if (categoryIndex < 0) return Task.CompletedTask;
+        (CategoryBase oldCategory, CategoryBase newCategory) = payload;
 
-        if (categoryColorIndices.Remove(oldCategory.Name, out var colorIndex))
-            categoryColorIndices[newCategory.Name] = colorIndex;
-
-        categoryBases[categoryIndex] = newCategory;
-
-        foreach (var card in cards) {
-            for (var i = 0; i < card.Categories.Count; i++) {
-                if (card.Categories[i].Identity.Equals(oldCategory.Identity, StringComparison.Ordinal))
-                    card.Categories[i] = newCategory;
-            }
+        if (oldCategory.Source != CategorySource.User || newCategory.Source != CategorySource.User) {
+            return Task.CompletedTask;
         }
 
-        foreach (var combo in combos) {
-            for (var i = 0; i < combo.Categories.Count; i++) {
-                var constraint = combo.Categories[i];
-                if (constraint.BaseCategory.Identity.Equals(oldCategory.Identity, StringComparison.Ordinal)) {
-                    combo.Categories[i] = new ComboCategory(
-                        newCategory,
-                        constraint.MinCount,
-                        constraint.MaxCount, constraint.MaximumMode);
+        int categoryBaseIndex = _categoryBases.FindIndex(category => ReferenceEquals(category, oldCategory));
+
+        if (categoryBaseIndex < 0) {
+            return Task.CompletedTask;
+        }
+
+        if (_categoryColorIndices.Remove(oldCategory.Name, out int colorIndex)) {
+            _categoryColorIndices[newCategory.Name] = colorIndex;
+        }
+
+        _categoryBases[categoryBaseIndex] = newCategory;
+
+        foreach (Card card in _cards) {
+            for (int categoryIndex = 0; categoryIndex < card.Categories.Count; categoryIndex++) {
+
+                if (card.Categories[categoryIndex].Identity.Equals(oldCategory.Identity, StringComparison.Ordinal)) {
+                    card.Categories[categoryIndex] = newCategory;
                 }
             }
         }
 
-        foreach (var combo in combos) {
-            for (var g = 0; g < combo.AlternativeGroups.Count; g++) {
-                combo.AlternativeGroups[g] = new ComboAlternativeGroup(combo.AlternativeGroups[g].Alternatives.Select(a =>
-                    a.Category is { } c && c.BaseCategory.Identity == oldCategory.Identity
-                        ? ComboAlternative.For(new ComboCategory(newCategory, c.MinCount, c.MaxCount, c.MaximumMode)) : a).ToArray());
+        foreach (Combo combo in _combos) {
+            for (int categoryIndex = 0; categoryIndex < combo.Categories.Count; categoryIndex++) {
+                ComboCategory constraint = combo.Categories[categoryIndex];
+
+                if (constraint.BaseCategory.Identity.Equals(oldCategory.Identity, StringComparison.Ordinal)) {
+                    combo.Categories[categoryIndex] = new ComboCategory(
+                        newCategory,
+                        constraint.MinCount,
+                        constraint.MaxCount,
+                        constraint.MaximumMode
+                    );
+                }
             }
         }
-        categoryRename = new CategoryRenameNotice(++categoryRenameVersion, oldCategory.Name, newCategory.Name);
+
+        foreach (Combo combo in _combos) {
+            for (int groupIndex = 0; groupIndex < combo.AlternativeGroups.Count; groupIndex++) {
+                ComboAlternativeGroup group = combo.AlternativeGroups[groupIndex];
+                ComboAlternative[] alternatives = group.Alternatives
+                    .Select(alternative => {
+                        if (alternative.Category is { } category && category.BaseCategory.Identity == oldCategory.Identity) {
+                            return ComboAlternative.For(new ComboCategory(
+                                newCategory,
+                                category.MinCount,
+                                category.MaxCount,
+                                category.MaximumMode
+                            ));
+                        }
+
+                        return alternative;
+                    })
+                    .ToArray();
+
+                combo.AlternativeGroups[groupIndex] = new ComboAlternativeGroup(alternatives);
+            }
+        }
+        _categoryRename = new CategoryRenameNotice(++_categoryRenameVersion, oldCategory.Name, newCategory.Name);
+
         return Task.CompletedTask;
     }
 
@@ -520,56 +649,69 @@
     }
 
     private Task SetCategoryColor((string CategoryName, int ColorIndex) change) {
-        if (!CategoryColorPalette.IsValidIndex(change.ColorIndex) ||
-            !categoryBases.Any(category => category.Source == CategorySource.User &&
-                category.Name.Equals(change.CategoryName, StringComparison.Ordinal)))
-            return Task.CompletedTask;
+        bool hasMatchingUserCategory = CategoryColorPalette.IsValidIndex(change.ColorIndex)
+            && _categoryBases.Any(category => category.Source == CategorySource.User
+                                              && category.Name.Equals(change.CategoryName, StringComparison.Ordinal));
 
-        categoryColorIndices[change.CategoryName] = change.ColorIndex;
+        if (!hasMatchingUserCategory) {
+            return Task.CompletedTask;
+        }
+
+        _categoryColorIndices[change.CategoryName] = change.ColorIndex;
         ObserveWorkspaceEdit();
+
         return Task.CompletedTask;
     }
 
     private void ReconcileCategoryColorIndices() {
-        var activeCategoryNames = categoryBases.Concat(cards.SelectMany(card => card.Categories))
-            .Concat(combos.SelectMany(combo => combo.AllCategories).Select(category => category.BaseCategory))
-            .Where(category => category.Source == CategorySource.User).Select(category => category.Name)
+        List<string> activeCategoryNames = _categoryBases.Concat(_cards.SelectMany(card => card.Categories))
+            .Concat(_combos.SelectMany(combo => combo.AllCategories).Select(category => category.BaseCategory))
+            .Where(category => category.Source == CategorySource.User)
+            .Select(category => category.Name)
             .Distinct(StringComparer.Ordinal)
             .ToList();
-        var activeNames = activeCategoryNames.ToHashSet(StringComparer.Ordinal);
 
-        foreach (var staleName in categoryColorIndices.Keys.Where(name => !activeNames.Contains(name)).ToArray())
-            categoryColorIndices.Remove(staleName);
+        HashSet<string> activeNames = activeCategoryNames.ToHashSet(StringComparer.Ordinal);
 
-        var assignedIndices = new HashSet<int>();
-        var assignedCategoryCount = 0;
-        foreach (var categoryName in activeCategoryNames) {
-            if (!categoryColorIndices.TryGetValue(categoryName, out var existingIndex) ||
-                !CategoryColorPalette.IsValidIndex(existingIndex))
+        foreach (string staleName in _categoryColorIndices.Keys.Where(name => !activeNames.Contains(name)).ToArray()) {
+            _categoryColorIndices.Remove(staleName);
+        }
+
+        HashSet<int> assignedIndices = new();
+        int assignedCategoryCount = 0;
+
+        foreach (string categoryName in activeCategoryNames) {
+            if (!_categoryColorIndices.TryGetValue(categoryName, out int existingIndex) ||
+                !CategoryColorPalette.IsValidIndex(existingIndex)) {
                 continue;
+            }
 
             // Existing palette choices are intentional even when categories share a color.
             assignedIndices.Add(existingIndex);
             assignedCategoryCount++;
         }
 
-        foreach (var categoryName in activeCategoryNames) {
-            if (categoryColorIndices.TryGetValue(categoryName, out var existingIndex) &&
-                CategoryColorPalette.IsValidIndex(existingIndex))
+        foreach (string categoryName in activeCategoryNames) {
+            if (_categoryColorIndices.TryGetValue(categoryName, out int existingIndex) &&
+                CategoryColorPalette.IsValidIndex(existingIndex)) {
                 continue;
+            }
 
-            var nextIndex = CategoryColorPalette.FirstAvailableIndex(assignedIndices, assignedCategoryCount++);
-            categoryColorIndices[categoryName] = nextIndex;
+            int nextIndex = CategoryColorPalette.FirstAvailableIndex(assignedIndices, assignedCategoryCount++);
+            _categoryColorIndices[categoryName] = nextIndex;
             assignedIndices.Add(nextIndex);
         }
     }
 
     private void RestoreCategoryColorIndices(SessionState session) {
-        categoryColorIndices.Clear();
+        _categoryColorIndices.Clear();
+
         if (session.CategoryColorIndices is not null) {
-            foreach (var (categoryName, colorIndex) in session.CategoryColorIndices) {
-                if (!string.IsNullOrWhiteSpace(categoryName) && CategoryColorPalette.IsValidIndex(colorIndex))
-                    categoryColorIndices[categoryName] = colorIndex;
+            foreach (KeyValuePair<string, int> categoryColorIndex in session.CategoryColorIndices) {
+                if (!string.IsNullOrWhiteSpace(categoryColorIndex.Key) &&
+                    CategoryColorPalette.IsValidIndex(categoryColorIndex.Value)) {
+                    _categoryColorIndices[categoryColorIndex.Key] = categoryColorIndex.Value;
+                }
             }
         }
 
@@ -577,65 +719,73 @@
     }
 
     private async Task Calculate() {
-        if (disposed || isCalculating || !CanCalculate) return;
+        if (_disposed || _isCalculating || !CanCalculate) {
+            return;
+        }
 
-        var requestVersion = calculationVersion;
-        var requestId = ++calculationRequestId;
-        using var cancellation = new CancellationTokenSource();
-        calculationCancellation = cancellation;
-        bool OwnsRequest() => !disposed && requestId == calculationRequestId && requestVersion == calculationVersion;
+        long requestVersion = _calculationVersion;
+        long requestId = ++_calculationRequestId;
+        using CancellationTokenSource cancellation = new();
+        _calculationCancellation = cancellation;
+        bool OwnsRequest() => !_disposed && requestId == _calculationRequestId && requestVersion == _calculationVersion;
 
         try {
-            isCalculating = true;
-            errorMessage = null;
+            _isCalculating = true;
+            _errorMessage = null;
             StateHasChanged();
 
-            var snapshot = CalculationSnapshot.Capture(cards, combos, handSize, comboGroups, CalculationWorkPolicy.Interactive);
-            var comparisonContext = CaptureComparisonContext();
-            var result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(_cards, _combos, _handSize, _comboGroups, CalculationWorkPolicy.Interactive);
+            PinnedCalculationContext comparisonContext = CaptureComparisonContext();
+            ProbabilityCalculationResult result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
+
             if (OwnsRequest()) {
                 // Own the accepted rows independently of mutable worker result collections.
-                var acceptedResult = result with {
+                ProbabilityCalculationResult acceptedResult = result with {
                     ComboProbabilities = result.ComboProbabilities.ToArray(),
                     GroupProbabilities = result.GroupProbabilities?.ToArray()
                 };
-                acceptedComparison = PinnedResultSnapshot.Capture(comparisonContext, acceptedResult);
-                calculationResult = acceptedResult;
-                calculationResultIsStale = false;
+
+                _acceptedComparison = PinnedResultSnapshot.Capture(comparisonContext, acceptedResult);
+                _calculationResult = acceptedResult;
+                _calculationResultIsStale = false;
             }
         }
         catch (OperationCanceledException) {
             // Cancellation is expected when the user, an edit, or disposal stops a request.
         }
         catch (ProbabilityCalculationLimitException ex) {
-            if (OwnsRequest())
-                errorMessage = ex.Message;
+            if (OwnsRequest()) {
+                _errorMessage = ex.Message;
+            }
         }
         catch (Exception ex) {
-            if (OwnsRequest())
-                errorMessage = $"Calculation failed: {ex.Message}";
+            if (OwnsRequest()) {
+                _errorMessage = $"Calculation failed: {ex.Message}";
+            }
         }
         finally {
             if (OwnsRequest()) {
-                calculationCancellation = null;
-                isCalculating = false;
+                _calculationCancellation = null;
+                _isCalculating = false;
             }
         }
     }
 
     private void StopCalculation() {
-        calculationRequestId++;
-        var cancellation = calculationCancellation;
-        calculationCancellation = null;
-        isCalculating = false;
+        _calculationRequestId++;
+        CancellationTokenSource? cancellation = _calculationCancellation;
+        _calculationCancellation = null;
+        _isCalculating = false;
         cancellation?.Cancel();
     }
 
     private Task HandleCalculationAction() {
-        if (!isCalculating)
+        if (!_isCalculating) {
             return Calculate();
+        }
 
         CancelCalculation();
+
         return Task.CompletedTask;
     }
 
@@ -651,15 +801,16 @@
         ObserveWorkspaceEdit();
         InvalidateComparison(clearPreviousResult);
         StopCalculation();
-        calculationVersion++;
-        if (clearPreviousResult) {
-            calculationResult = null;
-            calculationResultIsStale = false;
-        }
-        else if (calculationResult is not null) {
-            calculationResultIsStale = true;
-        }
-        errorMessage = null;
-    }
+        _calculationVersion++;
 
+        if (clearPreviousResult) {
+            _calculationResult = null;
+            _calculationResultIsStale = false;
+        }
+        else if (_calculationResult is not null) {
+            _calculationResultIsStale = true;
+        }
+
+        _errorMessage = null;
+    }
 }

@@ -6,14 +6,20 @@ namespace YGOProbabilityCalculatorBlazor.Services.Converter;
 
 public class ComboCardConverter : JsonConverter<ComboCard> {
     public override ComboCard Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) {
-        using var document = JsonDocument.ParseValue(ref reader);
-        var root = document.RootElement;
+        using JsonDocument document = JsonDocument.ParseValue(ref reader);
+        JsonElement root = document.RootElement;
+
         try {
-            return new ComboCard(root.GetProperty("CardId").GetString() ?? throw new JsonException("CardId is required."),
-                root.GetProperty("MinCount").GetInt32(), root.GetProperty("MaxCount").GetInt32(),
-                RequirementMaximumModeJson.Read(root));
+            return new ComboCard(
+                root.GetProperty("CardId").GetString() ?? throw new JsonException("CardId is required."),
+                root.GetProperty("MinCount").GetInt32(),
+                root.GetProperty("MaxCount").GetInt32(),
+                RequirementMaximumModeJson.Read(root)
+            );
         }
-        catch (ArgumentException ex) { throw new JsonException("Invalid card requirement bounds.", ex); }
+        catch (ArgumentException exception) {
+            throw new JsonException("Invalid card requirement bounds.", exception);
+        }
     }
 
     public override void Write(Utf8JsonWriter writer, ComboCard value, JsonSerializerOptions options) {

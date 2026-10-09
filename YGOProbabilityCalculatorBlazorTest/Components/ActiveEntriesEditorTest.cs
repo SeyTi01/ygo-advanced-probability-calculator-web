@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using Bunit;
 using Microsoft.AspNetCore.Components.Forms;
@@ -16,31 +17,31 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
 public class ActiveEntriesEditorTest {
-    private TestContext context = null!;
-    private Mock<IDeckImportService> deckImportService = null!;
-    private readonly CategoryBase a = new("A");
-    private readonly CategoryBase b = new("B");
+    private TestContext _context = null!;
+    private Mock<IDeckImportService> _deckImportService = null!;
+    private readonly CategoryBase _a = new("A");
+    private readonly CategoryBase _b = new("B");
 
     [SetUp]
     public void SetUp() {
-        context = new TestContext();
-        context.JSInterop.Mode = JSRuntimeMode.Loose;
-        context.Services.AddSingleton<IBackgroundCalculator, BackgroundCalculatorTestAdapter>();
-        context.Services.AddSingleton<IProbabilityCalculatorService, ProbabilityCalculatorService>();
-        context.Services.AddSingleton<ISerializer, JsonSerializer>();
-        context.Services.AddSingleton<ISessionService, SessionService>();
-        context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
-        context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
-        deckImportService = new Mock<IDeckImportService>();
-        context.Services.AddSingleton(deckImportService.Object);
+        _context = new TestContext();
+        _context.JSInterop.Mode = JSRuntimeMode.Loose;
+        _context.Services.AddSingleton<IBackgroundCalculator, BackgroundCalculatorTestAdapter>();
+        _context.Services.AddSingleton<IProbabilityCalculatorService, ProbabilityCalculatorService>();
+        _context.Services.AddSingleton<ISerializer, JsonSerializer>();
+        _context.Services.AddSingleton<ISessionService, SessionService>();
+        _context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
+        _context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
+        _deckImportService = new Mock<IDeckImportService>();
+        _context.Services.AddSingleton(_deckImportService.Object);
     }
 
     [TearDown]
-    public void TearDown() => context.Dispose();
+    public void TearDown() => _context.Dispose();
 
     private IRenderedComponent<ProbabilityCalculatorComponent> Render(SessionState session) {
-        context.Services.GetRequiredService<IPendingSessionService>().PendingSession = session;
-        return context.RenderComponent<ProbabilityCalculatorComponent>();
+        _context.Services.GetRequiredService<IPendingSessionService>().PendingSession = session;
+        return _context.RenderComponent<ProbabilityCalculatorComponent>();
     }
 
     private static SessionState Session(List<Card> cards, List<Combo> combos, int handSize = 2) => new() {
@@ -51,26 +52,26 @@ public class ActiveEntriesEditorTest {
     };
 
     private static async Task AssertProbabilityAsync(IRenderedComponent<ProbabilityCalculatorComponent> cut, double value) {
-        var activeCards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
+        List<Card> activeCards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
             .Where(card => card.Active).ToList();
-        var activeCombos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
+        List<Combo> activeCombos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
             .Where(combo => combo.Active).ToList();
-        var handSize = int.Parse(cut.Find("#handSize").GetAttribute("value") ?? "5");
-        var oracleValue = SmallDeckOracle.EnumerateProbability(activeCards, activeCombos, handSize);
+        int handSize = int.Parse(cut.Find("#handSize").GetAttribute("value") ?? "5");
+        double oracleValue = SmallDeckOracle.EnumerateProbability(activeCards, activeCombos, handSize);
         Assert.That(value, Is.EqualTo(oracleValue).Within(1e-12),
             "expected probability must match independent physical-hand enumeration");
 
         await cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.False);
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
-        var result = cut.Find(".probability-results");
+        IElement result = cut.Find(".probability-results");
         Assert.That(result.TextContent, Does.Contain(value.ToString("P2")));
-        var comboRows = result.QuerySelectorAll(".combo-probability-item");
+        IHtmlCollection<IElement> comboRows = result.QuerySelectorAll(".combo-probability-item");
         Assert.That(comboRows.Length, Is.EqualTo(activeCombos.Count));
-        for (var index = 0; index < activeCombos.Count; index++) {
-            var combo = activeCombos[index];
-            var expectedStandalone = SmallDeckOracle.EnumerateProbability(activeCards, [combo], handSize);
-            var displayName = string.IsNullOrWhiteSpace(combo.Name) ? $"Unnamed combo {index + 1}" : combo.Name;
+        for (int index = 0; index < activeCombos.Count; index++) {
+            Combo combo = activeCombos[index];
+            double expectedStandalone = SmallDeckOracle.EnumerateProbability(activeCards, [combo], handSize);
+            string displayName = string.IsNullOrWhiteSpace(combo.Name) ? $"Unnamed combo {index + 1}" : combo.Name;
             Assert.That(comboRows[index].TextContent, Does.Contain(displayName));
             Assert.That(comboRows[index].QuerySelector("strong")!.TextContent,
                 Is.EqualTo(expectedStandalone.ToString("P2")));
@@ -85,11 +86,11 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public void ActiveCheckboxesHaveAccessibleNamesAndAssociatedTouchLabels() {
-        var cut = Render(Session(
-            [new([a], 2, "A copies", active: false)],
-            [new([new(a, 1, 2)], "Exactly one A", active: false)]));
-        var card = cut.FindComponent<CardEditor>();
-        var combo = cut.FindComponent<ComboEditor>();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
+            [new([_a], 2, "A copies", active: false)],
+            [new([new(_a, 1, 2)], "Exactly one A", active: false)]));
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
+        IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
 
         Assert.That(card.Find("#cardActive0").GetAttribute("aria-label"), Is.EqualTo("Active card A copies"));
         Assert.That(card.Find("#cardActive0").GetAttribute("title"), Is.EqualTo("Toggle A copies active state"));
@@ -108,9 +109,9 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public async Task RowActionsOnlyChangeTheirOwnEntriesAndDeletingOneKeepsTheNeighborState() {
-        var cut = Render(Session(
-            [new([a], 1, "First card"), new([b], 1, "Second card")],
-            [new([new(a, 1, 1)], "First combo"), new([new(b, 1, 1)], "Second combo")]));
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
+            [new([_a], 1, "First card"), new([_b], 1, "Second card")],
+            [new([new(_a, 1, 1)], "First combo"), new([new(_b, 1, 1)], "Second combo")]));
 
         await cut.Find("#cardActive0").ChangeAsync(new() { Value = false });
         await cut.Find("#comboActive1").ChangeAsync(new() { Value = false });
@@ -143,10 +144,10 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public void DeckCounterUsesOnlyActiveCopiesAndUpdatesAfterToggleAndEdit() {
-        var cut = Render(Session(
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
             [new([], 3, "Active card"), new([], 4, "Inactive card", active: false)],
             []));
-        var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
+        IElement deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
 
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (3)"));
 
@@ -166,9 +167,9 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public void ImportingDeckUpdatesTheActiveCopyCounter() {
-        var cut = Render(Session([new([], 2, "Existing card")], []));
-        var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
-        deckImportService
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session([new([], 2, "Existing card")], []));
+        IElement deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
+        _deckImportService
             .Setup(service => service.ImportDeckFromYdkAsync(It.IsAny<IBrowserFile>()))
             .ReturnsAsync([new([], 3, "Imported card"), new([], 5, "Second imported card")]);
 
@@ -179,15 +180,15 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public async Task InactiveCardCopiesLeaveTheEffectivePopulationAndCanBeRestored() {
-        var cut = Render(Session(
-            [new([a], 2, "A copies"), new([], 2, "Uncategorized copies")],
-            [new([new(a, 1, 2)], "At least one A")]));
-        var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
+            [new([_a], 2, "A copies"), new([], 2, "Uncategorized copies")],
+            [new([new(_a, 1, 2)], "At least one A")]));
+        IElement deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
 
         await AssertProbabilityAsync(cut, 5.0 / 6.0);
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (4)"));
 
-        var card = cut.FindComponent<CardEditor>();
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         await card.Find("#cardActive0").ChangeAsync(new() { Value = false });
 
@@ -207,14 +208,14 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public async Task InactiveCombosAreRemovedFromTheUnionAndAnInactiveIncompleteComboDoesNotBlockCalculation() {
-        var cut = Render(Session(
-            [new([a], 2, "A"), new([b], 1, "B"), new([], 1, "Blank")],
-            [new([new(a, 1, 1)], "Exactly one A"), new([new(b, 1, 1)], "Exactly one B"), new([], "Draft combo")]));
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
+            [new([_a], 2, "A"), new([_b], 1, "B"), new([], 1, "Blank")],
+            [new([new(_a, 1, 1)], "Exactly one A"), new([new(_b, 1, 1)], "Exactly one B"), new([], "Draft combo")]));
 
         Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("incomplete active combo"));
 
-        var incompleteCombo = cut.FindComponents<ComboEditor>()[2];
+        IRenderedComponent<ComboEditor> incompleteCombo = cut.FindComponents<ComboEditor>()[2];
         await incompleteCombo.Find("#comboActive2").ChangeAsync(new() { Value = false });
         Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.False);
         await AssertProbabilityAsync(cut, 5.0 / 6.0);
@@ -229,11 +230,11 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public void EligibilityAndFeedbackUseOnlyActiveCardsAndCombos() {
-        var cut = Render(Session(
-            [new([a], 2, "A"), new([], 2, "Blank")],
-            [new([new(a, 1, 2)], "A combo")], handSize: 3));
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
+            [new([_a], 2, "A"), new([], 2, "Blank")],
+            [new([new(_a, 1, 2)], "A combo")], handSize: 3));
 
-        var calculate = () => cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate");
+        Func<IElement> calculate = () => cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate");
         Assert.That(calculate().HasAttribute("disabled"), Is.False);
 
         cut.Find("#handSize").Change("0");
@@ -257,11 +258,11 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public void EditingInactiveCollapsedEntriesKeepsThemInactiveAndPreservesTheirDrafts() {
-        var cut = Render(Session(
-            [new([a], 2, "Card")],
-            [new([new(a, 1, 2)], "Combo")]));
-        var card = cut.FindComponent<CardEditor>();
-        var combo = cut.FindComponent<ComboEditor>();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
+            [new([_a], 2, "Card")],
+            [new([new(_a, 1, 2)], "Combo")]));
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
+        IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
 
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
@@ -302,24 +303,23 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public void SessionRoundTripPreservesInactiveEntriesAndLegacyEntriesDefaultActive() {
-        var cut = Render(Session(
-            [new([a], 2, "Card")],
-            [new([new(a, 1, 2)], "Combo")]));
-        var deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
+            [new([_a], 2, "Card")],
+            [new([new(_a, 1, 2)], "Combo")]));
+        IElement deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (2)"));
         cut.Find("#cardActive0").Change(false);
         cut.Find("#comboActive0").Change(false);
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
         cut.FindAll("button").Single(button => button.TextContent.Trim() == "Save Session").Click();
 
-        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
-        var savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
-        using (var document = System.Text.Json.JsonDocument.Parse(savedJson)) {
+        string savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)_context.JSInterop.Invocations["saveSessionFile"].Single().Arguments[1]!));
+        using (System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(savedJson)) {
             Assert.That(document.RootElement.GetProperty("Cards")[0].GetProperty("Active").GetBoolean(), Is.False);
             Assert.That(document.RootElement.GetProperty("Combos")[0].GetProperty("Active").GetBoolean(), Is.False);
         }
 
-        var sessionInput = cut.FindComponents<InputFile>()[1];
+        IRenderedComponent<InputFile> sessionInput = cut.FindComponents<InputFile>()[1];
         sessionInput.UploadFiles(InputFileContent.CreateFromText(savedJson, "session.json"));
         cut.WaitForAssertion(() => {
             Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.False);
@@ -340,11 +340,11 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public void CategoryRenamePreservesInactiveEntriesAndSelectedEditorDrafts() {
-        var cut = Render(Session(
-            [new([a], 2, "Disabled A", active: false)],
-            [new([new(a, 1, 1)], "Disabled A combo", active: false)]));
-        var card = cut.FindComponent<CardEditor>();
-        var combo = cut.FindComponent<ComboEditor>();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
+            [new([_a], 2, "Disabled A", active: false)],
+            [new([new(_a, 1, 1)], "Disabled A combo", active: false)]));
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
+        IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
 
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
@@ -371,9 +371,9 @@ public class ActiveEntriesEditorTest {
 
     [Test]
     public void DeletingEarlierRowsKeepsInactiveStateWithTheRemainingEntry() {
-        var cut = Render(Session(
-            [new([a], 1, "First"), new([b], 1, "Second", active: false)],
-            [new([new(a, 0, 1)], "First combo"), new([new(b, 0, 1)], "Second combo", active: false)]));
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
+            [new([_a], 1, "First"), new([_b], 1, "Second", active: false)],
+            [new([new(_a, 0, 1)], "First combo"), new([new(_b, 0, 1)], "Second combo", active: false)]));
 
         cut.FindComponents<CardEditor>()[0].Find("[title='Remove card']").Click();
         cut.FindComponents<ComboEditor>()[0].Find("[title='Remove combo']").Click();

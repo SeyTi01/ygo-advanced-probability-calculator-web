@@ -15,10 +15,10 @@
                     <span class="card-header-name">@CardDisplayName <span class="card-copies">(@Card.Copies)</span></span>
 
                     @if (UserCategories.Any() || ManualProperties.Any()) {
-                        @foreach (var cat in UserCategories) {
-                            <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">@cat.Name</span>
+                        @foreach (CategoryBase category in UserCategories) {
+                            <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">@category.Name</span>
                         }
-                        @foreach (var property in ManualProperties) {
+                        @foreach (CategoryBase property in ManualProperties) {
                             <span class="badge category-tag card-property-tag ms-1 manual-property-header-badge @CardPropertyColorPalette.GetCssClass(property)">@property.Name</span>
                         }
                     }
@@ -52,8 +52,8 @@
 
     <div id="card@(Index)" class="accordion-collapse collapse @(Index == ActiveCardIndex ? "show" : "")">
         <div class="accordion-body">
-            @if (error is not null) {
-                <DismissibleAlert Message="@error" OnDismiss="@(() => error = null)"/>
+            @if (_error is not null) {
+                <DismissibleAlert Message="@_error" OnDismiss="@(() => _error = null)"/>
             }
             <div class="card-expanded-identity mb-3">
                 @if (Index == ActiveCardIndex) {
@@ -79,17 +79,17 @@
                 <div class="editor-select-field">
                     <label for="cardCategory@(Index)" class="form-label">Category</label>
                     <select id="cardCategory@(Index)" class="form-select"
-                            value="@selectedCategory"
-                            @onchange="e => selectedCategory = e.Value?.ToString() ?? string.Empty">
+                            value="@_selectedCategory"
+                            @onchange="e => _selectedCategory = e.Value?.ToString() ?? string.Empty">
                         <option value="">Select category…</option>
                         <optgroup label="User categories">
-                            @foreach (var cb in CategoryBases.Where(c => c.Source == CategorySource.User)) {
-                                <option value="@cb.Identity">@cb.Name</option>
+                            @foreach (CategoryBase categoryBase in CategoryBases.Where(category => category.Source == CategorySource.User)) {
+                                <option value="@categoryBase.Identity">@categoryBase.Name</option>
                             }
                         </optgroup>
                         <optgroup label="Card properties">
-                            @foreach (var cb in CategoryBases.Where(c => c.Source == CategorySource.Metadata && !Card.Categories.Contains(c))) {
-                                <option value="@cb.Identity">@cb.Name</option>
+                            @foreach (CategoryBase categoryBase in CategoryBases.Where(category => category.Source == CategorySource.Metadata && !Card.Categories.Contains(category))) {
+                                <option value="@categoryBase.Identity">@categoryBase.Name</option>
                             }
                         </optgroup>
                     </select>
@@ -100,14 +100,14 @@
             </div>
 
             <div>
-                @foreach (var cat in UserCategories) {
-                    <span class="badge me-2 category-tag @CategoryColorPalette.GetCssClass(cat.Name, CategoryColorIndices)">
-                        @cat.Name
+                @foreach (CategoryBase category in UserCategories) {
+                    <span class="badge me-2 category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
+                        @category.Name
                         <button type="button"
                                 class="btn-close category-remove-button ms-1"
-                                aria-label="@($"Remove category {cat.Name} from card {CardDisplayName}")"
-                                title="@($"Remove category {cat.Name} from card {CardDisplayName}")"
-                                @onclick="() => RemoveCategory(cat.Identity)">
+                                aria-label="@($"Remove category {category.Name} from card {CardDisplayName}")"
+                                title="@($"Remove category {category.Name} from card {CardDisplayName}")"
+                                @onclick="() => RemoveCategory(category.Identity)">
                         </button>
                     </span>
                 }
@@ -120,7 +120,7 @@
                             <div class="detected-card-properties mb-2">
                                 <div class="form-text mb-1">Detected from card data</div>
                                 <div class="d-flex flex-wrap">
-                                    @foreach (var property in DetectedProperties) {
+                                    @foreach (CategoryBase property in DetectedProperties) {
                                         <span class="badge category-tag card-property-tag me-2 mb-1 detected-card-property @CardPropertyColorPalette.GetCssClass(property)">@property.Name</span>
                                     }
                                 </div>
@@ -130,7 +130,7 @@
                             <div class="manual-card-properties">
                                 <div class="form-text mb-1">Added manually</div>
                                 <div class="d-flex flex-wrap">
-                                    @foreach (var property in ManualProperties) {
+                                    @foreach (CategoryBase property in ManualProperties) {
                                         <span class="badge category-tag card-property-tag me-2 mb-1 manual-card-property @CardPropertyColorPalette.GetCssClass(property)">
                                             @property.Name
                                             <button type="button" class="btn-close category-remove-button ms-1"
@@ -165,88 +165,118 @@
     [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
 
-    private CategoryBase[] UserCategories => Card.Categories.Where(c => c.Source == CategorySource.User).ToArray();
+    private CategoryBase[] UserCategories => Card.Categories
+        .Where(category => category.Source == CategorySource.User)
+        .ToArray();
+
     private CategoryBase[] EffectiveMetadataProperties => Card.Categories
-        .Where(c => c.Source == CategorySource.Metadata)
-        .DistinctBy(c => c.Identity)
+        .Where(category => category.Source == CategorySource.Metadata)
+        .DistinctBy(category => category.Identity)
         .ToArray();
+
     private CategoryBase[] DetectedProperties => EffectiveMetadataProperties
-        .Where(c => !Card.ManualMetadataCategoryKeys.Contains(c.MetadataKey!))
+        .Where(category => !Card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))
         .ToArray();
+
     private CategoryBase[] ManualProperties => EffectiveMetadataProperties
-        .Where(c => Card.ManualMetadataCategoryKeys.Contains(c.MetadataKey!))
+        .Where(category => Card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))
         .ToArray();
-    private string? error;
-    private string selectedCategory = string.Empty;
-    private int previousCategoryRenameVersion;
+
+    private string? _error;
+    private string _selectedCategory = string.Empty;
+    private int _previousCategoryRenameVersion;
+
     private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? $"Card {Index + 1}" : Card.Name;
     private string ActiveToggleLabel => $"Active card {CardDisplayName}";
     private string ActiveToggleTitle => $"Toggle {CardDisplayName} active state";
 
     private Task ToggleCard() {
-        var next = ActiveCardIndex == Index ? -1 : Index;
+        int next = ActiveCardIndex == Index ? -1 : Index;
+
         return ActiveCardIndexChanged.InvokeAsync(next);
     }
 
     private Task Rename(string? name) {
-        var newCard = Card.WithName(string.IsNullOrWhiteSpace(name) ? null : name);
+        Card newCard = Card.WithName(string.IsNullOrWhiteSpace(name) ? null : name);
+
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
     private Task ChangeActive(object? value) {
-        if (!bool.TryParse(value?.ToString(), out var active)) return Task.CompletedTask;
+        if (!bool.TryParse(value?.ToString(), out bool active)) {
+            return Task.CompletedTask;
+        }
+
         return OnReplaceCard.InvokeAsync((Index, Card.WithActive(active)));
     }
 
     private Task ChangeCopies(object? value) {
-        if (!int.TryParse(value?.ToString(), out var copies) || copies < 1) {
-            error = "Number of copies must be at least 1.";
+        if (!int.TryParse(value?.ToString(), out int copies) || copies < 1) {
+            _error = "Number of copies must be at least 1.";
+
             return Task.CompletedTask;
         }
-        error = null;
-        var newCard = Card.WithCopies(copies);
+
+        _error = null;
+        Card newCard = Card.WithCopies(copies);
+
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
     private Task AddCategory() {
-        if (string.IsNullOrWhiteSpace(selectedCategory)) {
-            error = "Please select a category to add.";
+        if (string.IsNullOrWhiteSpace(_selectedCategory)) {
+            _error = "Please select a category to add.";
+
             return Task.CompletedTask;
         }
 
-        var chosen = CategoryBases.FirstOrDefault(c => c.Identity == selectedCategory);
+        CategoryBase? chosen = CategoryBases.FirstOrDefault(category => category.Identity == _selectedCategory);
+
         if (chosen is null) {
-            error = "Selected category not found.";
-            return Task.CompletedTask;
-        }
-        if (Card.Categories.Any(c => c.Identity == chosen.Identity)) {
-            error = "This category is already added to the card.";
-            return Task.CompletedTask;
-        }
-        error = null;
+            _error = "Selected category not found.";
 
-        var newCard = chosen.Source == CategorySource.Metadata
+            return Task.CompletedTask;
+        }
+
+        if (Card.Categories.Any(category => category.Identity == chosen.Identity)) {
+            _error = "This category is already added to the card.";
+
+            return Task.CompletedTask;
+        }
+
+        _error = null;
+
+        Card newCard = chosen.Source == CategorySource.Metadata
             ? Card.WithManualMetadataCategory(chosen)
             : Card.WithCategories(Card.Categories.Concat([chosen]));
-        selectedCategory = string.Empty;
+
+        _selectedCategory = string.Empty;
+
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
     private Task RemoveCategory(string categoryIdentity) {
-        var newCats = Card.Categories.Where(c => c.Source != CategorySource.User || c.Identity != categoryIdentity).ToList();
-        var newCard = Card.WithCategories(newCats);
+        List<CategoryBase> newCategories = Card.Categories
+            .Where(category => category.Source != CategorySource.User || category.Identity != categoryIdentity)
+            .ToList();
+
+        Card newCard = Card.WithCategories(newCategories);
+
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
 
     private Task RemoveManualProperty(string key) => OnReplaceCard.InvokeAsync((Index, Card.WithoutManualMetadataCategory(key)));
 
     protected override void OnParametersSet() {
-        if (CategoryRename is not { } rename || rename.Version == previousCategoryRenameVersion) return;
+        if (CategoryRename is not { } rename || rename.Version == _previousCategoryRenameVersion) {
+            return;
+        }
 
-        if (selectedCategory.Equals($"user:{rename.OldName}", StringComparison.Ordinal))
-            selectedCategory = $"user:{rename.NewName}";
+        if (_selectedCategory.Equals($"user:{rename.OldName}", StringComparison.Ordinal)) {
+            _selectedCategory = $"user:{rename.NewName}";
+        }
 
-        previousCategoryRenameVersion = rename.Version;
+        _previousCategoryRenameVersion = rename.Version;
     }
 
 }

@@ -11,7 +11,7 @@ namespace YGOProbabilityCalculatorBlazor;
 
 public static class Program {
     public static async Task Main(string[] args) {
-        var builder = WebAssemblyHostBuilder.CreateDefault(args);
+        WebAssemblyHostBuilder builder = WebAssemblyHostBuilder.CreateDefault(args);
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
@@ -22,7 +22,7 @@ public static class Program {
 
     // The publish-time prerenderer calls this hook too; keep runtime registrations shared.
     public static void ConfigureServices(IServiceCollection services, string baseAddress) {
-        services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(baseAddress) });
+        services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(baseAddress) });
         services.AddScoped<IDeckImportService, DeckImportService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<ILegacyCardMetadataEnricher, LegacyCardMetadataEnricher>();

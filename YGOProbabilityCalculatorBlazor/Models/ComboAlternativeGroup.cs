@@ -8,24 +8,36 @@ public sealed class ComboAlternative {
     public ComboCard? Card { get; }
 
     public ComboAlternative(string kind, ComboCategory? category = null, ComboCard? card = null) {
-        if (kind == "Category" ? category is null || card is not null :
-            kind == "Card" ? card is null || category is not null : true)
+        bool hasMatchingRequirement = kind switch {
+            "Category" => category is not null && card is null,
+            "Card" => card is not null && category is null,
+            _ => false
+        };
+
+        if (!hasMatchingRequirement) {
             throw new ArgumentException("An alternative must contain exactly one matching Category or Card requirement.");
+        }
+
         Kind = kind;
         Category = category;
         Card = card;
     }
 
     public static ComboAlternative For(ComboCategory category) => new("Category", category);
+
     public static ComboAlternative For(ComboCard card) => new("Card", card: card);
 }
 
 public sealed class ComboAlternativeGroup {
     public IReadOnlyList<ComboAlternative> Alternatives { get; }
 
-    public ComboAlternativeGroup(IReadOnlyList<ComboAlternative> alternatives) {
-        if (alternatives is null || alternatives.Count == 0 || alternatives.Any(a => a is null))
+    public ComboAlternativeGroup(IReadOnlyList<ComboAlternative?>? alternatives) {
+        bool hasInvalidAlternative = alternatives is null || alternatives.Count == 0 || alternatives.Any(static alternative => alternative is null);
+
+        if (hasInvalidAlternative) {
             throw new ArgumentException("An OR group must contain at least one complete alternative.");
-        Alternatives = Array.AsReadOnly(alternatives.ToArray());
+        }
+
+        Alternatives = Array.AsReadOnly([.. alternatives.Select(static alternative => alternative!)]);
     }
 }
