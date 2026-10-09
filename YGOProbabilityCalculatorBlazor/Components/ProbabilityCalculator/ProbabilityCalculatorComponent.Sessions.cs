@@ -5,144 +5,219 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 // Every workspace replacement checks the same request, draft, and accepted-model boundary.
 public partial class ProbabilityCalculatorComponent : IDisposable {
-    private int autosaveReplacementVersion;
-    private long sessionLoadVersion;
-    private bool sessionInitialized;
-    private long workspaceEditVersion;
-    private void ObserveWorkspaceEdit() => workspaceEditVersion++;
+    private int _autosaveReplacementVersion;
+    private long _sessionLoadVersion;
+    private bool _sessionInitialized;
+    private long _workspaceEditVersion;
+
+    private void ObserveWorkspaceEdit() => _workspaceEditVersion++;
+
     private SessionState CaptureSession() => new() {
-        Categories = categoryBases,
-        Cards = cards,
-        Combos = combos,
-        ComboGroups = comboGroups,
-        HandSize = handSize,
-        CategoryColorIndices = new(categoryColorIndices, StringComparer.Ordinal)
+        Categories = _categoryBases,
+        Cards = _cards,
+        Combos = _combos,
+        ComboGroups = _comboGroups,
+        HandSize = _handSize,
+        CategoryColorIndices = new(_categoryColorIndices, StringComparer.Ordinal)
     };
 
     private sealed record SessionLoadRequest(long Version, long EditVersion, string Before);
-    private SessionLoadRequest? ydkeImportRequest;
-    private SessionLoadRequest BeginSessionLoad() => new(++sessionLoadVersion, workspaceEditVersion,
-        _sessionService.SerializeSession(CaptureSession()));
-    private bool OwnsSessionLoad(long version) => !disposed && version == sessionLoadVersion;
+
+    private SessionLoadRequest? _ydkeImportRequest;
+
+    private SessionLoadRequest BeginSessionLoad() => new(
+        ++_sessionLoadVersion,
+        _workspaceEditVersion,
+        _sessionService.SerializeSession(CaptureSession())
+    );
+
+    private bool OwnsSessionLoad(long version) => !_disposed && version == _sessionLoadVersion;
+
     private bool OwnsSessionLoad(SessionLoadRequest request) => OwnsSessionLoad(request.Version);
-    private bool CanApplySession(SessionLoadRequest request) => OwnsSessionLoad(request) && request.EditVersion == workspaceEditVersion &&
-        request.Before == _sessionService.SerializeSession(CaptureSession());
+
+    private bool CanApplySession(SessionLoadRequest request) {
+        if (!OwnsSessionLoad(request)) {
+            return false;
+        }
+
+        if (request.EditVersion != _workspaceEditVersion) {
+            return false;
+        }
+
+        string currentSession = _sessionService.SerializeSession(CaptureSession());
+
+        return request.Before == currentSession;
+    }
 
     private async Task<bool> ApplyRecoveryAsync(SessionState session) {
-        if (disposed) return false;
-        var request = BeginSessionLoad();
-        if (!await RestoreSessionDataAsync(session, request)) return false;
+        if (_disposed) {
+            return false;
+        }
+
+        SessionLoadRequest request = BeginSessionLoad();
+
+        if (!await RestoreSessionDataAsync(session, request)) {
+            return false;
+        }
+
         StateHasChanged();
+
         return true;
     }
 
     private async Task<List<Card>> PrepareSessionCardsAsync(SessionState session) {
-        if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count)
+        if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count) {
             throw new InvalidOperationException("Session contains duplicate card IDs.");
+        }
+
         // Metadata is best effort; a hung network must not gate recovery/startup.
         // Enrichment receives its own model so a late completion cannot mutate applied work.
-        var preparedCards = session.Cards.ToList();
-        var enriched = await _sessionService.LoadSessionAsync(_sessionService.SerializeSession(session));
-        var originalEnrichmentCards = enriched.Cards.ToArray();
+        List<Card> preparedCards = session.Cards.ToList();
+        SessionState enriched = await _sessionService.LoadSessionAsync(_sessionService.SerializeSession(session));
+        Card[] originalEnrichmentCards = [.. enriched.Cards];
+
         try {
             await _legacyMetadataEnricher.EnrichAsync(enriched).WaitAsync(TimeSpan.FromSeconds(2));
-            for (var i = 0; i < enriched.Cards.Count; i++) {
-                if (!ReferenceEquals(enriched.Cards[i], originalEnrichmentCards[i])) preparedCards[i] = enriched.Cards[i];
+
+            for (int i = 0; i < enriched.Cards.Count; i++) {
+                if (!ReferenceEquals(enriched.Cards[i], originalEnrichmentCards[i])) {
+                    preparedCards[i] = enriched.Cards[i];
+                }
             }
         }
-        catch { }
+        catch {
+        }
+
         return preparedCards;
     }
 
     private async Task<bool> RestoreSessionDataAsync(SessionState session, SessionLoadRequest request) {
-        if (!OwnsSessionLoad(request)) return false;
-        var preparedCards = await PrepareSessionCardsAsync(session);
-        if (!CanApplySession(request)) return false;
+        if (!OwnsSessionLoad(request)) {
+            return false;
+        }
+
+        List<Card> preparedCards = await PrepareSessionCardsAsync(session);
+
+        if (!CanApplySession(request)) {
+            return false;
+        }
+
         ConsumeSharedFragment();
         InvalidateCalculation(clearPreviousResult: true);
-        categoryBases.Clear();
-        categoryBases.AddRange(session.Categories.Where(category => category.Source == CategorySource.User));
+        _categoryBases.Clear();
+        _categoryBases.AddRange(session.Categories.Where(category => category.Source == CategorySource.User));
 
-        cards.Clear();
-        cards.AddRange(preparedCards);
+        _cards.Clear();
+        _cards.AddRange(preparedCards);
 
-        combos.Clear();
-        combos.AddRange(session.Combos);
-        comboGroups.Clear();
-        comboGroups.AddRange(session.ComboGroups ?? []);
+        _combos.Clear();
+        _combos.AddRange(session.Combos);
+        _comboGroups.Clear();
+        _comboGroups.AddRange(session.ComboGroups ?? []);
 
         RestoreCategoryColorIndices(session);
-        handSize = session.HandSize;
-        activeCardIndex = activeComboIndex = -1;
-        sessionVersion++;
-        autosaveReplacementVersion++;
+        _handSize = session.HandSize;
+        _activeCardIndex = _activeComboIndex = -1;
+        _sessionVersion++;
+        _autosaveReplacementVersion++;
+
         return true;
     }
 
     public void Dispose() {
-        if (disposed) return;
+        if (_disposed) {
+            return;
+        }
+
         SharingNavigation.LocationChanged -= SharingLocationChanged;
-        sessionLoadVersion++;
-        disposed = true;
+        _sessionLoadVersion++;
+        _disposed = true;
         StopCalculation();
     }
 
     private async Task ImportDeckAsync(InputFileChangeEventArgs e) {
-        var request = BeginSessionLoad();
+        SessionLoadRequest request = BeginSessionLoad();
+
         try {
-            importError = null;
-            var importedCards = await _deckImportService.ImportDeckFromYdkAsync(e.File);
-            if (!OwnsSessionLoad(request)) return;
-            if (!CanApplySession(request)) { importError = "Current work changed during import. Import again to replace it."; return; }
+            _importError = null;
+            List<Card> importedCards = await _deckImportService.ImportDeckFromYdkAsync(e.File);
+
+            if (!OwnsSessionLoad(request)) {
+                return;
+            }
+
+            if (!CanApplySession(request)) {
+                _importError = "Current work changed during import. Import again to replace it.";
+                return;
+            }
+
             ReplaceImportedDeck(importedCards);
         }
         catch (Exception ex) {
-            if (OwnsSessionLoad(request)) importError = $"Failed to import deck: {ex.Message}";
+            if (OwnsSessionLoad(request)) {
+                _importError = $"Failed to import deck: {ex.Message}";
+            }
         }
     }
 
     private void OpenYdkeImport() {
-        importError = null;
-        ydkeCode = string.Empty;
-        isYdkeImportOpen = true;
+        _importError = null;
+        _ydkeCode = string.Empty;
+        _isYdkeImportOpen = true;
     }
 
     private void CancelYdkeImport() {
         // Revoke this form's request without invalidating a newer file/recovery load.
-        if (ydkeImportRequest is { } request && OwnsSessionLoad(request)) sessionLoadVersion++;
-        ydkeImportRequest = null;
-        importError = null;
-        ydkeCode = string.Empty;
-        isYdkeImportOpen = false;
+        if (_ydkeImportRequest is { } request && OwnsSessionLoad(request)) {
+            _sessionLoadVersion++;
+        }
+
+        _ydkeImportRequest = null;
+        _importError = null;
+        _ydkeCode = string.Empty;
+        _isYdkeImportOpen = false;
     }
 
     private async Task ImportYdkeAsync() {
-        var request = BeginSessionLoad();
+        SessionLoadRequest request = BeginSessionLoad();
+
         try {
-            ydkeImportRequest = request;
-            importError = null;
-            var importedCards = await _deckImportService.ImportDeckFromYdkeAsync(ydkeCode);
-            if (!OwnsSessionLoad(request)) return;
-            if (!CanApplySession(request)) { importError = "Current work changed during import. Import again to replace it."; return; }
+            _ydkeImportRequest = request;
+            _importError = null;
+            List<Card> importedCards = await _deckImportService.ImportDeckFromYdkeAsync(_ydkeCode);
+
+            if (!OwnsSessionLoad(request)) {
+                return;
+            }
+
+            if (!CanApplySession(request)) {
+                _importError = "Current work changed during import. Import again to replace it.";
+                return;
+            }
+
             ReplaceImportedDeck(importedCards);
-            ydkeCode = string.Empty;
-            isYdkeImportOpen = false;
+            _ydkeCode = string.Empty;
+            _isYdkeImportOpen = false;
         }
         catch (Exception ex) {
-            if (OwnsSessionLoad(request)) importError = $"Failed to import deck: {ex.Message}";
+            if (OwnsSessionLoad(request)) {
+                _importError = $"Failed to import deck: {ex.Message}";
+            }
         }
         finally {
-            if (ReferenceEquals(ydkeImportRequest, request)) ydkeImportRequest = null;
+            if (ReferenceEquals(_ydkeImportRequest, request)) {
+                _ydkeImportRequest = null;
+            }
         }
     }
 
     private void ReplaceImportedDeck(List<Card> importedCards) {
         ConsumeSharedFragment();
-        cards.Clear();
-        cards.AddRange(importedCards);
+        _cards.Clear();
+        _cards.AddRange(importedCards);
         InvalidateCalculation(clearPreviousResult: true);
-        activeCardIndex = -1;
-        autosaveReplacementVersion++;
+        _activeCardIndex = -1;
+        _autosaveReplacementVersion++;
     }
 
     private async Task SaveSession(string fileName) {
@@ -150,51 +225,67 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
             await _sessionService.SaveSessionAsync(CaptureSession(), fileName);
         }
         catch (Exception ex) {
-            errorMessage = $"Failed to save session: {ex.Message}";
+            _errorMessage = $"Failed to save session: {ex.Message}";
         }
     }
 
     private async Task LoadSessionFile(InputFileChangeEventArgs e) {
-        var request = BeginSessionLoad();
-        try {
-            var file = e.File;
-            using var streamReader = new StreamReader(file.OpenReadStream());
-            var fileContent = await streamReader.ReadToEndAsync();
+        SessionLoadRequest request = BeginSessionLoad();
 
-            var session = await _sessionService.LoadSessionAsync(fileContent);
+        try {
+            IBrowserFile file = e.File;
+            using StreamReader streamReader = new(file.OpenReadStream());
+            string fileContent = await streamReader.ReadToEndAsync();
+
+            SessionState session = await _sessionService.LoadSessionAsync(fileContent);
 
             if (!await RestoreSessionDataAsync(session, request)) {
-                if (OwnsSessionLoad(request)) errorMessage = "Current work changed while loading. Load the session again to replace it.";
-                return;
+                if (OwnsSessionLoad(request)) {
+                    _errorMessage = "Current work changed while loading. Load the session again to replace it.";
+                }
             }
         }
         catch (Exception ex) {
-            if (OwnsSessionLoad(request)) errorMessage = $"Failed to load session: {ex.Message}";
+            if (OwnsSessionLoad(request)) {
+                _errorMessage = $"Failed to load session: {ex.Message}";
+            }
         }
     }
 
     private async Task SaveCurrentSession() {
-        var fileName = $"calculator_session_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+        string fileName = $"calculator_session_{DateTime.Now:yyyyMMdd_HHmmss}.json";
         await SaveSession(fileName);
     }
 
     protected override async Task OnInitializedAsync() {
         InitializeSharing();
-        if (sharedFragment is not null) _pendingSessionService.PendingSession = null;
-        if (sharedFragment is null && _pendingSessionService.PendingSession is { } session) {
-            var request = BeginSessionLoad();
+
+        if (_sharedFragment is not null) {
+            _pendingSessionService.PendingSession = null;
+        }
+
+        if (_sharedFragment is null && _pendingSessionService.PendingSession is { } session) {
+            SessionLoadRequest request = BeginSessionLoad();
+
             try {
                 _pendingSessionService.PendingSession = null;
-                if (!await RestoreSessionDataAsync(session, request) && OwnsSessionLoad(request))
-                    errorMessage = "Current work changed while loading the example. Load the example again to replace it.";
+
+                if (!await RestoreSessionDataAsync(session, request) && OwnsSessionLoad(request)) {
+                    _errorMessage = "Current work changed while loading the example. Load the example again to replace it.";
+                }
             }
             catch (Exception ex) {
-                if (OwnsSessionLoad(request)) errorMessage = $"Failed to load example session: {ex.Message}";
+                if (OwnsSessionLoad(request)) {
+                    _errorMessage = $"Failed to load example session: {ex.Message}";
+                }
             }
         }
 
-        if (disposed) return;
-        sessionInitialized = true;
+        if (_disposed) {
+            return;
+        }
+
+        _sessionInitialized = true;
         await base.OnInitializedAsync();
     }
 }

@@ -6,9 +6,9 @@
 @inject IServiceProvider Services
 @inject IJSRuntime JS
 
-<span @ref="footprint" class="card-artwork @(Thumbnail ? "card-artwork-thumbnail" : "card-artwork-preview")">
-    @if (url is not null) {
-        <img src="@url" alt="@(Thumbnail ? string.Empty : $"Card artwork for {Name}")"
+<span @ref="_footprint" class="card-artwork @(Thumbnail ? "card-artwork-thumbnail" : "card-artwork-preview")">
+    @if (_url is not null) {
+        <img src="@_url" alt="@(Thumbnail ? string.Empty : $"Card artwork for {Name}")"
              width="268" height="391" decoding="async" />
     }
     else {
@@ -24,67 +24,130 @@
     [Parameter] public int ExternalCardId { get; set; }
     [Parameter] public string Name { get; set; } = string.Empty;
     [Parameter] public bool Thumbnail { get; set; }
-    private ElementReference footprint;
-    private IJSObjectReference? module;
-    private Task<IJSObjectReference>? moduleTask;
-    private DotNetObjectReference<CardArtwork>? bridge;
-    private int? registration;
-    private (string, int) identity;
-    private int version;
-    private bool disposed, changed;
-    private string? url;
+
+    private ElementReference _footprint;
+    private IJSObjectReference? _module;
+    private Task<IJSObjectReference>? _moduleTask;
+    private DotNetObjectReference<CardArtwork>? _bridge;
+    private int? _registration;
+    private (string, int) _identity;
+    private int _version;
+    private bool _disposed;
+    private bool _changed;
+    private string? _url;
 
     protected override void OnParametersSet() {
-        if (identity == (CardId, ExternalCardId)) return;
-        identity = (CardId, ExternalCardId);
-        version++; url = null; changed = true;
+        if (_identity == (CardId, ExternalCardId)) {
+            return;
+        }
+
+        _identity = (CardId, ExternalCardId);
+        _version++;
+        _url = null;
+        _changed = true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (disposed || (!firstRender && !changed)) return;
-        var currentVersion = version;
-        changed = false;
-        if (module is null && ExternalCardId <= 0) return;
-        module ??= await (moduleTask ??= JS.InvokeAsync<IJSObjectReference>("import", "./js/card-artwork.mjs").AsTask());
-        if (module is null || disposed || currentVersion != version) return;
-        if (registration is { } old) await module.InvokeVoidAsync("unobserve", old);
-        registration = null;
-        if (ExternalCardId <= 0) return;
-        bridge ??= DotNetObjectReference.Create(this);
-        var id = await module.InvokeAsync<int>("observe", footprint, bridge, ExternalCardId, currentVersion);
-        if (disposed || currentVersion != version) await module.InvokeVoidAsync("unobserve", id);
-        else registration = id;
+        if (_disposed || (!firstRender && !_changed)) {
+            return;
+        }
+
+        int currentVersion = _version;
+        _changed = false;
+
+        if (_module is null && ExternalCardId <= 0) {
+            return;
+        }
+
+        _module ??= await (_moduleTask ??= JS.InvokeAsync<IJSObjectReference>("import", "./js/card-artwork.mjs").AsTask());
+
+        if (_module is null || _disposed || currentVersion != _version) {
+            return;
+        }
+
+        if (_registration is int previousRegistrationId) {
+            await _module.InvokeVoidAsync("unobserve", previousRegistrationId);
+        }
+
+        _registration = null;
+
+        if (ExternalCardId <= 0) {
+            return;
+        }
+
+        _bridge ??= DotNetObjectReference.Create(this);
+        int registrationId = await _module.InvokeAsync<int>("observe", _footprint, _bridge, ExternalCardId, currentVersion);
+
+        if (_disposed || currentVersion != _version) {
+            await _module.InvokeVoidAsync("unobserve", registrationId);
+        }
+        else {
+            _registration = registrationId;
+        }
     }
 
     [JSInvokable]
     public async Task<ArtworkResolution> ResolveArtwork(int requestVersion) {
-        if (disposed || requestVersion != version) return new(null, null);
-        var externalId = ExternalCardId;
-        try { return new(await Services.GetRequiredService<ICardArtworkService>().GetArtworkUrlAsync(externalId), null); }
-        catch (CardArtworkLookupException ex) { return new(null, Math.Max(0, ex.RetryAfter.TotalMilliseconds)); }
-        catch { return new(null, 60000); }
+        if (_disposed || requestVersion != _version) {
+            return new(null, null);
+        }
+
+        int externalId = ExternalCardId;
+
+        try {
+            return new(await Services.GetRequiredService<ICardArtworkService>().GetArtworkUrlAsync(externalId), null);
+        }
+        catch (CardArtworkLookupException exception) {
+            return new(null, Math.Max(0, exception.RetryAfter.TotalMilliseconds));
+        }
+        catch {
+            return new(null, 60000);
+        }
     }
 
     [JSInvokable]
     public Task ArtworkReady(int requestVersion, string? source) => InvokeAsync(() => {
-        if (disposed || requestVersion != version) return;
+        if (_disposed || requestVersion != _version) {
+            return;
+        }
+
         // Only our numeric retained-image route is a display source, including mocks.
-        url = source is not null && Uri.TryCreate(source, UriKind.Absolute, out var uri) &&
-            uri.GetLeftPart(UriPartial.Authority) == CardArtworkService.ArtworkOrigin &&
-            System.Text.RegularExpressions.Regex.IsMatch(uri.PathAndQuery, @"^/small/[1-9]\d{0,9}\.jpg$") ? source : null;
+        bool isAllowedArtworkSource = source is not null
+            && Uri.TryCreate(source, UriKind.Absolute, out Uri? uri)
+            && uri.GetLeftPart(UriPartial.Authority) == CardArtworkService.ArtworkOrigin
+            && System.Text.RegularExpressions.Regex.IsMatch(uri.PathAndQuery, @"^/small/[1-9]\d{0,9}\.jpg$");
+
+        _url = isAllowedArtworkSource ? source : null;
         StateHasChanged();
     });
 
     public async ValueTask DisposeAsync() {
-        if (disposed) return;
-        disposed = true; version++;
-        try {
-            if (moduleTask is not null) module ??= await moduleTask;
-            if (module is not null && registration is { } id) await module.InvokeVoidAsync("unobserve", id);
-            if (module is not null) await module.DisposeAsync();
+        if (_disposed) {
+            return;
         }
-        catch (JSDisconnectedException) { }
-        finally { bridge?.Dispose(); }
+
+        _disposed = true;
+        _version++;
+
+        try {
+            if (_moduleTask is not null) {
+                _module ??= await _moduleTask;
+            }
+
+            if (_module is not null && _registration is int registrationId) {
+                await _module.InvokeVoidAsync("unobserve", registrationId);
+            }
+
+            if (_module is not null) {
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) {
+        }
+        finally {
+            _bridge?.Dispose();
+        }
     }
+
     public sealed record ArtworkResolution(string? Url, double? RetryAfter);
 }

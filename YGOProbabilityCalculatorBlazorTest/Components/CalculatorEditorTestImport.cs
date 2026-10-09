@@ -22,13 +22,13 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
 
     [Test]
     public void ImportDoesNotRebindSameNamedCardAndMissingZeroBoundBlocksCalculation() {
-        var original = new Card([], 2, "Same");
-        var replacement = new Card([], 2, "Same");
-        var importer = new Mock<IDeckImportService>();
+        Card original = new([], 2, "Same");
+        Card replacement = new([], 2, "Same");
+        Mock<IDeckImportService> importer = new();
         importer.Setup(service => service.ImportDeckFromYdkAsync(It.IsAny<IBrowserFile>()))
             .ReturnsAsync([replacement]);
         context.Services.AddSingleton(importer.Object);
-        var cut = Render(new SessionState {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
             Cards = [original], Combos = [new([], cards: [new(original.Id, 0, 0)])], HandSize = 1
         });
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
@@ -52,16 +52,16 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
                     0.75,
                     [new ComboProbabilityResult(0, "Unused result", 0.6)])));
         context.Services.AddSingleton<IFileService, FileService>();
-        var cardInfo = new Mock<ICardInfoService>();
-        cardInfo.Setup(x => x.GetCardInfoAsync(123)).ReturnsAsync(new CardInfo { Id = 123, Name = "Imported" });
-        cardInfo.Setup(x => x.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
+        Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.GetCardInfoAsync(123)).ReturnsAsync(new CardInfo { Id = 123, Name = "Imported" });
+        cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(new Dictionary<string, CardInfo>());
         context.Services.AddSingleton(cardInfo.Object);
         context.Services.AddSingleton<IDeckImportService, DeckImportService>();
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         await cut.Find("[aria-label='New combo group name']").InputAsync(new() { Value = "Tier 1" });
         await cut.Find("[aria-label='Add combo group']").ClickAsync(new());
-        var groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
+        string groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
         await cut.Find("#comboGroup0").ChangeAsync(new() { Value = groupId });
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
@@ -70,7 +70,7 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
         cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n123\n123\n#extra\n456", "deck.ydk"));
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
         Assert.That(cut.FindAll(".probability-results"), Is.Empty);
-        var card = cut.FindComponent<CardEditor>();
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
         Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.GroupId, Is.EqualTo(groupId));
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Imported").And.Contain("(2)"));
@@ -83,9 +83,9 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
 
     [Test]
     public async Task YdkeImportDisclosureCancelLeavesCurrentDeckUntouched() {
-        var session = Session();
-        var initialCardIds = session.Cards.Select(card => card.Id).ToArray();
-        var cut = Render(session);
+        SessionState session = Session();
+        string[] initialCardIds = session.Cards.Select(card => card.Id).ToArray();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
 
         await Button(cut, "Import YDKe").ClickAsync(new());
         Assert.That(Button(cut, "Import YDKe").HasAttribute("disabled"), Is.True);
@@ -102,18 +102,18 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
     [Test]
     public async Task YdkeImportUsesImportServiceReplacesDeckAndClearsPreviousCalculation() {
         const string code = "ydke://o6lXBZyFNAI=!viOnAg==!7ydRAA==!";
-        var replacement = new Card([], copies: 3, name: "Imported YDKe card", externalCardId: 89631139);
-        var importer = new Mock<IDeckImportService>();
+        Card replacement = new([], copies: 3, name: "Imported YDKe card", externalCardId: 89631139);
+        Mock<IDeckImportService> importer = new();
         importer.Setup(service => service.ImportDeckFromYdkeAsync(code)).ReturnsAsync([replacement]);
         context.Services.AddSingleton(importer.Object);
         context.Services.AddSingleton<IProbabilityCalculatorService>(
             new SequencedProbabilityCalculator(
                 new ProbabilityCalculationResult(0.75, [new ComboProbabilityResult(0, "Unused result", 0.6)])));
 
-        var session = Session();
+        SessionState session = Session();
         session.ComboGroups.Add(new("preserved-group", "Tier 1"));
         session.Combos[0].GroupId = "preserved-group";
-        var cut = Render(session);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
 
@@ -123,7 +123,7 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
 
         importer.Verify(service => service.ImportDeckFromYdkeAsync(code), Times.Once);
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
-        var imported = cut.FindComponent<CardEditor>().Instance.Card;
+        Card imported = cut.FindComponent<CardEditor>().Instance.Card;
         Assert.That(imported.Name, Is.EqualTo("Imported YDKe card"));
         Assert.That(imported.ExternalCardId, Is.EqualTo(89631139));
         Assert.That(imported.Copies, Is.EqualTo(3));
@@ -139,20 +139,23 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
     [TestCase(false, true)]
     [TestCase(true, true)]
     public async Task CancelledYdkeImportCannotReplaceDeckOrReportLateFailure(bool fail, bool reopen) {
-        var completion = new TaskCompletionSource<List<Card>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var importer = new Mock<IDeckImportService>();
+        TaskCompletionSource<List<Card>> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IDeckImportService> importer = new();
         importer.Setup(service => service.ImportDeckFromYdkeAsync(It.IsAny<string>()))
-            .Returns(() => { started.SetResult(); return completion.Task; });
+            .Returns(() => {
+                started.SetResult();
+                return completion.Task;
+            });
         context.Services.AddSingleton(importer.Object);
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         await Button(cut, "Calculate").ClickAsync(new());
-        var originalIds = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id).ToArray();
-        var originalResults = cut.Find(".probability-results").TextContent;
-        var writes = context.JSInterop.Invocations["sessionRecovery.update"].Count;
+        string[] originalIds = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id).ToArray();
+        string originalResults = cut.Find(".probability-results").TextContent;
+        int writes = context.JSInterop.Invocations["sessionRecovery.update"].Count;
         await Button(cut, "Import YDKe").ClickAsync(new());
         await cut.Find("#ydkeCodeInput").InputAsync(new() { Value = "ydke://pending!!!" });
-        var import = Button(cut, "Import").ClickAsync(new());
+        Task import = Button(cut, "Import").ClickAsync(new());
         await started.Task.WaitAsync(TimeSpan.FromSeconds(1));
         await Button(cut, "Cancel").ClickAsync(new());
         // A late completion must also leave a newly opened form alone.
@@ -160,14 +163,23 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
             await Button(cut, "Import YDKe").ClickAsync(new());
             await cut.Find("#ydkeCodeInput").InputAsync(new() { Value = "New draft" });
         }
-        if (fail) completion.SetException(new InvalidOperationException("Obsolete failure"));
-        else completion.SetResult([new([], name: "Obsolete deck")]);
+
+        if (fail) {
+            completion.SetException(new InvalidOperationException("Obsolete failure"));
+        } else {
+            completion.SetResult([new([], name: "Obsolete deck")]);
+        }
+
         await import;
 
         Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id).ToArray(), Is.EqualTo(originalIds));
         Assert.That(cut.Find(".probability-results").TextContent, Is.EqualTo(originalResults));
-        if (reopen) Assert.That(cut.Find("#ydkeCodeInput").GetAttribute("value"), Is.EqualTo("New draft"));
-        else Assert.That(cut.FindAll("#ydkeCodeInput"), Is.Empty);
+        if (reopen) {
+            Assert.That(cut.Find("#ydkeCodeInput").GetAttribute("value"), Is.EqualTo("New draft"));
+        } else {
+            Assert.That(cut.FindAll("#ydkeCodeInput"), Is.Empty);
+        }
+
         Assert.That(cut.FindAll("[role='alert']"), Is.Empty);
         Assert.That(context.JSInterop.Invocations["sessionRecovery.update"], Has.Count.EqualTo(writes));
     }
@@ -176,16 +188,16 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
     public async Task YdkeImportFailureKeepsDeckAndCorrectedRetrySucceeds() {
         const string invalidCode = "not a ydke code";
         const string validCode = "ydke://o6lXBZyFNAI=!viOnAg==!7ydRAA==!";
-        var replacement = new Card([], copies: 2, name: "Recovered import", externalCardId: 36996508);
-        var importer = new Mock<IDeckImportService>();
+        Card replacement = new([], copies: 2, name: "Recovered import", externalCardId: 36996508);
+        Mock<IDeckImportService> importer = new();
         importer.Setup(service => service.ImportDeckFromYdkeAsync(invalidCode))
             .ThrowsAsync(new FormatException("YDKe code must start with 'ydke://'."));
         importer.Setup(service => service.ImportDeckFromYdkeAsync(validCode)).ReturnsAsync([replacement]);
         context.Services.AddSingleton(importer.Object);
 
-        var session = Session();
-        var initialCardIds = session.Cards.Select(card => card.Id).ToArray();
-        var cut = Render(session);
+        SessionState session = Session();
+        string[] initialCardIds = session.Cards.Select(card => card.Id).ToArray();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         await Button(cut, "Import YDKe").ClickAsync(new());
         await cut.Find("input#ydkeCodeInput").InputAsync(new() { Value = invalidCode });
         await Button(cut, "Import").ClickAsync(new());
@@ -206,26 +218,30 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
 
     [Test]
     public async Task CancellingOldYdkeFormDoesNotRevokeNewerFileLoad() {
-        var importCompletion = new TaskCompletionSource<List<Card>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var importer = new Mock<IDeckImportService>();
+        TaskCompletionSource<List<Card>> importCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IDeckImportService> importer = new();
         importer.Setup(service => service.ImportDeckFromYdkeAsync(It.IsAny<string>())).Returns(importCompletion.Task);
         context.Services.AddSingleton(importer.Object);
-        var enrichmentStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var enrichmentCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var enricher = new Mock<ILegacyCardMetadataEnricher>();
+        TaskCompletionSource enrichmentStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource enrichmentCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<ILegacyCardMetadataEnricher> enricher = new();
         enricher.Setup(service => service.EnrichAsync(It.IsAny<SessionState>())).Returns(Task.CompletedTask);
         context.Services.AddSingleton(enricher.Object);
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         await Button(cut, "Import YDKe").ClickAsync(new());
         await cut.Find("#ydkeCodeInput").InputAsync(new() { Value = "ydke://pending!!!" });
-        var import = Button(cut, "Import").ClickAsync(new());
+        Task import = Button(cut, "Import").ClickAsync(new());
         enricher.Setup(service => service.EnrichAsync(It.IsAny<SessionState>()))
-            .Returns(() => { enrichmentStarted.SetResult(); return enrichmentCompletion.Task; });
-        var replacement = new SessionState { Cards = [new([], name: "Newer file")], HandSize = 7 };
-        var sessions = context.Services.GetRequiredService<ISessionService>();
-        var saved = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            .Returns(() => {
+                enrichmentStarted.SetResult();
+                return enrichmentCompletion.Task;
+            });
+        SessionState replacement = new() { Cards = [new([], name: "Newer file")], HandSize = 7 };
+        ISessionService sessions = context.Services.GetRequiredService<ISessionService>();
+        TaskCompletionSource<string> saved = new(TaskCreationOptions.RunContinuationsAsynchronously);
         context.JSInterop.SetupVoid("sessionRecovery.update", call => {
-            saved.TrySetResult((string)call.Arguments[2]!); return true;
+            saved.TrySetResult((string)call.Arguments[2]!);
+            return true;
         }).SetVoidResult();
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(sessions.SerializeSession(replacement), "fixture.json"));
         await enrichmentStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
@@ -233,7 +249,7 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
         importCompletion.SetResult([new([], name: "Obsolete import")]);
         enrichmentCompletion.SetResult();
         await import;
-        var payload = await saved.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        string payload = await saved.Task.WaitAsync(TimeSpan.FromSeconds(1));
 
         Assert.That(payload, Is.EqualTo(sessions.SerializeSession(replacement)));
         Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Newer file"));
@@ -243,11 +259,11 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
 
     [Test]
     public async Task YdkeImportControlsAreLabeledAndUseKeyboardAccessibleFormSemantics() {
-        var cut = Render();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
 
         await Button(cut, "Import YDKe").ClickAsync(new());
-        var form = cut.Find("form.ydke-import-form");
-        var input = cut.Find("form.ydke-import-form input#ydkeCodeInput");
+        IElement form = cut.Find("form.ydke-import-form");
+        IElement input = cut.Find("form.ydke-import-form input#ydkeCodeInput");
 
         Assert.Multiple(() => {
             Assert.That(input.GetAttribute("aria-label"), Is.EqualTo("YDKe deck code"));

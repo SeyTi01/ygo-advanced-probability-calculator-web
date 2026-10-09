@@ -23,16 +23,16 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
     [TestCase(false)]
     [TestCase(true)]
     public async Task SessionLoadClearsPreviousResultsAndDiscardsInFlightCompletion(bool failCalculation) {
-        var calculator = new SequencedProbabilityCalculator(
+        SequencedProbabilityCalculator calculator = new(
             new ProbabilityCalculationResult(0.9, [new ComboProbabilityResult(0, "Old session", 0.8)]),
             failSecond: failCalculation);
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
-        var calculation = Button(cut, "Calculate").ClickAsync(new());
+        Task calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
             await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             const string nextSession = """
@@ -63,7 +63,7 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
 
     [Test]
     public async Task ResultsShowStandaloneProbabilitiesInOrderForDuplicateAndUnnamedCombos() {
-        var session = new SessionState {
+        SessionState session = new() {
             Categories = [a, b],
             Cards = [new([a], 2, "A copies"), new([b], 2, "B copies")],
             Combos = [
@@ -73,17 +73,17 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
             ],
             HandSize = 2
         };
-        var cut = Render(session);
-        var expectedTotal = SmallDeckOracle.EnumerateProbability(session.Cards, session.Combos, session.HandSize);
-        var expectedStandalone = session.Combos
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        double expectedTotal = SmallDeckOracle.EnumerateProbability(session.Cards, session.Combos, session.HandSize);
+        double[] expectedStandalone = session.Combos
             .Select(combo => SmallDeckOracle.EnumerateProbability(session.Cards, [combo], session.HandSize))
             .ToArray();
 
         await Button(cut, "Calculate").ClickAsync(new());
         {
-            var result = cut.Find(".probability-results");
+            IElement result = cut.Find(".probability-results");
             Assert.That(result.GetAttribute("aria-live"), Is.EqualTo("polite"));
-            var totalRow = result.QuerySelector(".probability-total")!;
+            IElement totalRow = result.QuerySelector(".probability-total")!;
             Assert.That(totalRow.ClassList.Contains("combo-probability-row"), Is.True);
             Assert.That(totalRow.ParentElement!.ClassList.Contains("probability-results"), Is.True,
                 "the summary row must sit outside the numbered combo list");
@@ -92,12 +92,12 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
             Assert.That(totalRow.QuerySelector(".combo-probability-value")!.TextContent,
                 Is.EqualTo(expectedTotal.ToString("P2")));
 
-            var rows = result.QuerySelectorAll(".combo-probability-item");
+            IHtmlCollection<IElement> rows = result.QuerySelectorAll(".combo-probability-item");
             Assert.That(rows.Length, Is.EqualTo(3));
             Assert.That(rows.All(row => row.QuerySelector(".combo-probability-row") is not null), Is.True);
             Assert.That(rows.Select(row => row.QuerySelector(".combo-probability-name")!.TextContent),
                 Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
-            for (var index = 0; index < rows.Length; index++) {
+            for (int index = 0; index < rows.Length; index++) {
                 Assert.That(rows[index].QuerySelector(".combo-probability-value")!.TextContent,
                     Is.EqualTo(expectedStandalone[index].ToString("P2")));
             }
@@ -106,7 +106,7 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
 
     [Test]
     public async Task CategoryRenameInvalidatesAndRecalculatesTheWholeResultSet() {
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
 
@@ -115,11 +115,11 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
         await cut.Find("[aria-label='Save category name']").ClickAsync(new());
         AssertPreviousResult(cut);
 
-        var cards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
+        List<Card> cards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
             .Where(card => card.Active).ToList();
-        var combos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
+        List<Combo> combos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
             .Where(combo => combo.Active).ToList();
-        var expected = SmallDeckOracle.EnumerateProbability(cards, combos, 2);
+        double expected = SmallDeckOracle.EnumerateProbability(cards, combos, 2);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(
             cut.Find(".probability-total").TextContent,
@@ -129,17 +129,17 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
 
     [Test]
     public async Task ResultsRemainVisibleAndAreReplacedOnlyWhenRecalculationSucceeds() {
-        var calculator = new SequencedProbabilityCalculator(
+        SequencedProbabilityCalculator calculator = new(
             new ProbabilityCalculationResult(
                 0.75,
                 [new ComboProbabilityResult(0, "Updated combo", 0.6)]));
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Original combo"));
-        var copyButton = cut.Find("button[title='Copy a summary of these results']");
+        IElement copyButton = cut.Find("button[title='Copy a summary of these results']");
         Assert.That(copyButton.HasAttribute("disabled"), Is.False);
 
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
@@ -148,10 +148,10 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
         Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
         Assert.That(calculator.CallCount, Is.EqualTo(1), "input edits must not calculate automatically");
 
-        var calculation = Button(cut, "Calculate").ClickAsync(new());
+        Task calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
             await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            var runningAction = cut.Find(".calculate-action > button");
+            IElement runningAction = cut.Find(".calculate-action > button");
             Assert.That(runningAction.GetAttribute("aria-label"), Is.EqualTo("Cancel calculation"));
             Assert.That(runningAction.HasAttribute("disabled"), Is.False);
             Assert.That(cut.FindAll(".calculate-action > button"), Has.Count.EqualTo(1));
@@ -173,17 +173,17 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
 
     [Test]
     public async Task InvalidatedInFlightCalculationCannotReplaceThePreviousResult() {
-        var calculator = new SequencedProbabilityCalculator(
+        SequencedProbabilityCalculator calculator = new(
             new ProbabilityCalculationResult(
                 0.9,
                 [new ComboProbabilityResult(0, "Stale completion", 0.8)]));
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
 
-        var calculation = Button(cut, "Calculate").ClickAsync(new());
+        Task calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
             await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
@@ -204,20 +204,20 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
 
     [Test]
     public async Task CalculationErrorKeepsOldNumbersMarkedAsPreviousInputs() {
-        var calculator = new SequencedProbabilityCalculator(
+        SequencedProbabilityCalculator calculator = new(
             new ProbabilityCalculationResult(
                 0.9,
                 [new ComboProbabilityResult(0, "Unused result", 0.8)]),
             failSecond: true);
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         AssertPreviousResult(cut);
 
-        var calculation = Button(cut, "Calculate").ClickAsync(new());
+        Task calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
             await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         }
@@ -234,11 +234,11 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
 
     [Test]
     public async Task InputChangeDuringCalculationCannotRestoreStaleTotalOrComboRows() {
-        var delayedCalculator = new DelayedProbabilityCalculator();
+        DelayedProbabilityCalculator delayedCalculator = new();
         context.Services.AddSingleton<IProbabilityCalculatorService>(delayedCalculator);
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
 
-        var calculation = Button(cut, "Calculate").ClickAsync(new());
+        Task calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
             await delayedCalculator.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
@@ -256,13 +256,15 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
     [TestCase(false)]
     [TestCase(true)]
     public async Task ResourceLimitIsExplainedUnlessInputsHaveChanged(bool changeInputs) {
-        var calculator = new DelayedProbabilityCalculator { ExceedLimit = true };
+        DelayedProbabilityCalculator calculator = new() { ExceedLimit = true };
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
-        var cut = Render(Session());
-        var calculation = Button(cut, "Calculate").ClickAsync(new());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
+        Task calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
             await calculator.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            if (changeInputs) await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+            if (changeInputs) {
+                await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+            }
         }
         finally {
             calculator.Continue.Set();

@@ -16,49 +16,60 @@ public sealed class SessionSchemaMigrator {
         };
 
     public string MigrateToCurrent(string json) {
-        using var document = JsonDocument.Parse(json);
-        var rootElement = document.RootElement;
-        if (rootElement.ValueKind != JsonValueKind.Object)
-            throw new JsonException("Session root must be a JSON object.");
+        using JsonDocument document = JsonDocument.Parse(json);
+        JsonElement rootElement = document.RootElement;
 
-        var schemaVersionProperties = rootElement.EnumerateObject()
-            .Where(property => string.Equals(property.Name, nameof(SessionState.SchemaVersion), StringComparison.OrdinalIgnoreCase))
+        if (rootElement.ValueKind != JsonValueKind.Object) {
+            throw new JsonException("Session root must be a JSON object.");
+        }
+
+        JsonProperty[] schemaVersionProperties = rootElement.EnumerateObject()
+            .Where(static property => string.Equals(
+                property.Name,
+                nameof(SessionState.SchemaVersion),
+                StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
-        if (schemaVersionProperties.Length > 1)
+        if (schemaVersionProperties.Length > 1) {
             throw new JsonException("Session schema version field is duplicated.");
+        }
 
-        var sourceVersion = schemaVersionProperties.Length == 0
+        int sourceVersion = schemaVersionProperties.Length == 0
             ? 0
             : ReadSchemaVersion(schemaVersionProperties[0].Value);
 
-        if (sourceVersion < 0)
+        if (sourceVersion < 0) {
             throw new JsonException("Session schema version must be a non-negative integer.");
+        }
 
-        if (sourceVersion > SessionState.CurrentSchemaVersion)
+        if (sourceVersion > SessionState.CurrentSchemaVersion) {
             throw UnsupportedVersion(sourceVersion);
+        }
 
-        if (sourceVersion == SessionState.CurrentSchemaVersion)
+        if (sourceVersion == SessionState.CurrentSchemaVersion) {
             return json;
+        }
 
-        var root = JsonNode.Parse(json) as JsonObject
-            ?? throw new JsonException("Session root must be a JSON object.");
+        JsonObject root = JsonNode.Parse(json) as JsonObject ?? throw new JsonException("Session root must be a JSON object.");
+        int version = sourceVersion;
 
-        var version = sourceVersion;
         while (version < SessionState.CurrentSchemaVersion) {
-            if (!Migrations.TryGetValue(version, out var migration))
+            if (!Migrations.TryGetValue(version, out Action<JsonObject> migration)) {
                 throw UnsupportedVersion(version);
+            }
 
             migration(root);
             version++;
         }
 
-        return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        JsonSerializerOptions options = new() { WriteIndented = true };
+        return root.ToJsonString(options);
     }
 
     private static int ReadSchemaVersion(JsonElement value) {
-        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var version))
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out int version)) {
             throw new JsonException("Session schema version must be a non-negative integer.");
+        }
 
         return version;
     }
@@ -67,41 +78,80 @@ public sealed class SessionSchemaMigrator {
 
     private static void MigrateV1ToV2(JsonObject root) {
         // Pre-v2 categories are always user definitions, at every persisted location.
-        foreach (var category in Array(root, "Categories")) Classify(category);
-        foreach (var card in Array(root, "Cards"))
-            foreach (var category in Array(card, "Categories")) Classify(category);
-        foreach (var combo in Array(root, "Combos")) {
-            foreach (var constraint in Array(combo, "Categories")) {
+        foreach (JsonNode? category in Array(root, "Categories")) {
+            Classify(category);
+        }
+
+        foreach (JsonNode? card in Array(root, "Cards")) {
+            foreach (JsonNode? category in Array(card, "Categories")) {
+                Classify(category);
+            }
+        }
+
+        foreach (JsonNode? combo in Array(root, "Combos")) {
+            foreach (JsonNode? constraint in Array(combo, "Categories")) {
                 Classify(Property(constraint, "BaseCategory"));
                 FixMaximum(constraint);
             }
-            foreach (var constraint in Array(combo, "Cards")) FixMaximum(constraint);
+
+            foreach (JsonNode? constraint in Array(combo, "Cards")) {
+                FixMaximum(constraint);
+            }
         }
+
         SetSchemaVersion(root, 2);
 
         static void FixMaximum(JsonNode? node) {
-            if (node is not JsonObject requirement) return;
-            foreach (var key in requirement.Select(p => p.Key).Where(key =>
-                key.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase)).ToArray()) requirement.Remove(key);
+            if (node is not JsonObject requirement) {
+                return;
+            }
+
+            string[] keys = requirement.Select(static property => property.Key)
+                .Where(static key => key.Equals("MaximumMode", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            foreach (string key in keys) {
+                requirement.Remove(key);
+            }
+
             requirement["MaximumMode"] = "Fixed";
         }
 
         static void Classify(JsonNode? node) {
-            if (node is not JsonObject category) return;
-            foreach (var key in category.Select(p => p.Key).Where(key =>
-                key.Equals("Source", StringComparison.OrdinalIgnoreCase) ||
-                key.Equals("MetadataKey", StringComparison.OrdinalIgnoreCase)).ToArray()) category.Remove(key);
+            if (node is not JsonObject category) {
+                return;
+            }
+
+            string[] keys = category.Select(static property => property.Key)
+                .Where(static key => key.Equals("Source", StringComparison.OrdinalIgnoreCase) || key.Equals("MetadataKey", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            foreach (string key in keys) {
+                category.Remove(key);
+            }
+
             category["Source"] = "User";
         }
-        static JsonNode? Property(JsonNode? node, string name) => node is JsonObject obj
-            ? obj.FirstOrDefault(p => p.Key.Equals(name, StringComparison.OrdinalIgnoreCase)).Value : null;
-        static IEnumerable<JsonNode?> Array(JsonNode? node, string name) =>
-            Property(node, name) is JsonArray array ? array : [];
+
+        static JsonNode? Property(JsonNode? node, string name) {
+            if (node is not JsonObject objectNode) {
+                return null;
+            }
+
+            return objectNode.FirstOrDefault(property => property.Key.Equals(name, StringComparison.OrdinalIgnoreCase)).Value;
+        }
+
+        static IEnumerable<JsonNode?> Array(JsonNode? node, string name) {
+            return Property(node, name) as JsonArray ?? [];
+        }
     }
 
     private static void SetSchemaVersion(JsonObject root, int version) {
-        var propertyName = root.Select(property => property.Key)
-            .SingleOrDefault(name => string.Equals(name, nameof(SessionState.SchemaVersion), StringComparison.OrdinalIgnoreCase));
+        string? propertyName = root.Select(static property => property.Key)
+            .SingleOrDefault(name => string.Equals(
+                name,
+                nameof(SessionState.SchemaVersion),
+                StringComparison.OrdinalIgnoreCase));
 
         root[propertyName ?? nameof(SessionState.SchemaVersion)] = version;
     }

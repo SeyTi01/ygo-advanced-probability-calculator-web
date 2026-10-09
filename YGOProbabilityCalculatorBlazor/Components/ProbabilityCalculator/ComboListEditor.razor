@@ -10,7 +10,7 @@
                 <div class="editor-select-field">
                     <input class="form-control" type="text"
                            aria-label="New combo group name" placeholder="Group name"
-                           @bind="newGroupName" @bind:event="oninput"
+                           @bind="_newGroupName" @bind:event="oninput"
                            @onkeyup="HandleAddGroupKeyUp" />
                 </div>
                 <div class="editor-add-action">
@@ -18,20 +18,20 @@
                 </div>
             </div>
         </div>
-        @if (groupError is not null) {
+        @if (_groupError is not null) {
             <div class="mt-2 combo-group-validation-alert">
-                <DismissibleAlert Message="@groupError" OnDismiss="@(() => groupError = null)" />
+                <DismissibleAlert Message="@_groupError" OnDismiss="@(() => _groupError = null)" />
             </div>
         }
         <div class="mt-2">
-            @for (var index = 0; index < ComboGroups.Count; index++) {
-                var group = ComboGroups[index];
+            @for (int index = 0; index < ComboGroups.Count; index++) {
+                ComboGroup group = ComboGroups[index];
                 <span class="badge me-2 category-chip category-tag combo-group-chip" @key="group.Id">
-                    @if (editingGroupId == group.Id) {
-                        <input @ref="groupRenameInputReference"
+                    @if (_editingGroupId == group.Id) {
+                        <input @ref="_groupRenameInputReference"
                                class="form-control form-control-sm category-rename-input"
                                aria-label="@($"New name for group {group.Name}")"
-                               @bind="editingGroupName"
+                               @bind="_editingGroupName"
                                @bind:event="oninput"
                                @onkeydown="HandleGroupRenameKeyDown" />
                         <button type="button" class="category-icon-button"
@@ -55,7 +55,7 @@
                         </button>
                     }
                     else {
-                        <button @ref="groupNameButtonReferences[group.Id]"
+                        <button @ref="_groupNameButtonReferences[group.Id]"
                                 type="button" class="category-name-trigger"
                                 aria-label="@($"Edit group {group.Name}")"
                                 title="@($"Edit group {group.Name}")"
@@ -70,12 +70,12 @@
         </div>
     </div>
     <div class="accordion" id="combosAccordion">
-        @for (var index = 0; index < Combos.Count; index++) {
-            <ComboEditor @key="editorKeys[Combos[index]]"
+        @for (int index = 0; index < Combos.Count; index++) {
+            <ComboEditor @key="_editorKeys[Combos[index]]"
                 Index="index"
                 Combo="Combos[index]"
                 Cards="Cards"
-                CategoryBases="availableCategories"
+                CategoryBases="_availableCategories"
                 ComboGroups="ComboGroups"
                 CategoryColorIndices="CategoryColorIndices"
                 CategoryRename="CategoryRename"
@@ -118,108 +118,138 @@
     [Parameter] public EventCallback<(int From, int To)> OnMoveGroup { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMoveCombo { get; set; }
 
-    private IReadOnlyList<CategoryBase> availableCategories = [];
-    private readonly EditorKeys<Combo> editorKeys = new();
-    private readonly Dictionary<string, ElementReference> groupNameButtonReferences = new(StringComparer.Ordinal);
-    private string newGroupName = string.Empty;
-    private string? groupError;
-    private string? editingGroupId;
-    private string? editingGroupName;
-    private ElementReference groupRenameInputReference;
-    private bool focusGroupRenameInput;
-    private string? pendingGroupNameFocus;
+    private IReadOnlyList<CategoryBase> _availableCategories = [];
+    private readonly EditorKeys<Combo> _editorKeys = new();
+    private readonly Dictionary<string, ElementReference> _groupNameButtonReferences = new(StringComparer.Ordinal);
+    private string _newGroupName = string.Empty;
+    private string? _groupError;
+    private string? _editingGroupId;
+    private string? _editingGroupName;
+    private ElementReference _groupRenameInputReference;
+    private bool _focusGroupRenameInput;
+    private string? _pendingGroupNameFocus;
 
     protected override void OnParametersSet() {
-        editorKeys.Synchronize(Combos);
-        availableCategories = CategoryCatalog.Build(CategoryBases, Cards, Combos);
-        if (editingGroupId is { } id && !ComboGroups.Any(group => group.Id == id))
+        _editorKeys.Synchronize(Combos);
+        _availableCategories = CategoryCatalog.Build(CategoryBases, Cards, Combos);
+
+        if (_editingGroupId is string id && !ComboGroups.Any(group => group.Id == id)) {
             ClearGroupRename();
+        }
     }
 
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
-        editorKeys.Replace(Combos[payload.Index], payload.NewCombo);
+        _editorKeys.Replace(Combos[payload.Index], payload.NewCombo);
         return OnReplaceCombo.InvokeAsync(payload);
     }
 
     private Task DuplicateCombo(int index) => OnDuplicateCombo.InvokeAsync(index);
 
     private async Task AddGroup() {
-        var name = newGroupName.Trim();
-        if (!ValidateName(name)) return;
+        string name = _newGroupName.Trim();
+
+        if (!ValidateName(name)) {
+            return;
+        }
+
         await OnAddGroup.InvokeAsync(name);
-        newGroupName = string.Empty;
-        groupError = null;
+        _newGroupName = string.Empty;
+        _groupError = null;
     }
 
     private Task HandleAddGroupKeyUp(KeyboardEventArgs e) =>
         e.Key == "Enter" ? AddGroup() : Task.CompletedTask;
 
     private void BeginGroupRename(ComboGroup group) {
-        editingGroupId = group.Id;
-        editingGroupName = group.Name;
-        groupError = null;
-        pendingGroupNameFocus = null;
-        focusGroupRenameInput = true;
+        _editingGroupId = group.Id;
+        _editingGroupName = group.Name;
+        _groupError = null;
+        _pendingGroupNameFocus = null;
+        _focusGroupRenameInput = true;
     }
 
     private async Task SaveGroupName() {
-        if (editingGroupId is not { } id) return;
-        var name = editingGroupName?.Trim() ?? string.Empty;
-        if (!ValidateName(name, id)) return;
-        var group = ComboGroups.FirstOrDefault(item => item.Id == id);
-        if (group is null) {
-            ClearGroupRename();
+        if (_editingGroupId is not string id) {
             return;
         }
 
-        groupError = null;
-        if (!string.Equals(name, group.Name, StringComparison.Ordinal))
+        string name = _editingGroupName?.Trim() ?? string.Empty;
+
+        if (!ValidateName(name, id)) {
+            return;
+        }
+
+        ComboGroup? group = ComboGroups.FirstOrDefault(item => item.Id == id);
+
+        if (group is null) {
+            ClearGroupRename();
+
+            return;
+        }
+
+        _groupError = null;
+
+        if (!string.Equals(name, group.Name, StringComparison.Ordinal)) {
             await OnRenameGroup.InvokeAsync((id, name));
-        pendingGroupNameFocus = id;
+        }
+
+        _pendingGroupNameFocus = id;
         ClearGroupRename();
     }
 
     private void CancelGroupRename() {
-        pendingGroupNameFocus = editingGroupId;
+        _pendingGroupNameFocus = _editingGroupId;
         ClearGroupRename();
     }
 
     private void ClearGroupRename() {
-        editingGroupId = null;
-        editingGroupName = null;
-        focusGroupRenameInput = false;
+        _editingGroupId = null;
+        _editingGroupName = null;
+        _focusGroupRenameInput = false;
     }
 
     private Task HandleGroupRenameKeyDown(KeyboardEventArgs e) {
-        if (e.Key == "Enter") return SaveGroupName();
-        if (e.Key == "Escape") CancelGroupRename();
+        if (e.Key == "Enter") {
+            return SaveGroupName();
+        }
+
+        if (e.Key == "Escape") {
+            CancelGroupRename();
+        }
+
         return Task.CompletedTask;
     }
 
     private async Task RemoveGroup(ComboGroup group) {
-        if (editingGroupId == group.Id) ClearGroupRename();
+        if (_editingGroupId == group.Id) {
+            ClearGroupRename();
+        }
+
         await OnRemoveGroup.InvokeAsync(group.Id);
     }
 
     private bool ValidateName(string name, string? excludingId = null) {
-        groupError = string.IsNullOrWhiteSpace(name)
-            ? "Group name cannot be empty."
-            : ComboGroups.Any(group => group.Id != excludingId &&
-                string.Equals(group.Name, name, StringComparison.OrdinalIgnoreCase))
-                ? "A group with that name already exists."
-                : null;
-        return groupError is null;
+        if (string.IsNullOrWhiteSpace(name)) {
+            _groupError = "Group name cannot be empty.";
+        }
+        else {
+            bool hasDuplicateName = ComboGroups.Any(group => group.Id != excludingId && string.Equals(group.Name, name, StringComparison.OrdinalIgnoreCase));
+            _groupError = hasDuplicateName ? "A group with that name already exists." : null;
+        }
+
+        return _groupError is null;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (focusGroupRenameInput) {
-            focusGroupRenameInput = false;
-            await groupRenameInputReference.FocusAsync();
+        if (_focusGroupRenameInput) {
+            _focusGroupRenameInput = false;
+            await _groupRenameInputReference.FocusAsync();
+
             return;
         }
 
-        if (pendingGroupNameFocus is { } id && groupNameButtonReferences.TryGetValue(id, out var button)) {
-            pendingGroupNameFocus = null;
+        if (_pendingGroupNameFocus is string id && _groupNameButtonReferences.TryGetValue(id, out ElementReference button)) {
+            _pendingGroupNameFocus = null;
             await button.FocusAsync();
         }
     }

@@ -19,10 +19,10 @@ public class ComboCategoryConverterTests {
 
     [Test]
     public void Serialize_ValidComboCategory_ReturnsCorrectJson() {
-        var baseCategory = new CategoryBase("TestCategory");
-        var comboCategory = new ComboCategory(baseCategory, 1, 3);
+        CategoryBase baseCategory = new("TestCategory");
+        ComboCategory comboCategory = new(baseCategory, 1, 3);
 
-        var json = JsonSerializer.Serialize(comboCategory, _options);
+        string json = JsonSerializer.Serialize(comboCategory, _options);
 
         const string expectedJson = "{\"BaseCategory\":{\"Name\":\"TestCategory\",\"Source\":\"User\"},\"MinCount\":1,\"MaxCount\":3,\"MaximumMode\":\"Fixed\"}";
         Assert.That(json, Is.EqualTo(expectedJson));
@@ -32,7 +32,7 @@ public class ComboCategoryConverterTests {
     public void Deserialize_ValidJson_ReturnsComboCategory() {
         const string json = "{\"BaseCategory\":{\"Name\":\"TestCategory\"},\"MinCount\":1,\"MaxCount\":3}";
 
-        var comboCategory = JsonSerializer.Deserialize<ComboCategory>(json, _options);
+        ComboCategory? comboCategory = JsonSerializer.Deserialize<ComboCategory>(json, _options);
 
         Assert.That(comboCategory, Is.Not.Null);
         Assert.Multiple(() => {

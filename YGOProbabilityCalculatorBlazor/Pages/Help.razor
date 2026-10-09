@@ -1,4 +1,5 @@
 @page "/help"
+@using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using YGOProbabilityCalculatorBlazor.Constants
 @inject NavigationManager NavigationManager
@@ -93,9 +94,9 @@
         <p>Use <strong>Try It with Example Data</strong> below to load the complete configuration into the calculator.</p>
         <div class="mt-3">
             <button class="btn btn-primary" @onclick="LoadExampleSession">Try It with Example Data</button>
-            @if (!string.IsNullOrEmpty(errorMessage)) {
+            @if (!string.IsNullOrEmpty(_errorMessage)) {
                 <div class="alert alert-danger mt-2">
-                    @errorMessage
+                    @_errorMessage
                 </div>
             }
         </div>
@@ -117,23 +118,24 @@
 </div>
 
 @code {
-    private string? errorMessage;
+    private string? _errorMessage;
 
     private async Task LoadExampleSession() {
         try {
-            var fileContent = await _fileService.ReadAllTextAsync("sample-data/example_session_state.json");
+            string? fileContent = await _fileService.ReadAllTextAsync("sample-data/example_session_state.json");
+
             if (string.IsNullOrEmpty(fileContent)) {
-                errorMessage = "The example session file is empty";
+                _errorMessage = "The example session file is empty";
                 StateHasChanged();
                 return;
             }
 
-            var session = await _sessionService.LoadSessionAsync(fileContent);
+            SessionState session = await _sessionService.LoadSessionAsync(fileContent);
             _pendingSessionService.PendingSession = session;
             NavigationManager.NavigateTo("/", forceLoad: false);
         }
         catch (Exception ex) {
-            errorMessage = $"Failed to load example session: {ex.Message}";
+            _errorMessage = $"Failed to load example session: {ex.Message}";
             StateHasChanged();
         }
     }

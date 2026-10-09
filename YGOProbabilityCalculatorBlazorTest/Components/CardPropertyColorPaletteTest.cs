@@ -63,8 +63,8 @@ public class CardPropertyColorPaletteTest {
 
     [Test]
     public void StableMetadataKeyDeterminesClassRegardlessOfDisplayName() {
-        var fire = new CategoryBase("Something with an unrelated label", CategorySource.Metadata, "attribute:fire");
-        var misleadingLabel = new CategoryBase("Attribute: WATER", CategorySource.Metadata, "attribute:fire");
+        CategoryBase fire = new("Something with an unrelated label", CategorySource.Metadata, "attribute:fire");
+        CategoryBase misleadingLabel = new("Attribute: WATER", CategorySource.Metadata, "attribute:fire");
 
         Assert.That(CardPropertyColorPalette.GetCssClass(fire), Is.EqualTo("card-property-color-attribute-fire"));
         Assert.That(CardPropertyColorPalette.GetCssClass(misleadingLabel), Is.EqualTo(CardPropertyColorPalette.GetCssClass(fire)));

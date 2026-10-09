@@ -5,5 +5,6 @@ namespace YGOProbabilityCalculatorBlazor.Services.Interface;
 
 public interface IDeckImportService {
     Task<List<Card>> ImportDeckFromYdkAsync(IBrowserFile file);
+
     Task<List<Card>> ImportDeckFromYdkeAsync(string ydke);
 }

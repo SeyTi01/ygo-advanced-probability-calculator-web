@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
@@ -7,22 +8,27 @@ namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 /// <summary>Shared nonessential display lookups. Never exposes provider image URLs.</summary>
 public sealed class CardArtworkService(ICardInfoService cardInfoService) : ICardArtworkService {
     public const string ArtworkOrigin = "https://ygo-calculator-artwork.ygo-probability.workers.dev";
-    private readonly ConcurrentDictionary<int, Lazy<Task<string?>>> lookups = new();
+    private readonly ConcurrentDictionary<int, Lazy<Task<string?>>> _lookups = new();
 
     public Task<string?> GetArtworkUrlAsync(int externalCardId) => externalCardId is > 0 and <= 2147483647
-        ? lookups.GetOrAdd(externalCardId, id => new(() => ResolveAsync(id))).Value
+        ? _lookups.GetOrAdd(externalCardId, id => new(() => ResolveAsync(id))).Value
         : Task.FromResult<string?>(null);
 
     private async Task<string?> ResolveAsync(int id) {
         try {
-            var info = await cardInfoService.GetCardArtworkInfoAsync(id);
-            return info?.SelectArtworkImageId(id) is > 0 and <= 2147483647 and var imageId
-                ? $"{ArtworkOrigin}/small/{imageId.ToString(CultureInfo.InvariantCulture)}.jpg" : null;
+            CardInfo info = await cardInfoService.GetCardArtworkInfoAsync(id);
+            int? imageId = info.SelectArtworkImageId(id);
+
+            if (imageId is > 0 and <= 2147483647) {
+                return $"{ArtworkOrigin}/small/{imageId.Value.ToString(CultureInfo.InvariantCulture)}.jpg";
+            }
+
+            return null;
         }
         catch {
             // Only authoritative absence is a negative cache entry. The viewport loader
             // owns bounded retries; a failed metadata request must remain retryable.
-            lookups.TryRemove(id, out _);
+            _lookups.TryRemove(id, out _);
             throw;
         }
     }

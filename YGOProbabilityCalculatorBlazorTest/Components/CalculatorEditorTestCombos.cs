@@ -22,20 +22,20 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public void ComboHeaderKeepsVisibleBadgesAndAccessibleControlsDistinct() {
-        var categories = Enumerable.Range(1, 7)
+        List<CategoryBase> categories = Enumerable.Range(1, 7)
             .Select(index => new CategoryBase($"Long Category {index}"))
             .ToList();
         const string comboName = "A Long Combo Name For Mobile";
-        var combo = new Combo(categories.Select(category => new ComboCategory(category, 1, 5)).ToList(), comboName);
-        var cut = Render(new SessionState {
+        Combo combo = new(categories.Select(category => new ComboCategory(category, 1, 5)).ToList(), comboName);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
             Categories = categories,
             Cards = [],
             Combos = [combo],
             HandSize = 5
         });
-        var editor = cut.FindComponent<ComboEditor>();
-        var header = editor.Find(".combo-editor-header");
-        var accordionButton = header.QuerySelector("button.accordion-button");
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        IElement header = editor.Find(".combo-editor-header");
+        IElement? accordionButton = header.QuerySelector("button.accordion-button");
 
         Assert.That(accordionButton, Is.Not.Null);
         Assert.That(accordionButton!.GetAttribute("aria-controls"), Is.EqualTo("combo0"));
@@ -45,9 +45,9 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         Assert.That(accordionButton.QuerySelector(".combo-header-content .badge.bg-secondary")?.TextContent, Is.EqualTo("+1 more"));
         Assert.That(accordionButton.TextContent, Does.Contain("Long Category 1 (1–5)"));
 
-        var actionButtons = header.QuerySelectorAll("button");
-        var activeToggle = header.QuerySelector("input.entry-editor-active-checkbox");
-        var removeButton = header.QuerySelector("button[aria-label='Remove combo']");
+        IHtmlCollection<IElement> actionButtons = header.QuerySelectorAll("button");
+        IElement? activeToggle = header.QuerySelector("input.entry-editor-active-checkbox");
+        IElement? removeButton = header.QuerySelector("button[aria-label='Remove combo']");
         Assert.That(header.QuerySelector($"button[aria-label='Duplicate combo {comboName}']"), Is.Null);
         Assert.That(actionButtons.Length, Is.EqualTo(4));
         Assert.That(header.QuerySelectorAll(".reorder-controls button").Length, Is.EqualTo(2));
@@ -56,7 +56,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         Assert.That(removeButton?.GetAttribute("title"), Is.EqualTo("Remove combo"));
         accordionButton.Click();
         Assert.That(editor.Find(".combo-editor-header .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
-        var duplicateButton = editor.Find(".accordion-body button[aria-label='Duplicate combo A Long Combo Name For Mobile']");
+        IElement duplicateButton = editor.Find(".accordion-body button[aria-label='Duplicate combo A Long Combo Name For Mobile']");
         Assert.Multiple(() => {
             Assert.That(duplicateButton.TextContent.Trim(), Is.EqualTo("Duplicate combo"));
             Assert.That(duplicateButton.GetAttribute("title"), Is.EqualTo($"Duplicate combo {comboName}"));
@@ -71,14 +71,14 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task DuplicateActionAppearsOnlyOnTheExpandedComboAndCardHeaderControlsStayUnchanged() {
-        var cut = Render(new SessionState {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
             Categories = [a],
             Cards = [new([a], 3, "Card")],
             Combos = [new([], "First combo"), new([], "Second combo")],
             HandSize = 3
         });
-        var combos = cut.FindComponents<ComboEditor>();
-        var cardHeader = cut.FindComponent<CardEditor>().Find(".entry-editor-header");
+        IReadOnlyList<IRenderedComponent<ComboEditor>> combos = cut.FindComponents<ComboEditor>();
+        IElement cardHeader = cut.FindComponent<CardEditor>().Find(".entry-editor-header");
 
         Assert.That(cut.FindAll("button[aria-label^='Duplicate combo ']"), Is.Empty);
         Assert.Multiple(() => {
@@ -105,31 +105,31 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task DuplicateComboCopiesCommittedStateAfterTheSourceAndCanBeEditedIndependently() {
-        var monster = new CategoryBase("Monster", CategorySource.Metadata, "kind:monster");
-        var cards = new List<Card> {
+        CategoryBase monster = new("Monster", CategorySource.Metadata, "kind:monster");
+        List<Card> cards = [
             new([a, monster], 2, "First card", id: "first-card-id"),
             new([b], 2, "Second card", id: "second-card-id")
-        };
-        var source = new Combo(
+        ];
+        Combo source = new(
             [new(a, 1, 2), new(monster, 0, 1)],
             "Starter",
             active: false,
             groupId: "group-one",
             cards: [new(cards[0].Id, 1, 2), new("missing-card-id", 0, 1)]);
-        var session = new SessionState {
+        SessionState session = new() {
             Categories = [a, b],
             Cards = cards,
             Combos = [new([], "Before"), source, new([], "After")],
             ComboGroups = [new("group-one", "Group One"), new("group-two", "Group Two")],
             HandSize = 2
         };
-        var cut = Render(session);
-        var sourceEditor = cut.FindComponents<ComboEditor>()[1];
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        IRenderedComponent<ComboEditor> sourceEditor = cut.FindComponents<ComboEditor>()[1];
 
         Assert.That(cut.FindAll("button[aria-label^='Duplicate combo ']"), Is.Empty);
         await sourceEditor.Find(".accordion-button").ClickAsync(new());
         Assert.That(cut.FindAll("button[aria-label^='Duplicate combo ']"), Has.Count.EqualTo(1));
-        var duplicateAction = sourceEditor.Find(".accordion-body button[aria-label='Duplicate combo Starter']");
+        IElement duplicateAction = sourceEditor.Find(".accordion-body button[aria-label='Duplicate combo Starter']");
         Assert.Multiple(() => {
             Assert.That(duplicateAction.GetAttribute("title"), Is.EqualTo("Duplicate combo Starter"));
             Assert.That(duplicateAction.GetAttribute("type"), Is.EqualTo("button"));
@@ -138,7 +138,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
         await duplicateAction.ClickAsync(new());
 
-        var editors = cut.FindComponents<ComboEditor>();
+        IReadOnlyList<IRenderedComponent<ComboEditor>> editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors.Select(editor => editor.Instance.Combo.Name),
             Is.EqualTo(new[] { "Before", "Starter", "Starter copy", "After" }));
         Assert.That(editors[1].Instance, Is.SameAs(sourceEditor.Instance));
@@ -146,8 +146,8 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         Assert.That(editors[2].Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(editors[1].Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
 
-        var duplicateEditor = editors[2];
-        var duplicate = duplicateEditor.Instance.Combo;
+        IRenderedComponent<ComboEditor> duplicateEditor = editors[2];
+        Combo duplicate = duplicateEditor.Instance.Combo;
         Assert.Multiple(() => {
             Assert.That(duplicate, Is.Not.SameAs(source));
             Assert.That(duplicate.Name, Is.EqualTo("Starter copy"));
@@ -194,11 +194,11 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task DuplicateComboNamesUseCopySuffixesAndKeepUnnamedCombosUnnamed() {
-        var session = new SessionState {
+        SessionState session = new() {
             Combos = [new([], "Starter"), new([], null)],
             HandSize = 5
         };
-        var cut = Render(session);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
 
         await DuplicateComboAsync(cut, 0);
         Assert.That(cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo.Name),
@@ -209,7 +209,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
             Is.EqualTo(new string?[] { "Starter", "Starter copy 2", "Starter copy", null }));
 
         await DuplicateComboAsync(cut, 3);
-        var editors = cut.FindComponents<ComboEditor>();
+        IReadOnlyList<IRenderedComponent<ComboEditor>> editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors[3].Instance.Combo.Name, Is.Null);
         Assert.That(editors[4].Instance.Combo.Name, Is.Null);
         Assert.That(editors[4].Find(".combo-header-name").TextContent, Is.EqualTo("Combo 5"));
@@ -217,7 +217,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task DuplicateComboNameCollisionsAreCaseInsensitiveAndDeterministic() {
-        var cut = Render(new SessionState {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
             Combos = [new([], "Starter"), new([], "starter COPY"), new([], "STARTER copy 2")],
             HandSize = 5
         });
@@ -231,15 +231,15 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task DuplicateComboUsesCommittedModelAndPreservesExistingCategoryDraftsAndOrder() {
-        var session = Session();
-        var before = new Combo([], "Before");
-        var middle = new Combo([new(a, 1, 1)], "Middle");
-        var after = new Combo([new(b, 1, 1)], "After");
+        SessionState session = Session();
+        Combo before = new([], "Before");
+        Combo middle = new([new(a, 1, 1)], "Middle");
+        Combo after = new([new(b, 1, 1)], "After");
         session.Combos.Clear();
         session.Combos.AddRange(new[] { before, middle, after });
-        var cut = Render(session);
-        var sourceEditor = cut.FindComponents<ComboEditor>()[1];
-        var otherEditor = cut.FindComponents<ComboEditor>()[2];
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        IRenderedComponent<ComboEditor> sourceEditor = cut.FindComponents<ComboEditor>()[1];
+        IRenderedComponent<ComboEditor> otherEditor = cut.FindComponents<ComboEditor>()[2];
 
         await sourceEditor.Find("#comboCategory1").ChangeAsync(new() { Value = b.Identity });
         await sourceEditor.Find("#minCount1").InputAsync(new() { Value = "0" });
@@ -250,7 +250,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
         await DuplicateComboAsync(cut, 1);
 
-        var editors = cut.FindComponents<ComboEditor>();
+        IReadOnlyList<IRenderedComponent<ComboEditor>> editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors[1].Instance, Is.SameAs(sourceEditor.Instance));
         Assert.That(editors[3].Instance, Is.SameAs(otherEditor.Instance));
         Assert.Multiple(() => {
@@ -279,12 +279,12 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task DuplicateComboDoesNotCopyUncommittedDirectCardDraft() {
-        var session = Session();
+        SessionState session = Session();
         session.Combos.Clear();
         session.Combos.Add(new([new(a, 1, 2)], "Card draft source"));
-        var cut = Render(session);
-        var sourceEditor = cut.FindComponent<ComboEditor>();
-        var cardId = session.Cards[1].Id;
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        IRenderedComponent<ComboEditor> sourceEditor = cut.FindComponent<ComboEditor>();
+        string cardId = session.Cards[1].Id;
 
         await sourceEditor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
         await sourceEditor.Find("#comboCard0").ChangeAsync(new() { Value = cardId });
@@ -292,7 +292,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         await sourceEditor.Find("#maxCount0").InputAsync(new() { Value = "2" });
         await DuplicateComboAsync(cut, 0);
 
-        var editors = cut.FindComponents<ComboEditor>();
+        IReadOnlyList<IRenderedComponent<ComboEditor>> editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors[0].Instance, Is.SameAs(sourceEditor.Instance));
         Assert.Multiple(() => {
             Assert.That(sourceEditor.Instance.Combo.Cards, Is.Empty);
@@ -312,25 +312,25 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task DuplicateComboSurvivesSessionSaveLoadAndRemainsIndependentlyEditable() {
-        var monster = new CategoryBase("Monster", CategorySource.Metadata, "kind:monster");
-        var cards = new List<Card> { new([a, monster], 2, "First card", id: "persisted-card-id") };
-        var source = new Combo([new(a, 1, 2), new(monster, 0, 1)], "Starter",
+        CategoryBase monster = new("Monster", CategorySource.Metadata, "kind:monster");
+        List<Card> cards = [new([a, monster], 2, "First card", id: "persisted-card-id")];
+        Combo source = new([new(a, 1, 2), new(monster, 0, 1)], "Starter",
             active: false, groupId: "persisted-group", cards: [new(cards[0].Id, 1, 2)]);
-        var session = new SessionState {
+        SessionState session = new() {
             Categories = [a, b],
             Cards = cards,
             Combos = [new([new(b, 0, 1)], "Before"), source],
             ComboGroups = [new("persisted-group", "Tier 1")],
             HandSize = 2
         };
-        var cut = Render(session);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
 
         await DuplicateComboAsync(cut, 1);
         await Button(cut, "Save Session").ClickAsync(new());
-        var invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
-        var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
-        using (var document = System.Text.Json.JsonDocument.Parse(json)) {
-            var combos = document.RootElement.GetProperty("Combos").EnumerateArray().ToArray();
+        JSRuntimeInvocation invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
+        string json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));
+        using (System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(json)) {
+            System.Text.Json.JsonElement[] combos = document.RootElement.GetProperty("Combos").EnumerateArray().ToArray();
             Assert.That(combos.Select(combo => combo.GetProperty("Name").GetString()),
                 Is.EqualTo(new[] { "Before", "Starter", "Starter copy" }));
             Assert.That(combos[2].GetProperty("Active").GetBoolean(), Is.False);
@@ -347,7 +347,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "duplicated-session.json"));
         cut.WaitForAssertion(() => Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(3)));
-        var loaded = cut.FindComponents<ComboEditor>();
+        IReadOnlyList<IRenderedComponent<ComboEditor>> loaded = cut.FindComponents<ComboEditor>();
         Assert.Multiple(() => {
             Assert.That(loaded.Select(editor => editor.Instance.Combo.Name),
                 Is.EqualTo(new[] { "Before", "Starter", "Starter copy" }));
@@ -365,18 +365,18 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task DuplicateComboInvalidatesResultsWithoutRecalculatingAndDiscardsInFlightCompletion() {
-        var calculator = new SequencedProbabilityCalculator(
+        SequencedProbabilityCalculator calculator = new(
             new ProbabilityCalculationResult(
                 0.9,
                 [new ComboProbabilityResult(0, "Stale completion", 0.8)]));
         context.Services.AddSingleton<IProbabilityCalculatorService>(calculator);
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         Assert.That(calculator.CallCount, Is.EqualTo(1));
 
-        var calculation = Button(cut, "Calculate").ClickAsync(new());
+        Task calculation = Button(cut, "Calculate").ClickAsync(new());
         try {
             await calculator.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await DuplicateComboAsync(cut, 0);
@@ -398,14 +398,14 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task CalculationAfterDuplicationIncludesBothActiveCombos() {
-        var cut = Render(Session());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         await DuplicateComboAsync(cut, 0);
 
-        var cards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
+        List<Card> cards = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card)
             .Where(card => card.Active).ToList();
-        var combos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
+        List<Combo> combos = cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo)
             .Where(combo => combo.Active).ToList();
-        var expected = SmallDeckOracle.EnumerateProbability(cards, combos, 2);
+        double expected = SmallDeckOracle.EnumerateProbability(cards, combos, 2);
 
         await Button(cut, "Calculate").ClickAsync(new());
 

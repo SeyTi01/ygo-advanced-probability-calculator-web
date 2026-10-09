@@ -18,11 +18,8 @@ using TestContext = Bunit.TestContext;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public abstract class CalculatorEditorTestBase {
-
     protected TestContext context = null!;
-
     protected readonly CategoryBase a = new("A");
-
     protected readonly CategoryBase b = new("B");
 
     [SetUp]
@@ -35,7 +32,7 @@ public abstract class CalculatorEditorTestBase {
         context.Services.AddSingleton<ISessionService, SessionService>();
         context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
         context.Services.AddSingleton<IDeckImportService>(Mock.Of<IDeckImportService>());
-        var cardInfo = new Mock<ICardInfoService>();
+        Mock<ICardInfoService> cardInfo = new();
         cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(new Dictionary<string, CardInfo>(StringComparer.Ordinal));
         context.Services.AddSingleton(cardInfo.Object);
@@ -59,7 +56,7 @@ public abstract class CalculatorEditorTestBase {
         fragment.FindAll("button").Single(element => element.TextContent.Trim() == text);
 
     protected static void AssertAnyMaximumDraft(IRenderedFragment fragment, int index = 0) {
-        var maximum = fragment.Find($"#maxCount{index}");
+        IElement maximum = fragment.Find($"#maxCount{index}");
         Assert.That(maximum.GetAttribute("value"), Is.EqualTo(string.Empty));
         Assert.That(maximum.GetAttribute("placeholder"), Is.EqualTo("Any"));
         Assert.That(maximum.GetAttribute("title"), Is.EqualTo("Leave empty for Any"));
@@ -68,9 +65,12 @@ public abstract class CalculatorEditorTestBase {
     }
 
     protected static async Task DuplicateComboAsync(IRenderedFragment fragment, int index) {
-        var editor = fragment.FindComponents<ComboEditor>()[index];
-        if (editor.Find(".accordion-button").GetAttribute("aria-expanded") != "true")
+        IRenderedComponent<ComboEditor> editor = fragment.FindComponents<ComboEditor>()[index];
+
+        if (editor.Find(".accordion-button").GetAttribute("aria-expanded") != "true") {
             await editor.Find(".accordion-button").ClickAsync(new());
+        }
+
         await editor.Find("button[aria-label^='Duplicate combo ']").ClickAsync(new());
     }
 
@@ -81,7 +81,7 @@ public abstract class CalculatorEditorTestBase {
     }
 
     protected string SavedSessionJson(int saveNumber = 0) {
-        var invocation = context.JSInterop.Invocations
+        JSRuntimeInvocation invocation = context.JSInterop.Invocations
             .Where(invocation => invocation.Arguments.Count == 2 &&
                 invocation.Arguments[0] is string fileName && fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase) &&
                 invocation.Arguments[1] is string)
@@ -91,14 +91,16 @@ public abstract class CalculatorEditorTestBase {
 
     protected static async Task RenameGroupWithEnter(IRenderedFragment fragment, string oldName, string newName) {
         await fragment.Find($"[aria-label='Edit group {oldName}']").ClickAsync(new());
-        var input = fragment.Find($"[aria-label='New name for group {oldName}']");
+        IElement input = fragment.Find($"[aria-label='New name for group {oldName}']");
         await input.InputAsync(new() { Value = newName });
         await input.KeyDownAsync(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
     }
 
     protected SessionState Session() => new() {
-        Categories = [a, b], Cards = [new([a], 2, "First"), new([b], 2, "Second")],
-        Combos = [new([new(a, 1, 2)], "First combo"), new([new(b, 1, 2)], "Second combo")], HandSize = 2
+        Categories = [a, b],
+        Cards = [new([a], 2, "First"), new([b], 2, "Second")],
+        Combos = [new([new(a, 1, 2)], "First combo"), new([new(b, 1, 2)], "Second combo")],
+        HandSize = 2
     };
 
     protected sealed class CountingProbabilityCalculator : IProbabilityCalculatorService {
@@ -107,7 +109,11 @@ public abstract class CalculatorEditorTestBase {
         public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) => 0.25;
 
         public ProbabilityCalculationResult CalculateProbabilityResults(
-            List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
+            List<Card> deck,
+            List<Combo> combos,
+            int handSize,
+            IReadOnlyList<ComboGroup>? groups = null
+        ) {
             CallCount++;
             return new ProbabilityCalculationResult(
                 0.25,
@@ -123,11 +129,20 @@ public abstract class CalculatorEditorTestBase {
         public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) => 0.75;
 
         public ProbabilityCalculationResult CalculateProbabilityResults(
-            List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
+            List<Card> deck,
+            List<Combo> combos,
+            int handSize,
+            IReadOnlyList<ComboGroup>? groups = null
+        ) {
             Started.SetResult();
-            if (!Continue.Wait(TimeSpan.FromSeconds(10)))
+            if (!Continue.Wait(TimeSpan.FromSeconds(10))) {
                 throw new TimeoutException("The test did not release the delayed calculation.");
-            if (ExceedLimit) throw new ProbabilityCalculationLimitException();
+            }
+
+            if (ExceedLimit) {
+                throw new ProbabilityCalculationLimitException();
+            }
+
             return new ProbabilityCalculationResult(
                 0.75,
                 [new ComboProbabilityResult(0, "Stale combo", 0.5)]);
@@ -136,18 +151,24 @@ public abstract class CalculatorEditorTestBase {
 
     protected sealed class SequencedProbabilityCalculator(
         ProbabilityCalculationResult secondResult,
-        bool failSecond = false) : IProbabilityCalculatorService {
-        private int callCount;
+        bool failSecond = false
+    ) : IProbabilityCalculatorService {
+        private int _callCount;
 
         public TaskCompletionSource SecondStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ManualResetEventSlim ContinueSecond { get; } = new(false);
-        public int CallCount => Volatile.Read(ref callCount);
+        public int CallCount => Volatile.Read(ref _callCount);
 
         public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) => 0.75;
 
         public ProbabilityCalculationResult CalculateProbabilityResults(
-            List<Card> deck, List<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
-            var call = Interlocked.Increment(ref callCount);
+            List<Card> deck,
+            List<Combo> combos,
+            int handSize,
+            IReadOnlyList<ComboGroup>? groups = null
+        ) {
+            int call = Interlocked.Increment(ref _callCount);
+
             if (call == 1) {
                 return new ProbabilityCalculationResult(
                     0.25,
@@ -155,13 +176,16 @@ public abstract class CalculatorEditorTestBase {
             }
 
             SecondStarted.SetResult();
-            if (!ContinueSecond.Wait(TimeSpan.FromSeconds(10)))
+
+            if (!ContinueSecond.Wait(TimeSpan.FromSeconds(10))) {
                 throw new TimeoutException("The test did not release the second calculation.");
-            if (failSecond)
+            }
+
+            if (failSecond) {
                 throw new InvalidOperationException("expected test failure");
+            }
 
             return secondResult;
         }
     }
-
 }

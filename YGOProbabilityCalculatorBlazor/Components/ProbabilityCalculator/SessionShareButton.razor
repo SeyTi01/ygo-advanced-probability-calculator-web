@@ -5,15 +5,19 @@
 @implements IDisposable
 
 <button type="button" class="btn btn-secondary d-inline-flex align-items-center gap-2" title="Copy a link to the accepted session" @onclick="CopyAsync">
-    <span class="share-icon" aria-hidden="true">@(copied ? "✓" : "↗")</span><span>Copy share link</span>
+    <span class="share-icon" aria-hidden="true">@(_copied ? "✓" : "↗")</span><span>Copy share link</span>
 </button>
-@if (copied) { <span class="visually-hidden" role="status">Share link copied.</span> }
-@if (error is not null || fallback is not null) {
+@if (_copied) {
+    <span class="visually-hidden" role="status">Share link copied.</span>
+}
+@if (_error is not null || _fallback is not null) {
     <div class="share-fallback alert alert-warning mb-0" role="status">
-        @if (error is not null) { <p class="mb-0">@error</p> }
-        @if (fallback is not null) {
-            <label for="@id">Clipboard access was denied. Select and copy this link:</label>
-            <textarea id="@id" class="form-control mt-2" rows="3" readonly @onclick="SelectAsync">@fallback</textarea>
+        @if (_error is not null) {
+            <p class="mb-0">@_error</p>
+        }
+        @if (_fallback is not null) {
+            <label for="@_id">Clipboard access was denied. Select and copy this link:</label>
+            <textarea id="@_id" class="form-control mt-2" rows="3" readonly @onclick="SelectAsync">@_fallback</textarea>
         }
         <button type="button" class="btn btn-sm btn-secondary mt-2" @onclick="Dismiss">Dismiss</button>
     </div>
@@ -23,52 +27,120 @@
     [Parameter, EditorRequired] public string Snapshot { get; set; } = "";
     [Parameter, EditorRequired] public Func<string> Capture { get; set; } = null!;
     [Parameter] public TimeProvider FeedbackTimeProvider { get; set; } = TimeProvider.System;
-    private readonly string id = "share-link-" + Guid.NewGuid().ToString("N");
-    private string? observed, link, preparationError, error, fallback;
-    private bool copied, disposed;
-    private long attempt;
-    private ITimer? reset;
+
+    private readonly string _id = "share-link-" + Guid.NewGuid().ToString("N");
+    private string? _observed;
+    private string? _link;
+    private string? _preparationError;
+    private string? _error;
+    private string? _fallback;
+    private bool _copied;
+    private bool _disposed;
+    private long _attempt;
+    private ITimer? _reset;
 
     protected override void OnParametersSet() {
-        if (observed == Snapshot) return;
+        if (_observed == Snapshot) {
+            return;
+        }
+
         Prepare(Snapshot);
         Dismiss();
     }
+
     private void Prepare(string snapshot) {
-        observed = snapshot;
-        try { link = SessionShareCodec.CreateLink(Navigation.BaseUri, snapshot); preparationError = null; }
-        catch { link = null; preparationError = "This session is too large or unsupported for a share link. Share a normal session file instead."; }
+        _observed = snapshot;
+
+        try {
+            _link = SessionShareCodec.CreateLink(Navigation.BaseUri, snapshot);
+            _preparationError = null;
+        }
+        catch {
+            _link = null;
+            _preparationError = "This session is too large or unsupported for a share link. Share a normal session file instead.";
+        }
     }
+
     private async Task CopyAsync() {
         // Freeze accepted model state at the press; editor drafts follow Save Session semantics.
-        var snapshot = Capture();
-        if (snapshot != observed) Prepare(snapshot);
+        string snapshot = Capture();
+
+        if (snapshot != _observed) {
+            Prepare(snapshot);
+        }
+
         Dismiss();
-        var version = attempt;
-        if (link is not { } captured) { error = preparationError; return; }
+        long version = _attempt;
+
+        if (_link is not { } captured) {
+            _error = _preparationError;
+
+            return;
+        }
+
         bool success;
-        try { success = await JS.InvokeAsync<bool>("sessionSharing.copy", captured); }
-        catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException) { success = false; }
-        if (disposed || version != attempt) return;
-        if (!success) { fallback = captured; return; }
-        copied = true;
-        reset = FeedbackTimeProvider.CreateTimer(_ => { _ = ResetFeedbackAsync(version); }, null, TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
+
+        try {
+            success = await JS.InvokeAsync<bool>("sessionSharing.copy", captured);
+        }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException or OperationCanceledException) {
+            success = false;
+        }
+
+        if (_disposed || version != _attempt) {
+            return;
+        }
+
+        if (!success) {
+            _fallback = captured;
+
+            return;
+        }
+
+        _copied = true;
+        _reset = FeedbackTimeProvider.CreateTimer(
+            _ => { _ = ResetFeedbackAsync(version); },
+            null,
+            TimeSpan.FromSeconds(2),
+            Timeout.InfiniteTimeSpan
+        );
     }
+
     private async Task ResetFeedbackAsync(long version) {
         try {
             await InvokeAsync(() => {
-                if (disposed || version != attempt) return;
-                copied = false;
+                if (_disposed || version != _attempt) {
+                    return;
+                }
+
+                _copied = false;
                 StateHasChanged();
             });
         }
-        catch (InvalidOperationException) when (disposed) { }
-        catch (OperationCanceledException) when (disposed) { }
+        catch (InvalidOperationException) when (_disposed) {
+        }
+        catch (OperationCanceledException) when (_disposed) {
+        }
     }
+
     private async Task SelectAsync() {
-        try { await JS.InvokeVoidAsync("sessionSharing.select", id); }
-        catch (JSException) { }
+        try {
+            await JS.InvokeVoidAsync("sessionSharing.select", _id);
+        }
+        catch (JSException) {
+        }
     }
-    private void Dismiss() { attempt++; reset?.Dispose(); reset = null; copied = false; error = fallback = null; }
-    public void Dispose() { disposed = true; Dismiss(); }
+
+    private void Dismiss() {
+        _attempt++;
+        _reset?.Dispose();
+        _reset = null;
+        _copied = false;
+        _error = _fallback = null;
+    }
+
+    public void Dispose() {
+        _disposed = true;
+        Dismiss();
+    }
 }
