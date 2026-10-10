@@ -6,17 +6,22 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 
 public class CardInfoService : ICardInfoService {
-    private const string BulkApiUrl = "https://db.ygoprodeck.com/api/v7/cardinfo.php";
-    private const string SingleApiTemplate = "https://db.ygoprodeck.com/api/v7/cardinfo.php?id={0}";
+    private const string LocalCatalogUrl = "data/card-catalog.v1.json";
+    private const string CardInfoApiUrl = "https://db.ygoprodeck.com/api/v7/cardinfo.php";
+    private const string SingleApiTemplate = CardInfoApiUrl + "?id={0}";
     private const string CacheKey = "cardCache";
     private const int CacheSchemaVersion = 2;
     private static readonly TimeSpan CacheTimeToLive = TimeSpan.FromDays(7);
+    private const int SearchResultLimit = 20;
+    private const int MaximumCatalogBytes = 20 * 1024 * 1024;
+    private const int MaximumCatalogCards = 30_000;
+    private static readonly JsonSerializerOptions CatalogJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
     private readonly TimeProvider _timeProvider;
-    private readonly Lazy<Task> _initializeTask;
     private readonly Lazy<Task> _loadCacheTask;
+    private readonly Lazy<Task<IReadOnlyList<CardInfo>>> _loadCatalogTask;
     private CardMetadataCache _cache = new();
     private readonly SemaphoreSlim _singleLookupGate = new(1, 1);
     private readonly HashSet<int> _singleLookups = [];
@@ -28,6 +33,20 @@ public class CardInfoService : ICardInfoService {
         // Artwork never initializes/refreshes the full catalog. Reuse even stale
         // validated image IDs, then enrich only a visible requested passcode.
         await _loadCacheTask.Value;
+
+        if (_loadCatalogTask.IsValueCreated) {
+            try {
+                CardInfo? catalogCard = (await _loadCatalogTask.Value).FirstOrDefault(card => card.Id == id);
+
+                if (catalogCard is not null) {
+                    return catalogCard;
+                }
+            }
+            catch {
+                // A missing local catalog must not block the existing artwork fallback.
+            }
+        }
+
         // Retained identities must not queue behind another card's cold metadata.
         await _singleLookupGate.WaitAsync();
 
@@ -136,13 +155,42 @@ public class CardInfoService : ICardInfoService {
         }
     }
 
+    public async Task<IReadOnlyList<CardInfo>> SearchCardsAsync(string query) {
+        IReadOnlyList<CardInfo> catalog = await _loadCatalogTask.Value;
+        string normalizedQuery = query?.Trim() ?? string.Empty;
+
+        if (normalizedQuery.Length < 2) {
+            return Array.Empty<CardInfo>();
+        }
+
+        return catalog
+            .Select(card => (Card: card, Rank: GetSearchRank(card.Name, normalizedQuery)))
+            .Where(match => match.Rank >= 0)
+            .OrderBy(match => match.Rank)
+            .ThenBy(match => match.Card.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(match => match.Card.Name, StringComparer.Ordinal)
+            .ThenBy(match => match.Card.Id)
+            .Take(SearchResultLimit)
+            .Select(match => match.Card)
+            .ToArray();
+    }
+
     public async Task<CardInfo> GetCardInfoAsync(int id) {
-        await _initializeTask.Value;
+        await _loadCacheTask.Value;
+        IReadOnlyList<CardInfo>? catalog = await TryLoadCatalogAsync();
+        CardInfo? catalogCard = catalog?.FirstOrDefault(card => card.Id == id);
+
+        if (catalogCard is not null) {
+            return catalogCard;
+        }
+
         await _singleLookupGate.WaitAsync();
 
         try {
-            bool needsObjectiveMetadata = !_cache.Cards.TryGetValue(id, out CardInfo card)
-                || (string.IsNullOrWhiteSpace(card.Type) && string.IsNullOrWhiteSpace(card.FrameType));
+            bool hasCachedCard = _cache.Cards.TryGetValue(id, out CardInfo card);
+            bool needsObjectiveMetadata = !hasCachedCard
+                || (string.IsNullOrWhiteSpace(card.Type) && string.IsNullOrWhiteSpace(card.FrameType))
+                || !IsFresh(_cache);
 
             if (needsObjectiveMetadata) {
                 if (_singleLookups.Add(id)) {
@@ -163,40 +211,11 @@ public class CardInfoService : ICardInfoService {
         _localStorage = localStorage;
         _httpClient = httpClient ?? new HttpClient();
         _timeProvider = timeProvider ?? TimeProvider.System;
-        // Fully enriched sessions never need a lookup; legacy sessions can resolve exact names lazily.
         _loadCacheTask = new Lazy<Task>(async () => _cache = await LoadCacheAsync());
-        _initializeTask = new Lazy<Task>(InitializeAsync);
+        _loadCatalogTask = new Lazy<Task<IReadOnlyList<CardInfo>>>(LoadCatalogAsync);
     }
 
-    public async Task<string> GetCardNameAsync(int id) {
-        await _initializeTask.Value;
-        await _singleLookupGate.WaitAsync();
-
-        try {
-            if (_cache.Cards.TryGetValue(id, out CardInfo cachedCard)) {
-                return cachedCard.Name;
-            }
-        }
-        finally {
-            _singleLookupGate.Release();
-        }
-
-        return (await GetCardInfoAsync(id)).Name;
-    }
-
-    private async Task InitializeAsync() {
-        await _loadCacheTask.Value;
-        await _singleLookupGate.WaitAsync();
-
-        try {
-            if (!IsFresh(_cache)) {
-                await FetchAllCardsAsync();
-            }
-        }
-        finally {
-            _singleLookupGate.Release();
-        }
-    }
+    public async Task<string> GetCardNameAsync(int id) => (await GetCardInfoAsync(id)).Name;
 
     public async Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names) {
         string[] requested = names
@@ -211,11 +230,18 @@ public class CardInfoService : ICardInfoService {
         }
 
         await _loadCacheTask.Value;
+        IReadOnlyList<CardInfo>? catalog = await TryLoadCatalogAsync();
         await _singleLookupGate.WaitAsync();
 
         try {
             foreach (string name in requested) {
-                CardInfo[] matches = [.. _cache.Cards.Values.Where(card => card.Name.Equals(name, StringComparison.Ordinal))];
+                CardInfo[] matches = catalog is null
+                    ? []
+                    : [.. catalog.Where(card => card.Name.Equals(name, StringComparison.Ordinal))];
+
+                if (matches.Length == 0) {
+                    matches = [.. _cache.Cards.Values.Where(card => card.Name.Equals(name, StringComparison.Ordinal))];
+                }
 
                 if (matches.Length == 1 && HasMetadata(matches[0])) {
                     resolved[name] = matches[0];
@@ -244,7 +270,7 @@ public class CardInfoService : ICardInfoService {
 
     private async Task<CardInfo?> FetchExactNameAsync(string name) {
         try {
-            using HttpResponseMessage response = await _httpClient.GetAsync($"{BulkApiUrl}?name={Uri.EscapeDataString(name)}").ConfigureAwait(false);
+            using HttpResponseMessage response = await _httpClient.GetAsync($"{CardInfoApiUrl}?name={Uri.EscapeDataString(name)}").ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             await using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
 
@@ -294,49 +320,73 @@ public class CardInfoService : ICardInfoService {
         return age >= TimeSpan.Zero && age < CacheTimeToLive;
     }
 
-    private async Task FetchAllCardsAsync() {
+    private async Task<IReadOnlyList<CardInfo>?> TryLoadCatalogAsync() {
         try {
-            using HttpResponseMessage response = await _httpClient.GetAsync(BulkApiUrl).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            await using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using JsonDocument document = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            JsonElement data = default;
-
-            bool hasInvalidResponseData = document.RootElement.ValueKind != JsonValueKind.Object
-                || !TryGetProperty(document.RootElement, "data", out data)
-                || data.ValueKind != JsonValueKind.Array;
-
-            if (hasInvalidResponseData) {
-                return;
-            }
-
-            Dictionary<int, CardInfo> cards = new();
-
-            foreach (JsonElement item in data.EnumerateArray()) {
-                CardInfo? info = ReadCardInfo(item);
-
-                if (info is not null) {
-                    cards[info.Id] = info;
-                }
-            }
-
-            // The full YGOPRODeck catalog should not be empty; keep stale entries if a response is incomplete.
-            if (cards.Count == 0) {
-                return;
-            }
-
-            _cache = new() {
-                SchemaVersion = CacheSchemaVersion,
-                LastFullRefreshUtc = _timeProvider.GetUtcNow(),
-                Cards = cards
-            };
-
-            await SaveCacheAsync().ConfigureAwait(false);
+            return await _loadCatalogTask.Value;
         }
         catch {
-            // Keep the previous snapshot as a fallback when the bulk refresh fails.
+            // Imported-card and legacy-name paths retain their targeted API fallback.
+            return null;
         }
+    }
+
+    private async Task<IReadOnlyList<CardInfo>> LoadCatalogAsync() {
+        using HttpResponseMessage response = await _httpClient.GetAsync(LocalCatalogUrl);
+        response.EnsureSuccessStatusCode();
+
+        if (response.Content.Headers.ContentLength is > MaximumCatalogBytes) {
+            throw new InvalidDataException("The local card catalog exceeds the supported size.");
+        }
+
+        await using Stream stream = await response.Content.ReadAsStreamAsync();
+        byte[] json = await ReadCatalogBytesAsync(stream);
+        CatalogDocument? document = JsonSerializer.Deserialize<CatalogDocument>(json, CatalogJsonOptions);
+
+        if (document?.Version != 1 || document.Cards is null || document.Cards.Length is 0 or > MaximumCatalogCards) {
+            throw new InvalidDataException("The local card catalog is empty, oversized, or unsupported.");
+        }
+
+        HashSet<int> ids = new();
+
+        foreach (CardInfo card in document.Cards) {
+            if (card.Id <= 0 || string.IsNullOrWhiteSpace(card.Name) || !card.ArtworkMetadataKnown || !ids.Add(card.Id)) {
+                throw new InvalidDataException("The local card catalog contains an invalid card record.");
+            }
+        }
+
+        return document.Cards;
+    }
+
+    private static async Task<byte[]> ReadCatalogBytesAsync(Stream stream) {
+        using MemoryStream buffer = new();
+        byte[] chunk = new byte[81_920];
+        int read;
+
+        while ((read = await stream.ReadAsync(chunk)) > 0) {
+            if (buffer.Length + read > MaximumCatalogBytes) {
+                throw new InvalidDataException("The local card catalog exceeds the supported size.");
+            }
+
+            await buffer.WriteAsync(chunk.AsMemory(0, read));
+        }
+
+        if (buffer.Length == 0) {
+            throw new InvalidDataException("The local card catalog is empty.");
+        }
+
+        return buffer.ToArray();
+    }
+
+    private static int GetSearchRank(string name, string query) {
+        if (name.Equals(query, StringComparison.OrdinalIgnoreCase)) {
+            return 0;
+        }
+
+        if (name.StartsWith(query, StringComparison.OrdinalIgnoreCase)) {
+            return 1;
+        }
+
+        return name.Contains(query, StringComparison.OrdinalIgnoreCase) ? 2 : -1;
     }
 
     private async Task FetchSingleCardAsync(int id) {
@@ -600,6 +650,13 @@ public class CardInfoService : ICardInfoService {
         catch {
             // The in-memory cache remains usable for the current page session.
         }
+    }
+
+    private sealed class CatalogDocument {
+        public CatalogDocument() { }
+
+        public int Version { get; init; }
+        public CardInfo[] Cards { get; init; } = [];
     }
 
     private sealed class CardMetadataCache {

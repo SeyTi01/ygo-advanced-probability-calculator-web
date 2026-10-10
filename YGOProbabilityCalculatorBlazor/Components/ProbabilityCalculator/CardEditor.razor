@@ -1,5 +1,10 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
+@using YGOProbabilityCalculatorBlazor.Services.DeckImport
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+@using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
+@inject ICardInfoService CardInfoService
 
 <div class="accordion-item card-editor @(Card.Active ? "" : "entry-inactive")">
     <div class="accordion-header entry-editor-header">
@@ -68,7 +73,39 @@
                         <label for="cardName@(Index)" class="form-label">Name</label>
                         <input id="cardName@(Index)" class="form-control"
                                value="@(Card.Name ?? string.Empty)"
-                               @oninput="e => Rename(e.Value?.ToString())"/>
+                               role="combobox" aria-autocomplete="list" aria-haspopup="listbox"
+                               aria-expanded="@(_searchOpen && _searchResults.Length > 0)"
+                               aria-controls="cardSearchResults@(Index)"
+                               aria-activedescendant="@ActiveSuggestionId"
+                               autocomplete="off"
+                               @oninput="SearchCards"
+                               @onfocus="OpenSearch"
+                               @onblur="CloseSearch"
+                               @onkeydown="HandleSearchKeyDown" />
+                        @if (_searchOpen && _catalogLoading) {
+                            <div class="card-search-status" role="status">Loading local card catalog…</div>
+                        }
+                        else if (_searchOpen && _searchError is not null) {
+                            <div class="card-search-status card-search-error" role="status">Card search is unavailable. You can still enter a manual card.</div>
+                        }
+                        else if (_searchOpen && _searchResults.Length > 0) {
+                            <ul id="cardSearchResults@(Index)" class="card-search-results" role="listbox" aria-label="Card search results">
+                                @for (int resultIndex = 0; resultIndex < _searchResults.Length; resultIndex++) {
+                                    CardInfo result = _searchResults[resultIndex];
+                                    int currentResultIndex = resultIndex;
+                                    <li id="cardSearchOption@(Index)-@result.Id"
+                                        class="card-search-result @(currentResultIndex == _activeSuggestionIndex ? "active" : "")"
+                                        role="option" aria-selected="@(currentResultIndex == _activeSuggestionIndex ? "true" : "false")"
+                                        @onmousedown:preventDefault="true"
+                                        @onclick="() => SelectCard(result)">
+                                        @result.Name
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        else if (_searchOpen && _searchQuery.Trim().Length >= 2) {
+                            <div class="card-search-status" role="status">No matching cards.</div>
+                        }
                     </div>
                     <div class="card-copies-field">
                         <label for="cardCopies@(Index)" class="form-label">Copies</label>
@@ -224,10 +261,21 @@
     private string? _error;
     private string _selectedCategory = string.Empty;
     private int _previousCategoryRenameVersion;
+    private CardInfo[] _searchResults = [];
+    private string _searchQuery = string.Empty;
+    private string? _searchError;
+    private int _activeSuggestionIndex = -1;
+    private long _searchRequestVersion;
+    private bool _searchOpen;
+    private bool _catalogLoading;
+    private bool _disposed;
 
     private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? $"Card {Index + 1}" : Card.Name;
     private string ActiveToggleLabel => $"Active card {CardDisplayName}";
     private string ActiveToggleTitle => $"Toggle {CardDisplayName} active state";
+    private string? ActiveSuggestionId => _activeSuggestionIndex >= 0 && _activeSuggestionIndex < _searchResults.Length
+        ? $"cardSearchOption{Index}-{_searchResults[_activeSuggestionIndex].Id}"
+        : null;
 
     private Task ToggleCard() {
         int next = ActiveCardIndex == Index ? -1 : Index;
@@ -235,10 +283,113 @@
         return ActiveCardIndexChanged.InvokeAsync(next);
     }
 
-    private Task Rename(string? name) {
-        Card newCard = Card.WithName(string.IsNullOrWhiteSpace(name) ? null : name);
+    private async Task SearchCards(ChangeEventArgs args) {
+        _searchQuery = args.Value?.ToString() ?? string.Empty;
+        _searchOpen = true;
+        _activeSuggestionIndex = -1;
+        Card newCard = Card.WithName(string.IsNullOrWhiteSpace(_searchQuery) ? null : _searchQuery);
+        await OnReplaceCard.InvokeAsync((Index, newCard));
+        await RefreshSearchResultsAsync(_searchQuery);
+    }
+
+    private Task OpenSearch(FocusEventArgs args) {
+        _searchQuery = Card.Name ?? string.Empty;
+        _searchOpen = true;
+        _activeSuggestionIndex = -1;
+
+        return RefreshSearchResultsAsync(_searchQuery);
+    }
+
+    private void CloseSearch(FocusEventArgs args) {
+        _searchOpen = false;
+        _searchRequestVersion++;
+        _activeSuggestionIndex = -1;
+    }
+
+    private async Task RefreshSearchResultsAsync(string query) {
+        long requestVersion = ++_searchRequestVersion;
+        string cardId = Card.Id;
+        _catalogLoading = true;
+        _searchError = null;
+
+        try {
+            IReadOnlyList<CardInfo> results = await CardInfoService.SearchCardsAsync(query);
+
+            if (!IsCurrentSearch(requestVersion, cardId, query)) {
+                return;
+            }
+
+            _searchResults = results.ToArray();
+        }
+        catch {
+            if (!IsCurrentSearch(requestVersion, cardId, query)) {
+                return;
+            }
+
+            _searchResults = [];
+            _searchError = "Local catalog unavailable";
+        }
+        finally {
+            if (IsCurrentSearch(requestVersion, cardId, query)) {
+                _catalogLoading = false;
+            }
+        }
+    }
+
+    private bool IsCurrentSearch(long requestVersion, string cardId, string query) =>
+        !_disposed && _searchOpen && requestVersion == _searchRequestVersion &&
+        string.Equals(Card.Id, cardId, StringComparison.Ordinal) &&
+        string.Equals(_searchQuery, query, StringComparison.Ordinal);
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs args) {
+        if (!_searchOpen || _searchResults.Length == 0) {
+            if (args.Key == "Escape") {
+                CloseSearch(new FocusEventArgs());
+            }
+
+            return;
+        }
+
+        if (args.Key == "ArrowDown") {
+            _activeSuggestionIndex = _activeSuggestionIndex < 0
+                ? 0
+                : (_activeSuggestionIndex + 1) % _searchResults.Length;
+        }
+        else if (args.Key == "ArrowUp") {
+            _activeSuggestionIndex = _activeSuggestionIndex <= 0
+                ? _searchResults.Length - 1
+                : _activeSuggestionIndex - 1;
+        }
+        else if (args.Key == "Enter" && _activeSuggestionIndex >= 0) {
+            await SelectCard(_searchResults[_activeSuggestionIndex]);
+        }
+        else if (args.Key == "Escape") {
+            CloseSearch(new FocusEventArgs());
+        }
+    }
+
+    private Task SelectCard(CardInfo selectedCard) {
+        if (_disposed) {
+            return Task.CompletedTask;
+        }
+
+        _searchRequestVersion++;
+        _searchOpen = false;
+        _catalogLoading = false;
+        _searchError = null;
+        _searchResults = [];
+        _activeSuggestionIndex = -1;
+
+        Card newCard = Card
+            .WithObjectiveMetadata(CardPropertyProvider.GetCategories(selectedCard), selectedCard.Id)
+            .WithName(selectedCard.Name);
 
         return OnReplaceCard.InvokeAsync((Index, newCard));
+    }
+
+    public void Dispose() {
+        _disposed = true;
+        _searchRequestVersion++;
     }
 
     private Task ChangeActive(object? value) {

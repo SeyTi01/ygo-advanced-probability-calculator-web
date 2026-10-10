@@ -33,6 +33,9 @@ public class BackgroundCalculationComponentTest {
         _sessions.Setup(s => s.SerializeSession(It.IsAny<SessionState>())).Returns<SessionState>(codec.SerializeSession);
         _sessions.Setup(s => s.LoadSessionAsync(It.IsAny<string>())).Returns<string>(codec.LoadSessionAsync);
         _context.Services.AddSingleton(_sessions.Object);
+        Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
+        _context.Services.AddSingleton(cardInfo.Object);
         _context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
         SessionState initialSession = new() {
             Cards = [new([], 4, "A", id: "a"), new([], 4, "B", id: "b")],

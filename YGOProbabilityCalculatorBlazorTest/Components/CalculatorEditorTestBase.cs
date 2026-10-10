@@ -33,6 +33,8 @@ public abstract class CalculatorEditorTestBase {
         context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
         context.Services.AddSingleton<IDeckImportService>(Mock.Of<IDeckImportService>());
         Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.SearchCardsAsync(It.IsAny<string>()))
+            .ReturnsAsync(Array.Empty<CardInfo>());
         cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(new Dictionary<string, CardInfo>(StringComparer.Ordinal));
         context.Services.AddSingleton(cardInfo.Object);

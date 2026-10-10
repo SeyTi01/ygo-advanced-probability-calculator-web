@@ -34,6 +34,9 @@ public class CardArtworkOwnershipTest {
         context.Services.AddSingleton<ISerializer, JsonSerializer>();
         context.Services.AddSingleton<ISessionService, SessionService>();
         context.Services.AddSingleton(Mock.Of<IDeckImportService>());
+        Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
+        context.Services.AddSingleton(cardInfo.Object);
         context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
         context.Services.AddSingleton(Mock.Of<ICardArtworkService>());
 
