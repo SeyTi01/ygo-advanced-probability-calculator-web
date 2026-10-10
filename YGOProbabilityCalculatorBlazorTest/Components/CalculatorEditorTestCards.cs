@@ -142,6 +142,132 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
     }
 
     [Test]
+    public async Task ArrowReorderFeedbackFollowsStableItemsAndTransfersToTheNextMove() {
+        CategoryBase categoryA = new("Alpha");
+        CategoryBase categoryB = new("Beta");
+        Card cardA = new([], name: "Same", id: "card-a");
+        Card cardB = new([], name: "Same", id: "card-b");
+        Card cardC = new([], name: "", id: "card-c");
+        Combo comboA = new([], "Same");
+        Combo comboB = new([], "Same");
+        Combo comboC = new([], "");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = [categoryA, categoryB],
+            Cards = [cardA, cardB, cardC],
+            Combos = [comboA, comboB, comboC],
+            ComboGroups = [new("group-a", "One"), new("group-b", "Two")],
+            HandSize = 1
+        });
+
+        await cut.Find("[aria-label='Move card Same, row 1 down']").ClickAsync(new());
+        Assert.That(context.JSInterop.Invocations["Blazor._internal.domWrapper.focus"], Has.Count.EqualTo(1));
+        Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Id, Is.EqualTo(cardB.Id));
+        Assert.That(cut.FindComponents<CardEditor>()[0].Find(".card-editor").ClassList,
+            Does.Not.Contain("reorder-moved-feedback"));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.Id, Is.EqualTo(cardA.Id));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Find(".card-editor").ClassList,
+            Does.Contain("reorder-moved-feedback"));
+
+        await cut.Find("[aria-label='Move card Same, row 2 down']").ClickAsync(new());
+        Assert.That(cut.FindComponents<CardEditor>()[2].Instance.Card.Id, Is.EqualTo(cardA.Id));
+        Assert.That(cut.FindComponents<CardEditor>()[2].Find(".card-editor").ClassList,
+            Does.Contain("reorder-moved-feedback"));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.Id, Is.EqualTo(cardC.Id));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Find(".card-editor").ClassList,
+            Does.Not.Contain("reorder-moved-feedback"));
+
+        await cut.Find("[aria-label='Move card Same, row 1 down']").ClickAsync(new());
+        Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.Id, Is.EqualTo(cardB.Id));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Find(".card-editor").ClassList,
+            Does.Contain("reorder-moved-feedback"));
+        Assert.That(cut.FindComponents<CardEditor>()[2].Instance.Card.Id, Is.EqualTo(cardA.Id));
+        Assert.That(cut.FindComponents<CardEditor>()[2].Find(".card-editor").ClassList,
+            Does.Not.Contain("reorder-moved-feedback"));
+
+        await cut.FindComponents<CardEditor>()[0].Find("button.reorder-button[aria-label$='down']").ClickAsync(new());
+        Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.Id, Is.EqualTo(cardC.Id));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Find(".card-editor").ClassList,
+            Does.Contain("reorder-moved-feedback"));
+        Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Id, Is.EqualTo(cardB.Id));
+        Assert.That(cut.FindComponents<CardEditor>()[0].Find(".card-editor").ClassList,
+            Does.Not.Contain("reorder-moved-feedback"));
+
+        await cut.Find("[aria-label='Move combo Same, row 1 down']").ClickAsync(new());
+        Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo, Is.SameAs(comboB));
+        Assert.That(cut.FindComponents<ComboEditor>()[0].Find(".combo-editor").ClassList,
+            Does.Not.Contain("reorder-moved-feedback"));
+        Assert.That(cut.FindComponents<ComboEditor>()[1].Instance.Combo, Is.SameAs(comboA));
+        Assert.That(cut.FindComponents<ComboEditor>()[1].Find(".combo-editor").ClassList,
+            Does.Contain("reorder-moved-feedback"));
+
+        await cut.FindComponents<ComboEditor>()[2].Find("button.reorder-button[aria-label$='up']").ClickAsync(new());
+        Assert.That(cut.FindComponents<ComboEditor>()[1].Instance.Combo, Is.SameAs(comboC));
+        Assert.That(cut.FindComponents<ComboEditor>()[1].Find(".combo-editor").ClassList,
+            Does.Contain("reorder-moved-feedback"));
+        Assert.That(cut.FindComponents<ComboEditor>()[2].Instance.Combo, Is.SameAs(comboA));
+        Assert.That(cut.FindComponents<ComboEditor>()[2].Find(".combo-editor").ClassList,
+            Does.Not.Contain("reorder-moved-feedback"));
+
+        await cut.Find("[aria-label='Edit category Alpha']").ClickAsync(new());
+        await cut.Find("[aria-label='New name for category Alpha']").InputAsync(new() { Value = "Draft Alpha" });
+        await cut.Find("[aria-label='Move category Alpha right']").ClickAsync(new());
+        IElement movedCategory = cut.FindComponent<CategoryListEditor>().FindAll(".category-chip").Single(chip =>
+            chip.QuerySelector("[aria-label='New name for category Alpha']") is not null);
+        Assert.That(movedCategory.ClassList, Does.Contain("reorder-moved-feedback"));
+        Assert.That(movedCategory.QuerySelector("[aria-label='New name for category Alpha']")?.GetAttribute("value"),
+            Is.EqualTo("Draft Alpha"));
+        Assert.That(cut.FindComponent<CategoryListEditor>().FindAll(".category-chip").Single(chip =>
+            chip.QuerySelector("[aria-label='Edit category Beta']") is not null).ClassList,
+            Does.Not.Contain("reorder-moved-feedback"));
+
+        await cut.Find("[aria-label='Edit group One']").ClickAsync(new());
+        await cut.Find("[aria-label='New name for group One']").InputAsync(new() { Value = "Draft One" });
+        await cut.Find("[aria-label='Move group One right']").ClickAsync(new());
+        IElement movedGroup = cut.FindComponent<ComboListEditor>().FindAll(".combo-group-chip").Single(chip =>
+            chip.QuerySelector("[aria-label='New name for group One']") is not null);
+        Assert.That(movedGroup.ClassList, Does.Contain("reorder-moved-feedback"));
+        Assert.That(movedGroup.QuerySelector("[aria-label='New name for group One']")?.GetAttribute("value"),
+            Is.EqualTo("Draft One"));
+        Assert.That(cut.FindComponent<ComboListEditor>().FindAll(".combo-group-chip").Single(chip =>
+            chip.QuerySelector("[aria-label='Edit group Two']") is not null).ClassList,
+            Does.Not.Contain("reorder-moved-feedback"));
+    }
+
+    [Test]
+    public async Task ReorderFeedbackIgnoresExpiredWorkFromOlderMoves() {
+        List<TaskCompletionSource> timeouts = [];
+        ReorderFeedback<string> feedback = new(
+            action => {
+                action();
+                return Task.CompletedTask;
+            },
+            () => { },
+            delay: _ => {
+                TaskCompletionSource timeout = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                timeouts.Add(timeout);
+                return timeout.Task;
+            });
+
+        Task firstMove = feedback.MarkMoved("card-a");
+        Task repeatedMove = feedback.MarkMoved("card-a");
+        Assert.That(feedback.IsActive("card-a"), Is.True);
+        timeouts[0].SetResult();
+        await firstMove;
+        Assert.That(feedback.IsActive("card-a"), Is.True);
+
+        Task differentMove = feedback.MarkMoved("card-b");
+        timeouts[1].SetResult();
+        await repeatedMove;
+        Assert.That(feedback.IsActive("card-a"), Is.False);
+        Assert.That(feedback.IsActive("card-b"), Is.True);
+
+        timeouts[2].SetResult();
+        await differentMove;
+        Assert.That(feedback.IsActive("card-b"), Is.False);
+        feedback.Dispose();
+    }
+
+    [Test]
     public void MovingExpandedEditorsKeepsDraftAndTargetsMovedItem() {
         SessionState session = Session();
         session.Cards[1] = session.Cards[1].WithActive(false);
@@ -326,6 +452,8 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
             alphaLower.Id, alphaUpper.Id, betaFirst.Id, betaCase.Id, betaSecond.Id, zebra.Id,
             unnamedFirst.Id, unnamedSecond.Id
         }));
+        Assert.That(sortedEditors.All(editor => !editor.Find(".card-editor").ClassList.Contains("reorder-moved-feedback")), Is.True,
+            "alphabetical sorting does not display arrow-reorder feedback");
         foreach (Card card in cards) {
             Assert.That(sortedEditors.Single(editor => editor.Instance.Card.Id == card.Id).Instance.Card, Is.SameAs(card));
         }

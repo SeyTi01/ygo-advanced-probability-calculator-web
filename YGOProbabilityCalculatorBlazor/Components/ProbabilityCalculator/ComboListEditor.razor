@@ -1,5 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
+@implements IDisposable
 
 <div class="mb-4">
     <h4>Combos</h4>
@@ -26,7 +27,7 @@
         <div class="mt-2">
             @for (int index = 0; index < ComboGroups.Count; index++) {
                 ComboGroup group = ComboGroups[index];
-                <span class="badge me-2 category-chip category-tag combo-group-chip" @key="group.Id">
+                <span class="badge me-2 category-chip category-tag combo-group-chip @(_reorderFeedbackForGroups.IsActive(group.Id) ? "reorder-moved-feedback" : "")" @key="group.Id">
                     @if (_editingGroupId == group.Id) {
                         <input @ref="_groupRenameInputReference"
                                class="form-control form-control-sm category-rename-input"
@@ -43,7 +44,7 @@
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </button>
-                        <ReorderControls Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@($"group {group.Name}")" OnMove="OnMoveGroup" />
+                        <ReorderControls Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@($"group {group.Name}")" OnMove="MoveGroup" />
                         <button type="button" class="category-icon-button"
                                 aria-label="Exit group edit mode" title="Exit group edit mode"
                                 @onclick="CancelGroupRename">
@@ -85,7 +86,8 @@
                 OnRemoveCombo="OnRemoveCombo"
                 OnDuplicateCombo="DuplicateCombo"
                 Count="Combos.Count"
-                OnMove="OnMoveCombo"
+                OnMove="MoveCombo"
+                RecentlyMoved="@_reorderFeedbackForCombos.IsActive(_editorKeys[Combos[index]])"
                 HandSize="HandSize"
             />
         }
@@ -120,6 +122,8 @@
 
     private IReadOnlyList<CategoryBase> _availableCategories = [];
     private readonly EditorKeys<Combo> _editorKeys = new();
+    private ReorderFeedback<object> _reorderFeedbackForCombos = null!;
+    private ReorderFeedback<string> _reorderFeedbackForGroups = null!;
     private readonly Dictionary<string, ElementReference> _groupNameButtonReferences = new(StringComparer.Ordinal);
     private string _newGroupName = string.Empty;
     private string? _groupError;
@@ -128,6 +132,11 @@
     private ElementReference _groupRenameInputReference;
     private bool _focusGroupRenameInput;
     private string? _pendingGroupNameFocus;
+
+    protected override void OnInitialized() {
+        _reorderFeedbackForCombos = new(action => InvokeAsync(action), StateHasChanged);
+        _reorderFeedbackForGroups = new(action => InvokeAsync(action), StateHasChanged);
+    }
 
     protected override void OnParametersSet() {
         _editorKeys.Synchronize(Combos);
@@ -141,6 +150,18 @@
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
         _editorKeys.Replace(Combos[payload.Index], payload.NewCombo);
         return OnReplaceCombo.InvokeAsync(payload);
+    }
+
+    private async Task MoveCombo((int From, int To) move) {
+        object movedComboKey = _editorKeys[Combos[move.From]];
+        await OnMoveCombo.InvokeAsync(move);
+        _ = _reorderFeedbackForCombos.MarkMoved(movedComboKey);
+    }
+
+    private async Task MoveGroup((int From, int To) move) {
+        string movedGroupId = ComboGroups[move.From].Id;
+        await OnMoveGroup.InvokeAsync(move);
+        _ = _reorderFeedbackForGroups.MarkMoved(movedGroupId);
     }
 
     private Task DuplicateCombo(int index) => OnDuplicateCombo.InvokeAsync(index);
@@ -252,5 +273,10 @@
             _pendingGroupNameFocus = null;
             await button.FocusAsync();
         }
+    }
+
+    public void Dispose() {
+        _reorderFeedbackForCombos?.Dispose();
+        _reorderFeedbackForGroups?.Dispose();
     }
 }

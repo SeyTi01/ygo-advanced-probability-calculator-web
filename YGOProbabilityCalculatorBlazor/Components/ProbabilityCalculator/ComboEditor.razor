@@ -1,7 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<div class="accordion-item combo-editor @(Combo.Active ? "" : "entry-inactive")">
+<div class="accordion-item combo-editor @(Combo.Active ? "" : "entry-inactive") @(RecentlyMoved ? "reorder-moved-feedback" : "")">
     <div class="accordion-header entry-editor-header combo-editor-header">
         <h2 class="entry-heading">
             <button class="accordion-button flex-grow-1 @(Index == ActiveComboIndex ? "" : "collapsed")"
@@ -278,6 +278,7 @@
 @code {
     [Parameter] public int Index { get; set; }
     [Parameter] public int Count { get; set; }
+    [Parameter] public bool RecentlyMoved { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
     [Parameter] public Combo Combo { get; set; } = null!;
     [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
