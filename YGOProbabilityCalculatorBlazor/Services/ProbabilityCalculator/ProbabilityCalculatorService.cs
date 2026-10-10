@@ -11,7 +11,12 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         ValidateComboCount(combos);
         ValidateCardIds(deck);
 
-        return new ProbabilityCalculation(deck, handSize, workPolicy).CalculateUnion(combos);
+        if (!deck.Any(card => card.DrawCount is not null)) {
+            return new ProbabilityCalculation(deck, handSize, workPolicy).CalculateUnion(combos);
+        }
+
+        WorkBudget budget = new(workPolicy);
+        return new DrawEffectCalculation(deck, handSize, budget).Calculate(combos, null, totalOnly: true).Total.ToDouble(budget);
     }
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
@@ -32,7 +37,12 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         ValidateComboCount(combos);
         ValidateCardIds(deck);
 
-        return new ProbabilityCalculation(deck, handSize, workPolicy).CalculateResults(combos, groups);
+        if (!deck.Any(card => card.DrawCount is not null)) {
+            return new ProbabilityCalculation(deck, handSize, workPolicy).CalculateResults(combos, groups);
+        }
+
+        WorkBudget budget = new(workPolicy);
+        return new DrawEffectCalculation(deck, handSize, budget).Calculate(combos, groups).ToPublic(combos, groups, budget);
     }
 
     private static void ValidateComboCount(List<Combo> combos) {

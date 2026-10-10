@@ -11,9 +11,15 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
     private long _cachedIntegerCells;
     private BigInteger? _totalWays;
 
-    internal double Probability(CompiledEvent? predicate) {
+    internal double Probability(CompiledEvent? predicate) => ProbabilityExact(predicate).ToDouble(budget);
+
+    internal double ToProbability(BigInteger successes) => ProbabilityRatio.ToDouble(successes, _totalWays!.Value, budget);
+
+    internal ExactProbability Fraction(BigInteger successes) => new(successes, _totalWays!.Value);
+
+    internal ExactProbability ProbabilityExact(CompiledEvent? predicate) {
         if (predicate is null) {
-            return 0;
+            return ExactProbability.Zero;
         }
 
         // Preserve the cheap universal event, including decks whose
@@ -31,54 +37,10 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
                 deckSize = checked(deckSize + card.Copies);
             }
 
-            return handSize < 0 || handSize > deckSize ? double.NaN : 1;
+            return handSize < 0 || handSize > deckSize ? new(0, 0) : ExactProbability.One;
         }
 
-        BigInteger successes = Count(predicate);
-
-        return ToProbability(successes);
-    }
-
-    internal double ToProbability(BigInteger successes) {
-        BigInteger denominator = _totalWays!.Value;
-        double doubleDenominator = (double)denominator;
-
-        // Preserve ordinary-sized conversion, including the existing invalid
-        // empty sample-space behavior. Valid counts satisfy 0 <= successes <= denominator.
-        if (double.IsFinite(doubleDenominator)) {
-            return (double)successes / doubleDenominator;
-        }
-
-        if (successes.IsZero) {
-            return 0;
-        }
-
-        // Neither infinity/infinity nor finite/infinity represents the exact
-        // ratio. Locate its binary exponent using integers, then round once
-        // to a 53-bit significand (or the fixed 2^-1074 subnormal grid).
-        long numeratorBits = successes.GetBitLength();
-        long denominatorBits = denominator.GetBitLength();
-        budget.Spend(1 + (numeratorBits + denominatorBits) / 32);
-        long exponent = numeratorBits - denominatorBits;
-
-        if (exponent < -1075) {
-            return 0;
-        }
-
-        if ((successes << (int)-exponent) < denominator) {
-            exponent--;
-        }
-
-        int shift = (int)Math.Min(1074, 52 - exponent);
-        WorkBudget.CheckStorage(1, (numeratorBits + shift + 31) / 32);
-        BigInteger significand = BigInteger.DivRem(successes << shift, denominator, out BigInteger remainder);
-        int rounding = (remainder << 1).CompareTo(denominator);
-
-        if (rounding > 0 || (rounding == 0 && !significand.IsEven)) {
-            significand++;
-        }
-
-        return Math.ScaleB((double)significand, -shift);
+        return Fraction(Count(predicate));
     }
 
     internal BigInteger Count(CompiledEvent predicate) {
