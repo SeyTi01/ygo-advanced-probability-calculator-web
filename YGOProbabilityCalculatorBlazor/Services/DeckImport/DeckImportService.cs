@@ -72,11 +72,7 @@ public class DeckImportService(ICardInfoService cardInfoService, IFileService fi
                 };
             }
 
-            cards.Add(new Card(
-                CardPropertyProvider.GetCategories(info),
-                cardCounts[id],
-                info.Name,
-                externalCardId: id));
+            cards.Add(CuratedDrawEffectPresets.CreateImportedCard(info, cardCounts[id], id));
         }
 
         return cards;

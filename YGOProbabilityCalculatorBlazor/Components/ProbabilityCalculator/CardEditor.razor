@@ -380,9 +380,10 @@
         _searchResults = [];
         _activeSuggestionIndex = -1;
 
-        Card newCard = Card
-            .WithObjectiveMetadata(CardPropertyProvider.GetCategories(selectedCard), selectedCard.Id)
-            .WithName(selectedCard.Name);
+        Card newCard = CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(
+            Card.WithObjectiveMetadata(CardPropertyProvider.GetCategories(selectedCard), selectedCard.Id)
+                .WithName(selectedCard.Name),
+            selectedCard);
 
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }

@@ -60,6 +60,15 @@ public class DrawEffectsSessionTest {
         Assert.That(loaded.Cards.Single().DrawOncePerTurn, Is.True);
     }
 
+    [Test]
+    public async Task SavedCuratedCardWithoutDrawSettingsRemainsOrdinaryWhenLoaded() {
+        SessionState loaded = await Codec().LoadSessionAsync(
+            """{"SchemaVersion":4,"Cards":[{"Id":"saved","Categories":[],"Copies":2,"Name":"Pot of Greed","ExternalCardId":55144522}]}""");
+
+        Assert.That((loaded.Cards.Single().ExternalCardId, loaded.Cards.Single().DrawCount, loaded.Cards.Single().DrawOncePerTurn),
+            Is.EqualTo(((int?)55144522, (int?)null, true)));
+    }
+
     [TestCase("0")]
     [TestCase("4")]
     [TestCase("-1")]
