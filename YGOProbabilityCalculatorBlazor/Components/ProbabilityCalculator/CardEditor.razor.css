@@ -5,6 +5,58 @@
     max-width: 48rem;
 }
 
+.card-name-field {
+    position: relative;
+    min-width: 0;
+}
+
+.card-search-results {
+    position: absolute;
+    z-index: 20;
+    inset-inline: 0;
+    top: calc(100% + 0.2rem);
+    max-height: min(18rem, 45vh);
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+    color: var(--bs-body-color);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    box-shadow: var(--bs-box-shadow);
+}
+
+.card-search-result {
+    padding: 0.4rem 0.55rem;
+    border-radius: var(--bs-border-radius-sm);
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+.card-search-result:hover,
+.card-search-result.active {
+    color: var(--bs-emphasis-color);
+    background: var(--bs-primary-bg-subtle);
+}
+
+.card-search-status {
+    position: absolute;
+    z-index: 20;
+    inset-inline: 0;
+    top: calc(100% + 0.2rem);
+    padding: 0.4rem 0.55rem;
+    color: var(--bs-secondary-color);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    box-shadow: var(--bs-box-shadow-sm);
+}
+
+.card-search-error {
+    color: var(--bs-danger-text-emphasis);
+}
+
 .card-copies {
     white-space: nowrap;
 }

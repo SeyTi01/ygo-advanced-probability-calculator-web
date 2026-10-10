@@ -43,6 +43,9 @@ public class SessionSharingTest {
         _context.Services.AddSingleton(_background.Object);
         _context.Services.AddSingleton(Mock.Of<IDeckImportService>());
         _context.Services.AddSingleton(Mock.Of<ICardArtworkService>());
+        Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
+        _context.Services.AddSingleton(cardInfo.Object);
         _enricher = new();
         _enricher.Setup(enricher => enricher.EnrichAsync(It.IsAny<SessionState>())).Returns(Task.CompletedTask);
         _context.Services.AddSingleton(_enricher.Object);

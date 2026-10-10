@@ -28,6 +28,9 @@ public class CategoryRenameTest {
         _context.Services.AddSingleton<IProbabilityCalculatorService, ProbabilityCalculatorService>();
         _context.Services.AddSingleton<ISerializer, JsonSerializer>();
         _context.Services.AddSingleton<ISessionService, SessionService>();
+        Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
+        _context.Services.AddSingleton(cardInfo.Object);
         _context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
         _context.Services.AddSingleton<IPendingSessionService, PendingSessionService>();
         _context.Services.AddSingleton<IDeckImportService>(Mock.Of<IDeckImportService>());

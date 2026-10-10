@@ -34,6 +34,9 @@ public class PinnedResultTest {
         _context.JSInterop.Mode = JSRuntimeMode.Loose;
         _context.Services.AddSingleton<ISerializer, JsonSerializer>();
         _context.Services.AddSingleton<ISessionService, SessionService>();
+        Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
+        _context.Services.AddSingleton(cardInfo.Object);
         _context.Services.AddSingleton(Mock.Of<ILegacyCardMetadataEnricher>());
         _context.Services.AddSingleton(Mock.Of<ICardArtworkService>());
         _imports = new();

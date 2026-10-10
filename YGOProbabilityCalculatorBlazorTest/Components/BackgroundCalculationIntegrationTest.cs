@@ -42,6 +42,9 @@ public class BackgroundCalculationIntegrationTest {
         _context.Services.AddSingleton<IBackgroundCalculator>(_calculator);
         _context.Services.AddSingleton(_imports.Object);
         _context.Services.AddSingleton(_enricher.Object);
+        Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
+        _context.Services.AddSingleton(cardInfo.Object);
         _context.Services.AddSingleton(Mock.Of<ICardArtworkService>());
         BunitJSModuleInterop clipboard = _context.JSInterop.SetupModule("./js/probabilityResultExport.js");
         clipboard.Mode = JSRuntimeMode.Loose;

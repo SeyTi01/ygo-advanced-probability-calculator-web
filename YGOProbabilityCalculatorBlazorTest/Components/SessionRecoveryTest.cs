@@ -33,6 +33,9 @@ public class SessionRecoveryTest {
         _context.Services.AddSingleton<IBackgroundCalculator, BackgroundCalculatorTestAdapter>();
         _context.Services.AddSingleton(Mock.Of<IDeckImportService>());
         _context.Services.AddSingleton(Mock.Of<ICardArtworkService>());
+        Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
+        _context.Services.AddSingleton(cardInfo.Object);
         _enricher = new Mock<ILegacyCardMetadataEnricher>();
         _enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(Task.CompletedTask);
         _context.Services.AddSingleton(_enricher.Object);
