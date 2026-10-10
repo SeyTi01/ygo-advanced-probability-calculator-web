@@ -83,7 +83,8 @@ public sealed class SessionSchemaMigrator {
         JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
         foreach (JsonObject card in cards?.OfType<JsonObject>() ?? []) {
             string[] fields = card.Select(property => property.Key)
-                .Where(name => name.Equals("DrawCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+                .Where(name => name.Equals("DrawCount", StringComparison.OrdinalIgnoreCase)
+                    || name.Equals("DrawOncePerTurn", StringComparison.OrdinalIgnoreCase)).ToArray();
             foreach (string field in fields) {
                 card.Remove(field);
             }

@@ -20,13 +20,21 @@ public class DrawEffectsTest {
                 deck.Add(new(i == 0 ? [A, B] : [B, C], entries[i].Copies, "Same display name", id: $"effect{i}", drawCount: entries[i].Draw));
             }
 
-            foreach (int size in new[] { 0, 1, 2, deck.Sum(card => card.Copies) }) {
-                yield return new TestCaseData(deck, size).SetName($"DrawParity_{string.Join('_', entries.Select(entry => $"{entry.Copies}x{entry.Draw}"))}_h{size}");
+            for (int limits = 0; limits < (1 << entries.Length); limits++) {
+                List<Card> configured = deck.Select((card, index) => index < 3
+                    ? card
+                    : card.WithDrawOncePerTurn((limits & (1 << (index - 3))) != 0)).ToList();
+                foreach (int size in new[] { 0, 1, 2, deck.Sum(card => card.Copies) }) {
+                    yield return new TestCaseData(configured, size)
+                        .SetName($"DrawParity_{string.Join('_', entries.Select(entry => $"{entry.Copies}x{entry.Draw}"))}_limits{limits}_h{size}");
+                }
             }
         }
 
         yield return new TestCaseData(new List<Card> { new([A, B], 3, id: "effect0", drawCount: 1) }, 1).SetName("DrawParity_RetainedOnly");
         yield return new TestCaseData(new List<Card> { new([A], id: "effect0", drawCount: 2) }, 1).SetName("DrawParity_AllExhausted");
+        yield return new TestCaseData(new List<Card> { new([A, B], 3, id: "effect0", drawCount: 1, drawOncePerTurn: false) }, 1)
+            .SetName("DrawParity_UnlimitedExhaustsEffectOnlyDeck");
     }
 
     private static List<Combo> Requirements() => [
@@ -86,7 +94,7 @@ public class DrawEffectsTest {
 
     [Test]
     public void NoEffectsRetainTheFixedHandPath() {
-        List<Card> deck = [new([A, B], 2), new([A]), new([C], 2)];
+        List<Card> deck = [new([A, B], 2, drawOncePerTurn: false), new([A]), new([C], 2)];
         List<Combo> combos = Requirements();
         WorkBudget budget = new(CalculationWorkPolicy.Default);
         ExactCalculationResult fixedResult = new ProbabilityCalculation(deck, 2, budget).CalculateExactResults(combos, []);

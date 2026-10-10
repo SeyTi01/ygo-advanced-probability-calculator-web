@@ -19,7 +19,8 @@ internal sealed class BackgroundCalculatorTestAdapter(IProbabilityCalculatorServ
                 card.Id,
                 card.ExternalCardId,
                 card.ManualMetadataCategoryKeys,
-                card.DrawCount
+                card.DrawCount,
+                card.DrawOncePerTurn
             )).ToList(),
             input.Combos.Select(combo => new Combo(
                 combo.Categories,

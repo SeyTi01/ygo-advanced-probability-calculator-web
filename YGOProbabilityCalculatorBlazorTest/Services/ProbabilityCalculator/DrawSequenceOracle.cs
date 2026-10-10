@@ -72,7 +72,7 @@ internal static class DrawSequenceOracle {
             }
 
             void Draw(Card card) {
-                if (card.DrawCount is { } count && used.Add(card.Id)) {
+                if (card.DrawCount is { } count && (!card.DrawOncePerTurn || used.Add(card.Id))) {
                     pendingEffects.Enqueue(count);
                 }
                 else {

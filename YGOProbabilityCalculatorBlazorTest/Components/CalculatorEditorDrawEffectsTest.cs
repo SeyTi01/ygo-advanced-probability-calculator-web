@@ -37,6 +37,39 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
     }
 
     [Test]
+    public async Task OncePerTurnTogglePreservesDraftAndIdentityAndInvalidatesResults() {
+        SessionState session = Session();
+        session.Cards[0] = session.Cards[0].WithDrawCount(2);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        await Button(cut, "Calculate").ClickAsync(new());
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
+        string id = editor.Instance.Card.Id;
+        Assert.That(editor.Find("#cardDrawOnce0").HasAttribute("checked"), Is.True);
+        await editor.Find("#cardCategory0").ChangeAsync(new() { Value = "user:B" });
+        await editor.Find("#cardDrawOnce0").ChangeAsync(new() { Value = false });
+        Assert.That(editor.Instance.Card.DrawOncePerTurn, Is.False);
+        Assert.That(editor.Instance.Card.DrawCount, Is.EqualTo(2));
+        Assert.That(editor.Find("#cardDrawHelp0").TextContent, Does.Contain("Every copy drawn"));
+        AssertPreviousResult(cut);
+        await Button(cut, "Save Session").ClickAsync(new());
+        SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
+        Assert.That(saved.Cards[0].DrawOncePerTurn, Is.False);
+        await cut.Find("[aria-label='Move card First, row 1 down']").ClickAsync(new());
+        editor = cut.FindComponents<CardEditor>()[1];
+        Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
+        Assert.That(editor.Find("#cardCategory1").GetAttribute("value"), Is.EqualTo("user:B"));
+        Assert.That(editor.Find("#cardDrawOnce1").HasAttribute("checked"), Is.False);
+        await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "" });
+        Assert.That(editor.FindAll("[role='switch']"), Is.Empty);
+        Assert.That(editor.Instance.Card.Active, Is.True);
+        await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "3" });
+        Assert.That(editor.Find("#cardDrawOnce1").HasAttribute("checked"), Is.False);
+        await editor.Find("#cardDrawOnce1").ChangeAsync(new() { Value = true });
+        Assert.That(editor.Instance.Card.DrawOncePerTurn, Is.True);
+        Assert.That(editor.Find("#cardDrawHelp1").TextContent, Does.Contain("later copies stay in hand"));
+    }
+
+    [Test]
     public async Task InvalidSelectionDoesNotReplaceSavedSetting() {
         SessionState session = Session();
         session.Cards[0] = session.Cards[0].WithDrawCount(1);
