@@ -1,7 +1,10 @@
 using System.Numerics;
+using Microsoft.JSInterop;
+using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazor.Services.Session;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -80,6 +83,59 @@ public class DrawEffectsTest {
         Assert.That(published.TotalProbability, Is.EqualTo((double)expected.Wins[0] / (double)expected.Total).Within(1e-14));
         Assert.That(published.ComboProbabilities.Select(row => row.ComboIndex), Is.EqualTo(Enumerable.Range(0, combos.Count)));
         Assert.That(published.GroupProbabilities!.Select(row => row.GroupId), Is.EqualTo(groups.Select(group => group.Id)));
+    }
+
+    [Test]
+    public async Task ExampleUnrestrictedDrawsHaveWorkHeadroom() {
+        SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        string json = File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json"));
+        foreach (bool mixed in new[] { false, true }) {
+            SessionState session = await codec.LoadSessionAsync(json);
+            if (mixed) {
+                for (int i = 0; i < 3; i++) {
+                    session.Cards[i] = session.Cards[i].WithDrawCount(i + 1).WithDrawOncePerTurn(false);
+                }
+            }
+            else {
+                int index = session.Cards.FindIndex(card => card.Name == "Mulcharmy Fuwalos");
+                Assert.That(index, Is.GreaterThanOrEqualTo(0));
+                Assert.That(session.Cards[index].Copies, Is.EqualTo(3));
+                session.Cards[index] = session.Cards[index].WithDrawCount(3).WithDrawOncePerTurn(false);
+            }
+
+            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+            ExactCalculationResult result = new DrawEffectCalculation(session.Cards, session.HandSize, budget)
+                .Calculate(session.Combos, session.ComboGroups);
+            // Measured at 21.03M / 25.27M. Leave room for conservative accounting
+            // changes while catching loss of empty-scenario role factoring.
+            Assert.That(budget.Spent, Is.LessThan(35_000_000), mixed ? "Mixed Draw 1/2/3" : "Fuwalos Draw 3");
+            Assert.That(result.Total.Numerator, Is.GreaterThan(BigInteger.Zero));
+            Assert.That(result.Total.Numerator, Is.LessThan(result.Total.Denominator));
+        }
+    }
+
+    [TestCase(false), TestCase(true)]
+    public void EmptyRetainedScenariosPreserveFactoringAndDistinctCopies(bool oncePerTurn) {
+        List<Card> deck = [new([A, B], id: "common"), new([A]), new([B, C]), new([C]), new([]),
+            new([A, B, C], 2, id: "effect", drawCount: 2, drawOncePerTurn: oncePerTurn)];
+        List<Combo> combos = [
+            new([new(A, 1, 0, RequirementMaximumMode.HandSize), new(B, 1, 0, RequirementMaximumMode.HandSize)], groupId: "g"),
+            new([new(A, 1, 0, RequirementMaximumMode.HandSize), new(C, 1, 0, RequirementMaximumMode.HandSize)], groupId: "g"),
+            new([new(B, 1, 0, RequirementMaximumMode.HandSize)], cards: [new("common", 1, 0, RequirementMaximumMode.HandSize)]),
+            new([new(C, 1, 0, RequirementMaximumMode.HandSize)], cards: [new("common", 1, 0, RequirementMaximumMode.HandSize)]),
+            new([new(A, 1, 1), new(B, 1, 0, RequirementMaximumMode.HandSize)], groupId: "fixed"),
+            new([new(A, 1, 1), new(C, 1, 0, RequirementMaximumMode.HandSize)], groupId: "fixed"),
+            new([new(A, 1, 0, RequirementMaximumMode.HandSize), new(B, 2, 0, RequirementMaximumMode.HandSize)], groupId: "two"),
+            new([new(A, 1, 0, RequirementMaximumMode.HandSize), new(C, 2, 0, RequirementMaximumMode.HandSize)], groupId: "two")
+        ];
+        List<ComboGroup> groups = [new("g", "Factorable"), new("fixed", "Fixed maxima"), new("two", "Demand two")];
+        DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(deck, 2, combos, groups);
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+        ExactCalculationResult result = new DrawEffectCalculation(deck, 2, budget).Calculate(combos, groups);
+        ExactProbability[] actual = [result.Total, .. result.Combos, .. result.Groups];
+        for (int i = 0; i < actual.Length; i++) {
+            Assert.That(actual[i].Numerator * expected.Total, Is.EqualTo(expected.Wins[i] * actual[i].Denominator), $"Row {i}");
+        }
     }
 
     [Test]
