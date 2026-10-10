@@ -22,7 +22,7 @@ public class ComboAlternativesSessionTest {
         SessionState session = new() { Cards = [new([metadata], id: "a", manualMetadataCategoryKeys: ["attribute:fire"])],
             Combos = [combo], ComboGroups = [new("g", "Group")], HandSize = 3 };
         string json = Codec().SerializeSession(session);
-        Assert.That(JsonNode.Parse(json)!["SchemaVersion"]!.GetValue<int>(), Is.EqualTo(3));
+        Assert.That(JsonNode.Parse(json)!["SchemaVersion"]!.GetValue<int>(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         SessionState loaded = await Codec().LoadSessionAsync(json);
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
         string link = SessionShareCodec.CreateLink("https://example.invalid/", json);
@@ -43,7 +43,7 @@ public class ComboAlternativesSessionTest {
         string json = codec.SerializeSession(session);
         SessionState loaded = await codec.LoadSessionAsync(json);
 
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(3));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Combos[0].AlternativeGroups, Has.Count.EqualTo(2));
         Assert.That(loaded.Combos[0].AlternativeGroups.Select(group => group.Alternatives.Count), Is.EqualTo(new[] { 1, 1 }));
         Assert.That(loaded.Combos[0].AlternativeGroups[0].Alternatives[0].Category!.MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
@@ -71,7 +71,7 @@ public class ComboAlternativesSessionTest {
     public async Task OldSchemasRetainAndRequirements(int version) {
         string json = $$"""{"SchemaVersion":{{version}},"Combos":[{"Categories":[{"BaseCategory":{"Name":"A"},"MinCount":0,"MaxCount":0}],"Cards":[{"CardId":"a","MinCount":1,"MaxCount":2}]}]}""";
         SessionState loaded = await Codec().LoadSessionAsync(json);
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(3));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Combos[0].AlternativeGroups, Is.Empty);
         Assert.That(loaded.Combos[0].Categories[0].MaximumMode, Is.EqualTo(RequirementMaximumMode.Fixed));
         Assert.That(loaded.Combos[0].Cards[0].CardId, Is.EqualTo("a"));

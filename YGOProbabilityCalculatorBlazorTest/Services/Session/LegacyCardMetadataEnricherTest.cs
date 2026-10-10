@@ -184,7 +184,7 @@ public class LegacyCardMetadataEnricherTest {
         CaptureJs js = new();
         SessionService sessions = new(js, new Serializer());
         await sessions.SaveSessionAsync(new SessionState { Cards = [original] }, "manual.json");
-        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(3));
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(4));
         using JsonDocument saved = JsonDocument.Parse(js.Json);
         Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         SessionState loaded = await sessions.LoadSessionAsync(js.Json);

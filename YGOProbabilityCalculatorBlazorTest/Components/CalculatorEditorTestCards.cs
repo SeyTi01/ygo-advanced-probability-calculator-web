@@ -408,7 +408,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> combo = cut.FindComponents<ComboEditor>()[1];
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
-        card.Find("select").Change("user:A");
+        card.Find("select[id^='cardCategory']").Change("user:A");
         combo.Find("select").Change("user:A");
         combo.Find("#minCount1").Input("0");
         combo.Find("#maxCount1").Input("0");
@@ -416,7 +416,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         cut.FindComponents<ComboEditor>()[0].Find("[title='Remove combo']").Click();
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(1));
-        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("user:A"));
+        Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:A"));
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
@@ -442,7 +442,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
                 .Add(component => component.Combos, session.Combos)
                 .Add(component => component.CategoryBases, session.Categories);
         });
-        cards.FindComponents<CardEditor>()[0].Find("select").Change("user:B");
+        cards.FindComponents<CardEditor>()[0].Find("select[id^='cardCategory']").Change("user:B");
         combos.FindComponents<ComboEditor>()[0].Find("select").Change("user:B");
         combos.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");
         combos.FindComponents<ComboEditor>()[0].Find("#maxCount0").Input("0");
@@ -450,9 +450,9 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         session.Combos.Reverse();
         cards.SetParametersAndRender(parameters => parameters.Add(component => component.Cards, session.Cards));
         combos.SetParametersAndRender(parameters => parameters.Add(component => component.Combos, session.Combos));
-        Assert.That(cards.FindComponents<CardEditor>()[1].Find("select").GetAttribute("value"), Is.EqualTo("user:B"));
+        Assert.That(cards.FindComponents<CardEditor>()[1].Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(combos.FindComponents<ComboEditor>()[1].Find("#maxCount1").GetAttribute("value"), Is.EqualTo("0"));
-        Assert.That(cards.FindComponents<CardEditor>()[0].Find("select").GetAttribute("value"), Is.Null.Or.Empty);
+        Assert.That(cards.FindComponents<CardEditor>()[0].Find("select[id^='cardCategory']").GetAttribute("value"), Is.Null.Or.Empty);
     }
 
 }

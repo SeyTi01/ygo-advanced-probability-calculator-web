@@ -42,6 +42,7 @@ public class DeckImportServiceTest {
         List<Card> result = await _service.ImportDeckFromYdkAsync(mockFile.Object);
 
         Assert.That(result, Has.Count.EqualTo(2));
+        Assert.That(result.All(card => card.DrawCount is null), Is.True);
 
         Card firstCard = result.First(x => x.Copies == 2);
         Assert.Multiple(() => {

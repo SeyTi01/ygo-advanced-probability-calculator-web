@@ -24,7 +24,8 @@ public sealed record CalculationSnapshot(string Json) {
                 card.Name,
                 card.ExternalCardId,
                 card.Categories.ToArray(),
-                card.ManualMetadataCategoryKeys.ToArray()
+                card.ManualMetadataCategoryKeys.ToArray(),
+                card.DrawCount
             ))
             .ToArray();
 
@@ -54,7 +55,8 @@ public sealed record WorkerCard(
     string? Name,
     int? ExternalCardId,
     CategoryBase[] Categories,
-    string[] ManualMetadataCategoryKeys
+    string[] ManualMetadataCategoryKeys,
+    int? DrawCount = null
 );
 
 public sealed record WorkerCombo(
@@ -98,7 +100,8 @@ public static class CalculationWire {
                     true,
                     card.Id,
                     card.ExternalCardId,
-                    card.ManualMetadataCategoryKeys
+                    card.ManualMetadataCategoryKeys,
+                    card.DrawCount
                 ))
                 .ToList();
 

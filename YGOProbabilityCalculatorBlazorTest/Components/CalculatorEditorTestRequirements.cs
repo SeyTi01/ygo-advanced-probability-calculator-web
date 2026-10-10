@@ -318,16 +318,16 @@ public sealed class CalculatorEditorTestRequirements : CalculatorEditorTestBase 
             Assert.That(card.Find("[role=alert]").TextContent, Does.Contain("at least 1"));
             Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("(2)"));
         }
-        card.Find("select").Change("user:A");
+        card.Find("select[id^='cardCategory']").Change("user:A");
         Button(card, "Add").Click();
         Assert.That(card.Find("[role=alert]").TextContent, Does.Contain("already added"));
-        card.Find("select").Change("missing");
+        card.Find("select[id^='cardCategory']").Change("missing");
         Button(card, "Add").Click();
         Assert.That(card.Find("[role=alert]").TextContent, Does.Contain("not found"));
-        card.Find("select").Change("user:B");
+        card.Find("select[id^='cardCategory']").Change("user:B");
         card.Find("input[type=number]").Input("6");
         card.Find("#cardName0").Input("Renamed");
-        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("user:B"));
+        Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:B"));
         Button(card, "Add").Click();
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Renamed").And.Contain("(6)"));
         Assert.That(card.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));

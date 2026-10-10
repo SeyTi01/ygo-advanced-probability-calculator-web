@@ -80,6 +80,13 @@
     </section>
 
     <section class="mb-4">
+        <h2>Deterministic draw effects</h2>
+        <p>In an expanded card entry, choose <strong>None</strong>, <strong>Draw 1</strong>, <strong>Draw 2</strong>, or <strong>Draw 3</strong>. The first copy encountered automatically draws that many cards and is consumed. Later copies of the same entry stay in hand. Newly drawn effects resolve in the same way; separate entries have independent allowances, even when their names match.</p>
+        <p>Requirements apply to the final hand. Retained duplicates count toward categories, specific-card requirements, and maximums; <strong>Any</strong> uses the complete final hand size. If a requested draw cannot be completed, that outcome fails. Other outcomes keep their original probability.</p>
+        <p><strong>None</strong> makes the card ordinary without deactivating it. Imported and newly created cards start with no effect. This setting models unconditional fixed draws only, without optional activation, costs, searches, or other game effects.</p>
+    </section>
+
+    <section class="mb-4">
         <h2>Reading the results</h2>
         <p>Each active combo gets its own probability.</p>
         <p>Because the same opening hand can satisfy several combos, those percentages may overlap and should not simply be added together.</p>
@@ -106,7 +113,7 @@
         <h2>Experimenting with a deck</h2>
         <p>Cards and combos can be temporarily deactivated without deleting them. This is useful for comparing deck choices or removing a route from the calculation.</p>
         <p>You can also reorder cards, categories, combos, and combo groups to keep larger configurations readable.</p>
-        <p>New saved sessions use schema 3 for grouped alternatives. Supported older sessions load with their original AND meaning. Older applications may reject new saves; ancient readers without schema checks may misinterpret them.</p>
+        <p>New saved sessions use schema 4 for draw effects and grouped alternatives. Supported older sessions load without draw effects and preserve their original requirements. Older applications may reject new saves; ancient readers without schema checks may misinterpret them.</p>
         <p>When you want to keep a setup, save it as a session. Sessions preserve the deck, categories, combo definitions, ordering, and other calculator settings.</p>
         <p>Imported cards show thumbnails automatically as their rows approach the viewport. Expand a card editor for a larger preview using the same image. Artwork is served from retained project-hosted copies and is recovered using the card's external ID when a session is loaded. Missing or unavailable images do not affect calculations. Card images are supplied by <a href="https://ygoprodeck.com/api-guide/" target="_blank" rel="noopener noreferrer">YGOPRODeck</a>; the calculator's software license does not cover third-party artwork.</p>
     </section>
