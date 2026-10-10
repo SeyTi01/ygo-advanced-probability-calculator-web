@@ -63,6 +63,60 @@ public class DeckImportServiceTest {
     }
 
     [Test]
+    public async Task ImportAppliesCuratedPresetToCollapsedCopies() {
+        const int potOfGreedId = 55144522;
+        _fileServiceMock.Setup(service => service.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
+            .ReturnsAsync(["#main", "55144522", "55144522"]);
+        _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(potOfGreedId))
+            .ReturnsAsync(new CardInfo {
+                Id = potOfGreedId,
+                CanonicalCardId = potOfGreedId,
+                Name = "Pot of Greed"
+            });
+
+        List<Card> cards = await _service.ImportDeckFromYdkAsync(Mock.Of<IBrowserFile>());
+
+        Card card = cards.Single();
+        Assert.That((card.ExternalCardId, card.Name, card.Copies, card.DrawCount, card.DrawOncePerTurn),
+            Is.EqualTo(((int?)potOfGreedId, "Pot of Greed", 2, 2, false)));
+    }
+
+    [Test]
+    public async Task ImportUsesCanonicalIdentityAndPreservesImportedPasscode() {
+        const int importedPasscode = 12345;
+        _fileServiceMock.Setup(service => service.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
+            .ReturnsAsync(["#main", "12345"]);
+        _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(importedPasscode))
+            .ReturnsAsync(new CardInfo {
+                Id = importedPasscode,
+                CanonicalCardId = 55144522,
+                Name = "Pot of Greed"
+            });
+
+        Card card = (await _service.ImportDeckFromYdkAsync(Mock.Of<IBrowserFile>())).Single();
+
+        Assert.That((card.ExternalCardId, card.DrawCount, card.DrawOncePerTurn),
+            Is.EqualTo(((int?)importedPasscode, 2, false)));
+    }
+
+    [Test]
+    public async Task ImportDoesNotApplyPresetByNameOrToUncuratedCards() {
+        _fileServiceMock.Setup(service => service.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
+            .ReturnsAsync(["#main", "12345", "67890"]);
+        _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(12345))
+            .ReturnsAsync(new CardInfo { Id = 12345, Name = "Pot of Greed" });
+        _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(67890))
+            .ReturnsAsync(new CardInfo { Id = 67890, Name = "An ordinary card" });
+
+        List<Card> cards = await _service.ImportDeckFromYdkAsync(Mock.Of<IBrowserFile>());
+
+        Assert.That(cards.Select(card => (card.Name, card.DrawCount, card.DrawOncePerTurn)), Is.EqualTo(new[] {
+            ("Pot of Greed", (int?)null, true),
+            ("An ordinary card", (int?)null, true)
+        }));
+    }
+
+    [Test]
     public async Task ImportDeckFromYdkAsync_CardInfoServiceFails_CreatesCardAnyway() {
         Mock<IBrowserFile> mockFile = new();
         _fileServiceMock.Setup(x => x.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))

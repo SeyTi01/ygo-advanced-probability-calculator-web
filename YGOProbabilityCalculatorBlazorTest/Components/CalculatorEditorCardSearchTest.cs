@@ -21,6 +21,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     private const int AshBlossomId = 14558127;
     private const int BlueEyesId = 89631139;
+    private const int PotOfGreedId = 55144522;
     private static readonly CardInfo AshBlossom = new() {
         Id = AshBlossomId,
         Name = "Ash Blossom & Joyous Spring",
@@ -44,6 +45,16 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         Level = 8,
         CanonicalCardId = BlueEyesId,
         ArtworkImageIds = [BlueEyesId],
+        ArtworkMetadataKnown = true
+    };
+    private static readonly CardInfo PotOfGreed = new() {
+        Id = PotOfGreedId,
+        Name = "Pot of Greed",
+        Type = "Spell Card",
+        FrameType = "spell",
+        Race = "Normal",
+        CanonicalCardId = PotOfGreedId,
+        ArtworkImageIds = [PotOfGreedId],
         ArtworkMetadataKnown = true
     };
 
@@ -112,6 +123,77 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     }
 
     [Test]
+    public async Task SelectingCuratedCardAppliesEditablePresetAndReloadKeepsOverride() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
+        await Button(cut, "Add New Card").ClickAsync(new());
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
+        string cardId = editor.Instance.Card.Id;
+        IElement nameInput = editor.Find("#cardName0");
+
+        await nameInput.FocusAsync(new FocusEventArgs());
+        await nameInput.InputAsync(new() { Value = PotOfGreed.Name });
+        await editor.FindAll(".card-search-result").Single(result => result.TextContent.Trim() == PotOfGreed.Name).ClickAsync(new());
+
+        Card selected = cut.FindComponents<CardEditor>().Single().Instance.Card;
+        Assert.That((selected.Id, selected.ExternalCardId, selected.Name, selected.DrawCount, selected.DrawOncePerTurn),
+            Is.EqualTo((cardId, PotOfGreedId, PotOfGreed.Name, 2, false)));
+        Assert.That(cut.Find("#cardDraw0").GetAttribute("value"), Is.EqualTo("2"));
+        Assert.That(cut.Find("#cardDrawOnce0").GetAttribute("checked"), Is.Null);
+
+        await cut.Find("#cardDraw0").ChangeAsync(new() { Value = string.Empty });
+        Card overridden = cut.FindComponents<CardEditor>().Single().Instance.Card;
+        Assert.That((overridden.DrawCount, overridden.DrawOncePerTurn), Is.EqualTo(((int?)null, false)));
+
+        await Button(cut, "Save Session").ClickAsync(new());
+        string saved = SavedSessionJson();
+        Mock<IBrowserFile> file = new();
+        file.Setup(browserFile => browserFile.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(saved)));
+        await cut.InvokeAsync(() => cut.FindComponents<InputFile>()[1].Instance.OnChange
+            .InvokeAsync(new InputFileChangeEventArgs([file.Object])));
+
+        Card restored = cut.FindComponents<CardEditor>().Single().Instance.Card;
+        Assert.That((restored.Id, restored.ExternalCardId, restored.DrawCount, restored.DrawOncePerTurn),
+            Is.EqualTo((cardId, PotOfGreedId, (int?)null, false)));
+        AssertOnlyLocalCatalogWasRequested();
+    }
+
+    [Test]
+    public async Task SelectingCuratedCardPreservesCustomizedDrawSettings() {
+        Card customized = new([], copies: 2, name: "Manual", active: false, id: "customized", externalCardId: 1234,
+            drawCount: 1, drawOncePerTurn: false);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [customized] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
+        IElement nameInput = editor.Find("#cardName0");
+
+        await nameInput.FocusAsync(new FocusEventArgs());
+        await nameInput.InputAsync(new() { Value = "Pot of Greed" });
+        await editor.FindAll(".card-search-result").Single(result => result.TextContent.Trim() == PotOfGreed.Name).ClickAsync(new());
+
+        Card selected = cut.FindComponents<CardEditor>().Single().Instance.Card;
+        Assert.That((selected.Id, selected.Copies, selected.Active, selected.DrawCount, selected.DrawOncePerTurn),
+            Is.EqualTo(("customized", 2, false, 1, false)));
+        AssertOnlyLocalCatalogWasRequested();
+    }
+
+    [Test]
+    public async Task SelectingUncuratedCardKeepsOrdinaryDrawSettings() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
+        await Button(cut, "Add New Card").ClickAsync(new());
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
+        IElement nameInput = editor.Find("#cardName0");
+
+        await nameInput.FocusAsync(new FocusEventArgs());
+        await nameInput.InputAsync(new() { Value = "Blue-Eyes" });
+        await editor.FindAll(".card-search-result").Single(result => result.TextContent.Trim() == BlueEyes.Name).ClickAsync(new());
+
+        Card selected = cut.FindComponents<CardEditor>().Single().Instance.Card;
+        Assert.That((selected.Name, selected.ExternalCardId, selected.DrawCount, selected.DrawOncePerTurn),
+            Is.EqualTo((BlueEyes.Name, BlueEyesId, (int?)null, true)));
+        AssertOnlyLocalCatalogWasRequested();
+    }
+
+    [Test]
     public async Task SelectingDifferentCardReplacesObjectivePropertiesAndPreservesManualOverrides() {
         CategoryBase userCategory = new("Custom Route");
         CategoryBase oldObjective = new("Rank 4", CategorySource.Metadata, "rank:4");
@@ -148,16 +230,18 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         IElement nameInput = editor.Find("#cardName0");
 
         await nameInput.FocusAsync(new FocusEventArgs());
-        await nameInput.InputAsync(new() { Value = AshBlossom.Name });
-        Assert.That(editor.Instance.Card.Name, Is.EqualTo(AshBlossom.Name));
+        await nameInput.InputAsync(new() { Value = PotOfGreed.Name });
+        Assert.That(editor.Instance.Card.Name, Is.EqualTo(PotOfGreed.Name));
         Assert.That(editor.Instance.Card.ExternalCardId, Is.Null);
+        Assert.That((editor.Instance.Card.DrawCount, editor.Instance.Card.DrawOncePerTurn), Is.EqualTo(((int?)null, true)));
         Assert.That(editor.FindAll(".card-search-result").Select(result => result.TextContent.Trim()),
-            Does.Contain(AshBlossom.Name));
+            Does.Contain(PotOfGreed.Name));
 
         await nameInput.KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
         Assert.That(editor.FindAll(".card-search-results"), Is.Empty);
-        Assert.That(editor.Instance.Card.Name, Is.EqualTo(AshBlossom.Name));
+        Assert.That(editor.Instance.Card.Name, Is.EqualTo(PotOfGreed.Name));
         Assert.That(editor.Instance.Card.ExternalCardId, Is.Null);
+        Assert.That((editor.Instance.Card.DrawCount, editor.Instance.Card.DrawOncePerTurn), Is.EqualTo(((int?)null, true)));
         AssertOnlyLocalCatalogWasRequested();
     }
 
@@ -238,7 +322,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     }
 
     private static string CatalogJson() => JsonSerializer.Serialize(
-        new { version = 1, cards = new[] { AshBlossom, BlueEyes } },
+        new { version = 1, cards = new[] { AshBlossom, BlueEyes, PotOfGreed } },
         new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
     private sealed class SearchCatalogHandler : HttpMessageHandler {

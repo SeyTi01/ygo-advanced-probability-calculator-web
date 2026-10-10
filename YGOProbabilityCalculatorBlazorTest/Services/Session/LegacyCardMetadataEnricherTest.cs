@@ -16,6 +16,21 @@ public class LegacyCardMetadataEnricherTest {
         Type = "Tuner Monster", Race = "Zombie", Attribute = "FIRE", Level = 3 };
     private static readonly CardInfo Maxx = new() { Id = 23434538, Name = "Maxx \"C\"",
         Type = "Effect Monster", Race = "Insect", Attribute = "EARTH", Level = 2 };
+    private static readonly CardInfo PotOfGreed = new() {
+        Id = 55144522, CanonicalCardId = 55144522, Name = "Pot of Greed", Type = "Spell Card", Race = "Normal"
+    };
+
+    [Test]
+    public async Task LegacyMetadataEnrichmentDoesNotApplyCuratedDrawPreset() {
+        Card legacy = new([], 2, PotOfGreed.Name, id: "legacy-pot");
+        SessionState session = new() { Cards = [legacy] };
+
+        await new LegacyCardMetadataEnricher(MatchingService(PotOfGreed).Object).EnrichAsync(session);
+
+        Card enriched = session.Cards.Single();
+        Assert.That((enriched.Id, enriched.Name, enriched.ExternalCardId, enriched.DrawCount, enriched.DrawOncePerTurn),
+            Is.EqualTo((legacy.Id, PotOfGreed.Name, (int?)PotOfGreed.Id, (int?)null, true)));
+    }
 
     [TestCase(0)]
     [TestCase(1)]
