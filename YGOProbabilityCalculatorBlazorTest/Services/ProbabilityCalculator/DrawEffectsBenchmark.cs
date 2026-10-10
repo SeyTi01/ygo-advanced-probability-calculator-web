@@ -32,6 +32,12 @@ public class DrawEffectsBenchmark {
             }
 
             cases.Add((name, new() { Cards = cards, Combos = combos, ComboGroups = groups, HandSize = 5 }));
+            if (effects.Length > 0) {
+                cases.Add(($"{name}-unlimited", new() {
+                    Cards = cards.Select(card => card.WithDrawOncePerTurn(false)).ToList(),
+                    Combos = combos, ComboGroups = groups, HandSize = 5
+                }));
+            }
         }
 
         SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
@@ -44,6 +50,11 @@ public class DrawEffectsBenchmark {
         }
 
         cases.Add(("example-mixed-123", configured));
+        SessionState unrestricted = await codec.LoadSessionAsync(codec.SerializeSession(configured));
+        for (int i = 0; i < unrestricted.Cards.Count; i++) {
+            unrestricted.Cards[i] = unrestricted.Cards[i].WithDrawOncePerTurn(false);
+        }
+        cases.Add(("example-mixed-123-unlimited", unrestricted));
         List<object> exported = [];
         foreach ((string name, SessionState session) in cases) {
             List<Card> deck = session.Cards.Where(card => card.Active).ToList();

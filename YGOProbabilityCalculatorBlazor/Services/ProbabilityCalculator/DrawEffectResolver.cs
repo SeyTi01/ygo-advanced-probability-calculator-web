@@ -56,20 +56,23 @@ internal static class DrawEffectResolver {
                     encountered = checked(encountered + count);
                     pending -= count;
                     if (count > 0) {
-                        pending += effects[i].DrawCount!.Value;
+                        int activations = effects[i].DrawOncePerTurn ? 1 : count;
+                        pending += (long)effects[i].DrawCount!.Value * activations;
                     }
                 }
 
                 int remaining = totalCopies - encountered;
                 if (pending == 0) {
-                    int[] retained = state.EffectCounts.Select(count => Math.Max(0, count - 1)).ToArray();
+                    int[] retained = state.EffectCounts
+                        .Select((count, index) => effects[index].DrawOncePerTurn ? Math.Max(0, count - 1) : 0)
+                        .ToArray();
                     Add(scenarios, new(state.OrdinaryCount, retained), weight, ref scenarioCells);
                     continue;
                 }
 
                 if (pending > remaining) {
                     // Even consuming every remaining position cannot fulfill current requests.
-                    // Unseen effects can only add requests, so this is certain exhaustion.
+                    // Further activations can only add requests, so this is certain exhaustion.
                     exhaustion = exhaustion.Add(weight, budget);
                     continue;
                 }

@@ -56,8 +56,24 @@ public class CardConverter : JsonConverter<Card> {
             drawCount = count;
         }
 
+        JsonProperty[] limitProperties = root.EnumerateObject()
+            .Where(property => property.Name.Equals("DrawOncePerTurn", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (limitProperties.Length > 1) {
+            throw new JsonException("Draw once-per-turn setting is duplicated.");
+        }
+
+        bool drawOncePerTurn = true;
+        if (limitProperties.Length == 1) {
+            JsonElement value = limitProperties[0].Value;
+            if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) {
+                throw new JsonException("Draw once-per-turn setting must be a boolean.");
+            }
+
+            drawOncePerTurn = value.GetBoolean();
+        }
+
         try {
-            return new Card(categories, copies, name, active, id, externalCardId, manualKeys, drawCount);
+            return new Card(categories, copies, name, active, id, externalCardId, manualKeys, drawCount, drawOncePerTurn);
         }
         catch (ArgumentException exception) {
             throw new JsonException("Invalid manual card properties.", exception);
@@ -81,6 +97,11 @@ public class CardConverter : JsonConverter<Card> {
         JsonSerializer.Serialize(writer, value.ManualMetadataCategoryKeys.Order(StringComparer.Ordinal), options);
         if (value.DrawCount is { } drawCount) {
             writer.WriteNumber("DrawCount", drawCount);
+        }
+
+        // Omission keeps earlier schema-4 sessions and ordinary cards compatible.
+        if (!value.DrawOncePerTurn) {
+            writer.WriteBoolean("DrawOncePerTurn", false);
         }
 
         writer.WriteEndObject();

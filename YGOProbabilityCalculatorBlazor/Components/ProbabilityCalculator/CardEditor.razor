@@ -81,18 +81,37 @@
             </div>
             <div class="mb-3">
                 <label for="cardDraw@(Index)" class="form-label">Draw effect</label>
-                <select id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
-                        value="@(Card.DrawCount?.ToString() ?? string.Empty)"
-                        aria-describedby="cardDrawHelp@(Index)" @onchange="e => ChangeDrawCount(e.Value)">
-                    <option value="">None</option>
-                    <option value="1">Draw 1</option>
-                    <option value="2">Draw 2</option>
-                    <option value="3">Draw 3</option>
-                </select>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <select id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
+                            value="@(Card.DrawCount?.ToString() ?? string.Empty)"
+                            aria-describedby="cardDrawHelp@(Index)" @onchange="e => ChangeDrawCount(e.Value)">
+                        <option value="">None</option>
+                        <option value="1">Draw 1</option>
+                        <option value="2">Draw 2</option>
+                        <option value="3">Draw 3</option>
+                    </select>
+                    @if (Card.DrawCount is not null) {
+                        <div class="form-check form-switch mb-0">
+                            <input id="cardDrawOnce@(Index)" class="form-check-input" type="checkbox" role="switch"
+                                   checked="@Card.DrawOncePerTurn" aria-describedby="cardDrawHelp@(Index)"
+                                   @onchange="e => ChangeDrawOncePerTurn(e.Value)" />
+                            <label for="cardDrawOnce@(Index)" class="form-check-label">Once per turn</label>
+                        </div>
+                    }
+                </div>
                 <div id="cardDrawHelp@(Index)" class="form-text">
-                    Once per card entry: the first copy drawn resolves automatically and is consumed;
-                    later copies stay in hand. Separate entries resolve independently.
-                    If a draw cannot be completed, that outcome fails.
+                    @if (Card.DrawCount is null) {
+                        <span>Choose a draw amount to enable an automatic draw effect.</span>
+                    }
+                    else if (Card.DrawOncePerTurn) {
+                        <span>The first copy drawn resolves automatically and is consumed; later copies stay in hand. Separate entries resolve independently.</span>
+                    }
+                    else {
+                        <span>Every copy drawn resolves automatically and is consumed, including copies drawn by another effect.</span>
+                    }
+                    @if (Card.DrawCount is not null) {
+                        <span> If a draw cannot be completed, that outcome fails.</span>
+                    }
                 </div>
             </div>
             <div class="editor-add-row mb-3">
@@ -258,6 +277,10 @@
         _error = null;
         return OnReplaceCard.InvokeAsync((Index, Card.WithDrawCount(drawCount)));
     }
+
+    private Task ChangeDrawOncePerTurn(object? value) => value is bool oncePerTurn
+        ? OnReplaceCard.InvokeAsync((Index, Card.WithDrawOncePerTurn(oncePerTurn)))
+        : Task.CompletedTask;
 
     private Task AddCategory() {
         if (string.IsNullOrWhiteSpace(_selectedCategory)) {
