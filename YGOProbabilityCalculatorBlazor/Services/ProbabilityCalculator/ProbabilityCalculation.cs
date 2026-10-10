@@ -31,13 +31,17 @@ internal sealed class ProbabilityCalculation {
 
     internal ProbabilityCalculation(List<Card> deck, int handSize, WorkBudget budget, List<Card>? retained = null) {
         _budget = budget;
-        List<Card> compilationDeck = retained is null ? deck : [.. deck, .. retained];
+        bool hasRetainedCards = retained is { Count: > 0 };
+        List<Card> compilationDeck = hasRetainedCards ? [.. deck, .. retained!] : deck;
         int finalHandSize = checked(handSize + (retained?.Sum(card => card.Copies) ?? 0));
         _compiler = new(compilationDeck, finalHandSize, budget);
         ExactHandCounter counter = new(deck, handSize, budget);
         _unionEvaluator = new(deck.Count, handSize, budget, _compiler, counter);
-        if (retained is not null) {
-            _conditioner = new(deck.Count, handSize, retained, budget);
+        // An empty fixed hand needs no projection. Keeping the compiled roles
+        // enables exact alternative factoring before union/count evaluation.
+        // With retained copies, only the projected Hall bounds remain valid.
+        if (hasRetainedCards) {
+            _conditioner = new(deck.Count, handSize, retained!, budget);
         }
     }
 
