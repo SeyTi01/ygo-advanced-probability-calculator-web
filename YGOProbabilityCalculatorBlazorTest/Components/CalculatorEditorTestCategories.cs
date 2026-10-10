@@ -276,7 +276,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("already exists"));
         IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
-        card.Find("select").Change("user:A");
+        card.Find("select[id^='cardCategory']").Change("user:A");
         Button(card, "Add").Click();
         cut.Find("[aria-label='Remove category A']").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));

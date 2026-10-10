@@ -155,7 +155,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(combo.Instance.Combo.Categories[1].MinCount, Is.EqualTo(1));
 
         // A metadata membership does not prevent adding/removing a same-label user membership.
-        await card.Find("select").ChangeAsync(new() { Value = user.Identity });
+        await card.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = user.Identity });
         await Button(card, "Add").ClickAsync(new());
         Assert.That(card.Instance.Card.Categories, Has.Count.EqualTo(3));
         await combo.Find("#comboCategory1").ChangeAsync(new() { Value = spell.Identity });
@@ -373,7 +373,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
             Is.EquivalentTo(new[] { user.Identity, fire.Identity }));
         await Button(cut, "Calculate").ClickAsync(new());
         string before = cut.Find(".probability-total-value").TextContent;
-        await editor.Find("select").ChangeAsync(new() { Value = fire.Identity });
+        await editor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = fire.Identity });
         await Button(editor, "Add").ClickAsync(new());
         AssertPreviousResult(cut);
         Assert.That(editor.Instance.Card.Categories, Is.EqualTo(new[] { fire }));
@@ -386,11 +386,11 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(editor.Find(".manual-property-header-badge").ClassList,
             Does.Contain("card-property-tag").And.Contain("card-property-color-attribute-fire"));
         // A stale/forged selection cannot add another membership or change provenance.
-        await editor.Find("select").ChangeAsync(new() { Value = fire.Identity });
+        await editor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = fire.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(editor.Instance.Card.ManualMetadataCategoryKeys, Has.Count.EqualTo(1));
         Assert.That(editor.Instance.Card.Categories, Has.Count.EqualTo(1));
-        await editor.Find("select").ChangeAsync(new() { Value = user.Identity });
+        await editor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = user.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(editor.Instance.Card.Categories, Is.EqualTo(new[] { fire, user }));
         Assert.That(editor.FindAll(".accordion-button .category-tag"), Has.Count.EqualTo(2));
@@ -416,7 +416,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(objectiveEditor.FindAll(".manual-card-properties, .accordion-body button.btn-close"), Is.Empty);
         Assert.That(objectiveEditor.FindAll(".detected-card-property"), Has.Count.EqualTo(1));
         Assert.That(objectiveEditor.FindAll("optgroup[label='Card properties'] option"), Is.Empty);
-        await objectiveEditor.Find("select").ChangeAsync(new() { Value = fire.Identity });
+        await objectiveEditor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = fire.Identity });
         await Button(objectiveEditor, "Add").ClickAsync(new());
         Assert.That(objectiveEditor.Instance.Card.ManualMetadataCategoryKeys, Is.Empty);
         Assert.That(objectiveEditor.Instance.Card.Categories, Is.EqualTo(new[] { fire }));
@@ -439,7 +439,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
             Combos = [new([new(property, 1, 1)])], HandSize = 1 });
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         Assert.That(editor.FindAll("optgroup[label='Card properties'] option").Select(o => o.TextContent), Is.EqualTo(new[] { property.Name }));
-        await editor.Find("select").ChangeAsync(new() { Value = property.Identity });
+        await editor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = property.Identity });
         await editor.Find("[aria-label='Move card Custom, row 1 down']").ClickAsync(new());
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { property.MetadataKey }));

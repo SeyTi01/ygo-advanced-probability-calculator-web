@@ -65,7 +65,7 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
         await cut.Find("#comboGroup0").ChangeAsync(new() { Value = groupId });
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
-        await cut.FindComponents<CardEditor>()[0].Find("select").ChangeAsync(new() { Value = "user:B" });
+        await cut.FindComponents<CardEditor>()[0].Find("select[id^='cardCategory']").ChangeAsync(new() { Value = "user:B" });
         await cut.FindComponents<CardEditor>()[0].Find(".accordion-button").ClickAsync(new());
         cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n123\n123\n#extra\n456", "deck.ydk"));
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
@@ -74,7 +74,7 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.GroupId, Is.EqualTo(groupId));
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Imported").And.Contain("(2)"));
-        Assert.That(card.Find("select").GetAttribute("value"), Is.Null.Or.Empty);
+        Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.Null.Or.Empty);
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });

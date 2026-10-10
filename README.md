@@ -45,6 +45,10 @@ With all eight combo definitions active, the example has an **83.61%** probabili
 
 Click **Add OR**, then click a condition or whole OR group in the expanded expression. Enter the alternative with the type and range inputs and choose **Add alternative**. Cancel target selection or alternative authoring to return to your ordinary draft. Remove alternatives using their chip crosses. For example, `Razen + (Fire OR Dark)` requires Razen and either Fire or Dark; satisfying both alternatives still counts once. Each alternative has its own Min and fixed Max or Any. Separate positive requirements still need distinct physical copies. Multiple flat OR groups are supported, with one result per combo.
 
+Each card entry can optionally use **Draw 1**, **Draw 2**, or **Draw 3**. Its first encountered copy automatically draws that many cards and is consumed; later copies of that entry remain in the final hand. Newly drawn effects resolve in the same way. Separate entries have independent allowances, even with the same name. **None** restores ordinary behavior without deactivating the card. Imports never infer effects.
+
+Requirements are evaluated on the final hand, including retained duplicate effect cards. **Any** uses that complete final hand size. An outcome that cannot complete its requested draws counts as failure, without renormalizing the other outcomes. This models only unconditional fixed draws: optional activation, costs, searches, and general game effects are outside its scope.
+
 ## How the calculation works
 
 The calculator uses exact combinatorial counting rather than simulation. Each combo is reduced to constraints over the physical cards that can satisfy it. Overlapping categories are normalized while still ensuring that separate positive requirements need separate card copies.
@@ -66,6 +70,8 @@ P(A OR B) = P(A) + P(B) - P(A AND B)
 ```
 
 The same principle extends to larger sets of combos.
+
+With configured draw effects, an exact count-state dynamic program produces weighted scenarios. Each scenario fixes retained duplicate effect cards and counts the remaining ordinary cards with the same Hall constraints. Scenario probabilities are combined as exact fractions before converting the final results for display.
 
 Cards that behave identically for the remaining conditions are grouped together, and exact combinatorial counts are used to determine how many opening hands succeed without checking every physical hand one by one.
 

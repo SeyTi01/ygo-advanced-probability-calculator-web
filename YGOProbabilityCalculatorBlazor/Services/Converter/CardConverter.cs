@@ -40,8 +40,24 @@ public class CardConverter : JsonConverter<Card> {
                 ?? throw new JsonException("Manual card properties must be an array.")
             : [];
 
+        JsonProperty[] drawProperties = root.EnumerateObject()
+            .Where(property => property.Name.Equals("DrawCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (drawProperties.Length > 1) {
+            throw new JsonException("Draw count is duplicated.");
+        }
+
+        int? drawCount = null;
+        if (drawProperties.Length == 1 && drawProperties[0].Value.ValueKind != JsonValueKind.Null) {
+            JsonElement value = drawProperties[0].Value;
+            if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out int count) || count is < 1 or > 3) {
+                throw new JsonException("Draw count must be 1, 2, 3, or absent.");
+            }
+
+            drawCount = count;
+        }
+
         try {
-            return new Card(categories, copies, name, active, id, externalCardId, manualKeys);
+            return new Card(categories, copies, name, active, id, externalCardId, manualKeys, drawCount);
         }
         catch (ArgumentException exception) {
             throw new JsonException("Invalid manual card properties.", exception);
@@ -63,6 +79,10 @@ public class CardConverter : JsonConverter<Card> {
 
         writer.WritePropertyName("ManualMetadataCategoryKeys");
         JsonSerializer.Serialize(writer, value.ManualMetadataCategoryKeys.Order(StringComparer.Ordinal), options);
+        if (value.DrawCount is { } drawCount) {
+            writer.WriteNumber("DrawCount", drawCount);
+        }
+
         writer.WriteEndObject();
     }
 }

@@ -12,7 +12,8 @@ public sealed class SessionSchemaMigrator {
         new Dictionary<int, Action<JsonObject>> {
             [0] = MigrateV0ToV1,
             [1] = MigrateV1ToV2,
-            [2] = root => SetSchemaVersion(root, 3)
+            [2] = root => SetSchemaVersion(root, 3),
+            [3] = MigrateV3ToV4
         };
 
     public string MigrateToCurrent(string json) {
@@ -75,6 +76,21 @@ public sealed class SessionSchemaMigrator {
     }
 
     private static void MigrateV0ToV1(JsonObject root) => SetSchemaVersion(root, 1);
+
+    private static void MigrateV3ToV4(JsonObject root) {
+        // Earlier schemas did not model effects. Preserve their ordinary-card meaning,
+        // even if an unrecognized extension field was present in an old file.
+        JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
+        foreach (JsonObject card in cards?.OfType<JsonObject>() ?? []) {
+            string[] fields = card.Select(property => property.Key)
+                .Where(name => name.Equals("DrawCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+            foreach (string field in fields) {
+                card.Remove(field);
+            }
+        }
+
+        SetSchemaVersion(root, 4);
+    }
 
     private static void MigrateV1ToV2(JsonObject root) {
         // Pre-v2 categories are always user definitions, at every persisted location.

@@ -271,7 +271,7 @@ public class ActiveEntriesEditorTest {
 
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
-        card.Find("select").Change("user:B");
+        card.Find("select[id^='cardCategory']").Change("user:B");
         combo.Find("select").Change("user:B");
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("0");
@@ -280,7 +280,7 @@ public class ActiveEntriesEditorTest {
         combo.Find("#comboActive0").Change(true);
         combo.Find("#comboActive0").Change(false);
 
-        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("user:B"));
+        Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
@@ -348,7 +348,7 @@ public class ActiveEntriesEditorTest {
 
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
-        card.Find("select").Change("user:A");
+        card.Find("select[id^='cardCategory']").Change("user:A");
         combo.Find("select").Change("user:A");
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("0");
@@ -359,7 +359,7 @@ public class ActiveEntriesEditorTest {
 
         Assert.That(card.Find("#cardActive0").HasAttribute("checked"), Is.False);
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Inactive").And.Contain("Renamed A"));
-        Assert.That(card.Find("select").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
+        Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
         Assert.That(combo.Find("#comboActive0").HasAttribute("checked"), Is.False);
         Assert.That(combo.Find(".accordion-button").TextContent, Does.Contain("Inactive").And.Contain("Renamed A"));
         Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("user:Renamed A"));

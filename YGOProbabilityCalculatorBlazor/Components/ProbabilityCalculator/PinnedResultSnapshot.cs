@@ -57,6 +57,7 @@ public sealed record PinnedCalculationContext(
             card.Id,
             card.Name ?? "",
             Number(card.Copies),
+            card.DrawCount is { } drawCount ? Number(drawCount) : "",
             Pack(card.Categories.Select(category => category.Identity).Order(StringComparer.Ordinal))
         ])));
 

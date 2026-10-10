@@ -14,6 +14,10 @@
                 <span class="card-header-content">
                     <span class="card-header-name">@CardDisplayName <span class="card-copies">(@Card.Copies)</span></span>
 
+                    @if (Card.DrawCount is { } drawCount) {
+                        <span class="badge text-bg-secondary ms-1">Draw @drawCount</span>
+                    }
+
                     @if (UserCategories.Any() || ManualProperties.Any()) {
                         @foreach (CategoryBase category in UserCategories) {
                             <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">@category.Name</span>
@@ -74,6 +78,22 @@
                     </div>
                 </div>
 
+            </div>
+            <div class="mb-3">
+                <label for="cardDraw@(Index)" class="form-label">Draw effect</label>
+                <select id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
+                        value="@(Card.DrawCount?.ToString() ?? string.Empty)"
+                        aria-describedby="cardDrawHelp@(Index)" @onchange="e => ChangeDrawCount(e.Value)">
+                    <option value="">None</option>
+                    <option value="1">Draw 1</option>
+                    <option value="2">Draw 2</option>
+                    <option value="3">Draw 3</option>
+                </select>
+                <div id="cardDrawHelp@(Index)" class="form-text">
+                    Once per card entry: the first copy drawn resolves automatically and is consumed;
+                    later copies stay in hand. Separate entries resolve independently.
+                    If a draw cannot be completed, that outcome fails.
+                </div>
             </div>
             <div class="editor-add-row mb-3">
                 <div class="editor-select-field">
@@ -221,6 +241,22 @@
         Card newCard = Card.WithCopies(copies);
 
         return OnReplaceCard.InvokeAsync((Index, newCard));
+    }
+
+    private Task ChangeDrawCount(object? value) {
+        string? text = value?.ToString();
+        int? drawCount = null;
+        if (!string.IsNullOrEmpty(text)) {
+            if (!int.TryParse(text, out int count) || count is < 1 or > 3) {
+                _error = "Choose None, Draw 1, Draw 2, or Draw 3.";
+                return Task.CompletedTask;
+            }
+
+            drawCount = count;
+        }
+
+        _error = null;
+        return OnReplaceCard.InvokeAsync((Index, Card.WithDrawCount(drawCount)));
     }
 
     private Task AddCategory() {

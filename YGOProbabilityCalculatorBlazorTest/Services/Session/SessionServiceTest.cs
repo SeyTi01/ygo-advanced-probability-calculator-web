@@ -434,9 +434,9 @@ public class SessionServiceTests {
     [Test]
     public void LoadSessionAsync_FutureSchemaVersion_IsRejectedClearly() {
         InvalidOperationException exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await CreateRealSerializerSessionService().LoadSessionAsync("{ \"SchemaVersion\": 4 }"));
+            await CreateRealSerializerSessionService().LoadSessionAsync("{ \"SchemaVersion\": 5 }"));
 
-        Assert.That(exception!.Message, Does.Contain("Unsupported session schema version 4"));
+        Assert.That(exception!.Message, Does.Contain("Unsupported session schema version 5"));
     }
 
     [TestCase("{ \"SchemaVersion\": \"1\" }")]
