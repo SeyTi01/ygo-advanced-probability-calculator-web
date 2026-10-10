@@ -9,6 +9,7 @@ public class Card {
     public string? Name { get; }
     public bool Active { get; }
     public int? ExternalCardId { get; }
+    public int? DrawCount { get; }
     public IReadOnlySet<string> ManualMetadataCategoryKeys { get; }
 
     public Card(
@@ -18,20 +19,28 @@ public class Card {
         bool active = true,
         string? id = null,
         int? externalCardId = null,
-        IEnumerable<string>? manualMetadataCategoryKeys = null
+        IEnumerable<string>? manualMetadataCategoryKeys = null,
+        int? drawCount = null
     ) {
+        if (drawCount is not null and not (>= 1 and <= 3)) {
+            throw new ArgumentOutOfRangeException(nameof(drawCount), "Draw count must be 1, 2, 3, or absent.");
+        }
+
         Id = string.IsNullOrWhiteSpace(id) ? Guid.NewGuid().ToString("N") : id;
         Copies = copies;
         Categories = categories.ToList();
         Name = name;
         Active = active;
         ExternalCardId = externalCardId;
+        DrawCount = drawCount;
         ManualMetadataCategoryKeys = ValidateManualKeys(Categories, manualMetadataCategoryKeys);
     }
 
-    public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys);
+    public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount);
 
-    public Card WithCopies(int copies) => new(Categories, copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys);
+    public Card WithCopies(int copies) => new(Categories, copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount);
+
+    public Card WithDrawCount(int? drawCount) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, drawCount);
 
     public Card WithCategories(IEnumerable<CategoryBase> categories) {
         List<CategoryBase> effective = categories.ToList();
@@ -43,11 +52,12 @@ public class Card {
             Active,
             Id,
             ExternalCardId,
-            ManualMetadataCategoryKeys.Where(key => effective.Any(category => category.Source == CategorySource.Metadata && category.MetadataKey == key))
+            ManualMetadataCategoryKeys.Where(key => effective.Any(category => category.Source == CategorySource.Metadata && category.MetadataKey == key)),
+            DrawCount
         );
     }
 
-    public Card WithActive(bool active) => new(Categories, Copies, Name, active, Id, ExternalCardId, ManualMetadataCategoryKeys);
+    public Card WithActive(bool active) => new(Categories, Copies, Name, active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount);
 
     public Card WithManualMetadataCategory(CategoryBase category) {
         if (category.Source != CategorySource.Metadata) {
@@ -59,7 +69,7 @@ public class Card {
             return this;
         }
 
-        return new(Categories.Concat([category]), Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys.Append(category.MetadataKey!));
+        return new(Categories.Concat([category]), Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys.Append(category.MetadataKey!), DrawCount);
     }
 
     public Card WithoutManualMetadataCategory(string key) {
@@ -74,7 +84,8 @@ public class Card {
             Active,
             Id,
             ExternalCardId,
-            ManualMetadataCategoryKeys.Where(metadataKey => metadataKey != key)
+            ManualMetadataCategoryKeys.Where(metadataKey => metadataKey != key),
+            DrawCount
         );
     }
 
@@ -92,7 +103,7 @@ public class Card {
             .DistinctBy(static category => category.Identity);
 
         // Once materialized objectively, an overlapping override is no longer removable.
-        return new(effective, Copies, Name, Active, Id, externalCardId, ManualMetadataCategoryKeys.Where(key => !objectiveKeys.Contains(key)));
+        return new(effective, Copies, Name, Active, Id, externalCardId, ManualMetadataCategoryKeys.Where(key => !objectiveKeys.Contains(key)), DrawCount);
     }
 
     private static IReadOnlySet<string> ValidateManualKeys(IEnumerable<CategoryBase> categories, IEnumerable<string>? keys) {

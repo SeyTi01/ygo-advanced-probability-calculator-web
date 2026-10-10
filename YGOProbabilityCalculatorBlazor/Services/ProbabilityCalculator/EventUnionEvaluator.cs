@@ -11,12 +11,14 @@ internal sealed class EventUnionEvaluator(
     ComboEventCompiler compiler,
     ExactHandCounter counter
 ) {
-    internal double Union(List<CompiledEvent?> events) {
+    internal double Union(List<CompiledEvent?> events) => UnionExact(events).ToDouble(budget);
+
+    internal ExactProbability UnionExact(List<CompiledEvent?> events) {
         budget.Spend(events.Count + 1L);
         CompiledEvent? universal = events.FirstOrDefault(static compiledEvent => compiledEvent is { Constraints.Length: 0 });
 
         if (universal is not null) {
-            return counter.Probability(universal);
+            return counter.ProbabilityExact(universal);
         }
 
         Dictionary<CompiledEvent, BigInteger> terms = new();
@@ -44,7 +46,7 @@ internal sealed class EventUnionEvaluator(
         }
 
         if (terms.Count == 0) {
-            return 0;
+            return ExactProbability.Zero;
         }
 
         BigInteger successes = 0;
@@ -57,7 +59,7 @@ internal sealed class EventUnionEvaluator(
         }
 
         // Cancel signed inclusion-exclusion terms exactly, before conversion.
-        return counter.ToProbability(successes);
+        return counter.Fraction(successes);
     }
 
     private List<CompiledEvent> FactorAlternatives(List<CompiledEvent?> events) {

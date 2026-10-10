@@ -12,6 +12,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 internal sealed class WorkBudget(CalculationWorkPolicy policy) {
     private long _remaining = policy.WorkUnits;
 
+    internal long Spent => policy.WorkUnits - _remaining;
+
     public void Spend(long units) {
         ArgumentOutOfRangeException.ThrowIfNegative(units);
 
