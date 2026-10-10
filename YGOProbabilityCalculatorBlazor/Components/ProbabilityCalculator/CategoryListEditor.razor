@@ -1,5 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
+@implements IDisposable
 
 <div class="mb-4">
     <div class="section-add-heading">
@@ -36,7 +37,7 @@
                 continue;
             }
 
-            <span @key="category" class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
+            <span @key="category" class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices) @(_reorderFeedback.IsActive(category) ? "reorder-moved-feedback" : "")">
                 @if (ReferenceEquals(_editingCategory, category)) {
                     <input @ref="_renameInputReference"
                            class="form-control form-control-sm category-rename-input"
@@ -54,7 +55,7 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </button>
-                    <ReorderControls Horizontal="true" Index="index" Count="CategoryBases.Count" ItemLabel="@($"category {category.Name}")" OnMove="OnMoveCategory" />
+                    <ReorderControls Horizontal="true" Index="index" Count="CategoryBases.Count" ItemLabel="@($"category {category.Name}")" OnMove="MoveCategory" />
                     <button type="button" class="category-icon-button"
                             aria-label="Exit category edit mode"
                             title="Exit category edit mode"
@@ -131,6 +132,14 @@
     private bool _focusRenameInput;
     private string? _pendingCategoryNameFocus;
     private bool _colorPickerExpanded;
+    private ReorderFeedback<CategoryBase> _reorderFeedback = null!;
+
+    protected override void OnInitialized() {
+        _reorderFeedback = new(
+            action => InvokeAsync(action),
+            StateHasChanged,
+            comparer: ReferenceEqualityComparer.Instance);
+    }
 
     private int SelectedColorIndex(CategoryBase category) =>
         CategoryColorIndices.TryGetValue(category.Name, out int colorIndex) && CategoryColorPalette.IsValidIndex(colorIndex)
@@ -275,5 +284,15 @@
         }
 
         return Task.CompletedTask;
+    }
+
+    private async Task MoveCategory((int From, int To) move) {
+        CategoryBase movedCategory = CategoryBases[move.From];
+        await OnMoveCategory.InvokeAsync(move);
+        _ = _reorderFeedback.MarkMoved(movedCategory);
+    }
+
+    public void Dispose() {
+        _reorderFeedback?.Dispose();
     }
 }
