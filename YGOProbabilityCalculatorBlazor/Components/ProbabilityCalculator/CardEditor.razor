@@ -19,8 +19,8 @@
                 <span class="card-header-content">
                     <span class="card-header-name">@CardDisplayName <span class="card-copies">(@Card.Copies)</span></span>
 
-                    @if (Card.DrawCount is { } drawCount) {
-                        <span class="badge text-bg-secondary ms-1">Draw @drawCount@if (Card.PostDrawDiscardCount > 0) {<text> · Remove @Card.PostDrawDiscardCount</text>}</span>
+                    @if (DrawPresentation.HeaderText is { } drawSummary) {
+                        <span class="badge text-bg-secondary ms-1">@drawSummary</span>
                     }
 
                     @if (UserCategories.Any() || ManualProperties.Any()) {
@@ -121,7 +121,7 @@
                 <div class="d-flex flex-wrap align-items-center gap-3">
                     <select id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
                             value="@(Card.DrawCount?.ToString() ?? string.Empty)"
-                            aria-describedby="cardDrawHelp@(Index)" @onchange="e => ChangeDrawCount(e.Value)">
+                            aria-describedby="@DrawEffectDescriptionIds" @onchange="e => ChangeDrawCount(e.Value)">
                         <option value="">None</option>
                         <option value="1">Draw 1</option>
                         <option value="2">Draw 2</option>
@@ -130,14 +130,14 @@
                     @if (Card.DrawCount is not null) {
                         <div class="form-check form-switch mb-0">
                             <input id="cardDrawOnce@(Index)" class="form-check-input" type="checkbox" role="switch"
-                                   checked="@Card.DrawOncePerTurn" aria-describedby="cardDrawHelp@(Index)"
+                                   checked="@Card.DrawOncePerTurn" aria-describedby="@DrawEffectDescriptionIds"
                                    @onchange="e => ChangeDrawOncePerTurn(e.Value)" />
                             <label for="cardDrawOnce@(Index)" class="form-check-label">Once per turn</label>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2">
                             <label for="cardDiscard@(Index)" class="form-label mb-0">After drawing</label>
                             <select id="cardDiscard@(Index)" class="form-select form-select-sm w-auto"
-                                    value="@Card.PostDrawDiscardCount" aria-describedby="cardDrawHelp@(Index)"
+                                    value="@Card.PostDrawDiscardCount" aria-describedby="@DrawEffectDescriptionIds"
                                     @onchange="e => ChangePostDrawDiscardCount(e.Value)">
                                 <option value="0">None</option>
                                 <option value="1">Remove 1</option>
@@ -146,6 +146,9 @@
                         </div>
                     }
                 </div>
+                @if (DrawPresentation.InactiveMessage is { } inactiveMessage) {
+                    <p class="form-text mb-1" id="cardDrawModeHelp@(Index)" role="note">@inactiveMessage</p>
+                }
                 @if (Card.PostDrawDiscardCount > 0) {
                     <PostDrawSelectorEditor Id="@($"cardEligibility{Index}")" Selector="Card.PostDrawSelector"
                                             CategoryBases="CategoryBases"
@@ -155,17 +158,22 @@
                     @if (Card.DrawCount is null) {
                         <span>Choose a draw amount to enable an automatic draw effect.</span>
                     }
+                    else if (!DrawEffectsEnabled) {
+                        <span>Stored draw settings are retained and apply when Draw effects are on.</span>
+                    }
                     else if (Card.DrawOncePerTurn) {
                         <span>The first copy drawn resolves automatically and is consumed; later copies stay in hand. Separate entries resolve independently.</span>
                     }
                     else {
                         <span>Every copy drawn resolves automatically and is consumed, including copies drawn by another effect.</span>
                     }
-                    @if (Card.DrawCount is not null) {
+                    @if (Card.DrawCount is not null && DrawEffectsEnabled) {
                         <span> If a draw cannot be completed, that outcome fails.</span>
                     }
                     @if (Card.PostDrawDiscardCount > 0) {
-                        <span> Remove eligible cards immediately after drawing, keeping active combo requirements first, then usable draw cards. This deterministic policy does not optimize play.</span>
+                        @if (DrawEffectsEnabled && ConditionalEffectsEnabled) {
+                            <span> Remove eligible cards immediately after drawing, keeping active combo requirements first, then usable draw cards. This deterministic policy does not optimize play.</span>
+                        }
                     }
                 </div>
             </div>
@@ -249,6 +257,8 @@
     [Parameter] public int Count { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
     [Parameter] public Card Card { get; set; } = null!;
+    [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
+    [Parameter] public bool ConditionalEffectsEnabled { get; set; }
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
@@ -289,6 +299,11 @@
     private bool _disposed;
 
     private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? $"Card {Index + 1}" : Card.Name;
+    private DrawEffectPresentation DrawPresentation =>
+        DrawEffectPresentation.ForCard(Card, DrawEffectsEnabled, ConditionalEffectsEnabled);
+    private string DrawEffectDescriptionIds => DrawPresentation.InactiveMessage is null
+        ? $"cardDrawHelp{Index}"
+        : $"cardDrawHelp{Index} cardDrawModeHelp{Index}";
     private string ActiveToggleLabel => $"Active card {CardDisplayName}";
     private string ActiveToggleTitle => $"Toggle {CardDisplayName} active state";
     private string? ActiveSuggestionId => _activeSuggestionIndex >= 0 && _activeSuggestionIndex < _searchResults.Length

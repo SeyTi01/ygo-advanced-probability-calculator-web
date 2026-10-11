@@ -61,6 +61,8 @@
                                       DrawEffectsEnabledChanged="OnDrawEffectsChanged"
                                       ConditionalEffectsEnabled="_conditionalEffectsEnabled"
                                       ConditionalEffectsEnabledChanged="OnConditionalEffectsChanged"
+                                      ActiveDrawConfiguredCardCount="ActiveDrawConfiguredCardCount"
+                                      ActiveAdvancedConfiguredCardCount="ActiveAdvancedConfiguredCardCount"
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
         </div>
@@ -100,6 +102,8 @@
     <CardListEditor @ref="_cardListEditor"
         Cards="_cards"
         Combos="_combos"
+        DrawEffectsEnabled="_drawEffectsEnabled"
+        ConditionalEffectsEnabled="_conditionalEffectsEnabled"
         CategoryBases="_categoryBases"
         CategoryColorIndices="_categoryColorIndices"
         CategoryRename="_categoryRename"
@@ -304,6 +308,9 @@
     private readonly Dictionary<string, int> _categoryColorIndices = new(StringComparer.Ordinal);
 
     private CardListEditor? _cardListEditor;
+
+    private int ActiveDrawConfiguredCardCount => DrawEffectPresentation.CountActiveDrawConfiguredCards(_cards);
+    private int ActiveAdvancedConfiguredCardCount => DrawEffectPresentation.CountActiveAdvancedConfiguredCards(_cards);
 
     private int _activeComboIndex = -1;
     private int _activeCardIndex = -1;

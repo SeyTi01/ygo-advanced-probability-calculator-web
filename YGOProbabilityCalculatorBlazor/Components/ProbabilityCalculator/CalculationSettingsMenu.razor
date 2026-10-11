@@ -30,7 +30,7 @@
                            id="drawEffectsEnabled"
                            role="switch"
                            checked="@DrawEffectsEnabled"
-                           aria-describedby="drawEffectsHelp"
+                           aria-describedby="@DrawEffectsDescriptionIds"
                            @onchange="OnDrawEffectsChanged" />
                     <label class="form-check-label" for="drawEffectsEnabled">Draw effects</label>
                 </div>
@@ -46,7 +46,7 @@
                            role="switch"
                            checked="@ConditionalEffectsEnabled"
                            disabled="@(!DrawEffectsEnabled)"
-                           aria-describedby="conditionalEffectsHelp"
+                           aria-describedby="@ConditionalEffectsDescriptionIds"
                            @onchange="OnConditionalEffectsChanged" />
                     <label class="form-check-label" for="conditionalEffectsEnabled">Advanced draw simulation</label>
                 </div>
@@ -54,6 +54,9 @@
                     Adds post-draw removals and filters to Basic simulation. Requires Draw effects and can be significantly more expensive.
                 </p>
             </div>
+            @if (DrawModeNote is { } drawModeNote) {
+                <p id="drawModeNote" class="form-text mb-0 calculation-mode-note" role="note">@drawModeNote</p>
+            }
         </section>
 
         <div class="border-top mt-3 pt-3 calculation-settings-option">
@@ -88,6 +91,12 @@
     public EventCallback<bool> ConditionalEffectsEnabledChanged { get; set; }
 
     [Parameter]
+    public int ActiveDrawConfiguredCardCount { get; set; }
+
+    [Parameter]
+    public int ActiveAdvancedConfiguredCardCount { get; set; }
+
+    [Parameter]
     public CalculationStorageTier StorageTier { get; set; } = CalculationStorageTier.Standard;
 
     [Parameter]
@@ -98,6 +107,17 @@
     private bool _focusTriggerAfterRender;
     private ElementReference _trigger;
     private ElementReference _drawEffectsInput;
+    private string? DrawModeNote => DrawEffectPresentation.SettingsNote(
+        DrawEffectsEnabled,
+        ConditionalEffectsEnabled,
+        ActiveDrawConfiguredCardCount,
+        ActiveAdvancedConfiguredCardCount);
+    private string DrawEffectsDescriptionIds =>
+        !DrawEffectsEnabled && DrawModeNote is not null ? "drawEffectsHelp drawModeNote" : "drawEffectsHelp";
+    private string ConditionalEffectsDescriptionIds =>
+        DrawEffectsEnabled && !ConditionalEffectsEnabled && DrawModeNote is not null
+            ? "conditionalEffectsHelp drawModeNote"
+            : "conditionalEffectsHelp";
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_focusDrawEffectsAfterRender) {

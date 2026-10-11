@@ -57,6 +57,83 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
     }
 
     [Test]
+    public async Task SettingsMenuExplainsConfiguredEffectsUsingOnlyActiveCards() {
+        IRenderedComponent<ProbabilityCalculatorComponent> ordinaryCut = Render(Session());
+        await ordinaryCut.Find(".calculation-settings-trigger").ClickAsync(new());
+        Assert.That(ordinaryCut.FindAll("#drawModeNote"), Is.Empty);
+
+        CategoryBase dark = new("Dark");
+        Card advanced = new([dark], name: "Allure", id: "allure", drawCount: 2, postDrawDiscardCount: 1);
+        Card fixedDraw = new([], name: "Graceful", id: "graceful", drawCount: 3);
+        Card inactiveAdvanced = new(
+            [dark],
+            name: "Inactive Allure",
+            id: "inactive-allure",
+            active: false,
+            drawCount: 2,
+            postDrawDiscardCount: 1);
+        SessionState configured = new() { Categories = [dark], Cards = [advanced, fixedDraw, inactiveAdvanced] };
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(configured);
+        await cut.Find(".calculation-settings-trigger").ClickAsync(new());
+
+        Assert.That(cut.Find("#drawModeNote").TextContent,
+            Is.EqualTo("Advanced effects configured on 1 active card are currently ignored in Basic mode."));
+        Assert.That(cut.Find("#conditionalEffectsEnabled").GetAttribute("aria-describedby"),
+            Is.EqualTo("conditionalEffectsHelp drawModeNote"));
+
+        await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        Assert.That(cut.FindAll("#drawModeNote"), Is.Empty);
+
+        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
+        Assert.That(cut.Find("#drawModeNote").TextContent,
+            Is.EqualTo("Draw simulation is off; configured draw effects on 2 active cards are currently ignored."));
+        Assert.That(cut.Find("#drawModeNote").TextContent, Does.Not.Contain("Basic mode"));
+        Assert.That(cut.Find("#drawEffectsEnabled").GetAttribute("aria-describedby"),
+            Is.EqualTo("drawEffectsHelp drawModeNote"));
+    }
+
+    [Test]
+    public async Task FreshSessionLoadStartsInBasicPresentationWithoutChangingCards() {
+        CategoryBase dark = new("Dark");
+        Card allure = new(
+            [dark],
+            name: "Allure of Darkness",
+            id: "allure",
+            drawCount: 2,
+            postDrawDiscardCount: 1,
+            postDrawSelector: CardSelector.For(dark));
+        SessionState session = new() { Categories = [dark], Cards = [allure], DrawEffectsEnabled = true };
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        ISessionService codec = context.Services.GetRequiredService<ISessionService>();
+
+        await cut.Find(".calculation-settings-trigger").ClickAsync(new());
+        Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("checked"), Is.False);
+        Assert.That(cut.FindComponents<CardEditor>().Single().Find(".accordion-button").TextContent,
+            Does.Contain("Draw 2").And.Not.Contain("Remove 1"));
+        Assert.That(cut.Find("#drawModeNote").TextContent, Does.Contain("ignored in Basic mode"));
+
+        await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        Assert.That(cut.FindComponents<CardEditor>().Single().Find(".accordion-button").TextContent,
+            Does.Contain("Draw 2 · Remove 1"));
+
+        SessionState loadedSession = await codec.LoadSessionAsync(codec.SerializeSession(session));
+        IRenderedComponent<ProbabilityCalculatorComponent> fresh = Render(loadedSession);
+        await fresh.Find(".calculation-settings-trigger").ClickAsync(new());
+        Assert.That(fresh.Find("#conditionalEffectsEnabled").HasAttribute("checked"), Is.False);
+        Assert.That(fresh.FindComponents<CardEditor>().Single().Find(".accordion-button").TextContent,
+            Does.Contain("Draw 2").And.Not.Contain("Remove 1"));
+        Assert.That(fresh.Find("#drawModeNote").TextContent, Does.Contain("ignored in Basic mode"));
+
+        Card loaded = fresh.FindComponents<CardEditor>().Single().Instance.Card;
+        Assert.That((loaded.DrawCount, loaded.DrawOncePerTurn, loaded.PostDrawDiscardCount, loaded.PostDrawSelector),
+            Is.EqualTo(((int?)2, true, 1, CardSelector.For(dark))));
+
+        await fresh.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        Assert.That(fresh.FindComponents<CardEditor>().Single().Find(".accordion-button").TextContent,
+            Does.Contain("Draw 2 · Remove 1"));
+    }
+
+    [Test]
     public async Task BasicAdvancedAndGlobalModesPreserveCardsInvalidateResultsAndKeepPinnedLineage() {
         SessionState session = ConditionalSession();
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
