@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.JSInterop;
+using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -8,6 +10,68 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 public partial class DrawEffectsBenchmark {
+    [Test]
+    public async Task ExportRealisticThreeGracefulWorkerCases() {
+        SessionState session = await RealisticGracefulFixture.Load();
+        YGOProbabilityCalculatorBlazor.Services.Session.SessionService codec = new(
+            Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        List<object> exported = [];
+        foreach ((string name, bool global, bool conditional) in new[] {
+            ("realistic-three-graceful", true, true),
+            ("realistic-three-graceful-conditional-off", true, false),
+            ("realistic-three-graceful-global-off", false, true),
+            ("realistic-three-graceful-both-off", false, false)
+        }) {
+            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+            PostDrawCalculation calculation = new(session.Cards, session.HandSize, budget);
+            Stopwatch timer = Stopwatch.StartNew();
+            string outcome = "Success";
+            ProbabilityCalculationResult? reference = null;
+            ExactCalculationResult? exact = null;
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos,
+                session.HandSize, session.ComboGroups, CalculationWorkPolicy.Interactive, global, options: new(conditional));
+            try {
+                if (global && conditional) {
+                    exact = calculation.Calculate(session.Combos, session.ComboGroups);
+                    reference = exact.ToPublic(session.Combos, session.ComboGroups, budget);
+                }
+                else {
+                    exact = global
+                        ? new DrawEffectCalculation(session.Cards, session.HandSize, budget, false).Calculate(session.Combos, session.ComboGroups)
+                        : new ProbabilityCalculation(session.Cards.Select(card => card.WithDrawCount(null)).ToList(), session.HandSize, budget)
+                            .CalculateExactResults(session.Combos, session.ComboGroups);
+                    reference = exact.ToPublic(session.Combos, session.ComboGroups, budget);
+                }
+                ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
+                Assert.That(worker.TotalProbability, Is.EqualTo(reference.TotalProbability));
+                Assert.That(worker.ComboProbabilities.Select(row => row.Probability), Is.EqualTo(reference.ComboProbabilities.Select(row => row.Probability)));
+                Assert.That(worker.GroupProbabilities.Select(row => row.Probability), Is.EqualTo(reference.GroupProbabilities.Select(row => row.Probability)));
+            }
+            catch (ProbabilityCalculationLimitException error) {
+                outcome = error.Reason.ToString();
+            }
+            timer.Stop();
+            object measurement = new {
+                Name = name, Outcome = outcome, Work = budget.Spent,
+                calculation.TerminalStates, calculation.PeakStates, calculation.PeakCells,
+                calculation.LargestStructure, calculation.ReducedRows,
+                Milliseconds = timer.Elapsed.TotalMilliseconds, Probability = reference?.TotalProbability,
+                ReferenceResults = reference,
+                ExactResults = exact is null ? null : new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups)
+                    .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),
+                Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(session)),
+                Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json)
+            };
+            exported.Add(measurement);
+            TestContext.Out.WriteLine($"{name}: {outcome}; work={budget.Spent}; terminal={calculation.TerminalStates}; peak={calculation.PeakStates}; cells={calculation.PeakCells}; ms={timer.Elapsed.TotalMilliseconds:F2}");
+        }
+        string? directory = Environment.GetEnvironmentVariable("YGO_DRAW_BENCHMARK_OUTPUT");
+        if (directory is not null) {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "realistic-graceful-worker-cases.json"), JsonSerializer.Serialize(exported));
+        }
+    }
+
     [Test]
     public void ExportPostDrawWorkerCases() {
         CategoryBase starter = new("Starter");
@@ -79,6 +143,7 @@ public partial class DrawEffectsBenchmark {
                 exported.Add(new {
                     Name = name, Outcome = outcome, Work = budget.Spent,
                     TerminalStates = terminalStates, PeakStates = conditional?.PeakStates,
+                    PeakCells = conditional?.PeakCells, LargestStructure = conditional?.LargestStructure,
                     Milliseconds = timer.Elapsed.TotalMilliseconds, Probability = reference?.TotalProbability,
                     ReferenceResults = reference,
                     ExactResults = result is null ? null : new[] { result.Total }.Concat(result.Combos).Concat(result.Groups)

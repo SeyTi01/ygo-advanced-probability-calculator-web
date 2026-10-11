@@ -1,6 +1,6 @@
 // Opt-in rendered checks against a local optimized publish.
 // NODE_PATH=<Playwright installation> YGO_BROWSER_CHANNEL=msedge node
-// scripts/background-calculation/post-draw-smoke.cjs <publish/wwwroot> <screenshots>
+// scripts/background-calculation/post-draw-smoke.cjs <publish/wwwroot> <screenshots> [realistic-worker-cases.json]
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const http = require('node:http');
@@ -30,7 +30,15 @@ async function main() {
     try {
         const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
         // Exercise the production download fallback without a native OS dialog.
-        await page.addInitScript(() => { window.showSaveFilePicker = undefined; });
+        await page.addInitScript(() => {
+            window.showSaveFilePicker = undefined;
+            window.workerProbe = { sent: 0, terminated: 0 };
+            const Original = Worker;
+            window.Worker = class extends Original {
+                postMessage(...args) { workerProbe.sent++; return super.postMessage(...args); }
+                terminate() { workerProbe.terminated++; return super.terminate(); }
+            };
+        });
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         page.on('console', message => {
@@ -120,6 +128,36 @@ async function main() {
         await expand(0);
         await page.locator('#cardDiscard0').selectOption('0');
         assert.match(await result(), /100[.,]00/);
+        await page.locator('#drawEffectsEnabled').uncheck();
+        assert.match(await result(), /16[.,]67/);
+        await page.locator('#drawEffectsEnabled').check();
+        assert.match(await result(), /100[.,]00/);
+
+        if (process.argv[4]) {
+            const fixtures = JSON.parse(await fs.readFile(process.argv[4], 'utf8'));
+            const fixture = fixtures.find(value => value.Name === 'realistic-three-graceful');
+            const off = fixtures.find(value => value.Name === 'realistic-three-graceful-global-off');
+            await load(fixture.Session);
+            await page.waitForFunction(() => document.querySelectorAll('.card-editor').length > 10);
+            function percent(text) { return Number(text.replace('%', '').replace(',', '.').trim()); }
+            assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
+            await page.locator('#drawEffectsEnabled').uncheck();
+            assert.equal(percent(await result()), Number((off.Probability * 100).toFixed(2)));
+            const stored = await saved();
+            assert.equal(stored.DrawEffectsEnabled, false);
+            assert.equal(stored.Cards.find(card => card.ExternalCardId === 79571449).PostDrawDiscardCount, 2);
+            await page.locator('#drawEffectsEnabled').check();
+            assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
+
+            const before = await page.evaluate(() => ({ ...workerProbe }));
+            await calculate.click();
+            await page.waitForFunction(sent => workerProbe.sent > sent, before.sent);
+            await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
+            await page.waitForFunction(terminated => workerProbe.terminated > terminated, before.terminated);
+            await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
+            assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
+            console.log('PASS: realistic three-Graceful UI/worker, global off/on restores discard 2, running worker cancellation and recovery.');
+        }
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
         console.log('PASS: explicit selections, YDK defaults, badges, manual persistence, None clearing, exact result change, six layouts.');
