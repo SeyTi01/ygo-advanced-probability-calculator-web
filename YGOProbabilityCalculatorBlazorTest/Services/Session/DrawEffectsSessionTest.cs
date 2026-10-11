@@ -53,11 +53,40 @@ public class DrawEffectsSessionTest {
     [TestCase(2)]
     [TestCase(3)]
     public async Task OlderSchemasPreserveOrdinaryCardMeaning(int version) {
-        string json = $$"""{"SchemaVersion":{{version}},"Cards":[{"Categories":[],"Copies":2,"Name":"P","DrawCount":2,"DrawOncePerTurn":false}]}""";
+        string json = $$"""{"SchemaVersion":{{version}},"DrawEffectsEnabled":false,"Cards":[{"Categories":[],"Copies":2,"Name":"P","DrawCount":2,"DrawOncePerTurn":false}]}""";
         SessionState loaded = await Codec().LoadSessionAsync(json);
         Assert.That(loaded.SchemaVersion, Is.EqualTo(4));
+        Assert.That(loaded.DrawEffectsEnabled, Is.True);
         Assert.That(loaded.Cards.Single().DrawCount, Is.Null);
         Assert.That(loaded.Cards.Single().DrawOncePerTurn, Is.True);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task GlobalDrawEffectsSettingRoundTripsWithoutChangingCardConfiguration(bool enabled) {
+        SessionService codec = Codec();
+        Card configured = new([], 2, "Configured", id: "configured", drawCount: 3, drawOncePerTurn: false);
+        SessionState session = new() { DrawEffectsEnabled = enabled, Cards = [configured] };
+
+        Assert.That(new SessionState().DrawEffectsEnabled, Is.True);
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(4));
+        string json = codec.SerializeSession(session);
+        using JsonDocument document = JsonDocument.Parse(json);
+        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(4));
+        Assert.That(document.RootElement.GetProperty("DrawEffectsEnabled").GetBoolean(), Is.EqualTo(enabled));
+
+        SessionState loaded = await codec.LoadSessionAsync(json);
+        Assert.That(loaded.DrawEffectsEnabled, Is.EqualTo(enabled));
+        Assert.That((loaded.Cards.Single().DrawCount, loaded.Cards.Single().DrawOncePerTurn), Is.EqualTo(((int?)3, false)));
+    }
+
+    [Test]
+    public async Task MissingGlobalDrawEffectsSettingInSchemaFourDefaultsEnabled() {
+        SessionState loaded = await Codec().LoadSessionAsync(
+            """{"SchemaVersion":4,"Cards":[{"Categories":[],"Copies":2,"Name":"P","DrawCount":2,"DrawOncePerTurn":false}]}""");
+
+        Assert.That(loaded.DrawEffectsEnabled, Is.True);
+        Assert.That((loaded.Cards.Single().DrawCount, loaded.Cards.Single().DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
     }
 
     [Test]

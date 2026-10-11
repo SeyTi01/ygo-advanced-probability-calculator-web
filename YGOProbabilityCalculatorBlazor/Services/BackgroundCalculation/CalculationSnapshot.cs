@@ -14,7 +14,8 @@ public sealed record CalculationSnapshot(string Json) {
         IEnumerable<Combo> combos,
         int handSize,
         IEnumerable<ComboGroup> groups,
-        CalculationWorkPolicy? workPolicy = null
+        CalculationWorkPolicy? workPolicy = null,
+        bool drawEffectsEnabled = true
     ) {
         WorkerCard[] workerCards = cards
             .Where(card => card.Active)
@@ -25,8 +26,8 @@ public sealed record CalculationSnapshot(string Json) {
                 card.ExternalCardId,
                 card.Categories.ToArray(),
                 card.ManualMetadataCategoryKeys.ToArray(),
-                card.DrawCount,
-                card.DrawOncePerTurn
+                drawEffectsEnabled ? card.DrawCount : null,
+                drawEffectsEnabled ? card.DrawOncePerTurn : true
             ))
             .ToArray();
 

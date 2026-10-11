@@ -80,6 +80,13 @@ public sealed class SessionSchemaMigrator {
     private static void MigrateV3ToV4(JsonObject root) {
         // Earlier schemas did not model effects. Preserve their ordinary-card meaning,
         // even if an unrecognized extension field was present in an old file.
+        string[] globalDrawEffectFields = root.Select(property => property.Key)
+            .Where(name => name.Equals(nameof(SessionState.DrawEffectsEnabled), StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        foreach (string field in globalDrawEffectFields) {
+            root.Remove(field);
+        }
+
         JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
         foreach (JsonObject card in cards?.OfType<JsonObject>() ?? []) {
             string[] fields = card.Select(property => property.Key)

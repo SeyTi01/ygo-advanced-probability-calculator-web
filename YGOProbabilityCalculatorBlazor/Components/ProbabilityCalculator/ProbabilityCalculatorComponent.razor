@@ -47,14 +47,31 @@
             }
         </div>
 
-        <div class="hand-size-control">
-            <label for="handSize">Hand Size:</label>
-            <input type="number"
-                   id="handSize"
-                   class="form-control"
-                   @bind="_handSize"
-                   @bind:after="OnHandSizeChanged"
-                   min="1"/>
+        <div class="calculation-controls">
+            <div class="hand-size-control">
+                <label for="handSize">Hand Size:</label>
+                <input type="number"
+                       id="handSize"
+                       class="form-control"
+                       @bind="_handSize"
+                       @bind:after="OnHandSizeChanged"
+                       min="1"/>
+            </div>
+            <div class="draw-effects-control">
+                <div class="form-check form-switch">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           id="drawEffectsEnabled"
+                           role="switch"
+                           @bind="_drawEffectsEnabled"
+                           @bind:after="OnDrawEffectsChanged"
+                           aria-describedby="@(!_drawEffectsEnabled ? "drawEffectsHelp" : null)"/>
+                    <label class="form-check-label" for="drawEffectsEnabled">Draw effects</label>
+                </div>
+                @if (!_drawEffectsEnabled) {
+                    <small id="drawEffectsHelp" class="form-text">Configured draw effects are ignored; cards are treated as ordinary cards.</small>
+                }
+            </div>
         </div>
     </div>
     @if (_importError is not null) {
@@ -302,6 +319,7 @@
     private int _categoryRenameVersion;
     private CategoryRenameNotice? _categoryRename;
     private int _handSize = 5;
+    private bool _drawEffectsEnabled = true;
     private bool _isCalculating;
     private long _calculationVersion;
     private long _calculationRequestId;
@@ -734,7 +752,14 @@
             _errorMessage = null;
             StateHasChanged();
 
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(_cards, _combos, _handSize, _comboGroups, CalculationWorkPolicy.Interactive);
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(
+                _cards,
+                _combos,
+                _handSize,
+                _comboGroups,
+                CalculationWorkPolicy.Interactive,
+                _drawEffectsEnabled
+            );
             PinnedCalculationContext comparisonContext = CaptureComparisonContext();
             ProbabilityCalculationResult result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
 
@@ -794,6 +819,8 @@
     }
 
     private void OnHandSizeChanged() => InvalidateCalculation();
+
+    private void OnDrawEffectsChanged() => InvalidateCalculation();
 
     private void OnCategoriesChanged() => InvalidateCalculation();
 

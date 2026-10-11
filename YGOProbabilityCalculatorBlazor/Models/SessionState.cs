@@ -9,5 +9,6 @@ public class SessionState {
     public List<Combo> Combos { get; init; } = [];
     public List<ComboGroup> ComboGroups { get; init; } = [];
     public int HandSize { get; init; }
+    public bool DrawEffectsEnabled { get; init; } = true;
     public Dictionary<string, int> CategoryColorIndices { get; init; } = new(StringComparer.Ordinal);
 }

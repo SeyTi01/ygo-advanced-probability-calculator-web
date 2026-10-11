@@ -36,6 +36,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             Combos = session.Combos,
             ComboGroups = session.ComboGroups,
             HandSize = session.HandSize,
+            DrawEffectsEnabled = session.DrawEffectsEnabled,
             CategoryColorIndices = session.CategoryColorIndices
         };
 
