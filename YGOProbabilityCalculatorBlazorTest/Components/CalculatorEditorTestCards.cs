@@ -64,9 +64,12 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
 
         Assert.That(cut.FindComponent<CategoryListEditor>().FindAll(".category-chip .reorder-controls"), Is.Empty);
         Assert.That(cut.FindComponent<ComboListEditor>().FindAll(".combo-group-chip .reorder-controls"), Is.Empty);
-        Assert.That(cut.Find("[aria-label='Move card Same, row 1 up']").TextContent, Is.EqualTo("▲"));
+        IElement firstCardUpButton = cut.Find("[aria-label='Move card Same, row 1 up']");
+        Assert.That(firstCardUpButton.TextContent, Is.EqualTo("▲"));
+        Assert.That(firstCardUpButton.GetAttribute("class"), Does.Contain("reorder-button"));
+        Assert.That(firstCardUpButton.GetAttribute("title"), Is.EqualTo("Move card Same, row 1 up"));
         Assert.That(cut.Find("[aria-label='Move combo Same, row 1 up']").TextContent, Is.EqualTo("▲"));
-        Assert.That(cut.Find("[aria-label='Move card Same, row 1 up']").HasAttribute("disabled"), Is.True);
+        Assert.That(firstCardUpButton.HasAttribute("disabled"), Is.True);
         Assert.That(cut.Find("[aria-label='Move combo Combo 3, row 3 down']").HasAttribute("disabled"), Is.True);
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         Assert.That(cut.Find("[aria-label='Move category A left']").HasAttribute("disabled"), Is.True);
@@ -76,7 +79,11 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
         string totalBeforeMove = cut.Find(".probability-total-value").TextContent;
         Assert.That(cut.Find("[aria-label='Move category A left']").HasAttribute("disabled"), Is.True);
+        int focusCallsBeforeMove = context.JSInterop.Invocations.Count(invocation =>
+            invocation.Identifier == "Blazor._internal.domWrapper.focus");
         await cut.Find("[aria-label='Move category A right']").ClickAsync(new());
+        Assert.That(context.JSInterop.Invocations.Count(invocation =>
+            invocation.Identifier == "Blazor._internal.domWrapper.focus"), Is.EqualTo(focusCallsBeforeMove + 1));
         AssertPreviousResult(cut);
         await cut.Find("[aria-label='Move category A right']").ClickAsync(new());
         await cut.Find("[aria-label='Edit category C']").ClickAsync(new());
