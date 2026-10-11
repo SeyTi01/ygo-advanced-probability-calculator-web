@@ -11,9 +11,11 @@ internal sealed class DrawEffectCalculation(List<Card> deck, int handSize, WorkB
         List<Card> ordinary = [];
         List<Card> effects = [];
         int ordinaryCopies = 0;
+        int deckCopies = 0;
         foreach (Card card in deck) {
             budget.Spend(1);
             ArgumentOutOfRangeException.ThrowIfNegative(card.Copies);
+            deckCopies = checked(deckCopies + card.Copies);
             if (card.DrawCount is not null && card.Copies > 0) {
                 effects.Add(card);
             }
@@ -28,6 +30,12 @@ internal sealed class DrawEffectCalculation(List<Card> deck, int handSize, WorkB
         if (effects.Count == 0) {
             ProbabilityCalculation calculation = new(ordinary, handSize, budget);
             return totalOnly ? new(calculation.CalculateUnionExact(combos), [], []) : calculation.CalculateExactResults(combos, groups);
+        }
+
+        budget.Spend(effects.Count + 1L);
+        if (!DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize)) {
+            List<Card> fixedDrawDeck = deck.Select(card => card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0)).ToList();
+            return new PostDrawCalculation(fixedDrawDeck, handSize, budget).Calculate(combos, groups, totalOnly);
         }
 
         DrawResolution resolution = DrawEffectResolver.Resolve(ordinaryCopies, effects, handSize, budget);

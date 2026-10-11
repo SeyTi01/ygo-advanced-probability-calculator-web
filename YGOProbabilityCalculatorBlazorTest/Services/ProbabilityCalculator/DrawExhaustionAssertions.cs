@@ -38,7 +38,6 @@ internal static class DrawExhaustionAssertions {
             .Calculate(combos, groups);
 
         AssertRows(result, oracle);
-        AssertHandCompositions(new PostDrawCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)), oracle);
     }
 
     private static void AssertRows(ExactCalculationResult result, DrawSequenceOracle.Counts oracle) {

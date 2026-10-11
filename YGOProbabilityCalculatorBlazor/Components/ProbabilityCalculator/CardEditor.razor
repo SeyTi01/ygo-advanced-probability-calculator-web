@@ -179,7 +179,7 @@
                         <span>Stored draw settings are retained and apply when Draw effects are on.</span>
                     }
                     else if (ConditionalEffectsEnabled && Card.PreDrawRemovalCount > 0) {
-                        <span>Pay the hand cost before activating. Keep active combo pieces first, then usable draw cards. Unpayable sources stay in hand with OPT unused and retry after another activation. Only hand costs are modeled.</span>
+                        <span>Check the full draw batch and hand cost before activating. If either is unavailable, keep the source and OPT unused; cost-blocked sources retry after another activation. Keep active combo pieces first, then usable draw cards. Only hand costs are modeled.</span>
                     }
                     else if (Card.DrawOncePerTurn) {
                         <span>The first copy drawn resolves automatically and is consumed; later copies stay in hand. Separate entries resolve independently.</span>
@@ -188,7 +188,7 @@
                         <span>Every copy drawn resolves automatically and is consumed, including copies drawn by another effect.</span>
                     }
                     @if (Card.DrawCount is not null && DrawEffectsEnabled) {
-                        <span> If the deck runs out, draw all remaining cards.</span>
+                        <span> The effect activates only when the full draw amount is available; otherwise it stays in hand.</span>
                     }
                     @if (Card.PostDrawDiscardCount > 0) {
                         @if (DrawEffectsEnabled && ConditionalEffectsEnabled) {

@@ -38,6 +38,8 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(allureEditor.Find("#cardDraw0").GetAttribute("aria-describedby"),
             Is.EqualTo("cardDrawHelp0 cardDrawModeHelp0"));
         Assert.That(gracefulEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 3").And.Not.Contain("Remove"));
+        Assert.That(gracefulEditor.Find("#cardDrawHelp1").TextContent,
+            Does.Contain("full draw amount").And.Contain("stays in hand"));
         Assert.That(gracefulEditor.FindAll("#cardDrawModeHelp1"), Is.Empty);
         Assert.That(ordinaryEditor.FindAll(".accordion-button .badge").ToArray(), Is.Empty);
 
