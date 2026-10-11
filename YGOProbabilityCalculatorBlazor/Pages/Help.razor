@@ -74,7 +74,7 @@
             <li>a specific card,</li>
             <li>or a mixture of both.</li>
         </ul>
-        <p>Imported cards automatically expose objective properties, such as Monster, attribute, level, or Quick-Play Spell, under <strong>Card properties</strong> in combo category selection. These derived properties are read-only; use your own categories for custom roles such as Starter or Extender.</p>
+        <p>Common card properties are available in card, combo, and draw-filter selectors before a matching card is present. Imported cards expose objective properties such as Monster, attributes, levels, and Quick-Play Spell using the same metadata identities. Specific values such as archetypes and monster types appear when relevant. Derived properties are read-only; use your own categories for custom roles such as Starter or Extender.</p>
         <p>Each requirement has a minimum and maximum count. Leave <strong>Max</strong> empty for <strong>Any</strong> (the current hand size), or enter a number for a fixed maximum; <code>0</code> remains a fixed zero.</p>
         <p>Separate positive requirements need separate physical card copies. For example, if a card belongs to both <code>VS Starter</code> and <code>Fire</code>, one copy cannot satisfy both parts of <code>VS Starter + Fire</code> by itself.</p>
         <p>Maximums apply to all matching cards in the hand. Setting both the minimum and maximum to <code>0</code> can therefore be used to exclude a card or category from a combo entirely.</p>

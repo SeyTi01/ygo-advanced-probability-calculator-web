@@ -211,7 +211,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".combo-group-chip .reorder-controls"), Is.Empty);
         cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
         cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").Click();
-        Assert.That(cut.Find("#cardCategory0").QuerySelectorAll("option").Skip(1).Select(option => option.TextContent.Trim()),
+        Assert.That(cut.Find("#cardCategory0").QuerySelectorAll("optgroup[label='User categories'] option").Select(option => option.TextContent.Trim()),
             Is.EqualTo(new[] { "B", "Renamed" }));
         Assert.That(cut.Find("#comboGroup0").QuerySelectorAll("option").Skip(1).Select(option => option.TextContent.Trim()),
             Is.EqualTo(new[] { "Two", "Updated" }));
@@ -277,7 +277,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(editor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo("beta-case"));
 
         await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Category" });
-        Assert.That(editor.Find("#comboCategory0").QuerySelectorAll("option").Skip(1).Select(option => option.TextContent.Trim()),
+        Assert.That(editor.Find("#comboCategory0").QuerySelectorAll("optgroup[label='User categories'] option").Select(option => option.TextContent.Trim()),
             Is.EqualTo(new[] { "Zeta", "Alpha" }), "category selectors retain configured category order");
         Assert.That(cut.FindComponents<CardEditor>().Select(cardEditor => cardEditor.Instance.Card.Id), Is.EqualTo(deckOrder));
     }

@@ -162,13 +162,18 @@
                 @if (Card.PreDrawRemovalCount > 0) {
                     <div class="mt-2 small">Before drawing: remove from hand</div>
                     <PostDrawSelectorEditor Id="@($"cardCostEligibility{Index}")" Selector="Card.PreDrawSelector"
-                                            CategoryBases="CategoryBases" UnavailableMessage="If unavailable: retain source without activating."
+                                            CategoryBases="CategoryBases"
+                                            RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
+                                            CategoryColorIndices="CategoryColorIndices"
+                                            UnavailableMessage="If unavailable: retain source without activating."
                                             OnChanged="selector => OnReplaceCard.InvokeAsync((Index, Card.WithPreDrawSelector(selector)))" />
                 }
                 @if (Card.PostDrawDiscardCount > 0) {
                     <div class="mt-2 small">After drawing: remove from hand</div>
                     <PostDrawSelectorEditor Id="@($"cardEligibility{Index}")" Selector="Card.PostDrawSelector"
                                             CategoryBases="CategoryBases"
+                                            RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
+                                            CategoryColorIndices="CategoryColorIndices"
                                             OnChanged="selector => OnReplaceCard.InvokeAsync((Index, Card.WithPostDrawSelector(selector)))" />
                 }
                 <div id="cardDrawHelp@(Index)" class="form-text">
@@ -209,8 +214,19 @@
                                 <option value="@categoryBase.Identity">@categoryBase.Name</option>
                             }
                         </optgroup>
-                        <optgroup label="Card properties">
-                            @foreach (CategoryBase categoryBase in CategoryBases.Where(category => category.Source == CategorySource.Metadata && !Card.Categories.Contains(category))) {
+                        <optgroup label="Current / relevant properties">
+                            @foreach (CategoryBase categoryBase in CategoryBases.Where(category =>
+                                category.Source == CategorySource.Metadata
+                                && RelevantMetadataCategoryIdentities.Contains(category.Identity)
+                                && !Card.Categories.Contains(category))) {
+                                <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                            }
+                        </optgroup>
+                        <optgroup label="More common card properties">
+                            @foreach (CategoryBase categoryBase in CategoryBases.Where(category =>
+                                CategoryCatalog.IsCommonMetadata(category)
+                                && !RelevantMetadataCategoryIdentities.Contains(category.Identity)
+                                && !Card.Categories.Contains(category))) {
                                 <option value="@categoryBase.Identity">@categoryBase.Name</option>
                             }
                         </optgroup>
@@ -280,6 +296,7 @@
     [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
     [Parameter] public bool ConditionalEffectsEnabled { get; set; }
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlySet<string> RelevantMetadataCategoryIdentities { get; set; } = new HashSet<string>(StringComparer.Ordinal);
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 

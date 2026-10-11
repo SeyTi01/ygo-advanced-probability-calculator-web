@@ -21,6 +21,61 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
+    public async Task EmptyDeckCanAuthorCommonCategoryAndOrAndSameCardRequirements() {
+        CategoryBase level8 = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "level:8");
+        CategoryBase monster = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "kind:monster");
+        CategoryBase fire = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "attribute:fire");
+        CategoryBase dark = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "attribute:dark");
+        CategoryBase quickPlay = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "spell-type:quick-play");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = [],
+            Cards = [],
+            Combos = [new([], "Generic route")],
+            HandSize = 5
+        });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        await editor.Find(".accordion-button").ClickAsync(new());
+
+        Assert.That(editor.FindAll("option[value^='metadata:']").Select(static option => option.GetAttribute("value")),
+            Does.Contain(monster.Identity).And.Contain(fire.Identity).And.Contain(dark.Identity)
+                .And.Contain(level8.Identity).And.Contain(quickPlay.Identity));
+        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = level8.Identity });
+        await Button(editor, "Add").ClickAsync(new());
+        await Button(editor, "Add AND").ClickAsync(new());
+        await editor.Find("button[data-and-target='category:0']").ClickAsync(new());
+        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = monster.Identity });
+        await Button(editor, "Add AND").ClickAsync(new());
+
+        ComboCategory sameCard = editor.Instance.Combo.Categories.Single();
+        Assert.That(sameCard.Selector.CategoryIdentities, Is.EquivalentTo(new[] { level8.Identity, monster.Identity }));
+
+        await Button(editor, "Add OR").ClickAsync(new());
+        await editor.Find("button[data-alternative-target='category:0']").ClickAsync(new());
+        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = fire.Identity });
+        await Button(editor, "Add alternative").ClickAsync(new());
+        await Button(editor, "Add OR").ClickAsync(new());
+        await editor.Find("button[data-alternative-target='group:0']").ClickAsync(new());
+        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = dark.Identity });
+        await Button(editor, "Add alternative").ClickAsync(new());
+        await Button(editor, "Add OR").ClickAsync(new());
+        await editor.Find("button[data-alternative-target='group:0']").ClickAsync(new());
+        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = quickPlay.Identity });
+        await Button(editor, "Add alternative").ClickAsync(new());
+
+        ComboAlternativeGroup alternatives = editor.Instance.Combo.AlternativeGroups.Single();
+        string[][] identities = alternatives.Alternatives
+            .Select(static alternative => alternative.Category!.Selector.CategoryIdentities.ToArray())
+            .ToArray();
+        Assert.Multiple(() => {
+            Assert.That(identities[0], Is.EquivalentTo(new[] { level8.Identity, monster.Identity }));
+            Assert.That(identities[1], Is.EqualTo(new[] { fire.Identity }));
+            Assert.That(identities[2], Is.EqualTo(new[] { dark.Identity }));
+            Assert.That(identities[3], Is.EqualTo(new[] { quickPlay.Identity }));
+            Assert.That(cut.FindComponents<CardEditor>(), Is.Empty, "No matching cards are needed to author metadata conditions.");
+        });
+    }
+
+    [Test]
     public void ComboHeaderKeepsVisibleBadgesAndAccessibleControlsDistinct() {
         List<CategoryBase> categories = Enumerable.Range(1, 7)
             .Select(index => new CategoryBase($"Long Category {index}"))

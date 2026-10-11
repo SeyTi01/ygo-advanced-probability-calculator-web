@@ -20,7 +20,7 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task AndTargetSelectionIsExclusiveAccessibleAndDisabledWithoutCategoryRequirements() {
+    public async Task AndTargetSelectionIsExclusiveAccessibleAndAvailableWithCommonProperties() {
         SessionState cardsSession = Session();
         SessionState cardsOnly = new() {
             Cards = cardsSession.Cards,
@@ -37,8 +37,10 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> onlyCategoryEditor = onlyCategoryCut.FindComponent<ComboEditor>();
         await onlyCategoryEditor.Find(".accordion-button").ClickAsync(new());
-        Assert.That(Button(onlyCategoryEditor, "Add AND").HasAttribute("disabled"), Is.True,
-            "The target button is disabled when the category catalog has no new conjunct to select.");
+        Assert.That(Button(onlyCategoryEditor, "Add AND").HasAttribute("disabled"), Is.False,
+            "Common card properties provide new same-card conjuncts even when no user category remains.");
+        Assert.That(onlyCategoryEditor.FindAll("optgroup[label='More common card properties'] option")
+            .Any(option => option.GetAttribute("value") == "metadata:kind:monster"), Is.True);
 
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
             Categories = [a, b],
