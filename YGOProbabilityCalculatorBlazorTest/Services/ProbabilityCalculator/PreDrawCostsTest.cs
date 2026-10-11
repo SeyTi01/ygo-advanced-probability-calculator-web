@@ -16,7 +16,7 @@ public class PreDrawCostsTest {
     private static readonly CategoryBase Role = new("Role");
     internal static Card Trade(string id = "trade", int copies = 1, bool opt = false) => new([], copies,
         name: "Same display name", id: id, externalCardId: 38120068, drawCount: 2, drawOncePerTurn: opt,
-        preDrawRemovalCount: 1, preDrawSelector: CardSelector.AllOf([Monster.Identity, Level.Identity]));
+        preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(Level));
 
     [TestCase(false), TestCase(true)]
     public void PreDrawPhysicalOracleCoversEligibilityIdentityAndMixedChains(bool opt) {
