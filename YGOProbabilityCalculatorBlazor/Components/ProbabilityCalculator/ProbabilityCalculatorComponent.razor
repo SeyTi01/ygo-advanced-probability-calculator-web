@@ -821,15 +821,20 @@
         }
 
         _drawEffectsEnabled = enabled;
+        if (!enabled) {
+            _conditionalEffectsEnabled = false;
+        }
+
         InvalidateCalculation();
     }
 
     private void OnConditionalEffectsChanged(bool enabled) {
-        if (_conditionalEffectsEnabled == enabled) {
+        bool conditionalEffectsEnabled = enabled && _drawEffectsEnabled;
+        if (_conditionalEffectsEnabled == conditionalEffectsEnabled) {
             return;
         }
 
-        _conditionalEffectsEnabled = enabled;
+        _conditionalEffectsEnabled = conditionalEffectsEnabled;
         InvalidateCalculation();
     }
 
