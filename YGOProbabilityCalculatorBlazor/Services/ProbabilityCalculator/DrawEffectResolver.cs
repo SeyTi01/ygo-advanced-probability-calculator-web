@@ -19,8 +19,7 @@ internal sealed record DrawComposition(int OrdinaryCount, int[] EffectCounts) {
 }
 
 internal sealed record DrawResolution(
-    Dictionary<DrawComposition, ExactProbability> Scenarios,
-    ExactProbability Exhaustion
+    Dictionary<DrawComposition, ExactProbability> Scenarios
 );
 
 internal static class DrawEffectResolver {
@@ -41,7 +40,6 @@ internal static class DrawEffectResolver {
         };
         Dictionary<DrawComposition, ExactProbability> scenarios = new();
         long scenarioCells = 0;
-        ExactProbability exhaustion = ExactProbability.Zero;
 
         while (current.Count > 0) {
             Dictionary<DrawComposition, ExactProbability> next = new();
@@ -70,10 +68,13 @@ internal static class DrawEffectResolver {
                     continue;
                 }
 
-                if (pending > remaining) {
-                    // Even consuming every remaining position cannot fulfill current requests.
-                    // Further activations can only add requests, so this is certain exhaustion.
-                    exhaustion = exhaustion.Add(weight, budget);
+                if (pending >= remaining) {
+                    // Every remaining card will be drawn. Further effects can only
+                    // add requests, so terminal composition is the whole remaining deck.
+                    int[] retained = effects
+                        .Select(effect => effect.DrawOncePerTurn ? Math.Max(0, effect.Copies - 1) : 0)
+                        .ToArray();
+                    Add(scenarios, new(ordinaryCopies, retained), weight, ref scenarioCells);
                     continue;
                 }
 
@@ -100,7 +101,7 @@ internal static class DrawEffectResolver {
             current = next;
         }
 
-        return new(scenarios, exhaustion);
+        return new(scenarios);
 
         void Add(
             Dictionary<DrawComposition, ExactProbability> map,
