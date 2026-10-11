@@ -17,9 +17,11 @@ internal static class DrawSequenceOracle {
         string[] cardKeys = combos.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
             .Distinct().Order(StringComparer.Ordinal).ToArray();
         while (true) {
-            pending.RemoveAll(index => !hand.Contains(index) || (order[index].DrawOncePerTurn && used.Contains(order[index].Id)));
+            pending.RemoveAll(index => !hand.Contains(index)
+                || (order[index].DrawOncePerTurn && used.Contains(order[index].Id))
+                || order[index].DrawCount!.Value > order.Count - next);
             // Scan physical candidates in encounter order; retain deferred positions.
-            int source = pending.FirstOrDefault(index => Payable(index), -1);
+            int source = pending.FirstOrDefault(index => order[index].DrawCount!.Value <= order.Count - next && Payable(index), -1);
             if (source < 0) {
                 break;
             }
@@ -30,8 +32,7 @@ internal static class DrawSequenceOracle {
             }
             hand.Remove(source);
             used.Add(effect.Id);
-            int drawCount = Math.Min(effect.DrawCount!.Value, order.Count - next);
-            for (int draw = 0; draw < drawCount; draw++) {
+            for (int draw = 0; draw < effect.DrawCount!.Value; draw++) {
                 hand.Add(next);
                 if (order[next].DrawCount is not null) {
                     pending.Add(next);
@@ -56,6 +57,7 @@ internal static class DrawSequenceOracle {
                 if (hand.Contains(candidate) && candidate != reserved
                     && !(reserved >= 0 && card.DrawOncePerTurn && card.Id == order[reserved].Id)
                     && (!card.DrawOncePerTurn || (!used.Contains(card.Id) && eligibleOnce.Add(card.Id)))
+                    && card.DrawCount is int drawCount && drawCount <= order.Count - next
                     && Payable(candidate, reserved)) {
                     usable.Add(candidate);
                 }

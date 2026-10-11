@@ -27,11 +27,17 @@ internal static class DrawEffectResolver {
         int totalCopies = ordinaryCopies;
         foreach (Card effect in effects) {
             budget.Spend(1);
+            ArgumentOutOfRangeException.ThrowIfNegative(effect.Copies);
             totalCopies = checked(totalCopies + effect.Copies);
         }
 
         if (handSize < 0 || handSize > totalCopies) {
             throw new ArgumentOutOfRangeException(nameof(handSize), "Opening hand size must fit the deck.");
+        }
+
+        budget.Spend(effects.Count + 1L);
+        if (!CanUseCountStateFastPath(effects, totalCopies, handSize)) {
+            throw new InvalidOperationException("Exhaustion-sensitive draw effects require ordered resolution.");
         }
 
         budget.CheckStorage(1, effects.Count + 3L);
@@ -69,8 +75,9 @@ internal static class DrawEffectResolver {
                 }
 
                 if (pending >= remaining) {
-                    // Every remaining card will be drawn. Further effects can only
-                    // add requests, so terminal composition is the whole remaining deck.
+                    // This count-state path is used only when every configured batch fits
+                    // within the initial deck remainder. If all remaining cards are owed,
+                    // the terminal composition is the whole remainder.
                     int[] retained = effects
                         .Select(effect => effect.DrawOncePerTurn ? Math.Max(0, effect.Copies - 1) : 0)
                         .ToArray();
@@ -116,5 +123,19 @@ internal static class DrawEffectResolver {
             budget.CheckStorage(map.Count + (exists ? 0 : 1), cells);
             map[key] = value;
         }
+    }
+
+    internal static bool CanUseCountStateFastPath(IReadOnlyList<Card> effects, int totalCopies, int handSize) {
+        if (handSize < 0 || handSize > totalCopies) {
+            return false;
+        }
+
+        long maximumDraws = 0;
+        foreach (Card effect in effects) {
+            int activations = effect.DrawOncePerTurn ? 1 : effect.Copies;
+            maximumDraws += effect.DrawCount!.Value * (long)activations;
+        }
+
+        return maximumDraws <= totalCopies - handSize;
     }
 }

@@ -43,11 +43,103 @@ public class PreDrawCostsTest {
         Card material = new([Level, Monster], id: "material");
         Card reward = new([], id: "reward");
         AssertHand([source, reward], 1, [], "trade");
-        AssertHand([source, material, reward], 2, [], "reward");
-        AssertHand([source, material], 2, []); // Paid cost is not refunded on an empty deck.
+        AssertHand([source, material, reward], 2, [], "trade", "material");
+        AssertHand([source, material], 2, [], "trade", "material");
         AssertHand([source.WithPreDrawRemovalCount(2), material, reward], 2, [], "trade", "material");
-        AssertHand([source, source, reward], 2, [], "reward"); // Another copy may pay.
+        AssertHand([source, source, reward], 2, [], "trade", "trade");
         AssertParity([source.WithCopies(2), material, reward], 2, [new([], cards: [new("trade", 1, 2)])], []);
+    }
+
+    [Test]
+    public void TradeInWithOneCardRemainingRetainsItsSourceAndCost() {
+        Card source = Trade(opt: true);
+        Card material = new([Level], id: "material");
+        List<Card> deck = [source, material, new([], id: "last")];
+        List<Combo> combos = [new([], cards: [new("trade", 1, 1), new("material", 1, 1)])];
+        DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 2, combos, []);
+
+        Assert.That(DrawSequenceOracle.Resolve(deck, 2, combos)!.Select(card => card.Id),
+            Is.EquivalentTo(new[] { "trade", "material" }));
+        Assert.That(oracle.Total, Is.EqualTo(new BigInteger(6)));
+        Assert.That(oracle.Wins[0], Is.EqualTo(new BigInteger(2)));
+        Assert.That(oracle.Failed, Is.EqualTo(BigInteger.Zero));
+        AssertParity(deck, 2, combos, []);
+        AssertBackgroundWireMatchesOracle(deck, 2, combos);
+
+        ExactCalculationResult basic = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive))
+            .Calculate(combos, []);
+        Assert.That(basic.Combos[0].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[0] * basic.Combos[0].Denominator));
+    }
+
+    [Test]
+    public void TradeInWithExactlyTwoCardsRemainingPaysCostAndDrawsBoth() {
+        Card source = Trade(opt: true);
+        Card material = new([Level], id: "material");
+        Card first = new([], id: "first");
+        Card second = new([], id: "second");
+        List<Card> deck = [source, material, first, second];
+        List<Combo> combos = [new([], cards: [new("first", 1, 1), new("second", 1, 1)])];
+        DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 2, combos, []);
+
+        Assert.That(DrawSequenceOracle.Resolve(deck, 2, combos)!.Select(card => card.Id),
+            Is.EquivalentTo(new[] { "first", "second" }));
+        Assert.That(oracle.Total, Is.EqualTo(new BigInteger(24)));
+        Assert.That(oracle.Wins[0], Is.EqualTo(new BigInteger(8)));
+        AssertParity(deck, 2, combos, []);
+        AssertBackgroundWireMatchesOracle(deck, 2, combos);
+    }
+
+    [Test]
+    public void OrcustratedReturnWithOneCardRemainingDoesNotPayItsSameCardCost() {
+        Card source = new([], name: "Orcustrated Return", id: "return", externalCardId: 26845680,
+            drawCount: 2, preDrawRemovalCount: 1,
+            preDrawSelector: CardSelector.AnyOfSelectors([
+                CardSelector.AllOf([Orcust.Identity, Monster.Identity]),
+                CardSelector.AllOf([Legacy.Identity, Monster.Identity])
+            ]));
+        Card material = new([Orcust, Monster], id: "material");
+        List<Card> deck = [source, material, new([], id: "last")];
+        List<Combo> combos = [new([], cards: [new("return", 1, 1), new("material", 1, 1)])];
+        DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 2, combos, []);
+
+        Assert.That(DrawSequenceOracle.Resolve(deck, 2, combos)!.Select(card => card.Id),
+            Is.EquivalentTo(new[] { "return", "material" }));
+        Assert.That(oracle.Wins[0], Is.EqualTo(new BigInteger(2)));
+        Assert.That(oracle.Failed, Is.EqualTo(BigInteger.Zero));
+        AssertParity(deck, 2, combos, []);
+    }
+
+    [Test]
+    public void CostRankingDoesNotProtectADrawWhoseCompleteBatchNoLongerFits() {
+        Card source = Trade();
+        Card firstDraw = new([], id: "first-draw", drawCount: 2, drawOncePerTurn: false);
+        Card unusableDraw = new([Level], id: "z-unusable", drawCount: 3);
+        Card material = new([Level], id: "material");
+        List<Card> deck = [source, firstDraw, material, unusableDraw, new([], id: "first"), new([], id: "second")];
+        List<Combo> combos = [new([], cards: [new("z-unusable", 0, 0)])];
+
+        Assert.That(DrawSequenceOracle.Resolve(deck, 2, combos)!.Select(card => card.Id),
+            Is.EquivalentTo(new[] { "material", "first", "second" }));
+        AssertParity(deck, 2, combos, []);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DeferredCostSourceChecksBatchAgainAfterAnotherEffect(bool enoughRemaining) {
+        Card source = Trade(opt: true);
+        Card draw = new([], id: "draw", drawCount: 1, drawOncePerTurn: false);
+        Card material = new([Level], id: "material");
+        List<Card> deck = enoughRemaining
+            ? [source, draw, material, new([], id: "first"), new([], id: "second")]
+            : [source, draw, material, new([], id: "last")];
+        List<Combo> combos = enoughRemaining
+            ? [new([], cards: [new("first", 1, 1), new("second", 1, 1)])]
+            : [new([], cards: [new("trade", 1, 1), new("material", 1, 1)])];
+        int handSize = 2;
+
+        string[] expected = enoughRemaining ? ["first", "second"] : ["trade", "material"];
+        Assert.That(DrawSequenceOracle.Resolve(deck, handSize, combos)!.Select(card => card.Id), Is.EquivalentTo(expected));
+        AssertParity(deck, handSize, combos, []);
     }
 
     [Test]
@@ -83,7 +175,7 @@ public class PreDrawCostsTest {
     }
 
     [TestCase(1), TestCase(2), TestCase(3), TestCase(5)]
-    public void PreDrawAndPostDrawCombinationHandlesPartialDrawsAndCandidateRemoval(int hand) {
+    public void PreDrawAndPostDrawCombinationHandlesExhaustionAndCandidateRemoval(int hand) {
         List<Card> deck = [Trade().WithPostDrawDiscardCount(1), Trade("other").WithCategories([Level, Monster]),
             new([Level, Monster], 2, id: "material"), new([], id: "target"), new([], id: "f")];
         AssertParity(deck, hand, [new([], cards: [new("other", 1, 1)]), new([], cards: [new("target", 1, 1)])], []);
@@ -150,5 +242,22 @@ public class PreDrawCostsTest {
             }
         }
         TestContext.Out.WriteLine($"Exact parity: {oracle.Total} labeled orders; {oracle.Wins.Length} result rows; hand {hand}.");
+    }
+
+    private static void AssertBackgroundWireMatchesOracle(List<Card> deck, int handSize, List<Combo> combos) {
+        foreach (bool drawEffectsEnabled in new[] { false, true }) {
+            foreach (bool advanced in new[] { false, true }) {
+                List<Card> modeled = deck.Select(card => !drawEffectsEnabled
+                    ? card.WithDrawCount(null).WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0)
+                    : !advanced ? card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0) : card).ToList();
+                DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, handSize, combos, []);
+                CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, handSize, [],
+                    drawEffectsEnabled: drawEffectsEnabled, options: new(advanced));
+                double actual = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability;
+                double expected = (double)oracle.Wins[0] / (double)oracle.Total;
+
+                Assert.That(actual, Is.EqualTo(expected).Within(1e-12), $"Draw effects {drawEffectsEnabled}, Advanced {advanced}");
+            }
+        }
     }
 }

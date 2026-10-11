@@ -83,8 +83,9 @@ public class FilteredPostDrawTest {
         Assert.That(DrawSequenceOracle.Resolve([source.WithCategories([Dark]), filler, filler], 1, []), Is.Null);
         Assert.That(DrawSequenceOracle.Resolve([source, expendable, filler], 1, [])!
             .Select(card => card.Id), Is.EqualTo(new[] { "filler" }));
-        // The partial draw keeps the available DARK card, then performs its removal.
-        Assert.That(DrawSequenceOracle.Resolve([source, expendable], 1, []), Is.Empty);
+        // Draw 2 cannot activate with one card left, so the source stays in hand and the other card stays in deck.
+        Assert.That(DrawSequenceOracle.Resolve([source, expendable], 1, [])!.Select(card => card.Id),
+            Is.EqualTo(new[] { "source" }));
     }
 
     [TestCase(false), TestCase(true)]

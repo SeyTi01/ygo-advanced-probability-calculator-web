@@ -8,51 +8,68 @@ public class PostDrawExhaustionTest {
     private static readonly CategoryBase A = new("A");
     private static readonly CategoryBase B = new("B");
     private static readonly CategoryBase Dark = new("Dark", CategorySource.Metadata, "attribute:dark");
+    private static readonly CategoryBase Role = new("Role");
 
     [Test]
-    public void PartialGracefulDrawKeepsActualCardsBeforeUnrestrictedDiscard() {
-        Card source = new([A], id: "source", drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2);
-        List<Card> deck = [source, new([A, B], id: "first"), new([B], id: "second")];
-        List<Combo> combos = Requirements();
-        List<ComboGroup> groups = Groups();
-
-        DrawExhaustionAssertions.AssertAdvancedMatchesOracle(deck, 1, combos, groups);
-        Assert.That(DrawSequenceOracle.Resolve([source, deck[1], deck[2]], 1, combos), Is.Empty);
-    }
-
-    [Test]
-    public void PartialFilteredDrawRemovesEligibleCardFromTheActualDraws() {
-        Card source = new([A], id: "source", drawCount: 3, drawOncePerTurn: false,
-            postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(Dark));
-        List<Card> deck = [source, new([Dark, B], id: "eligible"), new([A], id: "kept")];
-
-        DrawExhaustionAssertions.AssertAdvancedMatchesOracle(deck, 1, Requirements(), Groups());
-        Assert.That(DrawSequenceOracle.Resolve([source, deck[1], deck[2]], 1, Requirements())!
-            .Select(card => card.Id), Is.EqualTo(new[] { "kept" }));
-    }
-
-    [Test]
-    public void PartialFilteredRemovalStillFailsWhenNoEligibleCardWasDrawn() {
-        Card source = new([A], id: "source", drawCount: 3, drawOncePerTurn: false,
-            postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(Dark));
-        List<Card> deck = [source, new([A], id: "first"), new([B], id: "second")];
+    public void InsufficientFullBatchRetainsSourceWithoutPostDrawRemovalOrFailure() {
+        Card source = new([], id: "source", drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2);
+        List<Card> deck = [source, new([], 2, id: "reward")];
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 1, [new([])], []);
 
-        Assert.That(oracle.Failed, Is.EqualTo(new BigInteger(2)));
+        Assert.That(oracle.Total, Is.EqualTo(new BigInteger(6)));
+        Assert.That(oracle.Failed, Is.EqualTo(BigInteger.Zero));
+        Assert.That(DrawSequenceOracle.Resolve([source, deck[1], deck[1]], 1, [])!.Select(card => card.Id),
+            Is.EqualTo(new[] { "source" }));
         DrawExhaustionAssertions.AssertAdvancedMatchesOracle(deck, 1, [new([])], []);
     }
 
     [Test]
-    public void PartialFilteredRemovalCanRemovePendingDrawCardBeforeItActivates() {
-        Card source = new([A], id: "source", drawCount: 3, drawOncePerTurn: false,
+    public void FullDrawBatchRunsItsConfiguredPostDrawRemoval() {
+        Card source = new([], id: "source", drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2);
+        List<Card> deck = [source, new([], id: "first"), new([], id: "second"), new([Role], id: "kept")];
+        List<Combo> combos = [new([new(Role, 1, 1)])];
+
+        List<Card> finalHand = DrawSequenceOracle.Resolve(deck, 1, combos)!;
+        Assert.That(finalHand, Has.Count.EqualTo(1));
+        Assert.That(finalHand.Single().Id, Is.EqualTo("kept"));
+        DrawExhaustionAssertions.AssertAdvancedMatchesOracle(deck, 1, combos, []);
+    }
+
+    [Test]
+    public void InsufficientFilteredBatchDoesNotFailForMissingRemovalMaterial() {
+        Card source = new([], id: "source", drawCount: 3, drawOncePerTurn: false,
+            postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(Dark));
+        List<Card> deck = [source, new([A], id: "first"), new([B], id: "second")];
+        DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 1, [new([])], []);
+
+        Assert.That(oracle.Failed, Is.EqualTo(BigInteger.Zero));
+        Assert.That(DrawSequenceOracle.Resolve([source, deck[1], deck[2]], 1, [])!.Single().Id, Is.EqualTo("source"));
+        DrawExhaustionAssertions.AssertAdvancedMatchesOracle(deck, 1, [new([])], []);
+    }
+
+    [Test]
+    public void FullFilteredBatchRemovesTheEligibleDrawAndKeepsTheOtherCard() {
+        Card source = new([], id: "source", drawCount: 2, drawOncePerTurn: false,
+            postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(Dark));
+        Card eligible = new([Dark, B], id: "eligible");
+        Card kept = new([A], id: "kept");
+        List<Card> deck = [source, eligible, kept];
+
+        Assert.That(DrawSequenceOracle.Resolve(deck, 1, [])!.Select(card => card.Id), Is.EqualTo(new[] { "kept" }));
+        DrawExhaustionAssertions.AssertAdvancedMatchesOracle(deck, 1, Requirements(), Groups());
+    }
+
+    [Test]
+    public void FullBatchRemovalCanRemoveANewlyDrawnCandidateBeforeItActivates() {
+        Card source = new([], id: "source", drawCount: 2, drawOncePerTurn: false,
             postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(Dark));
         Card pending = new([Dark], id: "pending", drawCount: 1, drawOncePerTurn: false,
             postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(Dark));
         Card reward = new([B], id: "reward");
         List<Card> deck = [source, pending, reward];
 
-        DrawExhaustionAssertions.AssertAdvancedMatchesOracle(deck, 1, Requirements(), Groups());
         Assert.That(DrawSequenceOracle.Resolve(deck, 1, Requirements())!.Select(card => card.Id), Is.EqualTo(new[] { "reward" }));
+        DrawExhaustionAssertions.AssertAdvancedMatchesOracle(deck, 1, Requirements(), Groups());
     }
 
     private static List<Combo> Requirements() => [

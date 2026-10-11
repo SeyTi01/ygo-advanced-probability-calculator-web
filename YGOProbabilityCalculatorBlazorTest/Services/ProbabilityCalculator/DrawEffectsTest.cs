@@ -69,17 +69,24 @@ public class DrawEffectsTest {
 
         List<Card> effects = deck.Where(card => card.DrawCount is not null).ToList();
         int ordinary = deck.Where(card => card.DrawCount is null).Sum(card => card.Copies);
-        DrawResolution resolution = DrawEffectResolver.Resolve(ordinary, effects, handSize, new(CalculationWorkPolicy.Interactive));
         Assert.That(expected.Failed, Is.EqualTo(BigInteger.Zero), "Basic fixed draws must not fail solely because the deck is exhausted.");
-        ExactProbability mass = ExactProbability.Zero;
-        foreach ((DrawComposition scenario, ExactProbability weight) in resolution.Scenarios) {
-            string key = $"{scenario.OrdinaryCount}|{string.Join(',', scenario.EffectCounts)}";
-            Assert.That(weight.Numerator * expected.Total, Is.EqualTo(expected.Scenarios[key] * weight.Denominator), key);
-            mass = mass.Add(weight, budget);
-        }
+        int deckCopies = deck.Sum(card => card.Copies);
+        if (DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize)) {
+            DrawResolution resolution = DrawEffectResolver.Resolve(ordinary, effects, handSize, new(CalculationWorkPolicy.Interactive));
+            ExactProbability mass = ExactProbability.Zero;
+            foreach ((DrawComposition scenario, ExactProbability weight) in resolution.Scenarios) {
+                string key = $"{scenario.OrdinaryCount}|{string.Join(',', scenario.EffectCounts)}";
+                Assert.That(weight.Numerator * expected.Total, Is.EqualTo(expected.Scenarios[key] * weight.Denominator), key);
+                mass = mass.Add(weight, budget);
+            }
 
-        Assert.That(resolution.Scenarios.Count, Is.EqualTo(expected.Scenarios.Count));
-        Assert.That(mass.Numerator, Is.EqualTo(mass.Denominator));
+            Assert.That(resolution.Scenarios.Count, Is.EqualTo(expected.Scenarios.Count));
+            Assert.That(mass.Numerator, Is.EqualTo(mass.Denominator));
+        }
+        else {
+            Assert.Throws<InvalidOperationException>(() =>
+                DrawEffectResolver.Resolve(ordinary, effects, handSize, new(CalculationWorkPolicy.Interactive)));
+        }
         ProbabilityCalculationResult published = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, handSize, groups);
         Assert.That(published.TotalProbability, Is.EqualTo((double)expected.Wins[0] / (double)expected.Total).Within(1e-14));
         Assert.That(published.ComboProbabilities.Select(row => row.ComboIndex), Is.EqualTo(Enumerable.Range(0, combos.Count)));
@@ -238,7 +245,7 @@ public class DrawEffectsTest {
     public void ResolutionStateStorageIsBoundedIndependentlyOfWorkAllowance() {
         List<Card> effects = Enumerable.Range(0, 20).Select(index => new Card([], id: $"effect{index}", drawCount: 1)).ToList();
         ProbabilityCalculationLimitException? exception = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            DrawEffectResolver.Resolve(0, effects, 1, new(new(long.MaxValue))));
+            new DrawEffectCalculation(effects, 1, new(new(long.MaxValue))).Calculate([], []));
         Assert.That(exception!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }
 

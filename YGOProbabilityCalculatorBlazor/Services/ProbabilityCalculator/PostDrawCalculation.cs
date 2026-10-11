@@ -229,7 +229,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         ResolutionOutcome Settle(ref int[] values, int remaining) {
             while (true) {
                 if (values[phase] > remaining) {
-                    values[phase] = remaining;
+                    throw new InvalidOperationException("An activated draw batch exceeds the remaining deck size.");
                 }
                 if (values[phase] > 0) {
                     return ResolutionOutcome.Ready;
@@ -239,7 +239,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 int removalCount = removalSource < 0 ? 0 : cards[removalSource].PostDrawDiscardCount;
                 bool[]? eligible = removalSource < 0 ? null : removalEligibility[removalSource];
                 for (int discard = removalCount; discard > 0; discard--) {
-                    if (!RemoveCard(ref values, eligible)) {
+                    if (!RemoveCard(ref values, eligible, remaining)) {
                         return cards[removalSource].PostDrawFailureBehavior switch {
                             PostDrawFailureBehavior.FailBranch => ResolutionOutcome.RemovalUnavailable,
                             _ => throw new ArgumentOutOfRangeException(nameof(cards))
@@ -261,6 +261,10 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                         values = [.. values.Take(candidate), .. values.Skip(candidate + 1)];
                         continue;
                     }
+                    if (cards[source].DrawCount!.Value > remaining) {
+                        values = [.. values.Take(candidate), .. values.Skip(candidate + 1)];
+                        continue;
+                    }
                     if (cards[source].PreDrawRemovalCount > 0 && !CanPay(values, source)) {
                         candidate++;
                         continue;
@@ -269,7 +273,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     // Check the whole cost before mutating activation state, and
                     // reserve this source copy while selecting/removing material.
                     for (int cost = 0; cost < cards[source].PreDrawRemovalCount; cost++) {
-                        if (!RemoveCard(ref values, costEligibility![source], source)) {
+                        if (!RemoveCard(ref values, costEligibility![source], remaining, source)) {
                             throw new InvalidOperationException("A validated activation cost became unavailable.");
                         }
                     }
@@ -308,7 +312,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
             return available >= cards[source].PreDrawRemovalCount;
         }
 
-        bool RemoveCard(ref int[] values, bool[]? eligible, int reservedSource = -1) {
+        bool RemoveCard(ref int[] values, bool[]? eligible, int remaining, int reservedSource = -1) {
             // Queue scan, tier scan, removal scan and copying the surviving queue.
             budget.Spend(2L * values.Length + n + 1);
             int selected = -1;
@@ -324,6 +328,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     continue;
                 }
                 bool usable = pending[i] && !Used(values, i)
+                    && cards[i].DrawCount is int drawCount && drawCount <= remaining
                     && !(i == reservedSource && cards[i].DrawOncePerTurn)
                     && (cards[i].PreDrawRemovalCount == 0 || CanPay(values, i, reservedSource));
                 bool redundant = cards[i].DrawOncePerTurn && values[n + i] - (i == reservedSource ? 1 : 0) > 1;
