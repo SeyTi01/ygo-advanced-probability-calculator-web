@@ -119,6 +119,10 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         RestoreCategoryColorIndices(session);
         _handSize = session.HandSize;
         _drawEffectsEnabled = session.DrawEffectsEnabled;
+        if (!_drawEffectsEnabled) {
+            _conditionalEffectsEnabled = false;
+        }
+
         _activeCardIndex = _activeComboIndex = -1;
         _sessionVersion++;
         _autosaveReplacementVersion++;

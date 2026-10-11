@@ -45,6 +45,7 @@
                            id="conditionalEffectsEnabled"
                            role="switch"
                            checked="@ConditionalEffectsEnabled"
+                           disabled="@(!DrawEffectsEnabled)"
                            aria-describedby="conditionalEffectsHelp"
                            @onchange="OnConditionalEffectsChanged" />
                     <label class="form-check-label" for="conditionalEffectsEnabled">Advanced draw simulation</label>

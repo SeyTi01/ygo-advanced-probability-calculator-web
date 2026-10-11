@@ -67,9 +67,11 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         PinnedResultSnapshot pinned = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
         Assert.That(pinned.Context.Description, Does.EndWith("Draw effects on · Basic"));
 
-        foreach ((bool global, bool advanced) in new[] { (true, true), (false, true), (false, false), (true, false), (true, true) }) {
+        foreach ((bool global, bool advanced) in new[] { (true, true), (false, false), (true, false), (true, true) }) {
             await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = global });
             await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = advanced });
+            Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("checked"), Is.EqualTo(advanced));
+            Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("disabled"), Is.EqualTo(!global));
             AssertPreviousResult(cut);
             Assert.That(cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
             Assert.That(cut.FindComponents<CardEditor>().ToArray()[0].Instance.Card.PostDrawDiscardCount, Is.EqualTo(1));
@@ -90,6 +92,54 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 5, session.Combos, []);
             double expected = new ExactProbability(oracle.Wins[0], oracle.Total).ToDouble(new(CalculationWorkPolicy.Interactive));
             Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(expected.ToString("P2")));
+        }
+    }
+
+    [Test]
+    public async Task TurningDrawEffectsOffClearsAdvancedAndReenablingKeepsBasicMode() {
+        List<CalculationInput> requests = [];
+        Mock<IBackgroundCalculator> background = new();
+        background.Setup(calculator => calculator.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
+            .Returns((CalculationSnapshot snapshot, CancellationToken _) => {
+                requests.Add(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!);
+                return Task.FromResult(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
+            });
+        context.Services.AddSingleton(background.Object);
+        SessionState session = ConditionalSession();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        await cut.Find(".calculation-settings-trigger").ClickAsync(new());
+        await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(requests[^1].Options!.ConditionalEffectsEnabled, Is.True);
+
+        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
+        AssertAdvancedUnavailable();
+        AssertPreviousResult(cut);
+        Assert.That(cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Find("#storageSafetyTier").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.FindComponents<CardEditor>().ToArray()[0].Instance.Card.PostDrawDiscardCount, Is.EqualTo(1));
+        await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        AssertAdvancedUnavailable();
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(requests[^1].Options!.ConditionalEffectsEnabled, Is.False);
+        Assert.That(requests[^1].Cards.All(card => card.DrawCount is null && card.PostDrawDiscardCount == 0), Is.True);
+
+        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = true });
+        Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("checked"), Is.False);
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(requests[^1].Options!.ConditionalEffectsEnabled, Is.False);
+        Assert.That(requests[^1].Cards[0].PostDrawDiscardCount, Is.EqualTo(1));
+
+        await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        JsonObject offSession = JsonNode.Parse(context.Services.GetRequiredService<ISessionService>().SerializeSession(session))!.AsObject();
+        offSession[nameof(SessionState.DrawEffectsEnabled)] = false;
+        cut.FindComponents<InputFile>().ToArray()[1].UploadFiles(InputFileContent.CreateFromText(offSession.ToJsonString(), "off.json"));
+        cut.WaitForAssertion(AssertAdvancedUnavailable);
+
+        void AssertAdvancedUnavailable() {
+            Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("disabled"), Is.True);
         }
     }
 
@@ -126,8 +176,9 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(fresh.Find("#conditionalEffectsEnabled").HasAttribute("checked"), Is.False);
     }
 
-    [Test]
-    public async Task ChangingAdvancedCancelsRunningRequestAndRejectsItsLateResult() {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ChangingDrawSimulationSettingsCancelsRunningRequestAndRejectsItsLateResult(bool disableDrawEffects) {
         TaskCompletionSource<ProbabilityCalculationResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken captured = default;
         Mock<IBackgroundCalculator> background = new();
@@ -139,8 +190,19 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         context.Services.AddSingleton(background.Object);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(ConditionalSession());
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
+        if (disableDrawEffects) {
+            await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        }
+
         Task calculation = Button(cut, "Calculate").ClickAsync(new());
-        await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        if (disableDrawEffects) {
+            await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
+            Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("disabled"), Is.True);
+        }
+        else {
+            await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        }
         Assert.That(captured.IsCancellationRequested, Is.True);
         completion.SetResult(new(0.99, [new(0, "Late result", 0.99)]));
         await calculation;
