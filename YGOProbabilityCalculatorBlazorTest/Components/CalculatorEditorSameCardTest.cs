@@ -8,6 +8,17 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
 public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
+    private static string CompactText(IElement element) =>
+        string.Join(' ', element.TextContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static void AssertCompositeAlternativeGrouping(IElement grouping) {
+        IElement[] parts = grouping.Children.ToArray();
+        Assert.That(parts, Has.Length.EqualTo(3));
+        Assert.That(parts[0].TextContent.Trim(), Is.EqualTo("("));
+        Assert.That(parts[1].ClassList.Contains("same-card-category"), Is.True);
+        Assert.That(parts[2].TextContent.Trim(), Is.EqualTo(")"));
+    }
+
     [Test]
     public async Task AndTargetSelectionIsExclusiveAccessibleAndDisabledWithoutCategoryRequirements() {
         SessionState cardsSession = Session();
@@ -181,6 +192,128 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives[1].Category!.Selector.Kind, Is.EqualTo(CardSelectorKind.Category));
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives[0].Category, Is.SameAs(first));
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives[1].Category!.MinCount, Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task CompositeOrAlternativesAreGroupedInHeaderAndExpandedMarkup() {
+        CategoryBase c = new("C");
+        CategoryBase d = new("D");
+        CategoryBase e = new("E");
+        CategoryBase f = new("F");
+        CategoryBase starter = new("Starter");
+        ComboAlternativeGroup atomicOr = new([
+            ComboAlternative.For(new ComboCategory(a, 1, 3)),
+            ComboAlternative.For(new ComboCategory(b, 1, 3))
+        ]);
+        ComboAlternativeGroup mixedOr = new([
+            ComboAlternative.For(new ComboCategory(a, 1, 3)),
+            ComboAlternative.For(ComboCategory.SameCard([b, c], 1, 3))
+        ]);
+        ComboAlternativeGroup andOr = new([
+            ComboAlternative.For(ComboCategory.SameCard([a, b], 1, 3)),
+            ComboAlternative.For(ComboCategory.SameCard([c, d], 1, 3))
+        ]);
+        ComboAlternativeGroup cardAndOr = new([
+            ComboAlternative.For(new ComboCard("x", 1, 3)),
+            ComboAlternative.For(ComboCategory.SameCard([e, f], 1, 3))
+        ]);
+        Combo combo = new([new(starter, 1, 3)], "Starter routes", alternativeGroups: [atomicOr, mixedOr, andOr, cardAndOr]);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = [a, b, c, d, e, f, starter],
+            Cards = [new([], name: "Card X", id: "x")],
+            Combos = [combo],
+            HandSize = 3
+        });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        await editor.Find(".accordion-button").ClickAsync(new());
+
+        IElement[] expandedGroups = editor.FindAll(".expanded-expression .alternative-group").ToArray();
+        IElement[] headerGroups = editor.FindAll(".combo-header-content .summary-group").ToArray();
+        Assert.That(expandedGroups, Has.Length.EqualTo(4));
+        Assert.That(headerGroups, Has.Length.EqualTo(4));
+        Assert.That(expandedGroups[0].QuerySelectorAll(".composite-alternative"), Is.Empty,
+            "Atomic OR keeps only its existing outer parentheses.");
+        Assert.That(expandedGroups[1].QuerySelectorAll(".composite-alternative"), Has.Length.EqualTo(1));
+        Assert.That(expandedGroups[2].QuerySelectorAll(".composite-alternative"), Has.Length.EqualTo(2));
+        Assert.That(expandedGroups[3].QuerySelectorAll(".composite-alternative"), Has.Length.EqualTo(1),
+            "The grouping rule also applies when the other alternative is a direct card.");
+        AssertCompositeAlternativeGrouping(expandedGroups[1].QuerySelector(".composite-alternative")!);
+        Assert.That(expandedGroups[1].QuerySelectorAll(".alternative-leaf")[1].QuerySelectorAll(".same-card-conjunct"), Has.Length.EqualTo(2));
+        AssertCompositeAlternativeGrouping(expandedGroups[2].QuerySelectorAll(".composite-alternative")[0]);
+        AssertCompositeAlternativeGrouping(expandedGroups[2].QuerySelectorAll(".composite-alternative")[1]);
+        Assert.That(expandedGroups[3].QuerySelectorAll(".alternative-leaf")[0].QuerySelector(".combo-card-tag"), Is.Not.Null);
+        AssertCompositeAlternativeGrouping(expandedGroups[3].QuerySelector(".composite-alternative")!);
+        Assert.That(expandedGroups[1].QuerySelector(".composite-alternative .same-card-range"), Is.Not.Null,
+            "The shared requirement range remains inside the grouped AND leaf.");
+
+        for (int groupIndex = 0; groupIndex < expandedGroups.Length; groupIndex++) {
+            Assert.That(CompactText(headerGroups[groupIndex]), Is.EqualTo(CompactText(expandedGroups[groupIndex])),
+                $"Header summary group {groupIndex + 1} should match the expanded expression.");
+        }
+
+        IElement[] expressionTerms = editor.FindAll(".expanded-expression > .expression-term").ToArray();
+        Assert.That(expressionTerms[0].QuerySelector(".expression-and"), Is.Null);
+        Assert.That(expressionTerms[1].QuerySelector(".expression-and")!.TextContent.Trim(), Is.EqualTo("+"));
+        Assert.That(expressionTerms[2].QuerySelectorAll(".alternative-leaf"), Has.Length.EqualTo(2));
+        Assert.That(expressionTerms[2].QuerySelector(".alternative-leaf .composite-alternative"), Is.Not.Null);
+        Assert.That(editor.Find("button[aria-label='Remove conjunct 2 (C) from alternative 2 in group 2']"), Is.Not.Null,
+            "The existing conjunct removal label remains specific to its OR alternative.");
+    }
+
+    [Test]
+    public async Task TargetSelectionKeepsCompositeGroupingAndAccessibleLabels() {
+        CategoryBase c = new("C");
+        CategoryBase d = new("D");
+        ComboAlternativeGroup group = new([
+            ComboAlternative.For(new ComboCategory(a, 1, 3)),
+            ComboAlternative.For(ComboCategory.SameCard([b, c], 1, 3))
+        ]);
+        Combo combo = new([], "Mixed route", alternativeGroups: [group]);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = [a, b, c, d],
+            Combos = [combo],
+            HandSize = 3
+        });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        await editor.Find(".accordion-button").ClickAsync(new());
+
+        await Button(editor, "Add OR").ClickAsync(new());
+        IElement orGroupTarget = editor.Find("button[data-alternative-target='group:0']");
+        Assert.That(orGroupTarget.GetAttribute("aria-label"), Does.Contain("OR group 1: Category: A")
+            .And.Contain("OR Category: (B AND C)"));
+        Assert.That(orGroupTarget.QuerySelectorAll(".composite-alternative"), Has.Length.EqualTo(1));
+        AssertCompositeAlternativeGrouping(orGroupTarget.QuerySelector(".composite-alternative")!);
+        await Button(editor, "Add OR").ClickAsync(new());
+
+        await Button(editor, "Add AND").ClickAsync(new());
+        IElement andAlternativeTarget = editor.Find("button[data-and-target='alternative:0:1']");
+        Assert.That(andAlternativeTarget.GetAttribute("aria-label"), Does.Contain("alternative 2 in group 1")
+            .And.Contain("Category: (B AND C)"));
+        Assert.That(andAlternativeTarget.QuerySelectorAll(".composite-alternative"), Has.Length.EqualTo(1));
+        AssertCompositeAlternativeGrouping(andAlternativeTarget.QuerySelector(".composite-alternative")!);
+        await andAlternativeTarget.ClickAsync(new());
+        Assert.That(CompactText(editor.Find(".alternative-scope")), Does.Contain("alternative 2: (B AND C)"));
+        await editor.Find(".alternative-scope button").ClickAsync(new());
+
+        Assert.That(editor.Instance.Combo, Is.SameAs(combo), "Cancelling target selection must not edit the expression.");
+    }
+
+    [Test]
+    public async Task StandaloneSameCardAndRemainsCompactWithoutOuterGrouping() {
+        ComboCategory requirement = ComboCategory.SameCard([a, b], 1, 3);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = [a, b],
+            Combos = [new([requirement])],
+            HandSize = 3
+        });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        await editor.Find(".accordion-button").ClickAsync(new());
+
+        IElement expression = editor.Find(".expanded-expression > .expression-term");
+        Assert.That(expression.QuerySelector(".composite-alternative"), Is.Null);
+        Assert.That(expression.QuerySelectorAll(".same-card-category .same-card-conjunct"), Has.Length.EqualTo(2));
+        Assert.That(expression.QuerySelectorAll(".same-card-and"), Has.Length.EqualTo(1));
+        Assert.That(editor.Find(".combo-header-content .same-card-category").QuerySelectorAll(".same-card-conjunct"), Has.Length.EqualTo(2));
     }
 
     [Test]

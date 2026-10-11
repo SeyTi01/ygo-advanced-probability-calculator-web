@@ -479,7 +479,16 @@
 
     private RenderFragment AlternativeBadge(ComboAlternative alternative, int? removableGroupIndex = null, int leafIndex = 0) => @<span class="alternative-badge">
         @if (alternative.Category is { } category) {
-            @CategoryBadge(category, removableGroupIndex: removableGroupIndex, alternativeIndex: leafIndex)
+            @if (category.CategoryBases.Count > 1) {
+                <span class="composite-alternative">
+                    <span>(</span>
+                    @CategoryBadge(category, removableGroupIndex: removableGroupIndex, alternativeIndex: leafIndex)
+                    <span>)</span>
+                </span>
+            }
+            else {
+                @CategoryBadge(category, removableGroupIndex: removableGroupIndex, alternativeIndex: leafIndex)
+            }
         }
         else {
             <span class="badge category-tag combo-card-tag">
