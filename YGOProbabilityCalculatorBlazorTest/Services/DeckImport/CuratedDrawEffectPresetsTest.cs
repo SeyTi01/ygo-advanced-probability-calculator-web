@@ -78,4 +78,19 @@ public class CuratedDrawEffectPresetsTest {
 
         throw new FileNotFoundException("Could not locate the checked-in card catalog from the test output directory.");
     }
+
+    [Test]
+    public void PostDrawPresetsApplyOnlyToNewCanonicalSelectionsAndImports() {
+        foreach (CuratedDrawEffectPreset preset in CuratedDrawEffectPresets.All) {
+            int expected = preset.CardId switch { 74117290 => 1, 79571449 => 2, _ => 0 };
+            CardInfo info = new() { Id = 999, CanonicalCardId = preset.CardId, Name = "Same" };
+            Card imported = CuratedDrawEffectPresets.CreateImportedCard(info, 3, 999);
+            Card selected = CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(new([], id: "stable"), info);
+            Assert.That(imported.PostDrawDiscardCount, Is.EqualTo(expected));
+            Assert.That(selected.PostDrawDiscardCount, Is.EqualTo(expected));
+            Assert.That(selected.Id, Is.EqualTo("stable"));
+            Card configured = selected.WithPostDrawDiscardCount(0);
+            Assert.That(CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(configured, info).PostDrawDiscardCount, Is.Zero);
+        }
+    }
 }

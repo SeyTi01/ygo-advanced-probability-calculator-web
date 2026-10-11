@@ -6,6 +6,74 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 // Enumerate labeled physical permutations, deal the opener, then resolve queued
 // effects in batches. No production scenario, mask, Hall or fraction helpers.
 internal static class DrawSequenceOracle {
+    // Physical labels distinguish copies; encounter order breaks ties within an ID.
+    internal static List<Card>? Resolve(IReadOnlyList<Card> order, int handSize, IReadOnlyList<Combo> combos) {
+        List<int> hand = Enumerable.Range(0, handSize).ToList();
+        Queue<int> pending = new(hand.Where(index => order[index].DrawCount is not null));
+        HashSet<string> used = new(StringComparer.Ordinal);
+        int next = handSize;
+        string[] categoryKeys = combos.SelectMany(combo => combo.AllCategories).Select(requirement => requirement.BaseCategory.Identity)
+            .Distinct().Order(StringComparer.Ordinal).ToArray();
+        string[] cardKeys = combos.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
+            .Distinct().Order(StringComparer.Ordinal).ToArray();
+        while (pending.TryDequeue(out int source)) {
+            Card effect = order[source];
+            if (!hand.Contains(source) || (effect.DrawOncePerTurn && used.Contains(effect.Id))) {
+                continue;
+            }
+
+            hand.Remove(source);
+            used.Add(effect.Id);
+            if (order.Count - next < effect.DrawCount!.Value) {
+                return null;
+            }
+
+            for (int draw = 0; draw < effect.DrawCount.Value; draw++) {
+                hand.Add(next);
+                if (order[next].DrawCount is not null) {
+                    pending.Enqueue(next);
+                }
+                next++;
+            }
+
+            if (hand.Count < effect.PostDrawDiscardCount) {
+                return null;
+            }
+
+            for (int discard = 0; discard < effect.PostDrawDiscardCount; discard++) {
+                HashSet<string> eligibleOnce = new(StringComparer.Ordinal);
+                HashSet<int> usable = [];
+                foreach (int candidate in pending) {
+                    Card card = order[candidate];
+                    if (hand.Contains(candidate) && card.DrawCount <= order.Count - next
+                        && (!card.DrawOncePerTurn || (!used.Contains(card.Id) && eligibleOnce.Add(card.Id)))) {
+                        usable.Add(candidate);
+                    }
+                }
+
+                int removed = hand.OrderByDescending(index => Tier(index))
+                    .ThenByDescending(index => Membership(order[index]), StringComparer.Ordinal)
+                    .ThenByDescending(index => order[index].DrawCount is not null)
+                    .ThenByDescending(index => order[index].Id, StringComparer.Ordinal)
+                    .ThenByDescending(index => index).First();
+                hand.Remove(removed);
+
+                int Tier(int index) {
+                    Card card = order[index];
+                    bool relevant = combos.Any(combo =>
+                        combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
+                        || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && card.Categories.Contains(requirement.BaseCategory)));
+                    return relevant ? 1 : usable.Contains(index) ? 2 : 3;
+                }
+            }
+        }
+
+        return hand.Select(index => order[index]).ToList();
+
+        string Membership(Card card) => string.Concat(categoryKeys.Select(key => card.Categories.Any(category => category.Identity == key) ? "1" : "0"))
+            + string.Concat(cardKeys.Select(key => card.Id == key ? "1" : "0"));
+    }
+
     internal sealed record Counts(BigInteger Total, BigInteger Failed, BigInteger[] Wins, Dictionary<string, BigInteger> Scenarios);
 
     internal static Counts Enumerate(List<Card> deck, int handSize, IReadOnlyList<Combo> combos, IReadOnlyList<ComboGroup> groups) {
@@ -35,23 +103,10 @@ internal static class DrawSequenceOracle {
 
         void Evaluate() {
             total++;
-            List<Card> hand = [];
-            HashSet<string> used = new(StringComparer.Ordinal);
-            Queue<int> pendingEffects = new();
-            int next = handSize;
-            for (int i = 0; i < handSize; i++) {
-                Draw(physical[order[i]]);
-            }
-
-            while (pendingEffects.TryDequeue(out int drawCount)) {
-                if (physical.Length - next < drawCount) {
-                    failed++;
-                    return;
-                }
-
-                for (int i = 0; i < drawCount; i++) {
-                    Draw(physical[order[next++]]);
-                }
+            List<Card>? hand = Resolve(order.Select(index => physical[index]).ToArray(), handSize, combos);
+            if (hand is null) {
+                failed++;
+                return;
             }
 
             int ordinaryCount = hand.Count(card => card.DrawCount is null);
@@ -71,14 +126,6 @@ internal static class DrawSequenceOracle {
                 }
             }
 
-            void Draw(Card card) {
-                if (card.DrawCount is { } count && (!card.DrawOncePerTurn || used.Add(card.Id))) {
-                    pendingEffects.Enqueue(count);
-                }
-                else {
-                    hand.Add(card);
-                }
-            }
         }
     }
 }

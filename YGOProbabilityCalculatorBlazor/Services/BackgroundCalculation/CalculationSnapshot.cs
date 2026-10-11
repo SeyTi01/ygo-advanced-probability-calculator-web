@@ -16,7 +16,8 @@ public sealed record CalculationSnapshot(string Json) {
         IEnumerable<ComboGroup> groups,
         CalculationWorkPolicy? workPolicy = null,
         bool drawEffectsEnabled = true,
-        CalculationStoragePolicy? storagePolicy = null
+        CalculationStoragePolicy? storagePolicy = null,
+        CalculationOptions? options = null
     ) {
         WorkerCard[] workerCards = cards
             .Where(card => card.Active)
@@ -28,7 +29,8 @@ public sealed record CalculationSnapshot(string Json) {
                 card.Categories.ToArray(),
                 card.ManualMetadataCategoryKeys.ToArray(),
                 drawEffectsEnabled ? card.DrawCount : null,
-                drawEffectsEnabled ? card.DrawOncePerTurn : true
+                drawEffectsEnabled ? card.DrawOncePerTurn : true,
+                drawEffectsEnabled ? card.PostDrawDiscardCount : 0
             ))
             .ToArray();
 
@@ -45,7 +47,7 @@ public sealed record CalculationSnapshot(string Json) {
 
         ComboGroup[] workerGroups = groups.ToArray();
         long workUnits = (workPolicy ?? CalculationWorkPolicy.Default).WorkUnits;
-        CalculationInput input = new(workerCards, workerCombos, handSize, workerGroups, workUnits, storagePolicy?.Tier);
+        CalculationInput input = new(workerCards, workerCombos, handSize, workerGroups, workUnits, storagePolicy?.Tier, options);
         string json = JsonSerializer.Serialize(input, CalculationJsonContext.Default.CalculationInput);
 
         return new(json);
@@ -60,7 +62,8 @@ public sealed record WorkerCard(
     CategoryBase[] Categories,
     string[] ManualMetadataCategoryKeys,
     int? DrawCount = null,
-    bool DrawOncePerTurn = true
+    bool DrawOncePerTurn = true,
+    int PostDrawDiscardCount = 0
 );
 
 public sealed record WorkerCombo(
@@ -77,7 +80,8 @@ public sealed record CalculationInput(
     int HandSize,
     ComboGroup[] Groups,
     long? WorkUnits = null,
-    CalculationStorageTier? StorageTier = null
+    CalculationStorageTier? StorageTier = null,
+    CalculationOptions? Options = null
 );
 
 public enum CalculationFailureKind { Input = 1, Error = 2 }
@@ -107,7 +111,8 @@ public static class CalculationWire {
                     card.ExternalCardId,
                     card.ManualMetadataCategoryKeys,
                     card.DrawCount,
-                    card.DrawOncePerTurn
+                    card.DrawOncePerTurn,
+                    card.PostDrawDiscardCount
                 ))
                 .ToList();
 
@@ -134,7 +139,8 @@ public static class CalculationWire {
                 input.HandSize,
                 input.Groups,
                 workPolicy,
-                storagePolicy
+                storagePolicy,
+                input.Options
             );
 
             response = new(result, null);

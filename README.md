@@ -47,7 +47,9 @@ Click **Add OR**, then click a condition or whole OR group in the expanded expre
 
 Each card entry can optionally use **Draw 1**, **Draw 2**, or **Draw 3**. **Once per turn** is on by default: the first encountered copy automatically draws that many cards and is consumed; later copies of that entry remain in the final hand. Turn it off to let every copy activate and be consumed, including copies drawn by another effect. Separate entries have independent allowances, even with the same name. **None** restores ordinary behavior without deactivating the card and preserves your toggle setting. The global **Draw effects** switch can temporarily ignore every configured draw effect, treating those cards as ordinary cards while leaving their individual settings intact. This supports alternative opening-hand analysis and can reduce calculation cost; turning it back on restores the saved card behavior. New imports and explicit database-card selections receive initial draw defaults only for the small curated set of real cards; other imports and selections, plus manual free-text cards, start with no effect. You can change or clear any preset.
 
-Requirements are evaluated on the final hand, including retained duplicate effect cards. **Any** uses that complete final hand size. An outcome that cannot complete its requested draws counts as failure, without renormalizing the other outcomes. This models only unconditional fixed draws: optional activation, costs, searches, and general game effects are outside its scope.
+Requirements are evaluated on the final hand, including retained duplicate effect cards. **Any** uses that complete final hand size. An outcome that cannot complete its requested draws counts as failure, without renormalizing the other outcomes. With a draw amount configured, **Discard after drawing** supports None, Discard 1, or Discard 2 from the whole hand. New Dark World Dealings presets use Draw 1 / discard 1; Graceful Charity uses Draw 3 / discard 2, both without once-per-turn limits. Existing saves keep their settings. Choosing Draw None clears the discard setting.
+
+Each effect consumes its source, draws its full batch, then discards before the next surviving FIFO candidate activates. The deterministic policy keeps cards matching positive requirements in any currently active route first, then draw cards that can still activate, then unrelated/non-usable cards. Maximum-only constraints do not protect cards. Stable membership and card-identity ties make deck-row order irrelevant. All combo, group, and total rows use the same resulting hands; changing active routes can change the policy. Random draws are counted exactly for this policy, which is **not optimal-play simulation**. Filtered discards, pre-draw costs, discard triggers, optional activation, searches, and general card effects remain unsupported.
 
 ## How the calculation works
 
@@ -71,7 +73,9 @@ P(A OR B) = P(A) + P(B) - P(A AND B)
 
 The same principle extends to larger sets of combos.
 
-With configured draw effects, an exact count-state dynamic program produces weighted scenarios. Each scenario fixes retained duplicate effect cards and counts the remaining ordinary cards with the same Hall constraints. Scenario probabilities are combined as exact fractions before converting the final results for display.
+With draw-only effects, an exact count-state dynamic program produces weighted scenarios. Each scenario fixes retained duplicate effect cards and counts the remaining ordinary cards with the same Hall constraints. Scenario probabilities are combined as exact fractions before converting the final results for display.
+
+Post-draw discards use a separate bounded count-state resolver that tracks hand composition, remaining multiplicities, FIFO candidates, and used once-per-turn entries; equivalent ordinary entries and resolution states are merged. Exact integer weights count labeled draw prefixes and their unseen suffixes. Final hands are evaluated against the same compiled Hall constraints, and results are converted for display only after exact aggregation.
 
 Cards that behave identically for the remaining conditions are grouped together, and exact combinatorial counts are used to determine how many opening hands succeed without checking every physical hand one by one.
 

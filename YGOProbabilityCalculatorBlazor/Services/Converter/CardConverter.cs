@@ -72,8 +72,23 @@ public class CardConverter : JsonConverter<Card> {
             drawOncePerTurn = value.GetBoolean();
         }
 
+        JsonProperty[] discardProperties = root.EnumerateObject()
+            .Where(property => property.Name.Equals("PostDrawDiscardCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (discardProperties.Length > 1) {
+            throw new JsonException("Post-draw discard count is duplicated.");
+        }
+
+        int discardCount = 0;
+        if (discardProperties.Length == 1) {
+            JsonElement value = discardProperties[0].Value;
+            if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out discardCount)
+                || discardCount is < 0 or > 2 || (discardCount > 0 && drawCount is null)) {
+                throw new JsonException("Post-draw discard requires a draw effect and must be 0, 1, or 2.");
+            }
+        }
+
         try {
-            return new Card(categories, copies, name, active, id, externalCardId, manualKeys, drawCount, drawOncePerTurn);
+            return new Card(categories, copies, name, active, id, externalCardId, manualKeys, drawCount, drawOncePerTurn, discardCount);
         }
         catch (ArgumentException exception) {
             throw new JsonException("Invalid manual card properties.", exception);
@@ -102,6 +117,10 @@ public class CardConverter : JsonConverter<Card> {
         // Omission keeps earlier schema-4 sessions and ordinary cards compatible.
         if (!value.DrawOncePerTurn) {
             writer.WriteBoolean("DrawOncePerTurn", false);
+        }
+
+        if (value.PostDrawDiscardCount > 0) {
+            writer.WriteNumber("PostDrawDiscardCount", value.PostDrawDiscardCount);
         }
 
         writer.WriteEndObject();

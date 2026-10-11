@@ -17,7 +17,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 // Timing is observational, never a regression assertion; use the worker harness
 // in scripts/background-calculation/measure-draw-effects.cjs for browser timing.
 [TestFixture, Explicit("Draw-effect worker benchmark fixtures")]
-public class DrawEffectsBenchmark {
+public partial class DrawEffectsBenchmark {
     [Test]
     public async Task ProfileNoRetainedScenarios() {
         SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());

@@ -3,7 +3,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 
-public sealed record CuratedDrawEffectPreset(int CardId, string Name, int DrawCount, bool DrawOncePerTurn);
+public sealed record CuratedDrawEffectPreset(int CardId, string Name, int DrawCount, bool DrawOncePerTurn, int PostDrawDiscardCount = 0);
 
 public static class CuratedDrawEffectPresets {
     private static readonly CuratedDrawEffectPreset[] Presets = [
@@ -15,10 +15,10 @@ public static class CuratedDrawEffectPresets {
         new(49238328, "Pot of Extravagance", 2, true),
         new(93946239, "Into the Void", 1, false),
         new(67616300, "Chicken Game", 1, false),
-        new(74117290, "Dark World Dealings", 1, false),
+        new(74117290, "Dark World Dealings", 1, false, 1),
         new(56673480, "Contract with Don Thousand", 1, true),
         new(33782437, "One Day of Peace", 1, false),
-        new(79571449, "Graceful Charity", 3, false),
+        new(79571449, "Graceful Charity", 3, false, 2),
         new(24940422, "Sekka's Light", 2, true),
         new(7925734, "Link Apple", 1, true)
     ];
@@ -64,6 +64,7 @@ public static class CuratedDrawEffectPresets {
 
         return card
             .WithDrawCount(preset.DrawCount)
-            .WithDrawOncePerTurn(preset.DrawOncePerTurn);
+            .WithDrawOncePerTurn(preset.DrawOncePerTurn)
+            .WithPostDrawDiscardCount(preset.PostDrawDiscardCount);
     }
 }
