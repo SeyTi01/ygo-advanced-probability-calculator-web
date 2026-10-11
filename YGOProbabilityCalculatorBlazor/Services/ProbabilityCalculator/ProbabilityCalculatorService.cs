@@ -28,7 +28,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
 
         WorkBudget budget = new(workPolicy, storagePolicy);
-        return new DrawEffectCalculation(deck, handSize, budget, options?.ConditionalEffectsEnabled ?? true).Calculate(combos, null, totalOnly: true).Total.ToDouble(budget);
+        return new DrawEffectCalculation(deck, handSize, budget, options?.ConditionalEffectsEnabled ?? false).Calculate(combos, null, totalOnly: true).Total.ToDouble(budget);
     }
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
@@ -66,7 +66,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
 
         WorkBudget budget = new(workPolicy, storagePolicy);
-        return new DrawEffectCalculation(deck, handSize, budget, options?.ConditionalEffectsEnabled ?? true).Calculate(combos, groups).ToPublic(combos, groups, budget);
+        return new DrawEffectCalculation(deck, handSize, budget, options?.ConditionalEffectsEnabled ?? false).Calculate(combos, groups).ToPublic(combos, groups, budget);
     }
 
     private static void ValidateComboCount(List<Combo> combos) {

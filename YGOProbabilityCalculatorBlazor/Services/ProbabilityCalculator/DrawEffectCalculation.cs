@@ -2,7 +2,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-internal sealed class DrawEffectCalculation(List<Card> deck, int handSize, WorkBudget budget, bool conditionalEffectsEnabled = true) {
+internal sealed class DrawEffectCalculation(List<Card> deck, int handSize, WorkBudget budget, bool conditionalEffectsEnabled = false) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
         if (conditionalEffectsEnabled && deck.Any(card => card.Copies > 0 && card.PostDrawDiscardCount > 0)) {
             return new PostDrawCalculation(deck, handSize, budget).Calculate(combos, groups, totalOnly);

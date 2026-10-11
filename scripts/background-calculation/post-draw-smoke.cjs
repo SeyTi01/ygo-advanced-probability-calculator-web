@@ -32,10 +32,14 @@ async function main() {
         // Exercise the production download fallback without a native OS dialog.
         await page.addInitScript(() => {
             window.showSaveFilePicker = undefined;
-            window.workerProbe = { sent: 0, terminated: 0 };
+            window.workerProbe = { sent: 0, terminated: 0, inputs: [] };
             const Original = Worker;
             window.Worker = class extends Original {
-                postMessage(...args) { workerProbe.sent++; return super.postMessage(...args); }
+                postMessage(...args) {
+                    workerProbe.sent++;
+                    workerProbe.inputs.push(args[0]);
+                    return super.postMessage(...args);
+                }
                 terminate() { workerProbe.terminated++; return super.terminate(); }
             };
         });
@@ -51,6 +55,31 @@ async function main() {
         await calculate.waitFor();
         // Prerendered buttons exist before Blazor has installed InputFile events.
         await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
+        const gear = page.getByRole('button', { name: 'Calculation settings', exact: true });
+        const advanced = page.locator('#conditionalEffectsEnabled');
+        const draw = page.locator('#drawEffectsEnabled');
+        const storage = page.locator('#storageSafetyTier');
+        async function settings() {
+            if (await gear.getAttribute('aria-expanded') !== 'true') await gear.click();
+        }
+        async function closeSettings() {
+            await storage.focus();
+            await page.keyboard.press('Escape');
+            assert.equal(await gear.getAttribute('aria-expanded'), 'false');
+            assert.equal(await gear.evaluate(element => element === document.activeElement), true);
+        }
+        await settings();
+        assert.equal(await advanced.isChecked(), false);
+        assert.equal(await storage.isEnabled(), true);
+        assert.equal(await draw.evaluate(element => element === document.activeElement), true);
+        await page.keyboard.press('Tab');
+        assert.equal(await advanced.evaluate(element => element === document.activeElement), true);
+        await page.keyboard.press('Tab');
+        assert.equal(await storage.evaluate(element => element === document.activeElement), true);
+        await closeSettings();
+        await settings();
+        assert.equal(await advanced.isChecked(), false);
+        await closeSettings();
         async function load(session) {
             await page.locator('#sessionFileInput').setInputFiles({ name: 'post-draw.json', mimeType: 'application/json',
                 buffer: Buffer.from(JSON.stringify(session)) });
@@ -100,8 +129,9 @@ async function main() {
         const imported = await saved();
         assert.equal(imported.Cards.find(card => card.ExternalCardId === 74117290).PostDrawDiscardCount, 1);
         assert.equal(imported.Cards.find(card => card.ExternalCardId === 79571449).PostDrawDiscardCount, 2);
+        assert.equal(await advanced.isChecked(), false);
         await expand(1);
-        for (const width of [1280, 375, 390]) {
+        for (const width of [1280, 320, 375, 390]) {
             for (const theme of ['light', 'dark']) {
                 await page.setViewportSize({ width, height: 1000 });
                 await page.getByLabel('Color theme preference').selectOption(theme);
@@ -110,6 +140,15 @@ async function main() {
                     content: document.documentElement.scrollWidth }));
                 assert(geometry.content <= geometry.width, JSON.stringify({ width, theme, geometry }));
                 await page.screenshot({ path: path.join(screenshots, `${width}-${theme}.png`) });
+                await settings();
+                assert.equal(await page.getByRole('heading', { name: 'Basic', exact: true }).isVisible(), true);
+                assert.equal(await page.getByRole('heading', { name: 'Advanced', exact: true }).isVisible(), true);
+                await storage.scrollIntoViewIfNeeded();
+                const menuGeometry = await page.evaluate(() => ({ width: document.documentElement.clientWidth,
+                    content: document.documentElement.scrollWidth }));
+                assert(menuGeometry.content <= menuGeometry.width, JSON.stringify({ width, theme, menuGeometry }));
+                await page.screenshot({ path: path.join(screenshots, `settings-${width}-${theme}.png`) });
+                await closeSettings();
                 console.log(JSON.stringify({ width, theme, geometry }));
             }
         }
@@ -124,43 +163,97 @@ async function main() {
             await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
             return page.locator('.probability-total-value').innerText();
         }
+        assert.match(await result(), /100[.,]00/);
+        await settings();
+        await advanced.check();
+        await closeSettings();
         assert.match(await result(), /16[.,]67/);
         await expand(0);
         await page.locator('#cardDiscard0').selectOption('0');
         assert.match(await result(), /100[.,]00/);
-        await page.locator('#drawEffectsEnabled').uncheck();
+        await settings();
+        await draw.uncheck();
+        assert.equal(await advanced.isChecked(), true);
+        await closeSettings();
         assert.match(await result(), /16[.,]67/);
-        await page.locator('#drawEffectsEnabled').check();
+        await settings();
+        await draw.check();
+        await advanced.uncheck();
+        await closeSettings();
         assert.match(await result(), /100[.,]00/);
 
         if (process.argv[4]) {
             const fixtures = JSON.parse(await fs.readFile(process.argv[4], 'utf8'));
             const fixture = fixtures.find(value => value.Name === 'realistic-three-graceful');
             const off = fixtures.find(value => value.Name === 'realistic-three-graceful-global-off');
+            const basic = fixtures.find(value => value.Name === 'realistic-three-graceful-conditional-off');
             await load(fixture.Session);
             await page.waitForFunction(() => document.querySelectorAll('.card-editor').length > 10);
             function percent(text) { return Number(text.replace('%', '').replace(',', '.').trim()); }
+            assert.equal(await advanced.isChecked(), false);
+            assert.equal(percent(await result()), Number((basic.Probability * 100).toFixed(2)));
+            await page.locator('.pin-result-action').click();
+            assert.match(await page.locator('.pinned-result').innerText(), /Draw effects on · Basic/);
+            await settings();
+            await advanced.check();
+            assert.equal(await page.locator('.pin-result-action').isDisabled(), true);
+            await closeSettings();
             assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
-            await page.locator('#drawEffectsEnabled').uncheck();
+            for (const tier of ['High', 'VeryHigh', 'Standard']) {
+                await settings();
+                await storage.selectOption(tier);
+                await closeSettings();
+                assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
+            }
+            await settings();
+            await draw.uncheck();
+            await closeSettings();
             assert.equal(percent(await result()), Number((off.Probability * 100).toFixed(2)));
             const stored = await saved();
             assert.equal(stored.DrawEffectsEnabled, false);
             assert.equal(stored.Cards.find(card => card.ExternalCardId === 79571449).PostDrawDiscardCount, 2);
-            await page.locator('#drawEffectsEnabled').check();
+            assert(!JSON.stringify(stored).includes('ConditionalEffectsEnabled'));
+            assert(!JSON.stringify(stored).includes('StorageTier'));
+            await settings();
+            await draw.check();
+            await closeSettings();
             assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
 
-            const before = await page.evaluate(() => ({ ...workerProbe }));
+            await settings();
+            const before = await page.evaluate(() => ({ sent: workerProbe.sent, terminated: workerProbe.terminated }));
             await calculate.click();
             await page.waitForFunction(sent => workerProbe.sent > sent, before.sent);
-            await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
+            await advanced.uncheck();
             await page.waitForFunction(terminated => workerProbe.terminated > terminated, before.terminated);
             await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
-            assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
-            console.log('PASS: realistic three-Graceful UI/worker, global off/on restores discard 2, running worker cancellation and recovery.');
+            assert.equal(await page.locator('.pin-result-action').isDisabled(), true);
+            await closeSettings();
+            assert.equal(percent(await result()), Number((basic.Probability * 100).toFixed(2)));
+            const inputs = await page.evaluate(() => workerProbe.inputs);
+            const requests = inputs.map(message => JSON.parse(message.json));
+            assert(requests.every(input => input.WorkUnits === 50000000));
+            for (const tier of [0, 1, 2]) {
+                assert(requests.some(input => input.StorageTier === tier && input.Options.ConditionalEffectsEnabled
+                    && input.Cards.some(card => card.PostDrawDiscardCount === 2)));
+            }
+            assert(requests.some(input => !input.Options.ConditionalEffectsEnabled && input.Cards.some(card => card.PostDrawDiscardCount === 2)));
+            assert(requests.some(input => input.Options.ConditionalEffectsEnabled && input.Cards.every(card => card.DrawCount === null && card.PostDrawDiscardCount === 0)));
+            console.log(JSON.stringify({ workerRequests: requests.length, storageTiers: [0, 1, 2], workUnits: 50000000 }));
+            const recovery = await page.evaluate(() => Object.entries(localStorage));
+            assert(!JSON.stringify(recovery).includes('ConditionalEffectsEnabled'));
+            assert(!JSON.stringify(recovery).includes('StorageTier'));
+            await settings();
+            await advanced.check();
+            await page.reload();
+            await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
+            await settings();
+            assert.equal(await advanced.isChecked(), false);
+            assert.equal(await storage.inputValue(), 'Standard');
+            console.log('PASS: realistic three-Graceful Basic/Advanced, all storage tiers, global off/on, mode cancellation, pinned context, runtime-only defaults.');
         }
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
-        console.log('PASS: explicit selections, YDK defaults, badges, manual persistence, None clearing, exact result change, six layouts.');
+        console.log('PASS: explicit selections, YDK defaults, badges, manual persistence, None clearing, exact results, eight card/menu layouts and keyboard/Escape.');
     } finally {
         await browser.close();
         await new Promise(resolve => server.close(resolve));

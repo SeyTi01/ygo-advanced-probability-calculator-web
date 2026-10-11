@@ -16,20 +16,23 @@ public partial class DrawEffectsBenchmark {
         YGOProbabilityCalculatorBlazor.Services.Session.SessionService codec = new(
             Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
         List<object> exported = [];
-        foreach ((string name, bool global, bool conditional) in new[] {
-            ("realistic-three-graceful", true, true),
-            ("realistic-three-graceful-conditional-off", true, false),
-            ("realistic-three-graceful-global-off", false, true),
-            ("realistic-three-graceful-both-off", false, false)
+        foreach ((string name, bool global, bool conditional, CalculationStorageTier tier) in new[] {
+            ("realistic-three-graceful", true, true, CalculationStorageTier.Standard),
+            ("realistic-three-graceful-high", true, true, CalculationStorageTier.High),
+            ("realistic-three-graceful-very-high", true, true, CalculationStorageTier.VeryHigh),
+            ("realistic-three-graceful-conditional-off", true, false, CalculationStorageTier.Standard),
+            ("realistic-three-graceful-global-off", false, true, CalculationStorageTier.Standard),
+            ("realistic-three-graceful-both-off", false, false, CalculationStorageTier.Standard)
         }) {
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+            CalculationStoragePolicy storagePolicy = CalculationStoragePolicy.ForTier(tier);
+            WorkBudget budget = new(CalculationWorkPolicy.Interactive, storagePolicy);
             PostDrawCalculation calculation = new(session.Cards, session.HandSize, budget);
             Stopwatch timer = Stopwatch.StartNew();
             string outcome = "Success";
             ProbabilityCalculationResult? reference = null;
             ExactCalculationResult? exact = null;
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos,
-                session.HandSize, session.ComboGroups, CalculationWorkPolicy.Interactive, global, options: new(conditional));
+                session.HandSize, session.ComboGroups, CalculationWorkPolicy.Interactive, global, storagePolicy, new(conditional));
             try {
                 if (global && conditional) {
                     exact = calculation.Calculate(session.Combos, session.ComboGroups);
