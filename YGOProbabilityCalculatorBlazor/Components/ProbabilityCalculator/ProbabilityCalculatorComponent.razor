@@ -65,12 +65,16 @@
                            role="switch"
                            @bind="_drawEffectsEnabled"
                            @bind:after="OnDrawEffectsChanged"
-                           aria-describedby="@(!_drawEffectsEnabled ? "drawEffectsHelp" : null)"/>
+                           aria-describedby="drawEffectsHelp"/>
                     <label class="form-check-label" for="drawEffectsEnabled">Draw effects</label>
+                    <span class="draw-effects-help"
+                          tabindex="0"
+                          role="img"
+                          aria-label="Draw effects information"
+                          title="When off, configured draw effects are ignored and those cards are treated as ordinary cards."
+                          aria-describedby="drawEffectsHelp">ⓘ</span>
                 </div>
-                @if (!_drawEffectsEnabled) {
-                    <small id="drawEffectsHelp" class="form-text">Configured draw effects are ignored; cards are treated as ordinary cards.</small>
-                }
+                <span id="drawEffectsHelp" class="visually-hidden">When off, configured draw effects are ignored and those cards are treated as ordinary cards.</span>
             </div>
         </div>
     </div>
