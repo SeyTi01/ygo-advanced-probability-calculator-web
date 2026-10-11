@@ -70,8 +70,8 @@ public class DrawEffectsTest {
         List<Card> effects = deck.Where(card => card.DrawCount is not null).ToList();
         int ordinary = deck.Where(card => card.DrawCount is null).Sum(card => card.Copies);
         DrawResolution resolution = DrawEffectResolver.Resolve(ordinary, effects, handSize, new(CalculationWorkPolicy.Interactive));
-        Assert.That(resolution.Exhaustion.Numerator * expected.Total, Is.EqualTo(expected.Failed * resolution.Exhaustion.Denominator));
-        ExactProbability mass = resolution.Exhaustion;
+        Assert.That(expected.Failed, Is.EqualTo(BigInteger.Zero), "Basic fixed draws must not fail solely because the deck is exhausted.");
+        ExactProbability mass = ExactProbability.Zero;
         foreach ((DrawComposition scenario, ExactProbability weight) in resolution.Scenarios) {
             string key = $"{scenario.OrdinaryCount}|{string.Join(',', scenario.EffectCounts)}";
             Assert.That(weight.Numerator * expected.Total, Is.EqualTo(expected.Scenarios[key] * weight.Denominator), key);

@@ -21,7 +21,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         budget.CheckStorage(entries, cells);
     }
 
-    private enum ResolutionOutcome { Ready, DeckExhausted, RemovalUnavailable }
+    private enum ResolutionOutcome { Ready, RemovalUnavailable }
 
     // Owned immutable vectors: remaining counts, hand counts, only actual OPT flags,
     // batch draws left, pending removal source (index + 1), then FIFO candidate entry indices.
@@ -84,13 +84,15 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         int[] filler = Enumerable.Range(0, n).Where(index => !relevant[index] && cards[index].DrawCount is null).ToArray();
         // A single homogeneous FIFO has no order dimension. For a hand-neutral,
         // irrelevant, non-OPT effect, relevant ordinary cards always retain the
-        // best handSize copies seen so far. Their identities cannot affect when
-        // the effect resolves, so count that schedule separately from identities.
+        // best handSize copies seen so far. Keep this optimization only when all
+        // possible batches fit; exhaustion can change both the final hand size and
+        // the effect schedule, which the general resolver handles exactly.
         if (effects.Length == 1 && filler.Length <= 1) {
             int effect = effects[0];
             if (!relevant[effect] && !cards[effect].DrawOncePerTurn
                 && cards[effect].DrawCount == cards[effect].PostDrawDiscardCount + 1
-                && cards[effect].PostDrawSelector.Kind == CardSelectorKind.Any) {
+                && cards[effect].PostDrawSelector.Kind == CardSelectorKind.Any
+                && cards[effect].DrawCount!.Value * (long)cards[effect].Copies <= copies - handSize) {
                 return CalculateExchangeable(cards, relevant, effect, filler.FirstOrDefault(-1), factorial, combos, groups, totalOnly);
             }
         }
@@ -121,7 +123,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 budget.Spend(state.Values.Length + 1L);
                 int[] values = (int[])state.Values.Clone();
                 int remaining = copies - depth;
-                if (Settle(ref values, remaining) != ResolutionOutcome.Ready) {
+                if (Settle(ref values, remaining) == ResolutionOutcome.RemovalUnavailable) {
                     continue;
                 }
                 if (values[phase] == 0) {
@@ -147,7 +149,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     }
                     // Normalize immediately so batches differing only in discarded
                     // cards or obsolete candidates merge before the next layer.
-                    if (Settle(ref drawn, remaining - 1) == ResolutionOutcome.Ready) {
+                    if (Settle(ref drawn, remaining - 1) != ResolutionOutcome.RemovalUnavailable) {
                         Add(next, new(drawn), weight * values[i], ref nextCells);
                     }
                 }
@@ -208,79 +210,88 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         bool Used(int[] values, int entry) => optSlots[entry] >= 0 && values[optSlots[entry]] != 0;
 
         ResolutionOutcome Settle(ref int[] values, int remaining) {
-            if (values[phase] > 0) {
-                return values[phase] <= remaining ? ResolutionOutcome.Ready : ResolutionOutcome.DeckExhausted;
-            }
-            int removalSource = values[phase + 1] - 1;
-            int removalCount = removalSource < 0 ? 0 : cards[removalSource].PostDrawDiscardCount;
-            bool[]? eligible = removalSource < 0 ? null : removalEligibility[removalSource];
-            for (int discard = removalCount; discard > 0; discard--) {
-                // Queue scan, tier scan, removal scan and copying the surviving queue.
-                budget.Spend(2L * values.Length + n + 1);
-                int selected = -1;
-                int worstTier = 0;
-                int selectedQueue = -1;
-                bool[] pending = new bool[n];
-                for (int q = queueStart; q < values.Length; q++) {
-                    int entry = values[q];
-                    pending[entry] = true;
+            while (true) {
+                if (values[phase] > remaining) {
+                    values[phase] = remaining;
                 }
-                for (int i = 0; i < n; i++) {
-                    if (values[n + i] == 0 || (eligible is not null && !eligible[i])) {
+                if (values[phase] > 0) {
+                    return ResolutionOutcome.Ready;
+                }
+
+                int removalSource = values[phase + 1] - 1;
+                int removalCount = removalSource < 0 ? 0 : cards[removalSource].PostDrawDiscardCount;
+                bool[]? eligible = removalSource < 0 ? null : removalEligibility[removalSource];
+                for (int discard = removalCount; discard > 0; discard--) {
+                    // Queue scan, tier scan, removal scan and copying the surviving queue.
+                    budget.Spend(2L * values.Length + n + 1);
+                    int selected = -1;
+                    int worstTier = 0;
+                    int selectedQueue = -1;
+                    bool[] pending = new bool[n];
+                    for (int q = queueStart; q < values.Length; q++) {
+                        int entry = values[q];
+                        pending[entry] = true;
+                    }
+                    for (int i = 0; i < n; i++) {
+                        if (values[n + i] == 0 || (eligible is not null && !eligible[i])) {
+                            continue;
+                        }
+                        bool usable = pending[i] && !Used(values, i);
+                        bool redundant = cards[i].DrawOncePerTurn && values[n + i] > 1;
+                        int tier = (relevant[i], usable && !redundant) switch {
+                            (true, _) => 1,
+                            (_, true) => 2,
+                            _ => 3
+                        };
+                        if (tier >= worstTier) {
+                            worstTier = tier;
+                            selected = i;
+                        }
+                    }
+                    if (selected < 0) {
+                        return cards[removalSource].PostDrawFailureBehavior switch {
+                            PostDrawFailureBehavior.FailBranch => ResolutionOutcome.RemovalUnavailable,
+                            _ => throw new ArgumentOutOfRangeException(nameof(cards))
+                        };
+                    }
+                    values[n + selected]--;
+                    // Remove the latest copy of this identity, retaining FIFO priority.
+                    for (int q = values.Length - 1; q >= queueStart; q--) {
+                        if (values[q] == selected) {
+                            if (!cards[selected].DrawOncePerTurn || values[n + selected] == 0) {
+                                selectedQueue = q;
+                            }
+                            break;
+                        }
+                    }
+                    if (selectedQueue >= 0) {
+                        values = [.. values.Take(selectedQueue), .. values.Skip(selectedQueue + 1)];
+                    }
+                }
+                values[phase + 1] = 0;
+
+                bool activated = false;
+                while (values.Length > queueStart) {
+                    budget.Spend(2L * values.Length + 1);
+                    int source = values[queueStart];
+                    values = [.. values.Take(queueStart), .. values.Skip(queueStart + 1)];
+                    if (Used(values, source)) {
                         continue;
                     }
-                    bool usable = pending[i] && !Used(values, i) && cards[i].DrawCount <= remaining;
-                    bool redundant = cards[i].DrawOncePerTurn && values[n + i] > 1;
-                    int tier = (relevant[i], usable && !redundant) switch {
-                        (true, _) => 1,
-                        (_, true) => 2,
-                        _ => 3
-                    };
-                    if (tier >= worstTier) {
-                        worstTier = tier;
-                        selected = i;
+                    values[n + source]--;
+                    if (cards[source].DrawOncePerTurn) {
+                        values[optSlots[source]] = 1;
+                        values = [.. values.Take(queueStart), .. values.Skip(queueStart).Where(entry => entry != source)];
                     }
+                    values[phase] = cards[source].DrawCount!.Value;
+                    values[phase + 1] = cards[source].PostDrawDiscardCount > 0 ? source + 1 : 0;
+                    activated = true;
+                    break;
                 }
-                if (selected < 0) {
-                    // Keep this separate from incomplete batch draws: changing
-                    // deck exhaustion must not turn missing material into success.
-                    return cards[removalSource].PostDrawFailureBehavior switch {
-                        PostDrawFailureBehavior.FailBranch => ResolutionOutcome.RemovalUnavailable,
-                        _ => throw new ArgumentOutOfRangeException(nameof(cards))
-                    };
-                }
-                values[n + selected]--;
-                // Remove the latest copy of this identity, retaining FIFO priority.
-                for (int q = values.Length - 1; q >= queueStart; q--) {
-                    if (values[q] == selected) {
-                        if (!cards[selected].DrawOncePerTurn || values[n + selected] == 0) {
-                            selectedQueue = q;
-                        }
-                        break;
-                    }
-                }
-                if (selectedQueue >= 0) {
-                    values = [.. values.Take(selectedQueue), .. values.Skip(selectedQueue + 1)];
+                if (!activated) {
+                    return ResolutionOutcome.Ready;
                 }
             }
-            values[phase + 1] = 0;
-            while (values.Length > queueStart) {
-                budget.Spend(2L * values.Length + 1);
-                int source = values[queueStart];
-                values = [.. values.Take(queueStart), .. values.Skip(queueStart + 1)];
-                if (Used(values, source)) {
-                    continue;
-                }
-                values[n + source]--;
-                if (cards[source].DrawOncePerTurn) {
-                    values[optSlots[source]] = 1;
-                    values = [.. values.Take(queueStart), .. values.Skip(queueStart).Where(entry => entry != source)];
-                }
-                values[phase] = cards[source].DrawCount!.Value;
-                values[phase + 1] = cards[source].PostDrawDiscardCount > 0 ? source + 1 : 0;
-                return values[phase] <= remaining ? ResolutionOutcome.Ready : ResolutionOutcome.DeckExhausted;
-            }
-            return ResolutionOutcome.Ready;
         }
 
         void Add(

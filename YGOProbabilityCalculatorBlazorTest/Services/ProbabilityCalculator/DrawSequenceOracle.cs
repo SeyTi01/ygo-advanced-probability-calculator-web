@@ -24,11 +24,8 @@ internal static class DrawSequenceOracle {
 
             hand.Remove(source);
             used.Add(effect.Id);
-            if (order.Count - next < effect.DrawCount!.Value) {
-                return null;
-            }
-
-            for (int draw = 0; draw < effect.DrawCount.Value; draw++) {
+            int drawCount = Math.Min(effect.DrawCount!.Value, order.Count - next);
+            for (int draw = 0; draw < drawCount; draw++) {
                 hand.Add(next);
                 if (order[next].DrawCount is not null) {
                     pending.Enqueue(next);
@@ -45,7 +42,7 @@ internal static class DrawSequenceOracle {
                 HashSet<int> usable = [];
                 foreach (int candidate in pending) {
                     Card card = order[candidate];
-                    if (hand.Contains(candidate) && card.DrawCount <= order.Count - next
+                    if (hand.Contains(candidate)
                         && (!card.DrawOncePerTurn || (!used.Contains(card.Id) && eligibleOnce.Add(card.Id)))) {
                         usable.Add(candidate);
                     }
@@ -84,19 +81,28 @@ internal static class DrawSequenceOracle {
             + string.Concat(cardKeys.Select(key => card.Id == key ? "1" : "0"));
     }
 
-    internal sealed record Counts(BigInteger Total, BigInteger Failed, BigInteger[] Wins, Dictionary<string, BigInteger> Scenarios);
+    internal sealed record Counts(
+        BigInteger Total,
+        BigInteger Failed,
+        BigInteger[] Wins,
+        Dictionary<string, BigInteger> Scenarios,
+        string[] CardIds,
+        Dictionary<string, BigInteger> Hands
+    );
 
     internal static Counts Enumerate(List<Card> deck, int handSize, IReadOnlyList<Combo> combos, IReadOnlyList<ComboGroup> groups) {
         Card[] physical = deck.SelectMany(card => Enumerable.Repeat(card, card.Copies)).ToArray();
         int[] order = Enumerable.Range(0, physical.Length).ToArray();
         Card[] effects = deck.Where(card => card.DrawCount is not null && card.Copies > 0).ToArray();
+        string[] cardIds = deck.Select(card => card.Id).Distinct(StringComparer.Ordinal).ToArray();
         BigInteger total = 0;
         BigInteger failed = 0;
         BigInteger[] wins = new BigInteger[1 + combos.Count + groups.Count];
         Dictionary<string, BigInteger> scenarios = new();
+        Dictionary<string, BigInteger> hands = new();
         Dictionary<string, bool[]> matches = new();
         Visit(0);
-        return new(total, failed, wins, scenarios);
+        return new(total, failed, wins, scenarios, cardIds, hands);
 
         void Visit(int position) {
             if (position == order.Length) {
@@ -122,12 +128,14 @@ internal static class DrawSequenceOracle {
             int ordinaryCount = hand.Count(card => card.DrawCount is null);
             string scenario = $"{ordinaryCount}|{string.Join(',', effects.Select(effect => hand.Count(card => card.Id == effect.Id)))}";
             scenarios[scenario] = scenarios.GetValueOrDefault(scenario) + 1;
-            string handKey = string.Join(',', deck.Select(entry => hand.Count(card => card.Id == entry.Id)));
-            if (!matches.TryGetValue(handKey, out bool[] success)) {
+            string handKey = string.Join(',', cardIds.Select(id => hand.Count(card => card.Id == id)));
+            hands[handKey] = hands.GetValueOrDefault(handKey) + 1;
+            string matchKey = string.Join(',', deck.Select(entry => hand.Count(card => card.Id == entry.Id)));
+            if (!matches.TryGetValue(matchKey, out bool[] success)) {
                 bool[] individual = combos.Select(combo => SmallDeckOracle.MatchesHand(hand, combo)).ToArray();
                 success = [individual.Any(value => value), .. individual,
                     .. groups.Select(group => combos.Where((combo, index) => combo.GroupId == group.Id && individual[index]).Any())];
-                matches.Add(handKey, success);
+                matches.Add(matchKey, success);
             }
 
             for (int i = 0; i < success.Length; i++) {
