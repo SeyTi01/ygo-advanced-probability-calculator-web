@@ -159,3 +159,9 @@
         grid-column: auto;
     }
 }
+
+.same-card-edit {
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+    flex-shrink: 0;
+}

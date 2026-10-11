@@ -74,7 +74,7 @@ public class ComboConverter : JsonConverter<Combo> {
                 bool hasCard = leaf.TryGetProperty("Card", out JsonElement card);
 
                 if (hasCategory) {
-                    CheckFields(category, "BaseCategory", "MinCount", "MaxCount", "MaximumMode");
+                    CheckFields(category, "Selector", "CategoryBases", "BaseCategory", "MinCount", "MaxCount", "MaximumMode");
                 }
 
                 if (hasCard) {

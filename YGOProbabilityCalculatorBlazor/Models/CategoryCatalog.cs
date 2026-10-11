@@ -11,7 +11,7 @@ public static class CategoryCatalog {
         IEnumerable<CategoryBase> metadataCategories = categoryBases
             .Concat(cards.SelectMany(static card => card.Categories))
             .Concat(combos.SelectMany(static combo => combo.AllCategories)
-                .Select(static requirement => requirement.BaseCategory))
+                .SelectMany(static requirement => requirement.CategoryBases))
             .Where(static category => category.Source == CategorySource.Metadata)
             .DistinctBy(static category => category.Identity)
             .OrderBy(static category => category.Name, StringComparer.OrdinalIgnoreCase)

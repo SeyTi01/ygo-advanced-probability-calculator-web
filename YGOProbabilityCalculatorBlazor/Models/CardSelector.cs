@@ -4,10 +4,10 @@ using YGOProbabilityCalculatorBlazor.Services.Converter;
 
 namespace YGOProbabilityCalculatorBlazor.Models;
 
-public enum CardSelectorKind { Any, Category, AnyOf }
+public enum CardSelectorKind { Any, Category, AnyOf, AllOf }
 
-// Flat atomic alternatives deliberately leave room for another operator without
-// coupling card eligibility to combo counts or distinct-copy requirements.
+// Bounded disjunction of atomic categories or same-card conjunctions.
+// Counts and distinct-copy roles belong to combo requirements, not selectors.
 [JsonConverter(typeof(CardSelectorConverter))]
 public sealed class CardSelector : IEquatable<CardSelector> {
     public static CardSelector Any { get; } = new(CardSelectorKind.Any, []);
@@ -15,6 +15,7 @@ public sealed class CardSelector : IEquatable<CardSelector> {
     public CardSelectorKind Kind { get; }
     public IReadOnlyList<string> CategoryIdentities { get; }
     public string Signature { get; }
+    public IReadOnlyList<CardSelector> Children { get; } = [];
 
     public CardSelector(CardSelectorKind kind, IEnumerable<string> categoryIdentities) {
         ArgumentNullException.ThrowIfNull(categoryIdentities);
@@ -28,8 +29,8 @@ public sealed class CardSelector : IEquatable<CardSelector> {
         }
         if ((kind == CardSelectorKind.Any && identities.Length != 0)
             || (kind == CardSelectorKind.Category && identities.Length != 1)
-            || (kind == CardSelectorKind.AnyOf && identities.Length == 0)) {
-            throw new ArgumentException("Any needs no categories, Category needs one, and AnyOf needs at least one.", nameof(categoryIdentities));
+            || (kind is CardSelectorKind.AnyOf or CardSelectorKind.AllOf && identities.Length == 0)) {
+            throw new ArgumentException("Any needs no categories, Category needs one, and AnyOf/AllOf need at least one.", nameof(categoryIdentities));
         }
 
         identities = identities.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
@@ -43,8 +44,55 @@ public sealed class CardSelector : IEquatable<CardSelector> {
 
     public static CardSelector AnyOf(IEnumerable<string> identities) => new(CardSelectorKind.AnyOf, identities);
 
-    public CardSelector RenameCategory(string previousIdentity, string newIdentity) => Kind == CardSelectorKind.Any
-        ? this : AnyOf(CategoryIdentities.Select(identity => identity == previousIdentity ? newIdentity : identity));
+    public static CardSelector AllOf(IEnumerable<string> identities) => new(CardSelectorKind.AllOf, identities);
+
+    public static CardSelector AnyOfSelectors(IEnumerable<CardSelector> selectors) {
+        ArgumentNullException.ThrowIfNull(selectors);
+        CardSelector[] input = selectors.ToArray();
+        if (input.Length == 0 || input.Any(selector => selector is null || selector.Kind == CardSelectorKind.Any)) {
+            throw new ArgumentException("An OR filter requires nonempty category alternatives.", nameof(selectors));
+        }
+
+        CardSelector[] children = input.SelectMany(selector => selector.Alternatives)
+            .Distinct().OrderBy(selector => selector.Signature, StringComparer.Ordinal).ToArray();
+        if (children.Length == 1) {
+            return children[0];
+        }
+        if (children.All(selector => selector.Kind == CardSelectorKind.Category)) {
+            return AnyOf(children.SelectMany(selector => selector.CategoryIdentities));
+        }
+        return new CardSelector(children);
+    }
+
+    private CardSelector(CardSelector[] children) {
+        Kind = CardSelectorKind.AnyOf;
+        Children = Array.AsReadOnly(children);
+        CategoryIdentities = Array.AsReadOnly(children.SelectMany(child => child.CategoryIdentities)
+            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray());
+        Signature = "AnyOfChildren:" + string.Concat(children.Select(child =>
+            child.Signature.Length.ToString(CultureInfo.InvariantCulture) + ":" + child.Signature));
+    }
+
+    public IEnumerable<CardSelector> Alternatives {
+        get {
+            if (Kind != CardSelectorKind.AnyOf) {
+                return [this];
+            }
+            return Children.Count > 0 ? Children
+                : CategoryIdentities.Select(identity => new CardSelector(CardSelectorKind.Category, [identity]));
+        }
+    }
+
+    public bool Matches(IReadOnlyCollection<CategoryBase> categories) => Kind switch {
+        CardSelectorKind.Any => true,
+        CardSelectorKind.AllOf => CategoryIdentities.All(identity => categories.Any(category => category.Identity == identity)),
+        CardSelectorKind.AnyOf when Children.Count > 0 => Children.Any(child => child.Matches(categories)),
+        _ => CategoryIdentities.Any(identity => categories.Any(category => category.Identity == identity))
+    };
+
+    public CardSelector RenameCategory(string previousIdentity, string newIdentity) => Children.Count > 0
+        ? AnyOfSelectors(Children.Select(child => child.RenameCategory(previousIdentity, newIdentity)))
+        : new(Kind, CategoryIdentities.Select(identity => identity == previousIdentity ? newIdentity : identity));
 
     public bool Equals(CardSelector? other) => other is not null && Signature == other.Signature;
 

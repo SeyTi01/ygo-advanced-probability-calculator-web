@@ -63,11 +63,13 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
 
         CheckStorage(1, queueStart + (long)copies + 1, "policy descriptors");
         foreach (Combo combo in combos) {
-            budget.Spend((combo.AllCards.Count() + combo.AllCategories.Count() + 1L) * (n + cards.Sum(card => (long)card.Categories.Count)));
+            long categoryAtoms = combo.AllCategories.Sum(requirement => (long)requirement.Selector.CategoryIdentities.Count);
+            long deckMemberships = n + cards.Sum(card => (long)card.Categories.Count);
+            budget.Spend((combo.AllCards.Count() + categoryAtoms + 1L) * deckMemberships);
         }
         bool[] relevant = cards.Select(card => combos.Any(combo =>
             combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
-            || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && card.Categories.Contains(requirement.BaseCategory)))).ToArray();
+            || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card.Categories)))).ToArray();
 
         CheckStorage(copies + 1L, copies + 1L, "factorials");
         BigInteger[] factorial = new BigInteger[copies + 1];
@@ -321,9 +323,10 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         // requirement and to the policy. Their counts can therefore be merged.
         long selectors = 0;
         foreach (Combo combo in combos) {
-            selectors += combo.Categories.Count + (long)combo.Cards.Count;
+            selectors += combo.Categories.Sum(requirement => (long)requirement.Selector.CategoryIdentities.Count) + combo.Cards.Count;
             foreach (ComboAlternativeGroup group in combo.AlternativeGroups) {
-                selectors += group.Alternatives.Count;
+                selectors += group.Alternatives.Sum(alternative => alternative.Category is { } category
+                    ? (long)category.Selector.CategoryIdentities.Count : 1L);
             }
             CheckStorage(selectors, selectors, "policy selectors");
             budget.Spend(combo.RequirementCount + 1L);
@@ -331,7 +334,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         CheckStorage(deck.Count, (selectors + 1) * deck.Count, "policy descriptors");
         budget.Spend(selectors * (selectors + 1) + deck.Count * (long)(deck.Count + 1) * (selectors + 1));
         CategoryBase[] categories = combos.SelectMany(combo => combo.AllCategories)
-            .Select(requirement => requirement.BaseCategory).Distinct().OrderBy(category => category.Identity, StringComparer.Ordinal).ToArray();
+            .SelectMany(requirement => requirement.CategoryBases).Distinct().OrderBy(category => category.Identity, StringComparer.Ordinal).ToArray();
         string[] direct = combos.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         List<bool[]> filters = [];

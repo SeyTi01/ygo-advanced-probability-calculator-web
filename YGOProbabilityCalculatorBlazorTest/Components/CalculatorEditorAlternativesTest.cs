@@ -108,7 +108,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(editor.FindAll(".combo-expression-target button"), Is.Empty, "Selectable targets must not contain nested remove buttons.");
         Assert.That(editor.FindAll(".expanded-expression button.btn-close"), Is.Empty, "Remove controls are hidden while choosing a target.");
         await Button(editor, "Add OR").ClickAsync(new());
-        Assert.That(editor.FindAll(".expanded-expression button").ToArray().All(e => e.ClassList.Contains("btn-close")), Is.True);
+        Assert.That(editor.FindAll(".expanded-expression button").ToArray().All(e => e.ClassList.Contains("btn-close") || e.GetAttribute("aria-label")!.StartsWith("Edit same-card")), Is.True);
         Assert.That(editor.FindAll(".alternative-target-instruction, .combo-expression-target, select[id^='alternativeTarget']"), Is.Empty);
         Assert.That(editor.FindAll("button").ToArray().Select(e => e.TextContent.Trim()), Does.Not.Contain("OR").And.Not.Contain("OR +"));
         await editor.Find("#comboCategory0").ChangeAsync(new() { Value = a.Identity });

@@ -27,7 +27,7 @@ public class CardSelectorTest {
     [TestCase("null")]
     [TestCase("{}")]
     [TestCase("{\"Kind\":\"AnyOf\",\"Categories\":[]}")]
-    [TestCase("{\"Kind\":\"AllOf\",\"Categories\":[\"user:A\"]}")]
+    [TestCase("{\"Kind\":\"Not\",\"Categories\":[\"user:A\"]}")]
     [TestCase("{\"Kind\":\"Category\",\"Categories\":[\"A\"]}")]
     [TestCase("{\"Kind\":\"Category\",\"Categories\":[null]}")]
     [TestCase("{\"Kind\":\"Category\",\"Categories\":[\"user: \" ]}")]

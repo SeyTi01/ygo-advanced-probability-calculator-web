@@ -393,10 +393,10 @@ public sealed class CalculatorEditorTestRequirements : CalculatorEditorTestBase 
         session.Combos.Add(new Combo([new(a, 1, 2), new(a, 0, 1), new(b, 0, 2)]));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
-        combo.FindAll(".accordion-body .badge button").ToArray()[2].Click();
+        combo.FindAll(".accordion-body .badge button.btn-close").ToArray()[2].Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
         Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("A (1–2)").And.Contain("A (1 Max)"));
-        combo.FindAll(".accordion-body .badge button").ToArray()[0].Click();
+        combo.FindAll(".accordion-body .badge button.btn-close").ToArray()[0].Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(1));
         Assert.That(combo.Find(".accordion-body .badge").TextContent, Does.Contain("A (1 Max)"));
     }
