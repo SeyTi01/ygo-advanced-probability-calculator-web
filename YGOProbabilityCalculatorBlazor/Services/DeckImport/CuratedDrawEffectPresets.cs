@@ -3,15 +3,30 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 
-public sealed record CuratedDrawEffectPreset(int CardId, string Name, int DrawCount, bool DrawOncePerTurn, int PostDrawDiscardCount = 0);
+public sealed record CuratedDrawEffectPreset(
+    int CardId,
+    string Name,
+    int DrawCount,
+    bool DrawOncePerTurn,
+    int PostDrawDiscardCount = 0,
+    CardSelector? PostDrawSelector = null
+);
 
 public static class CuratedDrawEffectPresets {
+    public static IReadOnlyList<CategoryBase> FilterProperties { get; } = Array.AsReadOnly(new[] {
+        CardPropertyProvider.GetCategories(new() { Type = "Effect Monster", Attribute = "DARK" })
+            .Single(category => category.MetadataKey!.StartsWith("attribute:", StringComparison.Ordinal)),
+        CardPropertyProvider.GetCategories(new() { Type = "Spell Card", Race = "Quick-Play" })
+            .Single(category => category.MetadataKey!.StartsWith("spell-type:", StringComparison.Ordinal)),
+        CardPropertyProvider.GetCategories(new() { Archetype = "Radiant Typhoon" }).Single()
+    });
+
     private static readonly CuratedDrawEffectPreset[] Presets = [
         new(55144522, "Pot of Greed", 2, false),
-        new(20508881, "Radiant Typhoon Vision", 2, true),
+        new(20508881, "Radiant Typhoon Vision", 2, true, 1, CardSelector.AnyOf(FilterProperties.Skip(1).Select(category => category.Identity))),
         new(35261759, "Pot of Desires", 2, true),
         new(70368879, "Upstart Goblin", 1, false),
-        new(1475311, "Allure of Darkness", 2, false),
+        new(1475311, "Allure of Darkness", 2, false, 1, CardSelector.For(FilterProperties[0])),
         new(49238328, "Pot of Extravagance", 2, true),
         new(93946239, "Into the Void", 1, false),
         new(67616300, "Chicken Game", 1, false),
@@ -48,7 +63,9 @@ public static class CuratedDrawEffectPresets {
     }
 
     public static Card ApplyToSelectedCardIfPristine(Card card, CardInfo cardInfo) {
-        if (card.DrawCount is not null || !card.DrawOncePerTurn) {
+        if (card.DrawCount is not null || !card.DrawOncePerTurn || card.PostDrawDiscardCount != 0
+            || card.PostDrawSelector.Kind != CardSelectorKind.Any
+            || card.PostDrawFailureBehavior != PostDrawFailureBehavior.FailBranch) {
             return card;
         }
 
@@ -65,6 +82,7 @@ public static class CuratedDrawEffectPresets {
         return card
             .WithDrawCount(preset.DrawCount)
             .WithDrawOncePerTurn(preset.DrawOncePerTurn)
-            .WithPostDrawDiscardCount(preset.PostDrawDiscardCount);
+            .WithPostDrawDiscardCount(preset.PostDrawDiscardCount)
+            .WithPostDrawSelector(preset.PostDrawSelector ?? CardSelector.Any);
     }
 }

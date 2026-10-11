@@ -61,7 +61,7 @@
         _availableCategories = CategoryCatalog.Build(CategoryBases, Cards, Combos);
     }
 
-    private Task ReplaceCard((int Index, Card NewCard) payload) {
+    public Task ReplaceCard((int Index, Card NewCard) payload) {
         _editorKeys.Replace(Cards[payload.Index], payload.NewCard);
 
         return OnReplaceCard.InvokeAsync(payload);

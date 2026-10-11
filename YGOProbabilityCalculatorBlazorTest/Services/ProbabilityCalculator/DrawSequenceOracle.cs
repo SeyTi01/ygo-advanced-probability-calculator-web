@@ -51,7 +51,17 @@ internal static class DrawSequenceOracle {
                     }
                 }
 
-                int removed = hand.OrderByDescending(index => Tier(index))
+                // Independent flat-selector evaluation on labeled physical cards.
+                List<int> eligible = hand.Where(index => effect.PostDrawSelector.Kind switch {
+                    CardSelectorKind.Any => true,
+                    CardSelectorKind.Category or CardSelectorKind.AnyOf => order[index].Categories
+                        .Any(category => effect.PostDrawSelector.CategoryIdentities.Contains(category.Identity)),
+                    _ => throw new ArgumentException("Unsupported oracle selector.")
+                }).ToList();
+                if (eligible.Count == 0) {
+                    return null;
+                }
+                int removed = eligible.OrderByDescending(index => Tier(index))
                     .ThenByDescending(index => Membership(order[index]), StringComparer.Ordinal)
                     .ThenByDescending(index => order[index].DrawCount is not null)
                     .ThenByDescending(index => order[index].Id, StringComparer.Ordinal)

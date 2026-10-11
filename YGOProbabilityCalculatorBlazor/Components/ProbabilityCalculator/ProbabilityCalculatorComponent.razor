@@ -97,7 +97,7 @@
         OnMoveCategory="MoveCategory"
     />
 
-    <CardListEditor
+    <CardListEditor @ref="_cardListEditor"
         Cards="_cards"
         Combos="_combos"
         CategoryBases="_categoryBases"
@@ -302,6 +302,8 @@
     private readonly List<Combo> _combos = [];
     private readonly List<ComboGroup> _comboGroups = [];
     private readonly Dictionary<string, int> _categoryColorIndices = new(StringComparer.Ordinal);
+
+    private CardListEditor? _cardListEditor;
 
     private int _activeComboIndex = -1;
     private int _activeCardIndex = -1;
@@ -584,17 +586,17 @@
         StateHasChanged();
     }
 
-    private Task RenameCategoryBase((CategoryBase OldCategory, CategoryBase NewCategory) payload) {
+    private async Task RenameCategoryBase((CategoryBase OldCategory, CategoryBase NewCategory) payload) {
         (CategoryBase oldCategory, CategoryBase newCategory) = payload;
 
         if (oldCategory.Source != CategorySource.User || newCategory.Source != CategorySource.User) {
-            return Task.CompletedTask;
+            return;
         }
 
         int categoryBaseIndex = _categoryBases.FindIndex(category => ReferenceEquals(category, oldCategory));
 
         if (categoryBaseIndex < 0) {
-            return Task.CompletedTask;
+            return;
         }
 
         if (_categoryColorIndices.Remove(oldCategory.Name, out int colorIndex)) {
@@ -603,12 +605,17 @@
 
         _categoryBases[categoryBaseIndex] = newCategory;
 
-        foreach (Card card in _cards) {
+        for (int index = 0; index < _cards.Count; index++) {
+            Card card = _cards[index];
             for (int categoryIndex = 0; categoryIndex < card.Categories.Count; categoryIndex++) {
 
                 if (card.Categories[categoryIndex].Identity.Equals(oldCategory.Identity, StringComparison.Ordinal)) {
                     card.Categories[categoryIndex] = newCategory;
                 }
+            }
+            if (card.PostDrawSelector.CategoryIdentities.Contains(oldCategory.Identity)) {
+                Card replacement = card.WithPostDrawSelector(card.PostDrawSelector.RenameCategory(oldCategory.Identity, newCategory.Identity));
+                await _cardListEditor!.ReplaceCard((index, replacement));
             }
         }
 
@@ -649,8 +656,6 @@
             }
         }
         _categoryRename = new CategoryRenameNotice(++_categoryRenameVersion, oldCategory.Name, newCategory.Name);
-
-        return Task.CompletedTask;
     }
 
     private void HandleCategoriesChanged() {

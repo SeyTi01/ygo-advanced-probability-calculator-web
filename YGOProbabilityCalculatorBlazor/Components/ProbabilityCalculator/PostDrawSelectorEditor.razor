@@ -1,0 +1,69 @@
+@using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Services.DeckImport
+
+<div class="mt-2">
+    <label for="@Id" class="form-label mb-1">Eligible</label>
+    <select id="@Id" class="form-select form-select-sm" value="" @onchange="Change">
+        <option value="">@(Selector.Kind == CardSelectorKind.Any ? "Any card" : "Add OR category/property…")</option>
+        @if (Selector.Kind != CardSelectorKind.Any) {
+            <option value="any">Any card (clear filter)</option>
+        }
+        <optgroup label="User categories">
+            @foreach (CategoryBase category in Available.Where(category => category.Source == CategorySource.User)) {
+                <option value="@category.Identity">@category.Name</option>
+            }
+        </optgroup>
+        <optgroup label="Card properties">
+            @foreach (CategoryBase category in Available.Where(category => category.Source == CategorySource.Metadata)) {
+                <option value="@category.Identity">@category.Name</option>
+            }
+        </optgroup>
+    </select>
+    @if (Selector.Kind != CardSelectorKind.Any) {
+        <div class="d-flex flex-wrap align-items-center gap-1 mt-2" aria-label="Removal filter">
+            @for (int index = 0; index < Selector.CategoryIdentities.Count; index++) {
+                string identity = Selector.CategoryIdentities[index];
+                string label = Label(identity);
+                @if (index > 0) {
+                    <span class="small">OR</span>
+                }
+                <span class="badge text-bg-secondary text-wrap d-inline-flex align-items-center">
+                    <span>@label</span>
+                    <button type="button" class="btn-close category-remove-button ms-1"
+                            aria-label="Remove eligibility @label" title="Remove eligibility @label"
+                            @onclick="() => Remove(identity)"></button>
+                </span>
+            }
+        </div>
+    }
+    <div class="form-text">If unavailable: fail branch. Applied only in Advanced draw simulation.</div>
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "removalSelector";
+    [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;
+    [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public EventCallback<CardSelector> OnChanged { get; set; }
+
+    private CategoryBase[] Available => CategoryBases.Concat(CuratedDrawEffectPresets.FilterProperties)
+        .DistinctBy(category => category.Identity).OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+
+    private string Label(string identity) => Available.FirstOrDefault(category => category.Identity == identity)?.Name
+        ?? (identity.StartsWith("user:", StringComparison.Ordinal) ? identity[5..] : Uri.UnescapeDataString(identity[9..]));
+
+    private Task Change(ChangeEventArgs args) {
+        string? identity = args.Value?.ToString();
+        if (identity == "any") {
+            return OnChanged.InvokeAsync(CardSelector.Any);
+        }
+        if (!Available.Any(category => category.Identity == identity)) {
+            return Task.CompletedTask;
+        }
+        return OnChanged.InvokeAsync(CardSelector.AnyOf(Selector.CategoryIdentities.Append(identity!)));
+    }
+
+    private Task Remove(string identity) {
+        string[] remaining = Selector.CategoryIdentities.Where(category => category != identity).ToArray();
+        return OnChanged.InvokeAsync(remaining.Length == 0 ? CardSelector.Any : CardSelector.AnyOf(remaining));
+    }
+}

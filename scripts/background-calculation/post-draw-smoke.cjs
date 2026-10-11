@@ -115,7 +115,7 @@ async function main() {
         assert.equal(await page.locator('#cardDraw0').inputValue(), '3');
         assert.equal(await page.locator('#cardDiscard0').inputValue(), '2');
         assert.equal(await page.locator('#cardDrawOnce0').isChecked(), false);
-        assert.match(await page.locator('.card-editor .badge').first().innerText(), /Draw 3 · Discard 2/);
+        assert.match(await page.locator('.card-editor .badge').first().innerText(), /Draw 3 · Remove 2/);
         await page.locator('#cardDiscard0').selectOption('1');
         assert.equal((await saved()).Cards[0].PostDrawDiscardCount, 1);
         await page.locator('#cardDraw0').selectOption('');
