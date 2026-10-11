@@ -49,28 +49,34 @@ async function main() {
         }
         await load(cases.find(item => item.Name === 'atomic').Session);
         await expand('.combo-editor .accordion-button');
-        await page.getByRole('button', { name: 'Edit same-card requirement Orcust', exact: true }).click();
-        await page.getByLabel('Add AND category', { exact: true }).selectOption('metadata:card-type:monster');
-        await page.getByLabel('Same-card minimum', { exact: true }).fill('2');
-        await page.getByLabel('Same-card maximum', { exact: true }).fill('');
-        await page.getByRole('button', { name: 'Apply AND', exact: true }).click();
+        await page.getByRole('button', { name: 'Add AND', exact: true }).click();
+        await page.locator('[data-and-target="category:0"]').click();
+        await page.locator('#comboCategory0').selectOption('metadata:card-type:monster');
+        await page.locator('#minCount0').fill('2');
+        await page.locator('#maxCount0').fill('');
+        await page.getByRole('button', { name: 'Add AND', exact: true }).click();
         let session = await saved();
         assert.equal(session.Combos[0].Categories[0].Selector.Kind, 'AllOf');
         assert.equal(session.Combos[0].Categories[0].MinCount, 2);
         assert.equal(session.Combos[0].Categories[0].MaximumMode, 'HandSize');
-        await page.getByRole('button', { name: 'Edit same-card requirement (Orcust AND Monster)', exact: true }).click();
-        await page.getByLabel('Remove conjunct 2', { exact: true }).click();
-        await page.getByLabel('Add AND category', { exact: true }).selectOption('metadata:card-type:monster');
-        await page.getByLabel('Same-card minimum', { exact: true }).fill('1');
-        await page.getByLabel('Same-card maximum', { exact: true }).fill('3');
-        await page.getByRole('button', { name: 'Apply AND', exact: true }).click();
+
         await page.getByRole('button', { name: 'Add OR', exact: true }).click();
         await page.locator('[data-alternative-target="category:0"]').click();
         await page.locator('#comboCategory0').selectOption('metadata:archetype:world%20legacy');
         await page.getByRole('button', { name: 'Add alternative', exact: true }).click();
-        await page.getByLabel('Edit same-card alternative 2 in group 1', { exact: true }).click();
-        await page.getByLabel('Add AND category', { exact: true }).selectOption('metadata:card-type:monster');
-        await page.getByRole('button', { name: 'Apply AND', exact: true }).click();
+        await page.getByRole('button', { name: 'Add AND', exact: true }).click();
+        await page.locator('[data-and-target="alternative:0:1"]').click();
+        await page.locator('#comboCategory0').selectOption('metadata:card-type:monster');
+        await page.getByRole('button', { name: 'Add AND', exact: true }).click();
+        session = await saved();
+        assert(session.Combos[0].AlternativeGroups[0].Alternatives.every(leaf => leaf.Category.Selector.Kind === 'AllOf'));
+
+        await page.getByRole('button', { name: /Remove conjunct .*\(Monster\).*alternative 1 in group 1/ }).click();
+        await page.getByRole('button', { name: 'Add AND', exact: true }).click();
+        await page.locator('[data-and-target="alternative:0:0"]').click();
+        await page.locator('#comboCategory0').selectOption('metadata:card-type:monster');
+        await page.locator('#maxCount0').fill('3');
+        await page.getByRole('button', { name: 'Add AND', exact: true }).click();
         session = await saved();
         assert(session.Combos[0].AlternativeGroups[0].Alternatives.every(leaf => leaf.Category.Selector.Kind === 'AllOf'));
         session.Cards[0].Name = 'Reloaded same-card combo';
@@ -91,16 +97,18 @@ async function main() {
         assert.deepEqual((await saved()).Cards[0].PostDrawSelector, session.Cards[0].PostDrawSelector);
         await expand('.card-editor .accordion-button');
         await expand('.combo-editor .accordion-button');
-        await page.getByLabel('Edit same-card alternative 1 in group 1', { exact: true }).focus();
+        await page.getByRole('button', { name: 'Add AND', exact: true }).focus();
         await page.keyboard.press('Enter');
-        await page.getByLabel('Conjunct 1', { exact: true }).focus();
+        await page.locator('[data-and-target="alternative:0:0"]').focus();
+        await page.keyboard.press('Enter');
+        await page.locator('#comboCategory0').focus();
         await page.keyboard.press('Tab');
-        assert.match(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), /Remove conjunct 1/);
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'minCount0');
         for (const width of [1280, 768, 390, 375]) {
             for (const theme of ['light', 'dark']) {
                 await page.setViewportSize({ width, height: 1000 });
                 await page.getByLabel('Color theme preference').selectOption(theme);
-                for (const [name, target] of [['combo', '[aria-label="Same-card requirement"]'], ['draw', '#cardEligibility0']]) {
+                for (const [name, target] of [['combo', '.same-card-category'], ['draw', '#cardEligibility0']]) {
                     await page.locator(target).scrollIntoViewIfNeeded();
                     const geometry = await page.evaluate(() => ({ width: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
                     assert(geometry.content <= geometry.width, JSON.stringify({ width, theme, geometry }));
@@ -126,7 +134,7 @@ async function main() {
         }
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
-        console.log('PASS: AND create/edit/remove/re-add, shared bounds, OR alternatives, composite draw filter, save/reload, keyboard, 16 responsive/theme captures, four UI-worker results, no Blazor/console errors.');
+        console.log('PASS: AND create/remove/re-add, shared bounds, OR-of-AND alternatives, composite draw filter, save/reload, keyboard, 16 responsive/theme captures, four UI-worker results, no Blazor/console errors.');
     } finally {
         await browser.close();
         await new Promise(resolve => server.close(resolve));

@@ -76,6 +76,29 @@
     gap: .75rem;
 }
 
+.same-card-category,
+.same-card-conjunct {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .2rem;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.same-card-category {
+    gap: .3rem;
+}
+
+.same-card-and {
+    font-size: .8rem;
+    font-weight: 600;
+}
+
+.same-card-range {
+    white-space: nowrap;
+}
+
 .combo-expression-target {
     display: inline-flex;
     align-items: center;
@@ -158,10 +181,4 @@
     .requirement-kind {
         grid-column: auto;
     }
-}
-
-.same-card-edit {
-    min-width: 1.5rem;
-    min-height: 1.5rem;
-    flex-shrink: 0;
 }
