@@ -401,7 +401,7 @@
         int? removeIndex = null,
         int? removableGroupIndex = null,
         int alternativeIndex = 0
-    ) => @<>
+    ) => @<text>
         @if (category.CategoryBases.Count == 1) {
             CategoryBase conjunct = category.BaseCategory;
             <span class="badge category-tag @CategoryCssClass(conjunct) same-card-conjunct"
@@ -441,7 +441,7 @@
                 }
             </span>
         }
-    </>;
+    </text>;
 
     private string ConjunctRemoveLabel(
         ComboCategory category,
