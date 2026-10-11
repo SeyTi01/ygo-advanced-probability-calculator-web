@@ -201,4 +201,34 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(missingToggle.ToJsonString(), "legacy.json"));
         cut.WaitForAssertion(() => Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.True));
     }
+
+    [Test]
+    public async Task PostDrawEditsPersistPreserveDraftsAndClearWithDrawNone() {
+        SessionState session = Session();
+        session.Cards[0] = session.Cards[0].WithDrawCount(3);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        await Button(cut, "Calculate").ClickAsync(new());
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
+        string id = editor.Instance.Card.Id;
+        await editor.Find("#cardCategory0").ChangeAsync(new() { Value = "user:B" });
+        await editor.Find("#cardDiscard0").ChangeAsync(new() { Value = "2" });
+        Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.EqualTo(2));
+        Assert.That(editor.Markup, Does.Contain("Draw 3 · Discard 2"));
+        Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
+        AssertPreviousResult(cut);
+        await Button(cut, "Save Session").ClickAsync(new());
+        SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
+        Assert.That(saved.Cards[0].PostDrawDiscardCount, Is.EqualTo(2));
+        await cut.Find("[aria-label='Move card First, row 1 down']").ClickAsync(new());
+        editor = cut.FindComponents<CardEditor>()[1];
+        Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
+        Assert.That(editor.Find("#cardDiscard1").GetAttribute("value"), Is.EqualTo("2"));
+        await editor.Find("#cardDiscard1").ChangeAsync(new() { Value = "3" });
+        Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.EqualTo(2));
+        await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "" });
+        Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.Zero);
+        Assert.That(editor.FindAll("#cardDiscard1"), Is.Empty);
+        await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "3" });
+        Assert.That(editor.Find("#cardDiscard1").GetAttribute("value"), Is.EqualTo("0"));
+    }
 }

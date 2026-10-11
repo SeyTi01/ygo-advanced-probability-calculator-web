@@ -11,6 +11,7 @@ public class Card {
     public int? ExternalCardId { get; }
     public int? DrawCount { get; }
     public bool DrawOncePerTurn { get; }
+    public int PostDrawDiscardCount { get; }
     public IReadOnlySet<string> ManualMetadataCategoryKeys { get; }
 
     public Card(
@@ -22,10 +23,15 @@ public class Card {
         int? externalCardId = null,
         IEnumerable<string>? manualMetadataCategoryKeys = null,
         int? drawCount = null,
-        bool drawOncePerTurn = true
+        bool drawOncePerTurn = true,
+        int postDrawDiscardCount = 0
     ) {
         if (drawCount is not null and not (>= 1 and <= 3)) {
             throw new ArgumentOutOfRangeException(nameof(drawCount), "Draw count must be 1, 2, 3, or absent.");
+        }
+
+        if (postDrawDiscardCount is < 0 or > 2 || (postDrawDiscardCount > 0 && drawCount is null)) {
+            throw new ArgumentOutOfRangeException(nameof(postDrawDiscardCount), "Post-draw discard requires a draw effect and must be 0, 1, or 2.");
         }
 
         Id = string.IsNullOrWhiteSpace(id) ? Guid.NewGuid().ToString("N") : id;
@@ -36,16 +42,19 @@ public class Card {
         ExternalCardId = externalCardId;
         DrawCount = drawCount;
         DrawOncePerTurn = drawOncePerTurn;
+        PostDrawDiscardCount = postDrawDiscardCount;
         ManualMetadataCategoryKeys = ValidateManualKeys(Categories, manualMetadataCategoryKeys);
     }
 
-    public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn);
+    public Card WithPostDrawDiscardCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, count);
 
-    public Card WithCopies(int copies) => new(Categories, copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn);
+    public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount);
 
-    public Card WithDrawCount(int? drawCount) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, drawCount, DrawOncePerTurn);
+    public Card WithCopies(int copies) => new(Categories, copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount);
 
-    public Card WithDrawOncePerTurn(bool oncePerTurn) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, oncePerTurn);
+    public Card WithDrawCount(int? drawCount) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, drawCount, DrawOncePerTurn, drawCount is null ? 0 : PostDrawDiscardCount);
+
+    public Card WithDrawOncePerTurn(bool oncePerTurn) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, oncePerTurn, PostDrawDiscardCount);
 
     public Card WithCategories(IEnumerable<CategoryBase> categories) {
         List<CategoryBase> effective = categories.ToList();
@@ -59,11 +68,12 @@ public class Card {
             ExternalCardId,
             ManualMetadataCategoryKeys.Where(key => effective.Any(category => category.Source == CategorySource.Metadata && category.MetadataKey == key)),
             DrawCount,
-            DrawOncePerTurn
+            DrawOncePerTurn,
+            PostDrawDiscardCount
         );
     }
 
-    public Card WithActive(bool active) => new(Categories, Copies, Name, active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn);
+    public Card WithActive(bool active) => new(Categories, Copies, Name, active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount);
 
     public Card WithManualMetadataCategory(CategoryBase category) {
         if (category.Source != CategorySource.Metadata) {
@@ -75,7 +85,7 @@ public class Card {
             return this;
         }
 
-        return new(Categories.Concat([category]), Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys.Append(category.MetadataKey!), DrawCount, DrawOncePerTurn);
+        return new(Categories.Concat([category]), Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys.Append(category.MetadataKey!), DrawCount, DrawOncePerTurn, PostDrawDiscardCount);
     }
 
     public Card WithoutManualMetadataCategory(string key) {
@@ -92,7 +102,8 @@ public class Card {
             ExternalCardId,
             ManualMetadataCategoryKeys.Where(metadataKey => metadataKey != key),
             DrawCount,
-            DrawOncePerTurn
+            DrawOncePerTurn,
+            PostDrawDiscardCount
         );
     }
 
@@ -110,7 +121,7 @@ public class Card {
             .DistinctBy(static category => category.Identity);
 
         // Once materialized objectively, an overlapping override is no longer removable.
-        return new(effective, Copies, Name, Active, Id, externalCardId, ManualMetadataCategoryKeys.Where(key => !objectiveKeys.Contains(key)), DrawCount, DrawOncePerTurn);
+        return new(effective, Copies, Name, Active, Id, externalCardId, ManualMetadataCategoryKeys.Where(key => !objectiveKeys.Contains(key)), DrawCount, DrawOncePerTurn, PostDrawDiscardCount);
     }
 
     private static IReadOnlySet<string> ValidateManualKeys(IEnumerable<CategoryBase> categories, IEnumerable<string>? keys) {

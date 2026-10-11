@@ -21,9 +21,13 @@ public class DrawEffectsSessionTest {
     [TestCase(1, false)]
     [TestCase(2, false)]
     [TestCase(3, false)]
-    public async Task SessionShareAndWorkerPreserveEffectsAndExactMeaning(int drawCount, bool oncePerTurn) {
+    [TestCase(1, false, 1)]
+    [TestCase(3, false, 2)]
+    [TestCase(2, true, 1)]
+    [TestCase(1, true, 2)]
+    public async Task SessionShareAndWorkerPreserveEffectsAndExactMeaning(int drawCount, bool oncePerTurn, int discard = 0) {
         SessionState session = new() {
-            Cards = [new([], 2, "Effect", id: "effect", drawCount: drawCount, drawOncePerTurn: oncePerTurn), new([], 4, "Ordinary", id: "ordinary")],
+            Cards = [new([], 2, "Effect", id: "effect", drawCount: drawCount, drawOncePerTurn: oncePerTurn, postDrawDiscardCount: discard), new([], 4, "Ordinary", id: "ordinary")],
             Combos = [new([], "Retained", groupId: "g", cards: [new("effect", 1, 2)])],
             ComboGroups = [new("g", "Group")], HandSize = 2
         };
@@ -34,12 +38,14 @@ public class DrawEffectsSessionTest {
         SessionState loaded = await codec.LoadSessionAsync(SessionShareCodec.Decode(new Uri(link).Fragment));
         Assert.That(loaded.Cards[0].DrawCount, Is.EqualTo(drawCount));
         Assert.That(loaded.Cards[0].DrawOncePerTurn, Is.EqualTo(oncePerTurn));
+        Assert.That(loaded.Cards[0].PostDrawDiscardCount, Is.EqualTo(discard));
         Assert.That(codec.SerializeSession(loaded), Is.EqualTo(json));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, loaded.HandSize, loaded.ComboGroups);
         loaded.Cards[0] = loaded.Cards[0].WithDrawCount(null);
         CalculationInput input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
         Assert.That(input.Cards[0].DrawCount, Is.EqualTo(drawCount));
         Assert.That(input.Cards[0].DrawOncePerTurn, Is.EqualTo(oncePerTurn));
+        Assert.That(input.Cards[0].PostDrawDiscardCount, Is.EqualTo(discard));
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(session.Cards, 2, session.Combos, session.ComboGroups);
         ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
         double expected = (double)oracle.Wins[0] / (double)oracle.Total;
@@ -53,12 +59,13 @@ public class DrawEffectsSessionTest {
     [TestCase(2)]
     [TestCase(3)]
     public async Task OlderSchemasPreserveOrdinaryCardMeaning(int version) {
-        string json = $$"""{"SchemaVersion":{{version}},"DrawEffectsEnabled":false,"Cards":[{"Categories":[],"Copies":2,"Name":"P","DrawCount":2,"DrawOncePerTurn":false}]}""";
+        string json = $$"""{"SchemaVersion":{{version}},"DrawEffectsEnabled":false,"Cards":[{"Categories":[],"Copies":2,"Name":"P","DrawCount":2,"DrawOncePerTurn":false,"PostDrawDiscardCount":1}]}""";
         SessionState loaded = await Codec().LoadSessionAsync(json);
         Assert.That(loaded.SchemaVersion, Is.EqualTo(4));
         Assert.That(loaded.DrawEffectsEnabled, Is.True);
         Assert.That(loaded.Cards.Single().DrawCount, Is.Null);
         Assert.That(loaded.Cards.Single().DrawOncePerTurn, Is.True);
+        Assert.That(loaded.Cards.Single().PostDrawDiscardCount, Is.Zero);
     }
 
     [TestCase(true)]
@@ -123,7 +130,7 @@ public class DrawEffectsSessionTest {
     [Test]
     public void EveryReplacementAndMetadataUpdatePreservesConfigurationAndIdentity() {
         CategoryBase fire = new("Fire", CategorySource.Metadata, "attribute:fire");
-        Card card = new([], 2, "Card", id: "stable", drawCount: 2, drawOncePerTurn: false);
+        Card card = new([], 2, "Card", id: "stable", drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1);
         Card manual = card.WithManualMetadataCategory(fire);
         Card[] replacements = [card.WithName("Renamed"), card.WithCopies(3), card.WithActive(false),
             card.WithCategories([new("Role")]), manual, manual.WithoutManualMetadataCategory(fire.MetadataKey!),
@@ -131,10 +138,14 @@ public class DrawEffectsSessionTest {
         foreach (Card replacement in replacements) {
             Assert.That(replacement.DrawCount, Is.EqualTo(2));
             Assert.That(replacement.DrawOncePerTurn, Is.False);
+            Assert.That(replacement.PostDrawDiscardCount, Is.EqualTo(1));
             Assert.That(replacement.Id, Is.EqualTo("stable"));
         }
 
         Assert.That(card.WithDrawCount(null).Copies, Is.EqualTo(2));
+        Assert.That(card.WithDrawCount(null).PostDrawDiscardCount, Is.Zero);
+        Assert.That(card.WithDrawCount(3).PostDrawDiscardCount, Is.EqualTo(1));
+        Assert.That(card.WithDrawOncePerTurn(true).PostDrawDiscardCount, Is.EqualTo(1));
         Assert.That(card.WithDrawCount(null).Id, Is.EqualTo("stable"));
         Assert.That(card.WithDrawCount(null).WithDrawCount(3).DrawOncePerTurn, Is.False);
         Assert.That(card.WithDrawOncePerTurn(true).Id, Is.EqualTo("stable"));
@@ -143,6 +154,9 @@ public class DrawEffectsSessionTest {
         Assert.That(new Card([]).DrawOncePerTurn, Is.True);
         Assert.Throws<ArgumentOutOfRangeException>(() => card.WithDrawCount(0));
         Assert.Throws<ArgumentOutOfRangeException>(() => card.WithDrawCount(4));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Card([], postDrawDiscardCount: 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => card.WithPostDrawDiscardCount(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => card.WithPostDrawDiscardCount(3));
     }
 
     [Test]
@@ -165,6 +179,9 @@ public class DrawEffectsSessionTest {
         Assert.That(second.DeckDefinition, Is.Not.EqualTo(first.DeckDefinition));
         PinnedCalculationContext unlimited = PinnedCalculationContext.Capture(0, 1, [card.WithDrawCount(2).WithDrawOncePerTurn(false)], [], [], _ => Guid.Empty, _ => Guid.Empty);
         Assert.That(unlimited.DeckDefinition, Is.Not.EqualTo(second.DeckDefinition));
+        PinnedCalculationContext discard = PinnedCalculationContext.Capture(0, 1,
+            [card.WithDrawCount(2).WithPostDrawDiscardCount(1)], [], [], _ => Guid.Empty, _ => Guid.Empty);
+        Assert.That(discard.DeckDefinition, Is.Not.EqualTo(second.DeckDefinition));
     }
 
     [Test]
@@ -198,5 +215,41 @@ public class DrawEffectsSessionTest {
         Assert.Throws<ProbabilityCalculationLimitException>(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
         string invalid = snapshot.Json.Replace("\"DrawCount\":2", "\"DrawCount\":4");
         Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(CalculationWire.Execute(invalid)));
+    }
+
+    [TestCase("null"), TestCase("-1"), TestCase("3"), TestCase("1.5"), TestCase("\"1\""), TestCase("true")]
+    [TestCase("2147483648"), TestCase("[]"), TestCase("1,\"postdrawdiscardcount\":2")]
+    public void PostDrawInvalidSessionValuesAreRejected(string value) {
+        string json = "{\"SchemaVersion\":4,\"Cards\":[{\"Categories\":[],\"Copies\":1,\"Name\":null,\"DrawCount\":3,\"PostDrawDiscardCount\":" + value + "}]}";
+        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(json));
+    }
+
+    [Test]
+    public void PostDrawWithoutDrawingIsRejectedInSessionAndWorkerInputs() {
+        string json = """{"SchemaVersion":4,"Cards":[{"Categories":[],"Copies":1,"Name":null,"PostDrawDiscardCount":1}]}""";
+        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(json));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture([new([], drawCount: 1, postDrawDiscardCount: 1)], [new([])], 1, []);
+        string invalid = snapshot.Json.Replace("\"DrawCount\":1", "\"DrawCount\":null");
+        Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(CalculationWire.Execute(invalid)));
+    }
+
+    [TestCase(74117290, 1), TestCase(79571449, 3)]
+    public async Task PostDrawOldCuratedSessionsAndMetadataRemainAuthoritative(int externalId, int draw) {
+        string json = $$"""{"SchemaVersion":4,"Cards":[{"Id":"saved","Categories":[],"Copies":1,"Name":"Saved","ExternalCardId":{{externalId}},"DrawCount":{{draw}}}]}""";
+        SessionState loaded = await Codec().LoadSessionAsync(json);
+        Assert.That(loaded.Cards.Single().PostDrawDiscardCount, Is.Zero);
+        Assert.That(loaded.Cards.Single().WithObjectiveMetadata([], externalId).PostDrawDiscardCount, Is.Zero);
+    }
+
+    [Test]
+    public void PostDrawWorkerSwitchPreservesConfigurationAndUsesFixedDrawResults() {
+        List<Card> deck = [new([], 3, id: "source", drawCount: 3, postDrawDiscardCount: 2), new([], 10, id: "filler")];
+        List<Combo> combos = [new([], cards: [new("filler", 5, 5)])];
+        CalculationSnapshot disabled = CalculationSnapshot.Capture(deck, combos, 5, [], options: new(false));
+        CalculationSnapshot ordinary = CalculationSnapshot.Capture(deck.Select(card => card.WithPostDrawDiscardCount(0)), combos, 5, []);
+        Assert.That(CalculationWire.Execute(disabled.Json), Is.EqualTo(CalculationWire.Execute(ordinary.Json)));
+        Assert.That(JsonSerializer.Deserialize<CalculationInput>(disabled.Json)!.Cards[0].PostDrawDiscardCount, Is.EqualTo(2));
+        CalculationSnapshot enabled = CalculationSnapshot.Capture(deck, combos, 5, []);
+        Assert.That(CalculationWire.Execute(enabled.Json), Is.Not.EqualTo(CalculationWire.Execute(disabled.Json)));
     }
 }

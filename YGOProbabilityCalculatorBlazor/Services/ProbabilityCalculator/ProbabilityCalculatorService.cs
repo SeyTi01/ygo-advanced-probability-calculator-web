@@ -7,15 +7,16 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
     public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) =>
         CalculateProbabilityForCombos(deck, combos, handSize, CalculationWorkPolicy.Default, CalculationStoragePolicy.Standard);
 
-    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize, CalculationWorkPolicy workPolicy) =>
-        CalculateProbabilityForCombos(deck, combos, handSize, workPolicy, CalculationStoragePolicy.Standard);
+    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize, CalculationWorkPolicy workPolicy, CalculationOptions? options = null) =>
+        CalculateProbabilityForCombos(deck, combos, handSize, workPolicy, CalculationStoragePolicy.Standard, options);
 
     public double CalculateProbabilityForCombos(
         List<Card> deck,
         List<Combo> combos,
         int handSize,
         CalculationWorkPolicy workPolicy,
-        CalculationStoragePolicy storagePolicy
+        CalculationStoragePolicy storagePolicy,
+        CalculationOptions? options = null
     ) {
         ArgumentNullException.ThrowIfNull(workPolicy);
         ArgumentNullException.ThrowIfNull(storagePolicy);
@@ -27,7 +28,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
 
         WorkBudget budget = new(workPolicy, storagePolicy);
-        return new DrawEffectCalculation(deck, handSize, budget).Calculate(combos, null, totalOnly: true).Total.ToDouble(budget);
+        return new DrawEffectCalculation(deck, handSize, budget, options?.ConditionalEffectsEnabled ?? true).Calculate(combos, null, totalOnly: true).Total.ToDouble(budget);
     }
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
@@ -42,8 +43,9 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         List<Combo> combos,
         int handSize,
         IReadOnlyList<ComboGroup>? groups,
-        CalculationWorkPolicy workPolicy
-    ) => CalculateProbabilityResults(deck, combos, handSize, groups, workPolicy, CalculationStoragePolicy.Standard);
+        CalculationWorkPolicy workPolicy,
+        CalculationOptions? options = null
+    ) => CalculateProbabilityResults(deck, combos, handSize, groups, workPolicy, CalculationStoragePolicy.Standard, options);
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
         List<Card> deck,
@@ -51,7 +53,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         int handSize,
         IReadOnlyList<ComboGroup>? groups,
         CalculationWorkPolicy workPolicy,
-        CalculationStoragePolicy storagePolicy
+        CalculationStoragePolicy storagePolicy,
+        CalculationOptions? options = null
     ) {
         ArgumentNullException.ThrowIfNull(workPolicy);
         ArgumentNullException.ThrowIfNull(storagePolicy);
@@ -63,7 +66,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
 
         WorkBudget budget = new(workPolicy, storagePolicy);
-        return new DrawEffectCalculation(deck, handSize, budget).Calculate(combos, groups).ToPublic(combos, groups, budget);
+        return new DrawEffectCalculation(deck, handSize, budget, options?.ConditionalEffectsEnabled ?? true).Calculate(combos, groups).ToPublic(combos, groups, budget);
     }
 
     private static void ValidateComboCount(List<Combo> combos) {

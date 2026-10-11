@@ -20,7 +20,7 @@
                     <span class="card-header-name">@CardDisplayName <span class="card-copies">(@Card.Copies)</span></span>
 
                     @if (Card.DrawCount is { } drawCount) {
-                        <span class="badge text-bg-secondary ms-1">Draw @drawCount</span>
+                        <span class="badge text-bg-secondary ms-1">Draw @drawCount@if (Card.PostDrawDiscardCount > 0) {<text> · Discard @Card.PostDrawDiscardCount</text>}</span>
                     }
 
                     @if (UserCategories.Any() || ManualProperties.Any()) {
@@ -134,6 +134,16 @@
                                    @onchange="e => ChangeDrawOncePerTurn(e.Value)" />
                             <label for="cardDrawOnce@(Index)" class="form-check-label">Once per turn</label>
                         </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <label for="cardDiscard@(Index)" class="form-label mb-0">Discard after drawing</label>
+                            <select id="cardDiscard@(Index)" class="form-select form-select-sm w-auto"
+                                    value="@Card.PostDrawDiscardCount" aria-describedby="cardDrawHelp@(Index)"
+                                    @onchange="e => ChangePostDrawDiscardCount(e.Value)">
+                                <option value="0">None</option>
+                                <option value="1">Discard 1</option>
+                                <option value="2">Discard 2</option>
+                            </select>
+                        </div>
                     }
                 </div>
                 <div id="cardDrawHelp@(Index)" class="form-text">
@@ -148,6 +158,9 @@
                     }
                     @if (Card.DrawCount is not null) {
                         <span> If a draw cannot be completed, that outcome fails.</span>
+                    }
+                    @if (Card.PostDrawDiscardCount > 0) {
+                        <span> Discard immediately after drawing, keeping active combo requirements first, then usable draw cards. This deterministic policy does not optimize play.</span>
                     }
                 </div>
             </div>
@@ -433,6 +446,16 @@
     private Task ChangeDrawOncePerTurn(object? value) => value is bool oncePerTurn
         ? OnReplaceCard.InvokeAsync((Index, Card.WithDrawOncePerTurn(oncePerTurn)))
         : Task.CompletedTask;
+
+    private Task ChangePostDrawDiscardCount(object? value) {
+        if (!int.TryParse(value?.ToString(), out int count) || count is < 0 or > 2 || Card.DrawCount is null) {
+            _error = "Choose None, Discard 1, or Discard 2 with a draw effect.";
+            return Task.CompletedTask;
+        }
+
+        _error = null;
+        return OnReplaceCard.InvokeAsync((Index, Card.WithPostDrawDiscardCount(count)));
+    }
 
     private Task AddCategory() {
         if (string.IsNullOrWhiteSpace(_selectedCategory)) {
