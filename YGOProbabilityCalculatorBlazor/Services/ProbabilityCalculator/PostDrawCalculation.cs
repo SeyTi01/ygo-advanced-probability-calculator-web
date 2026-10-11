@@ -6,11 +6,22 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 // A layer counts labeled prefixes of equal length. Remaining multiplicities weight
 // each next draw. Unseen suffixes contribute (N - depth)!, so all outcomes share N!.
 // No physical permutations are enumerated and no probability mass is rounded.
-internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBudget budget) {
+internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize, WorkBudget budget) {
     internal int TerminalStates { get; private set; }
     internal int PeakStates { get; private set; }
+    internal long PeakCells { get; private set; }
+    internal string? LargestStructure { get; private set; }
+    internal int ReducedRows { get; private set; }
 
-    // Owned immutable vectors: remaining counts, hand counts, used OPT flags,
+    private void CheckStorage(long entries, long cells, string structure) {
+        if (cells > PeakCells) {
+            PeakCells = cells;
+            LargestStructure = structure;
+        }
+        budget.CheckStorage(entries, cells);
+    }
+
+    // Owned immutable vectors: remaining counts, hand counts, only actual OPT flags,
     // batch draws left, pending discard count, then FIFO candidate entry indices.
     private sealed record State(int[] Values) {
         public bool Equals(State? other) => other is not null && Values.AsSpan().SequenceEqual(other.Values);
@@ -27,6 +38,17 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
         List<Card> cards = ReduceDeck(combos);
         int n = cards.Count;
+        ReducedRows = n;
+        int[] optSlots = new int[n];
+        Array.Fill(optSlots, -1);
+        int optCount = 0;
+        for (int i = 0; i < n; i++) {
+            if (cards[i].DrawCount is not null && cards[i].DrawOncePerTurn) {
+                optSlots[i] = 2 * n + optCount++;
+            }
+        }
+        int phase = 2 * n + optCount;
+        int queueStart = phase + 2;
         int copies = 0;
         foreach (Card card in cards) {
             budget.Spend(1);
@@ -37,7 +59,7 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
             throw new ArgumentOutOfRangeException(nameof(handSize));
         }
 
-        budget.CheckStorage(1, 3L * n + copies + 3);
+        CheckStorage(1, queueStart + (long)copies + 1, "policy descriptors");
         foreach (Combo combo in combos) {
             budget.Spend((combo.AllCards.Count() + combo.AllCategories.Count() + 1L) * (n + cards.Sum(card => (long)card.Categories.Count)));
         }
@@ -45,7 +67,7 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
             combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
             || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && card.Categories.Contains(requirement.BaseCategory)))).ToArray();
 
-        budget.CheckStorage(copies + 1L, copies + 1L);
+        CheckStorage(copies + 1L, copies + 1L, "factorials");
         BigInteger[] factorial = new BigInteger[copies + 1];
         factorial[0] = 1;
         long factorialCells = 1;
@@ -53,14 +75,28 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
             budget.Spend(WorkBudget.IntegerCells(factorial[i - 1]) + 1);
             factorial[i] = factorial[i - 1] * i;
             factorialCells += WorkBudget.IntegerCells(factorial[i]);
-            budget.CheckStorage(copies + 1L, factorialCells);
+            CheckStorage(copies + 1L, factorialCells, "factorials");
         }
 
-        int[] initial = new int[3 * n + 2];
+        int[] effects = Enumerable.Range(0, n).Where(index => cards[index].DrawCount is not null).ToArray();
+        int[] filler = Enumerable.Range(0, n).Where(index => !relevant[index] && cards[index].DrawCount is null).ToArray();
+        // A single homogeneous FIFO has no order dimension. For a hand-neutral,
+        // irrelevant, non-OPT effect, relevant ordinary cards always retain the
+        // best handSize copies seen so far. Their identities cannot affect when
+        // the effect resolves, so count that schedule separately from identities.
+        if (effects.Length == 1 && filler.Length <= 1) {
+            int effect = effects[0];
+            if (!relevant[effect] && !cards[effect].DrawOncePerTurn
+                && cards[effect].DrawCount == cards[effect].PostDrawDiscardCount + 1) {
+                return CalculateExchangeable(cards, relevant, effect, filler.FirstOrDefault(-1), factorial, combos, groups, totalOnly);
+            }
+        }
+
+        int[] initial = new int[queueStart];
         for (int i = 0; i < n; i++) {
             initial[i] = cards[i].Copies;
         }
-        initial[3 * n] = handSize;
+        initial[phase] = handSize;
         Dictionary<State, BigInteger> current = new() { [new(initial)] = 1 };
         Dictionary<State, BigInteger> terminal = new();
         long terminalCells = 0;
@@ -74,7 +110,7 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
                 if (!Settle(ref values, remaining)) {
                     continue;
                 }
-                if (values[3 * n] == 0) {
+                if (values[phase] == 0) {
                     budget.Spend(WorkBudget.IntegerCells(weight) * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
                     Add(terminal, new(values.AsSpan(n, n).ToArray()), weight * factorial[remaining], ref terminalCells);
                     continue;
@@ -84,14 +120,14 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
                     if (values[i] == 0) {
                         continue;
                     }
-                    bool candidate = cards[i].DrawCount is not null && values[2 * n + i] == 0
-                        && (!cards[i].DrawOncePerTurn || !values.AsSpan(3 * n + 2).Contains(i));
+                    bool candidate = cards[i].DrawCount is not null && !Used(values, i)
+                        && (!cards[i].DrawOncePerTurn || !values.AsSpan(queueStart).Contains(i));
                     budget.Spend(values.Length + WorkBudget.IntegerCells(weight) + 1L);
                     int[] drawn = new int[values.Length + (candidate ? 1 : 0)];
                     values.CopyTo(drawn, 0);
                     drawn[i]--;
                     drawn[n + i]++;
-                    drawn[3 * n]--;
+                    drawn[phase]--;
                     if (candidate) {
                         drawn[^1] = i;
                     }
@@ -109,7 +145,7 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
         TerminalStates = terminal.Count;
         int resultCount = 1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0));
         long resultIntegerCells = WorkBudget.IntegerCells(factorial[copies]);
-        budget.CheckStorage(resultCount, resultCount * (resultIntegerCells + 1));
+        CheckStorage(resultCount, resultCount * (resultIntegerCells + 1), "result accumulators");
         BigInteger[] wins = new BigInteger[resultCount];
         // Compile once per final hand size. All result rows see the same hands.
         budget.Spend(terminal.Count * (n + 1L));
@@ -155,18 +191,20 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
             return true;
         }
 
+        bool Used(int[] values, int entry) => optSlots[entry] >= 0 && values[optSlots[entry]] != 0;
+
         bool Settle(ref int[] values, int remaining) {
-            if (values[3 * n] > 0) {
-                return values[3 * n] <= remaining;
+            if (values[phase] > 0) {
+                return values[phase] <= remaining;
             }
-            for (int discard = values[3 * n + 1]; discard > 0; discard--) {
+            for (int discard = values[phase + 1]; discard > 0; discard--) {
                 // Queue scan, tier scan, removal scan and copying the surviving queue.
                 budget.Spend(2L * values.Length + n + 1);
                 int selected = -1;
                 int worstTier = 0;
                 int selectedQueue = -1;
                 bool[] pending = new bool[n];
-                for (int q = 3 * n + 2; q < values.Length; q++) {
+                for (int q = queueStart; q < values.Length; q++) {
                     int entry = values[q];
                     pending[entry] = true;
                 }
@@ -174,7 +212,7 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
                     if (values[n + i] == 0) {
                         continue;
                     }
-                    bool usable = pending[i] && values[2 * n + i] == 0 && cards[i].DrawCount <= remaining;
+                    bool usable = pending[i] && !Used(values, i) && cards[i].DrawCount <= remaining;
                     bool redundant = cards[i].DrawOncePerTurn && values[n + i] > 1;
                     int tier = (relevant[i], usable && !redundant) switch {
                         (true, _) => 1,
@@ -191,7 +229,7 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
                 }
                 values[n + selected]--;
                 // Remove the latest copy of this identity, retaining FIFO priority.
-                for (int q = values.Length - 1; q >= 3 * n + 2; q--) {
+                for (int q = values.Length - 1; q >= queueStart; q--) {
                     if (values[q] == selected) {
                         if (!cards[selected].DrawOncePerTurn || values[n + selected] == 0) {
                             selectedQueue = q;
@@ -203,22 +241,22 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
                     values = [.. values.Take(selectedQueue), .. values.Skip(selectedQueue + 1)];
                 }
             }
-            values[3 * n + 1] = 0;
-            while (values.Length > 3 * n + 2) {
+            values[phase + 1] = 0;
+            while (values.Length > queueStart) {
                 budget.Spend(2L * values.Length + 1);
-                int source = values[3 * n + 2];
-                values = [.. values.Take(3 * n + 2), .. values.Skip(3 * n + 3)];
-                if (values[2 * n + source] != 0) {
+                int source = values[queueStart];
+                values = [.. values.Take(queueStart), .. values.Skip(queueStart + 1)];
+                if (Used(values, source)) {
                     continue;
                 }
                 values[n + source]--;
                 if (cards[source].DrawOncePerTurn) {
-                    values[2 * n + source] = 1;
-                    values = [.. values.Take(3 * n + 2), .. values.Skip(3 * n + 2).Where(entry => entry != source)];
+                    values[optSlots[source]] = 1;
+                    values = [.. values.Take(queueStart), .. values.Skip(queueStart).Where(entry => entry != source)];
                 }
-                values[3 * n] = cards[source].DrawCount!.Value;
-                values[3 * n + 1] = cards[source].PostDrawDiscardCount;
-                return values[3 * n] <= remaining;
+                values[phase] = cards[source].DrawCount!.Value;
+                values[phase + 1] = cards[source].PostDrawDiscardCount;
+                return values[phase] <= remaining;
             }
             return true;
         }
@@ -235,7 +273,9 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
             budget.Spend(WorkBudget.IntegerCells(previous));
             BigInteger value = previous + increment;
             cells += WorkBudget.IntegerCells(value) - WorkBudget.IntegerCells(previous) + (exists ? 0 : key.Values.Length);
-            budget.CheckStorage(map.Count + (exists ? 0 : 1), cells);
+            int count = map.Count + (exists ? 0 : 1);
+            PeakStates = Math.Max(PeakStates, count);
+            CheckStorage(count, cells, ReferenceEquals(map, terminal) ? "terminal hands" : "draw frontier");
             map[key] = value;
         }
     }
@@ -252,10 +292,10 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
             foreach (ComboAlternativeGroup group in combo.AlternativeGroups) {
                 selectors += group.Alternatives.Count;
             }
-            budget.CheckStorage(selectors, selectors);
+            CheckStorage(selectors, selectors, "policy selectors");
             budget.Spend(combo.RequirementCount + 1L);
         }
-        budget.CheckStorage(deck.Count, (selectors + 1) * deck.Count);
+        CheckStorage(deck.Count, (selectors + 1) * deck.Count, "policy descriptors");
         budget.Spend(selectors * (selectors + 1) + deck.Count * (long)(deck.Count + 1) * (selectors + 1));
         CategoryBase[] categories = combos.SelectMany(combo => combo.AllCategories)
             .Select(requirement => requirement.BaseCategory).Distinct().OrderBy(category => category.Identity, StringComparer.Ordinal).ToArray();
@@ -265,7 +305,7 @@ internal sealed class PostDrawCalculation(List<Card> deck, int handSize, WorkBud
         foreach (Card card in deck) {
             ArgumentOutOfRangeException.ThrowIfNegative(card.Copies);
             budget.Spend((categories.Length + 1L) * (card.Categories.Count + 1L) + direct.Length);
-            budget.CheckStorage(deck.Count, (categories.Length + (long)direct.Length + 1) * deck.Count);
+            CheckStorage(deck.Count, (categories.Length + (long)direct.Length + 1) * deck.Count, "policy descriptors");
             string signature = string.Concat(categories.Select(category => card.Categories.Contains(category) ? '1' : '0'))
                 + string.Concat(direct.Select(id => card.Id == id ? '1' : '0'));
             entries.Add((card, signature));
