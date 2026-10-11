@@ -5,14 +5,17 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 // Bound retained entries/count-vector cells and cumulative work, rather than
 // pretending the 30-combo compatibility ceiling is a runtime guarantee.
-// Each live map: <= 32K entries and 256K cells (about 1 MiB of int payload).
+// Standard allows <= 32,768 entries and 262,144 cells (about 1 MiB of int payload) per live map.
+// The request-local storage policy can raise both per-structure limits by bounded presets.
 // Old/new DP maps, Hall subsets and union/change maps can coexist.
 // DP/binomial integer payload is also checked; object overhead is extra.
 // This is not a total-memory ceiling. Arithmetic work is charged separately.
-internal sealed class WorkBudget(CalculationWorkPolicy policy) {
+internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStoragePolicy? storagePolicy = null) {
     private long _remaining = policy.WorkUnits;
+    private readonly CalculationStoragePolicy _storagePolicy = storagePolicy ?? CalculationStoragePolicy.Standard;
 
     internal long Spent => policy.WorkUnits - _remaining;
+    internal CalculationStoragePolicy StoragePolicy => _storagePolicy;
 
     public void Spend(long units) {
         ArgumentOutOfRangeException.ThrowIfNegative(units);
@@ -24,8 +27,8 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy) {
         _remaining -= units;
     }
 
-    public static void CheckStorage(long entries, long cells) {
-        if (entries > 32768 || cells > 262144) {
+    public void CheckStorage(long entries, long cells) {
+        if (entries > _storagePolicy.EntryLimit || cells > _storagePolicy.CellLimit) {
             throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
         }
     }

@@ -18,14 +18,14 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
         foreach (ComboAlternativeGroup group in combo.AlternativeGroups) {
             budget.Spend(group.Alternatives.Count + 1L);
 
-            if (routes > 32768 / group.Alternatives.Count) {
+            if (routes > budget.StoragePolicy.EntryLimit / group.Alternatives.Count) {
                 throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
             }
 
             routes *= group.Alternatives.Count;
         }
 
-        WorkBudget.CheckStorage(_compiledEntries + routes, combo.Categories.Count + (long)combo.Cards.Count + combo.AlternativeGroups.Count);
+        budget.CheckStorage(_compiledEntries + routes, combo.Categories.Count + (long)combo.Cards.Count + combo.AlternativeGroups.Count);
         int[] choices = new int[combo.AlternativeGroups.Count];
         HashSet<CompiledEvent> unique = [];
 
@@ -52,7 +52,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
 
                 if (!unique.Contains(compiled)) {
                     long cells = (long)(compiled.Constraints.Length + (compiled.Roles?.Length ?? 0)) * (3 + deck.Count / 32);
-                    WorkBudget.CheckStorage(_compiledEntries + 1, _compiledCells + cells);
+                    budget.CheckStorage(_compiledEntries + 1, _compiledCells + cells);
                     _compiledEntries++;
                     _compiledCells += cells;
                     unique.Add(compiled);
@@ -157,7 +157,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
                 BigInteger union = subset | eligible;
                 int minimum = demand + constraint.MinCount;
                 demands[union] = Math.Max(demands.GetValueOrDefault(union), minimum);
-                WorkBudget.CheckStorage(demands.Count, (long)demands.Count * (1 + deck.Count / 32));
+                budget.CheckStorage(demands.Count, (long)demands.Count * (1 + deck.Count / 32));
             }
         }
 
@@ -191,7 +191,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
             }
 
             bounds[eligible] = (min, max);
-            WorkBudget.CheckStorage(bounds.Count, (long)bounds.Count * (1 + deck.Count / 32));
+            budget.CheckStorage(bounds.Count, (long)bounds.Count * (1 + deck.Count / 32));
 
             return true;
         }

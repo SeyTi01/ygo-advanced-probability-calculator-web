@@ -35,7 +35,7 @@ internal static class DrawEffectResolver {
             throw new ArgumentOutOfRangeException(nameof(handSize), "Opening hand size must fit the deck.");
         }
 
-        WorkBudget.CheckStorage(1, effects.Count + 3L);
+        budget.CheckStorage(1, effects.Count + 3L);
         Dictionary<DrawComposition, ExactProbability> current = new() {
             [new(0, new int[effects.Count])] = ExactProbability.One
         };
@@ -112,7 +112,7 @@ internal static class DrawEffectResolver {
             bool exists = map.TryGetValue(key, out ExactProbability previous);
             ExactProbability value = exists ? previous.Add(increment, budget) : increment;
             cells += value.Cells - (exists ? previous.Cells : 0) + (exists ? 0 : effects.Count + 1L);
-            WorkBudget.CheckStorage(map.Count + (exists ? 0 : 1), cells);
+            budget.CheckStorage(map.Count + (exists ? 0 : 1), cells);
             map[key] = value;
         }
     }

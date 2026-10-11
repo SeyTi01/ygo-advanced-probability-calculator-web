@@ -33,7 +33,7 @@ internal static class ProbabilityRatio {
         }
 
         int shift = (int)Math.Min(1074, 52 - exponent);
-        WorkBudget.CheckStorage(1, (numeratorBits + shift + 31) / 32);
+        budget.CheckStorage(1, (numeratorBits + shift + 31) / 32);
         BigInteger significand = BigInteger.DivRem(successes << shift, denominator, out BigInteger remainder);
         int rounding = (remainder << 1).CompareTo(denominator);
 

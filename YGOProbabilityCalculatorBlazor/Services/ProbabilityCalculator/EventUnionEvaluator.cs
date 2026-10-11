@@ -55,7 +55,7 @@ internal sealed class EventUnionEvaluator(
             BigInteger count = counter.Count(intersection);
             budget.Spend(1 + count.GetBitLength() / 64 + successes.GetBitLength() / 64 + coefficient.GetBitLength() / 64);
             successes += coefficient * count;
-            WorkBudget.CheckStorage(1, WorkBudget.IntegerCells(successes));
+            budget.CheckStorage(1, WorkBudget.IntegerCells(successes));
         }
 
         // Cancel signed inclusion-exclusion terms exactly, before conversion.
@@ -142,7 +142,7 @@ internal sealed class EventUnionEvaluator(
             budget.Spend(1 + previous.GetBitLength() / 32);
             BigInteger updated = previous + coefficient;
             long cells = storedConstraints - WorkBudget.IntegerCells(previous) + WorkBudget.IntegerCells(updated);
-            WorkBudget.CheckStorage(terms.Count, cells);
+            budget.CheckStorage(terms.Count, cells);
 
             if (updated == 0) {
                 terms.Remove(key);
@@ -154,7 +154,7 @@ internal sealed class EventUnionEvaluator(
             }
         }
         else if (coefficient != 0) {
-            WorkBudget.CheckStorage(terms.Count + 1, storedConstraints + key.Constraints.Length + WorkBudget.IntegerCells(coefficient));
+            budget.CheckStorage(terms.Count + 1, storedConstraints + key.Constraints.Length + WorkBudget.IntegerCells(coefficient));
             terms.Add(key, coefficient);
             storedConstraints += key.Constraints.Length + WorkBudget.IntegerCells(coefficient);
         }

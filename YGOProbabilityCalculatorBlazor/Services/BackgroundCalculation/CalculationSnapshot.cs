@@ -15,7 +15,8 @@ public sealed record CalculationSnapshot(string Json) {
         int handSize,
         IEnumerable<ComboGroup> groups,
         CalculationWorkPolicy? workPolicy = null,
-        bool drawEffectsEnabled = true
+        bool drawEffectsEnabled = true,
+        CalculationStoragePolicy? storagePolicy = null
     ) {
         WorkerCard[] workerCards = cards
             .Where(card => card.Active)
@@ -44,7 +45,7 @@ public sealed record CalculationSnapshot(string Json) {
 
         ComboGroup[] workerGroups = groups.ToArray();
         long workUnits = (workPolicy ?? CalculationWorkPolicy.Default).WorkUnits;
-        CalculationInput input = new(workerCards, workerCombos, handSize, workerGroups, workUnits);
+        CalculationInput input = new(workerCards, workerCombos, handSize, workerGroups, workUnits, storagePolicy?.Tier);
         string json = JsonSerializer.Serialize(input, CalculationJsonContext.Default.CalculationInput);
 
         return new(json);
@@ -75,7 +76,8 @@ public sealed record CalculationInput(
     WorkerCombo[] Combos,
     int HandSize,
     ComboGroup[] Groups,
-    long? WorkUnits = null
+    long? WorkUnits = null,
+    CalculationStorageTier? StorageTier = null
 );
 
 public enum CalculationFailureKind { Input = 1, Error = 2 }
@@ -123,13 +125,16 @@ public static class CalculationWire {
             CalculationWorkPolicy workPolicy = input.WorkUnits is long units
                 ? new(units)
                 : CalculationWorkPolicy.Default;
+            CalculationStoragePolicy storagePolicy = CalculationStoragePolicy.ForTier(
+                input.StorageTier ?? CalculationStorageTier.Standard);
 
             ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
                 cards,
                 combos,
                 input.HandSize,
                 input.Groups,
-                workPolicy
+                workPolicy,
+                storagePolicy
             );
 
             response = new(result, null);

@@ -103,25 +103,38 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         List<Card> ordinaryCards = session.Cards.Select(card => card.WithDrawCount(null)).ToList();
         double ordinaryExpected = SmallDeckOracle.EnumerateProbability(ordinaryCards, session.Combos, 1);
 
+        Assert.That(cut.FindAll(".calculation-settings-trigger").ToArray(), Has.Length.EqualTo(1));
+        Assert.That(cut.FindAll(".draw-effects-control, .draw-effects-help").ToArray(), Is.Empty);
+        IElement trigger = cut.Find(".calculation-settings-trigger");
+        Assert.That(trigger.GetAttribute("aria-label"), Is.EqualTo("Calculation settings"));
+        Assert.That(trigger.GetAttribute("title"), Is.EqualTo("Calculation settings"));
+        Assert.That(trigger.GetAttribute("aria-expanded"), Is.EqualTo("false"));
+        Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
+
+        await trigger.ClickAsync(new());
         IElement toggle = cut.Find("#drawEffectsEnabled");
+        Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.False);
         Assert.That(toggle.GetAttribute("role"), Is.EqualTo("switch"));
         Assert.That(toggle.HasAttribute("checked"), Is.True);
         Assert.That(cut.Find("label[for='drawEffectsEnabled']").TextContent, Is.EqualTo("Draw effects"));
         AssertDrawEffectsHelpIsStable();
-        string[] controlStructure = DrawEffectsControlStructure();
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(configuredExpected.ToString("P2")));
 
-        await toggle.ChangeAsync(new() { Value = false });
+        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
         AssertPreviousResult(cut);
         AssertDrawEffectsHelpIsStable();
-        Assert.That(DrawEffectsControlStructure(), Is.EqualTo(controlStructure));
         Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         Assert.That((editor.Instance.Card.DrawCount, editor.Instance.Card.DrawOncePerTurn), Is.EqualTo(((int?)1, false)));
         Assert.That(editor.Find("#cardDraw0").HasAttribute("disabled"), Is.False);
         Assert.That(editor.Find("#cardDrawOnce0").HasAttribute("disabled"), Is.False);
+
+        await cut.Find(".calculation-settings-trigger").ClickAsync(new());
+        Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
+        await cut.Find(".calculation-settings-trigger").ClickAsync(new());
+        Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(ordinaryExpected.ToString("P2")));
@@ -130,7 +143,6 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = true });
         AssertPreviousResult(cut);
         AssertDrawEffectsHelpIsStable();
-        Assert.That(DrawEffectsControlStructure(), Is.EqualTo(controlStructure));
         Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.True);
         Assert.That((cut.FindComponent<CardEditor>().Instance.Card.DrawCount, cut.FindComponent<CardEditor>().Instance.Card.DrawOncePerTurn),
             Is.EqualTo(((int?)1, false)));
@@ -138,22 +150,10 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(configuredExpected.ToString("P2")));
 
         void AssertDrawEffectsHelpIsStable() {
-            IElement helpIcon = cut.Find(".draw-effects-help");
-            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Is.EqualTo(drawEffectsHelpText));
-            Assert.That(cut.Find("#drawEffectsHelp").GetAttribute("class"), Does.Contain("visually-hidden"));
-            Assert.That(cut.FindAll(".draw-effects-control .form-text").ToArray(), Is.Empty);
+            Assert.That(cut.Find("#drawEffectsHelp").TextContent.Trim(), Is.EqualTo(drawEffectsHelpText));
+            Assert.That(cut.Find("#drawEffectsHelp").GetAttribute("class"), Does.Contain("form-text"));
             Assert.That(cut.Find("#drawEffectsEnabled").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
-            Assert.That(helpIcon.GetAttribute("tabindex"), Is.EqualTo("0"));
-            Assert.That(helpIcon.GetAttribute("role"), Is.EqualTo("img"));
-            Assert.That(helpIcon.GetAttribute("aria-label"), Is.EqualTo("Draw effects information"));
-            Assert.That(helpIcon.GetAttribute("title"), Is.EqualTo(drawEffectsHelpText));
-            Assert.That(helpIcon.GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
         }
-
-        string[] DrawEffectsControlStructure() => cut.Find(".draw-effects-control")
-            .QuerySelectorAll("*")
-            .Select(element => $"{element.TagName} {element.GetAttribute("class")}")
-            .ToArray();
     }
 
     [Test]
@@ -171,6 +171,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         context.Services.AddSingleton<IDeckImportService>(importer.Object);
 
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        await cut.Find(".calculation-settings-trigger").ClickAsync(new());
         Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
         string shared = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         SessionState sharedSession = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(shared);

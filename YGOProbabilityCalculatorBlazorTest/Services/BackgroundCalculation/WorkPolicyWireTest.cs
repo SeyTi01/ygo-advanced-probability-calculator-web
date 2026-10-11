@@ -8,8 +8,16 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.BackgroundCalculation;
 
 [TestFixture]
 public class WorkPolicyWireTest {
-    private static CalculationSnapshot Snapshot(CalculationWorkPolicy? policy = null) => CalculationSnapshot.Capture(
-        [new Card([], 2, id: "card")], [new Combo([], cards: [new("card", 1, 1)])], 1, [], policy);
+    private static CalculationSnapshot Snapshot(
+        CalculationWorkPolicy? workPolicy = null,
+        CalculationStoragePolicy? storagePolicy = null
+    ) => CalculationSnapshot.Capture(
+        [new Card([], 2, id: "card")],
+        [new Combo([], cards: [new("card", 1, 1)])],
+        1,
+        [],
+        workPolicy,
+        storagePolicy: storagePolicy);
 
     [Test]
     public void WorkReasonAndInteractivePolicySurviveSourceGeneratedWire() {
@@ -22,6 +30,19 @@ public class WorkPolicyWireTest {
     }
 
     [Test]
+    public void SelectedStorageTierTravelsAlongsideTheIndependentWorkAllowance() {
+        CalculationSnapshot highSnapshot = Snapshot(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.High);
+        CalculationSnapshot veryHighSnapshot = Snapshot(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.VeryHigh);
+        JsonObject highInput = JsonNode.Parse(highSnapshot.Json)!.AsObject();
+        JsonObject veryHighInput = JsonNode.Parse(veryHighSnapshot.Json)!.AsObject();
+
+        Assert.That(highInput["StorageTier"]!.GetValue<int>(), Is.EqualTo((int)CalculationStorageTier.High));
+        Assert.That(veryHighInput["StorageTier"]!.GetValue<int>(), Is.EqualTo((int)CalculationStorageTier.VeryHigh));
+        Assert.That(highInput["WorkUnits"]!.GetValue<long>(), Is.EqualTo(CalculationWorkPolicy.Interactive.WorkUnits));
+        Assert.That(veryHighInput["WorkUnits"]!.GetValue<long>(), Is.EqualTo(CalculationWorkPolicy.Interactive.WorkUnits));
+    }
+
+    [Test]
     public void StorageReasonSurvivesWireWithAmpleWork() {
         CategoryBase[] categories = Enumerable.Range(0, 16).Select(i => new CategoryBase($"R{i}")).ToArray();
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(
@@ -31,8 +52,10 @@ public class WorkPolicyWireTest {
             [],
             new(5_000_000)
         );
+        JsonObject input = JsonNode.Parse(snapshot.Json)!.AsObject();
+        input.Remove("StorageTier");
         ProbabilityCalculationLimitException error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)))!;
+            CalculationWire.ReadResult(CalculationWire.Execute(input.ToJsonString())))!;
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }
 

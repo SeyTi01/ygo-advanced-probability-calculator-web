@@ -32,13 +32,13 @@ internal readonly record struct ExactProbability(BigInteger Numerator, BigIntege
     private void Charge(ExactProbability other, WorkBudget budget) {
         // Conservative limb-product charge covers multiplication and Euclidean division.
         long cells = Cells + other.Cells + 1;
-        WorkBudget.CheckStorage(1, cells * 2);
+        budget.CheckStorage(1, cells * 2);
         budget.Spend(cells * cells);
     }
 
     private static ExactProbability Reduce(BigInteger numerator, BigInteger denominator, WorkBudget budget) {
         long cells = WorkBudget.IntegerCells(numerator) + WorkBudget.IntegerCells(denominator) + 1;
-        WorkBudget.CheckStorage(1, cells);
+        budget.CheckStorage(1, cells);
         budget.Spend(cells * cells);
         BigInteger divisor = BigInteger.GreatestCommonDivisor(numerator, denominator);
         return new(numerator / divisor, denominator / divisor);
