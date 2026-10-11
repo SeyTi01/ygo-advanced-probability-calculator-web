@@ -27,6 +27,16 @@
                 <InputFile OnChange="@LoadSessionFile" accept=".json" class="session-file-input" id="sessionFileInput" aria-label="Load Session"/>
             </label>
             <SessionShareButton Snapshot="@_sessionService.SerializeSession(CaptureSession())" Capture="@(() => _sessionService.SerializeSession(CaptureSession()))" />
+            <button type="button" class="btn btn-outline-danger" @onclick="RequestClearWorkspace">
+                Clear workspace
+            </button>
+            @if (_isClearWorkspaceConfirmationOpen) {
+                <div class="clear-workspace-confirmation" role="group" aria-label="Confirm clearing workspace">
+                    <span>Clear the current deck, categories, and combos?</span>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmClearWorkspace">Clear</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelClearWorkspace">Cancel</button>
+                </div>
+            }
             @if (_isYdkeImportOpen) {
                 <form class="ydke-import-form"
                       aria-label="YDKe deck import"
@@ -116,7 +126,7 @@
         OnSortAlphabetically="SortCardsAlphabetically"
     />
 
-    <ComboListEditor
+    <ComboListEditor @key="ComboListKey"
         Combos="_combos"
         Cards="_cards"
         ComboGroups="_comboGroups"
@@ -308,6 +318,7 @@
     private readonly Dictionary<string, int> _categoryColorIndices = new(StringComparer.Ordinal);
 
     private CardListEditor? _cardListEditor;
+    private string ComboListKey => $"ComboList-{_sessionVersion}";
 
     private int ActiveDrawConfiguredCardCount => DrawEffectPresentation.CountActiveDrawConfiguredCards(_cards);
     private int ActiveAdvancedConfiguredCardCount => DrawEffectPresentation.CountActiveAdvancedConfiguredCards(_cards);
@@ -323,6 +334,7 @@
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
     private bool _conditionalEffectsEnabled;
     private bool _isCalculating;
+    private bool _isClearWorkspaceConfirmationOpen;
     private long _calculationVersion;
     private long _calculationRequestId;
     private CancellationTokenSource? _calculationCancellation;

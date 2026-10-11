@@ -71,6 +71,7 @@ else if (_hasRecovery) {
     private bool _replace;
 
     public bool InspectionComplete => _initialized && _appliedSuspension == Suspended;
+    public bool HasRecovery => _hasRecovery;
 
     protected override void OnParametersSet() {
         if (_observedSuspension != Suspended) {

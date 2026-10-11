@@ -12,6 +12,61 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
 
     private void ObserveWorkspaceEdit() => _workspaceEditVersion++;
 
+    private bool HasMeaningfulWorkspaceContent =>
+        _cards.Count > 0
+        || _categoryBases.Count > 0
+        || _combos.Count > 0
+        || _comboGroups.Count > 0
+        || _handSize != 5
+        || _calculationResult is not null
+        || _pinnedResult is not null
+        || _isYdkeImportOpen
+        || _ydkeCode.Length > 0
+        || _ydkeImportRequest is not null
+        || _sharedFragment is not null
+        || _sharingRecovery?.HasRecovery == true
+        || _pendingSessionService.PendingSession is not null;
+
+    private void RequestClearWorkspace() {
+        if (HasMeaningfulWorkspaceContent) {
+            _isClearWorkspaceConfirmationOpen = true;
+            return;
+        }
+
+        ClearWorkspace();
+    }
+
+    private void CancelClearWorkspace() => _isClearWorkspaceConfirmationOpen = false;
+
+    private void ConfirmClearWorkspace() => ClearWorkspace();
+
+    private void ClearWorkspace() {
+        _isClearWorkspaceConfirmationOpen = false;
+        _sessionLoadVersion++;
+        _ydkeImportRequest = null;
+        _pendingSessionService.PendingSession = null;
+        ConsumeSharedFragment();
+        _sharedFragment = _sharedJson = _sharedError = null;
+        _sharedLoading = false;
+
+        InvalidateCalculation(clearPreviousResult: true);
+        _categoryBases.Clear();
+        _cards.Clear();
+        _combos.Clear();
+        _comboGroups.Clear();
+        _categoryColorIndices.Clear();
+        _pinnedResult = null;
+        _categoryRename = null;
+        _categoryRenameVersion++;
+        _handSize = 5;
+        _activeCardIndex = _activeComboIndex = -1;
+        _isYdkeImportOpen = false;
+        _ydkeCode = string.Empty;
+        _importError = null;
+        _sessionVersion++;
+        _autosaveReplacementVersion++;
+    }
+
     private SessionState CaptureSession() => new() {
         Categories = _categoryBases,
         Cards = _cards,
@@ -26,11 +81,15 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
 
     private SessionLoadRequest? _ydkeImportRequest;
 
-    private SessionLoadRequest BeginSessionLoad() => new(
-        ++_sessionLoadVersion,
-        _workspaceEditVersion,
-        _sessionService.SerializeSession(CaptureSession())
-    );
+    private SessionLoadRequest BeginSessionLoad() {
+        _isClearWorkspaceConfirmationOpen = false;
+
+        return new(
+            ++_sessionLoadVersion,
+            _workspaceEditVersion,
+            _sessionService.SerializeSession(CaptureSession())
+        );
+    }
 
     private bool OwnsSessionLoad(long version) => !_disposed && version == _sessionLoadVersion;
 
@@ -104,6 +163,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         }
 
         ConsumeSharedFragment();
+        _isClearWorkspaceConfirmationOpen = false;
         InvalidateCalculation(clearPreviousResult: true);
         _categoryBases.Clear();
         _categoryBases.AddRange(session.Categories.Where(category => category.Source == CategorySource.User));
@@ -219,6 +279,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
 
     private void ReplaceImportedDeck(List<Card> importedCards) {
         ConsumeSharedFragment();
+        _isClearWorkspaceConfirmationOpen = false;
         _cards.Clear();
         _cards.AddRange(importedCards);
         InvalidateCalculation(clearPreviousResult: true);
