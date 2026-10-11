@@ -161,12 +161,22 @@
 
 .draw-effects-control .form-check {
     margin: 0;
+    white-space: nowrap;
 }
 
-.draw-effects-control .form-text {
-    display: block;
-    max-width: 18rem;
-    margin: 0.125rem 0 0 2.5rem;
+.draw-effects-help {
+    display: inline-block;
+    margin-left: 0.25rem;
+    color: var(--bs-secondary-color);
+    cursor: help;
+    font-size: 0.875em;
+    line-height: 1;
+}
+
+.draw-effects-help:focus-visible {
+    border-radius: 0.125rem;
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
 }
 
 .session-toolbar {

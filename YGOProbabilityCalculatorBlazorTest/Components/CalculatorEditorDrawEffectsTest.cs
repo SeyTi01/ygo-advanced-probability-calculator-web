@@ -89,6 +89,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
 
     [Test]
     public async Task GlobalDrawEffectsToggleUsesOrdinaryCalculationAndRestoresConfiguredBehavior() {
+        const string drawEffectsHelpText = "When off, configured draw effects are ignored and those cards are treated as ordinary cards.";
         CategoryBase target = new("Target");
         Card draw = new([], id: "draw", drawCount: 1, drawOncePerTurn: false);
         SessionState session = new() {
@@ -106,15 +107,17 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(toggle.GetAttribute("role"), Is.EqualTo("switch"));
         Assert.That(toggle.HasAttribute("checked"), Is.True);
         Assert.That(cut.Find("label[for='drawEffectsEnabled']").TextContent, Is.EqualTo("Draw effects"));
+        AssertDrawEffectsHelpIsStable();
+        string[] controlStructure = DrawEffectsControlStructure();
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(configuredExpected.ToString("P2")));
 
         await toggle.ChangeAsync(new() { Value = false });
         AssertPreviousResult(cut);
-        Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Is.EqualTo("Configured draw effects are ignored; cards are treated as ordinary cards."));
-        Assert.That(cut.Find("#drawEffectsEnabled").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
+        AssertDrawEffectsHelpIsStable();
+        Assert.That(DrawEffectsControlStructure(), Is.EqualTo(controlStructure));
+        Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         Assert.That((editor.Instance.Card.DrawCount, editor.Instance.Card.DrawOncePerTurn), Is.EqualTo(((int?)1, false)));
         Assert.That(editor.Find("#cardDraw0").HasAttribute("disabled"), Is.False);
@@ -126,10 +129,31 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
 
         await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = true });
         AssertPreviousResult(cut);
+        AssertDrawEffectsHelpIsStable();
+        Assert.That(DrawEffectsControlStructure(), Is.EqualTo(controlStructure));
+        Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.True);
         Assert.That((cut.FindComponent<CardEditor>().Instance.Card.DrawCount, cut.FindComponent<CardEditor>().Instance.Card.DrawOncePerTurn),
             Is.EqualTo(((int?)1, false)));
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(configuredExpected.ToString("P2")));
+
+        void AssertDrawEffectsHelpIsStable() {
+            IElement helpIcon = cut.Find(".draw-effects-help");
+            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Is.EqualTo(drawEffectsHelpText));
+            Assert.That(cut.Find("#drawEffectsHelp").GetAttribute("class"), Does.Contain("visually-hidden"));
+            Assert.That(cut.FindAll(".draw-effects-control .form-text").ToArray(), Is.Empty);
+            Assert.That(cut.Find("#drawEffectsEnabled").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
+            Assert.That(helpIcon.GetAttribute("tabindex"), Is.EqualTo("0"));
+            Assert.That(helpIcon.GetAttribute("role"), Is.EqualTo("img"));
+            Assert.That(helpIcon.GetAttribute("aria-label"), Is.EqualTo("Draw effects information"));
+            Assert.That(helpIcon.GetAttribute("title"), Is.EqualTo(drawEffectsHelpText));
+            Assert.That(helpIcon.GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
+        }
+
+        string[] DrawEffectsControlStructure() => cut.Find(".draw-effects-control")
+            .QuerySelectorAll("*")
+            .Select(element => $"{element.TagName} {element.GetAttribute("class")}")
+            .ToArray();
     }
 
     [Test]
