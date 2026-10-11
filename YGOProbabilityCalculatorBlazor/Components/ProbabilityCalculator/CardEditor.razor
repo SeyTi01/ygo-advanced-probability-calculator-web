@@ -135,6 +135,16 @@
                             <label for="cardDrawOnce@(Index)" class="form-check-label">Once per turn</label>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2">
+                            <label for="cardCost@(Index)" class="form-label mb-0">Before drawing</label>
+                            <select id="cardCost@(Index)" class="form-select form-select-sm w-auto"
+                                    value="@Card.PreDrawRemovalCount" aria-describedby="@DrawEffectDescriptionIds"
+                                    @onchange="e => ChangePreDrawRemovalCount(e.Value)">
+                                <option value="0">None</option>
+                                <option value="1">Remove 1</option>
+                                <option value="2">Remove 2</option>
+                            </select>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
                             <label for="cardDiscard@(Index)" class="form-label mb-0">After drawing</label>
                             <select id="cardDiscard@(Index)" class="form-select form-select-sm w-auto"
                                     value="@Card.PostDrawDiscardCount" aria-describedby="@DrawEffectDescriptionIds"
@@ -149,7 +159,14 @@
                 @if (DrawPresentation.InactiveMessage is { } inactiveMessage) {
                     <p class="form-text mb-1" id="cardDrawModeHelp@(Index)" role="note">@inactiveMessage</p>
                 }
+                @if (Card.PreDrawRemovalCount > 0) {
+                    <div class="mt-2 small">Before drawing: remove from hand</div>
+                    <PostDrawSelectorEditor Id="@($"cardCostEligibility{Index}")" Selector="Card.PreDrawSelector"
+                                            CategoryBases="CategoryBases" UnavailableMessage="If unavailable: retain source without activating."
+                                            OnChanged="selector => OnReplaceCard.InvokeAsync((Index, Card.WithPreDrawSelector(selector)))" />
+                }
                 @if (Card.PostDrawDiscardCount > 0) {
+                    <div class="mt-2 small">After drawing: remove from hand</div>
                     <PostDrawSelectorEditor Id="@($"cardEligibility{Index}")" Selector="Card.PostDrawSelector"
                                             CategoryBases="CategoryBases"
                                             OnChanged="selector => OnReplaceCard.InvokeAsync((Index, Card.WithPostDrawSelector(selector)))" />
@@ -161,6 +178,9 @@
                     else if (!DrawEffectsEnabled) {
                         <span>Stored draw settings are retained and apply when Draw effects are on.</span>
                     }
+                    else if (ConditionalEffectsEnabled && Card.PreDrawRemovalCount > 0) {
+                        <span>Pay the hand cost before activating. Keep active combo pieces first, then usable draw cards. Unpayable sources stay in hand with OPT unused and retry after another activation. Only hand costs are modeled.</span>
+                    }
                     else if (Card.DrawOncePerTurn) {
                         <span>The first copy drawn resolves automatically and is consumed; later copies stay in hand. Separate entries resolve independently.</span>
                     }
@@ -168,7 +188,7 @@
                         <span>Every copy drawn resolves automatically and is consumed, including copies drawn by another effect.</span>
                     }
                     @if (Card.DrawCount is not null && DrawEffectsEnabled) {
-                        <span> If a draw cannot be completed, that outcome fails.</span>
+                        <span> If the deck runs out, draw all remaining cards.</span>
                     }
                     @if (Card.PostDrawDiscardCount > 0) {
                         @if (DrawEffectsEnabled && ConditionalEffectsEnabled) {
@@ -466,6 +486,15 @@
     private Task ChangeDrawOncePerTurn(object? value) => value is bool oncePerTurn
         ? OnReplaceCard.InvokeAsync((Index, Card.WithDrawOncePerTurn(oncePerTurn)))
         : Task.CompletedTask;
+
+    private Task ChangePreDrawRemovalCount(object? value) {
+        if (!int.TryParse(value?.ToString(), out int count) || count is < 0 or > 2 || Card.DrawCount is null) {
+            _error = "Choose None, Remove 1, or Remove 2 with a draw effect.";
+            return Task.CompletedTask;
+        }
+        _error = null;
+        return OnReplaceCard.InvokeAsync((Index, Card.WithPreDrawRemovalCount(count)));
+    }
 
     private Task ChangePostDrawDiscardCount(object? value) {
         if (!int.TryParse(value?.ToString(), out int count) || count is < 0 or > 2 || Card.DrawCount is null) {

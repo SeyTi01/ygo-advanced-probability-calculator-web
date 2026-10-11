@@ -15,13 +15,19 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
         }
 
         string headerText = $"Draw {drawCount}";
+        if (conditionalEffectsEnabled && card.PreDrawRemovalCount > 0) {
+            headerText = $"Cost {card.PreDrawRemovalCount} · {headerText}";
+        }
         if (conditionalEffectsEnabled && card.PostDrawDiscardCount > 0) {
             headerText += $" · Remove {card.PostDrawDiscardCount}";
         }
 
-        string? inactiveMessage = !conditionalEffectsEnabled && HasAdvancedConfiguration(card)
-            ? "Advanced draw simulation is off — this post-draw effect is currently ignored."
-            : null;
+        string? inactiveMessage = null;
+        if (!conditionalEffectsEnabled && HasAdvancedConfiguration(card)) {
+            inactiveMessage = card.PreDrawRemovalCount > 0
+                ? "Advanced draw simulation is off — this pre-draw cost and any post-draw effect are currently ignored."
+                : "Advanced draw simulation is off — this post-draw effect is currently ignored.";
+        }
 
         return new(headerText, inactiveMessage);
     }
@@ -52,6 +58,7 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
     }
 
     private static bool HasAdvancedConfiguration(Card card) =>
+        card.PreDrawRemovalCount > 0 ||
         card.PostDrawDiscardCount > 0 ||
         card.PostDrawSelector.Kind != CardSelectorKind.Any ||
         card.PostDrawFailureBehavior != PostDrawFailureBehavior.FailBranch;

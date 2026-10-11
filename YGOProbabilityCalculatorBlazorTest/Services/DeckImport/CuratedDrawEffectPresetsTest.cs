@@ -11,7 +11,7 @@ public class CuratedDrawEffectPresetsTest {
         IReadOnlyList<CuratedDrawEffectPreset> presets = CuratedDrawEffectPresets.All;
 
         Assert.Multiple(() => {
-            Assert.That(presets, Has.Count.EqualTo(14));
+            Assert.That(presets, Has.Count.EqualTo(16));
             Assert.That(presets.All(preset => preset.CardId > 0), Is.True);
             Assert.That(presets.Select(preset => preset.CardId).Distinct().Count(), Is.EqualTo(presets.Count));
             Assert.That(presets.All(preset => !string.IsNullOrWhiteSpace(preset.Name)), Is.True);
@@ -90,6 +90,8 @@ public class CuratedDrawEffectPresetsTest {
             Assert.That(selected.PostDrawDiscardCount, Is.EqualTo(expected));
             Assert.That(imported.PostDrawSelector, Is.EqualTo(preset.PostDrawSelector ?? CardSelector.Any));
             Assert.That(selected.PostDrawSelector, Is.EqualTo(imported.PostDrawSelector));
+            Assert.That(imported.PreDrawRemovalCount, Is.EqualTo(preset.PreDrawRemovalCount));
+            Assert.That(selected.PreDrawSelector, Is.EqualTo(preset.PreDrawSelector ?? CardSelector.Any));
             Assert.That(selected.Id, Is.EqualTo("stable"));
             Card configured = selected.WithPostDrawDiscardCount(0);
             Assert.That(CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(configured, info).PostDrawDiscardCount, Is.Zero);

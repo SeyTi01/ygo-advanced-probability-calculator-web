@@ -104,8 +104,38 @@ public class CardConverter : JsonConverter<Card> {
             throw new JsonException("Unsupported post-draw failure behavior.");
         }
 
+        JsonProperty[] costProperties = root.EnumerateObject()
+            .Where(property => property.Name.Equals("PreDrawRemovalCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+        JsonProperty[] costSelectors = root.EnumerateObject()
+            .Where(property => property.Name.Equals("PreDrawSelector", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (costProperties.Length > 1 || costSelectors.Length > 1) {
+            throw new JsonException("Pre-draw cost fields are duplicated.");
+        }
+        int costCount = 0;
+        if (costProperties.Length == 1 && (costProperties[0].Value.ValueKind != JsonValueKind.Number
+            || !costProperties[0].Value.TryGetInt32(out costCount))) {
+            throw new JsonException("Pre-draw count must be an integer.");
+        }
+        CardSelector costSelector = costSelectors.Length == 0 ? CardSelector.Any
+            : JsonSerializer.Deserialize<CardSelector>(costSelectors[0].Value.GetRawText(), options)
+                ?? throw new JsonException("Missing pre-draw selector.");
+
         try {
-            return new Card(categories, copies, name, active, id, externalCardId, manualKeys, drawCount, drawOncePerTurn, discardCount, selector);
+            return new Card(
+                categories,
+                copies,
+                name,
+                active,
+                id,
+                externalCardId,
+                manualKeys,
+                drawCount,
+                drawOncePerTurn,
+                discardCount,
+                selector,
+                preDrawRemovalCount: costCount,
+                preDrawSelector: costSelector
+            );
         }
         catch (ArgumentException exception) {
             throw new JsonException("Invalid card configuration.", exception);
@@ -144,6 +174,14 @@ public class CardConverter : JsonConverter<Card> {
             writer.WritePropertyName("PostDrawSelector");
             JsonSerializer.Serialize(writer, value.PostDrawSelector, options);
             writer.WriteString("PostDrawFailureBehavior", value.PostDrawFailureBehavior.ToString());
+        }
+
+        if (value.PreDrawRemovalCount > 0) {
+            writer.WriteNumber("PreDrawRemovalCount", value.PreDrawRemovalCount);
+        }
+        if (value.PreDrawSelector.Kind != CardSelectorKind.Any) {
+            writer.WritePropertyName("PreDrawSelector");
+            JsonSerializer.Serialize(writer, value.PreDrawSelector, options);
         }
 
         writer.WriteEndObject();

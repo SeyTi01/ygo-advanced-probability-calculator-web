@@ -620,8 +620,10 @@
                     card.Categories[categoryIndex] = newCategory;
                 }
             }
-            if (card.PostDrawSelector.CategoryIdentities.Contains(oldCategory.Identity)) {
-                Card replacement = card.WithPostDrawSelector(card.PostDrawSelector.RenameCategory(oldCategory.Identity, newCategory.Identity));
+            if (card.PostDrawSelector.CategoryIdentities.Contains(oldCategory.Identity)
+                || card.PreDrawSelector.CategoryIdentities.Contains(oldCategory.Identity)) {
+                Card replacement = card.WithPostDrawSelector(card.PostDrawSelector.RenameCategory(oldCategory.Identity, newCategory.Identity))
+                    .WithPreDrawSelector(card.PreDrawSelector.RenameCategory(oldCategory.Identity, newCategory.Identity));
                 await _cardListEditor!.ReplaceCard((index, replacement));
             }
         }

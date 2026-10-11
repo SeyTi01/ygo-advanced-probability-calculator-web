@@ -20,7 +20,7 @@ public class FilteredPostDrawSessionTest {
         string json = Codec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
         SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(4));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
         Assert.That(loaded.Cards[0].PostDrawSelector, Is.EqualTo(card.PostDrawSelector));
         Assert.That(loaded.Cards[0].PostDrawFailureBehavior, Is.EqualTo(PostDrawFailureBehavior.FailBranch));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));

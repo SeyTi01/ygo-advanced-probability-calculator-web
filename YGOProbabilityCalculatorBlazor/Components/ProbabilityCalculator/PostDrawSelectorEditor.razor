@@ -48,10 +48,11 @@
             }
         </div>
     }
-    <div class="form-text">If unavailable: fail branch. Applied only in Advanced draw simulation.</div>
+    <div class="form-text">@UnavailableMessage Applied only in Advanced draw simulation.</div>
 </div>
 
 @code {
+    [Parameter] public string UnavailableMessage { get; set; } = "If unavailable: fail branch.";
     [Parameter] public string Id { get; set; } = "removalSelector";
     [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];

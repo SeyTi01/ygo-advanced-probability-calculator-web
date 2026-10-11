@@ -33,7 +33,7 @@ public class DrawEffectsSessionTest {
         };
         SessionService codec = Codec();
         string json = codec.SerializeSession(session);
-        Assert.That(JsonDocument.Parse(json).RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(4));
+        Assert.That(JsonDocument.Parse(json).RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(5));
         string link = SessionShareCodec.CreateLink("https://example.invalid/", json);
         SessionState loaded = await codec.LoadSessionAsync(SessionShareCodec.Decode(new Uri(link).Fragment));
         Assert.That(loaded.Cards[0].DrawCount, Is.EqualTo(drawCount));
@@ -62,7 +62,7 @@ public class DrawEffectsSessionTest {
     public async Task OlderSchemasPreserveOrdinaryCardMeaning(int version) {
         string json = $$"""{"SchemaVersion":{{version}},"DrawEffectsEnabled":false,"Cards":[{"Categories":[],"Copies":2,"Name":"P","DrawCount":2,"DrawOncePerTurn":false,"PostDrawDiscardCount":1}]}""";
         SessionState loaded = await Codec().LoadSessionAsync(json);
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(4));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
         Assert.That(loaded.DrawEffectsEnabled, Is.True);
         Assert.That(loaded.Cards.Single().DrawCount, Is.Null);
         Assert.That(loaded.Cards.Single().DrawOncePerTurn, Is.True);
@@ -77,10 +77,10 @@ public class DrawEffectsSessionTest {
         SessionState session = new() { DrawEffectsEnabled = enabled, Cards = [configured] };
 
         Assert.That(new SessionState().DrawEffectsEnabled, Is.True);
-        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(4));
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(5));
         string json = codec.SerializeSession(session);
         using JsonDocument document = JsonDocument.Parse(json);
-        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(4));
+        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(5));
         Assert.That(document.RootElement.GetProperty("DrawEffectsEnabled").GetBoolean(), Is.EqualTo(enabled));
 
         SessionState loaded = await codec.LoadSessionAsync(json);
