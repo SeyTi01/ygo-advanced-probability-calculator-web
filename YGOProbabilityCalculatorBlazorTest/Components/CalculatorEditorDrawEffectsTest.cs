@@ -89,7 +89,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
 
     [Test]
     public async Task GlobalDrawEffectsToggleUsesOrdinaryCalculationAndRestoresConfiguredBehavior() {
-        const string drawEffectsHelpText = "When off, configured draw effects are ignored and those cards are treated as ordinary cards.";
+        const string drawEffectsHelpText = "Basic simulation applies fixed draws and once-per-turn limits. When off, cards are treated as ordinary cards.";
         CategoryBase target = new("Target");
         Card draw = new([], id: "draw", drawCount: 1, drawOncePerTurn: false);
         SessionState session = new() {

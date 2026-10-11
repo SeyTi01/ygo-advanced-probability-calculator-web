@@ -141,8 +141,8 @@ async function main() {
                 assert(geometry.content <= geometry.width, JSON.stringify({ width, theme, geometry }));
                 await page.screenshot({ path: path.join(screenshots, `${width}-${theme}.png`) });
                 await settings();
-                assert.equal(await page.getByRole('heading', { name: 'Basic', exact: true }).isVisible(), true);
-                assert.equal(await page.getByRole('heading', { name: 'Advanced', exact: true }).isVisible(), true);
+                assert.equal(await page.getByRole('heading', { name: 'Draw simulation', exact: true }).isVisible(), true);
+                assert.equal(await page.getByRole('switch', { name: 'Advanced draw simulation', exact: true }).isVisible(), true);
                 await storage.scrollIntoViewIfNeeded();
                 const menuGeometry = await page.evaluate(() => ({ width: document.documentElement.clientWidth,
                     content: document.documentElement.scrollWidth }));
