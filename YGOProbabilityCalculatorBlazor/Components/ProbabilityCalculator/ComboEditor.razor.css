@@ -90,6 +90,15 @@
     gap: .3rem;
 }
 
+.composite-alternative {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .2rem;
+    max-width: 100%;
+    min-width: 0;
+}
+
 .same-card-and {
     font-size: .8rem;
     font-weight: 600;
