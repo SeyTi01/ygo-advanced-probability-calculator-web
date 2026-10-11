@@ -16,6 +16,8 @@
             <CardEditor @key="_editorKeys[Cards[index]]"
                 Index="index"
                 Card="Cards[index]"
+                DrawEffectsEnabled="DrawEffectsEnabled"
+                ConditionalEffectsEnabled="ConditionalEffectsEnabled"
                 CategoryBases="_availableCategories"
                 CategoryColorIndices="CategoryColorIndices"
                 CategoryRename="CategoryRename"
@@ -38,6 +40,8 @@
     [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];
+    [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
+    [Parameter] public bool ConditionalEffectsEnabled { get; set; }
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
