@@ -126,8 +126,15 @@
                                         <option value="@categoryBase.Identity">@categoryBase.Name</option>
                                     }
                                 </optgroup>
-                                <optgroup label="Card properties">
-                                    @foreach (CategoryBase categoryBase in SelectableCategories.Where(category => category.Source == CategorySource.Metadata)) {
+                                <optgroup label="Current / relevant properties">
+                                    @foreach (CategoryBase categoryBase in SelectableCategories.Where(category =>
+                                        category.Source == CategorySource.Metadata && _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity))) {
+                                        <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                                    }
+                                </optgroup>
+                                <optgroup label="More common card properties">
+                                    @foreach (CategoryBase categoryBase in SelectableCategories.Where(category =>
+                                        CategoryCatalog.IsCommonMetadata(category) && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity))) {
                                         <option value="@categoryBase.Identity">@categoryBase.Name</option>
                                     }
                                 </optgroup>
@@ -297,6 +304,7 @@
     [Parameter] public Combo Combo { get; set; } = null!;
     [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlySet<string> RelevantMetadataCategoryIdentities { get; set; } = new HashSet<string>(StringComparer.Ordinal);
     [Parameter] public IReadOnlyList<ComboGroup> ComboGroups { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
@@ -311,7 +319,7 @@
     [Parameter] public int HandSize { get; set; } = 5;
 
     private const int MaxHeaderBadges = 6;
-    private IReadOnlyList<CategoryBase> _availableCategories = [];
+    private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
     private enum TargetSelectionMode { Alternative, And }
 
     private string? _error;
@@ -340,9 +348,7 @@
     private Combo? _previousCombo;
     private int _previousCategoryRenameVersion;
 
-    private string CategoryCssClass(CategoryBase category) => category.Source == CategorySource.Metadata
-        ? $"card-property-tag {CardPropertyColorPalette.GetCssClass(category)}"
-        : CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices);
+    private string CategoryCssClass(CategoryBase category) => CategoryChipPalette.GetCssClass(category, CategoryColorIndices);
 
     private bool AlternativeScope => _alternativeGroupIndex is not null || _alternativeSeed is not null;
     private bool AndScope => _andSeed is not null;
@@ -352,6 +358,8 @@
     private bool HasAlternativeTargets => ConstraintCount > 0;
     private bool HasAndTargets => Combo.Categories.Any(HasSelectableConjunct)
         || Combo.AlternativeGroups.Any(group => group.Alternatives.Any(alternative => alternative.Category is { } category && HasSelectableConjunct(category)));
+    private IReadOnlyList<CategoryBase> _availableCategories => _categoryOptions.All;
+
     private IEnumerable<CategoryBase> SelectableCategories => AndScope && _andSeed is { } seed
         ? _availableCategories.Where(category => !seed.Selector.CategoryIdentities.Contains(category.Identity, StringComparer.Ordinal))
         : _availableCategories;
@@ -1246,7 +1254,7 @@
     }
 
     protected override void OnParametersSet() {
-        _availableCategories = CategoryCatalog.Build(CategoryBases, Cards, [Combo]);
+        _categoryOptions = CategoryCatalog.BuildOptions(CategoryBases, Cards, [Combo], RelevantMetadataCategoryIdentities);
         if (CategoryRename is CategoryRenameNotice rename && rename.Version != _previousCategoryRenameVersion) {
             if (_selectedCategory.Equals($"user:{rename.OldName}", StringComparison.Ordinal)) {
                 _selectedCategory = $"user:{rename.NewName}";

@@ -15,6 +15,59 @@ public static class CardPropertyProvider {
         "synchro_pendulum", "xyz_pendulum"
     ];
 
+    public static IReadOnlyList<CategoryBase> CommonCategories { get; } = Array.AsReadOnly(CreateCommonCategories());
+
+    private static CategoryBase[] CreateCommonCategories() {
+        List<CardInfo> examples = [
+            new() { Type = "Monster" },
+            new() { Type = "Spell Card" },
+            new() { Type = "Trap Card" },
+            new() { Type = "Normal Monster" },
+            new() { Type = "Effect Monster" },
+            new() { Type = "Tuner Monster" },
+            new() { Type = "Pendulum Effect Monster" },
+            new() { Type = "Ritual Monster" },
+            new() { Type = "Fusion Monster" },
+            new() { Type = "Synchro Monster" },
+            new() { Type = "XYZ Monster" },
+            new() { Type = "Link Monster" },
+            new() { Type = "Flip Effect Monster" },
+            new() { Type = "Gemini Monster" },
+            new() { Type = "Spirit Monster" },
+            new() { Type = "Toon Monster" },
+            new() { Type = "Union Effect Monster" }
+        ];
+
+        foreach (string attribute in new[] { "DARK", "LIGHT", "EARTH", "WATER", "FIRE", "WIND", "DIVINE" }) {
+            examples.Add(new() { Type = "Monster", Attribute = attribute });
+        }
+
+        for (int level = 1; level <= 12; level++) {
+            examples.Add(new() { Type = "Monster", Level = level });
+        }
+
+        for (int rank = 0; rank <= 13; rank++) {
+            examples.Add(new() { Type = "XYZ Monster", FrameType = "xyz", Level = rank });
+        }
+
+        for (int link = 1; link <= 6; link++) {
+            examples.Add(new() { Type = "Link Monster", FrameType = "link", LinkVal = link });
+        }
+
+        foreach (string subtype in new[] { "Normal", "Field", "Equip", "Continuous", "Quick-Play", "Ritual" }) {
+            examples.Add(new() { Type = "Spell Card", Race = subtype });
+        }
+
+        foreach (string subtype in new[] { "Normal", "Continuous", "Counter" }) {
+            examples.Add(new() { Type = "Trap Card", Race = subtype });
+        }
+
+        return examples
+            .SelectMany(GetCategories)
+            .DistinctBy(static category => category.Identity)
+            .ToArray();
+    }
+
     public static IReadOnlyList<CategoryBase> GetCategories(CardInfo info) {
         Dictionary<string, CategoryBase> result = new(StringComparer.Ordinal);
         HashSet<string> tokens = (info.Type ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -78,7 +131,7 @@ public static class CardPropertyProvider {
         void Add(string key, string label) => result.TryAdd(key, new(label, CategorySource.Metadata, key));
 
         void Number(string key, string label, int? value) {
-            if (value is >= 0) {
+            if (value is >= 0 && (key != "level" || value > 0)) {
                 string number = value.Value.ToString(CultureInfo.InvariantCulture);
                 Add($"{key}:{number}", $"{label} {number}");
             }

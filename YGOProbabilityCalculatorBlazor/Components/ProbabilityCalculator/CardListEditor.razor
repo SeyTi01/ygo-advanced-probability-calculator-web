@@ -18,7 +18,8 @@
                 Card="Cards[index]"
                 DrawEffectsEnabled="DrawEffectsEnabled"
                 ConditionalEffectsEnabled="ConditionalEffectsEnabled"
-                CategoryBases="_availableCategories"
+                CategoryBases="_categoryOptions.All"
+                RelevantMetadataCategoryIdentities="_categoryOptions.RelevantMetadataIdentities"
                 CategoryColorIndices="CategoryColorIndices"
                 CategoryRename="CategoryRename"
                 ActiveCardIndex="ActiveCardIndex"
@@ -55,14 +56,14 @@
     [Parameter] public EventCallback OnSortAlphabetically { get; set; }
 
     private readonly EditorKeys<Card> _editorKeys = new();
-    private IReadOnlyList<CategoryBase> _availableCategories = [];
+    private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
 
     private long ActiveCopies => Cards.Where(card => card.Active).Sum(card => (long)card.Copies);
 
     protected override void OnParametersSet() {
         _editorKeys.Synchronize(Cards);
 
-        _availableCategories = CategoryCatalog.Build(CategoryBases, Cards, Combos);
+        _categoryOptions = CategoryCatalog.BuildOptions(CategoryBases, Cards, Combos);
     }
 
     public Task ReplaceCard((int Index, Card NewCard) payload) {

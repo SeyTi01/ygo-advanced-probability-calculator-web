@@ -75,7 +75,8 @@
                 Index="index"
                 Combo="Combos[index]"
                 Cards="Cards"
-                CategoryBases="_availableCategories"
+                CategoryBases="_categoryOptions.All"
+                RelevantMetadataCategoryIdentities="_categoryOptions.RelevantMetadataIdentities"
                 ComboGroups="ComboGroups"
                 CategoryColorIndices="CategoryColorIndices"
                 CategoryRename="CategoryRename"
@@ -118,7 +119,7 @@
     [Parameter] public EventCallback<(int From, int To)> OnMoveGroup { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMoveCombo { get; set; }
 
-    private IReadOnlyList<CategoryBase> _availableCategories = [];
+    private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
     private readonly EditorKeys<Combo> _editorKeys = new();
     private readonly Dictionary<string, ElementReference> _groupNameButtonReferences = new(StringComparer.Ordinal);
     private string _newGroupName = string.Empty;
@@ -131,7 +132,7 @@
 
     protected override void OnParametersSet() {
         _editorKeys.Synchronize(Combos);
-        _availableCategories = CategoryCatalog.Build(CategoryBases, Cards, Combos);
+        _categoryOptions = CategoryCatalog.BuildOptions(CategoryBases, Cards, Combos);
 
         if (_editingGroupId is string id && !ComboGroups.Any(group => group.Id == id)) {
             ClearGroupRename();

@@ -13,8 +13,13 @@
                 <option value="@category.Identity">@category.Name</option>
             }
         </optgroup>
-        <optgroup label="Card properties">
-            @foreach (CategoryBase category in Available.Where(category => category.Source == CategorySource.Metadata)) {
+        <optgroup label="Current / relevant properties">
+            @foreach (CategoryBase category in RelevantMetadata) {
+                <option value="@category.Identity">@category.Name</option>
+            }
+        </optgroup>
+        <optgroup label="More common card properties">
+            @foreach (CategoryBase category in RemainingCommonMetadata) {
                 <option value="@category.Identity">@category.Name</option>
             }
         </optgroup>
@@ -30,7 +35,7 @@
                         string identity = alternative.CategoryIdentities[conjunct];
                         string label = Label(identity);
                         @if (conjunct > 0) { <span class="small">AND</span> }
-                        <span class="badge text-bg-secondary text-wrap d-inline-flex align-items-center">
+                        <span class="badge category-tag text-wrap d-inline-flex align-items-center @ChipCssClass(identity)">
                             <span>@label</span>
                             <button type="button" class="btn-close category-remove-button ms-1"
                                     aria-label="Remove eligibility @label" title="Remove eligibility @label"
@@ -56,15 +61,45 @@
     [Parameter] public string Id { get; set; } = "removalSelector";
     [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlySet<string> RelevantMetadataCategoryIdentities { get; set; } = new HashSet<string>(StringComparer.Ordinal);
+    [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public EventCallback<CardSelector> OnChanged { get; set; }
 
     private CardSelector[] Alternatives => Selector.Kind == CardSelectorKind.Any ? [] : Selector.Alternatives.ToArray();
 
-    private CategoryBase[] Available => CategoryBases.Concat(CuratedDrawEffectPresets.FilterProperties)
-        .DistinctBy(category => category.Identity).OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+    private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
 
-    private string Label(string identity) => Available.FirstOrDefault(category => category.Identity == identity)?.Name
-        ?? (identity.StartsWith("user:", StringComparison.Ordinal) ? identity[5..] : Uri.UnescapeDataString(identity[9..]));
+    private CategoryBase[] Available => _categoryOptions.All.Concat(CuratedDrawEffectPresets.FilterProperties)
+        .DistinctBy(static category => category.Identity).ToArray();
+
+    private CategoryBase[] RelevantMetadata => Available
+        .Where(category => category.Source == CategorySource.Metadata
+            && (!CategoryCatalog.IsCommonMetadata(category) || _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity)))
+        .ToArray();
+
+    private CategoryBase[] RemainingCommonMetadata => Available
+        .Where(category => CategoryCatalog.IsCommonMetadata(category)
+            && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity))
+        .ToArray();
+
+    private string Label(string identity) {
+        CategoryBase? category = Available.FirstOrDefault(candidate => candidate.Identity == identity);
+        if (category is not null) {
+            return category.Name;
+        }
+
+        if (identity.StartsWith("user:", StringComparison.Ordinal)) {
+            return identity["user:".Length..];
+        }
+
+        return identity.StartsWith("metadata:", StringComparison.Ordinal)
+            ? Uri.UnescapeDataString(identity["metadata:".Length..])
+            : identity;
+    }
+
+    private string ChipCssClass(string identity) => Available.FirstOrDefault(category => category.Identity == identity) is { } category
+        ? CategoryChipPalette.GetCssClass(category, CategoryColorIndices)
+        : CategoryChipPalette.GetFallbackCssClass(identity);
 
     private Task Change(ChangeEventArgs args) {
         string? identity = args.Value?.ToString();
@@ -97,4 +132,7 @@
         }
         return OnChanged.InvokeAsync(alternatives.Count == 0 ? CardSelector.Any : CardSelector.AnyOfSelectors(alternatives));
     }
+
+    protected override void OnParametersSet() =>
+        _categoryOptions = CategoryCatalog.BuildOptions(CategoryBases, [], [], RelevantMetadataCategoryIdentities);
 }

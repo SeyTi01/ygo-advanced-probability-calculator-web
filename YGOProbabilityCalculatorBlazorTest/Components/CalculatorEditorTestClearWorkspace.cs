@@ -65,8 +65,23 @@ public sealed class CalculatorEditorTestClearWorkspace : CalculatorEditorTestBas
 
         await Button(cut, "Add New Card").ClickAsync(new());
         await Button(cut, "Add New Combo").ClickAsync(new());
-        Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.Null.Or.Empty);
-        Assert.That(cut.FindComponent<ComboEditor>().Instance.Combo.Categories, Is.Empty);
+        IRenderedComponent<CardEditor> freshCard = cut.FindComponent<CardEditor>();
+        IRenderedComponent<ComboEditor> freshCombo = cut.FindComponent<ComboEditor>();
+        Assert.That(freshCard.Instance.Card.Name, Is.Null.Or.Empty);
+        Assert.That(freshCombo.Instance.Combo.Categories, Is.Empty);
+        if (freshCard.Find(".accordion-button").GetAttribute("aria-expanded") != "true") {
+            await freshCard.Find(".accordion-button").ClickAsync(new());
+        }
+        if (freshCombo.Find(".accordion-button").GetAttribute("aria-expanded") != "true") {
+            await freshCombo.Find(".accordion-button").ClickAsync(new());
+        }
+
+        await freshCard.Find("#cardCategory0").ChangeAsync(new() { Value = "metadata:attribute:dark" });
+        await Button(freshCard, "Add").ClickAsync(new());
+        await freshCombo.Find("#comboCategory0").ChangeAsync(new() { Value = "metadata:level:8" });
+        await Button(freshCombo, "Add").ClickAsync(new());
+        Assert.That(freshCard.Instance.Card.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { "attribute:dark" }));
+        Assert.That(freshCombo.Instance.Combo.Categories.Single().BaseCategory.MetadataKey, Is.EqualTo("level:8"));
     }
 
     [Test]
