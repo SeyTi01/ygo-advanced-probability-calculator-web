@@ -120,29 +120,26 @@
                         <label for="comboCategory@(Index)" class="form-label">Category</label>
                         <select id="comboCategory@(Index)" @ref="_alternativeEntryTarget" class="form-select" value="@_selectedCategory" @onchange="e => OnSelectCategory(e.Value?.ToString())">
                             <option value="">Select category…</option>
-                            @if (_availableCategories.Any(c => c.Source == CategorySource.Metadata)) {
+                            @if (SelectableUserCategories.Any()) {
                                 <optgroup label="User categories">
-                                    @foreach (CategoryBase categoryBase in SelectableCategories.Where(category => category.Source == CategorySource.User)) {
-                                        <option value="@categoryBase.Identity">@categoryBase.Name</option>
-                                    }
-                                </optgroup>
-                                <optgroup label="Current / relevant properties">
-                                    @foreach (CategoryBase categoryBase in SelectableCategories.Where(category =>
-                                        category.Source == CategorySource.Metadata && _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity))) {
-                                        <option value="@categoryBase.Identity">@categoryBase.Name</option>
-                                    }
-                                </optgroup>
-                                <optgroup label="More common card properties">
-                                    @foreach (CategoryBase categoryBase in SelectableCategories.Where(category =>
-                                        CategoryCatalog.IsCommonMetadata(category) && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity))) {
+                                    @foreach (CategoryBase categoryBase in SelectableUserCategories) {
                                         <option value="@categoryBase.Identity">@categoryBase.Name</option>
                                     }
                                 </optgroup>
                             }
-                            else {
-                                @foreach (CategoryBase categoryBase in SelectableCategories) {
-                                    <option value="@categoryBase.Identity">@categoryBase.Name</option>
-                                }
+                            @if (SelectableRelevantProperties.Any()) {
+                                <optgroup label="Relevant properties">
+                                    @foreach (CategoryBase categoryBase in SelectableRelevantProperties) {
+                                        <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                                    }
+                                </optgroup>
+                            }
+                            @if (SelectableCommonProperties.Any()) {
+                                <optgroup label="Common properties">
+                                    @foreach (CategoryBase categoryBase in SelectableCommonProperties) {
+                                        <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                                    }
+                                </optgroup>
                             }
                         </select>
                     }
@@ -363,6 +360,12 @@
     private IEnumerable<CategoryBase> SelectableCategories => AndScope && _andSeed is { } seed
         ? _availableCategories.Where(category => !seed.Selector.CategoryIdentities.Contains(category.Identity, StringComparer.Ordinal))
         : _availableCategories;
+    private IEnumerable<CategoryBase> SelectableUserCategories => SelectableCategories
+        .Where(static category => category.Source == CategorySource.User);
+    private IEnumerable<CategoryBase> SelectableRelevantProperties => SelectableCategories
+        .Where(category => category.Source == CategorySource.Metadata && _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity));
+    private IEnumerable<CategoryBase> SelectableCommonProperties => SelectableCategories
+        .Where(category => CategoryCatalog.IsCommonMetadata(category) && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity));
     private string ScopeInstruction => AndScope ? "Add AND condition to" : "Add alternative to";
     private string ScopeLabel {
         get {

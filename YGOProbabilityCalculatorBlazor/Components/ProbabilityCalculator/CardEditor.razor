@@ -209,27 +209,27 @@
                             value="@_selectedCategory"
                             @onchange="e => _selectedCategory = e.Value?.ToString() ?? string.Empty">
                         <option value="">Select category…</option>
-                        <optgroup label="User categories">
-                            @foreach (CategoryBase categoryBase in CategoryBases.Where(category => category.Source == CategorySource.User)) {
-                                <option value="@categoryBase.Identity">@categoryBase.Name</option>
-                            }
-                        </optgroup>
-                        <optgroup label="Current / relevant properties">
-                            @foreach (CategoryBase categoryBase in CategoryBases.Where(category =>
-                                category.Source == CategorySource.Metadata
-                                && RelevantMetadataCategoryIdentities.Contains(category.Identity)
-                                && !Card.Categories.Contains(category))) {
-                                <option value="@categoryBase.Identity">@categoryBase.Name</option>
-                            }
-                        </optgroup>
-                        <optgroup label="More common card properties">
-                            @foreach (CategoryBase categoryBase in CategoryBases.Where(category =>
-                                CategoryCatalog.IsCommonMetadata(category)
-                                && !RelevantMetadataCategoryIdentities.Contains(category.Identity)
-                                && !Card.Categories.Contains(category))) {
-                                <option value="@categoryBase.Identity">@categoryBase.Name</option>
-                            }
-                        </optgroup>
+                        @if (AvailableUserCategoryOptions.Any()) {
+                            <optgroup label="User categories">
+                                @foreach (CategoryBase categoryBase in AvailableUserCategoryOptions) {
+                                    <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                                }
+                            </optgroup>
+                        }
+                        @if (AvailableRelevantPropertyOptions.Any()) {
+                            <optgroup label="Relevant properties">
+                                @foreach (CategoryBase categoryBase in AvailableRelevantPropertyOptions) {
+                                    <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                                }
+                            </optgroup>
+                        }
+                        @if (AvailableCommonPropertyOptions.Any()) {
+                            <optgroup label="Common properties">
+                                @foreach (CategoryBase categoryBase in AvailableCommonPropertyOptions) {
+                                    <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                                }
+                            </optgroup>
+                        }
                     </select>
                 </div>
                 <div class="d-flex align-items-end">
@@ -309,6 +309,19 @@
     private CategoryBase[] UserCategories => Card.Categories
         .Where(category => category.Source == CategorySource.User)
         .ToArray();
+
+    private IEnumerable<CategoryBase> AvailableUserCategoryOptions => CategoryBases
+        .Where(static category => category.Source == CategorySource.User);
+
+    private IEnumerable<CategoryBase> AvailableRelevantPropertyOptions => CategoryBases
+        .Where(category => category.Source == CategorySource.Metadata
+            && RelevantMetadataCategoryIdentities.Contains(category.Identity)
+            && !Card.Categories.Contains(category));
+
+    private IEnumerable<CategoryBase> AvailableCommonPropertyOptions => CategoryBases
+        .Where(category => CategoryCatalog.IsCommonMetadata(category)
+            && !RelevantMetadataCategoryIdentities.Contains(category.Identity)
+            && !Card.Categories.Contains(category));
 
     private CategoryBase[] EffectiveMetadataProperties => Card.Categories
         .Where(category => category.Source == CategorySource.Metadata)
