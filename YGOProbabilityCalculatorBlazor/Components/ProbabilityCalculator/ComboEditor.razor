@@ -1111,9 +1111,6 @@
             _minCount = existing.MinCount.ToString();
             _maxCount = existing.MaximumMode == RequirementMaximumMode.HandSize ? string.Empty : existing.MaxCount.ToString();
         }
-        else {
-            ResetEditorDefaults();
-        }
     }
 
     private Task RemoveCategory(ComboCategory category, int index) {
@@ -1210,9 +1207,6 @@
         if (existing is not null) {
             _minCount = existing.MinCount.ToString();
             _maxCount = existing.MaximumMode == RequirementMaximumMode.HandSize ? string.Empty : existing.MaxCount.ToString();
-        }
-        else {
-            ResetEditorDefaults();
         }
     }
 
