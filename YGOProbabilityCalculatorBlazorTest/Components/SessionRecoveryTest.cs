@@ -465,6 +465,37 @@ public class SessionRecoveryTest {
         Assert.That(Writes, Is.Zero);
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ClearReplacesVisibleOrDismissedRecoveryWithTheEmptyWorkspace(bool dismissRecovery) {
+        Recovery(_sessions.SerializeSession(Working()));
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = _context.RenderComponent<ProbabilityCalculatorComponent>();
+        cut.WaitForState(() => cut.Markup.Contains("Restore previous session", StringComparison.Ordinal));
+
+        if (dismissRecovery) {
+            await Button(cut, "Dismiss").ClickAsync(new());
+            Assert.That(cut.FindAll(".session-recovery-dismissed"), Has.Count.EqualTo(1));
+        }
+
+        await Button(cut, "Clear workspace").ClickAsync(new());
+        Assert.That(cut.FindAll(".clear-workspace-confirmation"), Has.Count.EqualTo(1));
+        Task<string> update = ObserveNextRecoveryUpdate();
+        await Button(cut, "Clear").ClickAsync(new());
+        string payload = await AwaitMilestone(update, "authoritative recovery replacement after clear");
+        JSRuntimeInvocation replacement = _context.JSInterop.Invocations["sessionRecovery.update"].Last();
+        SessionState cleared = await _sessions.LoadSessionAsync(payload);
+
+        Assert.That(replacement.Arguments[3], Is.EqualTo(true));
+        Assert.That(cleared.Categories, Is.Empty);
+        Assert.That(cleared.Cards, Is.Empty);
+        Assert.That(cleared.Combos, Is.Empty);
+        Assert.That(cleared.ComboGroups, Is.Empty);
+        Assert.That(cleared.CategoryColorIndices, Is.Empty);
+        Assert.That(cleared.HandSize, Is.EqualTo(5));
+        Assert.That(cut.FindAll("Restore previous session"), Is.Empty);
+        Assert.That(cut.FindAll(".session-recovery-dismissed"), Is.Empty);
+    }
+
     public sealed class RecoveryHost : ComponentBase {
         [Parameter] public bool Visible { get; set; }
         protected override void BuildRenderTree(RenderTreeBuilder builder) {

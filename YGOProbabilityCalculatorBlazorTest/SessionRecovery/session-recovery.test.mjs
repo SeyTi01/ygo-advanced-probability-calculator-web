@@ -48,6 +48,20 @@ test('750ms debounce coalesces captured bytes and rejects delayed earlier intero
     f.tick(1); assert.equal(f.payload(), 'latest'); assert.equal(f.writes(), 1);
     f.api.update('a', 3, 'rerender'); f.tick(1000); assert.equal(f.writes(), 1);
 });
+
+test('authoritative clear cancels a queued pre-clear snapshot and survives reinitialization', () => {
+    const f = fixture(envelope('older saved workspace'));
+    f.start('a');
+    f.api.update('a', 1, 'captured before clear', true);
+    f.api.update('a', 2, '{"HandSize":5,"Cards":[],"Categories":[],"Combos":[],"ComboGroups":[]}', true);
+    f.api.update('a', 1, 'late pre-clear interop', true);
+    f.tick(750);
+
+    assert.equal(f.payload(), '{"HandSize":5,"Cards":[],"Categories":[],"Combos":[],"ComboGroups":[]}');
+    assert.equal(f.writes(), 1, 'the queued pre-clear snapshot must be cancelled');
+    f.api.dispose('a');
+    assert.equal(f.start('b').payload, '{"HandSize":5,"Cards":[],"Categories":[],"Combos":[],"ComboGroups":[]}');
+});
 test('inspection and idle startup preserve previous data until explicit replacement', () => {
     const raw = envelope(); const f = fixture(raw);
     assert.equal(f.start('a').payload, 'previous');
