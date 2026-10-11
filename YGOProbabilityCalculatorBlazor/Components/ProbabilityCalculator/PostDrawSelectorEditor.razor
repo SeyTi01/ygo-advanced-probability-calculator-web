@@ -8,21 +8,27 @@
         @if (Selector.Kind != CardSelectorKind.Any) {
             <option value="any">Any card (clear filter)</option>
         }
-        <optgroup label="User categories">
-            @foreach (CategoryBase category in Available.Where(category => category.Source == CategorySource.User)) {
-                <option value="@category.Identity">@category.Name</option>
-            }
-        </optgroup>
-        <optgroup label="Current / relevant properties">
-            @foreach (CategoryBase category in RelevantMetadata) {
-                <option value="@category.Identity">@category.Name</option>
-            }
-        </optgroup>
-        <optgroup label="More common card properties">
-            @foreach (CategoryBase category in RemainingCommonMetadata) {
-                <option value="@category.Identity">@category.Name</option>
-            }
-        </optgroup>
+        @if (Available.Any(static category => category.Source == CategorySource.User)) {
+            <optgroup label="User categories">
+                @foreach (CategoryBase category in Available.Where(static category => category.Source == CategorySource.User)) {
+                    <option value="@category.Identity">@category.Name</option>
+                }
+            </optgroup>
+        }
+        @if (RelevantMetadata.Length > 0) {
+            <optgroup label="Relevant properties">
+                @foreach (CategoryBase category in RelevantMetadata) {
+                    <option value="@category.Identity">@category.Name</option>
+                }
+            </optgroup>
+        }
+        @if (RemainingCommonMetadata.Length > 0) {
+            <optgroup label="Common properties">
+                @foreach (CategoryBase category in RemainingCommonMetadata) {
+                    <option value="@category.Identity">@category.Name</option>
+                }
+            </optgroup>
+        }
     </select>
     @if (Selector.Kind != CardSelectorKind.Any) {
         <div class="d-flex flex-wrap align-items-center gap-1 mt-2" aria-label="Removal filter">
@@ -35,7 +41,7 @@
                         string identity = alternative.CategoryIdentities[conjunct];
                         string label = Label(identity);
                         @if (conjunct > 0) { <span class="small">AND</span> }
-                        <span class="badge category-tag text-wrap d-inline-flex align-items-center @ChipCssClass(identity)">
+                        <span class="badge category-tag draw-selector-chip text-wrap d-inline-flex align-items-center @ChipCssClass(identity)">
                             <span>@label</span>
                             <button type="button" class="btn-close category-remove-button ms-1"
                                     aria-label="Remove eligibility @label" title="Remove eligibility @label"

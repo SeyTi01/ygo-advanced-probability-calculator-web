@@ -387,6 +387,10 @@
     line-height: 1.35;
 }
 
+.calculator-workspace ::deep .accordion-body .draw-selector-chip {
+    margin-block-end: 0;
+}
+
 .calculator-workspace ::deep .entry-inactive .entry-heading .accordion-button {
     font-style: italic;
 }

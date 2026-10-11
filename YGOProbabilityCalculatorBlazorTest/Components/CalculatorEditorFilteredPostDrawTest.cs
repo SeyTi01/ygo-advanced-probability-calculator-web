@@ -39,13 +39,18 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
 
         foreach (IRenderedComponent<PostDrawSelectorEditor> selector in new[] { pre, post }) {
             string[] optionValues = selector.FindAll("optgroup option").Select(static option => option.GetAttribute("value")!).ToArray();
+            IElement[] groups = selector.FindAll("optgroup").ToArray();
             Assert.That(optionValues, Does.Contain(monster.Identity).And.Contain(dark.Identity)
                 .And.Contain(CardPropertyProvider.CommonCategories.Single(category => category.MetadataKey == "level:8").Identity)
                 .And.Contain(spell.Identity));
             Assert.That(optionValues.Distinct(StringComparer.Ordinal).Count(), Is.EqualTo(optionValues.Length));
+            Assert.That(groups.Select(static group => group.GetAttribute("label")),
+                Is.EqualTo(new[] { "User categories", "Relevant properties", "Common properties" }));
+            Assert.That(groups.All(static group => group.QuerySelectorAll("option").Length > 0), Is.True);
         }
 
         Assert.That(EligibilityChip(pre, fire.Name).ClassList, Does.Contain("card-property-color-attribute-fire"));
+        Assert.That(EligibilityChip(pre, fire.Name).ClassList, Does.Contain("draw-selector-chip"));
         Assert.That(EligibilityChip(pre, role.Name).ClassList, Does.Contain("category-color-7").And.Not.Contain("card-property-tag"));
         Assert.That(EligibilityChip(pre, dark.Name).ClassList, Does.Contain("card-property-color-attribute-dark"));
         Assert.That(EligibilityChip(post, monster.Name).ClassList, Does.Contain("card-property-color-monster"));

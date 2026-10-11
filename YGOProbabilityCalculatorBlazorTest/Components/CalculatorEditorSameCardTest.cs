@@ -39,7 +39,7 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         await onlyCategoryEditor.Find(".accordion-button").ClickAsync(new());
         Assert.That(Button(onlyCategoryEditor, "Add AND").HasAttribute("disabled"), Is.False,
             "Common card properties provide new same-card conjuncts even when no user category remains.");
-        Assert.That(onlyCategoryEditor.FindAll("optgroup[label='More common card properties'] option")
+        Assert.That(onlyCategoryEditor.FindAll("optgroup[label='Common properties'] option")
             .Any(option => option.GetAttribute("value") == "metadata:kind:monster"), Is.True);
 
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {

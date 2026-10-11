@@ -36,6 +36,9 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
 
+        Assert.That(editor.FindAll("optgroup").Select(static group => group.GetAttribute("label")),
+            Is.EqualTo(new[] { "Common properties" }));
+        Assert.That(editor.FindAll("optgroup").All(static group => group.QuerySelectorAll("option").Length > 0), Is.True);
         Assert.That(editor.FindAll("option[value^='metadata:']").Select(static option => option.GetAttribute("value")),
             Does.Contain(monster.Identity).And.Contain(fire.Identity).And.Contain(dark.Identity)
                 .And.Contain(level8.Identity).And.Contain(quickPlay.Identity));
