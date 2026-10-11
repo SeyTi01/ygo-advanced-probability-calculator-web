@@ -76,7 +76,7 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
             }
 
             cardMasks[mask] = cardMasks.GetValueOrDefault(mask) + card.Copies;
-            WorkBudget.CheckStorage(cardMasks.Count, (long)cardMasks.Count * (categories.Length + 1));
+            budget.CheckStorage(cardMasks.Count, (long)cardMasks.Count * (categories.Length + 1));
         }
 
         if (_totalWays is null) {
@@ -160,7 +160,7 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
         // The same binomial row is used by every state in this convolution.
         budget.Spend(maxDraw + 1L);
         // Check the length in long arithmetic before int addition/allocation.
-        WorkBudget.CheckStorage(maxDraw + 1L, maxDraw + 1L);
+        budget.CheckStorage(maxDraw + 1L, maxDraw + 1L);
         BigInteger[] binomials = new BigInteger[maxDraw + 1];
         BigInteger binomial = 1;
         long binomialCells = maxDraw + 1L;
@@ -168,7 +168,7 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
         for (int draw = 0; draw <= maxDraw; draw++) {
             budget.Spend(1 + binomial.GetBitLength() / 64);
             binomialCells += WorkBudget.IntegerCells(binomial);
-            WorkBudget.CheckStorage(maxDraw + 1L, binomialCells);
+            budget.CheckStorage(maxDraw + 1L, binomialCells);
             binomials[draw] = binomial;
             binomial = binomial * (groupSize - draw) / (draw + 1);
         }
@@ -222,7 +222,7 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
                 BigInteger updated = previous + increment;
                 nextIntegerCells += WorkBudget.IntegerCells(updated) - (existed ? WorkBudget.IntegerCells(previous) : 0);
                 int entries = next.Count + (existed ? 0 : 1);
-                WorkBudget.CheckStorage(entries, (long)entries * categories.Length + nextIntegerCells);
+                budget.CheckStorage(entries, (long)entries * categories.Length + nextIntegerCells);
                 next[key] = updated;
             }
         }
@@ -241,7 +241,7 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
         for (int i = 1; i <= k; i++) {
             budget.Spend(1 + result.GetBitLength() / 64);
             result = result * (n - (k - i)) / i;
-            WorkBudget.CheckStorage(1, WorkBudget.IntegerCells(result));
+            budget.CheckStorage(1, WorkBudget.IntegerCells(result));
         }
 
         return result;

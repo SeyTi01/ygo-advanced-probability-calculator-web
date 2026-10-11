@@ -18,7 +18,7 @@ internal sealed class DrawEffectCalculation(List<Card> deck, int handSize, WorkB
                 ordinaryCopies = checked(ordinaryCopies + card.Copies);
             }
 
-            WorkBudget.CheckStorage(deck.Count, deck.Count + (long)effects.Count);
+            budget.CheckStorage(deck.Count, deck.Count + (long)effects.Count);
         }
 
         if (effects.Count == 0) {
@@ -53,7 +53,7 @@ internal sealed class DrawEffectCalculation(List<Card> deck, int handSize, WorkB
             }
 
             long cells = total.Cells + individual.Sum(value => value.Cells) + grouped.Sum(value => value.Cells);
-            WorkBudget.CheckStorage(1L + individual.Length + grouped.Length, cells);
+            budget.CheckStorage(1L + individual.Length + grouped.Length, cells);
         }
 
         return new(total, individual, grouped);

@@ -38,7 +38,7 @@ internal sealed class ScenarioConditioner(int ordinaryRows, int randomHandSize, 
             }
 
             projected[eligible] = new(eligible, min, max);
-            WorkBudget.CheckStorage(projected.Count, (long)projected.Count * (3 + ordinaryRows / 32));
+            budget.CheckStorage(projected.Count, (long)projected.Count * (3 + ordinaryRows / 32));
         }
 
         // Residual bounds include every Hall subset. Original role metadata is not

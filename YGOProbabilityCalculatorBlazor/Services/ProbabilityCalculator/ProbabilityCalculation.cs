@@ -26,8 +26,12 @@ internal sealed class ProbabilityCalculation {
     private readonly ScenarioConditioner? _conditioner;
     private readonly WorkBudget _budget;
 
-    internal ProbabilityCalculation(List<Card> deck, int handSize, CalculationWorkPolicy workPolicy)
-        : this(deck, handSize, new WorkBudget(workPolicy)) { }
+    internal ProbabilityCalculation(
+        List<Card> deck,
+        int handSize,
+        CalculationWorkPolicy workPolicy,
+        CalculationStoragePolicy? storagePolicy = null
+    ) : this(deck, handSize, new WorkBudget(workPolicy, storagePolicy)) { }
 
     internal ProbabilityCalculation(List<Card> deck, int handSize, WorkBudget budget, List<Card>? retained = null) {
         _budget = budget;

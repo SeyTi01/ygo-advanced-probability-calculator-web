@@ -1,0 +1,116 @@
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+
+<div class="calculation-settings-menu" @onkeydown="HandleKeyDown" @onkeydown:stopPropagation="true">
+    <button @ref="_trigger"
+            type="button"
+            class="btn btn-outline-secondary calculation-settings-trigger"
+            aria-label="Calculation settings"
+            title="Calculation settings"
+            aria-haspopup="dialog"
+            aria-expanded="@(_isOpen ? "true" : "false")"
+            aria-controls="calculationSettingsPanel"
+            @onclick="ToggleMenu">
+        <span aria-hidden="true">⚙</span>
+    </button>
+
+    <section id="calculationSettingsPanel"
+             class="calculation-settings-panel"
+             role="dialog"
+             aria-labelledby="calculationSettingsHeading"
+             hidden="@(!_isOpen)">
+        <h2 id="calculationSettingsHeading" class="h6 mb-3">Calculation settings</h2>
+
+        <div class="calculation-settings-option">
+            <div class="form-check form-switch mb-1">
+                <input @ref="_drawEffectsInput"
+                       type="checkbox"
+                       class="form-check-input"
+                       id="drawEffectsEnabled"
+                       role="switch"
+                       checked="@DrawEffectsEnabled"
+                       aria-describedby="drawEffectsHelp"
+                       @onchange="OnDrawEffectsChanged" />
+                <label class="form-check-label" for="drawEffectsEnabled">Draw effects</label>
+            </div>
+            <p id="drawEffectsHelp" class="form-text mb-0">
+                When off, configured draw effects are ignored and those cards are treated as ordinary cards.
+            </p>
+        </div>
+
+        <div class="calculation-settings-option">
+            <label class="form-label mb-1" for="storageSafetyTier">Storage safety limit</label>
+            <select id="storageSafetyTier"
+                    class="form-select"
+                    value="@StorageTier"
+                    aria-describedby="storageSafetyHelp"
+                    @onchange="OnStorageTierChanged">
+                <option value="Standard">Standard (32,768 entries / 262,144 cells)</option>
+                <option value="High">High (65,536 entries / 524,288 cells)</option>
+                <option value="VeryHigh">Very high (131,072 entries / 1,048,576 cells)</option>
+            </select>
+            <p id="storageSafetyHelp" class="form-text mb-0">
+                Limits apply per calculation structure, not to total browser memory. Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy.
+            </p>
+        </div>
+    </section>
+</div>
+
+@code {
+    [Parameter]
+    public bool DrawEffectsEnabled { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<bool> DrawEffectsEnabledChanged { get; set; }
+
+    [Parameter]
+    public CalculationStorageTier StorageTier { get; set; } = CalculationStorageTier.Standard;
+
+    [Parameter]
+    public EventCallback<CalculationStorageTier> StorageTierChanged { get; set; }
+
+    private bool _isOpen;
+    private bool _focusDrawEffectsAfterRender;
+    private bool _focusTriggerAfterRender;
+    private ElementReference _trigger;
+    private ElementReference _drawEffectsInput;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_focusDrawEffectsAfterRender) {
+            _focusDrawEffectsAfterRender = false;
+            await _drawEffectsInput.FocusAsync();
+        }
+        else if (_focusTriggerAfterRender) {
+            _focusTriggerAfterRender = false;
+            await _trigger.FocusAsync();
+        }
+    }
+
+    private Task ToggleMenu() {
+        _isOpen = !_isOpen;
+        _focusDrawEffectsAfterRender = _isOpen;
+        _focusTriggerAfterRender = !_isOpen;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleKeyDown(KeyboardEventArgs eventArgs) {
+        if (!_isOpen || eventArgs.Key != "Escape") {
+            return Task.CompletedTask;
+        }
+
+        _isOpen = false;
+        _focusTriggerAfterRender = true;
+        return Task.CompletedTask;
+    }
+
+    private Task OnDrawEffectsChanged(ChangeEventArgs eventArgs) =>
+        DrawEffectsEnabledChanged.InvokeAsync(eventArgs.Value is bool enabled && enabled);
+
+    private Task OnStorageTierChanged(ChangeEventArgs eventArgs) {
+        if (!Enum.TryParse(eventArgs.Value?.ToString(), ignoreCase: false, out CalculationStorageTier tier) ||
+            !Enum.IsDefined(tier)) {
+            return Task.CompletedTask;
+        }
+
+        return StorageTierChanged.InvokeAsync(tier);
+    }
+}

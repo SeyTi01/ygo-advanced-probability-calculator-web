@@ -159,26 +159,6 @@
     gap: 1rem;
 }
 
-.draw-effects-control .form-check {
-    margin: 0;
-    white-space: nowrap;
-}
-
-.draw-effects-help {
-    display: inline-block;
-    margin-left: 0.25rem;
-    color: var(--bs-secondary-color);
-    cursor: help;
-    font-size: 0.875em;
-    line-height: 1;
-}
-
-.draw-effects-help:focus-visible {
-    border-radius: 0.125rem;
-    outline: 2px solid var(--bs-primary);
-    outline-offset: 2px;
-}
-
 .session-toolbar {
     flex: 1 1 32rem;
     min-width: 0;
@@ -405,6 +385,14 @@
 }
 
 @media (max-width: 767.98px) {
+    .session-controls .calculation-controls {
+        width: 100%;
+    }
+
+    .session-controls .calculation-controls ::deep .calculation-settings-menu {
+        margin-left: auto;
+    }
+
     .session-toolbar {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));

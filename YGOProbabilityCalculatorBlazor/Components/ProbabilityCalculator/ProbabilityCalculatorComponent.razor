@@ -57,25 +57,10 @@
                        @bind:after="OnHandSizeChanged"
                        min="1"/>
             </div>
-            <div class="draw-effects-control">
-                <div class="form-check form-switch">
-                    <input type="checkbox"
-                           class="form-check-input"
-                           id="drawEffectsEnabled"
-                           role="switch"
-                           @bind="_drawEffectsEnabled"
-                           @bind:after="OnDrawEffectsChanged"
-                           aria-describedby="drawEffectsHelp"/>
-                    <label class="form-check-label" for="drawEffectsEnabled">Draw effects</label>
-                    <span class="draw-effects-help"
-                          tabindex="0"
-                          role="img"
-                          aria-label="Draw effects information"
-                          title="When off, configured draw effects are ignored and those cards are treated as ordinary cards."
-                          aria-describedby="drawEffectsHelp">ⓘ</span>
-                </div>
-                <span id="drawEffectsHelp" class="visually-hidden">When off, configured draw effects are ignored and those cards are treated as ordinary cards.</span>
-            </div>
+            <CalculationSettingsMenu DrawEffectsEnabled="_drawEffectsEnabled"
+                                      DrawEffectsEnabledChanged="OnDrawEffectsChanged"
+                                      StorageTier="_storageTier"
+                                      StorageTierChanged="OnStorageTierChanged" />
         </div>
     </div>
     @if (_importError is not null) {
@@ -324,6 +309,7 @@
     private CategoryRenameNotice? _categoryRename;
     private int _handSize = 5;
     private bool _drawEffectsEnabled = true;
+    private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
     private bool _isCalculating;
     private long _calculationVersion;
     private long _calculationRequestId;
@@ -762,7 +748,8 @@
                 _handSize,
                 _comboGroups,
                 CalculationWorkPolicy.Interactive,
-                _drawEffectsEnabled
+                _drawEffectsEnabled,
+                CalculationStoragePolicy.ForTier(_storageTier)
             );
             PinnedCalculationContext comparisonContext = CaptureComparisonContext();
             ProbabilityCalculationResult result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
@@ -824,7 +811,23 @@
 
     private void OnHandSizeChanged() => InvalidateCalculation();
 
-    private void OnDrawEffectsChanged() => InvalidateCalculation();
+    private void OnDrawEffectsChanged(bool enabled) {
+        if (_drawEffectsEnabled == enabled) {
+            return;
+        }
+
+        _drawEffectsEnabled = enabled;
+        InvalidateCalculation();
+    }
+
+    private void OnStorageTierChanged(CalculationStorageTier tier) {
+        if (_storageTier == tier) {
+            return;
+        }
+
+        _storageTier = tier;
+        InvalidateCalculation();
+    }
 
     private void OnCategoriesChanged() => InvalidateCalculation();
 

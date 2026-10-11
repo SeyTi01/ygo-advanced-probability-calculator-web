@@ -4,18 +4,29 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 public class ProbabilityCalculatorService : IProbabilityCalculatorService {
-    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) => CalculateProbabilityForCombos(deck, combos, handSize, CalculationWorkPolicy.Default);
+    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize) =>
+        CalculateProbabilityForCombos(deck, combos, handSize, CalculationWorkPolicy.Default, CalculationStoragePolicy.Standard);
 
-    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize, CalculationWorkPolicy workPolicy) {
+    public double CalculateProbabilityForCombos(List<Card> deck, List<Combo> combos, int handSize, CalculationWorkPolicy workPolicy) =>
+        CalculateProbabilityForCombos(deck, combos, handSize, workPolicy, CalculationStoragePolicy.Standard);
+
+    public double CalculateProbabilityForCombos(
+        List<Card> deck,
+        List<Combo> combos,
+        int handSize,
+        CalculationWorkPolicy workPolicy,
+        CalculationStoragePolicy storagePolicy
+    ) {
         ArgumentNullException.ThrowIfNull(workPolicy);
+        ArgumentNullException.ThrowIfNull(storagePolicy);
         ValidateComboCount(combos);
         ValidateCardIds(deck);
 
         if (!deck.Any(card => card.DrawCount is not null)) {
-            return new ProbabilityCalculation(deck, handSize, workPolicy).CalculateUnion(combos);
+            return new ProbabilityCalculation(deck, handSize, workPolicy, storagePolicy).CalculateUnion(combos);
         }
 
-        WorkBudget budget = new(workPolicy);
+        WorkBudget budget = new(workPolicy, storagePolicy);
         return new DrawEffectCalculation(deck, handSize, budget).Calculate(combos, null, totalOnly: true).Total.ToDouble(budget);
     }
 
@@ -24,7 +35,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         List<Combo> combos,
         int handSize,
         IReadOnlyList<ComboGroup>? groups = null
-    ) => CalculateProbabilityResults(deck, combos, handSize, groups, CalculationWorkPolicy.Default);
+    ) => CalculateProbabilityResults(deck, combos, handSize, groups, CalculationWorkPolicy.Default, CalculationStoragePolicy.Standard);
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
         List<Card> deck,
@@ -32,16 +43,26 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         int handSize,
         IReadOnlyList<ComboGroup>? groups,
         CalculationWorkPolicy workPolicy
+    ) => CalculateProbabilityResults(deck, combos, handSize, groups, workPolicy, CalculationStoragePolicy.Standard);
+
+    public ProbabilityCalculationResult CalculateProbabilityResults(
+        List<Card> deck,
+        List<Combo> combos,
+        int handSize,
+        IReadOnlyList<ComboGroup>? groups,
+        CalculationWorkPolicy workPolicy,
+        CalculationStoragePolicy storagePolicy
     ) {
         ArgumentNullException.ThrowIfNull(workPolicy);
+        ArgumentNullException.ThrowIfNull(storagePolicy);
         ValidateComboCount(combos);
         ValidateCardIds(deck);
 
         if (!deck.Any(card => card.DrawCount is not null)) {
-            return new ProbabilityCalculation(deck, handSize, workPolicy).CalculateResults(combos, groups);
+            return new ProbabilityCalculation(deck, handSize, workPolicy, storagePolicy).CalculateResults(combos, groups);
         }
 
-        WorkBudget budget = new(workPolicy);
+        WorkBudget budget = new(workPolicy, storagePolicy);
         return new DrawEffectCalculation(deck, handSize, budget).Calculate(combos, groups).ToPublic(combos, groups, budget);
     }
 
