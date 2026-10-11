@@ -1,23 +1,23 @@
 # Repository instructions
 
-Use these instructions when changing this repository. Read [README.md](README.md) for the user-facing description; keep issue work focused on the requested behavior.
+Read [README.md](README.md) for the user-facing description. Keep changes focused on the requested behavior.
 
 ## Project map
 
-- The .NET 10 Blazor WebAssembly app is in `YGOProbabilityCalculatorBlazor/`; `YGOProbabilityCalculatorBlazor/Pages/Index.razor` renders the main calculator.
-- `YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/ProbabilityCalculatorService.cs` implements the probability calculation.
-- `YGOProbabilityCalculatorBlazor/Models/` contains cards, categories, combo constraints, and session state.
-- `YGOProbabilityCalculatorBlazor/Components/ProbabilityCalculator/` contains the calculator and its card, category, and combo editors. `YGOProbabilityCalculatorBlazor/Components/ProbabilityCalculator/EditorKeys.cs` supports stable editor identity.
-- Import and persistence code lives in `YGOProbabilityCalculatorBlazor/Services/DeckImport/`, `YGOProbabilityCalculatorBlazor/Services/Session/`, and `YGOProbabilityCalculatorBlazor/Services/Converter/`.
-- The test project is `YGOProbabilityCalculatorBlazorTest/`. It contains bUnit editor tests and focused service tests.
+Both projects target .NET 10 (`net10.0`); the app uses Blazor WebAssembly / C# 14. App paths below are relative to `YGOProbabilityCalculatorBlazor/`:
+
+- `Pages/Index.razor`: main calculator.
+- `Services/ProbabilityCalculator/ProbabilityCalculatorService.cs`: probability engine.
+- `Models/`: cards, categories, combo constraints, sessions.
+- `Components/ProbabilityCalculator/`: calculator and card/category/combo editors; `EditorKeys.cs` preserves editor identity.
+- `Services/DeckImport/`, `Services/Session/`, `Services/Converter/`: import and persistence.
+- `YGOProbabilityCalculatorBlazorTest/` (repository root): bUnit editor and focused service tests.
 
 ## Local development and verification
 
-The solution's projects target `.NET 10` (`net10.0`); the README identifies C# 14. At the start of implementation or test work, run `dotnet --info` and `dotnet --list-sdks` before substantial work, using the execution mode required for the environment below.
+Before implementation or test work, run `dotnet --info` and `dotnet --list-sdks`; use the environment's required execution mode below. Install a usable .NET 10 SDK if missing. On restricted Linux / ChatGPT Work, **read and follow [RESTRICTED-LINUX.md](scripts/codex/RESTRICTED-LINUX.md)** before reporting a missing SDK or WebAssembly task-host failure as blocked: the nonprivileged SDK bootstrap is mandatory when .NET 10 is missing; the task-host workaround requires its documented error and socket-probe conditions. Report exact failed commands/errors and never claim unrun tests.
 
-If no usable .NET 10 SDK is available, install it. In restricted Linux / ChatGPT Work environments, attempt the documented nonprivileged bootstrap below before reporting verification as blocked. Report the exact failed command and error for any environment restriction; do not claim tests that could not run.
-
-Run commands from the repository root:
+From the repository root:
 
 ```sh
 dotnet restore YGOProbabilityCalculatorBlazor.sln
@@ -25,20 +25,9 @@ dotnet build YGOProbabilityCalculatorBlazor.sln --no-restore
 dotnet test YGOProbabilityCalculatorBlazor.sln --no-build
 ```
 
-For focused regression runs:
+For focused tests, add `--filter "FullyQualifiedName~YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator"` or `--filter "FullyQualifiedName~CalculatorEditorTest"` to `dotnet test YGOProbabilityCalculatorBlazor.sln`. Coverage: add `--collect:"XPlat Code Coverage"` (the test project uses `coverlet.collector`). Run the app with `dotnet run --project YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj`.
 
-```sh
-dotnet test YGOProbabilityCalculatorBlazor.sln --filter "FullyQualifiedName~YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator"
-dotnet test YGOProbabilityCalculatorBlazor.sln --filter "FullyQualifiedName~CalculatorEditorTest"
-```
-
-Run the app locally with `dotnet run --project YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj`. Coverage collection is available through the test project's `coverlet.collector` package:
-
-```sh
-dotnet test YGOProbabilityCalculatorBlazor.sln --collect:"XPlat Code Coverage"
-```
-
-`.github/workflows/tests.yml` runs the full regular test suite on every branch push, including feature branches, `dev`, and `main`. CI complements rather than replaces local verification: run relevant tests locally before pushing and report the exact local commands, results, and execution mode in pull requests. Only if the local environment reports MSBuild parallel-node or reuse errors, retry the affected command with `-m:1` and report that workaround; serial builds are not a general requirement.
+`.github/workflows/tests.yml` runs the full regular suite on every branch push, including feature branches, `dev`, and `main`. CI complements local verification; run relevant tests before pushing. Retry with `-m:1` only after MSBuild parallel-node/reuse errors and report the workaround; serial builds are not the default.
 
 ### Windows Codex execution requirements
 
@@ -68,95 +57,61 @@ For Windows Codex tasks using the verified restricted environment:
 
 ### Release WebAssembly publishing
 
-Install the `wasm-tools` workload for the exact .NET SDK that runs a Release publish. The workload is scoped to that SDK; the GitHub Actions publish and `YGOProbabilityCalculatorBlazor/build.sh` install it explicitly. This enables the normal WebAssembly build optimizations and does not enable AOT.
-
-### Restricted Linux and ChatGPT Work: .NET 10 SDK bootstrap
-
-If the initial SDK check finds `dotnet` missing or no usable 10.x SDK, attempt this nonprivileged bootstrap:
-
-```sh
-mkdir -p /tmp/dotnet10-sdk
-curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
-TAR_OPTIONS=--no-same-owner bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /tmp/dotnet10-sdk --no-path
-
-export DOTNET_ROOT=/tmp/dotnet10-sdk
-export PATH="$DOTNET_ROOT:$PATH"
-
-dotnet --info
-dotnet --list-sdks
-```
-
-The `TAR_OPTIONS` setting prevents GNU tar from restoring archive owners, which can fail in restricted filesystems. You may also invoke `/tmp/dotnet10-sdk/dotnet` directly. After confirming a 10.x SDK, run the normal restore, build, and test commands above. If the bootstrap fails, report the exact failed command and error.
-
-### Restricted Linux / ChatGPT Work: WebAssembly task-host failures
-
-This is a separate build-time issue, unrelated to a missing SDK. After obtaining a usable .NET 10 SDK, run the normal restore, build, and test commands above first; a successful restore alone does not prove the app or tests build. If a build or test fails with `MSB4216`/`MSB4027` or `SocketException (13): Permission denied` while MSBuild starts an out-of-process task host, and a socket probe confirms Unix sockets are blocked while loopback TCP works, use the following verification-only workaround rather than declaring the suite un-runnable:
-
-- Use writable temporary `DOTNET_CLI_HOME` and `NUGET_PACKAGES` locations.
-- Disable MSBuild/node reuse and compiler/Razor build servers.
-- Create a temporary MSBuild targets file **outside the repository** that re-registers the unchanged official WebAssembly and ILLink tasks with the default in-process task factory by using `<UsingTask ... AssemblyFile="..." Override="true" />`.
-- For the current .NET 10 toolchain, the affected tasks are `GenerateWasmBootJson`, `ComputeWasmBuildAssets`, `ComputeWasmPublishAssets`, `ConvertDllsToWebCil`, `ComputeManagedAssemblies`, and `ILLink`. Resolve their DLL paths from the actually restored NuGet packages; do not hard-code an old package version.
-- Pass the temporary file with `-p:CustomBeforeMicrosoftCommonTargets=<path>` to build/publish. This must only change task process placement; do not skip targets or replace task assemblies.
-- After a successful build, run the normal full test suite with `--no-build`. For publish verification, inspect diagnostic logs to confirm the WebAssembly/ILLink tasks actually executed.
-- Never commit the temporary override file or sandbox-specific paths. Cloudflare/local builds do not require this workaround.
-
-The .NET 10 migration PR #46 contains one verified example of this workaround and the exact commands used. Prefer reproducing the technique with the currently restored SDK/package versions over copying its temporary paths verbatim.
+Install SDK-scoped `wasm-tools` for the exact publishing SDK, as GitHub Actions and `YGOProbabilityCalculatorBlazor/build.sh` do. This enables normal WebAssembly optimizations without AOT.
 
 ## C# style and readability
 
-- Apply these rules to ordinary C# files and C# embedded in Razor, including `@code` blocks; preserve markup and layout during readability work.
-- Use braces for ordinary control flow, with opening braces on the declaration/control line. Keep normal `!condition` spacing.
-- Separate distinct logical blocks and methods with one blank line; separate fields from the next member, and terminal flow where it clarifies structure. Keep related declarations compact and avoid multiple blank lines.
-- Use explicit local types, including in loops; reserve `var` for anonymous or otherwise impractical-to-name types. Use target-typed `new()` when the declared type is explicit.
-- Name private instance fields `_camelCase`; do not apply this convention to methods, properties, parameters, or locals.
-- Extract visually dense conditions into meaningfully named booleans. Prefer clear switch expressions or local steps over hard-to-read nested ternaries.
-- Line length is advisory: short readable declarations, calls, and expression-bodied members may remain on one line, even slightly beyond normal page width. Incidental guard/storage/log calls may stay compact.
-- When a declaration genuinely needs wrapping, use one parameter per line and a separate closing `) {` line aligned with the declaration. Apply this to constructors, primary constructors, and local functions too. For significant wrapped calls, use one argument per line and a separate closing `)` line; avoid arbitrary partial wrapping.
-- Use descriptive lambda names in meaningful chains and split dense fluent expressions into readable stages; keep short obvious expressions and conventional numeric loop indices compact.
-- Use modern C# syntax only when it clarifies intent and preserves behavior. Preserve defensive runtime checks, collection order, exception meaning, serialized data, and test expectations.
-- Nullable annotations document contracts; both projects use `Nullable=annotations` to disable nullable flow warnings while retaining other compiler/analyzer diagnostics.
-- Apply human judgment for readability changes. CleanupCode, `dotnet format`, and analyzer quick fixes are not the style authority; never automatically run them for a requested cleanup. Targeted non-mutating diagnostics may be useful.
-- Analyzer suggestions about `static`, accessibility, nullability, or impossible-looking defensive states require verification of call sites and framework, serialization, DI, and build contracts before any change. Do not remove defensive validation to satisfy analysis.
+Applies to C# and Razor C#, including `@code`; preserve markup/layout during readability work.
+
+- Brace ordinary control flow; put opening braces on declaration/control lines. Keep normal `!condition` spacing.
+- Use one blank line between logical blocks/methods, after fields, and before terminal flow when helpful. Keep related declarations compact; avoid multiple blank lines.
+- Use explicit local/loop types; reserve `var` for anonymous or impractical-to-name types. Use target-typed `new()` with explicit declared types.
+- Name only private instance fields `_camelCase`.
+- Name dense conditions with meaningful booleans; prefer switch expressions or local steps to nested ternaries.
+- Line length is advisory. Short readable declarations, calls, expression-bodied members, and incidental guard/storage/log calls may stay compact, even slightly over page width.
+- When declarations genuinely need wrapping (including constructors, primary constructors, local functions), use one parameter per line and a separate `) {` line aligned with the declaration. For significant wrapped calls, use one argument per line and a separate `)` line; avoid partial wrapping.
+- Use descriptive lambda names and readable fluent stages; keep obvious short expressions and conventional numeric indices compact.
+- Use modern syntax only when clearer and behavior-preserving. Preserve defensive checks, collection order, exception meaning, serialization, and test expectations.
+- Both projects use `Nullable=annotations`: nullable contracts remain; flow warnings are disabled, other diagnostics retained.
+- Human judgment governs style. Never automatically run CleanupCode, `dotnet format`, or analyzer quick fixes for cleanup; targeted non-mutating diagnostics are allowed.
+- Before analyzer-driven `static`, accessibility, nullability, or defensive-state changes, verify call sites and framework/serialization/DI/build contracts. Never remove defensive validation to satisfy analysis.
 
 ## Probability correctness
 
-- A card may belong to multiple categories. Each copy counts toward every matching hand-wide maximum, but can fill only one positive requirement within a combo. Positive category and direct-card minima need distinct physical copies; separate combos are evaluated independently.
-- Each combo requires all of its category constraints; success means at least one combo matches. Preserve inclusive minimum and maximum bounds and count overlapping combos only once.
-- A `0/0` constraint is valid. Do not clamp, discard, or silently change valid constraints.
-- When changing calculation behavior, add targeted cases to `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/`. Prefer the existing `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/SmallDeckOracleTest.cs`, which enumerates physical hands and evaluates constraints independently of the production aggregation algorithm.
-- Keep oracle expectations independent of the implementation under test. Verify expected values with exhaustive enumeration or another actual calculation tool; never select numbers by intuition or memory. Cover overlapping memberships/combos and boundary constraints when relevant.
+- Cards may belong to multiple categories. Each physical copy counts toward every matching hand-wide maximum, but fills only one positive requirement per combo. Category/direct-card minima require distinct copies; combos are evaluated independently.
+- All category constraints within a combo must match; success is the union of matching combos. Preserve inclusive bounds, count overlaps once, and keep valid `0/0` constraints without clamping/discarding/changing them.
+- Calculation changes need targeted tests under `YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/`. Prefer `SmallDeckOracleTest.cs`, which independently enumerates physical hands. Verify expectations by exhaustive enumeration or actual calculation, never intuition/memory; cover relevant overlapping memberships/combos and boundaries.
 
 ## Editor state and compatibility
 
-- Preserve each card and combo editor's draft and active state through edits, list removal/reordering, session loading, and deck import. The list editors use `EditorKeys<T>` and Blazor `@key` to carry UI identity across model replacement; preserve this behavior.
-- Do not overwrite an in-progress draft when a parent value changes. In particular, hand-size changes may update untouched defaults but must not alter user-entered or saved constraints.
-- Add bUnit interaction tests in `YGOProbabilityCalculatorBlazorTest/Components/CalculatorEditorTest.cs` for editor behavior changes, and focused bUnit interaction tests for other component behavior changes when useful.
-- For user-facing component changes, preserve established density, spacing, colors, badge/counter presentation, and icon conventions unless a redesign is requested. Avoid redundant labels or extra detail in compact controls; icon-only controls need accessible names, consistent hover titles/tooltips, keyboard access, and reasonable click targets. Inspect rendered UI or a preview at practical viewport sizes when tooling permits; report visual-check limits separately from test results.
-- Preserve existing saved-session JSON and `.ydk` import behavior unless the issue explicitly changes it. For persistence or import changes, add focused coverage under `YGOProbabilityCalculatorBlazorTest/Services/Session/`, `YGOProbabilityCalculatorBlazorTest/Services/Converter/`, or `YGOProbabilityCalculatorBlazorTest/Services/DeckImport/` as appropriate.
+- Preserve drafts and active state through edits, removal/reordering, session loads, and deck imports. Preserve `EditorKeys<T>` and `@key` identity across model replacement.
+- Parent changes must not overwrite drafts. Hand-size changes may update untouched defaults, never user-entered/saved constraints.
+- Editor behavior changes need bUnit interaction tests in `YGOProbabilityCalculatorBlazorTest/Components/CalculatorEditorTest.cs`; add focused tests for other component behavior changes when useful.
+- Unless redesign is requested, preserve UI density, spacing, colors, badges/counters, and icon conventions. Avoid redundant labels/detail in compact controls. Icon-only controls need accessible names, consistent hover titles/tooltips, keyboard access, and reasonable click targets. Inspect rendered UI/previews at practical viewport sizes when possible; report visual limits separately from tests.
+- Preserve session JSON and `.ydk` behavior unless explicitly changed. Persistence/import changes need focused tests under the test project's `Services/Session/`, `Services/Converter/`, or `Services/DeckImport/`.
 
 ## Contribution workflow and boundaries
 
-### Managed worktrees and publication access
+### Workspace and publication access
 
-- Managed/cloud worktrees can report Git ownership or safe-directory errors. Apply `-c safe.directory=<repo>` to the individual Git command; do not change global Git configuration. For a privacy/publication guard that invokes Git internally, pass the equivalent setting to that process with Git's `GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_0`, and `GIT_CONFIG_VALUE_0` variables.
-- Check CLI Git credentials and available authenticated GitHub integration/API publication paths early when a task requires publication; plugin access does not imply terminal Git authentication. Never expose tokens or ask for secrets. A missing GitHub CLI or authentication setup issue alone does not block implementation. Use an authenticated integration only for an authorized remote write, and verify the published commit and tree.
+- For Git ownership errors, use command-scoped `-c safe.directory=<repo>`, never global config. For guards invoking Git, use equivalent `GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_0`, and `GIT_CONFIG_VALUE_0` environment settings.
+- Check CLI Git credentials and authenticated GitHub integration/API paths early for publication tasks. Plugin access does not imply CLI authentication; missing CLI/auth setup does not block implementation. Never expose tokens or request secrets. Integration writes require task authorization and published commit/tree verification.
 
 ### Publication privacy
 
-- Before an owner-authored commit, verify the raw resolved author and committer with `node scripts/codex/privacy-guard.mjs check`. The owner's approved public name is `SeyTi01`; obtain the issued GitHub noreply address from authenticated **Settings → Emails**, never from profile, billing, machine identity, or an inferred numerical ID.
-- Windows Codex setup installs the shared local publication hooks. A fresh clone starts with a blocking, unconfigured policy; configure your explicitly approved public identity using the [guard setup instructions](scripts/codex/PRIVACY.md). Other contributors and forks must use their own approved identity, never silently adopt the owner's identity. Keep existing hooks and their stdin behavior intact; do not bypass guards with `--no-verify` or disabled hooks.
-- Before pushing or making an API write, inspect every newly outgoing raw author/committer, identity trailer, annotated tagger, message, path and changed content. Local config does not configure API commits. Use explicit approved API identity controls or the verified local Git path; do not publish an object to probe API defaults. Inspect incoming author metadata before web/API merge operations.
-- Never derive public hostnames, resources, documentation or screenshots from personal names, emails, machine profiles or billing information. Inspect text and images separately: these metadata hooks cannot detect every identifying string or screenshot.
+- Before owner-authored commits, run `node scripts/codex/privacy-guard.mjs check` on resolved author/committer. Approved owner name: `SeyTi01`. Obtain the issued noreply address only from authenticated **Settings → Emails**, never profile/billing/machine identity or inferred IDs.
+- Windows setup installs shared publication hooks; fresh clones block until configured. Follow [PRIVACY.md](scripts/codex/PRIVACY.md) with explicitly approved public identity. Contributors/forks must use their own identity. Preserve existing hooks/stdin; never bypass guards with `--no-verify` or disabled hooks.
+- Before pushes/API writes, inspect all newly outgoing raw authors/committers, identity trailers, annotated taggers, messages, paths, and changed content. Local config does not set API identities: use explicit approved API controls or guarded local Git; never publish objects to probe defaults. Inspect incoming author metadata before web/API merges.
+- Never derive public hostnames/resources/docs/screenshots from personal names/emails, machine profiles, or billing data. Inspect text and images separately; hooks cannot detect all identifying content.
 - These preemptive checks validate new publication. Changes to existing published history require separate authorization.
 
 ### Linear PR delivery
 
-- Read the issue or task brief, relevant dependencies, applicable agent instructions, and recent code before editing. Create a feature branch from up-to-date `origin/dev`; open a pull request targeting `dev`. Never push directly to protected branches or merge a pull request.
+- Read the issue/task brief, dependencies, applicable agent instructions, and recent code before editing. Branch from current `origin/dev`; open a PR to `dev`. Never push to protected branches or merge PRs.
 - Before finalizing a pull request, fetch the latest `origin/dev` and check recent or concurrent changes for overlap. Rebase the feature branch onto `origin/dev`, resolve conflicts without losing behavior, then rerun affected tests and the full suite when feasible. Do not use `git merge dev`, `git merge origin/dev`, or an implicit `git pull` that creates an upstream-integration merge commit; keep the PR history linear for GitHub's Rebase and merge workflow.
 - Before the first push, review local commits. If an unpushed commit merely corrects or refines an earlier unpushed commit for the same logical change, amend or squash them into one coherent commit. Keep independently meaningful changes in separate commits, grouped by purpose rather than by pull request or file.
   Never amend or squash already-pushed commits, or rewrite published history for cosmetic cleanup. Do not rebase or rewrite a published or shared feature branch without explicit user authorization. If integration needs a rebase but is not authorized, report the need and request authorization. For an authorized rebase, record the expected remote SHA and use an explicit `--force-with-lease`.
 - An authenticated GitHub plugin may be used as a push fallback only when that specific remote operation is authorized. A forced plugin ref update is not an atomic Git lease: recheck the exact remote SHA immediately before updating, verify the intended commit and tree were published, and abort if the remote changed unexpectedly. Never use unguarded CLI force or infer CLI Git authentication from plugin access.
-- Keep each change and pull request focused; add the relevant regression tests described above and run the solution-level checks for substantial changes.
-- In the pull request, report commands and pass/fail results, manual checks, and any limits on verification. Put verification results in the pull request discussion, not in an extra report file.
-- Do not modify GitHub Actions workflows unless the task explicitly requires it. Do not change Cloudflare deployment or branch policies, upgrade frameworks/dependencies, perform broad refactors, or add unrelated documentation unless explicitly requested. Do not intentionally trigger deployments or modify releases without authorization.
-- Do not claim that the hosted site represents a particular branch unless you have verified it.
+- Keep changes/PRs focused; add relevant regression tests above and run solution checks for substantial changes. Report exact verification commands, results, execution mode, manual checks, and limits in the PR discussion, not an extra report file.
+- Unless explicitly requested, do not change GitHub Actions workflows, Cloudflare deployment/branch policies, frameworks/dependencies, or unrelated docs, or perform broad refactors. Do not intentionally trigger deployments or modify releases without authorization.
+- Verify which branch a hosted site represents before claiming it.
