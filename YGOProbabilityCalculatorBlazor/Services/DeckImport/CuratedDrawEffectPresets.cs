@@ -29,7 +29,7 @@ public static class CuratedDrawEffectPresets {
 
     private static readonly CuratedDrawEffectPreset[] Presets = [
         new(38120068, "Trade-In", 2, false, PreDrawRemovalCount: 1,
-            PreDrawSelector: CardSelector.AllOf([FilterProperties[3].Identity, FilterProperties[4].Identity])),
+            PreDrawSelector: CardSelector.For(FilterProperties[4])),
         // Only the hand cost is supported; there is no field-state simulation.
         new(26845680, "Orcustrated Return", 2, true, PreDrawRemovalCount: 1,
             PreDrawSelector: CardSelector.AnyOfSelectors([
