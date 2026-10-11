@@ -40,6 +40,12 @@
     margin-top: 1rem;
 }
 
+.advanced-draw-option {
+    margin-inline-start: 0.5rem;
+    padding-inline-start: 0.75rem;
+    border-inline-start: 2px solid var(--bs-border-color);
+}
+
 .calculation-settings-panel .form-text {
     overflow-wrap: anywhere;
 }
