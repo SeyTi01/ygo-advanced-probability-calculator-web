@@ -2,6 +2,7 @@ using System.Text.Json;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
@@ -10,6 +11,10 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 internal sealed class BackgroundCalculatorTestAdapter(IProbabilityCalculatorService engine) : IBackgroundCalculator {
     public Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken token) {
         CalculationInput input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
+        if (engine is ProbabilityCalculatorService) {
+            return Task.Run(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
+        }
+
         return Task.Run(() => engine.CalculateProbabilityResults(
             input.Cards.Select(card => new Card(
                 card.Categories,
@@ -20,14 +25,16 @@ internal sealed class BackgroundCalculatorTestAdapter(IProbabilityCalculatorServ
                 card.ExternalCardId,
                 card.ManualMetadataCategoryKeys,
                 card.DrawCount,
-                card.DrawOncePerTurn
+                card.DrawOncePerTurn,
+                card.PostDrawDiscardCount
             )).ToList(),
             input.Combos.Select(combo => new Combo(
                 combo.Categories,
                 combo.Name,
                 true,
                 combo.GroupId,
-                combo.Cards
+                combo.Cards,
+                combo.AlternativeGroups
             )).ToList(),
             input.HandSize,
             input.Groups

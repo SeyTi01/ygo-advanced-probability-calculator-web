@@ -110,7 +110,8 @@ public partial class ProbabilityCalculatorComponent {
         _comboGroups,
         ComboLineage,
         GroupLineage,
-        _drawEffectsEnabled
+        _drawEffectsEnabled,
+        _conditionalEffectsEnabled
     );
 
     private PinnedResultComparison? CurrentComboComparison(int index) {

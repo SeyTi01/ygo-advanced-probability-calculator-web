@@ -56,7 +56,7 @@ public class PostDrawEffectsTest {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, size, combos, groups);
         foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
             WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-            ExactCalculationResult result = new DrawEffectCalculation(ordered, size, budget).Calculate(combos, groups);
+            ExactCalculationResult result = new DrawEffectCalculation(ordered, size, budget, true).Calculate(combos, groups);
             ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
@@ -86,15 +86,15 @@ public class PostDrawEffectsTest {
         Combo second = new([], cards: [new("b", 1, 1)]);
         foreach (List<Combo> combos in new[] { new List<Combo> { first }, [second], [first, second], [new([])] }) {
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 2, combos, []);
-            ExactCalculationResult result = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive)).Calculate(combos, []);
+            ExactCalculationResult result = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), true).Calculate(combos, []);
             ExactProbability[] rows = [result.Total, .. result.Combos];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator));
             }
         }
         ProbabilityCalculatorService service = new();
-        double protectedAlone = service.CalculateProbabilityForCombos(deck, [first], 2);
-        double inGlobalPolicy = service.CalculateProbabilityResults(deck, [first, second], 2).ComboProbabilities[0].Probability;
+        double protectedAlone = service.CalculateProbabilityForCombos(deck, [first], 2, CalculationWorkPolicy.Interactive, options: new(true));
+        double inGlobalPolicy = service.CalculateProbabilityResults(deck, [first, second], 2, [], CalculationWorkPolicy.Interactive, options: new(true)).ComboProbabilities[0].Probability;
         Assert.That(protectedAlone, Is.GreaterThan(inGlobalPolicy));
     }
 

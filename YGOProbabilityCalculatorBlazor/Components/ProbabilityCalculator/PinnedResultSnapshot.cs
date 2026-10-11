@@ -20,9 +20,10 @@ public sealed record PinnedCalculationContext(
     string DeckDefinition,
     ImmutableArray<PinnedComboDefinition> Combos,
     ImmutableDictionary<string, PinnedGroupDefinition> Groups,
-    bool DrawEffectsEnabled = true
+    bool DrawEffectsEnabled = true,
+    bool ConditionalEffectsEnabled = false
 ) {
-    public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards · Draw effects {(DrawEffectsEnabled ? "on" : "off")}";
+    public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards · Draw effects {(DrawEffectsEnabled ? "on" : "off")} · {(ConditionalEffectsEnabled ? "Advanced" : "Basic")}";
 
     internal static PinnedCalculationContext Capture(
         int epoch,
@@ -32,7 +33,8 @@ public sealed record PinnedCalculationContext(
         IReadOnlyList<ComboGroup> groups,
         Func<Combo, Guid> comboLineage,
         Func<string, Guid> groupLineage,
-        bool drawEffectsEnabled = true
+        bool drawEffectsEnabled = true,
+        bool conditionalEffectsEnabled = false
     ) {
         Combo[] active = [.. combos.Where(combo => combo.Active)];
         ImmutableArray<PinnedComboDefinition> definitions = [.. active.Select(combo => new PinnedComboDefinition(comboLineage(combo), Signature(combo)))];
@@ -65,7 +67,7 @@ public sealed record PinnedCalculationContext(
             Pack(card.Categories.Select(category => category.Identity).Order(StringComparer.Ordinal))
         ])));
 
-        return new(epoch, handSize, copies, deck.Length, deckDefinition, definitions, groupDefinitions, drawEffectsEnabled);
+        return new(epoch, handSize, copies, deck.Length, deckDefinition, definitions, groupDefinitions, drawEffectsEnabled, conditionalEffectsEnabled);
 
         string CardRequirementSignature(ComboCard card) {
             int maximum = card.MaximumMode == RequirementMaximumMode.Fixed ? card.MaxCount : 0;

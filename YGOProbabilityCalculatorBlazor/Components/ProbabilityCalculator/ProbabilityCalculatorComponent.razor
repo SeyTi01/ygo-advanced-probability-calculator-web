@@ -59,6 +59,8 @@
             </div>
             <CalculationSettingsMenu DrawEffectsEnabled="_drawEffectsEnabled"
                                       DrawEffectsEnabledChanged="OnDrawEffectsChanged"
+                                      ConditionalEffectsEnabled="_conditionalEffectsEnabled"
+                                      ConditionalEffectsEnabledChanged="OnConditionalEffectsChanged"
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
         </div>
@@ -310,6 +312,7 @@
     private int _handSize = 5;
     private bool _drawEffectsEnabled = true;
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
+    private bool _conditionalEffectsEnabled;
     private bool _isCalculating;
     private long _calculationVersion;
     private long _calculationRequestId;
@@ -749,7 +752,8 @@
                 _comboGroups,
                 CalculationWorkPolicy.Interactive,
                 _drawEffectsEnabled,
-                CalculationStoragePolicy.ForTier(_storageTier)
+                CalculationStoragePolicy.ForTier(_storageTier),
+                new(_conditionalEffectsEnabled)
             );
             PinnedCalculationContext comparisonContext = CaptureComparisonContext();
             ProbabilityCalculationResult result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
@@ -817,6 +821,15 @@
         }
 
         _drawEffectsEnabled = enabled;
+        InvalidateCalculation();
+    }
+
+    private void OnConditionalEffectsChanged(bool enabled) {
+        if (_conditionalEffectsEnabled == enabled) {
+            return;
+        }
+
+        _conditionalEffectsEnabled = enabled;
         InvalidateCalculation();
     }
 

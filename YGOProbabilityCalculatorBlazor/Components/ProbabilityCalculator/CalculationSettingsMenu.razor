@@ -20,38 +20,60 @@
              hidden="@(!_isOpen)">
         <h2 id="calculationSettingsHeading" class="h6 mb-3">Calculation settings</h2>
 
-        <div class="calculation-settings-option">
-            <div class="form-check form-switch mb-1">
-                <input @ref="_drawEffectsInput"
-                       type="checkbox"
-                       class="form-check-input"
-                       id="drawEffectsEnabled"
-                       role="switch"
-                       checked="@DrawEffectsEnabled"
-                       aria-describedby="drawEffectsHelp"
-                       @onchange="OnDrawEffectsChanged" />
-                <label class="form-check-label" for="drawEffectsEnabled">Draw effects</label>
+        <section aria-labelledby="calculationBasicHeading">
+            <h3 id="calculationBasicHeading" class="small fw-semibold mb-2">Basic</h3>
+            <div class="calculation-settings-option">
+                <div class="form-check form-switch mb-1">
+                    <input @ref="_drawEffectsInput"
+                           type="checkbox"
+                           class="form-check-input"
+                           id="drawEffectsEnabled"
+                           role="switch"
+                           checked="@DrawEffectsEnabled"
+                           aria-describedby="drawEffectsHelp"
+                           @onchange="OnDrawEffectsChanged" />
+                    <label class="form-check-label" for="drawEffectsEnabled">Draw effects</label>
+                </div>
+                <p id="drawEffectsHelp" class="form-text mb-0">
+                    When off, configured draw effects are ignored and those cards are treated as ordinary cards.
+                </p>
             </div>
-            <p id="drawEffectsHelp" class="form-text mb-0">
-                When off, configured draw effects are ignored and those cards are treated as ordinary cards.
-            </p>
-        </div>
+        </section>
 
-        <div class="calculation-settings-option">
-            <label class="form-label mb-1" for="storageSafetyTier">Storage safety limit</label>
-            <select id="storageSafetyTier"
-                    class="form-select"
-                    value="@StorageTier"
-                    aria-describedby="storageSafetyHelp"
-                    @onchange="OnStorageTierChanged">
-                <option value="Standard">Standard (32,768 entries / 262,144 cells)</option>
-                <option value="High">High (65,536 entries / 524,288 cells)</option>
-                <option value="VeryHigh">Very high (131,072 entries / 1,048,576 cells)</option>
-            </select>
-            <p id="storageSafetyHelp" class="form-text mb-0">
-                Limits apply per calculation structure, not to total browser memory. Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy.
-            </p>
-        </div>
+        <section class="border-top mt-3 pt-3" aria-labelledby="calculationAdvancedHeading">
+            <h3 id="calculationAdvancedHeading" class="small fw-semibold mb-2">Advanced</h3>
+            <div class="calculation-settings-option">
+                <div class="form-check form-switch mb-1">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           id="conditionalEffectsEnabled"
+                           role="switch"
+                           checked="@ConditionalEffectsEnabled"
+                           aria-describedby="conditionalEffectsHelp"
+                           @onchange="OnConditionalEffectsChanged" />
+                    <label class="form-check-label" for="conditionalEffectsEnabled">Advanced calculation</label>
+                </div>
+                <p id="conditionalEffectsHelp" class="form-text mb-0">
+                    With Draw effects on, models conditional draws such as discarding after drawing. Can be significantly more expensive.
+                </p>
+            </div>
+
+            <div class="calculation-settings-option">
+                <label class="form-label mb-1" for="storageSafetyTier">Storage safety limit</label>
+                <select id="storageSafetyTier"
+                        class="form-select"
+                        value="@StorageTier"
+                        aria-describedby="storageSafetyHelp"
+                        @onchange="OnStorageTierChanged">
+                    <option value="Standard">Standard (32,768 entries / 262,144 cells)</option>
+                    <option value="High">High (65,536 entries / 524,288 cells)</option>
+                    <option value="VeryHigh">Very high (131,072 entries / 1,048,576 cells)</option>
+                </select>
+                <p id="storageSafetyHelp" class="form-text mb-0">
+                    Limits apply per calculation structure, not to total browser memory. Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy.
+                </p>
+            </div>
+        </section>
     </section>
 </div>
 
@@ -61,6 +83,12 @@
 
     [Parameter]
     public EventCallback<bool> DrawEffectsEnabledChanged { get; set; }
+
+    [Parameter]
+    public bool ConditionalEffectsEnabled { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ConditionalEffectsEnabledChanged { get; set; }
 
     [Parameter]
     public CalculationStorageTier StorageTier { get; set; } = CalculationStorageTier.Standard;
@@ -104,6 +132,9 @@
 
     private Task OnDrawEffectsChanged(ChangeEventArgs eventArgs) =>
         DrawEffectsEnabledChanged.InvokeAsync(eventArgs.Value is bool enabled && enabled);
+
+    private Task OnConditionalEffectsChanged(ChangeEventArgs eventArgs) =>
+        ConditionalEffectsEnabledChanged.InvokeAsync(eventArgs.Value is bool enabled && enabled);
 
     private Task OnStorageTierChanged(ChangeEventArgs eventArgs) {
         if (!Enum.TryParse(eventArgs.Value?.ToString(), ignoreCase: false, out CalculationStorageTier tier) ||
