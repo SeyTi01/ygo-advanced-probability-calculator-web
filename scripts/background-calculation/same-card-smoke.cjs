@@ -10,7 +10,7 @@ async function main() {
     const cases = JSON.parse(await fs.readFile(process.argv[3], 'utf8'));
     const screenshots = path.resolve(process.argv[4]);
     await fs.mkdir(screenshots, { recursive: true });
-    const types = { '.js': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm',
+    const types = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm',
         '.html': 'text/html', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
     const server = http.createServer(async (request, response) => {
         try {
@@ -47,6 +47,18 @@ async function main() {
             const button = page.locator(selector).first();
             if (await button.getAttribute('aria-expanded') !== 'true') await button.click();
         }
+        await page.getByRole('link', { name: 'Help', exact: true }).click();
+        await page.getByRole('button', { name: 'Try It with Example Data', exact: true }).click();
+        await page.waitForFunction(() => document.querySelectorAll('.combo-editor').length === 8
+            || getComputedStyle(document.querySelector('#blazor-error-ui')).display !== 'none');
+        assert.equal(await page.locator('#blazor-error-ui').isVisible(), false, errors.join('\n'));
+        assert.equal(await page.locator('.card-editor').count(), 25);
+        assert.equal(await page.locator('.combo-editor').count(), 8);
+        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+        await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
+        const exampleResult = Number((await page.locator('.probability-total-value').innerText()).replace('%', '').replace(',', '.').trim());
+        assert.equal(exampleResult, 83.61, 'Bundled example total');
+
         await load(cases.find(item => item.Name === 'atomic').Session);
         await expand('.combo-editor .accordion-button');
         await page.getByRole('button', { name: 'Add AND', exact: true }).click();
@@ -109,7 +121,7 @@ async function main() {
                 await page.setViewportSize({ width, height: 1000 });
                 await page.getByLabel('Color theme preference').selectOption(theme);
                 for (const [name, target] of [['combo', '.same-card-category'], ['draw', '#cardEligibility0']]) {
-                    await page.locator(target).scrollIntoViewIfNeeded();
+                    await page.locator(target).first().scrollIntoViewIfNeeded();
                     const geometry = await page.evaluate(() => ({ width: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
                     assert(geometry.content <= geometry.width, JSON.stringify({ width, theme, geometry }));
                     await page.screenshot({ path: path.join(screenshots, `${name}-${width}-${theme}.png`) });
@@ -134,7 +146,7 @@ async function main() {
         }
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
-        console.log('PASS: AND create/remove/re-add, shared bounds, OR-of-AND alternatives, composite draw filter, save/reload, keyboard, 16 responsive/theme captures, four UI-worker results, no Blazor/console errors.');
+        console.log('PASS: bundled Help example load/calculation, AND create/remove/re-add, shared bounds, OR-of-AND alternatives, composite draw filter, save/reload, keyboard, 16 responsive/theme captures, four UI-worker results, no Blazor/console errors.');
     } finally {
         await browser.close();
         await new Promise(resolve => server.close(resolve));
