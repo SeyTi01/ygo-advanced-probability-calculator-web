@@ -82,12 +82,14 @@ public class CuratedDrawEffectPresetsTest {
     [Test]
     public void PostDrawPresetsApplyOnlyToNewCanonicalSelectionsAndImports() {
         foreach (CuratedDrawEffectPreset preset in CuratedDrawEffectPresets.All) {
-            int expected = preset.CardId switch { 74117290 => 1, 79571449 => 2, _ => 0 };
+            int expected = preset.CardId switch { 74117290 or 1475311 or 20508881 => 1, 79571449 => 2, _ => 0 };
             CardInfo info = new() { Id = 999, CanonicalCardId = preset.CardId, Name = "Same" };
             Card imported = CuratedDrawEffectPresets.CreateImportedCard(info, 3, 999);
             Card selected = CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(new([], id: "stable"), info);
             Assert.That(imported.PostDrawDiscardCount, Is.EqualTo(expected));
             Assert.That(selected.PostDrawDiscardCount, Is.EqualTo(expected));
+            Assert.That(imported.PostDrawSelector, Is.EqualTo(preset.PostDrawSelector ?? CardSelector.Any));
+            Assert.That(selected.PostDrawSelector, Is.EqualTo(imported.PostDrawSelector));
             Assert.That(selected.Id, Is.EqualTo("stable"));
             Card configured = selected.WithPostDrawDiscardCount(0);
             Assert.That(CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(configured, info).PostDrawDiscardCount, Is.Zero);

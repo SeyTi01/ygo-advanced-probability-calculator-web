@@ -32,7 +32,8 @@ internal static class RealisticGracefulFixture {
         Card imported = CuratedDrawEffectPresets.CreateImportedCard(info, original.Copies, info.Id);
         Card graceful = new(imported.Categories, imported.Copies, imported.Name, original.Active,
             original.Id, imported.ExternalCardId, drawCount: imported.DrawCount,
-            drawOncePerTurn: imported.DrawOncePerTurn, postDrawDiscardCount: imported.PostDrawDiscardCount);
+            drawOncePerTurn: imported.DrawOncePerTurn, postDrawDiscardCount: imported.PostDrawDiscardCount,
+            postDrawSelector: imported.PostDrawSelector, postDrawFailureBehavior: imported.PostDrawFailureBehavior);
         session.Cards[session.Cards.IndexOf(original)] = graceful;
         Assert.That(session.Cards.Sum(card => card.Copies), Is.EqualTo(40));
         return session;

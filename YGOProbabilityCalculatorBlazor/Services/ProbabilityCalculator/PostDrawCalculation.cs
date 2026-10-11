@@ -21,8 +21,10 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         budget.CheckStorage(entries, cells);
     }
 
+    private enum ResolutionOutcome { Ready, DeckExhausted, RemovalUnavailable }
+
     // Owned immutable vectors: remaining counts, hand counts, only actual OPT flags,
-    // batch draws left, pending discard count, then FIFO candidate entry indices.
+    // batch draws left, pending removal source (index + 1), then FIFO candidate entry indices.
     private sealed record State(int[] Values) {
         public bool Equals(State? other) => other is not null && Values.AsSpan().SequenceEqual(other.Values);
 
@@ -87,8 +89,20 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         if (effects.Length == 1 && filler.Length <= 1) {
             int effect = effects[0];
             if (!relevant[effect] && !cards[effect].DrawOncePerTurn
-                && cards[effect].DrawCount == cards[effect].PostDrawDiscardCount + 1) {
+                && cards[effect].DrawCount == cards[effect].PostDrawDiscardCount + 1
+                && cards[effect].PostDrawSelector.Kind == CardSelectorKind.Any) {
                 return CalculateExchangeable(cards, relevant, effect, filler.FirstOrDefault(-1), factorial, combos, groups, totalOnly);
+            }
+        }
+
+        CheckStorage(n, n, "removal selector table");
+        bool[]?[] removalEligibility = new bool[n][];
+        long eligibilityCells = n;
+        for (int i = 0; i < n; i++) {
+            if (cards[i].PostDrawDiscardCount > 0 && cards[i].PostDrawSelector.Kind != CardSelectorKind.Any) {
+                eligibilityCells += n;
+                CheckStorage(n, eligibilityCells, "removal selector table");
+                removalEligibility[i] = CardSelectorCompiler.Compile(cards[i].PostDrawSelector, cards, budget);
             }
         }
 
@@ -107,7 +121,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 budget.Spend(state.Values.Length + 1L);
                 int[] values = (int[])state.Values.Clone();
                 int remaining = copies - depth;
-                if (!Settle(ref values, remaining)) {
+                if (Settle(ref values, remaining) != ResolutionOutcome.Ready) {
                     continue;
                 }
                 if (values[phase] == 0) {
@@ -133,7 +147,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     }
                     // Normalize immediately so batches differing only in discarded
                     // cards or obsolete candidates merge before the next layer.
-                    if (Settle(ref drawn, remaining - 1)) {
+                    if (Settle(ref drawn, remaining - 1) == ResolutionOutcome.Ready) {
                         Add(next, new(drawn), weight * values[i], ref nextCells);
                     }
                 }
@@ -193,11 +207,14 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
 
         bool Used(int[] values, int entry) => optSlots[entry] >= 0 && values[optSlots[entry]] != 0;
 
-        bool Settle(ref int[] values, int remaining) {
+        ResolutionOutcome Settle(ref int[] values, int remaining) {
             if (values[phase] > 0) {
-                return values[phase] <= remaining;
+                return values[phase] <= remaining ? ResolutionOutcome.Ready : ResolutionOutcome.DeckExhausted;
             }
-            for (int discard = values[phase + 1]; discard > 0; discard--) {
+            int removalSource = values[phase + 1] - 1;
+            int removalCount = removalSource < 0 ? 0 : cards[removalSource].PostDrawDiscardCount;
+            bool[]? eligible = removalSource < 0 ? null : removalEligibility[removalSource];
+            for (int discard = removalCount; discard > 0; discard--) {
                 // Queue scan, tier scan, removal scan and copying the surviving queue.
                 budget.Spend(2L * values.Length + n + 1);
                 int selected = -1;
@@ -209,7 +226,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     pending[entry] = true;
                 }
                 for (int i = 0; i < n; i++) {
-                    if (values[n + i] == 0) {
+                    if (values[n + i] == 0 || (eligible is not null && !eligible[i])) {
                         continue;
                     }
                     bool usable = pending[i] && !Used(values, i) && cards[i].DrawCount <= remaining;
@@ -225,7 +242,12 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     }
                 }
                 if (selected < 0) {
-                    return false;
+                    // Keep this separate from incomplete batch draws: changing
+                    // deck exhaustion must not turn missing material into success.
+                    return cards[removalSource].PostDrawFailureBehavior switch {
+                        PostDrawFailureBehavior.FailBranch => ResolutionOutcome.RemovalUnavailable,
+                        _ => throw new ArgumentOutOfRangeException(nameof(cards))
+                    };
                 }
                 values[n + selected]--;
                 // Remove the latest copy of this identity, retaining FIFO priority.
@@ -255,10 +277,10 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     values = [.. values.Take(queueStart), .. values.Skip(queueStart).Where(entry => entry != source)];
                 }
                 values[phase] = cards[source].DrawCount!.Value;
-                values[phase + 1] = cards[source].PostDrawDiscardCount;
-                return values[phase] <= remaining;
+                values[phase + 1] = cards[source].PostDrawDiscardCount > 0 ? source + 1 : 0;
+                return values[phase] <= remaining ? ResolutionOutcome.Ready : ResolutionOutcome.DeckExhausted;
             }
-            return true;
+            return ResolutionOutcome.Ready;
         }
 
         void Add(
@@ -301,21 +323,42 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
             .Select(requirement => requirement.BaseCategory).Distinct().OrderBy(category => category.Identity, StringComparer.Ordinal).ToArray();
         string[] direct = combos.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-        List<(Card Card, string Signature)> entries = [];
+        List<bool[]> filters = [];
+        foreach (Card source in deck) {
+            if (source.Copies > 0 && source.PostDrawDiscardCount > 0 && source.PostDrawSelector.Kind != CardSelectorKind.Any) {
+                CheckStorage(filters.Count + 1L, (filters.Count + 1L) * deck.Count, "reduction selectors");
+                filters.Add(CardSelectorCompiler.Compile(source.PostDrawSelector, deck, budget));
+            }
+        }
+        List<(Card Card, string Signature, string Eligibility)> entries = [];
+        int row = 0;
         foreach (Card card in deck) {
             ArgumentOutOfRangeException.ThrowIfNegative(card.Copies);
             budget.Spend((categories.Length + 1L) * (card.Categories.Count + 1L) + direct.Length);
             CheckStorage(deck.Count, (categories.Length + (long)direct.Length + 1) * deck.Count, "policy descriptors");
             string signature = string.Concat(categories.Select(category => card.Categories.Contains(category) ? '1' : '0'))
                 + string.Concat(direct.Select(id => card.Id == id ? '1' : '0'));
-            entries.Add((card, signature));
+            budget.Spend(filters.Count);
+            CheckStorage(deck.Count, (categories.Length + (long)direct.Length + filters.Count + 1) * deck.Count, "policy descriptors");
+            entries.Add((card, signature, string.Concat(filters.Select(filter => filter[row] ? '1' : '0'))));
+            row++;
         }
         List<Card> reduced = [];
-        foreach (IGrouping<string, (Card Card, string Signature)> group in entries.GroupBy(entry => entry.Signature).OrderBy(group => group.Key, StringComparer.Ordinal)) {
-            Card[] ordinary = group.Where(entry => entry.Card.DrawCount is null).Select(entry => entry.Card)
-                .OrderBy(card => card.Id, StringComparer.Ordinal).ToArray();
-            if (ordinary.Length > 0) {
-                reduced.Add(ordinary[0].WithCopies(ordinary.Sum(card => card.Copies)));
+        foreach (IGrouping<string, (Card Card, string Signature, string Eligibility)> group in entries
+            .GroupBy(entry => entry.Signature).OrderBy(group => group.Key, StringComparer.Ordinal)) {
+            // Retain the established membership/ordinary/ID tie order. Only merge
+            // adjacent ordinary runs with equal eligibility for every effect.
+            // Combining interleaved IDs across different filters changes removals.
+            string? previousEligibility = null;
+            foreach ((Card card, string _, string eligibility) in group.Where(entry => entry.Card.DrawCount is null)
+                .OrderBy(entry => entry.Card.Id, StringComparer.Ordinal)) {
+                if (eligibility == previousEligibility) {
+                    reduced[^1] = reduced[^1].WithCopies(checked(reduced[^1].Copies + card.Copies));
+                }
+                else {
+                    reduced.Add(card);
+                    previousEligibility = eligibility;
+                }
             }
             reduced.AddRange(group.Where(entry => entry.Card.DrawCount is not null).Select(entry => entry.Card)
                 .OrderBy(card => card.Id, StringComparer.Ordinal));

@@ -37,7 +37,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(cut.Find("#drawSimulationHeading").TextContent, Is.EqualTo("Draw simulation"));
         Assert.That(cut.Find("[aria-labelledby='drawSimulationHeading'] .advanced-draw-option #conditionalEffectsEnabled"), Is.Not.Null);
         Assert.That(cut.Find("label[for='conditionalEffectsEnabled']").TextContent, Is.EqualTo("Advanced draw simulation"));
-        Assert.That(cut.Find("#conditionalEffectsHelp").TextContent, Does.Contain("Adds post-draw discards to Basic simulation").And.Contain("Requires Draw effects"));
+        Assert.That(cut.Find("#conditionalEffectsHelp").TextContent, Does.Contain("Adds post-draw removals and filters to Basic simulation").And.Contain("Requires Draw effects"));
         Assert.That(cut.FindAll("[aria-labelledby='drawSimulationHeading'] #storageSafetyTier").ToArray(), Is.Empty);
         Assert.That(cut.Find("#storageSafetyTier").HasAttribute("disabled"), Is.False);
         Assert.That(cut.Find("#conditionalEffectsEnabled").GetAttribute("role"), Is.EqualTo("switch"));

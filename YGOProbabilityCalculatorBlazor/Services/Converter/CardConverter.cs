@@ -87,11 +87,28 @@ public class CardConverter : JsonConverter<Card> {
             }
         }
 
+        CardSelector selector = CardSelector.Any;
+        JsonProperty[] selectorProperties = root.EnumerateObject()
+            .Where(property => property.Name.Equals("PostDrawSelector", StringComparison.OrdinalIgnoreCase)).ToArray();
+        JsonProperty[] failureProperties = root.EnumerateObject()
+            .Where(property => property.Name.Equals("PostDrawFailureBehavior", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (selectorProperties.Length > 1 || failureProperties.Length > 1) {
+            throw new JsonException("Post-draw requirement fields are duplicated.");
+        }
+        if (selectorProperties.Length == 1) {
+            selector = JsonSerializer.Deserialize<CardSelector>(selectorProperties[0].Value.GetRawText(), options)
+                ?? throw new JsonException("Missing post-draw selector.");
+        }
+        if (failureProperties.Length == 1 && (failureProperties[0].Value.ValueKind != JsonValueKind.String
+            || failureProperties[0].Value.GetString() != "FailBranch")) {
+            throw new JsonException("Unsupported post-draw failure behavior.");
+        }
+
         try {
-            return new Card(categories, copies, name, active, id, externalCardId, manualKeys, drawCount, drawOncePerTurn, discardCount);
+            return new Card(categories, copies, name, active, id, externalCardId, manualKeys, drawCount, drawOncePerTurn, discardCount, selector);
         }
         catch (ArgumentException exception) {
-            throw new JsonException("Invalid manual card properties.", exception);
+            throw new JsonException("Invalid card configuration.", exception);
         }
     }
 
@@ -121,6 +138,12 @@ public class CardConverter : JsonConverter<Card> {
 
         if (value.PostDrawDiscardCount > 0) {
             writer.WriteNumber("PostDrawDiscardCount", value.PostDrawDiscardCount);
+        }
+
+        if (value.PostDrawSelector.Kind != CardSelectorKind.Any) {
+            writer.WritePropertyName("PostDrawSelector");
+            JsonSerializer.Serialize(writer, value.PostDrawSelector, options);
+            writer.WriteString("PostDrawFailureBehavior", value.PostDrawFailureBehavior.ToString());
         }
 
         writer.WriteEndObject();

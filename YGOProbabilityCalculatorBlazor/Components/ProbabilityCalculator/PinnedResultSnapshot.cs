@@ -64,6 +64,8 @@ public sealed record PinnedCalculationContext(
             card.DrawCount is { } drawCount ? Number(drawCount) : "",
             card.DrawCount is not null && !card.DrawOncePerTurn ? "every-copy" : "",
             card.PostDrawDiscardCount > 0 ? $"discard:{Number(card.PostDrawDiscardCount)}" : "",
+            card.PostDrawSelector.Kind == CardSelectorKind.Any ? "" : card.PostDrawSelector.Signature,
+            card.PostDrawDiscardCount > 0 ? card.PostDrawFailureBehavior.ToString() : "",
             Pack(card.Categories.Select(category => category.Identity).Order(StringComparer.Ordinal))
         ])));
 

@@ -213,7 +213,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await editor.Find("#cardCategory0").ChangeAsync(new() { Value = "user:B" });
         await editor.Find("#cardDiscard0").ChangeAsync(new() { Value = "2" });
         Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.EqualTo(2));
-        Assert.That(editor.Markup, Does.Contain("Draw 3 · Discard 2"));
+        Assert.That(editor.Markup, Does.Contain("Draw 3 · Remove 2"));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
         AssertPreviousResult(cut);
         await Button(cut, "Save Session").ClickAsync(new());
