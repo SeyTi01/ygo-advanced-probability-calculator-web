@@ -9,64 +9,76 @@ internal static class DrawSequenceOracle {
     // Physical labels distinguish copies; encounter order breaks ties within an ID.
     internal static List<Card>? Resolve(IReadOnlyList<Card> order, int handSize, IReadOnlyList<Combo> combos) {
         List<int> hand = Enumerable.Range(0, handSize).ToList();
-        Queue<int> pending = new(hand.Where(index => order[index].DrawCount is not null));
+        List<int> pending = hand.Where(index => order[index].DrawCount is not null).ToList();
         HashSet<string> used = new(StringComparer.Ordinal);
         int next = handSize;
         string[] categoryKeys = combos.SelectMany(combo => combo.AllCategories).SelectMany(requirement => requirement.CategoryBases.Select(category => category.Identity))
             .Distinct().Order(StringComparer.Ordinal).ToArray();
         string[] cardKeys = combos.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
             .Distinct().Order(StringComparer.Ordinal).ToArray();
-        while (pending.TryDequeue(out int source)) {
-            Card effect = order[source];
-            if (!hand.Contains(source) || (effect.DrawOncePerTurn && used.Contains(effect.Id))) {
-                continue;
+        while (true) {
+            pending.RemoveAll(index => !hand.Contains(index) || (order[index].DrawOncePerTurn && used.Contains(order[index].Id)));
+            // Scan physical candidates in encounter order; retain deferred positions.
+            int source = pending.FirstOrDefault(index => Payable(index), -1);
+            if (source < 0) {
+                break;
             }
-
+            Card effect = order[source];
+            pending.Remove(source);
+            for (int cost = 0; cost < effect.PreDrawRemovalCount; cost++) {
+                Remove(effect.PreDrawSelector, source);
+            }
             hand.Remove(source);
             used.Add(effect.Id);
             int drawCount = Math.Min(effect.DrawCount!.Value, order.Count - next);
             for (int draw = 0; draw < drawCount; draw++) {
                 hand.Add(next);
                 if (order[next].DrawCount is not null) {
-                    pending.Enqueue(next);
+                    pending.Add(next);
                 }
                 next++;
             }
-
-            if (hand.Count < effect.PostDrawDiscardCount) {
-                return null;
-            }
-
             for (int discard = 0; discard < effect.PostDrawDiscardCount; discard++) {
-                HashSet<string> eligibleOnce = new(StringComparer.Ordinal);
-                HashSet<int> usable = [];
-                foreach (int candidate in pending) {
-                    Card card = order[candidate];
-                    if (hand.Contains(candidate)
-                        && (!card.DrawOncePerTurn || (!used.Contains(card.Id) && eligibleOnce.Add(card.Id)))) {
-                        usable.Add(candidate);
-                    }
-                }
-
-                // Independent flat-selector evaluation on labeled physical cards.
-                List<int> eligible = hand.Where(index => MatchesSelector(effect.PostDrawSelector, order[index])).ToList();
-                if (eligible.Count == 0) {
+                if (!Remove(effect.PostDrawSelector)) {
                     return null;
                 }
-                int removed = eligible.OrderByDescending(index => Tier(index))
-                    .ThenByDescending(index => Membership(order[index]), StringComparer.Ordinal)
-                    .ThenByDescending(index => order[index].DrawCount is not null)
-                    .ThenByDescending(index => order[index].Id, StringComparer.Ordinal)
-                    .ThenByDescending(index => index).First();
-                hand.Remove(removed);
+            }
+        }
 
-                int Tier(int index) {
-                    Card card = order[index];
-                    bool relevant = combos.Any(combo =>
-                        combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
-                        || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.CategoryBases.All(required => card.Categories.Any(category => category.Identity == required.Identity))));
-                    return relevant ? 1 : usable.Contains(index) ? 2 : 3;
+        bool Payable(int candidate, int reserved = -1) => hand.Count(index => index != candidate && index != reserved
+            && MatchesSelector(order[candidate].PreDrawSelector, order[index])) >= order[candidate].PreDrawRemovalCount;
+
+        bool Remove(CardSelector selector, int reserved = -1) {
+            HashSet<string> eligibleOnce = new(StringComparer.Ordinal);
+            HashSet<int> usable = [];
+            foreach (int candidate in pending) {
+                Card card = order[candidate];
+                if (hand.Contains(candidate) && candidate != reserved
+                    && !(reserved >= 0 && card.DrawOncePerTurn && card.Id == order[reserved].Id)
+                    && (!card.DrawOncePerTurn || (!used.Contains(card.Id) && eligibleOnce.Add(card.Id)))
+                    && Payable(candidate, reserved)) {
+                    usable.Add(candidate);
                 }
+            }
+            List<int> eligible = hand.Where(index => index != reserved && MatchesSelector(selector, order[index])).ToList();
+            if (eligible.Count == 0) {
+                return false;
+            }
+            int removed = eligible.OrderByDescending(index => Tier(index))
+                .ThenByDescending(index => Membership(order[index]), StringComparer.Ordinal)
+                .ThenByDescending(index => order[index].DrawCount is not null)
+                .ThenByDescending(index => order[index].Id, StringComparer.Ordinal)
+                .ThenByDescending(index => index).First();
+            hand.Remove(removed);
+            pending.Remove(removed);
+            return true;
+
+            int Tier(int index) {
+                Card card = order[index];
+                bool relevant = combos.Any(combo =>
+                    combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
+                    || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && MatchesSelector(requirement.Selector, card)));
+                return relevant ? 1 : usable.Contains(index) ? 2 : 3;
             }
         }
 

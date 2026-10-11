@@ -9,7 +9,9 @@ public sealed record CuratedDrawEffectPreset(
     int DrawCount,
     bool DrawOncePerTurn,
     int PostDrawDiscardCount = 0,
-    CardSelector? PostDrawSelector = null
+    CardSelector? PostDrawSelector = null,
+    int PreDrawRemovalCount = 0,
+    CardSelector? PreDrawSelector = null
 );
 
 public static class CuratedDrawEffectPresets {
@@ -18,12 +20,23 @@ public static class CuratedDrawEffectPresets {
             .Single(category => category.MetadataKey!.StartsWith("attribute:", StringComparison.Ordinal)),
         CardPropertyProvider.GetCategories(new() { Type = "Spell Card", Race = "Quick-Play" })
             .Single(category => category.MetadataKey!.StartsWith("spell-type:", StringComparison.Ordinal)),
-        CardPropertyProvider.GetCategories(new() { Archetype = "Radiant Typhoon" }).Single()
+        CardPropertyProvider.GetCategories(new() { Archetype = "Radiant Typhoon" }).Single(),
+        new("Monster", CategorySource.Metadata, "kind:monster"),
+        new("Level 8", CategorySource.Metadata, "level:8"),
+        new("Archetype: Orcust", CategorySource.Metadata, "archetype:orcust"),
+        new("Archetype: World Legacy", CategorySource.Metadata, "archetype:world%20legacy")
     });
 
     private static readonly CuratedDrawEffectPreset[] Presets = [
+        new(38120068, "Trade-In", 2, false, PreDrawRemovalCount: 1,
+            PreDrawSelector: CardSelector.AllOf([FilterProperties[3].Identity, FilterProperties[4].Identity])),
+        // Only the hand cost is supported; there is no field-state simulation.
+        new(26845680, "Orcustrated Return", 2, true, PreDrawRemovalCount: 1,
+            PreDrawSelector: CardSelector.AnyOfSelectors([
+                CardSelector.AllOf([FilterProperties[3].Identity, FilterProperties[5].Identity]),
+                CardSelector.AllOf([FilterProperties[3].Identity, FilterProperties[6].Identity])])),
         new(55144522, "Pot of Greed", 2, false),
-        new(20508881, "Radiant Typhoon Vision", 2, true, 1, CardSelector.AnyOf(FilterProperties.Skip(1).Select(category => category.Identity))),
+        new(20508881, "Radiant Typhoon Vision", 2, true, 1, CardSelector.AnyOf(FilterProperties.Skip(1).Take(2).Select(category => category.Identity))),
         new(35261759, "Pot of Desires", 2, true),
         new(70368879, "Upstart Goblin", 1, false),
         new(1475311, "Allure of Darkness", 2, false, 1, CardSelector.For(FilterProperties[0])),
@@ -63,7 +76,8 @@ public static class CuratedDrawEffectPresets {
     }
 
     public static Card ApplyToSelectedCardIfPristine(Card card, CardInfo cardInfo) {
-        if (card.DrawCount is not null || !card.DrawOncePerTurn || card.PostDrawDiscardCount != 0
+        if (card.PreDrawRemovalCount != 0 || card.PreDrawSelector.Kind != CardSelectorKind.Any
+            || card.DrawCount is not null || !card.DrawOncePerTurn || card.PostDrawDiscardCount != 0
             || card.PostDrawSelector.Kind != CardSelectorKind.Any
             || card.PostDrawFailureBehavior != PostDrawFailureBehavior.FailBranch) {
             return card;
@@ -83,6 +97,8 @@ public static class CuratedDrawEffectPresets {
             .WithDrawCount(preset.DrawCount)
             .WithDrawOncePerTurn(preset.DrawOncePerTurn)
             .WithPostDrawDiscardCount(preset.PostDrawDiscardCount)
-            .WithPostDrawSelector(preset.PostDrawSelector ?? CardSelector.Any);
+            .WithPostDrawSelector(preset.PostDrawSelector ?? CardSelector.Any)
+            .WithPreDrawRemovalCount(preset.PreDrawRemovalCount)
+            .WithPreDrawSelector(preset.PreDrawSelector ?? CardSelector.Any);
     }
 }

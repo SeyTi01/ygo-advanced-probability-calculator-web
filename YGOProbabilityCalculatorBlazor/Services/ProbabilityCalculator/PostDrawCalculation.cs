@@ -91,7 +91,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         // the effect schedule, which the general resolver handles exactly.
         if (effects.Length == 1 && filler.Length <= 1) {
             int effect = effects[0];
-            if (!relevant[effect] && !cards[effect].DrawOncePerTurn
+            if (cards[effect].PreDrawRemovalCount == 0 && !relevant[effect] && !cards[effect].DrawOncePerTurn
                 && cards[effect].DrawCount == cards[effect].PostDrawDiscardCount + 1
                 && cards[effect].PostDrawSelector.Kind == CardSelectorKind.Any
                 && cards[effect].DrawCount!.Value * (long)cards[effect].Copies <= copies - handSize) {
@@ -107,6 +107,21 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 eligibilityCells += n;
                 CheckStorage(n, eligibilityCells, "removal selector table");
                 removalEligibility[i] = CardSelectorCompiler.Compile(cards[i].PostDrawSelector, cards, budget);
+            }
+        }
+
+        // Keep post-draw-only decks free of cost tables.
+        bool[]?[]? costEligibility = null;
+        if (cards.Any(card => card.PreDrawRemovalCount > 0)) {
+            eligibilityCells += n;
+            CheckStorage(n, eligibilityCells, "removal selector table");
+            costEligibility = new bool[n][];
+            for (int i = 0; i < n; i++) {
+                if (cards[i].PreDrawRemovalCount > 0 && cards[i].PreDrawSelector.Kind != CardSelectorKind.Any) {
+                    eligibilityCells += n;
+                    CheckStorage(n, eligibilityCells, "removal selector table");
+                    costEligibility[i] = CardSelectorCompiler.Compile(cards[i].PreDrawSelector, cards, budget);
+                }
             }
         }
 
@@ -224,61 +239,39 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 int removalCount = removalSource < 0 ? 0 : cards[removalSource].PostDrawDiscardCount;
                 bool[]? eligible = removalSource < 0 ? null : removalEligibility[removalSource];
                 for (int discard = removalCount; discard > 0; discard--) {
-                    // Queue scan, tier scan, removal scan and copying the surviving queue.
-                    budget.Spend(2L * values.Length + n + 1);
-                    int selected = -1;
-                    int worstTier = 0;
-                    int selectedQueue = -1;
-                    bool[] pending = new bool[n];
-                    for (int q = queueStart; q < values.Length; q++) {
-                        int entry = values[q];
-                        pending[entry] = true;
-                    }
-                    for (int i = 0; i < n; i++) {
-                        if (values[n + i] == 0 || (eligible is not null && !eligible[i])) {
-                            continue;
-                        }
-                        bool usable = pending[i] && !Used(values, i);
-                        bool redundant = cards[i].DrawOncePerTurn && values[n + i] > 1;
-                        int tier = (relevant[i], usable && !redundant) switch {
-                            (true, _) => 1,
-                            (_, true) => 2,
-                            _ => 3
-                        };
-                        if (tier >= worstTier) {
-                            worstTier = tier;
-                            selected = i;
-                        }
-                    }
-                    if (selected < 0) {
+                    if (!RemoveCard(ref values, eligible)) {
                         return cards[removalSource].PostDrawFailureBehavior switch {
                             PostDrawFailureBehavior.FailBranch => ResolutionOutcome.RemovalUnavailable,
                             _ => throw new ArgumentOutOfRangeException(nameof(cards))
                         };
                     }
-                    values[n + selected]--;
-                    // Remove the latest copy of this identity, retaining FIFO priority.
-                    for (int q = values.Length - 1; q >= queueStart; q--) {
-                        if (values[q] == selected) {
-                            if (!cards[selected].DrawOncePerTurn || values[n + selected] == 0) {
-                                selectedQueue = q;
-                            }
-                            break;
-                        }
-                    }
-                    if (selectedQueue >= 0) {
-                        values = [.. values.Take(selectedQueue), .. values.Skip(selectedQueue + 1)];
-                    }
                 }
                 values[phase + 1] = 0;
 
                 bool activated = false;
-                while (values.Length > queueStart) {
+                // Deferred candidates retain FIFO position. Restart at the oldest
+                // survivor after an activation's batch/removal. A pass with no
+                // activation terminates: nothing changed that could help a retry.
+                // Every successful pass consumes a source; draws advance depth.
+                // This also bounds resolution when the deck is already empty.
+                for (int candidate = queueStart; candidate < values.Length;) {
                     budget.Spend(2L * values.Length + 1);
-                    int source = values[queueStart];
-                    values = [.. values.Take(queueStart), .. values.Skip(queueStart + 1)];
+                    int source = values[candidate];
                     if (Used(values, source)) {
+                        values = [.. values.Take(candidate), .. values.Skip(candidate + 1)];
                         continue;
+                    }
+                    if (cards[source].PreDrawRemovalCount > 0 && !CanPay(values, source)) {
+                        candidate++;
+                        continue;
+                    }
+                    values = [.. values.Take(candidate), .. values.Skip(candidate + 1)];
+                    // Check the whole cost before mutating activation state, and
+                    // reserve this source copy while selecting/removing material.
+                    for (int cost = 0; cost < cards[source].PreDrawRemovalCount; cost++) {
+                        if (!RemoveCard(ref values, costEligibility![source], source)) {
+                            throw new InvalidOperationException("A validated activation cost became unavailable.");
+                        }
                     }
                     values[n + source]--;
                     if (cards[source].DrawOncePerTurn) {
@@ -291,9 +284,76 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     break;
                 }
                 if (!activated) {
+                    if (values.Length > queueStart) {
+                        // No pending draw/removal can change this hand. Retain the
+                        // cards, but canonicalize the terminal queue so the next
+                        // frontier visit cannot recheck the same failed costs.
+                        budget.Spend(values.Length);
+                        values = values.AsSpan(0, queueStart).ToArray();
+                    }
                     return ResolutionOutcome.Ready;
                 }
             }
+        }
+
+        bool CanPay(int[] values, int source, int reservedSource = -1) {
+            budget.Spend(n + 1L);
+            bool[]? eligible = costEligibility![source];
+            int available = 0;
+            for (int i = 0; i < n; i++) {
+                if (eligible is null || eligible[i]) {
+                    available += values[n + i] - (i == source ? 1 : 0) - (i == reservedSource ? 1 : 0);
+                }
+            }
+            return available >= cards[source].PreDrawRemovalCount;
+        }
+
+        bool RemoveCard(ref int[] values, bool[]? eligible, int reservedSource = -1) {
+            // Queue scan, tier scan, removal scan and copying the surviving queue.
+            budget.Spend(2L * values.Length + n + 1);
+            int selected = -1;
+            int worstTier = 0;
+            int selectedQueue = -1;
+            bool[] pending = new bool[n];
+            for (int q = queueStart; q < values.Length; q++) {
+                int entry = values[q];
+                pending[entry] = true;
+            }
+            for (int i = 0; i < n; i++) {
+                if (values[n + i] - (i == reservedSource ? 1 : 0) == 0 || (eligible is not null && !eligible[i])) {
+                    continue;
+                }
+                bool usable = pending[i] && !Used(values, i)
+                    && !(i == reservedSource && cards[i].DrawOncePerTurn)
+                    && (cards[i].PreDrawRemovalCount == 0 || CanPay(values, i, reservedSource));
+                bool redundant = cards[i].DrawOncePerTurn && values[n + i] - (i == reservedSource ? 1 : 0) > 1;
+                int tier = (relevant[i], usable && !redundant) switch {
+                    (true, _) => 1,
+                    (_, true) => 2,
+                    _ => 3
+                };
+                if (tier >= worstTier) {
+                    worstTier = tier;
+                    selected = i;
+                }
+            }
+            if (selected < 0) {
+                return false;
+            }
+            values[n + selected]--;
+            // Remove the latest copy of this identity, retaining FIFO priority.
+            for (int q = values.Length - 1; q >= queueStart; q--) {
+                if (values[q] == selected) {
+                    if (!cards[selected].DrawOncePerTurn || values[n + selected] == 0) {
+                        selectedQueue = q;
+                    }
+                    break;
+                }
+            }
+            if (selectedQueue >= 0) {
+                values = [.. values.Take(selectedQueue), .. values.Skip(selectedQueue + 1)];
+            }
+            return true;
         }
 
         void Add(
@@ -342,6 +402,12 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
             if (source.Copies > 0 && source.PostDrawDiscardCount > 0 && source.PostDrawSelector.Kind != CardSelectorKind.Any) {
                 CheckStorage(filters.Count + 1L, (filters.Count + 1L) * deck.Count, "reduction selectors");
                 filters.Add(CardSelectorCompiler.Compile(source.PostDrawSelector, deck, budget));
+            }
+        }
+        foreach (Card source in deck) {
+            if (source.Copies > 0 && source.PreDrawRemovalCount > 0 && source.PreDrawSelector.Kind != CardSelectorKind.Any) {
+                CheckStorage(filters.Count + 1L, (filters.Count + 1L) * deck.Count, "reduction selectors");
+                filters.Add(CardSelectorCompiler.Compile(source.PreDrawSelector, deck, budget));
             }
         }
         List<(Card Card, string Signature, string Eligibility)> entries = [];
