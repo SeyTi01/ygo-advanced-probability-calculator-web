@@ -195,6 +195,9 @@ public static class CalculationWire {
     }
 }
 
+[JsonSerializable(typeof(CategoryBase))]
+[JsonSerializable(typeof(CategoryBase[]))]
+[JsonSerializable(typeof(IReadOnlyList<CategoryBase>))]
 [JsonSerializable(typeof(CalculationInput))]
 [JsonSerializable(typeof(CalculationResponse))]
 internal partial class CalculationJsonContext : JsonSerializerContext;

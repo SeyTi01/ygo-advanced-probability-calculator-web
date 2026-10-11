@@ -12,7 +12,7 @@ internal static class DrawSequenceOracle {
         Queue<int> pending = new(hand.Where(index => order[index].DrawCount is not null));
         HashSet<string> used = new(StringComparer.Ordinal);
         int next = handSize;
-        string[] categoryKeys = combos.SelectMany(combo => combo.AllCategories).Select(requirement => requirement.BaseCategory.Identity)
+        string[] categoryKeys = combos.SelectMany(combo => combo.AllCategories).SelectMany(requirement => requirement.CategoryBases.Select(category => category.Identity))
             .Distinct().Order(StringComparer.Ordinal).ToArray();
         string[] cardKeys = combos.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
             .Distinct().Order(StringComparer.Ordinal).ToArray();
@@ -49,12 +49,7 @@ internal static class DrawSequenceOracle {
                 }
 
                 // Independent flat-selector evaluation on labeled physical cards.
-                List<int> eligible = hand.Where(index => effect.PostDrawSelector.Kind switch {
-                    CardSelectorKind.Any => true,
-                    CardSelectorKind.Category or CardSelectorKind.AnyOf => order[index].Categories
-                        .Any(category => effect.PostDrawSelector.CategoryIdentities.Contains(category.Identity)),
-                    _ => throw new ArgumentException("Unsupported oracle selector.")
-                }).ToList();
+                List<int> eligible = hand.Where(index => MatchesSelector(effect.PostDrawSelector, order[index])).ToList();
                 if (eligible.Count == 0) {
                     return null;
                 }
@@ -69,7 +64,7 @@ internal static class DrawSequenceOracle {
                     Card card = order[index];
                     bool relevant = combos.Any(combo =>
                         combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
-                        || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && card.Categories.Contains(requirement.BaseCategory)));
+                        || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.CategoryBases.All(required => card.Categories.Any(category => category.Identity == required.Identity))));
                     return relevant ? 1 : usable.Contains(index) ? 2 : 3;
                 }
             }
@@ -79,6 +74,18 @@ internal static class DrawSequenceOracle {
 
         string Membership(Card card) => string.Concat(categoryKeys.Select(key => card.Categories.Any(category => category.Identity == key) ? "1" : "0"))
             + string.Concat(cardKeys.Select(key => card.Id == key ? "1" : "0"));
+    }
+
+    internal static bool MatchesSelector(CardSelector selector, Card card) {
+        HashSet<string> identities = card.Categories.Select(category => category.Identity).ToHashSet(StringComparer.Ordinal);
+        if (selector.Kind == CardSelectorKind.Any) {
+            return true;
+        }
+        if (selector.Children.Count > 0) {
+            return selector.Children.Any(child => MatchesSelector(child, card));
+        }
+        int matched = selector.CategoryIdentities.Count(identities.Contains);
+        return selector.Kind == CardSelectorKind.AllOf ? matched == selector.CategoryIdentities.Count : matched > 0;
     }
 
     internal sealed record Counts(

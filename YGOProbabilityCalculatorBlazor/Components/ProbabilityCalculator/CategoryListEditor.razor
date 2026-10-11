@@ -180,7 +180,7 @@
     }
 
     private async Task RemoveCategoryBase(CategoryBase category) {
-        bool isUsedInCombo = Combos.Any(combo => combo.AllCategories.Any(constraint => constraint.BaseCategory.Identity == category.Identity));
+        bool isUsedInCombo = Combos.Any(combo => combo.AllCategories.Any(constraint => constraint.Selector.CategoryIdentities.Contains(category.Identity)));
         bool isUsedOnCard = Cards.Any(card => card.Categories.Any(cardCategory => cardCategory.Identity == category.Identity)
             || card.PostDrawSelector.CategoryIdentities.Contains(category.Identity));
 

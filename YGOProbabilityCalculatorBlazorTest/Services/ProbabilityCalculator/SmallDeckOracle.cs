@@ -42,17 +42,15 @@ internal static class SmallDeckOracle {
         }
         List<(Func<Card, bool> Matches, int Min, int Max)> roles = [];
 
-        foreach (IGrouping<(CategorySource Source, string? Key), ComboCategory> group in combo.Categories.GroupBy(
-            category => (
-                category.BaseCategory.Source,
-                Key: category.BaseCategory.Source == CategorySource.User
-                    ? category.BaseCategory.Name
-                    : category.BaseCategory.MetadataKey
-            ))) {
+        // Group equivalent category sets independently of production signatures.
+        foreach (IGrouping<string, ComboCategory> group in combo.Categories.GroupBy(requirement =>
+            System.Text.Json.JsonSerializer.Serialize(requirement.CategoryBases.Select(category => category.Identity)
+                .Distinct().Order(StringComparer.Ordinal).ToArray()))) {
+            CategoryBase[] conjuncts = group.First().CategoryBases.ToArray();
             roles.Add((
-                card => card.Categories.Any(category =>
-                    category.Source == group.Key.Source
-                    && (category.Source == CategorySource.User ? category.Name : category.MetadataKey) == group.Key.Key),
+                card => conjuncts.All(required => card.Categories.Any(category =>
+                    category.Source == required.Source && (category.Source == CategorySource.User
+                        ? category.Name == required.Name : category.MetadataKey == required.MetadataKey))),
                 group.Max(constraint => constraint.MinCount),
                 group.Min(constraint => constraint.MaximumMode == RequirementMaximumMode.HandSize ? handSize : constraint.MaxCount)
             ));

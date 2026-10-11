@@ -8,6 +8,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudget budget) {
     private long _compiledEntries;
     private long _compiledCells;
+    private long _selectorCells;
+    private readonly Dictionary<string, BigInteger> _selectorMasks = new(StringComparer.Ordinal);
 
     internal List<CompiledEvent?> CompileCombo(Combo combo) {
         // Check the compact input and potential expansion before route allocation.
@@ -25,7 +27,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
             routes *= group.Alternatives.Count;
         }
 
-        budget.CheckStorage(_compiledEntries + routes, combo.Categories.Count + (long)combo.Cards.Count + combo.AlternativeGroups.Count);
+        budget.CheckStorage(_selectorMasks.Count + _compiledEntries + routes, _selectorCells + combo.Categories.Count + (long)combo.Cards.Count + combo.AlternativeGroups.Count);
         int[] choices = new int[combo.AlternativeGroups.Count];
         HashSet<CompiledEvent> unique = [];
 
@@ -52,7 +54,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
 
                 if (!unique.Contains(compiled)) {
                     long cells = (long)(compiled.Constraints.Length + (compiled.Roles?.Length ?? 0)) * (3 + deck.Count / 32);
-                    budget.CheckStorage(_compiledEntries + 1, _compiledCells + cells);
+                    budget.CheckStorage(_selectorMasks.Count + _compiledEntries + 1, _selectorCells + _compiledCells + cells);
                     _compiledEntries++;
                     _compiledCells += cells;
                     unique.Add(compiled);
@@ -75,7 +77,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
         budget.Spend(combo.Categories.Count + combo.Cards.Count + 1L);
         List<Requirement> constraints = [];
 
-        foreach (IGrouping<string, ComboCategory> group in combo.Categories.GroupBy(static category => category.BaseCategory.Identity, StringComparer.Ordinal)) {
+        foreach (IGrouping<string, ComboCategory> group in combo.Categories.GroupBy(static category => category.Selector.Signature, StringComparer.Ordinal)) {
             int min = group.Max(static category => category.MinCount);
             int max = Math.Min(handSize, group.Min(category => category.GetEffectiveMaximum(handSize)));
 
@@ -88,7 +90,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
                 continue;
             }
 
-            constraints.Add(new Requirement(new ConstraintKey(false, group.Key), min, max));
+            constraints.Add(new Requirement(new ConstraintKey(false, group.Key), min, max, group.First().Selector));
         }
 
         foreach (IGrouping<string, ComboCard> group in combo.Cards.GroupBy(static card => card.CardId, StringComparer.Ordinal)) {
@@ -115,12 +117,31 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
         foreach (Requirement constraint in constraints) {
             BigInteger eligible = BigInteger.Zero;
 
+            if (constraint.Selector is { Kind: not CardSelectorKind.Category }) {
+                if (!_selectorMasks.TryGetValue(constraint.Key.Value, out eligible)) {
+                    CardSelector selector = constraint.Selector!;
+                    long cells = selector.Signature.Length + 1L + deck.Count / 32;
+                    budget.Spend(selector.Signature.Length + 1L);
+                    budget.CheckStorage(_selectorMasks.Count + 1L + _compiledEntries, _selectorCells + _compiledCells + cells);
+                    _selectorCells += cells;
+                    bool[] matching = CardSelectorCompiler.Compile(selector, deck, budget);
+                    for (int row = 0; row < matching.Length; row++) {
+                        if (matching[row] && deck[row].Copies > 0) {
+                            eligible |= BigInteger.One << row;
+                        }
+                    }
+                    _selectorMasks.Add(constraint.Key.Value, eligible);
+                }
+                roles.Add(new CountBound(eligible, constraint.MinCount, constraint.MaxCount));
+                continue;
+            }
+
             for (int i = 0; i < deck.Count; i++) {
                 budget.Spend(deck[i].Categories.Count + 1L);
 
                 bool isEligibleCopy = deck[i].Copies > 0 && (constraint.Key.IsCard
                     ? deck[i].Id == constraint.Key.Value
-                    : deck[i].Categories.Any(category => category.Identity == constraint.Key.Value));
+                    : deck[i].Categories.Any(category => category.Identity == constraint.Selector!.CategoryIdentities[0]));
 
                 if (isEligibleCopy) {
                     eligible |= BigInteger.One << i;
@@ -199,5 +220,5 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
 
     private readonly record struct ConstraintKey(bool IsCard, string Value);
 
-    private readonly record struct Requirement(ConstraintKey Key, int MinCount, int MaxCount);
+    private readonly record struct Requirement(ConstraintKey Key, int MinCount, int MaxCount, CardSelector? Selector = null);
 }

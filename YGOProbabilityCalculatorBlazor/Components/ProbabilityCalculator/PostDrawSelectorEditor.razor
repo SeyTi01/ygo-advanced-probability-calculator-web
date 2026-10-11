@@ -21,17 +21,29 @@
     </select>
     @if (Selector.Kind != CardSelectorKind.Any) {
         <div class="d-flex flex-wrap align-items-center gap-1 mt-2" aria-label="Removal filter">
-            @for (int index = 0; index < Selector.CategoryIdentities.Count; index++) {
-                string identity = Selector.CategoryIdentities[index];
-                string label = Label(identity);
-                @if (index > 0) {
-                    <span class="small">OR</span>
-                }
-                <span class="badge text-bg-secondary text-wrap d-inline-flex align-items-center">
-                    <span>@label</span>
-                    <button type="button" class="btn-close category-remove-button ms-1"
-                            aria-label="Remove eligibility @label" title="Remove eligibility @label"
-                            @onclick="() => Remove(identity)"></button>
+            @for (int index = 0; index < Alternatives.Length; index++) {
+                int branch = index;
+                CardSelector alternative = Alternatives[index];
+                @if (index > 0) { <span class="small">OR</span> }
+                <span class="d-inline-flex flex-wrap align-items-center gap-1 border rounded p-1" style="max-width:100%">
+                    @for (int conjunct = 0; conjunct < alternative.CategoryIdentities.Count; conjunct++) {
+                        string identity = alternative.CategoryIdentities[conjunct];
+                        string label = Label(identity);
+                        @if (conjunct > 0) { <span class="small">AND</span> }
+                        <span class="badge text-bg-secondary text-wrap d-inline-flex align-items-center">
+                            <span>@label</span>
+                            <button type="button" class="btn-close category-remove-button ms-1"
+                                    aria-label="Remove eligibility @label" title="Remove eligibility @label"
+                                    @onclick="() => Remove(branch, identity)"></button>
+                        </span>
+                    }
+                    <select class="form-select form-select-sm" style="width:auto;max-width:100%" aria-label="Add AND eligibility to alternative @(index + 1)"
+                            value="" @onchange="e => AddAnd(branch, e.Value?.ToString())">
+                        <option value="">Add AND…</option>
+                        @foreach (CategoryBase category in Available) {
+                            <option value="@category.Identity">@category.Name</option>
+                        }
+                    </select>
                 </span>
             }
         </div>
@@ -44,6 +56,8 @@
     [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public EventCallback<CardSelector> OnChanged { get; set; }
+
+    private CardSelector[] Alternatives => Selector.Kind == CardSelectorKind.Any ? [] : Selector.Alternatives.ToArray();
 
     private CategoryBase[] Available => CategoryBases.Concat(CuratedDrawEffectPresets.FilterProperties)
         .DistinctBy(category => category.Identity).OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase).ToArray();
@@ -59,11 +73,27 @@
         if (!Available.Any(category => category.Identity == identity)) {
             return Task.CompletedTask;
         }
-        return OnChanged.InvokeAsync(CardSelector.AnyOf(Selector.CategoryIdentities.Append(identity!)));
+        return OnChanged.InvokeAsync(CardSelector.AnyOfSelectors(Alternatives.Append(new CardSelector(CardSelectorKind.Category, [identity!]))));
     }
 
-    private Task Remove(string identity) {
-        string[] remaining = Selector.CategoryIdentities.Where(category => category != identity).ToArray();
-        return OnChanged.InvokeAsync(remaining.Length == 0 ? CardSelector.Any : CardSelector.AnyOf(remaining));
+    private Task AddAnd(int branch, string? identity) {
+        if (!Available.Any(category => category.Identity == identity)) {
+            return Task.CompletedTask;
+        }
+        CardSelector[] alternatives = Alternatives;
+        alternatives[branch] = CardSelector.AllOf(alternatives[branch].CategoryIdentities.Append(identity!));
+        return OnChanged.InvokeAsync(CardSelector.AnyOfSelectors(alternatives));
+    }
+
+    private Task Remove(int branch, string identity) {
+        List<CardSelector> alternatives = Alternatives.ToList();
+        string[] remaining = alternatives[branch].CategoryIdentities.Where(category => category != identity).ToArray();
+        if (remaining.Length == 0) {
+            alternatives.RemoveAt(branch);
+        }
+        else {
+            alternatives[branch] = CardSelector.AllOf(remaining);
+        }
+        return OnChanged.InvokeAsync(alternatives.Count == 0 ? CardSelector.Any : CardSelector.AnyOfSelectors(alternatives));
     }
 }

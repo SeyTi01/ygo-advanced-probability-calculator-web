@@ -180,6 +180,11 @@
                 }
             </div>
 
+            @if (_editingAnd is { } editingAnd) {
+                <SameCardRequirementEditor @key="_andEditorKey" Requirement="editingAnd" CategoryBases="_availableCategories"
+                    CategoryRename="CategoryRename" OnApply="ApplyAnd" OnCancel="CancelAnd" />
+            }
+
             <div class="combo-group-row mb-3">
                 <div class="combo-group-field">
                     <label for="comboGroup@(Index)" class="form-label">Group</label>
@@ -297,6 +302,47 @@
 
     private const int MaxHeaderBadges = 6;
     private IReadOnlyList<CategoryBase> _availableCategories = [];
+    private ComboCategory? _editingAnd;
+    private object _andEditorKey = new();
+    private int _andIndex;
+    private int? _andGroup;
+
+    private void EditAnd(ComboCategory requirement, int index, int? group = null) {
+        _editingAnd = requirement;
+        _andEditorKey = new();
+        _andIndex = index;
+        _andGroup = group;
+    }
+
+    private void CancelAnd() => _editingAnd = null;
+
+    private bool AndTargetIsCurrent => _editingAnd is not null && (_andGroup is int group
+        ? group < Combo.AlternativeGroups.Count && _andIndex < Combo.AlternativeGroups[group].Alternatives.Count
+            && ReferenceEquals(Combo.AlternativeGroups[group].Alternatives[_andIndex].Category, _editingAnd)
+        : _andIndex < Combo.Categories.Count && ReferenceEquals(Combo.Categories[_andIndex], _editingAnd));
+
+    private Task ApplyAnd(ComboCategory requirement) {
+        if (!AndTargetIsCurrent) {
+            CancelAnd();
+            return Task.CompletedTask;
+        }
+        Combo updated;
+        if (_andGroup is int groupIndex) {
+            List<ComboAlternativeGroup> groups = Combo.AlternativeGroups.ToList();
+            List<ComboAlternative> alternatives = groups[groupIndex].Alternatives.ToList();
+            alternatives[_andIndex] = ComboAlternative.For(requirement);
+            groups[groupIndex] = new ComboAlternativeGroup(alternatives);
+            updated = Combo.WithAlternativeGroups(groups);
+        }
+        else {
+            List<ComboCategory> categories = Combo.Categories.ToList();
+            categories[_andIndex] = requirement;
+            updated = Combo.WithCategories(categories);
+        }
+        CancelAnd();
+        return OnReplaceCombo.InvokeAsync((Index, updated));
+    }
+
     private string? _error;
     private string _selectedCategory = string.Empty;
     private string _selectedCardId = string.Empty;
@@ -334,7 +380,7 @@
     }
 
     private string AlternativeLabel(ComboAlternative alternative) =>
-        alternative.Category?.BaseCategory.Name ?? $"Card: {CardDisplayName(alternative.Card!.CardId)}";
+        alternative.Category?.DisplayName ?? $"Card: {CardDisplayName(alternative.Card!.CardId)}";
 
     private string AlternativeRange(ComboAlternative alternative) => alternative.Category is { } category
         ? RequirementRangeFormatter.Format(category.MinCount, category.MaxCount, category.MaximumMode)
@@ -349,7 +395,7 @@
         else {
             CategoryBase category = alternative.Category!.BaseCategory;
             string categoryKind = category.Source == CategorySource.Metadata ? "Property" : "Category";
-            subject = $"{categoryKind}: {category.Name}";
+            subject = $"{categoryKind}: {alternative.Category!.DisplayName}";
         }
 
         return $"{subject} ({AlternativeRange(alternative)})";
@@ -357,12 +403,14 @@
 
     private RenderFragment CategoryBadge(ComboCategory category, int? removeIndex = null) => @<span class="badge category-tag @CategoryCssClass(category.BaseCategory)"
         title="@(category.BaseCategory.Source == CategorySource.Metadata ? "Card property" : null)">
-        @category.BaseCategory.Name (@RequirementRangeFormatter.Format(category.MinCount, category.MaxCount, category.MaximumMode))
+        @category.DisplayName (@RequirementRangeFormatter.Format(category.MinCount, category.MaxCount, category.MaximumMode))
         @if (removeIndex is int index) {
             <button type="button" class="btn-close category-remove-button ms-1"
-                    aria-label="@($"Remove category {category.BaseCategory.Name} from combo {ComboDisplayName}")"
-                    title="@($"Remove category {category.BaseCategory.Name} from combo {ComboDisplayName}")"
+                    aria-label="@($"Remove category {category.DisplayName} from combo {ComboDisplayName}")"
+                    title="@($"Remove category {category.DisplayName} from combo {ComboDisplayName}")"
                     @onclick="() => RemoveCategory(category, index)"></button>
+            <button type="button" class="btn btn-sm p-0 ms-1 text-reset same-card-edit" aria-label="Edit same-card requirement @category.DisplayName"
+                    title="Add AND / edit categories and shared range" @onclick="() => EditAnd(category, index)"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 12V8l5-5 4 4-5 5H3zm5-9 2-2 4 4-2 2" fill="none" stroke="currentColor" stroke-width="1.5" /></svg></button>
         }
     </span>;
 
@@ -383,6 +431,11 @@
             <button type="button" class="btn-close category-remove-button ms-1"
                     title="Remove alternative" aria-label="@($"Remove alternative {leafIndex + 1} ({AlternativeLabel(alternative)}) from group {groupIndex + 1}")"
                     @onclick="() => RemoveAlternative(Combo.AlternativeGroups[groupIndex], groupIndex, alternative, leafIndex)"></button>
+            @if (alternative.Category is { } editableCategory) {
+                <button type="button" class="btn btn-sm p-0 ms-1 text-reset same-card-edit" aria-label="Edit same-card alternative @(leafIndex + 1) in group @(groupIndex + 1)"
+                        title="Add AND / edit categories and shared range" @onclick="() => EditAnd(editableCategory, leafIndex, groupIndex)"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 12V8l5-5 4 4-5 5H3zm5-9 2-2 4 4-2 2" fill="none" stroke="currentColor" stroke-width="1.5" /></svg></button>
+            }
+
         }
     </span>;
 
@@ -636,7 +689,7 @@
 
     private bool HasSelectedConstraint => _selectedKind == "Card"
         ? Combo.Cards.Any(card => card.CardId == _selectedCardId)
-        : Combo.Categories.Any(category => category.BaseCategory.Identity == _selectedCategory);
+        : Combo.Categories.Any(category => category.Selector.Kind == CardSelectorKind.Category && category.BaseCategory.Identity == _selectedCategory);
 
     private int ConstraintCount => Combo.RequirementCount;
     private IEnumerable<Card> AlphabeticalCards => CardOrdering.Alphabetize(Cards);
@@ -738,7 +791,7 @@
         }
 
         List<ComboCategory> newCategories = Combo.Categories.ToList();
-        int existingIndex = newCategories.FindIndex(category => category.BaseCategory.Identity == categoryBase.Identity);
+        int existingIndex = newCategories.FindIndex(category => category.Selector.Kind == CardSelectorKind.Category && category.BaseCategory.Identity == categoryBase.Identity);
         ComboCategory constraint = new(categoryBase, minimum, maximum, MaximumMode);
 
         if (existingIndex >= 0) {
@@ -851,7 +904,7 @@
 
         ComboCategory? existing = AlternativeScope
             ? null
-            : Combo.Categories.FirstOrDefault(category => category.BaseCategory.Identity == _selectedCategory);
+            : Combo.Categories.FirstOrDefault(category => category.Selector.Kind == CardSelectorKind.Category && category.BaseCategory.Identity == _selectedCategory);
 
         if (existing is not null) {
             _minCount = existing.MinCount.ToString();
@@ -903,12 +956,12 @@
                 _suspendedDraft = (draft.Kind, $"user:{rename.NewName}", draft.Card, draft.Min, draft.Max);
             }
 
-            if (_alternativeSeed?.Category is ComboCategory seed && seed.BaseCategory.Identity == $"user:{rename.OldName}") {
+            if (_alternativeSeed?.Category is ComboCategory seed && seed.Selector.CategoryIdentities.Contains($"user:{rename.OldName}")) {
                 int index = _alternativeSeedIndex ?? -1;
                 bool isCurrentRenamedSeed = ReferenceEquals(_previousCombo, Combo)
                     && index >= 0
                     && index < Combo.Categories.Count
-                    && Combo.Categories[index].BaseCategory.Identity == $"user:{rename.NewName}"
+                    && Combo.Categories[index].Selector.Equals(seed.Selector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"))
                     && Combo.Categories[index].MinCount == seed.MinCount
                     && Combo.Categories[index].MaxCount == seed.MaxCount
                     && Combo.Categories[index].MaximumMode == seed.MaximumMode;
@@ -918,6 +971,17 @@
                 }
             }
 
+            if (_editingAnd is { } editing && ReferenceEquals(_previousCombo, Combo)) {
+                ComboCategory? replacement = _andGroup is int andGroup
+                    ? Combo.AlternativeGroups.ElementAtOrDefault(andGroup)?.Alternatives.ElementAtOrDefault(_andIndex)?.Category
+                    : Combo.Categories.ElementAtOrDefault(_andIndex);
+                CardSelector renamed = editing.Selector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}");
+                if (replacement is not null && replacement.Selector.Equals(renamed)
+                    && replacement.MinCount == editing.MinCount && replacement.MaxCount == editing.MaxCount
+                    && replacement.MaximumMode == editing.MaximumMode) {
+                    _editingAnd = replacement;
+                }
+            }
             _previousCategoryRenameVersion = rename.Version;
         }
 
@@ -925,6 +989,9 @@
             CancelAlternative();
         }
 
+        if (_editingAnd is not null && !AndTargetIsCurrent) {
+            CancelAnd();
+        }
         _previousCombo = Combo;
 
         // Hand size affects effective bounds only; leave committed values and drafts intact.

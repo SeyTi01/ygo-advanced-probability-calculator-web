@@ -510,8 +510,8 @@
         Combo source = _combos[index];
         Combo duplicate = new(
             source.Categories.Select(
-                category => new ComboCategory(
-                    category.BaseCategory,
+                category => ComboCategory.SameCard(
+                    category.CategoryBases,
                     category.MinCount,
                     category.MaxCount,
                     category.MaximumMode
@@ -630,13 +630,8 @@
             for (int categoryIndex = 0; categoryIndex < combo.Categories.Count; categoryIndex++) {
                 ComboCategory constraint = combo.Categories[categoryIndex];
 
-                if (constraint.BaseCategory.Identity.Equals(oldCategory.Identity, StringComparison.Ordinal)) {
-                    combo.Categories[categoryIndex] = new ComboCategory(
-                        newCategory,
-                        constraint.MinCount,
-                        constraint.MaxCount,
-                        constraint.MaximumMode
-                    );
+                if (constraint.Selector.CategoryIdentities.Contains(oldCategory.Identity)) {
+                    combo.Categories[categoryIndex] = constraint.RenameCategory(oldCategory, newCategory);
                 }
             }
         }
@@ -646,13 +641,8 @@
                 ComboAlternativeGroup group = combo.AlternativeGroups[groupIndex];
                 ComboAlternative[] alternatives = group.Alternatives
                     .Select(alternative => {
-                        if (alternative.Category is { } category && category.BaseCategory.Identity == oldCategory.Identity) {
-                            return ComboAlternative.For(new ComboCategory(
-                                newCategory,
-                                category.MinCount,
-                                category.MaxCount,
-                                category.MaximumMode
-                            ));
+                        if (alternative.Category is { } category && category.Selector.CategoryIdentities.Contains(oldCategory.Identity)) {
+                            return ComboAlternative.For(category.RenameCategory(oldCategory, newCategory));
                         }
 
                         return alternative;
@@ -688,7 +678,7 @@
 
     private void ReconcileCategoryColorIndices() {
         List<string> activeCategoryNames = _categoryBases.Concat(_cards.SelectMany(card => card.Categories))
-            .Concat(_combos.SelectMany(combo => combo.AllCategories).Select(category => category.BaseCategory))
+            .Concat(_combos.SelectMany(combo => combo.AllCategories).SelectMany(category => category.CategoryBases))
             .Where(category => category.Source == CategorySource.User)
             .Select(category => category.Name)
             .Distinct(StringComparer.Ordinal)
