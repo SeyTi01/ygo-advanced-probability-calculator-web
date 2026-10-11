@@ -170,7 +170,7 @@ public class PinnedResultTest {
         int writes = _context.JSInterop.Invocations["sessionRecovery.update"].Count;
         await Pin();
         PinnedResultSnapshot first = Pinned;
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Draw effects on", "Hand size 2 · 8 active copies · 2 active cards · Draw effects on");
         await Accept(.842);
         Assert.That(Pinned, Is.SameAs(first));
         Assert.That(_cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
@@ -428,7 +428,7 @@ public class PinnedResultTest {
         Assert.That(current.CompareCombo(current.Combos[0], original, true), Is.EqualTo("+2.8%"));
         Assert.That(current.CompareCombo(current.Combos[1], original, true), Is.EqualTo("+2.8%"));
         Assert.That(current.CompareGroup(current.Groups[0], original, true), Is.EqualTo("+2.8%"));
-        AssertContextDescriptions("Hand size 2 · 7 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+        AssertContextDescriptions("Hand size 2 · 7 active copies · 2 active cards · Draw effects on", "Hand size 2 · 8 active copies · 2 active cards · Draw effects on");
         Assert.That(Pinned.Combos.Select(c => c.Label), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
     }
 
@@ -436,21 +436,21 @@ public class PinnedResultTest {
     public async Task CurrentAndPinnedContextSummariesKeepTheSameCapturedFieldsAcrossEditsAndRecalculation() {
         await Accept(.814);
         await Pin();
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Draw effects on", "Hand size 2 · 8 active copies · 2 active cards · Draw effects on");
 
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         await Accept(.842);
-        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Draw effects on", "Hand size 2 · 8 active copies · 2 active cards · Draw effects on");
 
         await Call("ReplaceCard", (0, Field<List<Card>>("_cards")[0].WithCopies(3)));
         await Call("ReplaceCard", (1, Field<List<Card>>("_cards")[1].WithActive(false)));
         // Pending edits do not leak into the last accepted result or the explicit pin.
-        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Draw effects on", "Hand size 2 · 8 active copies · 2 active cards · Draw effects on");
         await Accept(.786);
-        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards", "Hand size 2 · 8 active copies · 2 active cards");
+        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Draw effects on", "Hand size 2 · 8 active copies · 2 active cards · Draw effects on");
 
         await Pin();
-        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards", "Hand size 3 · 3 active copies · 1 active cards");
+        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Draw effects on", "Hand size 3 · 3 active copies · 1 active cards · Draw effects on");
         Assert.That(_cut.FindAll(".result-difference-neutral"), Has.Count.EqualTo(5),
             "removing the context note does not alter the inline comparison rows");
     }
@@ -576,9 +576,9 @@ public class PinnedResultTest {
         Assert.That(current.CompareGroup(current.Groups[0], pin, true), Is.EqualTo("Unrelated session"));
         Assert.That(_cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
         string currentContext = load == "ydk"
-            ? "Hand size 2 · 8 active copies · 2 active cards"
-            : "Hand size 3 · 8 active copies · 2 active cards";
-        AssertContextDescriptions(currentContext, "Hand size 2 · 8 active copies · 2 active cards");
+            ? "Hand size 2 · 8 active copies · 2 active cards · Draw effects on"
+            : "Hand size 3 · 8 active copies · 2 active cards · Draw effects on";
+        AssertContextDescriptions(currentContext, "Hand size 2 · 8 active copies · 2 active cards · Draw effects on");
     }
 
     [Test]
@@ -729,6 +729,36 @@ public class PinnedResultTest {
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
         Assert.That(_cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
         Assert.That(_clipboard.Invocations["copyText"], Is.Empty);
+    }
+
+    [Test]
+    public async Task DrawEffectsModeIsVisibleAndComparableAcrossPinnedResults() {
+        List<Card> cards = Field<List<Card>>("_cards");
+        cards[0] = cards[0].WithDrawCount(2).WithDrawOncePerTurn(false);
+
+        await Accept(.6);
+        await Pin();
+        PinnedResultSnapshot pinnedOn = Pinned;
+        Assert.That(pinnedOn.Context.DrawEffectsEnabled, Is.True);
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Draw effects on",
+            "Hand size 2 · 8 active copies · 2 active cards · Draw effects on");
+
+        await _cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
+        Assert.That(_cut.Find(".probability-result-status-full").TextContent, Is.EqualTo("Previous result · inputs changed"));
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
+        await Accept(.75);
+
+        CalculationInput offInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs.Last().Json)!;
+        Assert.That(offInput.Cards[0].DrawCount, Is.Null);
+        Assert.That((cards[0].DrawCount, cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
+        Assert.That(_cut.FindAll(".result-difference").ToArray(), Has.Length.EqualTo(5));
+        Assert.That(_cut.FindAll(".result-row-comparison").Select(row => row.TextContent),
+            Does.Not.Contain("Unrelated session"));
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Draw effects off",
+            "Hand size 2 · 8 active copies · 2 active cards · Draw effects on");
+        Assert.That(Pinned.Context.DeckDefinition, Is.EqualTo(pinnedOn.Context.DeckDefinition));
+        Assert.That(Pinned.Context.DrawEffectsEnabled, Is.True);
+        Assert.That(Field<PinnedResultSnapshot>("_acceptedComparison").Context.DrawEffectsEnabled, Is.False);
     }
 
     private sealed class SessionFile(string json) : IBrowserFile {

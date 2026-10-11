@@ -271,6 +271,33 @@ public class BackgroundCalculationComponentTest {
         Assert.That(_cut.FindAll(".probability-result-status"), Is.Empty);
     }
 
+    [Test]
+    public async Task DrawEffectsToggleCancelsPendingCalculationAndCapturesTheNewMode() {
+        BindingFlags instanceNonPublic = BindingFlags.Instance | BindingFlags.NonPublic;
+        List<Card> cards = (List<Card>)typeof(ProbabilityCalculatorComponent)
+            .GetField("_cards", instanceNonPublic)!.GetValue(_cut.Instance)!;
+        cards[0] = cards[0].WithDrawCount(2).WithDrawOncePerTurn(false);
+
+        Task accepted = Start();
+        Assert.That(_calculator.Snapshots[0].Json, Does.Contain("\"DrawCount\":2"));
+        _calculator.Jobs[0].SetResult(Result("configured result"));
+        await accepted;
+
+        Task pending = Start();
+        await _cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
+        Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
+        Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
+
+        Task disabled = Start();
+        Assert.That(_calculator.Snapshots[2].Json, Does.Contain("\"DrawCount\":null"));
+        _calculator.Jobs[2].SetResult(Result("ordinary result"));
+        await disabled;
+        _calculator.Jobs[1].SetResult(Result("late configured result"));
+        await pending;
+        Assert.That(_cut.Markup, Does.Contain("ordinary result").And.Not.Contain("late configured result"));
+        Assert.That((cards[0].DrawCount, cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task DisposedComponentCancelsAndIgnoresLateSuccessAndError(bool error) {
@@ -329,10 +356,12 @@ public class BackgroundCalculationComponentTest {
     private sealed class ControlledCalculator : IBackgroundCalculator {
         public List<TaskCompletionSource<ProbabilityCalculationResult>> Jobs { get; } = [];
         public List<CancellationToken> Tokens { get; } = [];
+        public List<CalculationSnapshot> Snapshots { get; } = [];
         public Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken token) {
             TaskCompletionSource<ProbabilityCalculationResult> source = new(TaskCreationOptions.RunContinuationsAsynchronously);
             Jobs.Add(source);
             Tokens.Add(token);
+            Snapshots.Add(snapshot);
             return source.Task; // Deliberately disobey cancellation to test ownership of late callbacks.
         }
     }

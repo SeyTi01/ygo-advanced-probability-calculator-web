@@ -151,6 +151,24 @@
     width: 5rem;
 }
 
+.calculation-controls {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+}
+
+.draw-effects-control .form-check {
+    margin: 0;
+}
+
+.draw-effects-control .form-text {
+    display: block;
+    max-width: 18rem;
+    margin: 0.125rem 0 0 2.5rem;
+}
+
 .session-toolbar {
     flex: 1 1 32rem;
     min-width: 0;

@@ -2,6 +2,7 @@ using System.Numerics;
 using Microsoft.JSInterop;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
@@ -112,6 +113,58 @@ public class DrawEffectsTest {
             Assert.That(result.Total.Numerator, Is.GreaterThan(BigInteger.Zero));
             Assert.That(result.Total.Numerator, Is.LessThan(result.Total.Denominator));
         }
+    }
+
+    [Test, Explicit("Global draw-effects work observation on the bundled example")]
+    public async Task GlobalDrawEffectsOffUsesSubstantiallyLessChargedWork() {
+        SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        string json = File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json"));
+        SessionState session = await codec.LoadSessionAsync(json);
+        int index = session.Cards.FindIndex(card => card.Name == "Mulcharmy Fuwalos");
+        Assert.That(index, Is.GreaterThanOrEqualTo(0));
+        session.Cards[index] = session.Cards[index].WithDrawCount(3).WithDrawOncePerTurn(false);
+
+        CalculationWorkPolicy policy = CalculationWorkPolicy.Interactive;
+        WorkBudget enabledBudget = new(policy);
+        new DrawEffectCalculation(session.Cards, session.HandSize, enabledBudget)
+            .Calculate(session.Combos, session.ComboGroups);
+
+        CalculationSnapshot disabledSnapshot = CalculationSnapshot.Capture(
+            session.Cards,
+            session.Combos,
+            session.HandSize,
+            session.ComboGroups,
+            policy,
+            drawEffectsEnabled: false
+        );
+        CalculationInput disabledInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(disabledSnapshot.Json)!;
+        Assert.That(disabledInput.Cards.All(card => card.DrawCount is null), Is.True);
+        List<Card> effectiveCards = disabledInput.Cards.Select(card => new Card(
+            card.Categories,
+            card.Copies,
+            card.Name,
+            true,
+            card.Id,
+            card.ExternalCardId,
+            card.ManualMetadataCategoryKeys,
+            card.DrawCount,
+            card.DrawOncePerTurn
+        )).ToList();
+        WorkBudget disabledBudget = new(policy);
+        ExactCalculationResult disabledResult = new ProbabilityCalculation(effectiveCards, session.HandSize, disabledBudget)
+            .CalculateExactResults(session.Combos, session.ComboGroups);
+
+        List<Card> ordinaryCards = session.Cards.Select(card => card.WithDrawCount(null)).ToList();
+        ExactCalculationResult ordinaryResult = new ProbabilityCalculation(ordinaryCards, session.HandSize, new WorkBudget(policy))
+            .CalculateExactResults(session.Combos, session.ComboGroups);
+        Assert.That(disabledResult.Total.Numerator * ordinaryResult.Total.Denominator,
+            Is.EqualTo(ordinaryResult.Total.Numerator * disabledResult.Total.Denominator));
+        Assert.That(disabledResult.Combos.Select(value => (value.Numerator, value.Denominator)),
+            Is.EqualTo(ordinaryResult.Combos.Select(value => (value.Numerator, value.Denominator))));
+        Assert.That(disabledBudget.Spent, Is.LessThan(enabledBudget.Spent));
+
+        double reduction = 100d * (enabledBudget.Spent - disabledBudget.Spent) / enabledBudget.Spent;
+        TestContext.Out.WriteLine($"Bundled example with Fuwalos Draw 3 unlimited: on={enabledBudget.Spent:N0} charged work; off={disabledBudget.Spent:N0}; reduction={reduction:F1}%.");
     }
 
     [TestCase(false), TestCase(true)]

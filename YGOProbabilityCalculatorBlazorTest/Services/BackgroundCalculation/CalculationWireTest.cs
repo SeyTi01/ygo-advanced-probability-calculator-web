@@ -53,6 +53,60 @@ public class CalculationWireTest {
     }
 
     [Test]
+    public void DisabledDrawEffectsSnapshotUsesOrdinaryCardsWithoutChangingWorkspaceCards() {
+        CategoryBase starter = new("Starter");
+        CategoryBase fire = new("FIRE", CategorySource.Metadata, "attribute:fire");
+        List<Card> configuredCards = [
+            new([starter, fire], 2, "Configured draw", id: "draw", externalCardId: 55144522,
+                manualMetadataCategoryKeys: [fire.MetadataKey!], drawCount: 2, drawOncePerTurn: false),
+            new([starter], 2, "Ordinary", id: "ordinary"),
+            new([], 1, "Inactive draw", active: false, id: "inactive", drawCount: 3, drawOncePerTurn: false)
+        ];
+        List<Combo> combos = [
+            new([new(starter, 1, 2), new(fire, 0, 0)], "Role and exclusion", cards: [new("draw", 1, 2)]),
+            new([], "Alternative", alternativeGroups: [new([
+                ComboAlternative.For(new ComboCategory(fire, 1, 2)),
+                ComboAlternative.For(new ComboCard("ordinary", 1, 2))
+            ])])
+        ];
+
+        CalculationSnapshot enabledSnapshot = CalculationSnapshot.Capture(configuredCards, combos, 2, []);
+        CalculationSnapshot disabledSnapshot = CalculationSnapshot.Capture(
+            configuredCards,
+            combos,
+            2,
+            [],
+            drawEffectsEnabled: false
+        );
+        CalculationInput enabledInput = JsonSerializer.Deserialize<CalculationInput>(enabledSnapshot.Json)!;
+        CalculationInput disabledInput = JsonSerializer.Deserialize<CalculationInput>(disabledSnapshot.Json)!;
+
+        Assert.That(enabledInput.Cards[0].DrawCount, Is.EqualTo(2));
+        Assert.That(enabledInput.Cards[0].DrawOncePerTurn, Is.False);
+        Assert.That(disabledInput.Cards, Has.Length.EqualTo(2));
+        Assert.That(disabledInput.Cards[0].DrawCount, Is.Null);
+        Assert.That(disabledInput.Cards[0].DrawOncePerTurn, Is.True);
+        Assert.That((disabledInput.Cards[0].Id, disabledInput.Cards[0].Copies, disabledInput.Cards[0].Name,
+                disabledInput.Cards[0].ExternalCardId, disabledInput.Cards[0].ManualMetadataCategoryKeys),
+            Is.EqualTo(("draw", 2, "Configured draw", (int?)55144522, new[] { fire.MetadataKey! })));
+        Assert.That(disabledInput.Cards[0].Categories.Select(category => category.Identity),
+            Is.EqualTo(new[] { starter.Identity, fire.Identity }));
+        Assert.That((configuredCards[0].DrawCount, configuredCards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
+
+        List<Card> ordinaryCards = configuredCards
+            .Where(card => card.Active)
+            .Select(card => card.WithDrawCount(null))
+            .ToList();
+        ProbabilityCalculationResult disabledResult = CalculationWire.ReadResult(CalculationWire.Execute(disabledSnapshot.Json));
+        ProbabilityCalculationResult ordinaryResult = CalculationWire.ReadResult(CalculationWire.Execute(
+            CalculationSnapshot.Capture(ordinaryCards, combos, 2, []).Json));
+        Assert.That(disabledResult.TotalProbability, Is.EqualTo(ordinaryResult.TotalProbability));
+        Assert.That(disabledResult.ComboProbabilities, Is.EqualTo(ordinaryResult.ComboProbabilities));
+        Assert.That(disabledResult.TotalProbability, Is.EqualTo(
+            SmallDeckOracle.EnumerateProbability(ordinaryCards, combos, 2)));
+    }
+
+    [Test]
     public void OverlappingDistinctRequirementsAndZeroMaximumMatchIndependentPhysicalOracle() {
         CategoryBase a = new("A");
         CategoryBase b = new("B");
