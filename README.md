@@ -38,28 +38,48 @@ With all eight combo definitions active, the example has an **83.61%** probabili
 
 ## How to use it
 
+### Get started
+
 1. **Import or enter your deck.**
-2. **Create custom categories** for reusable roles. Imported cards expose objective card properties automatically.
-3. **Assign categories to cards.** A card can belong to multiple categories.
-4. **Define combos** using categories, specific cards, or both.
-5. **Set minimum and maximum counts** for each requirement.
-6. **Calculate** to see the probability of each combo and the combined probability of opening any active combo.
+2. **Create custom categories** for reusable roles and assign them to cards. Cards can have several categories; imported cards also expose objective properties automatically.
+3. **Define combos** using categories, specific cards, or both.
+4. **Set minimum and maximum counts.** Leave Max empty for **Any** (the final hand size), or enter a fixed maximum. Set both to `0` to exclude matching cards.
+5. **Calculate** to see each combo's probability and the chance of opening any active combo. Hands satisfying several combos count only once in the combined result.
 
-Click **Add OR**, then click a condition or whole OR group in the expanded expression. Enter the alternative with the type and range inputs and choose **Add alternative**. Cancel target selection or alternative authoring to return to your ordinary draft. Remove alternatives using their chip crosses. For example, `Razen + (Fire OR Dark)` requires Razen and either Fire or Dark; satisfying both alternatives still counts once. Each alternative has its own Min and fixed Max or Any. Separate positive requirements still need distinct physical copies. Multiple flat OR groups are supported, with one result per combo.
+Separate positive requirements need distinct physical copies: one card matching both `Starter` and `Fire` cannot fill both parts of `Starter + Fire`.
 
-To add same-card constraints, choose **Add AND** and select a category requirement or category alternative in an OR group. Choose another category in the existing requirement row and submit. The new category inherits the target's shared Min and Max, which apply to the resulting conjunction. Each category appears as a removable chip: removing one of two collapses the requirement to the remaining category, while removing the last removes the requirement or alternative. OR branches keep independent ranges. For example, `(Orcust AND Monster) Min 2` needs two cards that each match both properties. Separate requirements joined by `+` still need distinct physical copies.
+### Add OR alternatives and same-card AND conditions
 
-Each card entry can optionally use **Draw 1**, **Draw 2**, or **Draw 3**. **Once per turn** is on by default: the first encountered copy automatically draws that many cards and is consumed; later copies of that entry remain in the final hand. Turn it off to let every copy activate and be consumed, including copies drawn by another effect. Separate entries have independent allowances, even with the same name. **None** restores ordinary behavior without deactivating the card and preserves your toggle setting. The global **Draw effects** switch can temporarily ignore every configured draw effect, treating those cards as ordinary cards while leaving their individual settings intact. This supports alternative opening-hand analysis and can reduce calculation cost; turning it back on restores the saved card behavior. New imports and explicit database-card selections receive initial draw defaults only for the small curated set of real cards; other imports and selections, plus manual free-text cards, start with no effect. You can change or clear any preset.
+- **OR:** Click **Add OR**, select a condition or OR group in the expanded expression, then enter another condition and choose **Add alternative**. `Razen + (Fire OR Dark)` needs Razen and either Fire or Dark. Each alternative has its own Min/Max; satisfying both still counts once.
+- **AND:** Click **Add AND**, select a category requirement or category alternative, then choose another category and submit. `(Orcust AND Monster) Min 2` needs two cards that each match both properties, using shared Min/Max bounds.
 
-Requirements are evaluated on the final hand, including retained duplicate effect cards. **Any** uses that complete final hand size. A draw effect activates only when the full configured amount remains in the deck; otherwise its source stays in hand, no draw or removal occurs, and that outcome is evaluated normally in the original probability denominator. With a draw amount configured, **After drawing** supports None, Remove 1, or Remove 2. **Eligible** can be Any card, one category/property, a same-card AND group, or an OR of categories and/or AND groups. New Dark World Dealings presets use Draw 1 / discard 1; Graceful Charity uses Draw 3 / discard 2, both without once-per-turn limits. Existing saves keep their settings. New Allure of Darkness defaults to Draw 2 / non-OPT / remove one DARK card; Radiant Typhoon Vision defaults to Draw 2 / OPT / remove one Quick-Play Spell OR Radiant Typhoon card. If eligible material for a required removal is unavailable after a legal full draw, that branch fails without renormalizing the other outcomes. These defaults apply only to new imports and pristine database selections; old saved cards remain authoritative. Choosing Draw None clears the removal setting and filter.
+Use chip crosses to remove conditions.
 
-Open the gear **Calculation settings** menu for **Draw simulation**. **Draw effects** enables Basic simulation: configured fixed draws and once-per-turn limits, ignoring pre-draw costs and post-draw removal, filter, and failure settings. The nested **Advanced draw simulation** switch adds pre-draw hand costs and supported post-draw removals using the stored card settings and defaults off. These are two levels of draw simulation complexity; both require Draw effects to be on. Turning Draw effects off also turns Advanced off; re-enabling Draw effects returns to Basic simulation. Advanced mode and the separate **Storage safety limit** are runtime preferences, not saved/shared/recovery session fields; loading or importing a deck does not enable Advanced. The storage selector applies to every calculation path and remains available in Basic mode.
+### Configure draw effects
 
-In Advanced mode, an effect activates only when its complete draw batch fits and its full pre-draw cost is payable. An undersized batch leaves its source in hand and does not pay the cost or use OPT; a cost-blocked candidate can be retried after another activation, while an undersized candidate cannot become legal later because the deck only shrinks. A legal activation consumes its source, draws exactly the configured amount, then performs its required removal before the next surviving FIFO candidate activates. Newly drawn cards can be removed, and removed candidates never activate. Eligibility is checked before applying the keep policy. The deterministic policy keeps cards matching positive requirements in any currently active route first, then draw cards whose full batches still fit and whose costs are payable, then unrelated/non-usable cards. Maximum-only constraints do not protect cards. Stable membership and card-identity ties make deck-row order irrelevant. All combo, group, and total rows use the same resulting hands; changing active routes can change the policy. Random draws are counted exactly for this policy, which is **not optimal-play simulation**. Discard triggers, optional activation, searches, and general card effects also remain unsupported.
+Expand a card entry to choose **None**, **Draw 1**, **Draw 2**, or **Draw 3**. An activating copy is consumed. With **Once per turn** on (the default), later copies of that entry stay in hand; turn it off to let every copy activate, including newly drawn copies. Separate entries have independent allowances.
 
-**Before drawing** configures an optional cost: remove one or two eligible cards from hand before activating. The full draw batch and complete cost must both be available before activation; the cost check excludes the activating physical copy. If either prerequisite fails, the source stays in hand, OPT stays unused, and no cost is paid. Candidates are scanned in FIFO order; after another activation finishes, cost-blocked candidates are reconsidered from the oldest surviving position. A candidate whose batch cannot fit is no longer retried. A full pass without activation ends resolution. Cost selection uses the same keep policy described above.
+Open the gear **Calculation settings** menu to choose how these settings apply:
 
-New Trade-In presets use Draw 2, no OPT, and remove one **Level 8** before drawing. New Orcustrated Return presets use Draw 2, OPT, and remove one **(Orcust AND Monster) OR (World Legacy AND Monster)** from hand. Return's field alternative and Graveyard/discard triggers are not modeled. These presets apply only to new imports and pristine database selections. Schema 5 saves preserve the costs; v0–v4 sessions migrate without acquiring costs or new presets, and v4 draw settings keep their existing meaning. Choosing Draw None clears both pre- and post-draw configuration.
+- **Draw effects off:** Treat all cards as ordinary cards while preserving their configured effects.
+- **Basic simulation:** Enable **Draw effects** for fixed draws and once-per-turn limits. Pre-draw costs and post-draw removals are ignored.
+- **Advanced draw simulation:** Also enable the nested switch to apply those costs, removals, and eligibility filters. It defaults off and can require more calculation resources.
+
+Requirements apply to the final hand. If the full draw amount is unavailable, the source stays in hand and the outcome is evaluated normally.
+
+### Use Advanced costs and removals
+
+With a draw amount set, **Before drawing** and **After drawing** can each remove one or two cards. **Eligible** accepts any card, a category/property, a same-card AND group, or OR alternatives.
+
+- A pre-draw cost must be payable without using the activating copy. Otherwise the effect waits and may be reconsidered after another activation.
+- A required post-draw removal can use newly drawn cards. If eligible material is missing after a legal draw, that branch fails and remains in the probability denominator.
+- Removal follows a deterministic policy: keep cards matching positive requirements in active routes first, then usable draw cards, then other cards. Changing active routes can change the resulting hands.
+
+Results are exact for this policy, **not optimal-play simulation**. Optional activation, searches, discard triggers, and general card effects are unsupported.
+
+Some new imports and database selections receive editable presets; saved cards keep their chosen settings. Choosing **Draw None** clears pre- and post-draw configuration. Advanced mode and **Storage safety limit** are runtime preferences, not session fields. Turning Draw effects off resets Advanced; re-enabling returns to Basic.
+
+See the calculator's [Help page](https://dev.ygo-calculator.pages.dev/help) for detailed rules and preset examples.
 
 ## How the calculation works
 
