@@ -22,41 +22,14 @@
 
         <section aria-labelledby="drawSimulationHeading">
             <h3 id="drawSimulationHeading" class="small fw-semibold mb-2">Draw simulation</h3>
-            <div class="calculation-settings-option">
-                <div class="form-check form-switch mb-1">
-                    <input @ref="_drawEffectsInput"
-                           type="checkbox"
-                           class="form-check-input"
-                           id="drawEffectsEnabled"
-                           role="switch"
-                           checked="@DrawEffectsEnabled"
-                           aria-describedby="@DrawEffectsDescriptionIds"
-                           @onchange="OnDrawEffectsChanged" />
-                    <label class="form-check-label" for="drawEffectsEnabled">Draw effects</label>
-                </div>
-                <p id="drawEffectsHelp" class="form-text mb-0">
-                    Basic simulation applies fixed draws and once-per-turn limits. When off, cards are treated as ordinary cards.
-                </p>
-            </div>
-            <div class="calculation-settings-option advanced-draw-option">
-                <div class="form-check form-switch mb-1">
-                    <input type="checkbox"
-                           class="form-check-input"
-                           id="conditionalEffectsEnabled"
-                           role="switch"
-                           checked="@ConditionalEffectsEnabled"
-                           disabled="@(!DrawEffectsEnabled)"
-                           aria-describedby="@ConditionalEffectsDescriptionIds"
-                           @onchange="OnConditionalEffectsChanged" />
-                    <label class="form-check-label" for="conditionalEffectsEnabled">Advanced draw simulation</label>
-                </div>
-                <p id="conditionalEffectsHelp" class="form-text mb-0">
-                    Adds pre-draw hand costs, post-draw removals and filters to Basic simulation. Requires Draw effects and can be significantly more expensive.
-                </p>
-            </div>
-            @if (DrawModeNote is { } drawModeNote) {
-                <p id="drawModeNote" class="form-text mb-0 calculation-mode-note" role="note">@drawModeNote</p>
-            }
+            <label class="form-label mb-1" for="calculationModel">Calculation model</label>
+            <select @ref="_drawEffectsInput" id="calculationModel" class="form-select"
+                    value="@Model" aria-describedby="drawEffectsHelp" @onchange="OnModelChanged">
+                <option value="Configured">Configured draw effects (default)</option>
+                <option value="OpeningHand">Opening hand only</option>
+                <option value="Simplified">Simplified draws (hypothetical)</option>
+            </select>
+            <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
         </section>
 
         <div class="border-top mt-3 pt-3 calculation-settings-option">
@@ -79,22 +52,10 @@
 
 @code {
     [Parameter]
-    public bool DrawEffectsEnabled { get; set; } = true;
+    public CalculationModel Model { get; set; } = CalculationModel.Configured;
 
     [Parameter]
-    public EventCallback<bool> DrawEffectsEnabledChanged { get; set; }
-
-    [Parameter]
-    public bool ConditionalEffectsEnabled { get; set; }
-
-    [Parameter]
-    public EventCallback<bool> ConditionalEffectsEnabledChanged { get; set; }
-
-    [Parameter]
-    public int ActiveDrawConfiguredCardCount { get; set; }
-
-    [Parameter]
-    public int ActiveAdvancedConfiguredCardCount { get; set; }
+    public EventCallback<CalculationModel> ModelChanged { get; set; }
 
     [Parameter]
     public CalculationStorageTier StorageTier { get; set; } = CalculationStorageTier.Standard;
@@ -107,17 +68,11 @@
     private bool _focusTriggerAfterRender;
     private ElementReference _trigger;
     private ElementReference _drawEffectsInput;
-    private string? DrawModeNote => DrawEffectPresentation.SettingsNote(
-        DrawEffectsEnabled,
-        ConditionalEffectsEnabled,
-        ActiveDrawConfiguredCardCount,
-        ActiveAdvancedConfiguredCardCount);
-    private string DrawEffectsDescriptionIds =>
-        !DrawEffectsEnabled && DrawModeNote is not null ? "drawEffectsHelp drawModeNote" : "drawEffectsHelp";
-    private string ConditionalEffectsDescriptionIds =>
-        DrawEffectsEnabled && !ConditionalEffectsEnabled && DrawModeNote is not null
-            ? "conditionalEffectsHelp drawModeNote"
-            : "conditionalEffectsHelp";
+    private string ModelHelp => Model switch {
+        CalculationModel.Configured => "Applies supported draws, once-per-turn limits, pre-draw costs, post-draw removals and filters.",
+        CalculationModel.OpeningHand => "Draws are ignored; configured draw cards still occupy hand slots. Card settings are preserved.",
+        _ => "Hypothetical: ignores both pre-draw costs and post-draw removals. Cost-dependent cards such as Trade-In may draw unconditionally, giving misleading, often optimistic deck-building probabilities."
+    };
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_focusDrawEffectsAfterRender) {
@@ -137,6 +92,12 @@
         return Task.CompletedTask;
     }
 
+    public Task Open() {
+        _isOpen = true;
+        _focusDrawEffectsAfterRender = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
     private Task HandleKeyDown(KeyboardEventArgs eventArgs) {
         if (!_isOpen || eventArgs.Key != "Escape") {
             return Task.CompletedTask;
@@ -147,11 +108,13 @@
         return Task.CompletedTask;
     }
 
-    private Task OnDrawEffectsChanged(ChangeEventArgs eventArgs) =>
-        DrawEffectsEnabledChanged.InvokeAsync(eventArgs.Value is bool enabled && enabled);
+    private Task OnModelChanged(ChangeEventArgs eventArgs) {
+        if (!Enum.TryParse(eventArgs.Value?.ToString(), out CalculationModel model) || !Enum.IsDefined(model)) {
+            return Task.CompletedTask;
+        }
 
-    private Task OnConditionalEffectsChanged(ChangeEventArgs eventArgs) =>
-        ConditionalEffectsEnabledChanged.InvokeAsync(eventArgs.Value is bool enabled && enabled);
+        return ModelChanged.InvokeAsync(model);
+    }
 
     private Task OnStorageTierChanged(ChangeEventArgs eventArgs) {
         if (!Enum.TryParse(eventArgs.Value?.ToString(), ignoreCase: false, out CalculationStorageTier tier) ||

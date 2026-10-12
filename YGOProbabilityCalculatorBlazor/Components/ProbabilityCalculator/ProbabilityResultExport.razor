@@ -78,6 +78,7 @@
     private IJSObjectReference? _clipboardModule;
     private ProbabilityCalculationResult? _observedResult;
     private int _observedHandSize;
+    private string? _observedModelDescription;
     private bool _observedIsStale;
     private bool _observedIsCalculating;
     private bool _hasObservedParameters;
@@ -97,6 +98,9 @@
 
     [Parameter]
     public int HandSize { get; set; }
+
+    [Parameter]
+    public string? ModelDescription { get; set; }
 
     [Parameter]
     public bool IsStale { get; set; }
@@ -119,6 +123,7 @@
     protected override void OnParametersSet() {
         bool parametersUnchanged = _hasObservedParameters
             && ReferenceEquals(_observedResult, Result)
+            && _observedModelDescription == ModelDescription
             && _observedHandSize == HandSize
             && _observedIsStale == IsStale
             && _observedIsCalculating == IsCalculating;
@@ -130,6 +135,7 @@
         _hasObservedParameters = true;
         _observedResult = Result;
         _observedHandSize = HandSize;
+        _observedModelDescription = ModelDescription;
         _observedIsStale = IsStale;
         _observedIsCalculating = IsCalculating;
         _validityVersion++;
@@ -199,6 +205,10 @@
         long version = _validityVersion;
         long attemptVersion = ++_copyAttemptVersion;
         string summary = ProbabilityResultSummaryFormatter.Format(result, handSize, culture);
+
+        if (ModelDescription is { } model) {
+            summary = model + "\n" + summary;
+        }
 
         if (stale) {
             summary = "Previous result — current inputs have changed.\n" + summary;

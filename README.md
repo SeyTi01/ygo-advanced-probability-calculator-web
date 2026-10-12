@@ -61,9 +61,9 @@ Expand a card entry to choose **None**, **Draw 1**, **Draw 2**, or **Draw 3**. A
 
 Open the gear **Calculation settings** menu to choose how these settings apply:
 
-- **Draw effects off:** Treat all cards as ordinary cards while preserving their configured effects.
-- **Basic simulation:** Enable **Draw effects** for fixed draws and once-per-turn limits. Pre-draw costs and post-draw removals are ignored.
-- **Advanced draw simulation:** Also enable the nested switch to apply those costs, removals, and eligibility filters. It defaults off and can require more calculation resources.
+- **Configured draw effects (default):** Apply supported draws, once-per-turn limits, pre-draw costs, removals and eligibility filters.
+- **Opening hand only:** Resolve no draws; configured draw cards still occupy initial-hand slots.
+- **Simplified draws (hypothetical):** Apply draw counts and once-per-turn limits while ignoring both pre-draw costs and post-draw removals. Cost-dependent cards may draw unconditionally, producing misleading, often optimistic deck-building probabilities.
 
 Requirements apply to the final hand. If the full draw amount is unavailable, the source stays in hand and the outcome is evaluated normally.
 
@@ -77,7 +77,9 @@ With a draw amount set, **Before drawing** and **After drawing** can each remove
 
 Results are exact for this policy, **not optimal-play simulation**. Optional activation, searches, discard triggers, and general card effects are unsupported.
 
-Some new imports and database selections receive editable presets; saved cards keep their chosen settings. Choosing **Draw None** clears pre- and post-draw configuration. Advanced mode and **Storage safety limit** are runtime preferences, not session fields. Turning Draw effects off resets Advanced; re-enabling returns to Basic.
+Some new imports and database selections receive editable presets; saved cards keep their chosen settings. Choosing **Draw None** clears pre- and post-draw configuration. Simplified mode and **Storage safety limit** are runtime preferences, not session fields. New workspaces and restored ON sessions use configured effects; saved OFF sessions restore opening-hand-only. Re-enabling effects selects configured behavior.
+
+A small notice near Calculate flags some structurally complex draw models without blocking calculation. If a request is slow or reaches a Work or Storage limit, **Calculate opening hand only** explicitly runs an exact alternative for that request. It preserves configured settings and the saved preference. This answers a different question and is not a guaranteed lower bound. Results and copied/pinned comparisons identify the model used; the next ordinary Calculate uses the selected setting.
 
 See the calculator's [Help page](https://dev.ygo-calculator.pages.dev/help) for detailed rules and preset examples.
 

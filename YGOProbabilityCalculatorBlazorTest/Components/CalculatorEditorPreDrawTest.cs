@@ -23,9 +23,10 @@ public class CalculatorEditorPreDrawTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Card.PreDrawSelector.Children.Any(child => child.Kind == CardSelectorKind.AllOf), Is.True);
         await cut.Find("[aria-label='Remove category A']").ClickAsync(new());
         Assert.That(cut.FindAll("[aria-label='Edit category A']"), Has.Count.EqualTo(1));
-        Assert.That(editor.Find("#cardDrawModeHelp0").TextContent, Does.Contain("pre-draw cost"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
+        Assert.That(editor.Find("#cardDrawModeHelp0").TextContent, Does.Contain("pre-draw costs"));
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
-        await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
         Assert.That(editor.Find("#cardDrawHelp0").TextContent,
             Does.Contain("full draw batch").And.Contain("OPT unused"));
         await editor.Find("#cardCost0").ChangeAsync(new() { Value = "0" });

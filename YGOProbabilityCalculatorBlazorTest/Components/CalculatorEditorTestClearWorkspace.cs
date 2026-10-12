@@ -93,7 +93,7 @@ public sealed class CalculatorEditorTestClearWorkspace : CalculatorEditorTestBas
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
         Assert.That(cut.FindAll(".pinned-result"), Has.Count.EqualTo(1));
 
-        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         await cut.Find("#storageSafetyTier").ChangeAsync(new() { Value = "VeryHigh" });
         await Button(cut, "Clear workspace").ClickAsync(new());
         Assert.That(cut.FindAll(".clear-workspace-confirmation"), Has.Count.EqualTo(1));
@@ -102,9 +102,9 @@ public sealed class CalculatorEditorTestClearWorkspace : CalculatorEditorTestBas
         Assert.That(cut.FindAll(".probability-results"), Is.Empty);
         Assert.That(cut.FindAll(".pinned-result"), Is.Empty);
         Assert.That(cut.FindAll(".result-comparison"), Is.Empty);
-        Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
-        Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("checked"), Is.False);
-        Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
+        Assert.That(cut.Find("#calculationModel").HasAttribute("disabled"), Is.False);
         Assert.That(cut.Find("#storageSafetyTier").GetAttribute("value"), Is.EqualTo("VeryHigh"));
 
         await Button(cut, "Save Session").ClickAsync(new());
@@ -116,15 +116,15 @@ public sealed class CalculatorEditorTestClearWorkspace : CalculatorEditorTestBas
         Assert.That(saved.ComboGroups, Is.Empty);
         Assert.That(saved.HandSize, Is.EqualTo(5));
 
-        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = true });
-        await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
         await cut.Find("#storageSafetyTier").ChangeAsync(new() { Value = "High" });
         await Button(cut, "Clear workspace").ClickAsync(new());
 
         Assert.That(cut.FindAll(".clear-workspace-confirmation"), Is.Empty,
             "runtime preferences alone must not require confirmation");
-        Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.True);
-        Assert.That(cut.Find("#conditionalEffectsEnabled").HasAttribute("checked"), Is.True);
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
         Assert.That(cut.Find("#storageSafetyTier").GetAttribute("value"), Is.EqualTo("High"));
     }
 
