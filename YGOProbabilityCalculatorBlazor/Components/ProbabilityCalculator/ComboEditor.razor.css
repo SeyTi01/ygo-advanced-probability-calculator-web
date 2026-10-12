@@ -122,6 +122,8 @@
 .expression-and,
 .combo-header-requirements > .expression-term:first-child::before {
     flex: 0 0 .6rem;
+    /* Firefox's intrinsic sizing also needs the gutter's explicit width. */
+    width: .6rem;
     text-align: center;
 }
 

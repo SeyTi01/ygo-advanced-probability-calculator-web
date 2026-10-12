@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { chromium } = require('playwright');
+const { chromium, firefox } = require('playwright');
 
 // Run against this branch's running app; Playwright is an external verification tool.
 const base = process.argv[2] || 'http://127.0.0.1:5104';
@@ -20,7 +20,8 @@ const fixture = {
 };
 
 (async () => {
-    const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL || undefined });
+    const useFirefox = process.env.COMBO_BROWSER === 'firefox';
+    const browser = await (useFirefox ? firefox : chromium).launch({ headless: true, channel: useFirefox ? undefined : process.env.PLAYWRIGHT_CHROMIUM_CHANNEL || undefined });
     try {
         const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, hasTouch: true });
         const errors = [];
@@ -277,7 +278,7 @@ const fixture = {
         assert.equal(await page.locator('.combo-editor').count(), comboCount + 1);
         assert.equal(await page.locator('.combo-editor').first().locator('.accordion-button').getAttribute('aria-expanded'), 'false');
         assert.deepEqual(errors, []);
-        console.log(JSON.stringify({ scenarios: 'add/edit, contextual OR, same-card, mixed alternatives, + boundaries between whole OR groups, group label below name, 0/0, save/reload, group cleanup, keyboard, touch, exact 50% vs 0%, VS/K9 83.61%', widths: [320, 375, 1280, 1440], themes: ['light', 'dark'], pageErrors: errors }));
+        console.log(JSON.stringify({ browser: useFirefox ? 'firefox' : 'chromium', scenarios: 'add/edit, contextual OR, same-card, mixed alternatives, + boundaries between whole OR groups, group label below name, 0/0, save/reload, group cleanup, keyboard, touch, exact 50% vs 0%, VS/K9 83.61%', widths: [320, 375, 1280, 1440], headerWidths: [320, 375, 768, 900, 960, 1024, 1280, 1440], themes: ['light', 'dark'], pageErrors: errors }));
     } finally {
         await browser.close();
     }
