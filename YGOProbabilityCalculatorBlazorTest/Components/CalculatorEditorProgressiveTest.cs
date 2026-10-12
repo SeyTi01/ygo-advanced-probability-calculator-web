@@ -184,6 +184,11 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         Assert.That(editor.Find(".requirement-or-group .alternative-separator").TextContent, Is.EqualTo("OR"));
         Assert.That(editor.Find(".requirement-or-group .same-card-and").TextContent, Is.EqualTo("AND"));
         Assert.That(editor.FindAll(".combo-header-content .composite-alternative"), Has.Count.EqualTo(1));
+        foreach (IElement expression in editor.FindAll(".combo-header-content .alternative-group, .combo-header-content .composite-alternative")) {
+            IElement[] parentheses = expression.Children.Where(element => element.ClassList.Contains("expression-parenthesis")).ToArray();
+            Assert.That(parentheses.Select(element => element.TextContent.Trim()), Is.EqualTo(new[] { "(", ")" }));
+            Assert.That(parentheses.All(element => element.QuerySelector("svg")?.GetAttribute("aria-hidden") == "true"), Is.True);
+        }
         await EditRequirement(editor, "alternative:0:0");
         await editor.Find("[aria-label='Same-card property 2']").ChangeAsync(new() { Value = c.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
