@@ -7,7 +7,7 @@ const engine = process.argv[3] || 'chromium';
 const categories = Array.from({length:18},(_,i)=>({Name:`C${i}`,Source:'User'}));
 const heavy = {SchemaVersion:2,Categories:categories, Cards:categories.map((c,i)=>({Id:`c${i}`,Name:null,Copies:3,Categories:[c]})).concat([{Id:'blank',Name:null,Copies:22,Categories:[]}]),Combos:categories.map((c,i)=>({Name:`Exactly one C${i}`,Categories:[{BaseCategory:c,MinCount:1,MaxCount:1}]})),ComboGroups:[],HandSize:5};
 const simple={SchemaVersion:2,Categories:[categories[0]],Cards:[{Id:'a',Name:null,Copies:1,Categories:[categories[0]]},{Id:'b',Name:null,Copies:1,Categories:[]}],Combos:[{Name:'One card',GroupId:'g',Categories:[{BaseCategory:categories[0],MinCount:1,MaxCount:1}]}],ComboGroups:[{Id:'g',Name:'Group'}],HandSize:1};
-const wire={Cards:heavy.Cards.map(c=>({...c,ExternalCardId:null,ManualMetadataCategoryKeys:[],Categories:c.Categories.map(c=>({...c,Source:0,MetadataKey:null}))})),Combos:heavy.Combos.map(c=>({...c,GroupId:null,Cards:[],Categories:c.Categories.map(c=>({...c,MaximumMode:0,BaseCategory:{...c.BaseCategory,Source:0,MetadataKey:null}}))})),Groups:[],HandSize:5};
+const wire={Cards:heavy.Cards.map(c=>({...c,ExternalCardId:null,ManualMetadataCategoryKeys:[],Categories:c.Categories.map(c=>({...c,Source:0,MetadataKey:null}))})),Combos:heavy.Combos.map(c=>({...c,GroupId:null,Cards:[],Categories:c.Categories.map(c=>({...c,MaximumMode:'Fixed',BaseCategory:{...c.BaseCategory,Source:0,MetadataKey:null}}))})),Groups:[],HandSize:5};
 const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENSHOT.replace(/\.png$/i,''):null;
 (async()=>{
  const launchOptions={headless:true,timeout:20000};
@@ -60,7 +60,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
   const category={Name:'Large-count role',Source:0,MetadataKey:null};
   const input={Cards:[{Id:'a',Copies:copies,Categories:[category]},{Id:'blank',Copies:population-copies,Categories:[]}]
    .map(c=>({...c,Name:null,ExternalCardId:null,ManualMetadataCategoryKeys:[]})),
-   Combos:[{Name:'Large-count result',GroupId:'g',Categories:[{BaseCategory:category,MinCount:minimum,MaxCount:minimum,MaximumMode:0}],Cards:[],AlternativeGroups:[]}],
+   Combos:[{Name:'Large-count result',GroupId:'g',Categories:[{BaseCategory:category,MinCount:minimum,MaxCount:minimum,MaximumMode:'Fixed'}],Cards:[],AlternativeGroups:[]}],
    Groups:[{Id:'g',Name:'Group'}],HandSize:hand};
   const response=await page.evaluate(async json=>{
    const {createJob}=await import('./js/background-calculation.js');const job=createJob();

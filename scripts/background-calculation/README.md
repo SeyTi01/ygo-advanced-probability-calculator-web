@@ -103,3 +103,54 @@ Run CPU/memory probes serially, away from concurrent builds. The native harness
 sets `DOTNET_TieredCompilation=0` and terminates its own test
 process tree after two minutes.
 Neither smoke changes the bundled example or session schema.
+
+### Frozen-input engine audit
+
+The explicit `PerformanceAuditBenchmark.Replay` measures synchronous engine and
+result conversion only, with one untimed engine warmup, a successful-result wire
+parity call, and seven recorded trials. Set
+`DOTNET_TieredCompilation=0`, `YGO_AUDIT_INPUT` to a worker-case JSON array, and
+`YGO_AUDIT_OUTPUT` to a new output file. `YGO_AUDIT_TRIALS` accepts 1–30. Run
+`node scripts/background-calculation/measure-engine-audit.cjs`; it bounds the
+Release test process tree to three minutes, using `--no-build` and filter
+`FullyQualifiedName~PerformanceAuditBenchmark`. Build first and run all benchmark
+jobs serially, including browser jobs. Timing is never a CI assertion.
+
+To create the representative matrix, first set `YGO_DRAW_BENCHMARK_OUTPUT` to an
+empty output directory and run the existing explicit exporters with filter
+`FullyQualifiedName~DrawEffectsBenchmark.Export|FullyQualifiedName~SameCardBenchmark.Export`.
+Then run:
+
+```sh
+node scripts/background-calculation/prepare-audit-cases.cjs <export-directory> <matrix.json>
+```
+
+Replay the matrix at the baseline, then select its `Trial == 0` records as the
+frozen input array for candidate replay and browser measurements. Keep the
+baseline exports: expected exact fractions and complete public result rows must
+come from that baseline, not be regenerated from the candidate. New synthetic
+inputs initially lack expectations; their first replay freezes the references.
+This benchmark parity check supplements independent physical-card oracle tests.
+
+Native allocation counts cover the current thread's synchronous engine call;
+they exclude input deserialization, model construction and benchmark output.
+Managed heap and process working set are end-of-request observations, not peak
+live bytes or per-request memory. Conditional state/cell counters are per
+structure and do not represent a process memory cap. Report medians and ranges
+for small trial counts rather than unsupported percentile estimates.
+
+Publish with installed SDK-scoped `wasm-tools` and `dotnet publish -c Release`.
+Run `measure-draw-effects.cjs <publish/wwwroot> <frozen.json> 3` against that fresh
+output. Each trial starts a new worker and records bootstrap, first request and
+a second request in the same worker separately, checking both against the native
+reference. These request times include serialization/transport.
+The worker log's `work` field is frozen native reference metadata; obtain the
+candidate's current work from its native replay. Browser assets
+can be cached within the context; this is not a cold-network benchmark. The app
+currently creates a fresh worker per request, so first-request time plus startup
+is the relevant user latency; the warm repeat is diagnostic headroom only.
+The per-trial 60-second deadline covers bootstrap and both requests; a timeout is
+a censored failure, never a completed measurement. `YGO_BROWSER_CHANNEL=msedge`
+selects installed Edge; `YGO_BROWSER_ENGINE=firefox` selects Playwright Firefox.
+The heartbeat-gap observation checks the page event loop, not worker shutdown;
+use the separate browser/policy smoke for cancellation and UI interaction.

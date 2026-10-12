@@ -176,13 +176,35 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
         long nextIntegerCells = 0;
 
         foreach ((StateKey state, BigInteger ways) in states) {
-            int limit = Math.Min(maxDraw, handSize - state.DrawnCards);
-
-            foreach (int index in indices) {
-                limit = Math.Min(limit, categories[index].MaxCount - state.CategoryCounts[index]);
+            int slots = handSize - state.DrawnCards;
+            int limit = Math.Min(maxDraw, slots);
+            int minimumDraw = Math.Max(0, slots - remainingCards);
+            int affected = 0;
+            // Solve reachability before allocating a candidate vector. For a
+            // matching row, deficit <= draw + min(slots - draw, remaining)
+            // iff deficit <= slots AND draw >= deficit - remaining. For an
+            // unmatched row, deficit <= remaining AND draw <= slots - deficit.
+            // Saturating an unrestricted count at its minimum preserves both.
+            budget.Spend(categories.Length + 1L);
+            for (int i = 0; i < categories.Length; i++) {
+                int deficit = categories[i].MinCount - state.CategoryCounts[i];
+                if (affected < indices.Length && indices[affected] == i) {
+                    affected++;
+                    if (deficit > slots) {
+                        limit = -1;
+                        break;
+                    }
+                    minimumDraw = Math.Max(minimumDraw, deficit - remaining[i]);
+                    limit = Math.Min(limit, categories[i].MaxCount - state.CategoryCounts[i]);
+                }
+                else {
+                    if (deficit > remaining[i]) {
+                        limit = -1;
+                        break;
+                    }
+                    limit = Math.Min(limit, slots - deficit);
+                }
             }
-
-            int minimumDraw = Math.Max(0, handSize - state.DrawnCards - remainingCards);
 
             for (int draw = minimumDraw; draw <= limit; draw++) {
                 budget.Spend(categories.Length + 1L);
@@ -196,23 +218,6 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
                     counts[index] = categories[index].MaxCount == handSize
                         ? Math.Min(count, categories[index].MinCount)
                         : count;
-                }
-
-                // Drop states whose minima cannot be reached by the remaining
-                // eligible copies or remaining hand slots. Hall constraints
-                // add dimensions, so early feasibility pruning matters.
-                int slotsLeft = handSize - state.DrawnCards - draw;
-                bool feasible = true;
-
-                for (int i = 0; i < counts.Length; i++) {
-                    if (counts[i] + Math.Min(slotsLeft, remaining[i]) < categories[i].MinCount) {
-                        feasible = false;
-                        break;
-                    }
-                }
-
-                if (!feasible) {
-                    continue;
                 }
 
                 StateKey key = new(state.DrawnCards + draw, counts);
@@ -249,13 +254,19 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
 
     // Counts are immutable after insertion; preserve structural state equality.
     private sealed record StateKey(int DrawnCards, int[] CategoryCounts) {
+        // Lookup and insertion revisit the same owned vector. Cache only its
+        // hash; equality must still compare every count, including collisions.
+        private readonly int _hashCode = ComputeHash(DrawnCards, CategoryCounts);
+
         public bool Equals(StateKey? other) => other is not null && DrawnCards == other.DrawnCards && CategoryCounts.AsSpan().SequenceEqual(other.CategoryCounts);
 
-        public override int GetHashCode() {
-            HashCode hash = new();
-            hash.Add(DrawnCards);
+        public override int GetHashCode() => _hashCode;
 
-            foreach (int count in CategoryCounts) {
+        private static int ComputeHash(int drawnCards, int[] categoryCounts) {
+            HashCode hash = new();
+            hash.Add(drawnCards);
+
+            foreach (int count in categoryCounts) {
                 hash.Add(count);
             }
 
