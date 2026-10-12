@@ -12,12 +12,13 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
     private readonly Dictionary<string, BigInteger> _selectorMasks = new(StringComparer.Ordinal);
 
     internal List<CompiledEvent?> CompileCombo(Combo combo) {
-        // Check the compact input and potential expansion before route allocation.
+        // Reduce exact repeated groups before checking the remaining product.
         // This request-wide bound is independent of the 30 USER combo policy.
         long routes = 1;
         budget.Spend(combo.RequirementCount + 1L);
+        IReadOnlyList<ComboAlternativeGroup> groups = ComboAlternativeReducer.Reduce(combo.AlternativeGroups, budget);
 
-        foreach (ComboAlternativeGroup group in combo.AlternativeGroups) {
+        foreach (ComboAlternativeGroup group in groups) {
             budget.Spend(group.Alternatives.Count + 1L);
 
             if (routes > budget.StoragePolicy.EntryLimit / group.Alternatives.Count) {
@@ -27,8 +28,8 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
             routes *= group.Alternatives.Count;
         }
 
-        budget.CheckStorage(_selectorMasks.Count + _compiledEntries + routes, _selectorCells + combo.Categories.Count + (long)combo.Cards.Count + combo.AlternativeGroups.Count);
-        int[] choices = new int[combo.AlternativeGroups.Count];
+        budget.CheckStorage(_selectorMasks.Count + _compiledEntries + routes, _selectorCells + combo.Categories.Count + (long)combo.Cards.Count + groups.Count);
+        int[] choices = new int[groups.Count];
         HashSet<CompiledEvent> unique = [];
 
         for (long route = 0; route < routes; route++) {
@@ -37,7 +38,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
             List<ComboCard> cards = [.. combo.Cards];
 
             for (int g = 0; g < choices.Length; g++) {
-                ComboAlternative alternative = combo.AlternativeGroups[g].Alternatives[choices[g]];
+                ComboAlternative alternative = groups[g].Alternatives[choices[g]];
 
                 if (alternative.Category is { } category) {
                     categories.Add(category);
@@ -62,7 +63,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
             }
 
             for (int g = choices.Length - 1; g >= 0; g--) {
-                if (++choices[g] < combo.AlternativeGroups[g].Alternatives.Count) {
+                if (++choices[g] < groups[g].Alternatives.Count) {
                     break;
                 }
 

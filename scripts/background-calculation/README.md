@@ -154,3 +154,15 @@ a censored failure, never a completed measurement. `YGO_BROWSER_CHANNEL=msedge`
 selects installed Edge; `YGO_BROWSER_ENGINE=firefox` selects Playwright Firefox.
 The heartbeat-gap observation checks the page event loop, not worker shutdown;
 use the separate browser/policy smoke for cancellation and UI interaction.
+
+For the focused OR-route comparison, run
+`prepare-or-route-cases.cjs <matrix.json> <or-inputs.json>` after the audit matrix
+generator. Replay and freeze these inputs on the baseline before implementation.
+The 16-group ordinary/Basic/Advanced cases originally return Storage; when testing
+exact repeated-group reduction, use the corresponding frozen eight-group exact
+fractions and public rows as their success expectations. Keep the original limit
+records for before/after reporting. The non-equivalent 16-group and restrictive
+union controls must still return Storage. `ComboAlternativeReductionTest.InspectFrozenRouteReduction`
+is an explicit, separate diagnostic using `YGO_AUDIT_INPUT`; it reports raw and
+retained route products, preprocessing work, and compiled-event counts at the
+input hand size. It is not a timing run or a draw-scenario storage measurement.

@@ -110,7 +110,8 @@ public class ComboAlternativesTest {
 
     [Test]
     public void ExpansionAndSharedWorkBudgetFailExplicitlyThenNextRequestSucceeds() {
-        Combo large = new([], alternativeGroups: Enumerable.Range(0, 16).Select(_ => new ComboAlternativeGroup([Cat(Fire), Cat(Dark)])));
+        Combo large = new([], alternativeGroups: Enumerable.Range(0, 16).Select(index =>
+            new ComboAlternativeGroup([Cat(Fire), Direct($"distinct-{index}")])));
         ProbabilityCalculatorService service = new();
         Assert.Throws<ProbabilityCalculationLimitException>(() => service.CalculateProbabilityResults(Deck(), [large], 2));
         Assert.Throws<ProbabilityCalculationLimitException>(() => service.CalculateProbabilityResults(Deck(), [Or(Cat(Fire), Cat(Dark))], 2, null, new(1)));
