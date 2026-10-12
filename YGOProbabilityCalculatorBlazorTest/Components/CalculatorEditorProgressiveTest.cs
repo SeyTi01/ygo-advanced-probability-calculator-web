@@ -151,7 +151,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         Assert.That(editor.Find(".requirement-or-group").GetAttribute("aria-label"), Is.EqualTo("Alternative group 1"));
         Assert.That(editor.Find(".requirement-or-group .alternative-separator").TextContent, Is.EqualTo("OR"));
-        Assert.That(editor.Find(".same-card-note").TextContent, Is.EqualTo("on the same card"));
+        Assert.That(editor.Find(".requirement-or-group .same-card-and").TextContent, Is.EqualTo("AND"));
         Assert.That(editor.FindAll(".combo-header-content .composite-alternative"), Has.Count.EqualTo(1));
         await EditRequirement(editor, "alternative:0:0");
         await editor.Find("[aria-label='Same-card property 2']").ChangeAsync(new() { Value = c.Identity });
