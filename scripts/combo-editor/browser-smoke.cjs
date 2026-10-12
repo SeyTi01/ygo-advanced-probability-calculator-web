@@ -90,13 +90,13 @@ const fixture = {
         await editor.locator('#minCount0').fill('0');
         await editor.locator('summary').click();
         await editor.locator('#maxCount0').fill('0');
-        await click('Save changes');
+        await click('Save');
         await edit('alternative:0:0');
         await editor.locator('[data-action="property"]').click();
         await choose('user:Monster', 'Add property');
         await edit('alternative:0:0');
         await editor.getByLabel('Same-card property 2', { exact: true }).selectOption('user:Orcust');
-        await click('Save changes');
+        await click('Save');
         await editor.locator('#comboGroup0').selectOption('routes');
         const advanced = await saved();
         assert.equal(advanced.Combos[0].AlternativeGroups[0].Alternatives[1].Card.MaxCount, 0);
@@ -126,7 +126,7 @@ const fixture = {
         assert.equal(await editor.locator('.requirement-or-group').count(), 0);
         await edit('category:0');
         await editor.getByRole('button', { name: 'Remove property 2', exact: true }).click();
-        await click('Save changes');
+        await click('Save');
         await edit('category:0');
         await click('Remove requirement');
         assert.equal(await editor.locator('[data-requirement^="category:"]').count(), 0);
@@ -146,7 +146,7 @@ const fixture = {
         await page.getByRole('button', { name: 'Pin result', exact: true }).click();
         await edit('category:0');
         await editor.getByRole('button', { name: 'Remove property 2', exact: true }).click();
-        await click('Save changes');
+        await click('Save');
         await choose('user:Orcust');
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.waitForFunction(() => document.querySelector('.probability-total-value')?.textContent.match(/^\s*0[.,]00/));

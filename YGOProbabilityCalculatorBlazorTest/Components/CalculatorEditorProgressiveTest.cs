@@ -43,7 +43,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         await cut.Find("[aria-label='Save category name']").ClickAsync(new());
         await editor.Find("[aria-label='Move combo First, row 1 down']").ClickAsync(new());
         Assert.That(editor.Find("#minCount1").GetAttribute("value"), Is.EqualTo("2"));
-        await Button(editor, "Save changes").ClickAsync(new());
+        await Button(editor, "Save").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories.Single().MinCount, Is.EqualTo(2));
         Assert.That(editor.Instance.Combo.Categories.Single().Selector.CategoryIdentities, Is.EquivalentTo(new[] { "user:Renamed", b.Identity }));
     }
@@ -98,7 +98,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
         await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
-        await Button(editor, "Save changes").ClickAsync(new());
+        await Button(editor, "Save").ClickAsync(new());
         Combo combo = editor.Instance.Combo;
         ComboCategory changed = target.StartsWith("category", StringComparison.Ordinal) ? combo.Categories[1] : combo.AlternativeGroups[0].Alternatives[1].Category!;
         Assert.That(changed.BaseCategory, Is.SameAs(b));
@@ -156,7 +156,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         await EditRequirement(editor, "alternative:0:0");
         await editor.Find("[aria-label='Same-card property 2']").ChangeAsync(new() { Value = c.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
-        await Button(editor, "Save changes").ClickAsync(new());
+        await Button(editor, "Save").ClickAsync(new());
         ComboCategory changed = editor.Instance.Combo.AlternativeGroups.Single().Alternatives[0].Category!;
         Assert.That(changed.Selector.CategoryIdentities, Is.EqualTo(new[] { a.Identity, c.Identity }));
         Assert.That(changed.MaxCount, Is.Zero, "Unchanged Any preserves the saved raw maximum.");
@@ -184,9 +184,9 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(loaded);
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await EditRequirement(editor, "alternative:0:0");
-        await Button(editor, "Save changes").ClickAsync(new());
+        await Button(editor, "Save").ClickAsync(new());
         await EditRequirement(editor, "alternative:0:1");
-        await Button(editor, "Save changes").ClickAsync(new());
+        await Button(editor, "Save").ClickAsync(new());
         Assert.That(codec.SerializeSession(loaded), Is.EqualTo(before));
         SessionState roundTrip = await codec.LoadSessionAsync(codec.SerializeSession(loaded));
         Assert.That(roundTrip.Combos[0].GroupId, Is.EqualTo("g"));

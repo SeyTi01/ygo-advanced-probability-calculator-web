@@ -245,7 +245,7 @@
                        @oninput="e => _minCount = e.Value?.ToString() ?? string.Empty" />
             </div>
             <div class="requirement-submit">
-                <button type="button" class="btn btn-primary" @onclick="AddConstraint">@(_editingRequirement is not null ? "Save changes" : AndScope ? "Add property" : AlternativeScope ? "Add alternative" : HasSelectedConstraint ? "Update requirement" : "Add")</button>
+                <button type="button" class="btn btn-primary" @onclick="AddConstraint">@(_editingRequirement is not null ? "Save" : AndScope ? "Add property" : AlternativeScope ? "Add alternative" : HasSelectedConstraint ? "Update requirement" : "Add")</button>
             </div>
         </div>
         <details class="requirement-bounds" open="@(_maxCount.Length > 0)">
