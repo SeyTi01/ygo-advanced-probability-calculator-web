@@ -18,7 +18,7 @@ function fixture(count, hand = 5) {
 function wire(session, units) {
  return JSON.stringify({ Cards: session.Cards.map(c => ({ ...c, ExternalCardId: null, ManualMetadataCategoryKeys: [],
   Categories: c.Categories.map(c => ({ ...c, Source: 0, MetadataKey: null })) })),
-  Combos: session.Combos.map(c => ({ ...c, Cards: [], Categories: c.Categories.map(r => ({ ...r, MaximumMode: 0,
+  Combos: session.Combos.map(c => ({ ...c, Cards: [], Categories: c.Categories.map(r => ({ ...r, MaximumMode: 'Fixed',
    BaseCategory: { ...r.BaseCategory, Source: 0, MetadataKey: null } })) })), Groups: session.ComboGroups, HandSize: session.HandSize,
   ...(units === undefined ? {} : { WorkUnits: units }) });
 }
@@ -183,7 +183,7 @@ function probability(count, hand = 5) {
     await page.evaluate(() => { window.denyPolicyClipboard = false; });
     const summary = pinned ? await page.locator('.probability-results > p.small').innerText() : null;
     if (pinned) {
-     assert.equal(summary, 'Hand size 5 · 60 active copies · 22 active cards');
+     assert.equal(summary, 'Hand size 5 · 60 active copies · 22 active cards · Draw effects on · Basic');
      assert.equal(await page.locator('.pinned-result > p.small').innerText(), summary);
     }
     comparisonEvidence.push({ width, theme, pinned, copiedCharacters: copied.length, summary });
@@ -212,8 +212,8 @@ function probability(count, hand = 5) {
     beside: delta.left >= odds.right && delta.top < odds.bottom && delta.bottom > odds.top };
   });
   assert.ok(inline.className.includes('result-difference-positive')); assert.ok(['flex', 'inline-flex'].includes(inline.parentDisplay)); assert.equal(inline.beside, true);
-  assert.equal(await page.locator('.probability-results > p.small').innerText(), 'Hand size 6 · 60 active copies · 2 active cards');
-  assert.equal(await page.locator('.pinned-result > p.small').innerText(), 'Hand size 5 · 60 active copies · 2 active cards');
+  assert.equal(await page.locator('.probability-results > p.small').innerText(), 'Hand size 6 · 60 active copies · 2 active cards · Draw effects on · Basic');
+  assert.equal(await page.locator('.pinned-result > p.small').innerText(), 'Hand size 5 · 60 active copies · 2 active cards · Draw effects on · Basic');
   const summaries = await page.evaluate(() => ['.probability-results > p.small', '.pinned-result > p.small'].map(selector => { const e = document.querySelector(selector), s = getComputedStyle(e); return { className: e.className, font: s.fontSize, line: s.lineHeight, margin: s.marginBottom, children: e.children.length }; }));
   assert.deepEqual(summaries[0], summaries[1]); assert.equal(summaries[0].children, 0);
   await page.locator('#handSize').fill('4'); await page.locator('#handSize').press('Tab');

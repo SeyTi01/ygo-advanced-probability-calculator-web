@@ -5,16 +5,22 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const http = require('node:http');
 const path = require('node:path');
-const { chromium } = require('playwright');
+const { chromium, firefox } = require('playwright');
 
 async function main() {
     const [rootArgument, casesPath, trialArgument = '3'] = process.argv.slice(2);
     assert(rootArgument && casesPath, 'Supply published wwwroot and exported worker cases.');
     const trials = Number(trialArgument);
-    assert(Number.isInteger(trials) && trials > 0, 'Trials must be a positive integer.');
+    assert(Number.isInteger(trials) && trials > 0 && trials <= 30, 'Trials must be between 1 and 30.');
     const root = path.resolve(rootArgument);
     const cases = JSON.parse(await fs.readFile(casesPath, 'utf8'));
-    const types = { '.js': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm', '.html': 'text/html' };
+    assert(Array.isArray(cases) && cases.length > 0 && cases.length <= 256, 'Supply 1–256 frozen cases.');
+    for (const fixture of cases) {
+        assert(['Success', 'Work', 'Storage'].includes(fixture.Outcome), `${fixture.Name}: unknown outcome`);
+        assert(fixture.Input && typeof fixture.Input === 'object', `${fixture.Name}: missing input`);
+        if (fixture.Outcome === 'Success') assert(Number.isFinite(fixture.Probability), `${fixture.Name}: missing reference`);
+    }
+    const types = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm', '.html': 'text/html' };
     const server = http.createServer(async (request, response) => {
         try {
             if (request.url === '/measurement.html') {
@@ -37,10 +43,13 @@ async function main() {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     let browser;
     try {
-        browser = await chromium.launch({ headless: true, ...(process.env.YGO_BROWSER_CHANNEL ? { channel: process.env.YGO_BROWSER_CHANNEL } : {}) });
+        const engine = process.env.YGO_BROWSER_ENGINE || 'chromium';
+        assert(['chromium', 'firefox'].includes(engine));
+        browser = await ({ chromium, firefox }[engine]).launch({ headless: true,
+            ...(engine === 'chromium' && process.env.YGO_BROWSER_CHANNEL ? { channel: process.env.YGO_BROWSER_CHANNEL } : {}) });
         const page = await browser.newPage();
         await page.goto(`http://127.0.0.1:${server.address().port}/measurement.html`);
-        console.log(JSON.stringify({ browser: browser.version(), trials, coldWorker: true }));
+        console.log(JSON.stringify({ engine, browser: browser.version(), trials, coldWorker: true, warmRepeat: true }));
         for (const fixture of cases) {
             const measurements = [];
             for (let trial = 0; trial < trials; trial++) {
@@ -49,9 +58,14 @@ async function main() {
                     const worker = new Worker('/js/calculation-worker.js', { type: 'module' });
                     let started;
                     let startupMilliseconds;
+                    let coldMilliseconds;
+                    let coldResponse;
+                    const beats = [];
+                    const heartbeat = setInterval(() => beats.push(performance.now()), 10);
                     const timeout = setTimeout(() => finish(new Error('Worker exceeded the 60-second measurement deadline.')), 60000);
                     function finish(error, result) {
                         clearTimeout(timeout);
+                        clearInterval(heartbeat);
                         worker.terminate();
                         if (error) reject(error);
                         else resolve(result);
@@ -65,11 +79,22 @@ async function main() {
                             started = performance.now();
                             worker.postMessage({ id: 'measurement', json: JSON.stringify(input) });
                         } else {
-                            finish(null, { milliseconds: performance.now() - started, startupMilliseconds, response: JSON.parse(data.response) });
+                            const elapsed = performance.now() - started;
+                            if (coldMilliseconds === undefined) {
+                                coldMilliseconds = elapsed;
+                                coldResponse = JSON.parse(data.response);
+                                started = performance.now();
+                                worker.postMessage({ id: 'warm-measurement', json: JSON.stringify(input) });
+                            } else {
+                                finish(null, { milliseconds: coldMilliseconds, warmMilliseconds: elapsed, startupMilliseconds,
+                                    maxHeartbeatGap: Math.max(0, ...beats.slice(1).map((beat, i) => beat - beats[i])),
+                                    response: coldResponse, warmResponse: JSON.parse(data.response) });
+                            }
                         }
                     };
                 }), fixture.Input);
                 const response = measured.response;
+                assert.deepEqual(measured.warmResponse, response, `${fixture.Name} warm parity`);
                 if (fixture.Outcome === 'Success') {
                     assert.equal(response.Error, null, fixture.Name);
                     assert.equal(response.LimitReason, null, fixture.Name);
@@ -79,7 +104,8 @@ async function main() {
                     assert.equal(response.Result, null, fixture.Name);
                     assert.equal(response.LimitReason, fixture.Outcome === 'Work' ? 1 : 2, fixture.Name);
                 }
-                measurements.push({ milliseconds: measured.milliseconds, startupMilliseconds: measured.startupMilliseconds });
+                measurements.push({ milliseconds: measured.milliseconds, warmMilliseconds: measured.warmMilliseconds,
+                    startupMilliseconds: measured.startupMilliseconds, maxHeartbeatGap: measured.maxHeartbeatGap });
             }
             console.log(JSON.stringify({ name: fixture.Name, work: fixture.Work, outcome: fixture.Outcome, measurements }));
         }
