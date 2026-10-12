@@ -149,7 +149,8 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
             Combos = [new([], alternativeGroups: [new([ComboAlternative.For(composite), ComboAlternative.For(new ComboCard("r", 0, 0))])])]
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        Assert.That(editor.Find(".requirement-or-heading").TextContent, Does.Contain("ANY OF"));
+        Assert.That(editor.Find(".requirement-or-group").GetAttribute("aria-label"), Is.EqualTo("Alternative group 1"));
+        Assert.That(editor.Find(".requirement-or-group .alternative-separator").TextContent, Is.EqualTo("OR"));
         Assert.That(editor.Find(".same-card-note").TextContent, Is.EqualTo("on the same card"));
         Assert.That(editor.FindAll(".combo-header-content .composite-alternative"), Has.Count.EqualTo(1));
         await EditRequirement(editor, "alternative:0:0");

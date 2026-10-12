@@ -128,7 +128,6 @@
                     int currentGroupIndex = groupIndex;
                     ComboAlternativeGroup group = Combo.AlternativeGroups[currentGroupIndex];
                     <div class="requirement-or-group" role="group" aria-label="@($"Alternative group {currentGroupIndex + 1}")">
-                        <div class="requirement-or-heading">ANY OF</div>
                         @for (int leafIndex = 0; leafIndex < group.Alternatives.Count; leafIndex++) {
                             int currentLeafIndex = leafIndex;
                             @if (currentLeafIndex > 0) { <div class="alternative-separator">OR</div> }
