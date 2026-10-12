@@ -178,17 +178,10 @@
             <p class="form-text mt-2" role="status" aria-live="polite">@unavailableMessage</p>
         }
 
-        @if (CanCalculate && ExecutionAssessment.ElevatedRisk) {
-            <p class="form-text mt-2 draw-complexity-notice" role="note">This calculation may require more time or exceed resource limits because its draw effects need detailed processing.</p>
-        }
-        @if (_stillCalculating && _isCalculating) {
-            <p class="form-text mt-2 calculation-elapsed" role="status">Still calculating… @(_runningModel.Description())</p>
-        }
         @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null) {
             <div class="calculation-recovery mt-2">
-                <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate opening hand only</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate without draw effects</button>
                 <button type="button" class="btn btn-sm btn-link" @onclick="ReviewCalculationSettings">Review settings</button>
-                <p class="form-text mb-0">Draws are ignored; configured draw cards still occupy hand slots. This answers a different question. You can also edit requirements or review calculation settings.</p>
             </div>
         }
         @if (_errorMessage is not null) {
@@ -430,7 +423,7 @@
         bool visibleStatusChanged = _isCalculating || _errorMessage is not null
             || (_calculationResult is not null && !_calculationResultIsStale);
         _cards[payload.Index] = payload.NewCard;
-        InvalidateCalculation(reassess: false);
+        InvalidateCalculation();
 
         if (visibleStatusChanged) {
             _deferNameEditRendering = true;
@@ -806,7 +799,6 @@
         Task notices = Task.CompletedTask;
         try {
             _isCalculating = true;
-            _runningModel = model;
             _errorMessage = null;
             _limitReason = null;
             StateHasChanged();
@@ -834,7 +826,7 @@
                 return;
             }
 
-            notices = ShowElapsedNotices(OwnsRequest, cancellation.Token);
+            notices = ShowRecoveryAlternative(OwnsRequest, model, cancellation.Token);
             Task<ProbabilityCalculationResult> worker = _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
             _workerCompletion = worker;
             ProbabilityCalculationResult result = await worker;
@@ -868,7 +860,6 @@
             if (OwnsRequest()) {
                 _calculationCancellation = null;
                 _isCalculating = false;
-                _stillCalculating = false;
                 _openingHandAlternativeAvailable = false;
             }
         }
@@ -879,7 +870,6 @@
         CancellationTokenSource? cancellation = _calculationCancellation;
         _calculationCancellation = null;
         _isCalculating = false;
-        _stillCalculating = false;
         _openingHandAlternativeAvailable = false;
         cancellation?.Cancel();
     }
@@ -921,9 +911,8 @@
 
     private void OnCategoriesChanged() => InvalidateCalculation();
 
-    private void InvalidateCalculation(bool clearPreviousResult = false, bool reassess = true) {
+    private void InvalidateCalculation(bool clearPreviousResult = false) {
         _deferNameEditRendering = false;
-        _assessmentDirty |= reassess;
         ObserveWorkspaceEdit();
         InvalidateComparison(clearPreviousResult);
         StopCalculation();
