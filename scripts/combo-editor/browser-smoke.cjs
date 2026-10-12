@@ -121,6 +121,32 @@ const fixture = {
                 await click('Cancel');
             }
         }
+        const separated = { ...advanced, Combos: [{
+            ...advanced.Combos[0], Name: 'Required routes', GroupId: 'routes',
+            Categories: [category(3, 1, 3)],
+            AlternativeGroups: [advanced.Combos[0].AlternativeGroups[0], {
+                Alternatives: [{ Kind: 'Category', Category: category(1, 1, 3) }, { Kind: 'Card', Card: { CardId: 'razen', MinCount: 1, MaxCount: 3 } }]
+            }]
+        }] };
+        await load(separated);
+        for (const width of [320, 375, 1280, 1440]) {
+            for (const theme of ['light', 'dark']) {
+                await page.setViewportSize({ width, height: 1000 });
+                await page.getByLabel('Color theme preference').selectOption(theme);
+                assert.equal(await editor.locator('.requirement-list > .requirement-and-separator').count(), 3);
+                assert.equal(await editor.locator('.requirement-or-group .requirement-and-separator').count(), 0);
+                assert.equal(await editor.locator('.requirement-or-group > .alternative-separator').count(), 2);
+                const identity = await editor.locator('.combo-header-identity').evaluate(element => {
+                    const name = element.querySelector('.combo-header-name').getBoundingClientRect();
+                    const group = element.querySelector('.combo-group-membership').getBoundingClientRect();
+                    return { below: group.top >= name.bottom, aligned: Math.abs(group.left - name.left) < 1 };
+                });
+                assert.deepEqual(identity, { below: true, aligned: true }, `${width}/${theme} group below name`);
+                assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}/${theme} grouped requirement overflow`);
+                await capture(`after-separated-${width}-${theme}`);
+            }
+        }
+        await load(advanced);
         await edit('alternative:0:1');
         await click('Remove alternative');
         assert.equal(await editor.locator('.requirement-or-group').count(), 0);
@@ -172,7 +198,7 @@ const fixture = {
         assert.equal(await page.locator('.combo-editor').count(), comboCount + 1);
         assert.equal(await page.locator('.combo-editor').first().locator('.accordion-button').getAttribute('aria-expanded'), 'false');
         assert.deepEqual(errors, []);
-        console.log(JSON.stringify({ scenarios: 'add/edit, contextual OR, same-card, mixed alternatives, 0/0, save/reload, group cleanup, keyboard, touch, exact 50% vs 0%, VS/K9 83.61%', widths: [320, 375, 1280, 1440], themes: ['light', 'dark'], pageErrors: errors }));
+        console.log(JSON.stringify({ scenarios: 'add/edit, contextual OR, same-card, mixed alternatives, + boundaries between whole OR groups, group label below name, 0/0, save/reload, group cleanup, keyboard, touch, exact 50% vs 0%, VS/K9 83.61%', widths: [320, 375, 1280, 1440], themes: ['light', 'dark'], pageErrors: errors }));
     } finally {
         await browser.close();
     }
