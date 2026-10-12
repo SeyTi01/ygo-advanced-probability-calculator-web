@@ -61,6 +61,31 @@ const fixture = {
             assert.equal(ranges.every(label => label.lines === 1), true, `${context} complete count labels stay on one line: ${JSON.stringify(ranges)}`);
             assert.equal(await scope.locator('.combo-header-requirements .combo-card-tag > .same-card-range').count(), await scope.locator('.combo-header-requirements .combo-card-tag').count());
         }
+        async function checkBadgeWrapping(scope, context) {
+            const unnecessaryWraps = await scope.locator('.combo-header-requirements > .expression-term > .same-card-category .category-tag, .combo-header-requirements > .expression-term > .combo-card-tag').evaluateAll(badges => {
+                const canvas = document.createElement('canvas');
+                const measure = canvas.getContext('2d');
+                return badges.filter(badge => {
+                    const style = getComputedStyle(badge);
+                    const text = badge.textContent.replace(/\s+/g, ' ').trim();
+                    measure.font = style.font;
+                    const naturalWidth = measure.measureText(text).width + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + 2;
+                    const columnWidth = badge.closest('.combo-header-requirements').getBoundingClientRect().width;
+                    const gutter = parseFloat(style.fontSize) * 2;
+                    const lines = new Set();
+                    const nodes = document.createTreeWalker(badge, NodeFilter.SHOW_TEXT);
+                    while (nodes.nextNode()) {
+                        const range = document.createRange();
+                        range.selectNodeContents(nodes.currentNode);
+                        for (const rect of range.getClientRects()) {
+                            if (rect.width > 0 && rect.height > 0) lines.add(Math.round(rect.top));
+                        }
+                    }
+                    return naturalWidth + gutter <= columnWidth && lines.size > 1;
+                }).map(badge => badge.textContent.trim());
+            });
+            assert.deepEqual(unnecessaryWraps, [], `${context} labels that fit stay on one line`);
+        }
         await load(fixture);
         await capture('after-blank-1440-light');
         const duplicate = editor.getByRole('button', { name: 'Duplicate combo Browser route', exact: true });
@@ -166,6 +191,7 @@ const fixture = {
                 }));
                 assert.equal(indents.every(indent => Math.abs(indent - indents[0]) < 1), true, `${width}/${theme} requirement contents align after the plus column`);
                 await checkCountLabels(editor, `${width}/${theme}`);
+                await checkBadgeWrapping(editor, `${width}/${theme}`);
                 const actions = await editor.locator('.entry-actions').evaluate(element => ({
                     gap: getComputedStyle(element).columnGap,
                     targets: [...element.querySelectorAll('.entry-editor-active-toggle, .combo-duplicate, .entry-editor-delete')].map(control => control.getBoundingClientRect().width)
@@ -220,11 +246,12 @@ const fixture = {
         await load(example);
         await editor.locator('.accordion-button').click();
         const comboHeaders = page.locator('#combosAccordion');
-        for (const width of [320, 375, 1280, 1440]) {
+        for (const width of [320, 375, 768, 900, 960, 1024, 1280, 1440]) {
             for (const theme of ['light', 'dark']) {
                 await page.setViewportSize({ width, height: 1000 });
                 await page.getByLabel('Color theme preference').selectOption(theme);
                 await checkCountLabels(comboHeaders, `VS/K9 ${width}/${theme}`);
+                await checkBadgeWrapping(comboHeaders, `VS/K9 ${width}/${theme}`);
                 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}/${theme} VS/K9 header overflow`);
                 if (evidence) await comboHeaders.screenshot({ path: path.join(evidence, `after-headers-${width}-${theme}.png`), animations: 'disabled' });
             }

@@ -111,6 +111,14 @@
     min-width: 0;
 }
 
+.combo-header-requirements :is(.expression-term, .alternative-term) {
+    flex-basis: max-content;
+}
+
+.combo-header-requirements :is(.same-card-category, .same-card-conjunct, .category-tag) {
+    width: max-content;
+}
+
 .expression-and,
 .combo-header-requirements > .expression-term:first-child::before {
     flex: 0 0 .6rem;
