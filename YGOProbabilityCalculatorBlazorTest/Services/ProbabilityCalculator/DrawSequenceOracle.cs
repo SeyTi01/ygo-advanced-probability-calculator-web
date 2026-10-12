@@ -52,16 +52,38 @@ internal static class DrawSequenceOracle {
         bool Remove(CardSelector selector, int reserved = -1) {
             HashSet<string> eligibleOnce = new(StringComparer.Ordinal);
             HashSet<int> usable = [];
+            HashSet<int> costDeferred = [];
+            int remaining = order.Count - next;
+            int minimumLegalDrawCount = reserved >= 0 && order[reserved].DrawCount is int reservedDrawCount
+                && reservedDrawCount <= remaining
+                ? reservedDrawCount
+                : int.MaxValue;
             foreach (int candidate in pending) {
                 Card card = order[candidate];
-                if (hand.Contains(candidate) && candidate != reserved
-                    && !(reserved >= 0 && card.DrawOncePerTurn && card.Id == order[reserved].Id)
-                    && (!card.DrawOncePerTurn || (!used.Contains(card.Id) && eligibleOnce.Add(card.Id)))
-                    && card.DrawCount is int drawCount && drawCount <= order.Count - next
-                    && Payable(candidate, reserved)) {
+                if (!hand.Contains(candidate) || candidate == reserved
+                    || (reserved >= 0 && card.DrawOncePerTurn && card.Id == order[reserved].Id)
+                    || (card.DrawOncePerTurn && (used.Contains(card.Id) || !eligibleOnce.Add(card.Id)))
+                    || card.DrawCount is not int drawCount || drawCount > remaining) {
+                    continue;
+                }
+
+                if (Payable(candidate, reserved)) {
                     usable.Add(candidate);
+                    minimumLegalDrawCount = Math.Min(minimumLegalDrawCount, drawCount);
+                }
+                else if (card.PreDrawRemovalCount > 0) {
+                    int copyCount = hand.Count(index => index != reserved && order[index].Id == card.Id);
+                    bool redundant = card.DrawOncePerTurn && copyCount > 1;
+                    if (!redundant) {
+                        costDeferred.Add(candidate);
+                    }
                 }
             }
+            int remainingAfterAnotherDraw = minimumLegalDrawCount == int.MaxValue
+                ? -1
+                : remaining - minimumLegalDrawCount;
+            HashSet<int> deferred = costDeferred.Where(index =>
+                order[index].DrawCount!.Value <= remainingAfterAnotherDraw).ToHashSet();
             List<int> eligible = hand.Where(index => index != reserved && MatchesSelector(selector, order[index])).ToList();
             if (eligible.Count == 0) {
                 return false;
@@ -80,7 +102,12 @@ internal static class DrawSequenceOracle {
                 bool relevant = combos.Any(combo =>
                     combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
                     || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && MatchesSelector(requirement.Selector, card)));
-                return relevant ? 1 : usable.Contains(index) ? 2 : 3;
+                return (relevant, usable.Contains(index), deferred.Contains(index)) switch {
+                    (true, _, _) => 1,
+                    (_, true, _) => 2,
+                    (_, _, true) => 3,
+                    _ => 4
+                };
             }
         }
 
