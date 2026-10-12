@@ -152,6 +152,16 @@ const fixture = {
                     };
                 });
                 assert.deepEqual(columns, { separate: true, termsStayRight: true }, `${width}/${theme} requirements stay in their column`);
+                const parentheses = await editor.locator('.alternative-group, .composite-alternative').evaluateAll(groups => groups.every(group => {
+                    const rails = [...group.children].filter(child => child.classList.contains('expression-parenthesis'));
+                    const content = group.querySelector(':scope > .alternative-group-content, :scope > .same-card-category').getBoundingClientRect();
+                    const open = rails[0].getBoundingClientRect();
+                    const close = rails[1].getBoundingClientRect();
+                    return open.right <= content.left && close.left >= content.right &&
+                        open.top <= content.top + 1 && open.bottom >= content.bottom - 1 &&
+                        close.top <= content.top + 1 && close.bottom >= content.bottom - 1;
+                }));
+                assert.equal(parentheses, true, `${width}/${theme} parentheses enclose wrapped expressions`);
                 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}/${theme} grouped requirement overflow`);
                 await capture(`after-separated-${width}-${theme}`);
             }

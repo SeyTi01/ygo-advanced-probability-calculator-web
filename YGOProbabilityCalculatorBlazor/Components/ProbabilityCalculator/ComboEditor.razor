@@ -401,7 +401,11 @@
     private RenderFragment AlternativeBadge(ComboAlternative alternative) => @<span class="alternative-badge">
         @if (alternative.Category is { } category) {
             @if (category.CategoryBases.Count > 1) {
-                <span class="composite-alternative"><span>(</span>@CategoryBadge(category)<span>)</span></span>
+                <span class="composite-alternative">
+                    @ExpressionParenthesis(true)
+                    @CategoryBadge(category)
+                    @ExpressionParenthesis(false)
+                </span>
             }
             else { @CategoryBadge(category) }
         }
@@ -409,14 +413,23 @@
     </span>;
 
     private RenderFragment AlternativeGroupMarkup(ComboAlternativeGroup group) => @<span class="alternative-group summary-group">
-        <span>(</span>
-        @for (int index = 0; index < group.Alternatives.Count; index++) {
-            <span class="alternative-term">
-                @if (index > 0) { <span class="alternative-separator">OR</span> }
-                <span class="alternative-leaf">@AlternativeBadge(group.Alternatives[index])</span>
-            </span>
-        }
-        <span>)</span>
+        @ExpressionParenthesis(true)
+        <span class="alternative-group-content">
+            @for (int index = 0; index < group.Alternatives.Count; index++) {
+                <span class="alternative-term">
+                    @if (index > 0) { <span class="alternative-separator">OR</span> }
+                    <span class="alternative-leaf">@AlternativeBadge(group.Alternatives[index])</span>
+                </span>
+            }
+        </span>
+        @ExpressionParenthesis(false)
+    </span>;
+
+    private static RenderFragment ExpressionParenthesis(bool opening) => @<span class="expression-parenthesis">
+        <span class="visually-hidden">@(opening ? "(" : ")")</span>
+        <svg viewBox="0 0 6 24" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="@(opening ? "M5 1 Q1 12 5 23" : "M1 1 Q5 12 1 23")" fill="none" stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke" />
+        </svg>
     </span>;
 
     private void CancelScopedAuthoring() {

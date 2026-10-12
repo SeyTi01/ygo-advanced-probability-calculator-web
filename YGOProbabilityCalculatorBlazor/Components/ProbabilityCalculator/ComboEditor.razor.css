@@ -69,8 +69,8 @@
 }
 
 .alternative-group {
-    display: inline-flex;
-    flex-wrap: wrap;
+    display: inline-grid;
+    grid-template-columns: .35rem minmax(0, 1fr) .35rem;
     align-items: center;
     gap: .375rem;
     max-width: 100%;
@@ -79,6 +79,20 @@
     padding: .2rem;
     border: 1px solid var(--bs-border-color);
     border-radius: .375rem;
+}
+
+.alternative-group-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .375rem;
+    min-width: 0;
+}
+
+.alternative-badge {
+    display: inline-flex;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .expression-term,
@@ -123,12 +137,25 @@
 }
 
 .composite-alternative {
-    display: inline-flex;
-    flex-wrap: wrap;
+    display: inline-grid;
+    grid-template-columns: .35rem minmax(0, 1fr) .35rem;
     align-items: center;
     gap: .2rem;
     max-width: 100%;
     min-width: 0;
+}
+
+.expression-parenthesis {
+    position: relative;
+    align-self: stretch;
+    min-height: 1rem;
+}
+
+.expression-parenthesis svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .same-card-and {
