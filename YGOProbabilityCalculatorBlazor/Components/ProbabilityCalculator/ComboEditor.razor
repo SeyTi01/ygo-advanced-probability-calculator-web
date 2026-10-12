@@ -168,7 +168,6 @@
             <span class="requirement-description">
                 @if (requirement.Category is { } category) {
                     @CategoryBadge(category)
-                    @if (category.CategoryBases.Count > 1) { <small class="same-card-note">on the same card</small> }
                 }
                 else { @CardBadge(requirement.Card!) }
             </span>
