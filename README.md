@@ -42,18 +42,18 @@ With all eight combo definitions active, the example has an **83.61%** probabili
 
 1. **Import or enter your deck.**
 2. **Create custom categories** for reusable roles and assign them to cards. Cards can have several categories; imported cards also expose objective properties automatically.
-3. **Define combos** using categories, specific cards, or both.
-4. **Set minimum and maximum counts.** Leave Max empty for **Any** (the final hand size), or enter a fixed maximum. Set both to `0` to exclude matching cards.
+3. **Define combos** with **Add requirement**. Choose a card, category or property from one picker. Click a requirement row to edit its target or counts.
+4. **Set counts.** **At least** defaults to one. Open **Maximum: Any** to set an upper bound, or leave it empty for **Any** (the final hand size). Set both counts to `0` to exclude matching cards.
 5. **Calculate** to see each combo's probability and the chance of opening any active combo. Hands satisfying several combos count only once in the combined result.
 
 Separate positive requirements need distinct physical copies: one card matching both `Starter` and `Fire` cannot fill both parts of `Starter + Fire`.
 
 ### Add OR alternatives and same-card AND conditions
 
-- **OR:** Click **Add OR**, select a condition or OR group in the expanded expression, then enter another condition and choose **Add alternative**. `Razen + (Fire OR Dark)` needs Razen and either Fire or Dark. Each alternative has its own Min/Max; satisfying both still counts once.
-- **AND:** Click **Add AND**, select a category requirement or category alternative, then choose another category and submit. `(Orcust AND Monster) Min 2` needs two cards that each match both properties, using shared Min/Max bounds.
+- **OR:** Open a requirement row and choose **Add alternative (OR)**. Select another card, category or property and submit. The **ANY OF** group needs only one alternative; each keeps its own bounds. Open any alternative to edit it or add another.
+- **Same-card AND:** Open a category requirement or alternative and choose **Add property (same card)**. `(Orcust AND Monster) Min 2` needs two cards that each match both properties, using shared bounds. Separate requirements need distinct copies.
 
-Use chip crosses to remove conditions.
+Use **Remove requirement** or **Remove alternative** inside the editor. Removing the next-to-last alternative promotes the remaining requirement without changing its bounds. In a same-card editor, change or remove individual properties, then save. Escape or Cancel restores the ordinary add draft. If edits are pending, extension buttons explicitly save those edits before adding an alternative or property.
 
 ### Configure draw effects
 

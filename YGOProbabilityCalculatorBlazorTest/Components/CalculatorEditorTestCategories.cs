@@ -292,7 +292,9 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         cut.Find("[aria-label='Remove category A']").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
-        cut.FindComponents<ComboEditor>()[0].Find(".accordion-body .badge button").Click();
+        IRenderedComponent<ComboEditor> combo = cut.FindComponents<ComboEditor>()[0];
+        combo.Find("[data-requirement='category:0']").Click();
+        Button(combo, "Remove requirement").Click();
         cut.Find("[aria-label='Remove category A']").Click();
         Assert.That(cut.FindAll("select option[value='user:A']"), Is.Empty);
     }

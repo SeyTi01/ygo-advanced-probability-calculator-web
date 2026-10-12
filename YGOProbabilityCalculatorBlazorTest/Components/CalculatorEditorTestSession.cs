@@ -95,8 +95,7 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase {
             Assert.That(editor.Instance.Combo.Cards.Select(c => c.MaximumMode), Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed }));
             Assert.That(editor.Instance.Combo.Categories.Select(c => c.GetEffectiveMaximum(6)), Is.EqualTo(new[] { 6, 0 }));
             Assert.That(editor.Instance.Combo.Cards.Select(c => c.GetEffectiveMaximum(6)), Is.EqualTo(new[] { 6, 5 }));
-            await editor.Find("#constraintKind" + editor.Instance.Index).ChangeAsync(new() { Value = "Card" });
-            await editor.Find("#comboCard" + editor.Instance.Index).ChangeAsync(new() { Value = session.Cards[1].Id });
+            await editor.Find("#comboTarget" + editor.Instance.Index).ChangeAsync(new() { Value = CardTarget(session.Cards[1].Id) });
             Assert.That(editor.FindAll("[id^='maxAny']"), Is.Empty);
             Assert.That(editor.Find("#maxCount" + editor.Instance.Index).GetAttribute("value"), Is.EqualTo("5"));
         }

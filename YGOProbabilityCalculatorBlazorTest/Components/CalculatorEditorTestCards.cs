@@ -157,7 +157,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
         cut.FindComponents<CardEditor>()[0].Find("#cardCategory0").Change("user:B");
         cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").Click();
-        cut.FindComponents<ComboEditor>()[0].Find("#comboCategory0").Change("user:B");
+        cut.FindComponents<ComboEditor>()[0].Find("#comboTarget0").Change("user:B");
         cut.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");
 
         cut.Find("[aria-label='Move card First, row 1 down']").Click();
@@ -258,26 +258,23 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         Assert.That(editor.Find("[role='status']").TextContent, Does.Contain("Missing card reference"));
-        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
 
-        IElement selector = editor.Find("#comboCard0");
-        Assert.That(selector.QuerySelectorAll("option").Select(option => option.TextContent.Trim()), Is.EqualTo(new[] {
-            "Select card…", "alpha #2", "Alpha #3", "beta #4", "Beta #5", "beta #6", "zebra #1",
+        IElement selector = editor.Find("#comboTarget0");
+        Assert.That(selector.QuerySelectorAll("optgroup[label='Cards'] option").Select(option => option.TextContent.Trim()), Is.EqualTo(new[] {
+            "alpha #2", "Alpha #3", "beta #4", "Beta #5", "beta #6", "zebra #1",
             "Unnamed card #7", "Unnamed card #8"
         }));
-        Assert.That(selector.QuerySelectorAll("option").Select(option => option.GetAttribute("value")), Is.EqualTo(new[] {
-            "", "alpha-lower", "alpha-upper", "beta-first", "beta-case", "beta-second", "zebra",
+        Assert.That(selector.QuerySelectorAll("optgroup[label='Cards'] option").Select(option => option.GetAttribute("value")), Is.EqualTo(new[] {
+            "alpha-lower", "alpha-upper", "beta-first", "beta-case", "beta-second", "zebra",
             "unnamed-first", "unnamed-second"
-        }));
-        Assert.That(selector.QuerySelectorAll("option").Any(option => option.GetAttribute("value") == "missing-card"), Is.False);
+        }.Select(CardTarget)));
+        Assert.That(selector.QuerySelectorAll("optgroup[label='Cards'] option").Any(option => option.GetAttribute("value") == "missing-card"), Is.False);
         Assert.That(cut.FindComponents<CardEditor>().Select(cardEditor => cardEditor.Instance.Card.Id), Is.EqualTo(deckOrder));
 
-        await selector.ChangeAsync(new() { Value = "beta-case" });
+        await selector.ChangeAsync(new() { Value = CardTarget("beta-case") });
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
-        Assert.That(editor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo("beta-case"));
-
-        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Category" });
-        Assert.That(editor.Find("#comboCategory0").QuerySelectorAll("optgroup[label='User categories'] option").Select(option => option.TextContent.Trim()),
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget("beta-case")));
+        Assert.That(editor.Find("#comboTarget0").QuerySelectorAll("optgroup[label='Categories'] option").Select(option => option.TextContent.Trim()),
             Is.EqualTo(new[] { "Zeta", "Alpha" }), "category selectors retain configured category order");
         Assert.That(cut.FindComponents<CardEditor>().Select(cardEditor => cardEditor.Instance.Card.Id), Is.EqualTo(deckOrder));
     }
@@ -322,8 +319,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> comboEditor = cut.FindComponent<ComboEditor>();
         ComboEditor originalComboEditor = comboEditor.Instance;
         await comboEditor.Find(".accordion-button").ClickAsync(new());
-        await comboEditor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
-        await comboEditor.Find("#comboCard0").ChangeAsync(new() { Value = alphaLower.Id });
+        await comboEditor.Find("#comboTarget0").ChangeAsync(new() { Value = CardTarget(alphaLower.Id) });
         await comboEditor.Find("#minCount0").InputAsync(new() { Value = "2" });
         await comboEditor.Find("#maxCount0").InputAsync(new() { Value = "3" });
 
@@ -357,7 +353,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         }
 
         Assert.That(comboEditor.Instance, Is.SameAs(originalComboEditor));
-        Assert.That(comboEditor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo(alphaLower.Id));
+        Assert.That(comboEditor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget(alphaLower.Id)));
         Assert.That(comboEditor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
         Assert.That(comboEditor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("3"));
         Assert.That(comboEditor.Instance.Combo.Cards.Single().CardId, Is.EqualTo(zebra.Id));
@@ -428,7 +424,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Button(card, "Add").Click();
-        Button(combo, "Add").Click();
+        Button(combo, "Add requirement").Click();
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Second"));
         Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("A (None)"));
         card.Find("[title='Remove card']").Click();
