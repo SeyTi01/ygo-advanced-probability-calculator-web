@@ -463,10 +463,9 @@
         _searchResults = [];
         _activeSuggestionIndex = -1;
 
-        Card newCard = CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(
-            Card.WithObjectiveMetadata(CardPropertyProvider.GetCategories(selectedCard), selectedCard.Id)
-                .WithName(selectedCard.Name),
-            selectedCard);
+        Card replacement = Card.WithObjectiveMetadata(CardPropertyProvider.GetCategories(selectedCard), selectedCard.Id)
+            .WithName(selectedCard.Name);
+        Card newCard = CuratedDrawEffectPresets.ApplyForExplicitSelection(replacement, Card, selectedCard);
 
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
