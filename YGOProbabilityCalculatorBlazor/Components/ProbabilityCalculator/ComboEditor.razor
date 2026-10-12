@@ -22,42 +22,44 @@
                         }
                     </span>
 
-                    @if (ConstraintCount > 0) {
-                        @for (int categoryIndex = 0; categoryIndex < Math.Min(Combo.Categories.Count, MaxHeaderBadges); categoryIndex++) {
-                            int currentCategoryIndex = categoryIndex;
-                            ComboCategory category = Combo.Categories[currentCategoryIndex];
-                            <span class="expression-term">
-                                @if (currentCategoryIndex > 0) { <span class="expression-and" aria-hidden="true">+</span> }
-                                @CategoryBadge(category)
-                            </span>
-                        }
-                        @for (int cardIndex = 0; cardIndex < Math.Min(Combo.Cards.Count, Math.Max(0, MaxHeaderBadges - Combo.Categories.Count)); cardIndex++) {
-                            int currentCardIndex = cardIndex;
-                            ComboCard card = Combo.Cards[currentCardIndex];
-                            <span class="expression-term">
-                                @if (Combo.Categories.Count + currentCardIndex > 0) { <span class="expression-and" aria-hidden="true">+</span> }
-                                @CardBadge(card)
-                            </span>
-                        }
+                    <span class="combo-header-requirements">
+                        @if (ConstraintCount > 0) {
+                            @for (int categoryIndex = 0; categoryIndex < Math.Min(Combo.Categories.Count, MaxHeaderBadges); categoryIndex++) {
+                                int currentCategoryIndex = categoryIndex;
+                                ComboCategory category = Combo.Categories[currentCategoryIndex];
+                                <span class="expression-term">
+                                    @if (currentCategoryIndex > 0) { <span class="expression-and" aria-hidden="true">+</span> }
+                                    @CategoryBadge(category)
+                                </span>
+                            }
+                            @for (int cardIndex = 0; cardIndex < Math.Min(Combo.Cards.Count, Math.Max(0, MaxHeaderBadges - Combo.Categories.Count)); cardIndex++) {
+                                int currentCardIndex = cardIndex;
+                                ComboCard card = Combo.Cards[currentCardIndex];
+                                <span class="expression-term">
+                                    @if (Combo.Categories.Count + currentCardIndex > 0) { <span class="expression-and" aria-hidden="true">+</span> }
+                                    @CardBadge(card)
+                                </span>
+                            }
 
-                        @for (int groupIndex = 0; groupIndex < Math.Min(Combo.AlternativeGroups.Count, Math.Max(0, MaxHeaderBadges - Combo.Categories.Count - Combo.Cards.Count)); groupIndex++) {
-                            int currentGroupIndex = groupIndex;
-                            ComboAlternativeGroup group = Combo.AlternativeGroups[currentGroupIndex];
-                            <span class="expression-term">
-                                @if (Combo.Categories.Count + Combo.Cards.Count + currentGroupIndex > 0) { <span class="expression-and" aria-hidden="true">+</span> }
-                                @AlternativeGroupMarkup(group)
-                            </span>
+                            @for (int groupIndex = 0; groupIndex < Math.Min(Combo.AlternativeGroups.Count, Math.Max(0, MaxHeaderBadges - Combo.Categories.Count - Combo.Cards.Count)); groupIndex++) {
+                                int currentGroupIndex = groupIndex;
+                                ComboAlternativeGroup group = Combo.AlternativeGroups[currentGroupIndex];
+                                <span class="expression-term">
+                                    @if (Combo.Categories.Count + Combo.Cards.Count + currentGroupIndex > 0) { <span class="expression-and" aria-hidden="true">+</span> }
+                                    @AlternativeGroupMarkup(group)
+                                </span>
+                            }
+                            @if (HiddenHeaderCategoriesCount > 0) {
+                                <span class="badge bg-secondary ms-1">+@HiddenHeaderCategoriesCount more</span>
+                            }
                         }
-                        @if (HiddenHeaderCategoriesCount > 0) {
-                            <span class="badge bg-secondary ms-1">+@HiddenHeaderCategoriesCount more</span>
+                        else {
+                            <span class="text-muted ms-2">(no requirements)</span>
                         }
-                    }
-                    else {
-                        <span class="text-muted ms-2">(no requirements)</span>
-                    }
-                    @if (!Combo.Active) {
-                        <span class="badge text-bg-secondary ms-2">Inactive</span>
-                    }
+                        @if (!Combo.Active) {
+                            <span class="badge text-bg-secondary ms-2">Inactive</span>
+                        }
+                    </span>
                 </span>
             </button>
 

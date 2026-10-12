@@ -56,8 +56,10 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         IElement identity = groupedHeader.QuerySelector(".combo-header-identity")!;
         Assert.That(identity.Children.First().TextContent, Is.EqualTo("Grouped combo"));
         Assert.That(identity.Children.Last(), Is.SameAs(membership));
+        Assert.That(identity.QuerySelectorAll(".expression-term, .badge"), Is.Empty);
+        Assert.That(groupedHeader.QuerySelector(".combo-header-requirements")!.QuerySelectorAll(".expression-term"), Has.Length.EqualTo(2));
         Assert.That(Array.IndexOf(groupedHeader.Children.ToArray(), identity),
-            Is.LessThan(Array.IndexOf(groupedHeader.Children.ToArray(), groupedHeader.QuerySelector(".expression-term"))));
+            Is.LessThan(Array.IndexOf(groupedHeader.Children.ToArray(), groupedHeader.QuerySelector(".combo-header-requirements"))));
 
         foreach (IRenderedComponent<ComboEditor> ungroupedEditor in editors.Skip(1)) {
             IElement headerContent = ungroupedEditor.Find(".combo-header-content");

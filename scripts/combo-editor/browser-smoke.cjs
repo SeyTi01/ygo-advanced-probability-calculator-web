@@ -142,6 +142,16 @@ const fixture = {
                     return { below: group.top >= name.bottom, aligned: Math.abs(group.left - name.left) < 1 };
                 });
                 assert.deepEqual(identity, { below: true, aligned: true }, `${width}/${theme} group below name`);
+                const columns = await editor.locator('.combo-header-content').evaluate(element => {
+                    const title = element.querySelector('.combo-header-identity').getBoundingClientRect();
+                    const requirements = element.querySelector('.combo-header-requirements').getBoundingClientRect();
+                    const terms = [...element.querySelectorAll('.expression-term')].map(term => term.getBoundingClientRect());
+                    return {
+                        separate: requirements.left >= title.right,
+                        termsStayRight: terms.every(term => term.left >= requirements.left && term.right <= requirements.right + 1)
+                    };
+                });
+                assert.deepEqual(columns, { separate: true, termsStayRight: true }, `${width}/${theme} requirements stay in their column`);
                 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}/${theme} grouped requirement overflow`);
                 await capture(`after-separated-${width}-${theme}`);
             }
