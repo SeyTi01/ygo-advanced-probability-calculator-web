@@ -41,6 +41,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  await page.goto(base);
  const calculate=page.getByRole('button',{name:'Calculate',exact:true});
  await calculate.waitFor();
+  await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
  async function waitIdle(){await page.waitForFunction(()=>{const button=document.querySelector('.calculate-action > button');return button&&button.getAttribute('aria-busy')!=='true'})}
  let loadSequence=0;
  async function load(session){
@@ -212,7 +213,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  await page.getByRole('button',{name:'Copy results',exact:true}).click();
  await page.locator('.probability-result-copy-success-icon').waitFor();
  const historicalCopy=await page.evaluate(()=>smokeCopiedText);
- assert.ok(historicalCopy.startsWith('Previous result — current inputs have changed.\nProbability results\nHand size: 5\n'),'idle stale copy retains the accepted hand size rather than edited hand 4');
+ assert.ok(historicalCopy.startsWith('Previous result — current inputs have changed.\nConfigured draw effects\nProbability results\nHand size: 5\n'),'idle stale copy retains the accepted hand size rather than edited hand 4');
  assert.ok(historicalCopy.includes(oldResult),'idle stale copy retains the accepted odds');
  if(engine==='chromium')assert.equal((await page.evaluate(()=>navigator.clipboard.readText())).replace(/\r\n/g,'\n'),historicalCopy);
  await page.locator('#handSize').fill('5');await page.locator('#handSize').press('Tab');
@@ -225,6 +226,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  await failurePage.addInitScript(()=>{window.savedWorker=Worker;window.Worker=class{constructor(){throw new Error('worker unavailable')}}});
  await failurePage.goto(base);
  await failurePage.getByRole('button',{name:'Calculate',exact:true}).waitFor();
+ await failurePage.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
  await failurePage.locator('#sessionFileInput').setInputFiles({name:'simple.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(simple))});
  await failurePage.waitForFunction(()=>{try{return JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Combos[0].Name==='One card'}catch{return false}});
  await failurePage.getByRole('button',{name:'Calculate',exact:true}).click();

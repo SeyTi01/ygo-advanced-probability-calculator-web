@@ -63,6 +63,7 @@ function probability(count, hand = 5) {
   await page.goto(base);
   const calculate = page.getByRole('button', { name: 'Calculate', exact: true });
   await calculate.waitFor();
+  await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
   const cdp = engine === 'chromium' ? await page.context().newCDPSession(page) : null;
   if (slowdown !== 1) { assert.ok(cdp, 'CPU slowdown requires Chromium'); await cdp.send('Emulation.setCPUThrottlingRate', { rate: slowdown }); }
   async function request(json) {
@@ -171,7 +172,7 @@ function probability(count, hand = 5) {
     await page.getByRole('button', { name: 'Copy results', exact: true }).click();
     await page.locator('.probability-result-copy-success-icon').waitFor();
     const copied = await page.evaluate(() => policyCopiedText);
-    assert.ok(copied.startsWith('Previous result — current inputs have changed.\nProbability results\nHand size: 5\n'));
+    assert.ok(copied.startsWith('Previous result — current inputs have changed.\nConfigured draw effects\nProbability results\nHand size: 5\n'));
     assert.ok(copied.includes(acceptedOdds) && copied.includes('Even') && copied.includes('Odd'));
     assert.ok(!copied.includes('Pinned') && !copied.includes('pp'));
     if (engine === 'chromium') assert.equal((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n'), copied);
@@ -214,7 +215,7 @@ function probability(count, hand = 5) {
   assert.ok(inline.className.includes('result-difference-positive')); assert.ok(['flex', 'inline-flex'].includes(inline.parentDisplay)); assert.equal(inline.beside, true);
   assert.equal(await page.locator('.probability-results > p.small').innerText(), 'Hand size 6 · 60 active copies · 2 active cards · Configured draw effects');
   assert.equal(await page.locator('.pinned-result > p.small').innerText(), 'Hand size 5 · 60 active copies · 2 active cards · Configured draw effects');
-  const summaries = await page.evaluate(() => ['.probability-results > p.small', '.pinned-result > p.small'].map(selector => { const e = document.querySelector(selector), s = getComputedStyle(e); return { className: e.className, font: s.fontSize, line: s.lineHeight, margin: s.marginBottom, children: e.children.length }; }));
+  const summaries = await page.evaluate(() => ['.probability-results > p.small', '.pinned-result > p.small'].map(selector => { const e = document.querySelector(selector), s = getComputedStyle(e); return { className: e.className.replace(" result-model", ""), font: s.fontSize, line: s.lineHeight, margin: s.marginBottom, children: e.children.length }; }));
   assert.deepEqual(summaries[0], summaries[1]); assert.equal(summaries[0].children, 0);
   await page.locator('#handSize').fill('4'); await page.locator('#handSize').press('Tab');
   await start(); await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
