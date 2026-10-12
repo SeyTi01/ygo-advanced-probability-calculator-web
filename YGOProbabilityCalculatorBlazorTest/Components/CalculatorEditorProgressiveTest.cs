@@ -13,6 +13,37 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
     [Test]
+    public async Task ExpandedPlusSeparatorsJoinRequirementsAndWholeAlternativeGroups() {
+        Combo combo = new([new(a, 1, 3)], cards: [new("r", 1, 3)], alternativeGroups: [
+            new([ComboAlternative.For(new ComboCategory(a, 1, 3)), ComboAlternative.For(new ComboCard("r", 1, 3))]),
+            new([ComboAlternative.For(ComboCategory.SameCard([a, b], 1, 3)), ComboAlternative.For(new ComboCategory(b, 1, 3))])
+        ]);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = [a, b], Cards = [new([], id: "r")], Combos = [combo]
+        });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        IElement requirements = editor.Find(".requirement-list");
+        Assert.That(requirements.Children.Skip(1).Select(element => element.ClassName), Is.EqualTo(new[] {
+            "requirement-row", "requirement-and-separator", "requirement-row", "requirement-and-separator",
+            "requirement-or-group", "requirement-and-separator", "requirement-or-group"
+        }));
+        foreach (IElement separator in requirements.QuerySelectorAll(".requirement-and-separator")) {
+            Assert.That(separator.TextContent.Trim(), Is.EqualTo("+"));
+            Assert.That(separator.GetAttribute("aria-label"), Is.EqualTo("AND: also required"));
+        }
+        foreach (IElement group in requirements.QuerySelectorAll(".requirement-or-group")) {
+            Assert.That(group.QuerySelectorAll(".requirement-row"), Has.Length.EqualTo(2));
+            Assert.That(group.QuerySelector(".alternative-separator")!.TextContent, Is.EqualTo("OR"));
+            Assert.That(group.QuerySelectorAll(".requirement-and-separator"), Is.Empty);
+        }
+        await EditRequirement(editor, "category:0");
+        await Button(editor, "Remove requirement").ClickAsync(new());
+        Assert.That(requirements.QuerySelectorAll(".requirement-and-separator"), Has.Length.EqualTo(2));
+        Assert.That(requirements.Children[1].ClassName, Is.EqualTo("requirement-row"));
+        Assert.That(editor.FindAll(".requirement-or-group"), Has.Count.EqualTo(2));
+    }
+
+    [Test]
     public async Task ChangingACardToACategoryThenExtendingUsesItsNewCategoryPosition() {
         ComboCategory unchanged = new(a, 0, 3);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
