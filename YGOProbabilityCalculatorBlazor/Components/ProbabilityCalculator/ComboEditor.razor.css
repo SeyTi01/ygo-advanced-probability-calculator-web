@@ -106,6 +106,16 @@
     min-width: 0;
 }
 
+.expression-and,
+.combo-header-requirements > .expression-term:first-child::before {
+    flex: 0 0 .6rem;
+    text-align: center;
+}
+
+.combo-header-requirements > .expression-term:first-child::before {
+    content: "";
+}
+
 .alternative-leaf {
     display: inline-flex;
     flex-wrap: wrap;

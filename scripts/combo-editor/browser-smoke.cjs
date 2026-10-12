@@ -152,6 +152,11 @@ const fixture = {
                     };
                 });
                 assert.deepEqual(columns, { separate: true, termsStayRight: true }, `${width}/${theme} requirements stay in their column`);
+                const indents = await editor.locator('.combo-header-requirements > .expression-term').evaluateAll(terms => terms.map(term => {
+                    const content = [...term.children].find(child => !child.classList.contains('expression-and'));
+                    return content.getBoundingClientRect().left - term.getBoundingClientRect().left;
+                }));
+                assert.equal(indents.every(indent => Math.abs(indent - indents[0]) < 1), true, `${width}/${theme} requirement contents align after the plus column`);
                 const parentheses = await editor.locator('.alternative-group, .composite-alternative').evaluateAll(groups => groups.every(group => {
                     const rails = [...group.children].filter(child => child.classList.contains('expression-parenthesis'));
                     const content = group.querySelector(':scope > .alternative-group-content, :scope > .same-card-category').getBoundingClientRect();
