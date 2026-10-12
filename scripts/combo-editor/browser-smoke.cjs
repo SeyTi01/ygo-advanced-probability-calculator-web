@@ -39,7 +39,7 @@ const fixture = {
         const picker = () => editor.locator('#comboTarget0');
         const click = name => editor.getByRole('button', { name, exact: true }).click();
         const edit = key => editor.locator(`[data-requirement="${key}"]`).click();
-        async function choose(value, submit = 'Add requirement') {
+        async function choose(value, submit = 'Add') {
             await picker().selectOption(value);
             await click(submit);
         }
@@ -55,12 +55,20 @@ const fixture = {
         }
         await load(fixture);
         await capture('after-blank-1440-light');
+        const duplicate = editor.getByRole('button', { name: 'Duplicate combo Browser route', exact: true });
+        assert.equal((await duplicate.innerText()).trim(), '');
+        assert.equal(await duplicate.getAttribute('title'), 'Duplicate combo Browser route');
+        await editor.locator('#comboActive0').focus();
+        await editor.locator('#comboActive0').press('Tab');
+        assert.equal(await duplicate.evaluate(element => element === document.activeElement), true);
+        await duplicate.press('Tab');
+        assert.equal(await editor.getByRole('button', { name: 'Remove combo', exact: true }).evaluate(element => element === document.activeElement), true);
         assert.equal(await editor.locator('[data-action]').count(), 0);
         await picker().focus();
         await picker().press('Tab');
         assert.equal(await editor.locator('#minCount0').evaluate(element => element === document.activeElement), true);
         await editor.locator('#minCount0').press('Tab');
-        assert.equal(await editor.getByRole('button', { name: 'Add requirement', exact: true }).evaluate(element => element === document.activeElement), true);
+        assert.equal(await editor.getByRole('button', { name: 'Add', exact: true }).evaluate(element => element === document.activeElement), true);
         await choose('card:razen');
         await choose('user:FIRE');
         await edit('card:0');
@@ -156,6 +164,13 @@ const fixture = {
         assert.equal(await second.locator('#minCount1').inputValue(), '3');
         await editor.getByRole('button', { name: 'Remove combo', exact: true }).click();
         assert.equal(await page.locator('.combo-editor').first().locator('#minCount0').inputValue(), '3', 'Deleting an earlier combo retains the surviving editor draft');
+        const comboCount = await page.locator('.combo-editor').count();
+        await page.locator('.combo-editor').first().locator('.accordion-button').click();
+        const collapsedDuplicate = page.locator('.combo-editor').first().locator('.combo-duplicate');
+        await collapsedDuplicate.focus();
+        await collapsedDuplicate.press('Enter');
+        assert.equal(await page.locator('.combo-editor').count(), comboCount + 1);
+        assert.equal(await page.locator('.combo-editor').first().locator('.accordion-button').getAttribute('aria-expanded'), 'false');
         assert.deepEqual(errors, []);
         console.log(JSON.stringify({ scenarios: 'add/edit, contextual OR, same-card, mixed alternatives, 0/0, save/reload, group cleanup, keyboard, touch, exact 50% vs 0%, VS/K9 83.61%', widths: [320, 375, 1280, 1440], themes: ['light', 'dark'], pageErrors: errors }));
     } finally {

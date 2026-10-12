@@ -42,7 +42,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
         Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
         Assert.That(editor.FindAll(".alternative-scope"), Is.Empty);
-        Assert.That(Button(editor, "Add requirement"), Is.Not.Null);
+        Assert.That(Button(editor, "Add"), Is.Not.Null);
     }
 
     [Test]
@@ -89,7 +89,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("4"));
         Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("5"));
-        Assert.That(Button(editor, "Add requirement").TextContent.Trim(), Is.EqualTo("Add requirement"));
+        Assert.That(Button(editor, "Add").TextContent.Trim(), Is.EqualTo("Add"));
     }
 
     [TestCase("Category", "Category")]

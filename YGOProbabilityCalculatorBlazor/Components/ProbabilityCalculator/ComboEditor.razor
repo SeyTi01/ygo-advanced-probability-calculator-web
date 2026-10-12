@@ -71,6 +71,19 @@
                        @onchange="e => ChangeActive(e.Value)"/>
             </label>
 
+            <button class="btn btn-outline-secondary combo-duplicate flex-shrink-0" type="button"
+                    aria-label="@($"Duplicate combo {ComboDisplayName}")" title="@($"Duplicate combo {ComboDisplayName}")"
+                    @onclick="() => OnDuplicateCombo.InvokeAsync(Index)">
+                <span class="combo-duplicate-face">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true" focusable="false">
+                        <rect x="8" y="8" width="13" height="13" rx="2"></rect>
+                        <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path>
+                    </svg>
+                </span>
+            </button>
+
             <button class="btn btn-danger entry-editor-delete flex-shrink-0" type="button" aria-label="Remove combo" title="Remove combo" @onclick="() => OnRemoveCombo.InvokeAsync(Index)">
                 <span class="entry-editor-delete-face">
                     <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
@@ -142,23 +155,6 @@
                 </div>
             </div>
 
-            @if (Index == ActiveComboIndex) {
-                <div class="mt-3">
-                    <button class="btn btn-outline-secondary btn-sm"
-                            type="button"
-                            aria-label="@($"Duplicate combo {ComboDisplayName}")"
-                            title="@($"Duplicate combo {ComboDisplayName}")"
-                            @onclick="() => OnDuplicateCombo.InvokeAsync(Index)">
-                        <svg class="me-1" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-                             aria-hidden="true" focusable="false">
-                            <rect x="8" y="8" width="13" height="13" rx="2"></rect>
-                            <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path>
-                        </svg>
-                        Duplicate combo
-                    </button>
-                </div>
-            }
         </div>
     </div>
 </div>
@@ -251,7 +247,7 @@
                        @oninput="e => _minCount = e.Value?.ToString() ?? string.Empty" />
             </div>
             <div class="requirement-submit">
-                <button type="button" class="btn btn-primary" @onclick="AddConstraint">@(_editingRequirement is not null ? "Save changes" : AndScope ? "Add property" : AlternativeScope ? "Add alternative" : HasSelectedConstraint ? "Update requirement" : "Add requirement")</button>
+                <button type="button" class="btn btn-primary" @onclick="AddConstraint">@(_editingRequirement is not null ? "Save changes" : AndScope ? "Add property" : AlternativeScope ? "Add alternative" : HasSelectedConstraint ? "Update requirement" : "Add")</button>
             </div>
         </div>
         <details class="requirement-bounds" open="@(_maxCount.Length > 0)">

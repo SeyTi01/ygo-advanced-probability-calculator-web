@@ -294,7 +294,7 @@ public class ActiveEntriesEditorTest {
         card.Find("#cardName0").Input("Edited card");
         card.FindAll("button").Single(button => button.TextContent.Trim() == "Add").Click();
         combo.Find("#comboName0").Input("Edited combo");
-        combo.FindAll("button").Single(button => button.TextContent.Trim() == "Add requirement").Click();
+        combo.FindAll("button").Single(button => button.TextContent.Trim() == "Add").Click();
 
         Assert.That(card.Find("#cardActive0").HasAttribute("checked"), Is.False);
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Edited card").And.Contain("(3)"));

@@ -20,6 +20,31 @@
     flex: 0 0 auto;
 }
 
+.combo-duplicate {
+    display: grid;
+    flex: 0 0 2.75rem;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    background: transparent;
+    border-color: transparent;
+}
+
+.combo-duplicate-face {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--bs-body-color);
+    border: 1px solid var(--bs-secondary-color);
+    border-radius: var(--bs-btn-border-radius);
+}
+
+.combo-duplicate:hover .combo-duplicate-face {
+    background: var(--bs-secondary-bg);
+}
+
 .alternative-group {
     display: inline-flex;
     flex-wrap: wrap;
@@ -108,6 +133,10 @@
     margin: 0 0 .2rem;
 }
 .requirement-row, .requirement-or-group { min-width: 0; }
+.requirement-list > :is(.requirement-row, .requirement-or-group) + :is(.requirement-row, .requirement-or-group) {
+    border-block-start: 1px solid var(--bs-border-color);
+    padding-block-start: .5rem;
+}
 .requirement-edit {
     display: flex;
     align-items: center;
