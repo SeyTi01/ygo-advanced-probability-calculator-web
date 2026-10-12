@@ -623,8 +623,18 @@
     private Task RemoveManualProperty(string key) => OnReplaceCard.InvokeAsync((Index, Card.WithoutManualMetadataCategory(key)));
 
     protected override void OnParametersSet() {
-        RenderParameters parameters = new(Card, Index, Count, ActiveCardIndex, DrawEffectsEnabled,
-            ConditionalEffectsEnabled, CategoryBases, RelevantMetadataCategoryIdentities, CategoryColorIndices, CategoryRename);
+        RenderParameters parameters = new(
+            Card,
+            Index,
+            Count,
+            ActiveCardIndex,
+            DrawEffectsEnabled,
+            ConditionalEffectsEnabled,
+            CategoryBases,
+            RelevantMetadataCategoryIdentities,
+            CategoryColorIndices,
+            CategoryRename
+        );
         bool colorsUnchanged = CategoryColorIndices.Count == _previousCategoryColors.Count
             && CategoryColorIndices.All(color => _previousCategoryColors.TryGetValue(color.Key, out int previous) && previous == color.Value);
         _skipParameterRender = parameters == _previousRenderParameters && colorsUnchanged;

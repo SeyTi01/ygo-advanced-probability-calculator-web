@@ -104,6 +104,7 @@
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
+    [Parameter] public bool DeferNameEditRendering { get; set; }
 
     [Parameter] public int HandSize { get; set; } = 5;
     [Parameter] public int ActiveComboIndex { get; set; } = -1;
@@ -120,6 +121,7 @@
     [Parameter] public EventCallback<(int From, int To)> OnMoveCombo { get; set; }
 
     private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
+    private bool _skipParameterRender;
     private readonly EditorKeys<Combo> _editorKeys = new();
     private readonly Dictionary<string, ElementReference> _groupNameButtonReferences = new(StringComparer.Ordinal);
     private string _newGroupName = string.Empty;
@@ -131,12 +133,20 @@
     private string? _pendingGroupNameFocus;
 
     protected override void OnParametersSet() {
+        _skipParameterRender = DeferNameEditRendering;
         _editorKeys.Synchronize(Combos);
         _categoryOptions = CategoryCatalog.BuildOptions(CategoryBases, Cards, Combos);
 
         if (_editingGroupId is string id && !ComboGroups.Any(group => group.Id == id)) {
             ClearGroupRename();
         }
+    }
+
+    protected override bool ShouldRender() {
+        bool render = !_skipParameterRender;
+        _skipParameterRender = false;
+
+        return render;
     }
 
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
