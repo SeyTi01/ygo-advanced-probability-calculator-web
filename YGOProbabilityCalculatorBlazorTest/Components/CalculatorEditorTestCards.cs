@@ -424,7 +424,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Button(card, "Add").Click();
-        Button(combo, "Add requirement").Click();
+        Button(combo, "Add").Click();
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Second"));
         Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("A (None)"));
         card.Find("[title='Remove card']").Click();

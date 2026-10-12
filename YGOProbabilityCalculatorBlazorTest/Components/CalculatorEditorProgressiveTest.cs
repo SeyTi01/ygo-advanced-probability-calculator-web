@@ -63,7 +63,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         await editor.Find("#comboTarget0").ChangeAsync(new() { Value = "card:r" });
         await editor.Find("#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
         await editor.Find("#comboTarget0").ChangeAsync(new() { Value = a.Identity });
-        await Button(editor, "Add requirement").ClickAsync(new());
+        await Button(editor, "Add").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Cards.Single().CardId, Is.EqualTo("r"));
         Assert.That(editor.Instance.Combo.Categories.Single().BaseCategory, Is.SameAs(a));
         Assert.That(editor.FindAll(".requirement-edit"), Has.Count.EqualTo(2));
@@ -209,7 +209,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(sameCard.ToString("P2")));
         await RemoveProperty(editor, "category:0", 2);
         await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
-        await Button(editor, "Add requirement").ClickAsync(new());
+        await Button(editor, "Add").ClickAsync(new());
         double separate = SmallDeckOracle.EnumerateProbability([both, blank], [editor.Instance.Combo], 1);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(separate.ToString("P2")));

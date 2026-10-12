@@ -143,9 +143,9 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
             Is.EquivalentTo(new[] { "user:Spell", "metadata:kind:spell" }));
 
         await combo.Find("#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
-        await Button(combo, "Add requirement").ClickAsync(new());
+        await Button(combo, "Add").ClickAsync(new());
         await combo.Find("#comboTarget1").ChangeAsync(new() { Value = user.Identity });
-        await Button(combo, "Add requirement").ClickAsync(new());
+        await Button(combo, "Add").ClickAsync(new());
         Assert.That(combo.Instance.Combo.Categories.Select(c => c.BaseCategory.Source),
             Is.EqualTo(new[] { CategorySource.Metadata, CategorySource.User }));
         await combo.Find("#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
@@ -229,7 +229,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         foreach (string kind in new[] { "card", "combo" }) {
             IElement header = cut.Find($".{kind}-editor .entry-editor-header");
             Assert.That(header.QuerySelectorAll("h2 button").Length, Is.EqualTo(1));
-            Assert.That(header.QuerySelectorAll(".entry-actions button").Length, Is.EqualTo(3));
+            Assert.That(header.QuerySelectorAll(".entry-actions button").Length, Is.EqualTo(kind == "combo" ? 4 : 3));
             Assert.That(header.QuerySelectorAll("input[type=checkbox]").Length, Is.EqualTo(1));
             IElement toggle = header.QuerySelector("input[type=checkbox]")!;
             Assert.That(header.QuerySelector("label")?.GetAttribute("for"), Is.EqualTo(toggle.Id));
