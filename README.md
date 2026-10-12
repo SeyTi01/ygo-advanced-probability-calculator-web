@@ -50,7 +50,7 @@ Separate positive requirements need distinct physical copies: one card matching 
 
 ### Add OR alternatives and same-card AND conditions
 
-- **OR:** Open a requirement row and choose **Add alternative (OR)**. Select another card, category or property and submit. The **ANY OF** group needs only one alternative; each keeps its own bounds. Open any alternative to edit it or add another.
+- **OR:** Open a requirement row and choose **Add alternative (OR)**. Select another card, category or property and submit. An OR group needs only one alternative; each keeps its own bounds. Open any alternative to edit it or add another.
 - **Same-card AND:** Open a category requirement or alternative and choose **Add property (same card)**. `(Orcust AND Monster) Min 2` needs two cards that each match both properties, using shared bounds. Separate requirements need distinct copies.
 
 Use **Remove requirement** or **Remove alternative** inside the editor. Removing the next-to-last alternative promotes the remaining requirement without changing its bounds. In a same-card editor, change or remove individual properties, then save. Escape or Cancel restores the ordinary add draft. If edits are pending, extension buttons explicitly save those edits before adding an alternative or property.
