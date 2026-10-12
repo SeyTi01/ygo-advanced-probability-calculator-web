@@ -12,6 +12,53 @@ public class CardInfoServiceTests {
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 9, 0, 0, TimeSpan.Zero);
 
     [Test]
+    public async Task BoundedSearchMatchesFullSortForCaseTiesAndAllRanks() {
+        CardInfo[] cards = Enumerable.Range(1, 200).Select(index => new CardInfo {
+            Id = index,
+            Name = (index % 4) switch {
+                0 => "FIRE",
+                1 => "fire",
+                2 => $"Fire collector {index % 9}",
+                _ => $"The fire collector {index % 7}"
+            },
+            ArtworkMetadataKnown = true
+        }).Reverse().ToArray();
+        RecordingHttpMessageHandler handler = new((_, _) => Task.FromResult(Response(HttpStatusCode.OK, CreateLocalCatalogJson(cards))));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client);
+
+        foreach (string query in new[] { "FiRe", "collector", "collector 2", "absent" }) {
+            IEnumerable<int> expected = cards
+                .Where(card => card.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(card => card.Name.Equals(query, StringComparison.OrdinalIgnoreCase) ? 0
+                    : card.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase) ? 1 : 2)
+                .ThenBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(card => card.Name, StringComparer.Ordinal)
+                .ThenBy(card => card.Id)
+                .Take(20)
+                .Select(card => card.Id);
+            Assert.That((await service.SearchCardsAsync(query)).Select(card => card.Id), Is.EqualTo(expected));
+        }
+
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public async Task ShortQueriesDoNotLoadUnavailableCatalogAndFailureNeverFallsBackToExternalSearch() {
+        RecordingHttpMessageHandler handler = HandlerWithStatus(HttpStatusCode.ServiceUnavailable);
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client);
+
+        Assert.That(await service.SearchCardsAsync("  "), Is.Empty);
+        Assert.That(await service.SearchCardsAsync(" A "), Is.Empty);
+        Assert.That(handler.Requests, Is.Empty);
+        Assert.ThrowsAsync<HttpRequestException>(async () => await service.SearchCardsAsync("Ash"));
+        Assert.ThrowsAsync<HttpRequestException>(async () => await service.SearchCardsAsync("Blue"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+        Assert.That(handler.Requests.Single(), Does.Contain("calculator.test/data/card-catalog.v1.json"));
+    }
+
+    [Test]
     public async Task LocalSearchRanksExactPrefixAndSubstringMatchesAndLoadsOnceWithoutApiRequests() {
         CardInfo[] cards = [
             new() { Id = 4, Name = "Legendary Ash Blossom & Joyous Spring", Type = "Effect Monster", ArtworkMetadataKnown = true },

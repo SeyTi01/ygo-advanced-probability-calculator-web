@@ -156,23 +156,51 @@ public class CardInfoService : ICardInfoService {
     }
 
     public async Task<IReadOnlyList<CardInfo>> SearchCardsAsync(string query) {
-        IReadOnlyList<CardInfo> catalog = await _loadCatalogTask.Value;
         string normalizedQuery = query?.Trim() ?? string.Empty;
 
         if (normalizedQuery.Length < 2) {
             return Array.Empty<CardInfo>();
         }
 
-        return catalog
-            .Select(card => (Card: card, Rank: GetSearchRank(card.Name, normalizedQuery)))
-            .Where(match => match.Rank >= 0)
-            .OrderBy(match => match.Rank)
-            .ThenBy(match => match.Card.Name, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(match => match.Card.Name, StringComparer.Ordinal)
-            .ThenBy(match => match.Card.Id)
-            .Take(SearchResultLimit)
-            .Select(match => match.Card)
-            .ToArray();
+        IReadOnlyList<CardInfo> catalog = await _loadCatalogTask.Value;
+        // The secondary order is prepared once. Exact matches precede other
+        // prefixes in this order; locate their range without scanning the catalog.
+        int lower = 0;
+        int upper = catalog.Count;
+
+        while (lower < upper) {
+            int middle = lower + (upper - lower) / 2;
+            if (StringComparer.OrdinalIgnoreCase.Compare(catalog[middle].Name, normalizedQuery) < 0) {
+                lower = middle + 1;
+            }
+            else {
+                upper = middle;
+            }
+        }
+
+        List<CardInfo> matches = new(SearchResultLimit);
+        for (int index = lower; index < catalog.Count && matches.Count < SearchResultLimit; index++) {
+            CardInfo card = catalog[index];
+            if (!card.Name.StartsWith(normalizedQuery, StringComparison.OrdinalIgnoreCase)) {
+                break;
+            }
+
+            matches.Add(card);
+        }
+
+        // Fill only the remaining slots with substrings in secondary order.
+        // Broad prefix queries never scan; broad substrings stop at the 20th hit.
+        foreach (CardInfo card in catalog) {
+            if (matches.Count == SearchResultLimit) {
+                break;
+            }
+
+            if (card.Name.IndexOf(normalizedQuery, StringComparison.OrdinalIgnoreCase) > 0) {
+                matches.Add(card);
+            }
+        }
+
+        return matches.ToArray();
     }
 
     public async Task<CardInfo> GetCardInfoAsync(int id) {
@@ -354,7 +382,11 @@ public class CardInfoService : ICardInfoService {
             }
         }
 
-        return document.Cards;
+        return document.Cards
+            .OrderBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(card => card.Name, StringComparer.Ordinal)
+            .ThenBy(card => card.Id)
+            .ToArray();
     }
 
     private static async Task<byte[]> ReadCatalogBytesAsync(Stream stream) {
@@ -375,18 +407,6 @@ public class CardInfoService : ICardInfoService {
         }
 
         return buffer.ToArray();
-    }
-
-    private static int GetSearchRank(string name, string query) {
-        if (name.Equals(query, StringComparison.OrdinalIgnoreCase)) {
-            return 0;
-        }
-
-        if (name.StartsWith(query, StringComparison.OrdinalIgnoreCase)) {
-            return 1;
-        }
-
-        return name.Contains(query, StringComparison.OrdinalIgnoreCase) ? 2 : -1;
     }
 
     private async Task FetchSingleCardAsync(int id) {

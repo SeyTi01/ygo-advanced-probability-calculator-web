@@ -1,4 +1,5 @@
 @using YGOProbabilityCalculatorBlazor.Models
+@implements IHandleEvent
 
 <div class="mb-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
@@ -25,6 +26,8 @@
                 ActiveCardIndex="ActiveCardIndex"
                 ActiveCardIndexChanged="ActiveCardIndexChanged"
                 OnReplaceCard="ReplaceCard"
+                OnRenameCard="NameChangeHandler"
+                OnNameEditFinished="OnNameEditFinished"
                 OnRemoveCard="OnRemoveCard"
                 Count="Cards.Count"
                 OnMove="OnMoveCard"
@@ -50,6 +53,8 @@
     [Parameter] public EventCallback<int> ActiveCardIndexChanged { get; set; }
 
     [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
+    [Parameter] public Func<(int Index, Card NewCard), Task>? OnRenameCard { get; set; }
+    [Parameter] public EventCallback OnNameEditFinished { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
     [Parameter] public EventCallback OnAddNewCard { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMoveCard { get; set; }
@@ -57,18 +62,37 @@
 
     private readonly EditorKeys<Card> _editorKeys = new();
     private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
+    private Func<(int Index, Card NewCard), Task>? NameChangeHandler => OnRenameCard is null ? null : RenameCard;
+
+    // These callbacks forward edits to the owning calculator, which renders
+    // the updated list. A second render here rebuilds the same editor tree.
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object? arg) => callback.InvokeAsync(arg);
 
     private long ActiveCopies => Cards.Where(card => card.Active).Sum(card => (long)card.Copies);
 
     protected override void OnParametersSet() {
         _editorKeys.Synchronize(Cards);
 
-        _categoryOptions = CategoryCatalog.BuildOptions(CategoryBases, Cards, Combos);
+        CategoryCatalogOptions options = CategoryCatalog.BuildOptions(CategoryBases, Cards, Combos);
+
+        // Name edits do not change selector choices. Retain their references so
+        // unchanged rows can skip rendering their (also collapsed) editor bodies.
+        if (!_categoryOptions.All.Select(category => (category.Identity, category.Name))
+                .SequenceEqual(options.All.Select(category => (category.Identity, category.Name)))
+            || !_categoryOptions.RelevantMetadataIdentities.SetEquals(options.RelevantMetadataIdentities)) {
+            _categoryOptions = options;
+        }
     }
 
     public Task ReplaceCard((int Index, Card NewCard) payload) {
         _editorKeys.Replace(Cards[payload.Index], payload.NewCard);
 
         return OnReplaceCard.InvokeAsync(payload);
+    }
+
+    private Task RenameCard((int Index, Card NewCard) payload) {
+        _editorKeys.Replace(Cards[payload.Index], payload.NewCard);
+
+        return OnRenameCard?.Invoke(payload) ?? Task.CompletedTask;
     }
 }

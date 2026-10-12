@@ -73,6 +73,20 @@ else if (_hasRecovery) {
     public bool InspectionComplete => _initialized && _appliedSuspension == Suspended;
     public bool HasRecovery => _hasRecovery;
 
+    public async Task CaptureEditAsync(SessionState session, long editVersion) {
+        if (_disposed) {
+            return;
+        }
+
+        Session = session;
+        EditVersion = editVersion;
+        OnParametersSet();
+        await SynchronizeAsync();
+        if (!_disposed) {
+            StateHasChanged();
+        }
+    }
+
     protected override void OnParametersSet() {
         if (_observedSuspension != Suspended) {
             _observedSuspension = Suspended;
@@ -107,7 +121,9 @@ else if (_hasRecovery) {
         }
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
+    protected override Task OnAfterRenderAsync(bool firstRender) => SynchronizeAsync();
+
+    private async Task SynchronizeAsync() {
         if (_disposed || _initializing) {
             return;
         }

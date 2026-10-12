@@ -120,6 +120,8 @@
         ActiveCardIndex="_activeCardIndex"
         ActiveCardIndexChanged="@(i => _activeCardIndex = i)"
         OnReplaceCard="ReplaceCard"
+        OnRenameCard="RenameCard"
+        OnNameEditFinished="FinishNameEdit"
         OnRemoveCard="@(i => RemoveCard(i))"
         OnAddNewCard="AddNewCard"
         OnMoveCard="MoveCard"
@@ -405,10 +407,28 @@
         (int index, Card newCard) = payload;
         _cards[index] = newCard;
         InvalidateCalculation();
-        StateHasChanged();
 
         return Task.CompletedTask;
     }
+
+    private async Task RenameCard((int Index, Card NewCard) payload) {
+        bool visibleStatusChanged = _isCalculating || _errorMessage is not null
+            || (_calculationResult is not null && !_calculationResultIsStale);
+        _cards[payload.Index] = payload.NewCard;
+        InvalidateCalculation();
+
+        if (visibleStatusChanged) {
+            StateHasChanged();
+        }
+
+        if (_sharingRecovery is not null) {
+            await _sharingRecovery.CaptureEditAsync(CaptureSession(), _workspaceEditVersion);
+        }
+    }
+
+    // The names in other selectors refresh at the end of editing. The owning
+    // model and recovery snapshot have already received every input event.
+    private void FinishNameEdit() { }
 
     private void MoveCategory((int From, int To) move) {
         if (ListMove.TryMove(_categoryBases, move.From, move.To)) {
