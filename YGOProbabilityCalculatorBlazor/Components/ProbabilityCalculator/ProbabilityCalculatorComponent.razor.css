@@ -21,6 +21,10 @@
     margin-top: 2rem;
 }
 
+.calculation-error ::deep .alert {
+    margin-bottom: 0;
+}
+
 .probability-results-heading {
     display: flex;
     flex-wrap: wrap;

@@ -99,7 +99,7 @@ async function main() {
             PostDrawSelector: { Kind: 'Category', Categories: ['metadata:attribute:dark'] } });
         proxy.Cards.push({ Id: 'blank-smoke', Name: 'Blank', Copies: 1, Active: true, Categories: [] });
         await load(proxy);
-        assert.equal(await page.locator('.draw-complexity-notice').count(), 0);
+        assert.equal(await page.locator('.draw-complexity-notice').count(), 1);
         const typing = [];
         for (const mode of ['OpeningHand', 'Configured']) {
             await page.getByRole('button', { name: 'Calculation settings', exact: true }).click();
@@ -136,10 +136,14 @@ async function main() {
             const geometry = await page.locator('[role="alert"]').evaluate(alert => {
                 const box = alert.getBoundingClientRect();
                 const close = alert.querySelector('button.btn-close').getBoundingClientRect();
-                return { offset: Math.abs((box.top + box.height / 2) - (close.top + close.height / 2)),
+                const recovery = document.querySelector('.calculation-recovery').getBoundingClientRect();
+                const wrapper = document.querySelector('.calculation-error');
+                return { topGap: box.top - recovery.bottom, bottomGap: parseFloat(getComputedStyle(wrapper).marginBottom), offset: Math.abs((box.top + box.height / 2) - (close.top + close.height / 2)),
                     textRight: alert.querySelector('span').getBoundingClientRect().right, closeLeft: close.left };
             });
             assert(geometry.offset <= 1, JSON.stringify(geometry));
+            assert.equal(geometry.topGap, 16);
+            assert.equal(geometry.bottomGap, 16);
             assert(geometry.textRight < geometry.closeLeft, JSON.stringify(geometry));
             await page.locator('.calculation-recovery').scrollIntoViewIfNeeded();
             await page.screenshot({ path: path.join(screenshots, engine + '-' + width + '-error.png') });
@@ -178,7 +182,7 @@ async function main() {
         assert.match(await page.locator('.comparison-model-difference').innerText(), /different questions/);
         assert.deepEqual(errors, []);
         assert.equal(await page.evaluate(() => probe.live), 0);
-        console.log(JSON.stringify({ engine, failure, typing, screenshots, result: 'PASS: default, no calculation notices, proxy failure, exact one-shot recovery, cancel controls, keyboard focus, narrow layout, provenance, no worker overlap or JS errors' }));
+        console.log(JSON.stringify({ engine, failure, typing, screenshots, result: 'PASS: default, preflight warning retained, no elapsed message, proxy failure, exact one-shot recovery, cancel controls, keyboard focus, narrow layout, provenance, no worker overlap or JS errors' }));
     } finally {
         await browser.close();
         await new Promise(resolve => server.close(resolve));
