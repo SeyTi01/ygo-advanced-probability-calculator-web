@@ -46,6 +46,7 @@
     [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];
     [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
     [Parameter] public bool ConditionalEffectsEnabled { get; set; }
+    [Parameter] public bool DeferNameEditRendering { get; set; }
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
@@ -62,6 +63,7 @@
 
     private readonly EditorKeys<Card> _editorKeys = new();
     private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
+    private bool _skipParameterRender;
     private Func<(int Index, Card NewCard), Task>? NameChangeHandler => OnRenameCard is null ? null : RenameCard;
 
     // These callbacks forward edits to the owning calculator, which renders
@@ -71,6 +73,7 @@
     private long ActiveCopies => Cards.Where(card => card.Active).Sum(card => (long)card.Copies);
 
     protected override void OnParametersSet() {
+        _skipParameterRender = DeferNameEditRendering;
         _editorKeys.Synchronize(Cards);
 
         CategoryCatalogOptions options = CategoryCatalog.BuildOptions(CategoryBases, Cards, Combos);
@@ -82,6 +85,13 @@
             || !_categoryOptions.RelevantMetadataIdentities.SetEquals(options.RelevantMetadataIdentities)) {
             _categoryOptions = options;
         }
+    }
+
+    protected override bool ShouldRender() {
+        bool render = !_skipParameterRender;
+        _skipParameterRender = false;
+
+        return render;
     }
 
     public Task ReplaceCard((int Index, Card NewCard) payload) {

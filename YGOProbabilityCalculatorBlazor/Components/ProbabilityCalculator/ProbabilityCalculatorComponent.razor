@@ -118,7 +118,8 @@
         CategoryColorIndices="_categoryColorIndices"
         CategoryRename="_categoryRename"
         ActiveCardIndex="_activeCardIndex"
-        ActiveCardIndexChanged="@(i => _activeCardIndex = i)"
+        ActiveCardIndexChanged="SetActiveCardIndex"
+        DeferNameEditRendering="_deferNameEditRendering"
         OnReplaceCard="ReplaceCard"
         OnRenameCard="RenameCard"
         OnNameEditFinished="FinishNameEdit"
@@ -136,7 +137,8 @@
         CategoryColorIndices="_categoryColorIndices"
         CategoryRename="_categoryRename"
         ActiveComboIndex="_activeComboIndex"
-        ActiveComboIndexChanged="@(i => _activeComboIndex = i)"
+        ActiveComboIndexChanged="SetActiveComboIndex"
+        DeferNameEditRendering="_deferNameEditRendering"
         OnReplaceCombo="ReplaceCombo"
         OnRemoveCombo="@(i => RemoveCombo(i))"
         OnDuplicateCombo="DuplicateCombo"
@@ -336,6 +338,7 @@
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
     private bool _conditionalEffectsEnabled;
     private bool _isCalculating;
+    private bool _deferNameEditRendering;
     private bool _isClearWorkspaceConfirmationOpen;
     private long _calculationVersion;
     private long _calculationRequestId;
@@ -418,6 +421,7 @@
         InvalidateCalculation();
 
         if (visibleStatusChanged) {
+            _deferNameEditRendering = true;
             StateHasChanged();
         }
 
@@ -428,7 +432,17 @@
 
     // The names in other selectors refresh at the end of editing. The owning
     // model and recovery snapshot have already received every input event.
-    private void FinishNameEdit() { }
+    private void FinishNameEdit() => _deferNameEditRendering = false;
+
+    private void SetActiveCardIndex(int index) {
+        _deferNameEditRendering = false;
+        _activeCardIndex = index;
+    }
+
+    private void SetActiveComboIndex(int index) {
+        _deferNameEditRendering = false;
+        _activeComboIndex = index;
+    }
 
     private void MoveCategory((int From, int To) move) {
         if (ListMove.TryMove(_categoryBases, move.From, move.To)) {
@@ -886,6 +900,7 @@
     private void OnCategoriesChanged() => InvalidateCalculation();
 
     private void InvalidateCalculation(bool clearPreviousResult = false) {
+        _deferNameEditRendering = false;
         ObserveWorkspaceEdit();
         InvalidateComparison(clearPreviousResult);
         StopCalculation();

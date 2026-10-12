@@ -114,8 +114,14 @@ const { chromium } = require('playwright');
                 await input.fill('Ash Blossom');
                 await page.locator('.card-search-result').first().click();
                 assert.equal(await input.inputValue(), 'Ash Blossom & Joyous Spring');
+                const recoveryStart = Date.now();
                 await input.fill('Final manual character!');
-                await page.waitForTimeout(900);
+                await page.waitForFunction(() => {
+                    try {
+                        return JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Cards[0].Name === 'Final manual character!';
+                    } catch { return false; }
+                }, null, { timeout: 5000 });
+                const recoveryMilliseconds = Date.now() - recoveryStart;
                 const recoveredName = await page.evaluate(() => JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Cards[0].Name);
                 assert.equal(recoveredName, 'Final manual character!');
                 await input.press('Tab');
@@ -125,6 +131,14 @@ const { chromium } = require('playwright');
                 await input.press('ArrowUp');
                 await input.press('Enter');
                 assert.match(await input.inputValue(), /Blue-Eyes/);
+                await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+                await page.locator('.probability-total-value').waitFor();
+                await input.focus();
+                await page.evaluate(() => { searchProbe.events = []; searchProbe.longTasks = []; });
+                await input.fill('After result edit!');
+                await page.locator('.probability-result-status .visually-hidden').waitFor();
+                await page.waitForTimeout(100);
+                const afterResultEdit = await page.evaluate(() => structuredClone(searchProbe));
                 if (trial === 0 && rate === 1 && process.env.YGO_SEARCH_SCREENSHOTS) {
                     await input.fill('Ash');
                     await page.screenshot({ path: path.join(process.env.YGO_SEARCH_SCREENSHOTS, 'card-search-desktop.png') });
@@ -133,6 +147,7 @@ const { chromium } = require('playwright');
                     await page.screenshot({ path: path.join(process.env.YGO_SEARCH_SCREENSHOTS, 'card-search-mobile.png') });
                 }
                 assert.deepEqual(errors, []);
+                console.log(JSON.stringify({ interactions: 'passed', rate, trial, recoveryMilliseconds, afterResultEdit }));
                 await page.close();
             }
         }
