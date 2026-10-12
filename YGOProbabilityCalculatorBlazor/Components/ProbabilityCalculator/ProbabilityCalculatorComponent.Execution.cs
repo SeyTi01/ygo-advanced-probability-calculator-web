@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
@@ -12,7 +13,20 @@ public partial class ProbabilityCalculatorComponent {
     private CalculationSettingsMenu? _settingsMenu;
     private bool _openingHandAlternativeAvailable;
     private ProbabilityCalculationLimitReason? _limitReason;
+    private bool _assessmentDirty = true;
+    private DrawExecutionAssessment _executionAssessment;
     private CalculationModel SelectedModel => CalculationModelPresentation.FromFlags(_drawEffectsEnabled, _conditionalEffectsEnabled);
+
+    private DrawExecutionAssessment ExecutionAssessment {
+        get {
+            if (_assessmentDirty) {
+                _executionAssessment = DrawExecutionAssessment.Assess(_cards, _combos, _handSize, _drawEffectsEnabled, _conditionalEffectsEnabled);
+                _assessmentDirty = false;
+            }
+
+            return _executionAssessment;
+        }
+    }
 
     private async Task ShowRecoveryAlternative(Func<bool> ownsRequest, CalculationModel model, CancellationToken cancellationToken) {
         try {

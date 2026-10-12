@@ -178,14 +178,19 @@
             <p class="form-text mt-2" role="status" aria-live="polite">@unavailableMessage</p>
         }
 
+        @if (CanCalculate && ExecutionAssessment.ElevatedRisk) {
+            <p class="form-text mt-3 mb-0 draw-complexity-notice" role="note">This calculation may require more time or exceed resource limits because its draw effects need detailed processing.</p>
+        }
         @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null) {
-            <div class="calculation-recovery mt-2">
+            <div class="calculation-recovery mt-3 d-flex flex-wrap align-items-center gap-2">
                 <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate without draw effects</button>
                 <button type="button" class="btn btn-sm btn-link" @onclick="ReviewCalculationSettings">Review settings</button>
             </div>
         }
         @if (_errorMessage is not null) {
-            <DismissibleAlert Message="@_errorMessage" OnDismiss="DismissCalculationError"/>
+            <div class="calculation-error mt-3 mb-3">
+                <DismissibleAlert Message="@_errorMessage" OnDismiss="DismissCalculationError"/>
+            </div>
         }
 
         <div class="@(_pinnedResult is null ? null : "result-comparison")">
@@ -423,7 +428,7 @@
         bool visibleStatusChanged = _isCalculating || _errorMessage is not null
             || (_calculationResult is not null && !_calculationResultIsStale);
         _cards[payload.Index] = payload.NewCard;
-        InvalidateCalculation();
+        InvalidateCalculation(reassess: false);
 
         if (visibleStatusChanged) {
             _deferNameEditRendering = true;
@@ -911,8 +916,9 @@
 
     private void OnCategoriesChanged() => InvalidateCalculation();
 
-    private void InvalidateCalculation(bool clearPreviousResult = false) {
+    private void InvalidateCalculation(bool clearPreviousResult = false, bool reassess = true) {
         _deferNameEditRendering = false;
+        _assessmentDirty |= reassess;
         ObserveWorkspaceEdit();
         InvalidateComparison(clearPreviousResult);
         StopCalculation();

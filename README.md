@@ -79,7 +79,7 @@ Results are exact for this policy, **not optimal-play simulation**. Optional act
 
 Some new imports and database selections receive editable presets; saved cards keep their chosen settings. Choosing **Draw None** clears pre- and post-draw configuration. Simplified mode and **Storage safety limit** are runtime preferences, not session fields. New workspaces and restored ON sessions use configured effects; saved OFF sessions restore opening-hand-only. Re-enabling effects selects configured behavior.
 
-If a request is slow or reaches a Work or Storage limit, **Calculate without draw effects** explicitly runs an exact alternative for that request. It preserves configured settings and the saved preference. This answers a different question and is not a guaranteed lower bound. Results and copied/pinned comparisons identify the model used; the next ordinary Calculate uses the selected setting.
+A small pre-calculation notice flags potentially expensive draw configurations without blocking Calculate. If a request is slow or reaches a Work or Storage limit, **Calculate without draw effects** explicitly runs an exact alternative for that request. It preserves configured settings and the saved preference. This answers a different question and is not a guaranteed lower bound. Results and copied/pinned comparisons identify the model used; the next ordinary Calculate uses the selected setting.
 
 See the calculator's [Help page](https://dev.ygo-calculator.pages.dev/help) for detailed rules and preset examples.
 

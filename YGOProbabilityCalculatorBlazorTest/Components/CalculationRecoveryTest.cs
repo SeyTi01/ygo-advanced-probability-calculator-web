@@ -173,7 +173,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task ComplexInputsAndEditsShowNoCalculationNoticeOrStartWorkers() {
+    public async Task ComplexityWarningReassessesStructuralEditsWithoutStartingWorkers() {
         Mock<IProbabilityCalculatorService> compiler = new(MockBehavior.Strict);
         context.Services.AddSingleton(compiler.Object);
         SessionState session = await RealisticGracefulFixture.Load();
@@ -181,15 +181,15 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         session.Cards[session.Cards.IndexOf(graceful)] = new([], 1, "Pot", id: graceful.Id, drawCount: 2);
         session.Cards.Add(new([], 1, "Allure", id: "allure", drawCount: 2, postDrawDiscardCount: 1));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Controlled(session);
-        Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
+        Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
         Assert.That(_jobs, Is.Empty);
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
-        Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
+        Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
         Assert.That(_jobs, Is.Empty);
         await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
-        Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
+        Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
         await cut.Find("#cardName0").InputAsync(new() { Value = "Renamed only" });
         for (int index = 0; index < 5; index++) {
             await cut.Find($"#comboActive{index}").ChangeAsync(new() { Value = false });
