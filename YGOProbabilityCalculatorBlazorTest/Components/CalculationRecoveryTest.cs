@@ -59,8 +59,9 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.Find("[role='alert']").TextContent,
             Does.Contain(reason == ProbabilityCalculationLimitReason.Work ? "work allowance" : "storage safety limit").And.Contain("No probability was calculated"));
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(oldValue));
+        Assert.That(cut.FindAll(".calculation-recovery p"), Is.Empty);
         string saved = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
-        Task recovery = Button(cut, "Calculate opening hand only").ClickAsync(new());
+        Task recovery = Button(cut, "Calculate without draw effects").ClickAsync(new());
         CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_requests[2].Json)!;
         Assert.That(input.Options!.ConditionalEffectsEnabled, Is.False);
         Assert.That(input.Cards.All(card => card.DrawCount is null && card.PreDrawRemovalCount == 0), Is.True);
@@ -91,7 +92,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
     [TestCase("mode")]
     [TestCase("session")]
     [TestCase("dispose")]
-    public async Task DelayedNoticesOnlyBelongToActiveRequest(string ending) {
+    public async Task DelayedRecoveryActionOnlyBelongsToActiveRequest(string ending) {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Controlled();
         ManualTimeProvider clock = new();
         cut.SetParametersAndRender(parameters => parameters.Add(component => component.CalculationTimeProvider, clock));
@@ -99,7 +100,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromMilliseconds(999)));
         Assert.That(cut.FindAll(".calculation-elapsed"), Is.Empty);
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromMilliseconds(1)));
-        cut.WaitForState(() => cut.FindAll(".calculation-elapsed").Count == 1);
+        Assert.That(cut.FindAll(".calculation-elapsed"), Is.Empty);
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(2)));
         cut.WaitForState(() => cut.FindAll(".calculation-recovery").Count == 1);
         if (ending == "cancel") {
@@ -136,10 +137,10 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         cut.SetParametersAndRender(parameters => parameters.Add(component => component.CalculationTimeProvider, clock));
         Task full = Button(cut, "Calculate").ClickAsync(new());
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(1)));
-        cut.WaitForState(() => cut.FindAll(".calculation-elapsed").Count == 1);
+        Assert.That(cut.FindAll(".calculation-elapsed"), Is.Empty);
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(2)));
         cut.WaitForState(() => cut.FindAll(".calculation-recovery .btn-outline-primary").Count == 1);
-        Task recovery = Button(cut, "Calculate opening hand only").ClickAsync(new());
+        Task recovery = Button(cut, "Calculate without draw effects").ClickAsync(new());
         Assert.That(_tokens[0].IsCancellationRequested, Is.True);
         Assert.That(_jobs, Has.Count.EqualTo(1), "cleanup must finish before creating the alternate worker");
         if (editWhileWaiting) {
@@ -172,7 +173,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task RiskAssessmentIsReadOnlyDoesNotStartWorkersAndReassessesStructuralEdits() {
+    public async Task ComplexInputsAndEditsShowNoCalculationNoticeOrStartWorkers() {
         Mock<IProbabilityCalculatorService> compiler = new(MockBehavior.Strict);
         context.Services.AddSingleton(compiler.Object);
         SessionState session = await RealisticGracefulFixture.Load();
@@ -180,15 +181,15 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         session.Cards[session.Cards.IndexOf(graceful)] = new([], 1, "Pot", id: graceful.Id, drawCount: 2);
         session.Cards.Add(new([], 1, "Allure", id: "allure", drawCount: 2, postDrawDiscardCount: 1));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Controlled(session);
-        Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         Assert.That(_jobs, Is.Empty);
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
-        Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         Assert.That(_jobs, Is.Empty);
         await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
-        Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         await cut.Find("#cardName0").InputAsync(new() { Value = "Renamed only" });
         for (int index = 0; index < 5; index++) {
             await cut.Find($"#comboActive{index}").ChangeAsync(new() { Value = false });

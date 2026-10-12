@@ -1,5 +1,5 @@
 // Opt-in checks against a normal optimized WASM publish. Startup delay is
-// injected only for deterministic elapsed/cancel/recovery interaction checks.
+// injected only for deterministic cancel/recovery interaction checks.
 // NODE_PATH=<Playwright modules> node configured-draw-smoke.cjs <wwwroot> <screenshots> [chromium|firefox]
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -99,7 +99,7 @@ async function main() {
             PostDrawSelector: { Kind: 'Category', Categories: ['metadata:attribute:dark'] } });
         proxy.Cards.push({ Id: 'blank-smoke', Name: 'Blank', Copies: 1, Active: true, Categories: [] });
         await load(proxy);
-        assert.equal(await page.locator('.draw-complexity-notice').count(), 1);
+        assert.equal(await page.locator('.draw-complexity-notice').count(), 0);
         const typing = [];
         for (const mode of ['OpeningHand', 'Configured']) {
             await page.getByRole('button', { name: 'Calculation settings', exact: true }).click();
@@ -129,7 +129,22 @@ async function main() {
         const failure = await page.locator('[role="alert"]').innerText();
         assert.match(failure, /work allowance|storage safety limit/);
         assert.match(failure, /No probability was calculated/);
-        await page.getByRole('button', { name: 'Calculate opening hand only', exact: true }).click();
+        assert.equal(await page.locator('.calculation-recovery p').count(), 0);
+        for (const width of [1440, 375]) {
+            await page.setViewportSize({ width, height: 1000 });
+            await page.getByLabel('Color theme preference').selectOption('dark');
+            const geometry = await page.locator('[role="alert"]').evaluate(alert => {
+                const box = alert.getBoundingClientRect();
+                const close = alert.querySelector('button.btn-close').getBoundingClientRect();
+                return { offset: Math.abs((box.top + box.height / 2) - (close.top + close.height / 2)),
+                    textRight: alert.querySelector('span').getBoundingClientRect().right, closeLeft: close.left };
+            });
+            assert(geometry.offset <= 1, JSON.stringify(geometry));
+            assert(geometry.textRight < geometry.closeLeft, JSON.stringify(geometry));
+            await page.locator('.calculation-recovery').scrollIntoViewIfNeeded();
+            await page.screenshot({ path: path.join(screenshots, engine + '-' + width + '-error.png') });
+        }
+        await page.getByRole('button', { name: 'Calculate without draw effects', exact: true }).click();
         await idle();
         assert.match(await page.locator('.result-model').innerText(), /Opening hand only/);
         assert.equal(await page.locator('#calculationModel').inputValue(), 'Configured');
@@ -141,11 +156,11 @@ async function main() {
         assert.match(await page.locator('.pinned-result').innerText(), /Opening hand only/);
         await page.evaluate(() => { probe.delayNext = 4500; probe.peak = 0; });
         await calculate.click();
-        await page.locator('.calculation-elapsed').waitFor();
-        await page.getByRole('button', { name: 'Calculate opening hand only', exact: true }).waitFor();
+        assert.equal(await page.locator('.calculation-elapsed').count(), 0);
+        await page.getByRole('button', { name: 'Calculate without draw effects', exact: true }).waitFor();
         assert.equal(await page.getByRole('button', { name: 'Cancel calculation', exact: true }).isEnabled(), true);
         const beats = await page.evaluate(() => probe.beats);
-        await page.getByRole('button', { name: 'Calculate opening hand only', exact: true }).click();
+        await page.getByRole('button', { name: 'Calculate without draw effects', exact: true }).click();
         await idle();
         assert.match(await page.locator('.result-model').innerText(), /Opening hand only/);
         assert.equal(await page.evaluate(() => probe.peak), 1, 'recovery overlaps no workers');
@@ -163,7 +178,7 @@ async function main() {
         assert.match(await page.locator('.comparison-model-difference').innerText(), /different questions/);
         assert.deepEqual(errors, []);
         assert.equal(await page.evaluate(() => probe.live), 0);
-        console.log(JSON.stringify({ engine, failure, typing, screenshots, result: 'PASS: default, specialized/no notice, proxy warning/failure, exact one-shot recovery, slow/cancel controls, keyboard focus, narrow layout, provenance, no worker overlap or JS errors' }));
+        console.log(JSON.stringify({ engine, failure, typing, screenshots, result: 'PASS: default, no calculation notices, proxy failure, exact one-shot recovery, cancel controls, keyboard focus, narrow layout, provenance, no worker overlap or JS errors' }));
     } finally {
         await browser.close();
         await new Promise(resolve => server.close(resolve));

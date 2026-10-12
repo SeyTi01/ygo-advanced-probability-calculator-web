@@ -1,7 +1,7 @@
-<div class="alert alert-@Type" role="alert">
-    @Message
+<div class="alert alert-@Type d-flex align-items-center gap-3" role="alert">
+    <span class="flex-grow-1">@Message</span>
     <button type="button"
-            class="btn-close float-end"
+            class="btn-close flex-shrink-0"
             aria-label="Close"
             @onclick="OnDismiss">
     </button>
