@@ -76,6 +76,9 @@ public class PerformanceAuditBenchmark {
                     string[] values = expected.EnumerateArray().Select(value => value.GetString()!).ToArray();
                     Assert.That(fractions, Is.EqualTo(values), name);
                 }
+                if (fixture.TryGetProperty("ReferenceResults", out JsonElement reference) && reference.ValueKind == JsonValueKind.Object) {
+                    Assert.That(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(result), reference), Is.True, name);
+                }
                 if (trial < 0) {
                     if (result is not null) {
                         ProbabilityCalculationResult wire = CalculationWire.ReadResult(CalculationWire.Execute(fixture.GetProperty("Input").GetRawText()));
