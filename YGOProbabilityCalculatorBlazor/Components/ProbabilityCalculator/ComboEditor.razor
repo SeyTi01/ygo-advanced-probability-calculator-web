@@ -262,7 +262,7 @@
             <div class="requirement-context-actions">
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-action="alternative" @onclick="ExtendWithAlternative">@(EditingHasChanges ? "Save & add alternative (OR)" : "Add alternative (OR)")</button>
                 @if (_selectedKind == "Category") {
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="property" @onclick="ExtendWithProperty">@(EditingHasChanges ? "Save & add property (same card)" : "Add property (same card)")</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="property" @onclick="ExtendWithProperty">@(EditingHasChanges ? "Save & add property (AND)" : "Add property (AND)")</button>
                 }
                 <button type="button" class="btn btn-sm btn-outline-danger" @onclick="DeleteEditingRequirement">@( _editingGroupIndex is not null ? "Remove alternative" : "Remove requirement")</button>
             </div>
