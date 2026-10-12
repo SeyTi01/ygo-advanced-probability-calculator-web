@@ -166,3 +166,17 @@ union controls must still return Storage. `ComboAlternativeReductionTest.Inspect
 is an explicit, separate diagnostic using `YGO_AUDIT_INPUT`; it reports raw and
 retained route products, preprocessing work, and compiled-event counts at the
 input hand size. It is not a timing run or a draw-scenario storage measurement.
+
+For a compact Advanced-frontier matrix, run
+`prepare-frontier-cases.cjs <matrix.json> <frontier-inputs.json>` after the audit
+generator. Replay on the unchanged baseline and freeze `Trial == 0` before any
+engine edits. The added Return/Allure cases are role-aggregated models, not
+tournament deck lists: 9 Orcust monsters, 6 World Legacy monsters (all 15 modeled
+as DARK), 3 Orcust spells, 3 other extenders, 2 OPT Return, 2 non-OPT Allure and
+15 unrelated cards. The 60-card variants add 20 unrelated cards; the copy variant
+uses 3 Return and 1 Allure. Opening hands are 5 or 6. The matrix includes a Basic
+control and overlapping routes with restrictive maxima and same-card AND/OR.
+The historical `post-mixed` and hand-7 cases remain synthetic stress controls;
+they are not evidence about a representative deck. Existing single-effect,
+no-conditional and exchangeable Graceful controls are also retained. Native
+replay checks complete frozen public rows as well as exact fractions.

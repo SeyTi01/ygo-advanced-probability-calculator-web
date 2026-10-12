@@ -1,4 +1,6 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
@@ -137,12 +139,12 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
             Dictionary<State, BigInteger> next = new();
             long nextCells = 0;
             foreach ((State state, BigInteger weight) in current) {
-                budget.Spend(state.Values.Length + 1L);
-                int[] values = (int[])state.Values.Clone();
+                // Initial state is ready; every later state was settled before
+                // insertion. Read its immutable vector directly. Only freshly
+                // allocated child vectors may be changed by drawing or Settle.
+                budget.Spend(1);
+                int[] values = state.Values;
                 int remaining = copies - depth;
-                if (Settle(ref values, remaining) == ResolutionOutcome.RemovalUnavailable) {
-                    continue;
-                }
                 if (values[phase] == 0) {
                     budget.Spend(WorkBudget.IntegerCells(weight) * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
                     Add(terminal, new(values.AsSpan(n, n).ToArray()), weight * factorial[remaining], ref terminalCells);
@@ -258,18 +260,18 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     budget.Spend(2L * values.Length + 1);
                     int source = values[candidate];
                     if (Used(values, source)) {
-                        values = [.. values.Take(candidate), .. values.Skip(candidate + 1)];
+                        values = RemoveCandidate(values, candidate);
                         continue;
                     }
                     if (cards[source].DrawCount!.Value > remaining) {
-                        values = [.. values.Take(candidate), .. values.Skip(candidate + 1)];
+                        values = RemoveCandidate(values, candidate);
                         continue;
                     }
                     if (cards[source].PreDrawRemovalCount > 0 && !CanPay(values, source)) {
                         candidate++;
                         continue;
                     }
-                    values = [.. values.Take(candidate), .. values.Skip(candidate + 1)];
+                    values = RemoveCandidate(values, candidate);
                     // Check the whole cost before mutating activation state, and
                     // reserve this source copy while selecting/removing material.
                     for (int cost = 0; cost < cards[source].PreDrawRemovalCount; cost++) {
@@ -280,7 +282,9 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     values[n + source]--;
                     if (cards[source].DrawOncePerTurn) {
                         values[optSlots[source]] = 1;
-                        values = [.. values.Take(queueStart), .. values.Skip(queueStart).Where(entry => entry != source)];
+                        // Enqueue admits at most one pending entry per OPT
+                        // identity. Removing the activating candidate above
+                        // already removed its only queue entry.
                     }
                     values[phase] = cards[source].DrawCount!.Value;
                     values[phase + 1] = cards[source].PostDrawDiscardCount > 0 ? source + 1 : 0;
@@ -386,7 +390,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 }
             }
             if (selectedQueue >= 0) {
-                values = [.. values.Take(selectedQueue), .. values.Skip(selectedQueue + 1)];
+                values = RemoveCandidate(values, selectedQueue);
             }
             return true;
         }
@@ -397,17 +401,34 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
             BigInteger increment,
             ref long cells
         ) {
-            // Both lookup and insertion hash and may compare the complete vector.
-            budget.Spend(4L * key.Values.Length + WorkBudget.IntegerCells(increment) + 1);
-            bool exists = map.TryGetValue(key, out BigInteger previous);
+            // Existing states need one hash/comparison pass. A missing state
+            // still pays for insertion, after checking the prospective storage.
+            budget.Spend(2L * key.Values.Length + WorkBudget.IntegerCells(increment) + 1);
+            ref BigInteger slot = ref CollectionsMarshal.GetValueRefOrNullRef(map, key);
+            bool exists = !Unsafe.IsNullRef(ref slot);
+            BigInteger previous = exists ? slot : BigInteger.Zero;
             budget.Spend(WorkBudget.IntegerCells(previous));
             BigInteger value = previous + increment;
             cells += WorkBudget.IntegerCells(value) - WorkBudget.IntegerCells(previous) + (exists ? 0 : key.Values.Length);
             int count = map.Count + (exists ? 0 : 1);
             PeakStates = Math.Max(PeakStates, count);
             CheckStorage(count, cells, ReferenceEquals(map, terminal) ? "terminal hands" : "draw frontier");
-            map[key] = value;
+            if (exists) {
+                // No map mutation between obtaining and using this reference.
+                slot = value;
+            }
+            else {
+                budget.Spend(2L * key.Values.Length);
+                map.Add(key, value);
+            }
         }
+    }
+
+    private static int[] RemoveCandidate(int[] values, int index) {
+        int[] result = new int[values.Length - 1];
+        values.AsSpan(0, index).CopyTo(result);
+        values.AsSpan(index + 1).CopyTo(result.AsSpan(index));
+        return result;
     }
 
     private List<Card> ReduceDeck(List<Combo> combos) {
