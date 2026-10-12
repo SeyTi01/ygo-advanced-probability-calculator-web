@@ -395,7 +395,7 @@
     </span>;
 
     private RenderFragment CardBadge(ComboCard card) => @<span class="badge category-tag combo-card-tag @(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")">
-        Card: @CardDisplayName(card.CardId) (@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))
+        Card: @CardDisplayName(card.CardId) <span class="same-card-range">(@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))</span>
     </span>;
 
     private RenderFragment AlternativeBadge(ComboAlternative alternative) => @<span class="alternative-badge">

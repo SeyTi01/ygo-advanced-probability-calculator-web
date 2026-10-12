@@ -43,6 +43,11 @@
     flex: 0 0 auto;
 }
 
+.combo-editor .combo-editor-header .entry-actions {
+    gap: 0;
+    padding-inline: .25rem;
+}
+
 .combo-duplicate {
     display: grid;
     flex: 0 0 2.75rem;

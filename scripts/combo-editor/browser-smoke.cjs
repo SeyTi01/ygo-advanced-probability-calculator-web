@@ -53,6 +53,14 @@ const fixture = {
             fs.mkdirSync(evidence, { recursive: true });
             await editor.screenshot({ path: path.join(evidence, `${name}.png`), animations: 'disabled' });
         }
+        async function checkCountLabels(scope, context) {
+            const ranges = await scope.locator('.combo-header-requirements .same-card-range').evaluateAll(labels => labels.map(label => ({
+                text: label.textContent,
+                lines: new Set([...label.getClientRects()].map(rect => Math.round(rect.top * 100))).size
+            })));
+            assert.equal(ranges.every(label => label.lines === 1), true, `${context} complete count labels stay on one line: ${JSON.stringify(ranges)}`);
+            assert.equal(await scope.locator('.combo-header-requirements .combo-card-tag > .same-card-range').count(), await scope.locator('.combo-header-requirements .combo-card-tag').count());
+        }
         await load(fixture);
         await capture('after-blank-1440-light');
         const duplicate = editor.getByRole('button', { name: 'Duplicate combo Browser route', exact: true });
@@ -157,6 +165,13 @@ const fixture = {
                     return content.getBoundingClientRect().left - term.getBoundingClientRect().left;
                 }));
                 assert.equal(indents.every(indent => Math.abs(indent - indents[0]) < 1), true, `${width}/${theme} requirement contents align after the plus column`);
+                await checkCountLabels(editor, `${width}/${theme}`);
+                const actions = await editor.locator('.entry-actions').evaluate(element => ({
+                    gap: getComputedStyle(element).columnGap,
+                    targets: [...element.querySelectorAll('.entry-editor-active-toggle, .combo-duplicate, .entry-editor-delete')].map(control => control.getBoundingClientRect().width)
+                }));
+                assert.equal(actions.gap, '0px', `${width}/${theme} compact control spacing`);
+                assert.equal(actions.targets.every(width => width >= 44), true, `${width}/${theme} retained control targets`);
                 const parentheses = await editor.locator('.alternative-group, .composite-alternative').evaluateAll(groups => groups.every(group => {
                     const rails = [...group.children].filter(child => child.classList.contains('expression-parenthesis'));
                     const content = group.querySelector(':scope > .alternative-group-content, :scope > .same-card-category').getBoundingClientRect();
@@ -203,6 +218,18 @@ const fixture = {
         await page.waitForFunction(() => document.querySelector('.probability-total-value')?.textContent.match(/^\s*0[.,]00/));
         const example = JSON.parse(fs.readFileSync(path.join(__dirname, '../../YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json'), 'utf8'));
         await load(example);
+        await editor.locator('.accordion-button').click();
+        const comboHeaders = page.locator('#combosAccordion');
+        for (const width of [320, 375, 1280, 1440]) {
+            for (const theme of ['light', 'dark']) {
+                await page.setViewportSize({ width, height: 1000 });
+                await page.getByLabel('Color theme preference').selectOption(theme);
+                await checkCountLabels(comboHeaders, `VS/K9 ${width}/${theme}`);
+                assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}/${theme} VS/K9 header overflow`);
+                if (evidence) await comboHeaders.screenshot({ path: path.join(evidence, `after-headers-${width}-${theme}.png`), animations: 'disabled' });
+            }
+        }
+        await editor.locator('.accordion-button').click();
         await capture('after-vs-k9-1440-dark');
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.waitForFunction(() => document.querySelector('.probability-total-value')?.textContent.match(/83[.,]61/));
