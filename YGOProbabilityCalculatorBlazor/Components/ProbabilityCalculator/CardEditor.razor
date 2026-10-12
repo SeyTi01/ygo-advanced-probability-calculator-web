@@ -79,6 +79,7 @@
                                aria-activedescendant="@ActiveSuggestionId"
                                autocomplete="off"
                                @oninput="SearchCards"
+                               @oninput:stopPropagation="true"
                                @onfocus="OpenSearch"
                                @onblur="CloseSearch"
                                @onkeydown="HandleSearchKeyDown" />
@@ -304,6 +305,8 @@
     [Parameter] public EventCallback<int> ActiveCardIndexChanged { get; set; }
 
     [Parameter] public EventCallback<(int Index, Card NewCard)> OnReplaceCard { get; set; }
+    [Parameter] public Func<(int Index, Card NewCard), Task>? OnRenameCard { get; set; }
+    [Parameter] public EventCallback OnNameEditFinished { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
 
     private CategoryBase[] UserCategories => Card.Categories
@@ -347,6 +350,22 @@
     private bool _searchOpen;
     private bool _catalogLoading;
     private bool _disposed;
+    private RenderParameters? _previousRenderParameters;
+    private Dictionary<string, int> _previousCategoryColors = new(StringComparer.Ordinal);
+    private bool _skipParameterRender;
+
+    private sealed record RenderParameters(
+        Card Card,
+        int Index,
+        int Count,
+        int ActiveCardIndex,
+        bool DrawEffectsEnabled,
+        bool ConditionalEffectsEnabled,
+        IReadOnlyList<CategoryBase> CategoryBases,
+        IReadOnlySet<string> RelevantMetadataCategoryIdentities,
+        IReadOnlyDictionary<string, int> CategoryColorIndices,
+        CategoryRenameNotice? CategoryRename
+    );
 
     private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? $"Card {Index + 1}" : Card.Name;
     private DrawEffectPresentation DrawPresentation =>
@@ -367,12 +386,26 @@
     }
 
     private async Task SearchCards(ChangeEventArgs args) {
-        _searchQuery = args.Value?.ToString() ?? string.Empty;
+        string query = args.Value?.ToString() ?? string.Empty;
+        _searchQuery = query;
         _searchOpen = true;
         _activeSuggestionIndex = -1;
+        _searchResults = [];
         Card newCard = Card.WithName(string.IsNullOrWhiteSpace(_searchQuery) ? null : _searchQuery);
-        await OnReplaceCard.InvokeAsync((Index, newCard));
-        await RefreshSearchResultsAsync(_searchQuery);
+        if (!string.Equals(Card.Name, newCard.Name, StringComparison.Ordinal)) {
+            if (OnRenameCard is not null) {
+                // Synchronize the model immediately without rendering the whole
+                // calculator. Save/share/recovery never wait for blur to commit.
+                Card = newCard;
+                await OnRenameCard((Index, newCard));
+            }
+            else {
+                await OnReplaceCard.InvokeAsync((Index, newCard));
+            }
+        }
+        if (!_disposed && _searchOpen && string.Equals(_searchQuery, query, StringComparison.Ordinal)) {
+            await RefreshSearchResultsAsync(query);
+        }
     }
 
     private Task OpenSearch(FocusEventArgs args) {
@@ -383,10 +416,14 @@
         return RefreshSearchResultsAsync(_searchQuery);
     }
 
-    private void CloseSearch(FocusEventArgs args) {
+    private Task CloseSearch(FocusEventArgs args) {
         _searchOpen = false;
         _searchRequestVersion++;
         _activeSuggestionIndex = -1;
+        _searchResults = [];
+        _catalogLoading = false;
+
+        return OnNameEditFinished.InvokeAsync();
     }
 
     private async Task RefreshSearchResultsAsync(string query) {
@@ -427,7 +464,10 @@
     private async Task HandleSearchKeyDown(KeyboardEventArgs args) {
         if (!_searchOpen || _searchResults.Length == 0) {
             if (args.Key == "Escape") {
-                CloseSearch(new FocusEventArgs());
+                await CloseSearch(new FocusEventArgs());
+            }
+            else if (args.Key == "Enter") {
+                await OnNameEditFinished.InvokeAsync();
             }
 
             return;
@@ -447,7 +487,10 @@
             await SelectCard(_searchResults[_activeSuggestionIndex]);
         }
         else if (args.Key == "Escape") {
-            CloseSearch(new FocusEventArgs());
+            await CloseSearch(new FocusEventArgs());
+        }
+        else if (args.Key == "Enter") {
+            await OnNameEditFinished.InvokeAsync();
         }
     }
 
@@ -580,6 +623,14 @@
     private Task RemoveManualProperty(string key) => OnReplaceCard.InvokeAsync((Index, Card.WithoutManualMetadataCategory(key)));
 
     protected override void OnParametersSet() {
+        RenderParameters parameters = new(Card, Index, Count, ActiveCardIndex, DrawEffectsEnabled,
+            ConditionalEffectsEnabled, CategoryBases, RelevantMetadataCategoryIdentities, CategoryColorIndices, CategoryRename);
+        bool colorsUnchanged = CategoryColorIndices.Count == _previousCategoryColors.Count
+            && CategoryColorIndices.All(color => _previousCategoryColors.TryGetValue(color.Key, out int previous) && previous == color.Value);
+        _skipParameterRender = parameters == _previousRenderParameters && colorsUnchanged;
+        _previousRenderParameters = parameters;
+        _previousCategoryColors = new(CategoryColorIndices, StringComparer.Ordinal);
+
         if (CategoryRename is not { } rename || rename.Version == _previousCategoryRenameVersion) {
             return;
         }
@@ -589,6 +640,13 @@
         }
 
         _previousCategoryRenameVersion = rename.Version;
+    }
+
+    protected override bool ShouldRender() {
+        bool render = !_skipParameterRender;
+        _skipParameterRender = false;
+
+        return render;
     }
 
 }

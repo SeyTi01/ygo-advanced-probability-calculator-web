@@ -86,6 +86,165 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     public void UseLocalSearchCatalog() => RegisterCardInfoService(new SearchCatalogHandler());
 
     [Test]
+    public async Task FortyCardTypingKeepsUnchangedRowsAndDuplicateInputKeepsTheModel() {
+        Card[] cards = Enumerable.Range(0, 14)
+            .Select(index => new Card([a], copies: index == 13 ? 1 : 3, id: $"row-{index}"))
+            .ToArray();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [.. cards], Categories = [a], HandSize = 5 });
+        IRenderedComponent<CardEditor>[] editors = cut.FindComponents<CardEditor>().ToArray();
+        IRenderedComponent<CardEditor> first = editors[0];
+        IElement input = first.Find("#cardName0");
+        await input.FocusAsync(new());
+        int[] renders = editors.Select(editor => editor.RenderCount).ToArray();
+
+        foreach (string query in new[] { "A", "As", "Ash", "Ash Blossom", "ash blossom", "", "Final pasted name!" }) {
+            await input.InputAsync(new() { Value = query });
+            Assert.That(first.Instance.Card.Name, Is.EqualTo(query.Length == 0 ? null : query));
+            Assert.That(input.GetAttribute("value"), Is.EqualTo(query));
+        }
+
+        Assert.That(editors.Skip(1).Select(editor => editor.RenderCount), Is.EqualTo(renders.Skip(1)));
+        Card final = first.Instance.Card;
+        await input.InputAsync(new() { Value = final.Name });
+        Assert.That(first.Instance.Card, Is.SameAs(final));
+        string recovery = (string)context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!;
+        Assert.That((await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(recovery)).Cards[0].Name,
+            Is.EqualTo(final.Name));
+        await cut.FindComponent<SessionShareButton>().Find("button").ClickAsync(new());
+        string link = (string)context.JSInterop.Invocations["sessionSharing.copy"].Last().Arguments[0]!;
+        string shared = SessionShareCodec.Decode(link[link.IndexOf('#')..]);
+        Assert.That((await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(shared)).Cards[0].Name,
+            Is.EqualTo(final.Name));
+        await Button(cut, "Save Session").ClickAsync(new());
+        using JsonDocument saved = JsonDocument.Parse(SavedSessionJson());
+        Assert.That(saved.RootElement.GetProperty("Cards")[0].GetProperty("Name").GetString(), Is.EqualTo("Final pasted name!"));
+        AssertOnlyLocalCatalogWasRequested();
+    }
+
+    [Test]
+    public async Task NameCallbackCapturesRecoveryAndShareBeforeBlur() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [new([], id: "stable")] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
+        await editor.Find("#cardName0").InputAsync(new() { Value = string.Empty });
+        Card renamed = editor.Instance.Card.WithName("Final character!");
+        // bUnit 1.x bubbles Input to the workspace observer despite Blazor's
+        // stopPropagation modifier. Exercise the callback itself to check ownership.
+        await cut.InvokeAsync(() => editor.Instance.OnRenameCard!((0, renamed)));
+        string recovery = (string)context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!;
+        ISessionService sessions = context.Services.GetRequiredService<ISessionService>();
+        Assert.That((await sessions.LoadSessionAsync(recovery)).Cards[0].Name, Is.EqualTo(renamed.Name));
+        Assert.That((await sessions.LoadSessionAsync(cut.FindComponent<SessionShareButton>().Instance.Capture())).Cards[0].Name,
+            Is.EqualTo(renamed.Name));
+        await cut.InvokeAsync(() => editor.Instance.OnNameEditFinished.InvokeAsync());
+        Assert.That(editor.Instance.Card, Is.SameAs(renamed));
+    }
+
+    [Test]
+    public async Task OfflineEntryAndRowSwitchKeepFinalNameAndHideLateResults() {
+        Mock<ICardInfoService> service = new();
+        TaskCompletionSource<IReadOnlyList<CardInfo>> pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Setup(info => info.SearchCardsAsync("Delayed")).Returns(pending.Task);
+        service.Setup(info => info.SearchCardsAsync("Manual offline!")).ThrowsAsync(new HttpRequestException());
+        context.Services.RemoveAll<ICardInfoService>();
+        context.Services.AddSingleton(service.Object);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Cards = [new([], id: "first"), new([], id: "second")]
+        });
+        IRenderedComponent<CardEditor>[] editors = cut.FindComponents<CardEditor>().ToArray();
+        IElement firstInput = editors[0].Find("#cardName0");
+        Task search = firstInput.InputAsync(new() { Value = "Delayed" });
+        await firstInput.BlurAsync(new());
+        await editors[1].Find("#cardName1").InputAsync(new() { Value = "Manual offline!" });
+        pending.SetResult(new[] { AshBlossom });
+        await search;
+        Assert.That(editors[0].FindAll(".card-search-result"), Is.Empty);
+        Assert.That(editors[1].Find(".card-search-error").TextContent, Does.Contain("manual card"));
+        Assert.That(editors[0].Instance.Card.Name, Is.EqualTo("Delayed"));
+        Assert.That(editors[1].Instance.Card.Name, Is.EqualTo("Manual offline!"));
+        await Button(cut, "Save Session").ClickAsync(new());
+        SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
+        Assert.That(saved.Cards.Select(card => card.Name), Is.EqualTo(new[] { "Delayed", "Manual offline!" }));
+    }
+
+    [Test]
+    public async Task ManualRenameInvalidatesResultImmediatelyAndPreservesConfigurationThroughBlurEnterAndSave() {
+        Card original = new([a], copies: 3, name: "Original", id: "stable", externalCardId: 123,
+            drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1, preDrawRemovalCount: 1);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = [a], Cards = [original, new([], copies: 37)], Combos = [new([new(a, 1, 5)])], HandSize = 5, DrawEffectsEnabled = false
+        });
+        await Button(cut, "Calculate").ClickAsync(new());
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
+        IElement input = editor.Find("#cardName0");
+        await input.InputAsync(new() { Value = "Manual final character!" });
+        AssertPreviousResult(cut);
+        await input.KeyDownAsync(new() { Key = "Enter" });
+        await input.BlurAsync(new());
+        Card renamed = editor.Instance.Card;
+        Assert.That((renamed.Id, renamed.ExternalCardId, renamed.Copies, renamed.Active, renamed.DrawCount,
+            renamed.DrawOncePerTurn, renamed.PreDrawRemovalCount, renamed.PostDrawDiscardCount),
+            Is.EqualTo(("stable", 123, 3, true, 2, false, 1, 1)));
+        Assert.That(renamed.Categories, Is.EqualTo(original.Categories));
+        await Button(cut, "Save Session").ClickAsync(new());
+        using JsonDocument saved = JsonDocument.Parse(SavedSessionJson());
+        Assert.That(saved.RootElement.GetProperty("Cards")[0].GetProperty("Name").GetString(), Is.EqualTo("Manual final character!"));
+    }
+
+    [Test]
+    public async Task NavigationWrapsAndShortEmptyQueriesClearResultsAndActiveDescendant() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [new([], name: "Pot")] });
+        IElement input = cut.Find("#cardName0");
+        await input.FocusAsync(new());
+        await input.KeyDownAsync(new() { Key = "ArrowUp" });
+        Assert.That(input.GetAttribute("aria-activedescendant"), Is.EqualTo($"cardSearchOption0-{PotOfGreedId}"));
+        await input.KeyDownAsync(new() { Key = "ArrowDown" });
+        Assert.That(cut.Find("[aria-selected='true']").Id, Is.EqualTo(input.GetAttribute("aria-activedescendant")));
+        await input.InputAsync(new() { Value = "P" });
+        Assert.That(cut.FindAll(".card-search-result"), Is.Empty);
+        Assert.That(input.GetAttribute("aria-activedescendant"), Is.Null);
+        await input.KeyDownAsync(new() { Key = "Enter" });
+        Assert.That(cut.FindComponents<CardEditor>().Single().Instance.Card.ExternalCardId, Is.Null);
+        await input.InputAsync(new() { Value = "" });
+        Assert.That(cut.FindComponents<CardEditor>().Single().Instance.Card.Name, Is.Null);
+        Assert.That(cut.FindAll(".card-search-status"), Is.Empty);
+    }
+
+    [TestCase("new-query")]
+    [TestCase("blur")]
+    [TestCase("escape")]
+    [TestCase("unmount")]
+    public async Task DelayedResultsCannotRestoreOldOptionsOrSelectAnOldSuggestion(string action) {
+        Mock<ICardInfoService> service = new();
+        TaskCompletionSource<IReadOnlyList<CardInfo>> pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Setup(info => info.SearchCardsAsync("Ash")).ReturnsAsync(new[] { AshBlossom });
+        service.Setup(info => info.SearchCardsAsync("Blue")).Returns(pending.Task);
+        service.Setup(info => info.SearchCardsAsync("P")).ReturnsAsync(Array.Empty<CardInfo>());
+        context.Services.RemoveAll<ICardInfoService>();
+        context.Services.AddSingleton(service.Object);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [new([], name: "Ash")] });
+        IElement input = cut.Find("#cardName0");
+        await input.FocusAsync(new());
+        await input.KeyDownAsync(new() { Key = "ArrowDown" });
+        Task search = input.InputAsync(new() { Value = "Blue" });
+        Assert.That(cut.FindAll(".card-search-result"), Is.Empty);
+        await input.KeyDownAsync(new() { Key = "Enter" });
+        Assert.That(cut.FindComponents<CardEditor>().Single().Instance.Card.ExternalCardId, Is.Null);
+
+        switch (action) {
+            case "new-query": await input.InputAsync(new() { Value = "P" }); break;
+            case "blur": await input.BlurAsync(new()); break;
+            case "escape": await input.KeyDownAsync(new() { Key = "Escape" }); break;
+            case "unmount": await cut.Find("[aria-label='Remove card']").ClickAsync(new()); break;
+        }
+        pending.SetResult(new[] { BlueEyes });
+        await search;
+        Assert.That(cut.FindAll(".card-search-result"), Is.Empty);
+        if (action != "unmount") {
+            Assert.That(cut.FindComponents<CardEditor>().Single().Instance.Card.Name, Is.EqualTo(action == "new-query" ? "P" : "Blue"));
+        }
+    }
+
+    [Test]
     public async Task AddNewCardCanSelectLocalResultAndSaveItWithItsMetadata() {
         CategoryBase userCategory = new("Combo Starter");
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
@@ -434,8 +593,8 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         IElement nameInput = cut.Find("#cardName0");
 
         Task focus = nameInput.FocusAsync(new FocusEventArgs());
-        await delayed.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Task oldSearch = nameInput.InputAsync(new() { Value = "Ash Blossom" });
+        await delayed.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Task newSearch = nameInput.InputAsync(new() { Value = "Blue-Eyes" });
         delayed.Release();
         await Task.WhenAll(focus, oldSearch, newSearch);

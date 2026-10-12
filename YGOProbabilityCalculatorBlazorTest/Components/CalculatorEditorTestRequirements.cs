@@ -371,6 +371,7 @@ public sealed class CalculatorEditorTestRequirements : CalculatorEditorTestBase 
 
         cut.FindComponent<CardEditor>().Find(".accordion-button").Click();
         cut.FindComponent<CardEditor>().Find("#cardName0").Input("Renamed");
+        cut.FindComponent<CardEditor>().Find("#cardName0").Blur();
         Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-card-tag").TextContent,
             Does.Contain("Card: Renamed (1)"));
         cut.FindComponent<CardEditor>().Find("[title='Remove card']").Click();
