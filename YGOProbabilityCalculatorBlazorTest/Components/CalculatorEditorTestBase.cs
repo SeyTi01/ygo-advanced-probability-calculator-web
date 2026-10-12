@@ -81,7 +81,7 @@ public abstract class CalculatorEditorTestBase {
     protected static async Task RemoveProperty(IRenderedFragment editor, string target, int property) {
         await EditRequirement(editor, target);
         await editor.Find($"[aria-label='Remove property {property}']").ClickAsync(new());
-        await Button(editor, "Save changes").ClickAsync(new());
+        await Button(editor, "Save").ClickAsync(new());
     }
 
     protected static void AssertAnyMaximumDraft(IRenderedFragment fragment, int index = 0) {
