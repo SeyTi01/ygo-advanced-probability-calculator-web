@@ -68,16 +68,15 @@ public class BackgroundCalculationComponentTest {
         string result = _cut.Find(".probability-results").OuterHtml;
         string pin = _cut.Find(".pinned-result").OuterHtml;
         await editor.Find(".accordion-button").ClickAsync(new());
-        await editor.Find(".alternative-authoring > button").ClickAsync(new());
+        await editor.Find("[data-requirement='card:0']").ClickAsync(new());
         if (close) {
-            await editor.Find(".alternative-target-instruction button").ClickAsync(new());
+            await editor.Find(".requirement-form-heading button").ClickAsync(new());
         }
         else {
-            await editor.Find("button[data-alternative-target='card:0']").ClickAsync(new());
-            await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
-            await editor.Find("#comboCard0").ChangeAsync(new() { Value = "b" });
+            await editor.Find("[data-action='alternative']").ClickAsync(new());
+            await editor.Find("#comboTarget0").ChangeAsync(new() { Value = "card:b" });
             await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
-            await editor.Find(".alternative-scope button").ClickAsync(new());
+            await editor.Find(".requirement-form-heading button").ClickAsync(new());
         }
         string serializedSession = codec.SerializeSession(new SessionState { Cards = editor.Instance.Cards.ToList(), Combos = [editor.Instance.Combo], HandSize = 2 });
         Assert.That(serializedSession, Is.EqualTo(before));
@@ -98,10 +97,9 @@ public class BackgroundCalculationComponentTest {
         Assert.That(_calculator.Jobs, Has.Count.EqualTo(2));
         IRenderedComponent<ComboEditor> editor = _cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
-        await editor.Find(".alternative-authoring > button").ClickAsync(new());
-        await editor.Find("button[data-alternative-target='card:0']").ClickAsync(new());
-        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
-        await editor.Find("#comboCard0").ChangeAsync(new() { Value = "b" });
+        await editor.Find("[data-requirement='card:0']").ClickAsync(new());
+        await editor.Find("[data-action='alternative']").ClickAsync(new());
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = "card:b" });
         await editor.Find(".requirement-submit button").ClickAsync(new());
         Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
         if (error) {

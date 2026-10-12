@@ -57,6 +57,33 @@ public abstract class CalculatorEditorTestBase {
     protected static IElement Button(IRenderedFragment fragment, string text) =>
         fragment.FindAll("button").Single(element => element.TextContent.Trim() == text);
 
+    protected static string CardTarget(string id) => string.IsNullOrEmpty(id) ? string.Empty : $"card:{id}";
+
+    protected static Task EditRequirement(IRenderedFragment editor, string target) =>
+        editor.Find($"button[data-requirement='{target}']").ClickAsync(new());
+
+    protected static async Task ExtendRequirement(IRenderedFragment editor, string target, bool sameCard = false) {
+        if (target.StartsWith("group:", StringComparison.Ordinal)) {
+            target = $"alternative:{target[6..]}:0";
+        }
+        await EditRequirement(editor, target);
+        await editor.Find(sameCard ? "[data-action='property']" : "[data-action='alternative']").ClickAsync(new());
+    }
+
+    protected static async Task DeleteRequirement(IRenderedFragment editor, string target) {
+        if (editor.FindAll(".alternative-scope").Count > 0) {
+            await Button(editor, "Cancel").ClickAsync(new());
+        }
+        await EditRequirement(editor, target);
+        await Button(editor, target.StartsWith("alternative:", StringComparison.Ordinal) ? "Remove alternative" : "Remove requirement").ClickAsync(new());
+    }
+
+    protected static async Task RemoveProperty(IRenderedFragment editor, string target, int property) {
+        await EditRequirement(editor, target);
+        await editor.Find($"[aria-label='Remove property {property}']").ClickAsync(new());
+        await Button(editor, "Save changes").ClickAsync(new());
+    }
+
     protected static void AssertAnyMaximumDraft(IRenderedFragment fragment, int index = 0) {
         IElement maximum = fragment.Find($"#maxCount{index}");
         Assert.That(maximum.GetAttribute("value"), Is.EqualTo(string.Empty));

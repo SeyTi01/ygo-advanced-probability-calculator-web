@@ -69,7 +69,7 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         IRenderedComponent<ComboEditor> first = cut.FindComponents<ComboEditor>()[0];
         Assert.That(first.Find(".combo-header-content").QuerySelector(".combo-group-membership"), Is.Null);
-        first.Find("#comboCategory0").Change("user:B");
+        first.Find("#comboTarget0").Change("user:B");
         first.Find("#minCount0").Input("0");
         first.Find("#maxCount0").Input("0");
 

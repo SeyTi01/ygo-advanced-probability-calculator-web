@@ -132,7 +132,7 @@ public class CategoryRenameTest {
         Assert.That(probabilityAfter, Is.EqualTo(oracleProbability).Within(1e-12));
         Assert.That(probabilityAfter, Is.EqualTo(probabilityBefore).Within(1e-12));
 
-        Button(combo, "Update").Click();
+        Button(combo, "Update requirement").Click();
         Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("Renamed (1 Max)"));
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
     }

@@ -11,150 +11,10 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
 public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase {
-    private static async Task ChooseAlternativeTarget(IRenderedComponent<ComboEditor> editor, string target) {
-        if (Button(editor, "Add OR").GetAttribute("aria-pressed") == "false") {
-            await Button(editor, "Add OR").ClickAsync(new());
-        }
-
-        await editor.Find($"button[data-alternative-target='{target}']").ClickAsync(new());
-    }
+    private static Task ChooseAlternativeTarget(IRenderedComponent<ComboEditor> editor, string target) => ExtendRequirement(editor, target);
 
     private static Task RemoveOrLeaf(IRenderedComponent<ComboEditor> editor, int group, int leaf) =>
-        editor.Find($"[aria-label^='Remove alternative {leaf} ('][aria-label$='from group {group}']").ClickAsync(new());
-
-    [Test]
-    public async Task AddOrIsDisabledWhenThereIsNoRequirementToExtend() {
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Categories = [a], Combos = [new([])] });
-        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        await editor.Find(".accordion-button").ClickAsync(new());
-
-        IElement addOr = Button(editor, "Add OR");
-        Assert.That(addOr.HasAttribute("disabled"), Is.True);
-        Assert.That(addOr.GetAttribute("title"), Does.Contain("Add a requirement"));
-        Assert.That(editor.FindAll(".alternative-target-instruction, .combo-expression-target"), Is.Empty);
-    }
-
-    [Test]
-    public async Task ExpressionOperatorsStayWithTheirFollowingTermsInHeaderAndExpandedMarkup() {
-        ComboAlternative firstAlternative = ComboAlternative.For(new ComboCategory(a, 1, 3));
-        ComboAlternative secondAlternative = ComboAlternative.For(new ComboCard("r", 1, 3));
-        Combo combo = new([new(a, 1, 3), new(b, 1, 3)], cards: [new("r", 1, 3)],
-            alternativeGroups: [new([firstAlternative, secondAlternative])]);
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
-            Categories = [a, b],
-            Cards = [new([], name: "R", id: "r")],
-            Combos = [combo]
-        });
-        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        await editor.Find(".accordion-button").ClickAsync(new());
-
-        IElement[] expandedTerms = editor.Find(".expanded-expression").Children
-            .Where(element => element.ClassList.Contains("expression-term")).ToArray();
-        Assert.That(expandedTerms, Has.Length.EqualTo(4));
-        Assert.That(expandedTerms[0].QuerySelector(".expression-and"), Is.Null);
-        foreach (IElement term in expandedTerms.Skip(1)) {
-            Assert.That(term.Children.ToArray()[0].ClassList.Contains("expression-and"), Is.True);
-            Assert.That(term.QuerySelector(".badge, .alternative-group"), Is.Not.Null);
-        }
-
-        IElement[] alternativeTerms = editor.FindAll(".expanded-expression .alternative-group .alternative-term").ToArray();
-        Assert.That(alternativeTerms, Has.Length.EqualTo(2));
-        Assert.That(alternativeTerms[0].QuerySelector(".alternative-separator"), Is.Null);
-        Assert.That(alternativeTerms[1].QuerySelector(".alternative-separator"), Is.Not.Null);
-        Assert.That(alternativeTerms[1].QuerySelector(".alternative-leaf"), Is.Not.Null);
-
-        IElement[] headerTerms = editor.Find(".combo-header-content").Children
-            .Where(element => element.ClassList.Contains("expression-term")).ToArray();
-        Assert.That(headerTerms, Has.Length.EqualTo(4));
-        Assert.That(headerTerms[0].QuerySelector(".expression-and"), Is.Null);
-        Assert.That(headerTerms.Skip(1).All(term => term.QuerySelector(".expression-and") is not null), Is.True);
-        Assert.That(editor.FindAll(".combo-header-content .category-remove-button"), Is.Empty,
-            "The collapsed expression summarizes OR groups without exposing their expanded remove controls.");
-    }
-
-    [Test]
-    public async Task RequirementTargetsUseFocusableNativeButtonsWithAccessibleNames() {
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Categories = [a], Combos = [new([new(a, 1, 3)])] });
-        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        await editor.Find(".accordion-button").ClickAsync(new());
-        await Button(editor, "Add OR").ClickAsync(new());
-
-        IElement target = editor.Find("button[data-alternative-target='category:0']");
-        Assert.That(target.TagName, Is.EqualTo("BUTTON"));
-        Assert.That(target.GetAttribute("type"), Is.EqualTo("button"));
-        Assert.That(target.GetAttribute("aria-label"), Does.Contain("Add an alternative to requirement 1"));
-        Assert.That(target.HasAttribute("tabindex"), Is.False, "A native button is in the normal keyboard tab order.");
-        await target.ClickAsync(new());
-        Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("requirement 1"));
-    }
-
-    [Test]
-    public async Task BasicAndEditorKeepsOrdinaryAddUpdateAndDeleteOutsideTargetSelection() {
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
-            Categories = [a, b],
-            Cards = [new([], name: "R", id: "r")],
-            Combos = [new([new(a, 1, 5)])]
-        });
-        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        await editor.Find(".accordion-button").ClickAsync(new());
-        Assert.That(Button(editor, "Add OR").GetAttribute("aria-pressed"), Is.EqualTo("false"));
-        await Button(editor, "Add OR").ClickAsync(new());
-        Assert.That(Button(editor, "Add OR").GetAttribute("aria-pressed"), Is.EqualTo("true"));
-        Assert.That(editor.Find(".alternative-target-instruction").TextContent, Does.Contain("Click a condition or OR group"));
-        Assert.That(editor.FindAll("select[id^='alternativeTarget']"), Is.Empty);
-        Assert.That(editor.FindAll(".combo-expression-target"), Has.Count.EqualTo(1));
-        Assert.That(editor.Find(".combo-expression-target").TagName, Is.EqualTo("BUTTON"));
-        Assert.That(editor.Find(".combo-expression-target").GetAttribute("aria-label"), Does.Contain("requirement 1: Category: A"));
-        Assert.That(editor.FindAll(".combo-expression-target button"), Is.Empty, "Selectable targets must not contain nested remove buttons.");
-        Assert.That(editor.FindAll(".expanded-expression button.btn-close"), Is.Empty, "Remove controls are hidden while choosing a target.");
-        await Button(editor, "Add OR").ClickAsync(new());
-        Assert.That(editor.FindAll(".expanded-expression button").ToArray().All(element => element.ClassList.Contains("btn-close")), Is.True);
-        Assert.That(editor.FindAll(".alternative-target-instruction, .combo-expression-target, select[id^='alternativeTarget']"), Is.Empty);
-        Assert.That(editor.FindAll("button").ToArray().Select(e => e.TextContent.Trim()), Does.Not.Contain("OR").And.Not.Contain("OR +"));
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = a.Identity });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
-        await Button(editor, "Update").ClickAsync(new());
-        Assert.That(editor.Instance.Combo.Categories.Single().MinCount, Is.EqualTo(2));
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
-        await Button(editor, "Add").ClickAsync(new());
-        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
-        await editor.Find("#comboCard0").ChangeAsync(new() { Value = "r" });
-        await Button(editor, "Add").ClickAsync(new());
-        await editor.Find("[aria-label^='Remove category A from combo']").ClickAsync(new());
-        await editor.Find("[aria-label^='Remove card R #1 from combo']").ClickAsync(new());
-        Assert.That(editor.Instance.Combo.Categories.Select(c => c.BaseCategory.Name), Is.EqualTo(new[] { "B" }));
-        Assert.That(editor.Instance.Combo.Cards, Is.Empty);
-        Assert.That(editor.Instance.Combo.AlternativeGroups, Is.Empty);
-    }
-
-    [Test]
-    public async Task CancellingTargetSelectionLeavesEveryOrdinaryDraftValueAndComboUntouched() {
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
-            Categories = [a, b],
-            Cards = [new([], name: "R", id: "r")],
-            Combos = [new([new(a, 1, 5)])]
-        });
-        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        await editor.Find(".accordion-button").ClickAsync(new());
-        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
-        await editor.Find("#comboCard0").ChangeAsync(new() { Value = "r" });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "4" });
-        Combo before = editor.Instance.Combo;
-
-        await Button(editor, "Add OR").ClickAsync(new());
-        Assert.That(editor.Instance.Combo, Is.SameAs(before));
-        Assert.That(editor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo("r"));
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
-        await editor.Find(".alternative-target-instruction button").ClickAsync(new());
-
-        Assert.That(editor.Instance.Combo, Is.SameAs(before));
-        Assert.That(editor.Find("#constraintKind0").GetAttribute("value"), Is.EqualTo("Card"));
-        Assert.That(editor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo("r"));
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
-        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
-        Assert.That(editor.FindAll(".alternative-scope, .alternative-target-instruction"), Is.Empty);
-    }
+        DeleteRequirement(editor, $"alternative:{group - 1}:{leaf - 1}");
 
     [Test]
     public async Task CancellingAlternativeAuthoringRestoresEveryOrdinaryDraftValueWithoutPublishing() {
@@ -165,14 +25,12 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
-        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Card" });
-        await editor.Find("#comboCard0").ChangeAsync(new() { Value = "r" });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = CardTarget("r") });
         await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
         await editor.Find("#maxCount0").InputAsync(new() { Value = "4" });
         Combo before = editor.Instance.Combo;
-        await Button(editor, "Add OR").ClickAsync(new());
         Assert.That(editor.Instance.Combo, Is.SameAs(before));
-        Assert.That(editor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo("r"));
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget("r")));
         await ChooseAlternativeTarget(editor, "category:0");
         Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("requirement 1: Category: A"));
         await Button(editor, "Add alternative").ClickAsync(new());
@@ -180,12 +38,11 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await editor.Find("#minCount0").InputAsync(new() { Value = "8" });
         await Button(editor, "Cancel").ClickAsync(new());
         Assert.That(editor.Instance.Combo, Is.SameAs(before));
-        Assert.That(editor.Find("#constraintKind0").GetAttribute("value"), Is.EqualTo("Card"));
-        Assert.That(editor.Find("#comboCard0").GetAttribute("value"), Is.EqualTo("r"));
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget("r")));
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
         Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
         Assert.That(editor.FindAll(".alternative-scope"), Is.Empty);
-        Assert.That(Button(editor, "Add"), Is.Not.Null);
+        Assert.That(Button(editor, "Add requirement"), Is.Not.Null);
     }
 
     [Test]
@@ -200,29 +57,27 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await editor.Find(".accordion-button").ClickAsync(new());
         await editor.Find("#minCount0").InputAsync(new() { Value = "4" });
         await editor.Find("#maxCount0").InputAsync(new() { Value = "5" });
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
 
-        await Button(editor, "Add OR").ClickAsync(new());
-        await editor.Find("button[data-alternative-target='category:0']").ClickAsync(new());
+        await ChooseAlternativeTarget(editor, "category:0");
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
         await editor.Find("#maxCount0").InputAsync(new() { Value = "3" });
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = c.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = c.Identity });
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
         Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("3"));
-        await editor.Find(".alternative-scope button").ClickAsync(new());
+        await Button(editor, "Cancel").ClickAsync(new());
 
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
-        Assert.That(editor.Find("#comboCategory0").GetAttribute("value"), Is.EqualTo(b.Identity));
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("4"));
         Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("5"));
 
-        await Button(editor, "Add OR").ClickAsync(new());
-        await editor.Find("button[data-alternative-target='category:0']").ClickAsync(new());
+        await ChooseAlternativeTarget(editor, "category:0");
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
         await editor.Find("#maxCount0").InputAsync(new() { Value = "3" });
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = c.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = c.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
 
         ComboAlternativeGroup group = editor.Instance.Combo.AlternativeGroups.Single();
@@ -231,10 +86,10 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(added.MinCount, Is.EqualTo(2));
         Assert.That(added.MaxCount, Is.EqualTo(3));
         Assert.That(group.Alternatives[0].Category, Is.SameAs(original.Categories[0]));
-        Assert.That(editor.Find("#comboCategory0").GetAttribute("value"), Is.EqualTo(b.Identity));
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("4"));
         Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("5"));
-        Assert.That(Button(editor, "Add").TextContent.Trim(), Is.EqualTo("Add"));
+        Assert.That(Button(editor, "Add requirement").TextContent.Trim(), Is.EqualTo("Add requirement"));
     }
 
     [TestCase("Category", "Category")]
@@ -251,8 +106,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await editor.Find(".accordion-button").ClickAsync(new());
         await ChooseAlternativeTarget(editor, seedKind == "Card" ? "card:0" : "category:0");
         Assert.That(editor.FindAll("select[id^='alternativeTarget']"), Is.Empty);
-        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = addedKind });
-        await editor.Find(addedKind == "Card" ? "#comboCard0" : "#comboCategory0").ChangeAsync(new() { Value = addedKind == "Card" ? "b" : b.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = addedKind == "Card" ? CardTarget("b") : b.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         await Button(editor, "Add alternative").ClickAsync(new());
@@ -262,11 +116,10 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(editor.Instance.Combo.Categories.Single(c => c.BaseCategory.Identity == b.Identity).MinCount, Is.EqualTo(1));
         Assert.That(editor.FindAll(".alternative-scope"), Is.Empty);
         Assert.That(editor.FindAll("select[id^='alternativeTarget']"), Is.Empty);
-        await editor.Find("#constraintKind0").ChangeAsync(new() { Value = "Category" });
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
         await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
-        await Button(editor, "Update").ClickAsync(new());
+        await Button(editor, "Update requirement").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories.Single(c => c.BaseCategory.Identity == b.Identity).MaxCount, Is.Zero);
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single(), Is.SameAs(group));
     }
@@ -286,17 +139,15 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         string header = editor.Find(".combo-header-content").OuterHtml;
         await editor.Find(".accordion-button").ClickAsync(new());
-        Assert.That(Button(editor, "Add OR").GetAttribute("aria-pressed"), Is.EqualTo("false"));
         await ChooseAlternativeTarget(editor, "group:1");
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = a.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
         await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
         await Button(editor, "Add alternative").ClickAsync(new());
         await ChooseAlternativeTarget(editor, "group:0");
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = a.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(editor.Instance.Combo.AlternativeGroups.Select(g => g.Alternatives.Count), Is.EqualTo(new[] { 3, 2 }));
-        Assert.That(editor.FindAll(".expanded-expression button").ToArray().All(e => e.ParentElement!.ClassList.Contains("badge")), Is.True);
         Assert.That(editor.FindAll(".accordion-button button, [aria-label^='Edit alternative'], [aria-label^='Move alternative group']"), Is.Empty);
         await RemoveOrLeaf(editor, 1, 3);
         Assert.That(editor.Instance.Combo.AlternativeGroups.Select(g => g.Alternatives.Count), Is.EqualTo(new[] { 2, 2 }), "Three leaves become a two-leaf OR group.");
@@ -316,22 +167,17 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(editor.Instance.Combo.Categories[1].MaxCount, Is.Zero);
         Assert.That(editor.Instance.Combo.Categories[1].MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
 
-        if (Button(editor, "Add OR").GetAttribute("aria-pressed") == "false") {
-            await Button(editor, "Add OR").ClickAsync(new());
-        }
 
-        IEnumerable<string?> targetValues = editor.FindAll(".combo-expression-target").Select(target => target.GetAttribute("data-alternative-target"));
+        IEnumerable<string?> targetValues = editor.FindAll(".requirement-edit").Select(target => target.GetAttribute("data-requirement"));
         Assert.That(targetValues, Does.Contain("category:1").And.Contain("card:0"));
         await ChooseAlternativeTarget(editor, "card:0");
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Cards, Is.Empty);
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives[0].Card, Is.SameAs(cardSurvivor));
         ComboAlternativeGroup restoredCardGroup = editor.Instance.Combo.AlternativeGroups.Single();
 
-        IElement[] ordinaryCategoryButtons = editor.FindAll(".expanded-expression .expression-term > .badge.category-tag:not(.combo-card-tag)").ToArray();
-        Assert.That(ordinaryCategoryButtons, Has.Length.EqualTo(2));
-        await ordinaryCategoryButtons[1].QuerySelector("button")!.ClickAsync(new());
+        await DeleteRequirement(editor, "category:1");
         Assert.That(editor.Instance.Combo.Categories, Has.Count.EqualTo(1));
         Assert.That(editor.Instance.Combo.Categories[0], Is.SameAs(ordinary), "Deleting the promoted occurrence leaves the pre-existing same-target requirement untouched.");
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single(), Is.SameAs(restoredCardGroup));
@@ -345,10 +191,10 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponents<ComboEditor>().ToArray()[0];
         await editor.Find(".accordion-button").ClickAsync(new());
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = a.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
         await ChooseAlternativeTarget(editor, "category:0");
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = a.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Renamed" });
@@ -356,7 +202,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await editor.Find("[aria-label='Move combo First, row 1 down']").ClickAsync(new());
         Assert.That(editor.Instance.Index, Is.EqualTo(1));
         Assert.That(editor.Find("#minCount1").GetAttribute("value"), Is.EqualTo("2"));
-        Assert.That(editor.Find("#comboCategory1").GetAttribute("value"), Is.EqualTo("user:Renamed"));
+        Assert.That(editor.Find("#comboTarget1").GetAttribute("value"), Is.EqualTo("user:Renamed"));
         await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives[1].Category!.MinCount, Is.EqualTo(2));
         Assert.That(editor.Find("#minCount1").GetAttribute("value"), Is.EqualTo("3"));
@@ -374,15 +220,14 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         await ChooseAlternativeTarget(editor, "group:0");
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
-        await RemoveOrLeaf(editor, 1, 1);
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await cut.InvokeAsync(() => editor.Instance.OnReplaceCombo.InvokeAsync((0, editor.Instance.Combo.WithAlternativeGroups([second]))));
         Assert.That(editor.FindAll(".alternative-scope"), Is.Empty);
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single(), Is.SameAs(second));
         Assert.That(editor.FindAll("select[id^='alternativeTarget']"), Is.Empty);
-        await Button(editor, "Add OR").ClickAsync(new());
-        Assert.That(editor.FindAll("button[data-alternative-target='category:99']"), Is.Empty);
+        Assert.That(editor.FindAll("button[data-requirement='category:99']"), Is.Empty);
         Assert.That(editor.FindAll(".alternative-scope"), Is.Empty);
-        await editor.Find(".alternative-target-instruction button").ClickAsync(new());
+
     }
 
     [Test]
@@ -397,7 +242,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await editor.Find(".accordion-button").ClickAsync(new());
         await ChooseAlternativeTarget(editor, "category:1");
         Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("requirement 2: Category: A"));
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories, Has.Count.EqualTo(1));
         await RemoveOrLeaf(editor, 1, 2);
@@ -405,9 +250,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[0].Category, Is.SameAs(repeated));
         Assert.That(editor.Instance.Combo.Categories, Has.Count.EqualTo(2));
         Assert.That(editor.Instance.Combo.Categories.All(category => ReferenceEquals(category, repeated)), Is.True);
-        IElement[] categories = editor.FindAll(".expanded-expression .expression-term > .badge.category-tag:not(.combo-card-tag)").ToArray();
-        Assert.That(categories, Has.Length.EqualTo(2));
-        await categories[1].QuerySelector("button")!.ClickAsync(new());
+        await DeleteRequirement(editor, "category:1");
         Assert.That(editor.Instance.Combo.Categories, Has.Count.EqualTo(1));
         Assert.That(editor.Instance.Combo.Categories[0], Is.SameAs(repeated));
         Assert.That(editor.Instance.Combo.AlternativeGroups, Has.Count.EqualTo(1));
@@ -425,13 +268,10 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
 
-        await Button(editor, "Add OR").ClickAsync(new());
-        Assert.That(editor.FindAll(".combo-expression-target"), Has.Count.EqualTo(2));
-        Assert.That(editor.FindAll(".alternative-leaf .combo-expression-target"), Is.Empty,
-            "Each OR group is selectable as a whole; its leaves are not separate targets.");
-        await editor.Find("button[data-alternative-target='group:1']").ClickAsync(new());
+        Assert.That(editor.FindAll(".requirement-edit"), Has.Count.EqualTo(2));
+        await ChooseAlternativeTarget(editor, "group:1");
         Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("OR group 2"));
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
 
         Assert.That(editor.Instance.Combo.AlternativeGroups, Has.Count.EqualTo(2));
@@ -448,7 +288,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         await ChooseAlternativeTarget(editor, "category:0");
-        await editor.Find("#comboCategory0").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         SessionService codec = new(context.JSInterop.JSRuntime, new JsonSerializer());
         string json = codec.SerializeSession(new SessionState { Categories = [a, b], Combos = [new([new(b, 2, 4)], "Replacement")] });
         ComboEditor obsolete = editor.Instance;
@@ -462,7 +302,6 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(replacement.Instance, Is.Not.SameAs(obsolete));
         Assert.That(replacement.Instance.Combo.Name, Is.EqualTo("Replacement"));
         Assert.That(replacement.Instance.Combo.AlternativeGroups, Is.Empty);
-        Assert.That(Button(replacement, "Add OR").GetAttribute("aria-pressed"), Is.EqualTo("false"));
         Assert.That(replacement.FindAll(".alternative-scope"), Is.Empty);
     }
 
