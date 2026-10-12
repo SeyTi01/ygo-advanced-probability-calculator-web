@@ -284,7 +284,7 @@ public class BackgroundCalculationComponentTest {
         await accepted;
 
         Task pending = Start();
-        await _cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
+        await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
         Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
 

@@ -67,12 +67,7 @@
                        @bind:after="OnHandSizeChanged"
                        min="1"/>
             </div>
-            <CalculationSettingsMenu DrawEffectsEnabled="_drawEffectsEnabled"
-                                      DrawEffectsEnabledChanged="OnDrawEffectsChanged"
-                                      ConditionalEffectsEnabled="_conditionalEffectsEnabled"
-                                      ConditionalEffectsEnabledChanged="OnConditionalEffectsChanged"
-                                      ActiveDrawConfiguredCardCount="ActiveDrawConfiguredCardCount"
-                                      ActiveAdvancedConfiguredCardCount="ActiveAdvancedConfiguredCardCount"
+            <CalculationSettingsMenu @ref="_settingsMenu" Model="SelectedModel" ModelChanged="OnModelChanged"
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
         </div>
@@ -183,8 +178,21 @@
             <p class="form-text mt-2" role="status" aria-live="polite">@unavailableMessage</p>
         }
 
+        @if (CanCalculate && ExecutionAssessment.ElevatedRisk) {
+            <p class="form-text mt-2 draw-complexity-notice" role="note">This calculation may require more time or exceed resource limits because its draw effects need detailed processing.</p>
+        }
+        @if (_stillCalculating && _isCalculating) {
+            <p class="form-text mt-2 calculation-elapsed" role="status">Still calculating… @(_runningModel.Description())</p>
+        }
+        @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null) {
+            <div class="calculation-recovery mt-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate opening hand only</button>
+                <button type="button" class="btn btn-sm btn-link" @onclick="ReviewCalculationSettings">Review settings</button>
+                <p class="form-text mb-0">Draws are ignored; configured draw cards still occupy hand slots. This answers a different question. You can also edit requirements or review calculation settings.</p>
+            </div>
+        }
         @if (_errorMessage is not null) {
-            <DismissibleAlert Message="@_errorMessage" OnDismiss="@(() => _errorMessage = null)"/>
+            <DismissibleAlert Message="@_errorMessage" OnDismiss="DismissCalculationError"/>
         }
 
         <div class="@(_pinnedResult is null ? null : "result-comparison")">
@@ -205,12 +213,19 @@
                         </small>
                     }
                     <ProbabilityResultExport Result="result"
+                                             ModelDescription="@(_acceptedComparison?.Context.Model.Description())"
                                              HandSize="@(_acceptedComparison?.Context.HandSize ?? 0)"
                                              IsStale="_calculationResultIsStale"
                                              IsCalculating="_isCalculating" />
                 </div>
-                @if (_pinnedResult is not null && _acceptedComparison is { } accepted) {
-                    <p class="small text-body-secondary mb-2">@accepted.Context.Description</p>
+                @if (_acceptedComparison is { } accepted) {
+                    <p class="small text-body-secondary mb-2 result-model">@accepted.Context.Description</p>
+                    @if (accepted.Context.Model == CalculationModel.Simplified) {
+                        <p class="small mb-2">Hypothetical, often optimistic: cost-dependent draw cards may draw unconditionally. This can mislead deck-building decisions.</p>
+                    }
+                    @if (_pinnedResult is { } pin && pin.Context.Model != accepted.Context.Model) {
+                        <p class="small mb-2 comparison-model-difference">Different calculation models: these results answer different questions.</p>
+                    }
                 }
                 @{
                     PinnedResultDifference? totalDifference = _pinnedResult is not null && CanCompareDisplayedResult
@@ -324,9 +339,6 @@
     private CardListEditor? _cardListEditor;
     private string ComboListKey => $"ComboList-{_sessionVersion}";
 
-    private int ActiveDrawConfiguredCardCount => DrawEffectPresentation.CountActiveDrawConfiguredCards(_cards);
-    private int ActiveAdvancedConfiguredCardCount => DrawEffectPresentation.CountActiveAdvancedConfiguredCards(_cards);
-
     private int _activeComboIndex = -1;
     private int _activeCardIndex = -1;
 
@@ -336,7 +348,7 @@
     private int _handSize = 5;
     private bool _drawEffectsEnabled = true;
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
-    private bool _conditionalEffectsEnabled;
+    private bool _conditionalEffectsEnabled = true;
     private bool _isCalculating;
     private bool _deferNameEditRendering;
     private bool _isClearWorkspaceConfirmationOpen;
@@ -418,7 +430,7 @@
         bool visibleStatusChanged = _isCalculating || _errorMessage is not null
             || (_calculationResult is not null && !_calculationResultIsStale);
         _cards[payload.Index] = payload.NewCard;
-        InvalidateCalculation();
+        InvalidateCalculation(reassess: false);
 
         if (visibleStatusChanged) {
             _deferNameEditRendering = true;
@@ -779,7 +791,9 @@
         ReconcileCategoryColorIndices();
     }
 
-    private async Task Calculate() {
+    private Task Calculate() => CalculateModel(SelectedModel);
+
+    private async Task CalculateModel(CalculationModel model) {
         if (_disposed || _isCalculating || !CanCalculate) {
             return;
         }
@@ -789,10 +803,12 @@
         using CancellationTokenSource cancellation = new();
         _calculationCancellation = cancellation;
         bool OwnsRequest() => !_disposed && requestId == _calculationRequestId && requestVersion == _calculationVersion;
-
+        Task notices = Task.CompletedTask;
         try {
             _isCalculating = true;
+            _runningModel = model;
             _errorMessage = null;
+            _limitReason = null;
             StateHasChanged();
 
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(
@@ -801,31 +817,44 @@
                 _handSize,
                 _comboGroups,
                 CalculationWorkPolicy.Interactive,
-                _drawEffectsEnabled,
+                model != CalculationModel.OpeningHand,
                 CalculationStoragePolicy.ForTier(_storageTier),
-                new(_conditionalEffectsEnabled)
+                new(model == CalculationModel.Configured)
             );
-            PinnedCalculationContext comparisonContext = CaptureComparisonContext();
-            ProbabilityCalculationResult result = await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
+            PinnedCalculationContext comparisonContext = CaptureComparisonContext(model);
+            // BackgroundCalculator settles only after disposing its worker handle.
+            // A replacement may own the UI immediately, but must await that cleanup.
+            try {
+                await _recoveryCleanup;
+            }
+            catch (Exception) {
+                // The previous request owns its error; cleanup still completed.
+            }
+            if (!OwnsRequest()) {
+                return;
+            }
 
+            notices = ShowElapsedNotices(OwnsRequest, cancellation.Token);
+            Task<ProbabilityCalculationResult> worker = _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
+            _workerCompletion = worker;
+            ProbabilityCalculationResult result = await worker;
             if (OwnsRequest()) {
-                // Own the accepted rows independently of mutable worker result collections.
                 ProbabilityCalculationResult acceptedResult = result with {
                     ComboProbabilities = result.ComboProbabilities.ToArray(),
                     GroupProbabilities = result.GroupProbabilities?.ToArray()
                 };
-
                 _acceptedComparison = PinnedResultSnapshot.Capture(comparisonContext, acceptedResult);
                 _calculationResult = acceptedResult;
                 _calculationResultIsStale = false;
             }
         }
         catch (OperationCanceledException) {
-            // Cancellation is expected when the user, an edit, or disposal stops a request.
+            // Cancellation, edits, replacement and disposal are quiet.
         }
         catch (ProbabilityCalculationLimitException ex) {
             if (OwnsRequest()) {
-                _errorMessage = ex.Message;
+                _limitReason = ex.Reason;
+                _errorMessage = ex.Message + " No probability was calculated for this request.";
             }
         }
         catch (Exception ex) {
@@ -834,9 +863,13 @@
             }
         }
         finally {
+            cancellation.Cancel();
+            await notices;
             if (OwnsRequest()) {
                 _calculationCancellation = null;
                 _isCalculating = false;
+                _stillCalculating = false;
+                _openingHandAlternativeAvailable = false;
             }
         }
     }
@@ -846,6 +879,8 @@
         CancellationTokenSource? cancellation = _calculationCancellation;
         _calculationCancellation = null;
         _isCalculating = false;
+        _stillCalculating = false;
+        _openingHandAlternativeAvailable = false;
         cancellation?.Cancel();
     }
 
@@ -865,26 +900,13 @@
 
     private void OnHandSizeChanged() => InvalidateCalculation();
 
-    private void OnDrawEffectsChanged(bool enabled) {
-        if (_drawEffectsEnabled == enabled) {
+    private void OnModelChanged(CalculationModel model) {
+        if (SelectedModel == model) {
             return;
         }
 
-        _drawEffectsEnabled = enabled;
-        if (!enabled) {
-            _conditionalEffectsEnabled = false;
-        }
-
-        InvalidateCalculation();
-    }
-
-    private void OnConditionalEffectsChanged(bool enabled) {
-        bool conditionalEffectsEnabled = enabled && _drawEffectsEnabled;
-        if (_conditionalEffectsEnabled == conditionalEffectsEnabled) {
-            return;
-        }
-
-        _conditionalEffectsEnabled = conditionalEffectsEnabled;
+        _drawEffectsEnabled = model != CalculationModel.OpeningHand;
+        _conditionalEffectsEnabled = model == CalculationModel.Configured;
         InvalidateCalculation();
     }
 
@@ -899,8 +921,9 @@
 
     private void OnCategoriesChanged() => InvalidateCalculation();
 
-    private void InvalidateCalculation(bool clearPreviousResult = false) {
+    private void InvalidateCalculation(bool clearPreviousResult = false, bool reassess = true) {
         _deferNameEditRendering = false;
+        _assessmentDirty |= reassess;
         ObserveWorkspaceEdit();
         InvalidateComparison(clearPreviousResult);
         StopCalculation();
@@ -915,5 +938,6 @@
         }
 
         _errorMessage = null;
+        _limitReason = null;
     }
 }

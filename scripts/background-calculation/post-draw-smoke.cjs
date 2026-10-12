@@ -56,8 +56,7 @@ async function main() {
         // Prerendered buttons exist before Blazor has installed InputFile events.
         await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
         const gear = page.getByRole('button', { name: 'Calculation settings', exact: true });
-        const advanced = page.locator('#conditionalEffectsEnabled');
-        const draw = page.locator('#drawEffectsEnabled');
+        const model = page.locator('#calculationModel');
         const storage = page.locator('#storageSafetyTier');
         async function settings() {
             if (await gear.getAttribute('aria-expanded') !== 'true') await gear.click();
@@ -69,16 +68,15 @@ async function main() {
             assert.equal(await gear.evaluate(element => element === document.activeElement), true);
         }
         await settings();
-        assert.equal(await advanced.isChecked(), false);
+        assert.equal(await model.inputValue(), 'Configured');
         assert.equal(await storage.isEnabled(), true);
-        assert.equal(await draw.evaluate(element => element === document.activeElement), true);
-        await page.keyboard.press('Tab');
-        assert.equal(await advanced.evaluate(element => element === document.activeElement), true);
+        assert.equal(await model.evaluate(element => element === document.activeElement), true);
+
         await page.keyboard.press('Tab');
         assert.equal(await storage.evaluate(element => element === document.activeElement), true);
         await closeSettings();
         await settings();
-        assert.equal(await advanced.isChecked(), false);
+        assert.equal(await model.inputValue(), 'Configured');
         await closeSettings();
         async function load(session) {
             await page.locator('#sessionFileInput').setInputFiles({ name: 'post-draw.json', mimeType: 'application/json',
@@ -129,7 +127,7 @@ async function main() {
         const imported = await saved();
         assert.equal(imported.Cards.find(card => card.ExternalCardId === 74117290).PostDrawDiscardCount, 1);
         assert.equal(imported.Cards.find(card => card.ExternalCardId === 79571449).PostDrawDiscardCount, 2);
-        assert.equal(await advanced.isChecked(), false);
+        assert.equal(await model.inputValue(), 'Configured');
         await expand(1);
         for (const width of [1280, 320, 375, 390]) {
             for (const theme of ['light', 'dark']) {
@@ -142,28 +140,12 @@ async function main() {
                 await page.screenshot({ path: path.join(screenshots, `${width}-${theme}.png`) });
                 await settings();
                 assert.equal(await page.getByRole('heading', { name: 'Draw simulation', exact: true }).isVisible(), true);
-                assert.equal(await page.getByRole('switch', { name: 'Advanced draw simulation', exact: true }).isVisible(), true);
-                async function appearance(control) {
-                    return control.evaluate(element => {
-                        const style = getComputedStyle(element);
-                        return { border: style.borderColor, thumb: style.backgroundImage,
-                            background: style.backgroundColor, shadow: style.boxShadow };
-                    });
-                }
-                for (const control of [draw, advanced]) {
-                    const checked = await control.isChecked();
-                    await page.getByRole('heading', { name: 'Draw simulation', exact: true }).click();
-                    const initial = await appearance(control);
-                    await control.setChecked(!checked);
-                    await control.setChecked(checked);
-                    await page.waitForTimeout(250);
-                    assert.equal(await control.evaluate(element => element === document.activeElement), true);
-                    assert.deepEqual(await appearance(control), initial, `${width}px ${theme}: pointer focus changed switch appearance`);
-                }
-                await draw.focus();
-                await page.keyboard.press('Tab');
-                assert.equal(await advanced.evaluate(element => element === document.activeElement), true);
-                assert.notEqual((await appearance(advanced)).shadow, 'none', 'keyboard focus must remain visible');
+                assert.equal(await model.isVisible(), true);
+                const selected = await model.inputValue();
+                await model.selectOption('Simplified');
+                await model.selectOption(selected);
+                await model.focus();
+                assert.equal(await model.evaluate(element => element === document.activeElement), true);
                 await page.getByRole('heading', { name: 'Draw simulation', exact: true }).click();
                 await storage.scrollIntoViewIfNeeded();
                 const menuGeometry = await page.evaluate(() => ({ width: document.documentElement.clientWidth,
@@ -185,25 +167,28 @@ async function main() {
             await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
             return page.locator('.probability-total-value').innerText();
         }
+        await settings();
+        await model.selectOption('Simplified');
+        await closeSettings();
         assert.match(await result(), /100[.,]00/);
         await settings();
-        await advanced.check();
+        await model.selectOption('Configured');
         await closeSettings();
         assert.match(await result(), /16[.,]67/);
         await expand(0);
         await page.locator('#cardDiscard0').selectOption('0');
         assert.match(await result(), /100[.,]00/);
         await settings();
-        await draw.uncheck();
-        assert.equal(await advanced.isChecked(), false);
-        assert.equal(await advanced.isEnabled(), false);
+        await model.selectOption('OpeningHand');
+        assert.equal(await model.inputValue(), 'OpeningHand');
+        assert.equal(await model.isEnabled(), true);
         assert.equal(await storage.isEnabled(), true);
         await closeSettings();
         assert.match(await result(), /16[.,]67/);
         await settings();
-        await draw.check();
-        assert.equal(await advanced.isChecked(), false);
-        assert.equal(await advanced.isEnabled(), true);
+        await model.selectOption('Configured');
+        assert.equal(await model.inputValue(), 'Configured');
+        assert.equal(await model.isEnabled(), true);
         await closeSettings();
         assert.match(await result(), /100[.,]00/);
 
@@ -215,12 +200,15 @@ async function main() {
             await load(fixture.Session);
             await page.waitForFunction(() => document.querySelectorAll('.card-editor').length > 10);
             function percent(text) { return Number(text.replace('%', '').replace(',', '.').trim()); }
-            assert.equal(await advanced.isChecked(), false);
+            assert.equal(await model.inputValue(), 'Configured');
+            await settings();
+            await model.selectOption('Simplified');
+            await closeSettings();
             assert.equal(percent(await result()), Number((basic.Probability * 100).toFixed(2)));
             await page.locator('.pin-result-action').click();
-            assert.match(await page.locator('.pinned-result').innerText(), /Draw effects on · Basic/);
+            assert.match(await page.locator('.pinned-result').innerText(), /Simplified draws/);
             await settings();
-            await advanced.check();
+            await model.selectOption('Configured');
             assert.equal(await page.locator('.pin-result-action').isDisabled(), true);
             await closeSettings();
             assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
@@ -231,9 +219,9 @@ async function main() {
                 assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
             }
             await settings();
-            await draw.uncheck();
-            assert.equal(await advanced.isChecked(), false);
-            assert.equal(await advanced.isEnabled(), false);
+            await model.selectOption('OpeningHand');
+            assert.equal(await model.inputValue(), 'OpeningHand');
+            assert.equal(await model.isEnabled(), true);
             await closeSettings();
             assert.equal(percent(await result()), Number((off.Probability * 100).toFixed(2)));
             const stored = await saved();
@@ -242,12 +230,12 @@ async function main() {
             assert(!JSON.stringify(stored).includes('ConditionalEffectsEnabled'));
             assert(!JSON.stringify(stored).includes('StorageTier'));
             await settings();
-            await draw.check();
-            assert.equal(await advanced.isChecked(), false);
+            await model.selectOption('Configured');
+            assert.equal(await model.inputValue(), 'Configured');
             await closeSettings();
-            assert.equal(percent(await result()), Number((basic.Probability * 100).toFixed(2)));
+            assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
             await settings();
-            await advanced.check();
+            await model.selectOption('Configured');
             await closeSettings();
             assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
 
@@ -255,16 +243,16 @@ async function main() {
             const before = await page.evaluate(() => ({ sent: workerProbe.sent, terminated: workerProbe.terminated }));
             await calculate.click();
             await page.waitForFunction(sent => workerProbe.sent > sent, before.sent);
-            await draw.uncheck();
-            assert.equal(await advanced.isChecked(), false);
-            assert.equal(await advanced.isEnabled(), false);
+            await model.selectOption('OpeningHand');
+            assert.equal(await model.inputValue(), 'OpeningHand');
+            assert.equal(await model.isEnabled(), true);
             await page.waitForFunction(terminated => workerProbe.terminated > terminated, before.terminated);
             await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
             assert.equal(await page.locator('.pin-result-action').isDisabled(), true);
-            await draw.check();
-            assert.equal(await advanced.isChecked(), false);
+            await model.selectOption('Configured');
+            assert.equal(await model.inputValue(), 'Configured');
             await closeSettings();
-            assert.equal(percent(await result()), Number((basic.Probability * 100).toFixed(2)));
+            assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
             const inputs = await page.evaluate(() => workerProbe.inputs);
             const requests = inputs.map(message => JSON.parse(message.json));
             assert(requests.every(input => input.WorkUnits === 50000000));
@@ -279,11 +267,11 @@ async function main() {
             assert(!JSON.stringify(recovery).includes('ConditionalEffectsEnabled'));
             assert(!JSON.stringify(recovery).includes('StorageTier'));
             await settings();
-            await advanced.check();
+            await model.selectOption('Configured');
             await page.reload();
             await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
             await settings();
-            assert.equal(await advanced.isChecked(), false);
+            assert.equal(await model.inputValue(), 'Configured');
             assert.equal(await storage.inputValue(), 'Standard');
             console.log('PASS: realistic three-Graceful Basic/Advanced, all storage tiers, global off/on, mode cancellation, pinned context, runtime-only defaults.');
         }

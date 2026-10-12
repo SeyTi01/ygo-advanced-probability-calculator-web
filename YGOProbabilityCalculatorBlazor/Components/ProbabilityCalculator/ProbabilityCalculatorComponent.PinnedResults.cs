@@ -102,7 +102,7 @@ public partial class ProbabilityCalculatorComponent {
         }
     }
 
-    private PinnedCalculationContext CaptureComparisonContext() => PinnedCalculationContext.Capture(
+    private PinnedCalculationContext CaptureComparisonContext(CalculationModel model) => PinnedCalculationContext.Capture(
         _comparisonEpoch,
         _handSize,
         _cards,
@@ -110,8 +110,8 @@ public partial class ProbabilityCalculatorComponent {
         _comboGroups,
         ComboLineage,
         GroupLineage,
-        _drawEffectsEnabled,
-        _conditionalEffectsEnabled
+        model != CalculationModel.OpeningHand,
+        model == CalculationModel.Configured
     );
 
     private PinnedResultComparison? CurrentComboComparison(int index) {

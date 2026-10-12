@@ -40,8 +40,7 @@ async function main() {
         const ready = () => page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
         await ready();
         const gear = page.getByRole('button', { name: 'Calculation settings', exact: true });
-        const advanced = page.locator('#conditionalEffectsEnabled');
-        const draw = page.locator('#drawEffectsEnabled');
+        const model = page.locator('#calculationModel');
         const storage = page.locator('#storageSafetyTier');
         async function settings() {
             if (await gear.getAttribute('aria-expanded') !== 'true') await gear.click();
@@ -70,7 +69,7 @@ async function main() {
             return Number((await page.locator('.probability-total-value').innerText()).replace('%', '').replace(',', '.').trim());
         }
         await settings();
-        assert.equal(await advanced.isChecked(), false);
+        assert.equal(await model.inputValue(), 'Configured');
         await closeSettings();
         for (const [id, name, identities, opt] of [
             [1475311, 'Allure of Darkness', ['metadata:attribute:dark'], false],
@@ -126,25 +125,23 @@ async function main() {
             fixture.Session.Cards[0].Name = fixture.Name;
             await load(fixture.Session);
             await settings();
-            await draw.check();
-            await advanced.uncheck();
+            await model.selectOption('Simplified');
             await closeSettings();
             assert.equal(await result(), 100, `${fixture.Name}: Basic`);
             await settings();
-            await advanced.check();
+            await model.selectOption('Configured');
             await closeSettings();
             assert.equal(await result(), Number((fixture.Probability * 100).toFixed(2)), `${fixture.Name}: Advanced`);
             await settings();
-            await draw.uncheck();
-            assert.equal(await advanced.isChecked(), false);
+            await model.selectOption('OpeningHand');
+            assert.equal(await model.inputValue(), 'OpeningHand');
             await closeSettings();
             assert.equal(await result(), 100, `${fixture.Name}: global off`);
         }
         const representative = cases.find(value => value.Name === 'filtered-20508881-advanced');
         await load(representative.Session);
         await settings();
-        await draw.check();
-        await advanced.check();
+        await model.selectOption('Configured');
         for (const tier of ['Standard', 'High', 'VeryHigh']) {
             await storage.selectOption(tier);
             await closeSettings();
@@ -158,7 +155,7 @@ async function main() {
         await page.reload();
         await ready();
         await settings();
-        assert.equal(await advanced.isChecked(), false);
+        assert.equal(await model.inputValue(), 'Configured');
         assert.equal(await storage.inputValue(), 'Standard');
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);

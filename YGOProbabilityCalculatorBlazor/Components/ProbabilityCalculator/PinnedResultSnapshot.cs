@@ -23,7 +23,8 @@ public sealed record PinnedCalculationContext(
     bool DrawEffectsEnabled = true,
     bool ConditionalEffectsEnabled = false
 ) {
-    public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards · Draw effects {(DrawEffectsEnabled ? "on" : "off")} · {(ConditionalEffectsEnabled ? "Advanced" : "Basic")}";
+    public CalculationModel Model => CalculationModelPresentation.FromFlags(DrawEffectsEnabled, ConditionalEffectsEnabled);
+    public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards · {Model.Description()}";
 
     internal static PinnedCalculationContext Capture(
         int epoch,

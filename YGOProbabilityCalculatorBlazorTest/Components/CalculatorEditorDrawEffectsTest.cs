@@ -26,13 +26,14 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Card ordinary = new([], name: "Ordinary card", id: "ordinary");
         SessionState session = new() { Categories = [dark], Cards = [advanced, fixedDraw, ordinary] };
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
         IRenderedComponent<CardEditor> allureEditor = cut.FindComponents<CardEditor>()[0];
         IRenderedComponent<CardEditor> gracefulEditor = cut.FindComponents<CardEditor>()[1];
         IRenderedComponent<CardEditor> ordinaryEditor = cut.FindComponents<CardEditor>()[2];
 
         Assert.That(allureEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 2").And.Not.Contain("Remove 1"));
         Assert.That(allureEditor.Find("#cardDrawModeHelp0").TextContent,
-            Does.Contain("Advanced draw simulation is off").And.Contain("currently ignored"));
+            Does.Contain("Simplified draws ignore both pre-draw costs and post-draw removals"));
         Assert.That(allureEditor.Find("#cardDiscard0").HasAttribute("disabled"), Is.False);
         Assert.That(allureEditor.Find("#cardEligibility0"), Is.Not.Null);
         Assert.That(allureEditor.Find("#cardDraw0").GetAttribute("aria-describedby"),
@@ -44,18 +45,18 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(ordinaryEditor.FindAll(".accordion-button .badge").ToArray(), Is.Empty);
 
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
-        await cut.Find("#conditionalEffectsEnabled").ChangeAsync(new() { Value = true });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
 
         Assert.That(allureEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 2 · Remove 1"));
         Assert.That(allureEditor.FindAll("#cardDrawModeHelp0"), Is.Empty);
         Assert.That(gracefulEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 3").And.Not.Contain("Remove"));
 
-        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
 
         string inactiveHeader = allureEditor.Find(".accordion-button").TextContent;
         Assert.That(inactiveHeader, Does.Contain("Draw configured · Off").And.Not.Contain("Draw 2").And.Not.Contain("Remove 1"));
         Assert.That(allureEditor.Find("#cardDrawModeHelp0").TextContent,
-            Does.Contain("Draw simulation is off").And.Contain("currently ignored"));
+            Does.Contain("Draw simulation is off"));
         Assert.That(allureEditor.Find("#cardDrawHelp0").TextContent,
             Does.Contain("Stored draw settings are retained").And.Not.Contain("resolves automatically").And.Not.Contain("outcome fails"));
         Assert.That(allureEditor.Find("#cardDiscard0").HasAttribute("disabled"), Is.False);
@@ -66,10 +67,9 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
             allureEditor.Instance.Card.PostDrawSelector),
             Is.EqualTo(((int?)2, true, 1, CardSelector.For(dark))));
 
-        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = true });
-
-        Assert.That(allureEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 2").And.Not.Contain("Remove 1"));
-        Assert.That(allureEditor.Find("#cardDrawModeHelp0").TextContent, Does.Contain("Advanced draw simulation is off"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
+        Assert.That(allureEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 2 · Remove 1"));
+        Assert.That(allureEditor.FindAll("#cardDrawModeHelp0"), Is.Empty);
     }
 
     [Test]
@@ -149,7 +149,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
 
     [Test]
     public async Task GlobalDrawEffectsToggleUsesOrdinaryCalculationAndRestoresConfiguredBehavior() {
-        const string drawEffectsHelpText = "Basic simulation applies fixed draws and once-per-turn limits. When off, cards are treated as ordinary cards.";
+
         CategoryBase target = new("Target");
         Card draw = new([], id: "draw", drawCount: 1, drawOncePerTurn: false);
         SessionState session = new() {
@@ -172,20 +172,20 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
 
         await trigger.ClickAsync(new());
-        IElement toggle = cut.Find("#drawEffectsEnabled");
+        IElement toggle = cut.Find("#calculationModel");
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.False);
-        Assert.That(toggle.GetAttribute("role"), Is.EqualTo("switch"));
-        Assert.That(toggle.HasAttribute("checked"), Is.True);
-        Assert.That(cut.Find("label[for='drawEffectsEnabled']").TextContent, Is.EqualTo("Draw effects"));
+        Assert.That(toggle.TagName, Is.EqualTo("SELECT"));
+        Assert.That(toggle.GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(cut.Find("label[for='calculationModel']").TextContent, Is.EqualTo("Calculation model"));
         AssertDrawEffectsHelpIsStable(false);
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(configuredExpected.ToString("P2")));
 
-        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = false });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         AssertPreviousResult(cut);
         AssertDrawEffectsHelpIsStable(true);
-        Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         Assert.That((editor.Instance.Card.DrawCount, editor.Instance.Card.DrawOncePerTurn), Is.EqualTo(((int?)1, false)));
         Assert.That(editor.Find("#cardDraw0").HasAttribute("disabled"), Is.False);
@@ -194,27 +194,24 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
-        Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(ordinaryExpected.ToString("P2")));
         Assert.That((editor.Instance.Card.DrawCount, editor.Instance.Card.DrawOncePerTurn), Is.EqualTo(((int?)1, false)));
 
-        await cut.Find("#drawEffectsEnabled").ChangeAsync(new() { Value = true });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
         AssertPreviousResult(cut);
         AssertDrawEffectsHelpIsStable(false);
-        Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.True);
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
         Assert.That((cut.FindComponent<CardEditor>().Instance.Card.DrawCount, cut.FindComponent<CardEditor>().Instance.Card.DrawOncePerTurn),
             Is.EqualTo(((int?)1, false)));
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(configuredExpected.ToString("P2")));
 
-        void AssertDrawEffectsHelpIsStable(bool modeNoteVisible) {
-            Assert.That(cut.Find("#drawEffectsHelp").TextContent.Trim(), Is.EqualTo(drawEffectsHelpText));
-            Assert.That(cut.Find("#drawEffectsHelp").GetAttribute("class"), Does.Contain("form-text"));
-            Assert.That(cut.FindAll("#drawModeNote"), Has.Count.EqualTo(modeNoteVisible ? 1 : 0));
-            Assert.That(cut.Find("#drawEffectsEnabled").GetAttribute("aria-describedby"),
-                Is.EqualTo(modeNoteVisible ? "drawEffectsHelp drawModeNote" : "drawEffectsHelp"));
+        void AssertDrawEffectsHelpIsStable(bool ignored) {
+            Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
+            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain(ignored ? "Draws are ignored" : "Applies supported draws"));
         }
     }
 
@@ -234,7 +231,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
 
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
-        Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
         string shared = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         SessionState sharedSession = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(shared);
         Assert.That(sharedSession.DrawEffectsEnabled, Is.False);
@@ -249,19 +246,19 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n55144522", "deck.ydk"));
         cut.WaitForAssertion(() => {
             Assert.That(cut.FindComponents<CardEditor>().Single().Instance.Card.DrawCount, Is.EqualTo(2));
-            Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
         });
 
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(saved, "disabled.json"));
         cut.WaitForAssertion(() => {
-            Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
             Assert.That(cut.FindComponent<CardEditor>().Instance.Card.DrawCount, Is.EqualTo(2));
         });
 
         System.Text.Json.Nodes.JsonObject missingToggle = (System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse(saved)!;
         missingToggle.Remove(nameof(SessionState.DrawEffectsEnabled));
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(missingToggle.ToJsonString(), "legacy.json"));
-        cut.WaitForAssertion(() => Assert.That(cut.Find("#drawEffectsEnabled").HasAttribute("checked"), Is.True));
+        cut.WaitForAssertion(() => Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured")));
     }
 
     [Test]
@@ -275,7 +272,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await editor.Find("#cardCategory0").ChangeAsync(new() { Value = "user:B" });
         await editor.Find("#cardDiscard0").ChangeAsync(new() { Value = "2" });
         Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.EqualTo(2));
-        Assert.That(editor.Find(".accordion-button").TextContent, Does.Contain("Draw 3").And.Not.Contain("Remove 2"));
+        Assert.That(editor.Find(".accordion-button").TextContent, Does.Contain("Draw 3").And.Contain("Remove 2"));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
         AssertPreviousResult(cut);
         await Button(cut, "Save Session").ClickAsync(new());

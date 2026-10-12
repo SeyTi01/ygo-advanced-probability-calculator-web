@@ -25,8 +25,8 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
         string? inactiveMessage = null;
         if (!conditionalEffectsEnabled && HasAdvancedConfiguration(card)) {
             inactiveMessage = card.PreDrawRemovalCount > 0
-                ? "Advanced draw simulation is off — this pre-draw cost and any post-draw effect are currently ignored."
-                : "Advanced draw simulation is off — this post-draw effect is currently ignored.";
+                ? "Simplified draws ignore both pre-draw costs and post-draw removals; this card may draw unconditionally."
+                : "Simplified draws ignore both pre-draw costs and post-draw removals.";
         }
 
         return new(headerText, inactiveMessage);
@@ -54,7 +54,7 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
             return null;
         }
 
-        return $"Advanced effects configured on {CardCount(activeAdvancedConfiguredCardCount)} are currently ignored in Basic mode.";
+        return $"Simplified draws ignore both pre-draw costs and post-draw removals configured on {CardCount(activeAdvancedConfiguredCardCount)}.";
     }
 
     private static bool HasAdvancedConfiguration(Card card) =>

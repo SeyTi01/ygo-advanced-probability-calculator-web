@@ -93,10 +93,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         // the effect schedule, which the general resolver handles exactly.
         if (effects.Length == 1 && filler.Length <= 1) {
             int effect = effects[0];
-            if (cards[effect].PreDrawRemovalCount == 0 && !relevant[effect] && !cards[effect].DrawOncePerTurn
-                && cards[effect].DrawCount == cards[effect].PostDrawDiscardCount + 1
-                && cards[effect].PostDrawSelector.Kind == CardSelectorKind.Any
-                && cards[effect].DrawCount!.Value * (long)cards[effect].Copies <= copies - handSize) {
+            if (DrawExecutionAssessment.IsExchangeableEffect(cards[effect], relevant[effect], copies, handSize)) {
                 return CalculateExchangeable(cards, relevant, effect, filler.FirstOrDefault(-1), factorial, combos, groups, totalOnly);
             }
         }
