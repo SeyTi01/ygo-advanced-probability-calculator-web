@@ -313,8 +313,8 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         }
 
         bool RemoveCard(ref int[] values, bool[]? eligible, int remaining, int reservedSource = -1) {
-            // Queue scan, tier scan, removal scan and copying the surviving queue.
-            budget.Spend(2L * values.Length + n + 1);
+            // Queue scan, activation classification, tier scan, removal scan and copying the surviving queue.
+            budget.Spend(2L * values.Length + 2L * n + 1);
             int selected = -1;
             int worstTier = 0;
             int selectedQueue = -1;
@@ -323,19 +323,49 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 int entry = values[q];
                 pending[entry] = true;
             }
+
+            bool[] activatable = new bool[n];
+            bool[] costDeferred = new bool[n];
+            int minimumLegalDrawCount = int.MaxValue;
+            if (reservedSource >= 0 && cards[reservedSource].DrawCount is int reservedDrawCount
+                && reservedDrawCount <= remaining) {
+                // A reserved source has already passed its activation checks and is finishing its cost.
+                minimumLegalDrawCount = reservedDrawCount;
+            }
+            for (int i = 0; i < n; i++) {
+                if (!pending[i] || values[n + i] - (i == reservedSource ? 1 : 0) == 0 || Used(values, i)
+                    || cards[i].DrawCount is not int drawCount || drawCount > remaining
+                    || (i == reservedSource && cards[i].DrawOncePerTurn)) {
+                    continue;
+                }
+
+                bool canPay = cards[i].PreDrawRemovalCount == 0 || CanPay(values, i, reservedSource);
+                if (canPay) {
+                    activatable[i] = true;
+                    minimumLegalDrawCount = Math.Min(minimumLegalDrawCount, drawCount);
+                }
+                else if (cards[i].PreDrawRemovalCount > 0) {
+                    costDeferred[i] = true;
+                }
+            }
+
+            // The smallest legal draw leaves the most room for a deferred source's full batch.
+            int remainingAfterAnotherDraw = minimumLegalDrawCount == int.MaxValue
+                ? -1
+                : remaining - minimumLegalDrawCount;
             for (int i = 0; i < n; i++) {
                 if (values[n + i] - (i == reservedSource ? 1 : 0) == 0 || (eligible is not null && !eligible[i])) {
                     continue;
                 }
-                bool usable = pending[i] && !Used(values, i)
-                    && cards[i].DrawCount is int drawCount && drawCount <= remaining
-                    && !(i == reservedSource && cards[i].DrawOncePerTurn)
-                    && (cards[i].PreDrawRemovalCount == 0 || CanPay(values, i, reservedSource));
+                bool usable = activatable[i];
                 bool redundant = cards[i].DrawOncePerTurn && values[n + i] - (i == reservedSource ? 1 : 0) > 1;
-                int tier = (relevant[i], usable && !redundant) switch {
-                    (true, _) => 1,
-                    (_, true) => 2,
-                    _ => 3
+                bool deferred = costDeferred[i] && !redundant
+                    && cards[i].DrawCount is int drawCount && drawCount <= remainingAfterAnotherDraw;
+                int tier = (relevant[i], usable && !redundant, deferred) switch {
+                    (true, _, _) => 1,
+                    (_, true, _) => 2,
+                    (_, _, true) => 3,
+                    _ => 4
                 };
                 if (tier >= worstTier) {
                     worstTier = tier;

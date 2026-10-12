@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
@@ -57,6 +58,66 @@ public class PostDrawEffectsTest {
         foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
             WorkBudget budget = new(CalculationWorkPolicy.Interactive);
             ExactCalculationResult result = new DrawEffectCalculation(ordered, size, budget, true).Calculate(combos, groups);
+            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+            for (int i = 0; i < rows.Length; i++) {
+                Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
+            }
+        }
+    }
+
+    [Test]
+    public void DeferredCostPriorityMatchesExactPhysicalOracleAndReversedDeckRows() {
+        CategoryBase dark = new("Dark");
+        Card b = new([], id: "b-post-draw", drawCount: 1, postDrawDiscardCount: 1);
+        Card a = new([], id: "a-deferred", drawCount: 1, preDrawRemovalCount: 1,
+            preDrawSelector: CardSelector.For(dark));
+        Card c = new([], id: "c-draw", drawCount: 1);
+        Card filler = new([], id: "filler");
+        Card material = new([dark], id: "dark-material");
+        Card firstReward = new([], id: "reward-r");
+        Card secondReward = new([], id: "reward-q");
+        List<Card> deck = [b, a, c, filler, material, firstReward, secondReward];
+        List<Combo> combos = [
+            new([], cards: [new(firstReward.Id, 1, 1)], groupId: "targets"),
+            new([], cards: [new(secondReward.Id, 1, 1)], groupId: "targets")
+        ];
+        List<ComboGroup> groups = [new("targets", "Targets")];
+        DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 3, combos, groups);
+
+        Assert.That(oracle.Total, Is.EqualTo(new BigInteger(5_040)));
+        foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
+            ExactCalculationResult result = new PostDrawCalculation(ordered, 3,
+                new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups);
+            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+            for (int i = 0; i < rows.Length; i++) {
+                Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
+            }
+        }
+    }
+
+    [Test]
+    public void DeferredOptDuplicatesMatchExactPhysicalOracleAndReversedDeckRows() {
+        CategoryBase dark = new("Dark");
+        Card b = new([], id: "b-post-draw", drawCount: 1, postDrawDiscardCount: 1);
+        Card opt = new([], copies: 2, id: "a-opt", drawCount: 1, drawOncePerTurn: true,
+            preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(dark));
+        Card c = new([], id: "c-draw", drawCount: 1);
+        Card filler = new([], id: "filler");
+        Card material = new([dark], id: "dark-material");
+        Card firstReward = new([], id: "reward-r");
+        Card secondReward = new([], id: "reward-q");
+        List<Card> deck = [b, opt, c, filler, material, firstReward, secondReward];
+        List<Combo> combos = [
+            new([], cards: [new(firstReward.Id, 1, 1)], groupId: "targets"),
+            new([], cards: [new(secondReward.Id, 1, 1)], groupId: "targets")
+        ];
+        List<ComboGroup> groups = [new("targets", "Targets")];
+        DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 4, combos, groups);
+
+        Assert.That(oracle.Total, Is.EqualTo(new BigInteger(40_320)));
+        foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
+            ExactCalculationResult result = new PostDrawCalculation(ordered, 4,
+                new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups);
             ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
