@@ -11,7 +11,8 @@ public sealed record CuratedDrawEffectPreset(
     int PostDrawDiscardCount = 0,
     CardSelector? PostDrawSelector = null,
     int PreDrawRemovalCount = 0,
-    CardSelector? PreDrawSelector = null
+    CardSelector? PreDrawSelector = null,
+    PostDrawFailureBehavior? FailureBehavior = null
 );
 
 public static class CuratedDrawEffectPresets {
@@ -86,6 +87,33 @@ public static class CuratedDrawEffectPresets {
         return ApplyPreset(card, cardInfo);
     }
 
+    public static Card ApplyForExplicitSelection(Card replacement, Card previousCard, CardInfo selectedCard) {
+        if (HasSameCanonicalIdentity(previousCard, selectedCard)) {
+            return replacement;
+        }
+
+        Card reset = replacement
+            .WithDrawCount(null)
+            .WithDrawOncePerTurn(true)
+            .WithPostDrawFailureBehavior(PostDrawFailureBehavior.FailBranch);
+
+        return ApplyPreset(reset, selectedCard);
+    }
+
+    private static bool HasSameCanonicalIdentity(Card card, CardInfo cardInfo) {
+        if (card.ExternalCardId is not int externalCardId) {
+            return false;
+        }
+
+        int canonicalCardId = cardInfo.CanonicalCardId is > 0
+            ? cardInfo.CanonicalCardId.Value
+            : cardInfo.Id;
+
+        return externalCardId == cardInfo.Id
+            || externalCardId == canonicalCardId
+            || cardInfo.ArtworkImageIds.Contains(externalCardId);
+    }
+
     private static Card ApplyPreset(Card card, CardInfo cardInfo) {
         CuratedDrawEffectPreset? preset = Find(cardInfo);
 
@@ -99,6 +127,7 @@ public static class CuratedDrawEffectPresets {
             .WithPostDrawDiscardCount(preset.PostDrawDiscardCount)
             .WithPostDrawSelector(preset.PostDrawSelector ?? CardSelector.Any)
             .WithPreDrawRemovalCount(preset.PreDrawRemovalCount)
-            .WithPreDrawSelector(preset.PreDrawSelector ?? CardSelector.Any);
+            .WithPreDrawSelector(preset.PreDrawSelector ?? CardSelector.Any)
+            .WithPostDrawFailureBehavior(preset.FailureBehavior ?? PostDrawFailureBehavior.FailBranch);
     }
 }

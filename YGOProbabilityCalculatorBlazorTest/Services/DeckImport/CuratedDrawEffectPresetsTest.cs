@@ -64,6 +64,29 @@ public class CuratedDrawEffectPresetsTest {
     }
 
     [Test]
+    public void ExplicitSelectionPreservesOverridesAcrossCanonicalAndArtworkAliases() {
+        const int canonicalCardId = 55144522;
+        const int selectedAliasId = 99999999;
+        const int alternateArtworkId = 88888888;
+        CardInfo selectedAlias = new() {
+            Id = selectedAliasId,
+            CanonicalCardId = canonicalCardId,
+            Name = "Pot of Greed alternate artwork",
+            ArtworkImageIds = [canonicalCardId, selectedAliasId, alternateArtworkId]
+        };
+
+        foreach (int previousExternalId in new[] { canonicalCardId, alternateArtworkId }) {
+            Card previous = new([], name: "Pot of Greed", externalCardId: previousExternalId,
+                drawCount: null, drawOncePerTurn: false);
+            Card replacement = previous.WithObjectiveMetadata([], selectedAlias.Id).WithName(selectedAlias.Name);
+            Card selected = CuratedDrawEffectPresets.ApplyForExplicitSelection(replacement, previous, selectedAlias);
+
+            Assert.That((selected.ExternalCardId, selected.DrawCount, selected.DrawOncePerTurn),
+                Is.EqualTo((selectedAliasId, (int?)null, false)));
+        }
+    }
+
+    [Test]
     public void TradeInCostRequiresOnlyLevelEightForImportsAndSelections() {
         CardInfo info = new() { Id = 38120068, Name = "Trade-In" };
         Card imported = CuratedDrawEffectPresets.CreateImportedCard(info, 1, info.Id);
