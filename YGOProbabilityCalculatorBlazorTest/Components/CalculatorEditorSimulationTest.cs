@@ -5,6 +5,7 @@ using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
@@ -39,13 +40,17 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         Assert.That(editor.FindAll(".card-simulation select, .card-simulation input, .card-simulation p"), Is.Empty);
         Assert.That(editor.FindAll(".simulation-restore"), Is.Empty);
         Assert.That(editor.Find(".simulation-edit").TextContent, Is.EqualTo("Customize simulation"));
-        if (string.IsNullOrWhiteSpace(card.EffectProfile.Limitations)) {
+        bool performance = DrawEffectPerformance.RequiresDetailedHandState(card.EffectPlan, card.EffectProfile.ExecutionModel);
+        if (string.IsNullOrWhiteSpace(card.EffectProfile.Limitations) && !performance) {
             Assert.That(editor.FindAll(".simulation-details-toggle"), Is.Empty);
         }
         else {
             Assert.That(editor.Find(".simulation-details-toggle").TextContent, Is.EqualTo("Model notes"));
             Assert.That(editor.Find(".simulation-details-toggle").GetAttribute("aria-expanded"), Is.EqualTo("false"));
-            Assert.That(SimulationDetails(editor).Trim(), Is.EqualTo(card.EffectProfile.Limitations));
+            SimulationDetails(editor);
+            Assert.That(editor.FindAll(".simulation-performance"), Has.Count.EqualTo(performance ? 1 : 0));
+            Assert.That(editor.FindAll(".simulation-details p:not(.simulation-performance)").Select(element => element.TextContent.Trim()),
+                Is.EqualTo(string.IsNullOrWhiteSpace(card.EffectProfile.Limitations) ? Array.Empty<string>() : new[] { card.EffectProfile.Limitations }));
             editor.Find(".simulation-details-toggle").KeyDown(new KeyboardEventArgs { Key = "Escape" });
             Assert.That(editor.FindAll(".simulation-details"), Is.Empty);
         }

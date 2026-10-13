@@ -1,5 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.CardEffects
+@using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator
 @using Microsoft.AspNetCore.Components.Web
 
 <section class="card-simulation mb-3" aria-label="Simulation" @onkeydown="HandleKeyDown" @oninput:stopPropagation="true">
@@ -45,11 +46,15 @@
         @if (HasDetails) {
             <button @ref="_detailsButton" type="button" class="btn btn-sm btn-link simulation-details-toggle"
                     aria-expanded="@(_detailsOpen ? "true" : "false")" aria-controls="simulationDetails@(Index)"
+                    title="@(_performanceNote ? "Model notes include performance guidance" : null)"
                     @onclick="() => _detailsOpen = !_detailsOpen">Model notes</button>
         }
     </div>
     @if (_detailsOpen && HasDetails) {
         <div id="simulationDetails@(Index)" class="simulation-details small">
+            @if (_performanceNote) {
+                <p class="simulation-performance"><strong>Performance:</strong> This effect requires detailed hand-state calculation in Configured mode and can become expensive in complex decks.</p>
+            }
             @if (_effect.Source == EffectSource.BuiltIn) {
                 @if (!string.IsNullOrWhiteSpace(_effect.Limitations)) {
                     <p>@_effect.Limitations</p>
@@ -168,6 +173,7 @@
     private readonly Dictionary<string, string> _errors = [];
     private string? Error => _errors.Values.FirstOrDefault();
     private bool _detailsOpen;
+    private bool _performanceNote;
     private bool _focusDraw;
     private bool _focusEdit;
     private int _renameVersion;
@@ -192,7 +198,7 @@
         ? "Configure simulation" : "Customize simulation";
     private bool HasSavedRevisionDetails => _effect.Source == EffectSource.BuiltIn
         && (_effect.Maintained is null || Card.EffectProfile != _effect.Maintained.Profile || Card.EffectPlan != _effect.Maintained.Plan);
-    private bool HasDetails => (_effect.Source == EffectSource.BuiltIn
+    private bool HasDetails => _performanceNote || (_effect.Source == EffectSource.BuiltIn
         && (!string.IsNullOrWhiteSpace(_effect.Limitations) || HasSavedRevisionDetails))
         || (_effect.Source == EffectSource.LegacySnapshot && Card.DrawCount is not null);
     private string? ModeNotice => Card.DrawCount is null ? null : !DrawEffectsEnabled
@@ -331,6 +337,11 @@
             _draft = null;
             _errors.Clear();
             _detailsOpen = false;
+        }
+
+        if (_previous is null || _previous.EffectPlan != Card.EffectPlan
+            || _previous.EffectProfile.ExecutionModel != Card.EffectProfile.ExecutionModel) {
+            _performanceNote = DrawEffectPerformance.RequiresDetailedHandState(Card.EffectPlan, Card.EffectProfile.ExecutionModel);
         }
 
         _previous = Card;
