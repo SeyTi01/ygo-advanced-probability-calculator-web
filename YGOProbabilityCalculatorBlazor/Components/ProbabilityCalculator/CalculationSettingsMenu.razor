@@ -25,9 +25,9 @@
             <label class="form-label mb-1" for="calculationModel">Calculation model</label>
             <select @ref="_drawEffectsInput" id="calculationModel" class="form-select"
                     value="@Model" aria-describedby="drawEffectsHelp" @onchange="OnModelChanged">
-                <option value="Configured">Configured draw effects (default)</option>
-                <option value="OpeningHand">Opening hand only</option>
-                <option value="Simplified">Simplified draws (hypothetical)</option>
+                <option value="Configured">Draw effects with costs/requirements (default)</option>
+                <option value="Simplified">Draw effects without costs/requirements</option>
+                <option value="OpeningHand">Ignore draw effects (opening hand only)</option>
             </select>
             <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
         </section>

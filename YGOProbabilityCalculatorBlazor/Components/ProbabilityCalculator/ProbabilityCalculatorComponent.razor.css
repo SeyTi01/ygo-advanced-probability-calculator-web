@@ -186,7 +186,7 @@
     cursor: pointer;
 }
 
-.session-file-action:focus-within {
+.session-file-action:not(.menu-command):focus-within {
     outline: 2px solid var(--app-focus-ring-color);
     outline-offset: 2px;
 }
@@ -488,5 +488,9 @@
 }
 .session-toolbar ::deep :is(.session-action, .session-share-compact, .action-menu-trigger):is(:hover, :focus-visible, :active, [aria-expanded="true"]) {
     color: var(--bs-emphasis-color);
+    background: var(--bs-secondary-bg);
+}
+
+.session-file-action.menu-command:focus-within {
     background: var(--bs-secondary-bg);
 }

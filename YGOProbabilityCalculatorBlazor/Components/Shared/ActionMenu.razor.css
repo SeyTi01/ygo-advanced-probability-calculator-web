@@ -5,4 +5,5 @@
 .action-menu-panel ::deep .menu-command { display: flex; align-items: center; width: 100%; min-height: 2.75rem; padding: .5rem .75rem; border: 0; border-radius: .25rem; background: transparent; color: inherit; text-align: start; white-space: normal; }
 .action-menu-panel ::deep .menu-command:hover:not(:disabled), .action-menu-panel ::deep .menu-command:focus-visible { background: var(--bs-secondary-bg); }
 .action-menu-panel ::deep .menu-command:disabled { opacity: .45; }
-.action-menu-panel ::deep .menu-remove { color: var(--bs-danger-text-emphasis); border-top: 1px solid var(--bs-border-color); border-radius: 0; margin-top: .35rem; }
+.action-menu-panel ::deep .menu-remove { color: var(--bs-danger-text-emphasis); }
+.action-menu-panel ::deep .menu-remove:not(:first-child) { border-top: 1px solid var(--bs-border-color); border-radius: 0; margin-top: .35rem; }
