@@ -19,9 +19,9 @@ internal static class DrawSequenceOracle {
         while (true) {
             pending.RemoveAll(index => !hand.Contains(index)
                 || (order[index].DrawOncePerTurn && used.Contains(order[index].Id))
-                || order[index].DrawCount!.Value > order.Count - next);
+                || order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount > order.Count - next);
             // Scan physical candidates in encounter order; retain deferred positions.
-            int source = pending.FirstOrDefault(index => order[index].DrawCount!.Value <= order.Count - next && Payable(index), -1);
+            int source = pending.FirstOrDefault(index => order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount <= order.Count - next && Payable(index), -1);
             if (source < 0) {
                 break;
             }
@@ -30,6 +30,8 @@ internal static class DrawSequenceOracle {
             for (int cost = 0; cost < effect.PreDrawRemovalCount; cost++) {
                 Remove(effect.PreDrawSelector, source);
             }
+            // Physically skip these positions; their identities never enter the hand.
+            next += effect.PreDrawDeckRemovalCount;
             hand.Remove(source);
             used.Add(effect.Id);
             for (int draw = 0; draw < effect.DrawCount!.Value; draw++) {
@@ -55,21 +57,21 @@ internal static class DrawSequenceOracle {
             HashSet<int> costDeferred = [];
             int remaining = order.Count - next;
             int minimumLegalDrawCount = reserved >= 0 && order[reserved].DrawCount is int reservedDrawCount
-                && reservedDrawCount <= remaining
-                ? reservedDrawCount
+                && reservedDrawCount + order[reserved].PreDrawDeckRemovalCount <= remaining
+                ? reservedDrawCount + order[reserved].PreDrawDeckRemovalCount
                 : int.MaxValue;
             foreach (int candidate in pending) {
                 Card card = order[candidate];
                 if (!hand.Contains(candidate) || candidate == reserved
                     || (reserved >= 0 && card.DrawOncePerTurn && card.Id == order[reserved].Id)
                     || (card.DrawOncePerTurn && (used.Contains(card.Id) || !eligibleOnce.Add(card.Id)))
-                    || card.DrawCount is not int drawCount || drawCount > remaining) {
+                    || card.DrawCount is not int drawCount || drawCount + card.PreDrawDeckRemovalCount > remaining) {
                     continue;
                 }
 
                 if (Payable(candidate, reserved)) {
                     usable.Add(candidate);
-                    minimumLegalDrawCount = Math.Min(minimumLegalDrawCount, drawCount);
+                    minimumLegalDrawCount = Math.Min(minimumLegalDrawCount, drawCount + card.PreDrawDeckRemovalCount);
                 }
                 else if (card.PreDrawRemovalCount > 0) {
                     int copyCount = hand.Count(index => index != reserved && order[index].Id == card.Id);
@@ -83,7 +85,7 @@ internal static class DrawSequenceOracle {
                 ? -1
                 : remaining - minimumLegalDrawCount;
             HashSet<int> deferred = costDeferred.Where(index =>
-                order[index].DrawCount!.Value <= remainingAfterAnotherDraw).ToHashSet();
+                order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount <= remainingAfterAnotherDraw).ToHashSet();
             List<int> eligible = hand.Where(index => index != reserved && MatchesSelector(selector, order[index])).ToList();
             if (eligible.Count == 0) {
                 return false;
@@ -138,11 +140,21 @@ internal static class DrawSequenceOracle {
         Dictionary<string, BigInteger> Hands
     );
 
-    internal static Counts Enumerate(List<Card> deck, int handSize, IReadOnlyList<Combo> combos, IReadOnlyList<ComboGroup> groups) {
+    internal static Counts Enumerate(List<Card> deck, int handSize, IReadOnlyList<Combo> combos, IReadOnlyList<ComboGroup> groups, bool collapseIdenticalCopies = false) {
         Card[] physical = deck.SelectMany(card => Enumerable.Repeat(card, card.Copies)).ToArray();
         int[] order = Enumerable.Range(0, physical.Length).ToArray();
         Card[] effects = deck.Where(card => card.DrawCount is not null && card.Copies > 0).ToArray();
         string[] cardIds = deck.Select(card => card.Id).Distinct(StringComparer.Ordinal).ToArray();
+        // Optional multiset enumeration skips only indistinguishable physical-copy
+        // permutations. Every retained order stands for the same product of copy factorials.
+        BigInteger orderMultiplicity = 1;
+        if (collapseIdenticalCopies) {
+            foreach (IGrouping<Card, Card> copies in physical.GroupBy(card => card)) {
+                for (int i = 2; i <= copies.Count(); i++) {
+                    orderMultiplicity *= i;
+                }
+            }
+        }
         BigInteger total = 0;
         BigInteger failed = 0;
         BigInteger[] wins = new BigInteger[1 + combos.Count + groups.Count];
@@ -158,7 +170,11 @@ internal static class DrawSequenceOracle {
                 return;
             }
 
+            HashSet<Card>? seen = collapseIdenticalCopies ? [] : null;
             for (int i = position; i < order.Length; i++) {
+                if (seen is not null && !seen.Add(physical[order[i]])) {
+                    continue;
+                }
                 (order[i], order[position]) = (order[position], order[i]);
                 Visit(position + 1);
                 (order[i], order[position]) = (order[position], order[i]);
@@ -166,18 +182,18 @@ internal static class DrawSequenceOracle {
         }
 
         void Evaluate() {
-            total++;
+            total += orderMultiplicity;
             List<Card>? hand = Resolve(order.Select(index => physical[index]).ToArray(), handSize, combos);
             if (hand is null) {
-                failed++;
+                failed += orderMultiplicity;
                 return;
             }
 
             int ordinaryCount = hand.Count(card => card.DrawCount is null);
             string scenario = $"{ordinaryCount}|{string.Join(',', effects.Select(effect => hand.Count(card => card.Id == effect.Id)))}";
-            scenarios[scenario] = scenarios.GetValueOrDefault(scenario) + 1;
+            scenarios[scenario] = scenarios.GetValueOrDefault(scenario) + orderMultiplicity;
             string handKey = string.Join(',', cardIds.Select(id => hand.Count(card => card.Id == id)));
-            hands[handKey] = hands.GetValueOrDefault(handKey) + 1;
+            hands[handKey] = hands.GetValueOrDefault(handKey) + orderMultiplicity;
             string matchKey = string.Join(',', deck.Select(entry => hand.Count(card => card.Id == entry.Id)));
             if (!matches.TryGetValue(matchKey, out bool[] success)) {
                 bool[] individual = combos.Select(combo => SmallDeckOracle.MatchesHand(hand, combo)).ToArray();
@@ -188,7 +204,7 @@ internal static class DrawSequenceOracle {
 
             for (int i = 0; i < success.Length; i++) {
                 if (success[i]) {
-                    wins[i]++;
+                    wins[i] += orderMultiplicity;
                 }
             }
 

@@ -120,6 +120,14 @@ public class CardConverter : JsonConverter<Card> {
             : JsonSerializer.Deserialize<CardSelector>(costSelectors[0].Value.GetRawText(), options)
                 ?? throw new JsonException("Missing pre-draw selector.");
 
+        JsonProperty[] deckCostProperties = root.EnumerateObject()
+            .Where(property => property.Name.Equals("PreDrawDeckRemovalCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+        int deckCost = 0;
+        if (deckCostProperties.Length > 1 || (deckCostProperties.Length == 1
+            && (deckCostProperties[0].Value.ValueKind != JsonValueKind.Number || !deckCostProperties[0].Value.TryGetInt32(out deckCost)))) {
+            throw new JsonException("Hidden deck removal must be a single integer.");
+        }
+
         try {
             return new Card(
                 categories,
@@ -134,7 +142,8 @@ public class CardConverter : JsonConverter<Card> {
                 discardCount,
                 selector,
                 preDrawRemovalCount: costCount,
-                preDrawSelector: costSelector
+                preDrawSelector: costSelector,
+                preDrawDeckRemovalCount: deckCost
             );
         }
         catch (ArgumentException exception) {
@@ -182,6 +191,10 @@ public class CardConverter : JsonConverter<Card> {
         if (value.PreDrawSelector.Kind != CardSelectorKind.Any) {
             writer.WritePropertyName("PreDrawSelector");
             JsonSerializer.Serialize(writer, value.PreDrawSelector, options);
+        }
+
+        if (value.PreDrawDeckRemovalCount > 0) {
+            writer.WriteNumber("PreDrawDeckRemovalCount", value.PreDrawDeckRemovalCount);
         }
 
         writer.WriteEndObject();

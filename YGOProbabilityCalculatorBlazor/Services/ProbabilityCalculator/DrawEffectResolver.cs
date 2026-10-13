@@ -125,15 +125,17 @@ internal static class DrawEffectResolver {
         }
     }
 
-    internal static bool CanUseCountStateFastPath(IReadOnlyList<Card> effects, int totalCopies, int handSize) {
+    internal static bool CanUseCountStateFastPath(IReadOnlyList<Card> effects, int totalCopies, int handSize, bool deckCostsEnabled = true) {
         if (handSize < 0 || handSize > totalCopies) {
             return false;
         }
 
+        // If every possible activation fits collectively, hidden identities cannot
+        // affect the schedule. Visible draws remain a uniform sample without replacement.
         long maximumDraws = 0;
         foreach (Card effect in effects) {
             int activations = effect.DrawOncePerTurn ? 1 : effect.Copies;
-            maximumDraws += effect.DrawCount!.Value * (long)activations;
+            maximumDraws += (effect.DrawCount!.Value + (deckCostsEnabled ? effect.PreDrawDeckRemovalCount : 0)) * (long)activations;
         }
 
         return maximumDraws <= totalCopies - handSize;
