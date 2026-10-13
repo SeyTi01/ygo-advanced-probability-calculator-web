@@ -16,10 +16,10 @@ public partial class DrawEffectsBenchmark {
     public void ExportPreDrawWorkerCases() {
         CategoryBase starter = new("Starter");
         CategoryBase extender = new("Extender");
-        CategoryBase monster = CuratedDrawEffectPresets.FilterProperties[3];
-        CategoryBase level = CuratedDrawEffectPresets.FilterProperties[4];
-        CategoryBase orcust = CuratedDrawEffectPresets.FilterProperties[5];
-        CategoryBase legacy = CuratedDrawEffectPresets.FilterProperties[6];
+        CategoryBase monster = new CategoryBase("Monster", CategorySource.Metadata, "kind:monster");
+        CategoryBase level = new CategoryBase("Level 8", CategorySource.Metadata, "level:8");
+        CategoryBase orcust = new CategoryBase("Archetype: Orcust", CategorySource.Metadata, "archetype:orcust");
+        CategoryBase legacy = new CategoryBase("Archetype: World Legacy", CategorySource.Metadata, "archetype:world%20legacy");
         List<Combo> combos = [
             new([new(starter, 1, 0, RequirementMaximumMode.HandSize), new(extender, 1, 0, RequirementMaximumMode.HandSize)], "Starter + extender", groupId: "g"),
             new([new(starter, 2, 0, RequirementMaximumMode.HandSize)], "Two starters", groupId: "g"),

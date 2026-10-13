@@ -9,10 +9,10 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture]
 public class PreDrawCostsTest {
-    internal static readonly CategoryBase Monster = CuratedDrawEffectPresets.FilterProperties[3];
-    internal static readonly CategoryBase Level = CuratedDrawEffectPresets.FilterProperties[4];
-    internal static readonly CategoryBase Orcust = CuratedDrawEffectPresets.FilterProperties[5];
-    internal static readonly CategoryBase Legacy = CuratedDrawEffectPresets.FilterProperties[6];
+    internal static readonly CategoryBase Monster = new CategoryBase("Monster", CategorySource.Metadata, "kind:monster");
+    internal static readonly CategoryBase Level = new CategoryBase("Level 8", CategorySource.Metadata, "level:8");
+    internal static readonly CategoryBase Orcust = new CategoryBase("Archetype: Orcust", CategorySource.Metadata, "archetype:orcust");
+    internal static readonly CategoryBase Legacy = new CategoryBase("Archetype: World Legacy", CategorySource.Metadata, "archetype:world%20legacy");
     private static readonly CategoryBase Role = new("Role");
     internal static Card Trade(string id = "trade", int copies = 1, bool opt = false) => new([], copies,
         name: "Same display name", id: id, externalCardId: 38120068, drawCount: 2, drawOncePerTurn: opt,
