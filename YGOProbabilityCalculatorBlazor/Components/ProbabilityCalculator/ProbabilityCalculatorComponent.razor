@@ -170,13 +170,6 @@
                 }
             </button>
         </div>
-        <button type="button" class="btn btn-outline-primary pin-result-action" disabled="@(!CanPin)"
-                aria-label="@(_pinnedResult is null ? "Pin result" : "Replace pin with current result")"
-                title="@(_pinnedResult is null ? "Pin result" : "Replace pin with current result")"
-                aria-describedby="@(!CanPin ? "pinUnavailableReason" : null)" @onclick="PinCurrentResult">
-            @(_pinnedResult is null ? "Pin result" : "Replace pin")
-        </button>
-        <span id="pinUnavailableReason" class="visually-hidden">@PinUnavailableReason</span>
         </div>
 
         @if (CalculationUnavailableMessage is { } unavailableMessage) {
@@ -215,6 +208,13 @@
                             <span class="visually-hidden">Previous result · inputs changed</span>
                         </small>
                     }
+                    <button type="button" class="btn btn-outline-primary pin-result-action" disabled="@(!CanPin)"
+                            aria-label="@(_pinnedResult is null ? "Pin result" : "Replace pin with current result")"
+                            title="@(_pinnedResult is null ? "Pin result" : "Replace pin with current result")"
+                            aria-describedby="@(!CanPin ? "pinUnavailableReason" : null)" @onclick="PinCurrentResult">
+                        <PinIcon />
+                    </button>
+                    <span id="pinUnavailableReason" class="visually-hidden">@PinUnavailableReason</span>
                     <ProbabilityResultExport Result="result"
                                              ModelDescription="@(_acceptedComparison?.Context.Model.Description())"
                                              HandSize="@(_acceptedComparison?.Context.HandSize ?? 0)"

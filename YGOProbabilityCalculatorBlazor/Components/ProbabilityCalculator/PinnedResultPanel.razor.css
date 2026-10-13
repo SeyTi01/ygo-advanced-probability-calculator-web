@@ -1,7 +1,7 @@
 .pinned-result { min-width: 0; }
 .pinned-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }
 .pinned-heading h5 { margin: 0; }
-.pinned-heading button { min-height: 2.5rem; }
+.pinned-heading button { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: .5rem; flex-shrink: 0; }
 .pinned-row { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
 .pinned-row span { min-width: 0; overflow-wrap: anywhere; }
 .pinned-row strong { flex-shrink: 0; white-space: nowrap; }

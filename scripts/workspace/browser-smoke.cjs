@@ -157,12 +157,29 @@ const { chromium, firefox } = require('playwright');
         await page.locator('.probability-total-value').waitFor();
         assert.match(await page.locator('.probability-total-value').innerText(), /83\.61/);
 
+        await page.getByRole('button', { name: 'Pin result', exact: true }).click();
+        await page.getByRole('button', { name: 'Unpin result', exact: true }).waitFor();
+
         for (const theme of ['Light', 'Dark']) {
             await page.getByLabel('Color theme preference').selectOption({ label: theme });
             for (const width of [1440, 768, 390, 320]) {
                 await page.setViewportSize({ width, height: 1000 });
                 await page.evaluate(() => window.scrollTo(0, 0));
                 await noOverflow();
+                const sortBox = await page.getByRole('button', { name: 'Sort deck A–Z' }).boundingBox();
+                const addBox = await page.getByRole('button', { name: 'Add card', exact: true }).boundingBox();
+                const cardsBox = await page.locator('#cardsAccordion').boundingBox();
+                assert.ok(Math.abs((addBox.y - sortBox.y - sortBox.height) - (cardsBox.y - addBox.y - addBox.height)) <= 1);
+                const results = page.locator('.probability-results');
+                await results.scrollIntoViewIfNeeded();
+                const pinBox = await results.getByRole('button', { name: 'Replace pin with current result' }).boundingBox();
+                const copyBox = await results.getByRole('button', { name: 'Copy results', exact: true }).boundingBox();
+                const headingBox = await results.locator('h5').boundingBox();
+                assert.ok(pinBox.x > headingBox.x && copyBox.x >= pinBox.x + pinBox.width);
+                assert.ok(Math.abs(pinBox.y - copyBox.y) <= 1);
+                assert.ok(pinBox.width >= 44 && copyBox.width >= 44);
+                await capture(`results-${width}-${theme.toLowerCase()}`);
+                await page.evaluate(() => window.scrollTo(0, 0));
                 await page.mouse.move(0, 0);
                 const toolbarColors = await page.locator('.session-toolbar :is(.session-action, .session-share-compact, .action-menu-trigger)').evaluateAll(elements => elements.map(element => getComputedStyle(element).color));
                 assert.equal(new Set(toolbarColors).size, 1, `Toolbar text colors in ${theme}: ${toolbarColors}`);
@@ -183,6 +200,13 @@ const { chromium, firefox } = require('playwright');
                 await panel.getByRole('button', { name: 'Duplicate', exact: true }).press('Escape');
             }
         }
+        await page.getByRole('button', { name: 'Copy results', exact: true }).click();
+        await page.getByRole('group', { name: 'Result summary', exact: true }).waitFor();
+        await noOverflow();
+        await capture('copy-fallback-320-dark');
+        await page.getByRole('button', { name: 'Close copy fallback', exact: true }).click();
+        await page.getByRole('button', { name: 'Unpin result', exact: true }).click();
+        assert.equal(await page.locator('.pinned-result').count(), 0);
         await page.getByRole('button', { name: 'Import deck', exact: true }).click();
         await page.getByRole('button', { name: 'Import YDKe', exact: true }).click();
         await page.getByRole('textbox', { name: 'YDKe deck code' }).fill('invalid');

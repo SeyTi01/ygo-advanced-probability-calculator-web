@@ -9,7 +9,8 @@
         <button id="@_copyButtonId"
                 type="button"
                 class="@CopyButtonClass"
-                title="Copy a summary of these results"
+                title="Copy results"
+                aria-label="Copy results"
                 disabled="@(!CanCopy)"
                 aria-describedby="@(!CanCopy ? _unavailableMessageId : null)"
                 @onclick="CopyResultsAsync">
@@ -26,7 +27,7 @@
                     </svg>
                 }
             </span>
-            <span>Copy results</span>
+            <span class="visually-hidden">Copy results</span>
         </button>
         @if (!CanCopy) {
             <small id="@_unavailableMessageId" class="visually-hidden">

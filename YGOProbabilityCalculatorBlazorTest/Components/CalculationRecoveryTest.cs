@@ -78,7 +78,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".comparison-model-difference").TextContent, Does.Contain("different questions"));
         Assert.That(cut.FindComponent<SessionShareButton>().Instance.Snapshot, Is.EqualTo(saved));
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
-        await Button(cut, "Replace pin").ClickAsync(new());
+        await Button(cut, "Replace pin with current result").ClickAsync(new());
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Context.Model, Is.EqualTo(CalculationModel.OpeningHand));
         Task normal = Button(cut, "Calculate").ClickAsync(new());
         Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_requests[3].Json)!.Options!.ConditionalEffectsEnabled, Is.True);

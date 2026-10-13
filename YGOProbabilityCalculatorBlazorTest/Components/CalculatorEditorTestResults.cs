@@ -139,13 +139,13 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Original combo"));
-        IElement copyButton = cut.Find("button[title='Copy a summary of these results']");
+        IElement copyButton = cut.Find("button[title='Copy results']");
         Assert.That(copyButton.HasAttribute("disabled"), Is.False);
 
         await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         AssertPreviousResult(cut);
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
-        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
         Assert.That(calculator.CallCount, Is.EqualTo(1), "input edits must not calculate automatically");
 
         Task calculation = Button(cut, "Calculate").ClickAsync(new());
@@ -155,7 +155,7 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
             Assert.That(runningAction.GetAttribute("aria-label"), Is.EqualTo("Cancel calculation"));
             Assert.That(runningAction.HasAttribute("disabled"), Is.False);
             Assert.That(cut.FindAll(".calculate-action > button"), Has.Count.EqualTo(1));
-            Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
+            Assert.That(cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.True);
             AssertPreviousResult(cut);
             Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.25.ToString("P2")));
         }
@@ -167,7 +167,7 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.75.ToString("P2")));
         Assert.That(cut.Find(".combo-probability-item").TextContent, Does.Contain("Updated combo"));
-        Assert.That(cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
+        Assert.That(cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
     }
 
