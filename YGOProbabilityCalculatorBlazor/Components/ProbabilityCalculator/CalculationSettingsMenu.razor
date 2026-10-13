@@ -1,4 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Services.Interface
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 <div class="calculation-settings-menu" @onkeydown="HandleKeyDown" @onkeydown:stopPropagation="true">
     <button @ref="_trigger"
@@ -13,12 +16,12 @@
         <span aria-hidden="true">⚙</span>
     </button>
 
-    <section id="calculationSettingsPanel"
+    <section @ref="_panel" id="calculationSettingsPanel"
              class="calculation-settings-panel"
              role="dialog"
              aria-labelledby="calculationSettingsHeading"
              hidden="@(!_isOpen)">
-        <h2 id="calculationSettingsHeading" class="h6 mb-3">Calculation settings</h2>
+        <h2 id="calculationSettingsHeading" class="h6 fw-bold text-center mb-3">Calculation settings</h2>
 
         <section aria-labelledby="drawSimulationHeading">
             <h3 id="drawSimulationHeading" class="small fw-semibold mb-2">Draw simulation</h3>
@@ -67,6 +70,8 @@
     private bool _focusDrawEffectsAfterRender;
     private bool _focusTriggerAfterRender;
     private ElementReference _trigger;
+    private ElementReference _panel;
+    private DotNetObjectReference<CalculationSettingsMenu>? _reference;
     private ElementReference _drawEffectsInput;
     private string ModelHelp => Model switch {
         CalculationModel.Configured => "Applies supported draws, once-per-turn limits, pre-draw costs, post-draw removals and filters.",
@@ -78,11 +83,32 @@
         if (_focusDrawEffectsAfterRender) {
             _focusDrawEffectsAfterRender = false;
             await _drawEffectsInput.FocusAsync();
+            _reference ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("workspaceMenus.watchOutside", _panel, _trigger, _reference);
         }
         else if (_focusTriggerAfterRender) {
             _focusTriggerAfterRender = false;
+            await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
             await _trigger.FocusAsync();
         }
+    }
+
+    [JSInvokable]
+    public async Task Dismiss() {
+        _isOpen = false;
+        _focusDrawEffectsAfterRender = false;
+        _focusTriggerAfterRender = false;
+        await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync() {
+        try {
+            await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or OperationCanceledException) {
+        }
+        _reference?.Dispose();
     }
 
     private Task ToggleMenu() {

@@ -31,12 +31,14 @@
     private DotNetObjectReference<ActionMenu>? _reference;
     private bool _open;
     private bool _attach;
+    private bool _focusFirst;
 
-    private async Task Toggle() {
+    private async Task Toggle(MouseEventArgs args) {
         if (_open) {
             await Close();
         }
         else {
+            _focusFirst = args.Detail == 0;
             _open = _attach = true;
         }
     }
@@ -45,7 +47,7 @@
         if (_attach) {
             _attach = false;
             _reference ??= DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("workspaceMenus.open", _panel, _trigger, _reference);
+            await JS.InvokeVoidAsync("workspaceMenus.open", _panel, _trigger, _reference, _focusFirst);
         }
     }
 
