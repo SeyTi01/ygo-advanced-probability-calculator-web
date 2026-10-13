@@ -9,7 +9,7 @@
             @for (int term = 0; term < _alternatives[index].Count; term++) {
                 string identity = _alternatives[index][term];
                 @if (term > 0) { <span class="small">AND</span> }
-                <span class="badge text-bg-secondary text-wrap category-rule-term">
+                <span class="badge category-tag card-property-tag text-wrap category-rule-term @CardPropertyColorPalette.GetCssClass(identity[9..])">
                     @Label(identity)
                     <button type="button" class="btn-close category-remove-button ms-1" aria-label="Remove property @Label(identity) from alternative @(index + 1)"
                             @onclick="() => Remove(branch, identity)"></button>

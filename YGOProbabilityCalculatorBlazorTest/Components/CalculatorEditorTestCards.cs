@@ -204,7 +204,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         IElement groupChip = cut.FindAll(".combo-group-chip").Single(chip =>
             chip.QuerySelector("[aria-label='New name for group One']") is not null);
         Assert.That(groupChip.QuerySelectorAll("button").Select(button => button.GetAttribute("aria-label")),
-            Is.EqualTo(new[] { "Save group name", "Move group One left", "Move group One right", "Exit group edit mode", "Remove group One" }));
+            Is.EqualTo(new[] { "Save group name", "Move group One left", "Move group One right", "Cancel group edit", "Remove group One" }));
         cut.Find("[aria-label='Move group One right']").Click();
         Assert.That(cut.Find("[aria-label='New name for group One']").GetAttribute("value"), Is.EqualTo("Updated"));
         cut.Find("[aria-label='Save group name']").Click();
@@ -231,7 +231,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         cut.Find("[aria-label='Edit group Two']").Click();
         cut.Find("[aria-label='New name for group Two']").Input("Discarded");
         cut.Find("[aria-label='Move group Two right']").Click();
-        cut.Find("[aria-label='Exit group edit mode']").Click();
+        cut.Find("[aria-label='Cancel group edit']").Click();
         Assert.That(cut.FindAll(".combo-group-chip").Select(chip =>
             chip.QuerySelector(".category-name-trigger")?.TextContent.Trim()), Is.EqualTo(new[] { "Updated", "Two" }));
         Assert.That(cut.FindAll(".combo-group-chip .reorder-controls"), Is.Empty);

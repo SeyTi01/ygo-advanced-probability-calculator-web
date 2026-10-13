@@ -83,7 +83,7 @@
                             class="category-name-trigger"
                             aria-label="@($"Edit category {category.Name}")"
                             title="@($"Edit category {category.Name}")"
-                            @onclick="() => BeginCategoryRename(category)">@category.Name@(category.Rule is null ? "" : " · rule")</button>
+                            @onclick="() => BeginCategoryRename(category)">@category.Name</button>
                 }
                 <button type="button" class="category-icon-button category-delete-button"
                         aria-label="@($"Remove category {category.Name}")"
