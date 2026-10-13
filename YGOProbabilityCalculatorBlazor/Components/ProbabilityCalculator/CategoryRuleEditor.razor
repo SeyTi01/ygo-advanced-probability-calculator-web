@@ -11,8 +11,9 @@
                 @if (term > 0) { <span class="small">AND</span> }
                 <span class="badge category-tag card-property-tag text-wrap category-rule-term @CardPropertyColorPalette.GetCssClass(identity[9..])">
                     @Label(identity)
-                    <button type="button" class="btn-close category-remove-button ms-1" aria-label="Remove property @Label(identity) from alternative @(index + 1)"
-                            @onclick="() => Remove(branch, identity)"></button>
+                    <ChipRemoveButton Class="category-remove-button ms-1" aria-label="@($"Remove property {Label(identity)} from alternative {index + 1}")"
+                                      title="@($"Remove property {Label(identity)} from alternative {index + 1}")"
+                            OnClick="() => Remove(branch, identity)" />
                 </span>
             }
             <select class="form-select form-select-sm category-rule-select" value="" aria-label="Add AND property to alternative @(index + 1)"
