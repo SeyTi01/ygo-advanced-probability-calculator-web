@@ -20,7 +20,9 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         Assert.That(editor.Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.BuiltIn));
+        OpenSimulation(editor);
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "1" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
@@ -49,15 +51,14 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         IRenderedComponent<CardEditor> ordinaryEditor = cut.FindComponents<CardEditor>()[2];
 
         Assert.That(allureEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 2").And.Not.Contain("Remove 1"));
+        OpenSimulation(allureEditor);
         Assert.That(allureEditor.Find("#cardDrawModeHelp0").TextContent,
-            Does.Contain("Simplified draws ignore both pre-draw costs and post-draw removals"));
+            Does.Contain("costs and removals ignored"));
         Assert.That(allureEditor.Find("#cardDiscard0").HasAttribute("disabled"), Is.False);
         Assert.That(allureEditor.Find("#cardEligibility0"), Is.Not.Null);
-        Assert.That(allureEditor.Find("#cardDraw0").GetAttribute("aria-describedby"),
-            Is.EqualTo("cardDrawHelp0 cardDrawModeHelp0"));
         Assert.That(gracefulEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 3").And.Not.Contain("Remove"));
-        Assert.That(gracefulEditor.Find("#cardDrawHelp1").TextContent,
-            Does.Contain("full draw amount").And.Contain("stays in hand"));
+        Assert.That(SimulationDetails(gracefulEditor),
+            Does.Contain("full draw batch").And.Contain("stays in hand"));
         Assert.That(gracefulEditor.FindAll("#cardDrawModeHelp1"), Is.Empty);
         Assert.That(ordinaryEditor.FindAll(".accordion-button .badge").ToArray(), Is.Empty);
 
@@ -73,9 +74,9 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         string inactiveHeader = allureEditor.Find(".accordion-button").TextContent;
         Assert.That(inactiveHeader, Does.Contain("Draw configured · Off").And.Not.Contain("Draw 2").And.Not.Contain("Remove 1"));
         Assert.That(allureEditor.Find("#cardDrawModeHelp0").TextContent,
-            Does.Contain("Draw simulation is off"));
-        Assert.That(allureEditor.Find("#cardDrawHelp0").TextContent,
-            Does.Contain("Stored draw settings are retained").And.Not.Contain("resolves automatically").And.Not.Contain("outcome fails"));
+            Does.Contain("saved simulation is off"));
+        Assert.That(SimulationDetails(allureEditor),
+            Does.Contain("The activating copy is consumed"));
         Assert.That(allureEditor.Find("#cardDiscard0").HasAttribute("disabled"), Is.False);
         Assert.That(allureEditor.Find("#cardEligibility0"), Is.Not.Null);
         Assert.That((allureEditor.Instance.Card.DrawCount,
@@ -96,13 +97,14 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         string id = editor.Instance.Card.Id;
         await editor.Find("#cardCategory0").ChangeAsync(new() { Value = "user:B" });
+        OpenSimulation(editor);
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "2" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawCount, Is.EqualTo(2));
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
         AssertPreviousResult(cut);
-        Assert.That(editor.Find("#cardDraw0").GetAttribute("aria-describedby"), Is.EqualTo("cardDrawHelp0"));
-        Assert.That(editor.Find("#cardDrawHelp0").TextContent, Does.Contain("Separate entries resolve independently"));
+        Assert.That(SimulationDetails(editor), Does.Contain("Separate entries resolve independently"));
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
         Assert.That(saved.Cards[0].DrawCount, Is.EqualTo(2));
@@ -112,6 +114,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(editor.Find("#cardDraw1").GetAttribute("value"), Is.EqualTo("2"));
         Assert.That(editor.Find("#cardCategory1").GetAttribute("value"), Is.EqualTo("user:B"));
         await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawCount, Is.Null);
         Assert.That(editor.Instance.Card.Active, Is.True);
         Assert.That(editor.Instance.Card.Copies, Is.EqualTo(2));
@@ -125,12 +128,14 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         string id = editor.Instance.Card.Id;
+        OpenSimulation(editor);
         Assert.That(editor.Find("#cardDrawOnce0").HasAttribute("checked"), Is.True);
         await editor.Find("#cardCategory0").ChangeAsync(new() { Value = "user:B" });
         await editor.Find("#cardDrawOnce0").ChangeAsync(new() { Value = false });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawOncePerTurn, Is.False);
         Assert.That(editor.Instance.Card.DrawCount, Is.EqualTo(2));
-        Assert.That(editor.Find("#cardDrawHelp0").TextContent, Does.Contain("Every copy drawn"));
+        Assert.That(SimulationDetails(editor), Does.Contain("every copy can activate"));
         AssertPreviousResult(cut);
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
@@ -141,13 +146,16 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(editor.Find("#cardCategory1").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(editor.Find("#cardDrawOnce1").HasAttribute("checked"), Is.False);
         await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "" });
+        await SaveSimulation(editor);
         Assert.That(editor.FindAll("[role='switch']"), Is.Empty);
         Assert.That(editor.Instance.Card.Active, Is.True);
         await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "3" });
+        await SaveSimulation(editor);
         Assert.That(editor.Find("#cardDrawOnce1").HasAttribute("checked"), Is.False);
         await editor.Find("#cardDrawOnce1").ChangeAsync(new() { Value = true });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawOncePerTurn, Is.True);
-        Assert.That(editor.Find("#cardDrawHelp1").TextContent, Does.Contain("later copies stay in hand"));
+        Assert.That(SimulationDetails(editor), Does.Contain("keeps later copies in hand"));
     }
 
     [Test]
@@ -156,10 +164,13 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         session.Cards[0] = session.Cards[0].WithDrawCount(1);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
+        OpenSimulation(editor);
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "4" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawCount, Is.EqualTo(1));
         Assert.That(editor.Markup, Does.Contain("Choose None, Draw 1, Draw 2, or Draw 3"));
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "3" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawCount, Is.EqualTo(3));
         Assert.That(editor.FindAll(".alert"), Is.Empty);
     }
@@ -205,6 +216,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         Assert.That((editor.Instance.Card.DrawCount, editor.Instance.Card.DrawOncePerTurn), Is.EqualTo(((int?)1, false)));
+        OpenSimulation(editor);
         Assert.That(editor.Find("#cardDraw0").HasAttribute("disabled"), Is.False);
         Assert.That(editor.Find("#cardDrawOnce0").HasAttribute("disabled"), Is.False);
 
@@ -287,7 +299,9 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         string id = editor.Instance.Card.Id;
         await editor.Find("#cardCategory0").ChangeAsync(new() { Value = "user:B" });
+        OpenSimulation(editor);
         await editor.Find("#cardDiscard0").ChangeAsync(new() { Value = "2" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.EqualTo(2));
         Assert.That(editor.Find(".accordion-button").TextContent, Does.Contain("Draw 3").And.Contain("Remove 2"));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
@@ -300,11 +314,14 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
         Assert.That(editor.Find("#cardDiscard1").GetAttribute("value"), Is.EqualTo("2"));
         await editor.Find("#cardDiscard1").ChangeAsync(new() { Value = "3" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.EqualTo(2));
         await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.Zero);
         Assert.That(editor.FindAll("#cardDiscard1"), Is.Empty);
         await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "3" });
+        await SaveSimulation(editor);
         Assert.That(editor.Find("#cardDiscard1").GetAttribute("value"), Is.EqualTo("0"));
     }
 }

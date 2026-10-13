@@ -205,10 +205,15 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         session.Cards[0] = session.Cards[0].WithDrawCount(2).WithPostDrawDiscardCount(1);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<CardEditor> card = cut.FindComponents<CardEditor>().ToArray()[0];
+        OpenSimulation(card);
         await card.Find("#cardEligibility0").ChangeAsync(new() { Value = a.Identity });
+        await SaveSimulation(card);
         await card.Find("[aria-label='Add AND eligibility to alternative 1']").ChangeAsync(new() { Value = b.Identity });
+        await SaveSimulation(card);
         await card.Find("#cardEligibility0").ChangeAsync(new() { Value = "metadata:attribute:dark" });
+        await SaveSimulation(card);
         await card.Find("[aria-label='Add AND eligibility to alternative 2']").ChangeAsync(new() { Value = a.Identity });
+        await SaveSimulation(card);
         Assert.That(card.Instance.Card.PostDrawSelector.Children, Has.Count.EqualTo(2));
         Assert.That(card.Instance.Card.PostDrawSelector.Children.All(child => child.Kind == CardSelectorKind.AllOf), Is.True);
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
@@ -219,6 +224,7 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         Assert.That(card.Instance.Card.PostDrawSelector.CategoryIdentities, Does.Contain("user:Renamed").And.Not.Contain(a.Identity));
         Assert.That(card.Instance.Card.PostDrawSelector.Children.All(child => child.Kind == CardSelectorKind.AllOf), Is.True);
         await card.FindAll("[aria-label='Remove eligibility B']").ToArray()[0].ClickAsync(new());
+        await SaveSimulation(card);
         Assert.That(card.Instance.Card.PostDrawSelector.Alternatives.Any(child => child.Kind == CardSelectorKind.Category), Is.True);
     }
 }

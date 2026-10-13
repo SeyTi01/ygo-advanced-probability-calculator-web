@@ -58,6 +58,27 @@ public abstract class CalculatorEditorTestBase {
     protected static IElement Button(IRenderedFragment fragment, string text) =>
         fragment.FindAll("button").Single(element => element.TextContent.Trim() == text || element.GetAttribute("aria-label") == text);
 
+    protected static void OpenSimulation(IRenderedFragment editor) {
+        if (editor.FindAll(".simulation-editor").Count == 0) {
+            editor.Find(".simulation-edit").Click();
+        }
+    }
+
+    protected static async Task SaveSimulation(IRenderedFragment editor) {
+        if (!editor.Find(".simulation-save").HasAttribute("disabled")) {
+            await editor.Find(".simulation-save").ClickAsync(new());
+            OpenSimulation(editor);
+        }
+    }
+
+    protected static string SimulationDetails(IRenderedFragment editor) {
+        if (editor.FindAll(".simulation-details").Count == 0) {
+            editor.Find(".simulation-details-toggle").Click();
+        }
+
+        return editor.Find(".simulation-details").TextContent;
+    }
+
     protected static string CardTarget(string id) => string.IsNullOrEmpty(id) ? string.Empty : $"card:{id}";
 
     protected static Task EditRequirement(IRenderedFragment editor, string target) =>

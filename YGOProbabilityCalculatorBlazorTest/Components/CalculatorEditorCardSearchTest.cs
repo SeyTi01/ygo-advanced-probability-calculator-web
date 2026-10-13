@@ -260,8 +260,12 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         Card original = editor.Instance.Card;
         await editor.Find("#cardCopies0").InputAsync(new() { Value = "2" });
         await SetActiveAsync(editor, "#cardActive0", false);
+        OpenSimulation(editor);
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "2" });
+        await SaveSimulation(editor);
+        OpenSimulation(editor);
         await editor.Find("#cardDrawOnce0").ChangeAsync(new() { Value = false });
+        await SaveSimulation(editor);
         await editor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = userCategory.Identity });
         await Button(editor, "Add").ClickAsync(new());
 
@@ -321,10 +325,14 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         Card selected = cut.FindComponents<CardEditor>().Single().Instance.Card;
         Assert.That((selected.Id, selected.ExternalCardId, selected.Name, selected.DrawCount, selected.DrawOncePerTurn),
             Is.EqualTo((cardId, PotOfGreedId, PotOfGreed.Name, 2, false)));
+        OpenSimulation(cut.FindComponent<CardEditor>());
         Assert.That(cut.Find("#cardDraw0").GetAttribute("value"), Is.EqualTo("2"));
+        OpenSimulation(cut.FindComponent<CardEditor>());
         Assert.That(cut.Find("#cardDrawOnce0").GetAttribute("checked"), Is.Null);
 
+        OpenSimulation(cut.FindComponent<CardEditor>());
         await cut.Find("#cardDraw0").ChangeAsync(new() { Value = string.Empty });
+        await SaveSimulation(cut.FindComponent<CardEditor>());
         Card overridden = cut.FindComponents<CardEditor>().Single().Instance.Card;
         Assert.That((overridden.DrawCount, overridden.DrawOncePerTurn), Is.EqualTo(((int?)null, false)));
 
@@ -458,8 +466,12 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
         await AddManualCardAsync(cut);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
+        OpenSimulation(editor);
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "1" });
+        await SaveSimulation(editor);
+        OpenSimulation(editor);
         await editor.Find("#cardDrawOnce0").ChangeAsync(new() { Value = false });
+        await SaveSimulation(editor);
         Card manual = editor.Instance.Card;
         IElement nameInput = editor.Find("#cardName0");
 
