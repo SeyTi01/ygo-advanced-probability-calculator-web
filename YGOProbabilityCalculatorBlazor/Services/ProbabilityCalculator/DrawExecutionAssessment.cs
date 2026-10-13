@@ -10,7 +10,7 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         effect.PreDrawRemovalCount == 0 && !relevant && !effect.DrawOncePerTurn
         && effect.DrawCount == effect.PostDrawDiscardCount + 1
         && effect.PostDrawSelector.Kind == CardSelectorKind.Any
-        && (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount) * (long)effect.Copies <= copies - handSize;
+        && (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) * (long)effect.Copies <= copies - handSize;
 
     public static DrawExecutionAssessment Assess(
         IReadOnlyList<Card> cards,
@@ -43,7 +43,7 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         }
         bool countStateFits = DrawEffectResolver.CanUseCountStateFastPath(effects, (int)copies, handSize, conditionsEnabled);
         bool conditional = conditionsEnabled && effects.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0
-            || (card.PreDrawDeckRemovalCount > 0 && !countStateFits));
+            || ((card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0) && !countStateFits));
         if (!conditional) {
             return new(countStateFits
                 ? DrawExecutionPath.DrawCountState : DrawExecutionPath.OrderedFrontier, false);
@@ -71,7 +71,7 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         // plus multiple effects or a filtered/cost effect. General alone is not risky.
         int classes = active.Select(card => Signature(card) + (routes.Any(combo => combo.AllCards.Any(requirement => requirement.CardId == card.Id))
             ? ":" + card.Id : "")).Distinct(StringComparer.Ordinal).Take(8).Count();
-        bool detailedEffect = effects.Length > 1 || effects.Any(card => card.PreDrawRemovalCount > 0 || card.PreDrawDeckRemovalCount > 0 || card.PostDrawSelector.Kind != CardSelectorKind.Any);
+        bool detailedEffect = effects.Length > 1 || effects.Any(card => card.PreDrawRemovalCount > 0 || card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0 || card.PostDrawSelector.Kind != CardSelectorKind.Any);
         bool elevated = !couldSpecialize && classes >= 8 && routes.Length >= 4 && detailedEffect;
         return new(path, elevated);
     }

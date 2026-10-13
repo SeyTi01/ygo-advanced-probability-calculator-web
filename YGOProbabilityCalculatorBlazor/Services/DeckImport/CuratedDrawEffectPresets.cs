@@ -13,7 +13,8 @@ public sealed record CuratedDrawEffectPreset(
     int PreDrawRemovalCount = 0,
     CardSelector? PreDrawSelector = null,
     PostDrawFailureBehavior? FailureBehavior = null,
-    int PreDrawDeckRemovalCount = 0
+    int PreDrawDeckRemovalCount = 0,
+    int PostDrawDeckMillCount = 0
 );
 
 // Compatibility view for existing callers. Definitions live only in the registry.
@@ -32,7 +33,7 @@ public static class CuratedDrawEffectPresets {
         CardEffectRegistry.Default.ApplyForExplicitSelection(replacement, previous, selected);
 
     public static Card ApplyToSelectedCardIfPristine(Card card, CardInfo info) {
-        if (card.EffectProfile.Source != EffectSource.LegacySnapshot || card.PreDrawDeckRemovalCount != 0
+        if (card.EffectProfile.Source != EffectSource.LegacySnapshot || card.PreDrawDeckRemovalCount != 0 || card.PostDrawDeckMillCount != 0
             || card.PreDrawRemovalCount != 0 || card.PreDrawSelector.Kind != CardSelectorKind.Any
             || card.DrawCount is not null || !card.DrawOncePerTurn || card.PostDrawDiscardCount != 0
             || card.PostDrawSelector.Kind != CardSelectorKind.Any
@@ -46,5 +47,5 @@ public static class CuratedDrawEffectPresets {
     private static CuratedDrawEffectPreset ToPreset(MaintainedCardEffect effect) => new(
         effect.CanonicalCardId, effect.Name, effect.Plan.DrawCount!.Value, effect.Plan.OncePerTurn,
         effect.Plan.RemovalCount, effect.Plan.RemovalSelector, effect.Plan.HandCost,
-        effect.Plan.HandCostSelector, effect.Plan.FailureBehavior, effect.Plan.HiddenDeckCost);
+        effect.Plan.HandCostSelector, effect.Plan.FailureBehavior, effect.Plan.HiddenDeckCost, effect.Plan.HiddenPostDrawMill);
 }

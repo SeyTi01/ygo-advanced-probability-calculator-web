@@ -69,6 +69,9 @@
     @if (_draft is not null) {
         <div id="simulationEditor@(Index)" class="simulation-editor">
             <div class="small fw-semibold mb-2">Custom simulation</div>
+            @if (_draft.PostDrawDeckMillCount > 0) {
+                <div class="form-text simulation-mill-note">Keeps sending the top @_draft.PostDrawDeckMillCount deck cards to the GY after drawing. Choose None to remove the entire draw effect.</div>
+            }
             @if (Error is not null) {
                 <div class="alert alert-danger py-2" role="alert">@Error</div>
             }
@@ -194,7 +197,7 @@
         || (_effect.Source == EffectSource.LegacySnapshot && Card.DrawCount is not null);
     private string? ModeNotice => Card.DrawCount is null ? null : !DrawEffectsEnabled
         ? "Opening hand only · saved simulation is off."
-        : !ConditionalEffectsEnabled && (Card.PreDrawRemovalCount > 0 || Card.PreDrawDeckRemovalCount > 0 || Card.PostDrawDiscardCount > 0)
+        : !ConditionalEffectsEnabled && (Card.PreDrawRemovalCount > 0 || Card.PreDrawDeckRemovalCount > 0 || Card.PostDrawDeckMillCount > 0 || Card.PostDrawDiscardCount > 0)
             ? $"Simplified · Draw {Card.DrawCount}; costs and removals ignored." : null;
 
     private void ToggleEditor() {

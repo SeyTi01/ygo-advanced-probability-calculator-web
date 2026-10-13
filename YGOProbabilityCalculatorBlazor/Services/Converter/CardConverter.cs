@@ -128,6 +128,14 @@ public class CardConverter : JsonConverter<Card> {
             throw new JsonException("Hidden deck removal must be a single integer.");
         }
 
+        JsonProperty[] millProperties = root.EnumerateObject()
+            .Where(property => property.Name.Equals("PostDrawDeckMillCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+        int millCount = 0;
+        if (millProperties.Length > 1 || (millProperties.Length == 1
+            && (millProperties[0].Value.ValueKind != JsonValueKind.Number || !millProperties[0].Value.TryGetInt32(out millCount)))) {
+            throw new JsonException("Post-draw milling must be a single integer.");
+        }
+
         JsonProperty[] profileProperties = root.EnumerateObject()
             .Where(property => property.Name.Equals("EffectProfile", StringComparison.OrdinalIgnoreCase)).ToArray();
         if (profileProperties.Length > 1) {
@@ -153,7 +161,8 @@ public class CardConverter : JsonConverter<Card> {
                 preDrawRemovalCount: costCount,
                 preDrawSelector: costSelector,
                 preDrawDeckRemovalCount: deckCost,
-                effectProfile: profile
+                effectProfile: profile,
+                postDrawDeckMillCount: millCount
             );
         }
         catch (ArgumentException exception) {
@@ -205,6 +214,10 @@ public class CardConverter : JsonConverter<Card> {
 
         if (value.PreDrawDeckRemovalCount > 0) {
             writer.WriteNumber("PreDrawDeckRemovalCount", value.PreDrawDeckRemovalCount);
+        }
+
+        if (value.PostDrawDeckMillCount > 0) {
+            writer.WriteNumber("PostDrawDeckMillCount", value.PostDrawDeckMillCount);
         }
 
         if (value.EffectProfile != EffectProfile.Legacy) {

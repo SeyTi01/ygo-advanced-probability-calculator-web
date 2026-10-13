@@ -131,11 +131,12 @@ internal static class DrawEffectResolver {
         }
 
         // If every possible activation fits collectively, hidden identities cannot
-        // affect the schedule. Visible draws remain a uniform sample without replacement.
+        // affect capacity or the schedule, whether hidden positions precede or follow a batch.
+        // No observed identity or hand operation depends on those positions. Visible draws remain a uniform sample without replacement.
         long maximumDraws = 0;
         foreach (Card effect in effects) {
             int activations = effect.DrawOncePerTurn ? 1 : effect.Copies;
-            maximumDraws += (effect.DrawCount!.Value + (deckCostsEnabled ? effect.PreDrawDeckRemovalCount : 0)) * (long)activations;
+            maximumDraws += (effect.DrawCount!.Value + (deckCostsEnabled ? effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount : 0)) * (long)activations;
         }
 
         return maximumDraws <= totalCopies - handSize;

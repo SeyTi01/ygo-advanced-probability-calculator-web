@@ -39,7 +39,7 @@ public sealed class CardEffectRegistry {
     private readonly FrozenDictionary<int, MaintainedCardEffect> _byIdentity;
 
     public static CardEffectRegistry Default { get; } = new([
-        new TradeInEffect(), new OrcustratedReturnEffect(),
+        new SolarRechargeEffect(), new TradeInEffect(), new OrcustratedReturnEffect(),
         new PotOfGreedEffect(),
         new RadiantTyphoonVisionEffect(), new PotOfDesiresEffect(),
         new UpstartGoblinEffect(),

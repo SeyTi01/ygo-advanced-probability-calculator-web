@@ -11,7 +11,7 @@ public class CuratedDrawEffectPresetsTest {
         IReadOnlyList<CuratedDrawEffectPreset> presets = CuratedDrawEffectPresets.All;
 
         Assert.Multiple(() => {
-            Assert.That(presets, Has.Count.EqualTo(16));
+            Assert.That(presets, Has.Count.EqualTo(17));
             Assert.That(presets.All(preset => preset.CardId > 0), Is.True);
             Assert.That(presets.Select(preset => preset.CardId).Distinct().Count(), Is.EqualTo(presets.Count));
             Assert.That(presets.All(preset => !string.IsNullOrWhiteSpace(preset.Name)), Is.True);
