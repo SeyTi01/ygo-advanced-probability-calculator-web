@@ -27,7 +27,9 @@
     </div>
 
     <div class="mt-3">
-        <button id="addCombo" class="btn btn-primary" @onclick="() => OnAddNewCombo.InvokeAsync()">Add New Combo</button>
+        <button id="addCombo" type="button" class="btn combo-add-action" aria-label="Add combo" title="Add combo" @onclick="() => OnAddNewCombo.InvokeAsync()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg> Combo
+        </button>
     </div>
 
     <details class="combo-group-management workspace-management">

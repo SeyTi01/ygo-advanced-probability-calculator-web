@@ -65,7 +65,7 @@ public sealed class CalculatorEditorTestClearWorkspace : CalculatorEditorTestBas
         Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("5"));
 
         await AddManualCardAsync(cut);
-        await Button(cut, "Add New Combo").ClickAsync(new());
+        await Button(cut, "Add combo").ClickAsync(new());
         IRenderedComponent<CardEditor> freshCard = cut.FindComponent<CardEditor>();
         IRenderedComponent<ComboEditor> freshCombo = cut.FindComponent<ComboEditor>();
         Assert.That(freshCard.Instance.Card.Name, Is.Null.Or.Empty);
