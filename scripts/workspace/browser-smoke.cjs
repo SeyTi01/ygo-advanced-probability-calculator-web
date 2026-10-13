@@ -103,6 +103,7 @@ const { chromium, firefox } = require('playwright');
 
         const groups = page.locator('.combo-group-management');
         assert.equal(await groups.getAttribute('open'), null);
+        assert.equal(await groups.evaluate(element => Boolean(document.querySelector('#addCombo').compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
         await groups.locator('summary').focus();
         await groups.locator('summary').press('Enter');
         const groupName = page.getByRole('textbox', { name: 'New combo group name', exact: true });
@@ -162,6 +163,9 @@ const { chromium, firefox } = require('playwright');
                 await page.setViewportSize({ width, height: 1000 });
                 await page.evaluate(() => window.scrollTo(0, 0));
                 await noOverflow();
+                await page.mouse.move(0, 0);
+                const toolbarColors = await page.locator('.session-toolbar :is(.session-action, .session-share-compact, .action-menu-trigger)').evaluateAll(elements => elements.map(element => getComputedStyle(element).color));
+                assert.equal(new Set(toolbarColors).size, 1, `Toolbar text colors in ${theme}: ${toolbarColors}`);
                 const labelCenters = await page.locator('.session-toolbar > .session-action').evaluateAll(elements => elements.map(element => {
                     const text = [...element.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
                     const range = document.createRange();
