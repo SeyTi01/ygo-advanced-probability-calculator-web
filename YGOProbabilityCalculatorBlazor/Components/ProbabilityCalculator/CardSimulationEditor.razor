@@ -1,0 +1,342 @@
+@using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Services.CardEffects
+@using Microsoft.AspNetCore.Components.Web
+
+<section class="card-simulation mb-3" aria-label="Simulation" @onkeydown="HandleKeyDown" @oninput:stopPropagation="true">
+    @if (ShowSummary) {
+        <div class="simulation-heading">
+            <span class="simulation-source">@SourceLabel</span>
+            @if (!_effect.CanExecute) {
+                <span class="text-danger" role="status">Unsupported execution model</span>
+            }
+            else if (_effect.Source == EffectSource.BuiltIn && _effect.Support != EffectSupport.ModeledWithinRules) {
+                <span class="text-warning-emphasis">@(_effect.Support == EffectSupport.Partial ? "Partial model" : "Unmodeled")</span>
+            }
+        </div>
+        <div class="simulation-summary">@Summary</div>
+    }
+    @if (!_effect.CanExecute) {
+        <div class="small text-danger" role="alert">This saved effect cannot run in this calculator.</div>
+    }
+    else if (ModeNotice is { } notice) {
+        <div id="cardDrawModeHelp@(Index)" class="simulation-mode small" role="note">@notice</div>
+    }
+    <div class="simulation-actions">
+        @if (_effect.CanExecute) {
+            <button @ref="_editButton" type="button" class="btn btn-sm btn-link simulation-edit"
+                    aria-expanded="@(_draft is not null ? "true" : "false")" aria-controls="simulationEditor@(Index)"
+                    @onclick="ToggleEditor">@EditLabel</button>
+        }
+        @if (_effect.CanRestore && _effect.Source != EffectSource.BuiltIn) {
+            <button type="button" class="btn btn-sm btn-link simulation-restore" @onclick="Restore">Restore built-in simulation</button>
+        }
+        @if (ShowSummary || _draft is not null) {
+            <button @ref="_detailsButton" type="button" class="btn btn-sm btn-link simulation-details-toggle"
+                    aria-expanded="@(_detailsOpen ? "true" : "false")" aria-controls="simulationDetails@(Index)"
+                    @onclick="() => _detailsOpen = !_detailsOpen">Details</button>
+        }
+    </div>
+    @if (_detailsOpen) {
+        <div id="simulationDetails@(Index)" class="simulation-details small">
+            @if (_effect.Source == EffectSource.BuiltIn) {
+                <div>Saved built-in revision @Card.EffectProfile.Revision · @SupportLabel</div>
+                <p>@_effect.Summary</p>
+                @if (!string.IsNullOrWhiteSpace(_effect.Limitations)) {
+                    <p>@_effect.Limitations</p>
+                }
+                @if (_effect.CanRestore && (Card.EffectProfile != _effect.Maintained!.Profile || Card.EffectPlan != _effect.Maintained.Plan)) {
+                    <button type="button" class="btn btn-sm btn-outline-secondary simulation-restore" @onclick="Restore">Restore built-in simulation</button>
+                }
+            }
+            else if (_effect.Source == EffectSource.LegacySnapshot) {
+                <p>Saved settings; no built-in revision recorded.</p>
+            }
+            @if (_effect.CanExecute) {
+                <p>The activating copy is consumed. Once per turn keeps later copies in hand; otherwise every copy can activate. Separate entries resolve independently.</p>
+                <p>The full draw batch and costs must be available. If not, the source stays in hand with OPT unused. Hand-cost-blocked effects retry after another activation.</p>
+                <p>After drawing, missing eligible material fails the branch. Removals keep active combo pieces first, then usable draw cards. This policy does not optimize play.</p>
+                @if (Card.PreDrawDeckRemovalCount > 0 || _draft?.PreDrawDeckRemovalCount > 0) {
+                    <p>Hidden deck costs track deck size only, not banished identities or remaining combo resources.</p>
+                }
+            }
+        </div>
+    }
+    @if (_draft is not null) {
+        <div id="simulationEditor@(Index)" class="simulation-editor">
+            <div class="small fw-semibold mb-2">Custom simulation</div>
+            @if (Error is not null) {
+                <div class="alert alert-danger py-2" role="alert">@Error</div>
+            }
+            <label for="cardDraw@(Index)" class="form-label">Draw effect</label>
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <select @ref="_drawInput" id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
+                        value="@(_draft.DrawCount?.ToString() ?? string.Empty)"
+                         @onchange="e => ChangeDrawCount(e.Value)">
+                    <option value="">None</option>
+                    <option value="1">Draw 1</option>
+                    <option value="2">Draw 2</option>
+                    <option value="3">Draw 3</option>
+                </select>
+                @if (_draft.DrawCount is not null) {
+                    <div class="form-check form-switch mb-0">
+                        <input id="cardDrawOnce@(Index)" class="form-check-input" type="checkbox" role="switch"
+                               checked="@_draft.DrawOncePerTurn"
+                               @onchange="e => ChangeDrawOncePerTurn(e.Value)" />
+                        <label for="cardDrawOnce@(Index)" class="form-check-label">Once per turn</label>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <label for="cardCost@(Index)" class="form-label mb-0">Before drawing</label>
+                        <select id="cardCost@(Index)" class="form-select form-select-sm w-auto"
+                                value="@_draft.PreDrawRemovalCount"
+                                @onchange="e => ChangePreDrawRemovalCount(e.Value)">
+                            <option value="0">None</option>
+                            <option value="1">Remove 1</option>
+                            <option value="2">Remove 2</option>
+                        </select>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <label for="cardDiscard@(Index)" class="form-label mb-0">After drawing</label>
+                        <select id="cardDiscard@(Index)" class="form-select form-select-sm w-auto"
+                                value="@_draft.PostDrawDiscardCount"
+                                @onchange="e => ChangePostDrawDiscardCount(e.Value)">
+                            <option value="0">None</option>
+                            <option value="1">Remove 1</option>
+                            <option value="2">Remove 2</option>
+                        </select>
+                    </div>
+                }
+            </div>
+            @if (_draft.PreDrawRemovalCount > 0) {
+                <div class="mt-2 small">Before drawing: remove from hand</div>
+                <PostDrawSelectorEditor Id="@($"cardCostEligibility{Index}")" Selector="_draft.PreDrawSelector"
+                                        CategoryBases="CategoryBases"
+                                        RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
+                                        CategoryColorIndices="CategoryColorIndices"
+                                        ShowHelp="false"
+                                        OnChanged='selector => SetDraft(_draft.WithPreDrawSelector(selector), "selector")' />
+            }
+            @if (_draft.PostDrawDiscardCount > 0) {
+                <div class="mt-2 small">After drawing: remove from hand</div>
+                <PostDrawSelectorEditor Id="@($"cardEligibility{Index}")" Selector="_draft.PostDrawSelector"
+                                        CategoryBases="CategoryBases"
+                                        RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
+                                        CategoryColorIndices="CategoryColorIndices"
+                                        ShowHelp="false" OnChanged='selector => SetDraft(_draft.WithPostDrawSelector(selector), "selector")' />
+            }
+            @if (_draft.DrawCount is not null) {
+                <details class="simulation-advanced mt-2">
+                    <summary>Advanced@(_draft.PreDrawDeckRemovalCount > 0 ? $" · Banish {_draft.PreDrawDeckRemovalCount} from deck" : "")</summary>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <label for="cardDeckCost@(Index)" class="form-label mb-0">Banish from deck</label>
+                        <input id="cardDeckCost@(Index)" class="form-control form-control-sm" type="number" min="0" max="60"
+                               style="width: 4.5rem" value="@_draft.PreDrawDeckRemovalCount"
+                               @onchange="e => ChangePreDrawDeckRemovalCount(e.Value)" />
+                    </div>
+                    <div class="form-text">Tracks deck size only, not banished identities.</div>
+                </details>
+            }
+            <div class="d-flex gap-2 mt-3">
+                <button type="button" class="btn btn-primary btn-sm simulation-save" disabled="@(Error is not null)" @onclick="Save">Save</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm simulation-cancel" @onclick="Cancel">Cancel</button>
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Card Card { get; set; } = null!;
+    [Parameter] public int Index { get; set; }
+    [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
+    [Parameter] public bool ConditionalEffectsEnabled { get; set; }
+    [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlySet<string> RelevantMetadataCategoryIdentities { get; set; } = new HashSet<string>(StringComparer.Ordinal);
+    [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
+    [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
+    [Parameter] public EventCallback<Card> OnChanged { get; set; }
+
+    private EffectiveCardEffect _effect = null!;
+    private Card? _previous;
+    private Card? _draft;
+    private readonly Dictionary<string, string> _errors = [];
+    private string? Error => _errors.Values.FirstOrDefault();
+    private bool _detailsOpen;
+    private bool _focusDraw;
+    private bool _focusEdit;
+    private int _renameVersion;
+    private ElementReference _drawInput;
+    private ElementReference _editButton;
+    private ElementReference _detailsButton;
+
+    private bool ShowSummary => Card.DrawCount is not null || _effect.Source == EffectSource.BuiltIn || (_effect.Source == EffectSource.Custom && _effect.CanRestore) || !_effect.CanExecute;
+    private string SourceLabel => _effect.Source switch {
+        EffectSource.BuiltIn => "Built-in simulation",
+        EffectSource.Custom => "Custom simulation",
+        _ => "Saved simulation"
+    };
+    private string EditLabel => _draft is not null ? "Close editor" : Card.DrawCount is null && _effect.Source != EffectSource.BuiltIn
+        ? "Configure simulation" : "Customize simulation";
+    private string Summary => _effect.Source == EffectSource.BuiltIn
+        ? _effect.Summary : DrawEffectPresentation.DescribePlan(Card.EffectPlan, CategoryBases);
+    private string SupportLabel => _effect.Support switch {
+        EffectSupport.ModeledWithinRules => "Modeled within calculator rules",
+        EffectSupport.Partial => "Partial model",
+        _ => "Unmodeled"
+    };
+    private string? ModeNotice => Card.DrawCount is null ? null : !DrawEffectsEnabled
+        ? "Opening hand only · saved simulation is off."
+        : !ConditionalEffectsEnabled && (Card.PreDrawRemovalCount > 0 || Card.PreDrawDeckRemovalCount > 0 || Card.PostDrawDiscardCount > 0)
+            ? $"Simplified · Draw {Card.DrawCount}; costs and removals ignored." : null;
+
+    private void ToggleEditor() {
+        if (_draft is not null) {
+            CloseEditor();
+            return;
+        }
+
+        _draft = Card;
+        _errors.Clear();
+        _focusDraw = true;
+    }
+
+    private void CloseEditor() {
+        _draft = null;
+        _errors.Clear();
+        _focusEdit = true;
+    }
+
+    private void Cancel() => CloseEditor();
+
+    private async Task Save() {
+        if (_draft is null || Error is not null) {
+            return;
+        }
+
+        DrawEffectPlan plan = _draft.EffectPlan;
+        if (plan == Card.EffectPlan) {
+            CloseEditor();
+            return;
+        }
+
+        bool missingCategory = plan.HandCostSelector.CategoryIdentities.Concat(plan.RemovalSelector.CategoryIdentities)
+            .Any(identity => identity.StartsWith("user:", StringComparison.Ordinal) && !CategoryBases.Any(category => category.Identity == identity));
+        if (missingCategory) {
+            _errors["selector"] = "A selected category was removed. Update the eligibility filter.";
+            return;
+        }
+
+        CloseEditor();
+        await OnChanged.InvokeAsync(Card.WithEffect(plan, Card.EffectProfile.AsCustom()));
+    }
+
+    private async Task Restore() {
+        CloseEditor();
+        _detailsOpen = false;
+        await OnChanged.InvokeAsync(CardEffectRegistry.Default.RestoreBuiltIn(Card));
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs args) {
+        if (args.Key != "Escape") {
+            return;
+        }
+
+        if (_draft is not null) {
+            CloseEditor();
+        }
+        else if (_detailsOpen) {
+            _detailsOpen = false;
+            await _detailsButton.FocusAsync();
+        }
+    }
+
+    private void SetDraft(Card draft, string field) {
+        _draft = draft;
+        _errors.Remove(field);
+        _errors.Remove("selector");
+        if (draft.DrawCount is null) {
+            _errors.Clear();
+        }
+    }
+
+    private void ChangeDrawCount(object? value) {
+        string? text = value?.ToString();
+        if (string.IsNullOrEmpty(text)) {
+            SetDraft(_draft!.WithDrawCount(null), "draw");
+        }
+        else if (int.TryParse(text, out int count) && count is >= 1 and <= 3) {
+            SetDraft(_draft!.WithDrawCount(count), "draw");
+        }
+        else {
+            _errors["draw"] = "Choose None, Draw 1, Draw 2, or Draw 3.";
+        }
+    }
+
+    private void ChangeDrawOncePerTurn(object? value) {
+        if (value is bool oncePerTurn) {
+            SetDraft(_draft!.WithDrawOncePerTurn(oncePerTurn), "once");
+        }
+    }
+
+    private void ChangePreDrawDeckRemovalCount(object? value) {
+        if (int.TryParse(value?.ToString(), out int count) && count is >= 0 and <= 60) {
+            SetDraft(_draft!.WithPreDrawDeckRemovalCount(count), "deck");
+        }
+        else {
+            _errors["deck"] = "Choose a deck banish count from 0 to 60.";
+        }
+    }
+
+    private void ChangePreDrawRemovalCount(object? value) {
+        if (int.TryParse(value?.ToString(), out int count) && count is >= 0 and <= 2) {
+            SetDraft(_draft!.WithPreDrawRemovalCount(count), "before");
+        }
+        else {
+            _errors["before"] = "Choose None, Remove 1, or Remove 2.";
+        }
+    }
+
+    private void ChangePostDrawDiscardCount(object? value) {
+        if (int.TryParse(value?.ToString(), out int count) && count is >= 0 and <= 2) {
+            SetDraft(_draft!.WithPostDrawDiscardCount(count), "after");
+        }
+        else {
+            _errors["after"] = "Choose None, Remove 1, or Remove 2.";
+        }
+    }
+
+    protected override void OnParametersSet() {
+        if (CategoryRename is { } rename && rename.Version != _renameVersion) {
+            if (_draft is not null) {
+                _draft = RenameFilters(_draft, rename);
+            }
+            if (_previous is not null) {
+                _previous = RenameFilters(_previous, rename);
+            }
+            _renameVersion = rename.Version;
+        }
+
+        if (_previous is not null && (_previous.Id != Card.Id || _previous.EffectProfile != Card.EffectProfile || _previous.EffectPlan != Card.EffectPlan)) {
+            _draft = null;
+            _errors.Clear();
+            _detailsOpen = false;
+        }
+
+        _previous = Card;
+        _effect = CardEffectRegistry.Default.Describe(Card);
+    }
+
+    private static Card RenameFilters(Card card, CategoryRenameNotice rename) => card.WithEffect(card.EffectPlan with {
+        HandCostSelector = card.PreDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
+        RemovalSelector = card.PostDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}")
+    }, card.EffectProfile);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_focusDraw && _draft is not null) {
+            _focusDraw = false;
+            await _drawInput.FocusAsync();
+        }
+        if (_focusEdit && _effect.CanExecute) {
+            _focusEdit = false;
+            await _editButton.FocusAsync();
+        }
+    }
+}

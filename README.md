@@ -57,7 +57,9 @@ Use **Remove requirement** or **Remove alternative** inside the editor. Removing
 
 ### Configure draw effects
 
-Expand a card entry to choose **None**, **Draw 1**, **Draw 2**, or **Draw 3**. An activating copy is consumed. With **Once per turn** on (the default), later copies of that entry stay in hand; turn it off to let every copy activate, including newly drawn copies. Separate entries have independent allowances.
+Expand a card to see its saved simulation. Maintained cards have a **Built-in simulation** defined by their own card-effect class. Choose **Customize simulation** (or **Configure simulation** on an ordinary card), edit the generic settings, and **Save**. **Cancel** discards the draft. **Restore built-in simulation** explicitly reapplies the current definition; matching its values manually still leaves a saved override **Custom**. Rules and limitations are under **Details**.
+
+The custom editor offers **None**, **Draw 1**, **Draw 2**, or **Draw 3**. An activating copy is consumed. With **Once per turn** on (the default), later copies of that entry stay in hand; turn it off to let every copy activate, including newly drawn copies. Separate entries have independent allowances.
 
 Open the gear **Calculation settings** menu to choose how these settings apply:
 
@@ -65,7 +67,7 @@ Open the gear **Calculation settings** menu to choose how these settings apply:
 - **Opening hand only:** Resolve no draws; configured draw cards still occupy initial-hand slots.
 - **Simplified draws (hypothetical):** Apply draw counts and once-per-turn limits while ignoring both pre-draw costs and post-draw removals. Cost-dependent cards may draw unconditionally, producing misleading, often optimistic deck-building probabilities.
 
-**Banish from deck** sets a hidden top-deck cost before drawing. New Pot of Desires presets banish 10 then draw 2, requiring at least 12 cards left in deck. Only physical deck size is tracked: banished identities and remaining combo resources are not simulated. Simplified draws ignores this cost.
+**Advanced → Banish from deck** sets a hidden top-deck cost before drawing. The built-in Pot of Desires simulation banishes 10 then draws 2, requiring at least 12 cards left in deck. Only physical deck size is tracked: banished identities and remaining combo resources are not simulated. Simplified draws ignores this cost.
 
 Requirements apply to the final hand. If the full draw amount is unavailable, the source stays in hand and the outcome is evaluated normally.
 
@@ -79,11 +81,11 @@ With a draw amount set, **Before drawing** and **After drawing** can each remove
 
 Results are exact for this policy, **not optimal-play simulation**. Optional activation, searches, discard triggers, and general card effects are unsupported.
 
-Some new imports and database selections receive editable presets; saved cards keep their chosen settings. Choosing **Draw None** clears pre- and post-draw configuration. Simplified mode and **Storage safety limit** are runtime preferences, not session fields. New workspaces and restored ON sessions use configured effects; saved OFF sessions restore opening-hand-only. Re-enabling effects selects configured behavior.
+Recognized imports and database selections receive authoritative built-in definitions. Saved cards retain their exact plan, source, revision and limitations until explicitly changed or restored; older snapshots are labeled **Saved simulation**. An unavailable execution model is reported rather than replaced with generic draws. Choosing **Draw None** clears pre- and post-draw configuration. Simplified mode and **Storage safety limit** are runtime preferences, not session fields. New workspaces and restored ON sessions use configured effects; saved OFF sessions restore opening-hand-only. Re-enabling effects selects configured behavior.
 
 A small pre-calculation notice flags potentially expensive draw configurations without blocking Calculate. If a request is slow or reaches a Work or Storage limit, **Calculate without draw effects** explicitly runs an exact alternative for that request. It preserves configured settings and the saved preference. This answers a different question and is not a guaranteed lower bound. Results and copied/pinned comparisons identify the model used; the next ordinary Calculate uses the selected setting.
 
-See the calculator's [Help page](https://dev.ygo-calculator.pages.dev/help) for detailed rules and preset examples.
+See the calculator's [Help page](https://dev.ygo-calculator.pages.dev/help) for detailed rules and built-in examples.
 
 ## How the calculation works
 

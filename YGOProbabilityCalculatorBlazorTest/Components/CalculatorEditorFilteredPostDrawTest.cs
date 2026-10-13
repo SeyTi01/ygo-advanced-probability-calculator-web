@@ -35,6 +35,7 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
             CategoryColorIndices = new() { [role.Name] = 7 }
         });
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        OpenSimulation(editor);
         IRenderedComponent<PostDrawSelectorEditor> pre = editor.FindComponents<PostDrawSelectorEditor>()[0];
         IRenderedComponent<PostDrawSelectorEditor> post = editor.FindComponents<PostDrawSelectorEditor>()[1];
 
@@ -66,6 +67,7 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         Card card = new([], name: "Legacy selector", drawCount: 2, postDrawDiscardCount: 1,
             postDrawSelector: new(CardSelectorKind.Category, ["metadata:x"]));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [card] });
+        OpenSimulation(cut.FindComponent<CardEditor>());
         IRenderedComponent<PostDrawSelectorEditor> selector = cut.FindComponent<PostDrawSelectorEditor>();
 
         IElement chip = EligibilityChip(selector, "x");
@@ -82,9 +84,12 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().ToArray()[0];
         string id = editor.Instance.Card.Id;
         await editor.Find("#cardCategory0").ChangeAsync(new() { Value = "user:B" });
+        OpenSimulation(editor);
         await editor.Find("#cardEligibility0").ChangeAsync(new() { Value = "user:A" });
+        await SaveSimulation(editor);
         AssertPreviousResult(cut);
         await editor.Find("#cardEligibility0").ChangeAsync(new() { Value = "metadata:attribute:dark" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
         await Button(cut, "Save Session").ClickAsync(new());
@@ -94,11 +99,15 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         editor = cut.FindComponents<CardEditor>().ToArray()[1];
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
         await editor.Find("[aria-label='Remove eligibility A']").ClickAsync(new());
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Category));
         await editor.Find("#cardEligibility1").ChangeAsync(new() { Value = "any" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Any));
         await editor.Find("#cardEligibility1").ChangeAsync(new() { Value = "user:B" });
+        await SaveSimulation(editor);
         await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "" });
+        await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Any));
         Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.Zero);
     }

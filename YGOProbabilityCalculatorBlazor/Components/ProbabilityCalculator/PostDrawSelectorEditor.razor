@@ -59,10 +59,13 @@
             }
         </div>
     }
-    <div class="form-text">@UnavailableMessage Applied only in Advanced draw simulation.</div>
+    @if (ShowHelp) {
+        <div class="form-text">@UnavailableMessage Applied only with configured draw effects.</div>
+    }
 </div>
 
 @code {
+    [Parameter] public bool ShowHelp { get; set; } = true;
     [Parameter] public string UnavailableMessage { get; set; } = "If unavailable: fail branch.";
     [Parameter] public string Id { get; set; } = "removalSelector";
     [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;

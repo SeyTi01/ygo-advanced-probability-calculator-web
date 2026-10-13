@@ -70,106 +70,11 @@
                 </div>
 
             </div>
-            <div class="mb-3">
-                <label for="cardDraw@(Index)" class="form-label">Draw effect</label>
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                    <select id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
-                            value="@(Card.DrawCount?.ToString() ?? string.Empty)"
-                            aria-describedby="@DrawEffectDescriptionIds" @onchange="e => ChangeDrawCount(e.Value)">
-                        <option value="">None</option>
-                        <option value="1">Draw 1</option>
-                        <option value="2">Draw 2</option>
-                        <option value="3">Draw 3</option>
-                    </select>
-                    @if (Card.DrawCount is not null) {
-                        <div class="form-check form-switch mb-0">
-                            <input id="cardDrawOnce@(Index)" class="form-check-input" type="checkbox" role="switch"
-                                   checked="@Card.DrawOncePerTurn" aria-describedby="@DrawEffectDescriptionIds"
-                                   @onchange="e => ChangeDrawOncePerTurn(e.Value)" />
-                            <label for="cardDrawOnce@(Index)" class="form-check-label">Once per turn</label>
-                        </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2">
-                            <label for="cardCost@(Index)" class="form-label mb-0">Before drawing</label>
-                            <select id="cardCost@(Index)" class="form-select form-select-sm w-auto"
-                                    value="@Card.PreDrawRemovalCount" aria-describedby="@DrawEffectDescriptionIds"
-                                    @onchange="e => ChangePreDrawRemovalCount(e.Value)">
-                                <option value="0">None</option>
-                                <option value="1">Remove 1</option>
-                                <option value="2">Remove 2</option>
-                            </select>
-                        </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2">
-                            <label for="cardDeckCost@(Index)" class="form-label mb-0">Banish from deck</label>
-                            <input id="cardDeckCost@(Index)" class="form-control form-control-sm" type="number" min="0" max="60"
-                                   style="width: 4.5rem" value="@Card.PreDrawDeckRemovalCount" aria-describedby="@DrawEffectDescriptionIds"
-                                   @onchange="e => ChangePreDrawDeckRemovalCount(e.Value)" />
-                        </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2">
-                            <label for="cardDiscard@(Index)" class="form-label mb-0">After drawing</label>
-                            <select id="cardDiscard@(Index)" class="form-select form-select-sm w-auto"
-                                    value="@Card.PostDrawDiscardCount" aria-describedby="@DrawEffectDescriptionIds"
-                                    @onchange="e => ChangePostDrawDiscardCount(e.Value)">
-                                <option value="0">None</option>
-                                <option value="1">Remove 1</option>
-                                <option value="2">Remove 2</option>
-                            </select>
-                        </div>
-                    }
-                </div>
-                @if (DrawPresentation.InactiveMessage is { } inactiveMessage) {
-                    <p class="form-text mb-1" id="cardDrawModeHelp@(Index)" role="note">@inactiveMessage</p>
-                }
-                @if (Card.PreDrawRemovalCount > 0) {
-                    <div class="mt-2 small">Before drawing: remove from hand</div>
-                    <PostDrawSelectorEditor Id="@($"cardCostEligibility{Index}")" Selector="Card.PreDrawSelector"
-                                            CategoryBases="CategoryBases"
-                                            RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
-                                            CategoryColorIndices="CategoryColorIndices"
-                                            UnavailableMessage="If unavailable: retain source without activating."
-                                            OnChanged="selector => OnReplaceCard.InvokeAsync((Index, Card.WithPreDrawSelector(selector)))" />
-                }
-                @if (Card.PostDrawDiscardCount > 0) {
-                    <div class="mt-2 small">After drawing: remove from hand</div>
-                    <PostDrawSelectorEditor Id="@($"cardEligibility{Index}")" Selector="Card.PostDrawSelector"
-                                            CategoryBases="CategoryBases"
-                                            RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
-                                            CategoryColorIndices="CategoryColorIndices"
-                                            OnChanged="selector => OnReplaceCard.InvokeAsync((Index, Card.WithPostDrawSelector(selector)))" />
-                }
-                @if (Card.PreDrawDeckRemovalCount > 0) {
-                    <p class="form-text mb-1">Banish face-down before drawing. Tracks deck size only, not banished identities or remaining combo pieces.</p>
-                }
-                <div id="cardDrawHelp@(Index)" class="form-text">
-                    @if (Card.DrawCount is null) {
-                        <span>Choose a draw amount to enable an automatic draw effect.</span>
-                    }
-                    else if (!DrawEffectsEnabled) {
-                        <span>Stored draw settings are retained and apply when Draw effects are on.</span>
-                    }
-                    else if (ConditionalEffectsEnabled && Card.PreDrawRemovalCount > 0) {
-                        <span>Check the full draw batch and hand cost before activating. If either is unavailable, keep the source and OPT unused; cost-blocked sources retry after another activation. Keep active combo pieces first, then usable draw cards.</span>
-                    }
-                    else if (Card.DrawOncePerTurn) {
-                        <span>The first copy drawn resolves automatically and is consumed; later copies stay in hand. Separate entries resolve independently.</span>
-                    }
-                    else {
-                        <span>Every copy drawn resolves automatically and is consumed, including copies drawn by another effect.</span>
-                    }
-                    @if (Card.DrawCount is not null && DrawEffectsEnabled) {
-                        @if (ConditionalEffectsEnabled && Card.PreDrawDeckRemovalCount > 0) {
-                            <span> The full deck cost and draw amount must fit; otherwise the source stays in hand.</span>
-                        }
-                        else {
-                            <span> The effect activates only when the full draw amount is available; otherwise it stays in hand.</span>
-                        }
-                    }
-                    @if (Card.PostDrawDiscardCount > 0) {
-                        @if (DrawEffectsEnabled && ConditionalEffectsEnabled) {
-                            <span> Remove eligible cards immediately after drawing, keeping active combo requirements first, then usable draw cards. This deterministic policy does not optimize play.</span>
-                        }
-                    }
-                </div>
-            </div>
+            <CardSimulationEditor Card="Card" Index="Index" DrawEffectsEnabled="DrawEffectsEnabled"
+                                  ConditionalEffectsEnabled="ConditionalEffectsEnabled" CategoryBases="CategoryBases"
+                                  RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
+                                  CategoryColorIndices="CategoryColorIndices" CategoryRename="CategoryRename"
+                                  OnChanged="card => OnReplaceCard.InvokeAsync((Index, card))" />
             <div class="editor-add-row mb-3">
                 <div class="editor-select-field">
                     <label for="cardCategory@(Index)" class="form-label">Category</label>
@@ -331,9 +236,6 @@
     private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? $"Card {Index + 1}" : Card.Name;
     private DrawEffectPresentation DrawPresentation =>
         DrawEffectPresentation.ForCard(Card, DrawEffectsEnabled, ConditionalEffectsEnabled);
-    private string DrawEffectDescriptionIds => DrawPresentation.InactiveMessage is null
-        ? $"cardDrawHelp{Index}"
-        : $"cardDrawHelp{Index} cardDrawModeHelp{Index}";
     private Task ToggleCard() {
         int next = ActiveCardIndex == Index ? -1 : Index;
 
@@ -383,54 +285,6 @@
         Card newCard = Card.WithCopies(copies);
 
         return OnReplaceCard.InvokeAsync((Index, newCard));
-    }
-
-    private Task ChangeDrawCount(object? value) {
-        string? text = value?.ToString();
-        int? drawCount = null;
-        if (!string.IsNullOrEmpty(text)) {
-            if (!int.TryParse(text, out int count) || count is < 1 or > 3) {
-                _error = "Choose None, Draw 1, Draw 2, or Draw 3.";
-                return Task.CompletedTask;
-            }
-
-            drawCount = count;
-        }
-
-        _error = null;
-        return OnReplaceCard.InvokeAsync((Index, Card.WithDrawCount(drawCount)));
-    }
-
-    private Task ChangeDrawOncePerTurn(object? value) => value is bool oncePerTurn
-        ? OnReplaceCard.InvokeAsync((Index, Card.WithDrawOncePerTurn(oncePerTurn)))
-        : Task.CompletedTask;
-
-    private Task ChangePreDrawDeckRemovalCount(object? value) {
-        if (!int.TryParse(value?.ToString(), out int count) || count is < 0 or > 60 || Card.DrawCount is null) {
-            _error = "Choose a deck banish count from 0 to 60 with a draw effect.";
-            return Task.CompletedTask;
-        }
-
-        return OnReplaceCard.InvokeAsync((Index, Card.WithPreDrawDeckRemovalCount(count)));
-    }
-
-    private Task ChangePreDrawRemovalCount(object? value) {
-        if (!int.TryParse(value?.ToString(), out int count) || count is < 0 or > 2 || Card.DrawCount is null) {
-            _error = "Choose None, Remove 1, or Remove 2 with a draw effect.";
-            return Task.CompletedTask;
-        }
-        _error = null;
-        return OnReplaceCard.InvokeAsync((Index, Card.WithPreDrawRemovalCount(count)));
-    }
-
-    private Task ChangePostDrawDiscardCount(object? value) {
-        if (!int.TryParse(value?.ToString(), out int count) || count is < 0 or > 2 || Card.DrawCount is null) {
-            _error = "Choose None, Remove 1, or Remove 2 with a draw effect.";
-            return Task.CompletedTask;
-        }
-
-        _error = null;
-        return OnReplaceCard.InvokeAsync((Index, Card.WithPostDrawDiscardCount(count)));
     }
 
     private Task AddCategory() {
