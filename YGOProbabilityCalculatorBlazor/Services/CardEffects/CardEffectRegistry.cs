@@ -9,6 +9,7 @@ public interface ICardEffectDefinition {
     string Name { get; }
     int Revision { get; }
     IReadOnlyList<int> Aliases => [];
+    IReadOnlyList<CategoryBase> FilterProperties => [];
     DrawEffectPlan Compile();
     EffectSupport Support { get; }
     string Summary { get; }
@@ -55,10 +56,12 @@ public sealed class CardEffectRegistry {
     ]);
 
     public IReadOnlyList<MaintainedCardEffect> All { get; }
+    public IReadOnlyList<CategoryBase> FilterProperties { get; }
 
     public CardEffectRegistry(IEnumerable<ICardEffectDefinition> definitions) {
         Dictionary<int, MaintainedCardEffect> identities = [];
         List<MaintainedCardEffect> profiles = [];
+        List<CategoryBase> filterProperties = [];
         foreach (ICardEffectDefinition definition in definitions) {
             EffectProfile profile = new(EffectSource.BuiltIn, definition.CanonicalCardId, definition.Revision,
                 definition.Summary, definition.Support, definition.Limitations, definition.ExecutionModel);
@@ -66,6 +69,7 @@ public sealed class CardEffectRegistry {
             Card validated = new Card([]).WithEffect(definition.Compile(), profile);
             MaintainedCardEffect effect = new(definition.CanonicalCardId, definition.Name, validated.EffectPlan, profile);
             profiles.Add(effect);
+            filterProperties.AddRange(definition.FilterProperties);
             foreach (int identity in definition.Aliases.Prepend(definition.CanonicalCardId)) {
                 if (identity <= 0 || !identities.TryAdd(identity, effect)) {
                     throw new ArgumentException("Effect identities and aliases must be unique positive IDs.", nameof(definitions));
@@ -74,6 +78,7 @@ public sealed class CardEffectRegistry {
         }
 
         All = profiles.AsReadOnly();
+        FilterProperties = Array.AsReadOnly(filterProperties.Distinct().ToArray());
         _byIdentity = identities.ToFrozenDictionary();
     }
 
