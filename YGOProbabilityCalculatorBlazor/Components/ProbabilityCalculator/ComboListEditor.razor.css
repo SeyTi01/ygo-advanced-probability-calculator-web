@@ -17,6 +17,8 @@
 }
 
 .category-name-trigger {
+    display: inline-flex;
+    align-items: center;
     min-width: 0;
     max-width: 100%;
     padding: 0.1rem 0.15rem;
@@ -26,7 +28,7 @@
     background: transparent;
     color: inherit;
     font: inherit;
-    line-height: inherit;
+    line-height: 1.35;
     text-align: left;
     overflow-wrap: anywhere;
     cursor: pointer;
