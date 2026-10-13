@@ -65,6 +65,7 @@ public sealed record PinnedCalculationContext(
             Number(card.Copies),
             card.DrawCount is { } drawCount ? Number(drawCount) : "",
             card.DrawCount is not null && !card.DrawOncePerTurn ? "every-copy" : "",
+            card.PreDrawDeckRemovalCount > 0 ? $"deck-cost:{Number(card.PreDrawDeckRemovalCount)}" : "",
             card.PreDrawRemovalCount > 0 ? $"cost:{Number(card.PreDrawRemovalCount)}:{card.PreDrawSelector.Signature}" : "",
             card.PostDrawDiscardCount > 0 ? $"discard:{Number(card.PostDrawDiscardCount)}" : "",
             card.PostDrawSelector.Kind == CardSelectorKind.Any ? "" : card.PostDrawSelector.Signature,

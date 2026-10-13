@@ -65,6 +65,8 @@ Open the gear **Calculation settings** menu to choose how these settings apply:
 - **Opening hand only:** Resolve no draws; configured draw cards still occupy initial-hand slots.
 - **Simplified draws (hypothetical):** Apply draw counts and once-per-turn limits while ignoring both pre-draw costs and post-draw removals. Cost-dependent cards may draw unconditionally, producing misleading, often optimistic deck-building probabilities.
 
+**Banish from deck** sets a hidden top-deck cost before drawing. New Pot of Desires presets banish 10 then draw 2, requiring at least 12 cards left in deck. Only physical deck size is tracked: banished identities and remaining combo resources are not simulated. Simplified draws ignores this cost.
+
 Requirements apply to the final hand. If the full draw amount is unavailable, the source stays in hand and the outcome is evaluated normally.
 
 ### Use Advanced costs and removals

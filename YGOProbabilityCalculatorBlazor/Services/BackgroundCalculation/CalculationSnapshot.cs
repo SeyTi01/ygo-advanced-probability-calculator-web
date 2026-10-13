@@ -35,7 +35,8 @@ public sealed record CalculationSnapshot(string Json) {
                 drawEffectsEnabled ? card.PostDrawSelector : CardSelector.Any,
                 card.PostDrawFailureBehavior,
                 drawEffectsEnabled ? card.PreDrawRemovalCount : 0,
-                drawEffectsEnabled ? card.PreDrawSelector : CardSelector.Any
+                drawEffectsEnabled ? card.PreDrawSelector : CardSelector.Any,
+                drawEffectsEnabled ? card.PreDrawDeckRemovalCount : 0
             ))
             .ToArray();
 
@@ -72,7 +73,8 @@ public sealed record WorkerCard(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CardSelector? PostDrawSelector = null,
     PostDrawFailureBehavior PostDrawFailureBehavior = PostDrawFailureBehavior.FailBranch,
     int PreDrawRemovalCount = 0,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CardSelector? PreDrawSelector = null
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CardSelector? PreDrawSelector = null,
+    int PreDrawDeckRemovalCount = 0
 );
 
 public sealed record WorkerCombo(
@@ -125,7 +127,8 @@ public static class CalculationWire {
                     card.PostDrawSelector,
                     card.PostDrawFailureBehavior,
                     card.PreDrawRemovalCount,
-                    card.PreDrawSelector
+                    card.PreDrawSelector,
+                    card.PreDrawDeckRemovalCount
                 ))
                 .ToList();
 

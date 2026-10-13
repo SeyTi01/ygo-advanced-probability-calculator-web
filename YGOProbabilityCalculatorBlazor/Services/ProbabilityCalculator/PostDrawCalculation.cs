@@ -5,8 +5,11 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-// A layer counts labeled prefixes of equal length. Remaining multiplicities weight
-// each next draw. Unseen suffixes contribute (N - depth)!, so all outcomes share N!.
+// A layer counts visible labeled prefixes of equal length. Hidden removals leave
+// identities unobserved: their counts stay in the identity pool, while a separate
+// total reduces physical capacity. Exchangeability makes each next visible label
+// uniform in that pool. Unobserved suffixes contribute (N - depth)!, including
+// hidden positions, so all outcomes share N! even when physical capacity is zero.
 // No physical permutations are enumerated and no probability mass is rounded.
 internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize, WorkBudget budget) {
     internal int TerminalStates { get; private set; }
@@ -26,7 +29,8 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
     private enum ResolutionOutcome { Ready, RemovalUnavailable }
 
     // Owned immutable vectors: remaining counts, hand counts, only actual OPT flags,
-    // batch draws left, pending removal source (index + 1), then FIFO candidate entry indices.
+    // batch draws left, pending removal source (index + 1), optional hidden-card count,
+    // then FIFO candidate entry indices. Hidden identities remain in the first vector.
     private sealed record State(int[] Values) {
         public bool Equals(State? other) => other is not null && Values.AsSpan().SequenceEqual(other.Values);
 
@@ -52,7 +56,9 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
             }
         }
         int phase = 2 * n + optCount;
-        int queueStart = phase + 2;
+        bool hasDeckRemoval = cards.Any(card => card.PreDrawDeckRemovalCount > 0);
+        int hiddenSlot = phase + 2;
+        int queueStart = phase + 2 + (hasDeckRemoval ? 1 : 0);
         int copies = 0;
         foreach (Card card in cards) {
             budget.Spend(1);
@@ -226,6 +232,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
         bool Used(int[] values, int entry) => optSlots[entry] >= 0 && values[optSlots[entry]] != 0;
 
         ResolutionOutcome Settle(ref int[] values, int remaining) {
+            remaining -= hasDeckRemoval ? values[hiddenSlot] : 0;
             while (true) {
                 if (values[phase] > remaining) {
                     throw new InvalidOperationException("An activated draw batch exceeds the remaining deck size.");
@@ -260,7 +267,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                         values = RemoveCandidate(values, candidate);
                         continue;
                     }
-                    if (cards[source].DrawCount!.Value > remaining) {
+                    if (cards[source].DrawCount!.Value + cards[source].PreDrawDeckRemovalCount > remaining) {
                         values = RemoveCandidate(values, candidate);
                         continue;
                     }
@@ -275,6 +282,10 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                         if (!RemoveCard(ref values, costEligibility![source], remaining, source)) {
                             throw new InvalidOperationException("A validated activation cost became unavailable.");
                         }
+                    }
+                    if (hasDeckRemoval) {
+                        values[hiddenSlot] += cards[source].PreDrawDeckRemovalCount;
+                        remaining -= cards[source].PreDrawDeckRemovalCount;
                     }
                     values[n + source]--;
                     if (cards[source].DrawOncePerTurn) {
@@ -327,15 +338,15 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
 
             bool[] activatable = new bool[n];
             bool[] costDeferred = new bool[n];
-            int minimumLegalDrawCount = int.MaxValue;
+            int minimumLegalDeckConsumption = int.MaxValue;
             if (reservedSource >= 0 && cards[reservedSource].DrawCount is int reservedDrawCount
-                && reservedDrawCount <= remaining) {
+                && reservedDrawCount + cards[reservedSource].PreDrawDeckRemovalCount <= remaining) {
                 // A reserved source has already passed its activation checks and is finishing its cost.
-                minimumLegalDrawCount = reservedDrawCount;
+                minimumLegalDeckConsumption = reservedDrawCount + cards[reservedSource].PreDrawDeckRemovalCount;
             }
             for (int i = 0; i < n; i++) {
                 if (!pending[i] || values[n + i] - (i == reservedSource ? 1 : 0) == 0 || Used(values, i)
-                    || cards[i].DrawCount is not int drawCount || drawCount > remaining
+                    || cards[i].DrawCount is not int drawCount || drawCount + cards[i].PreDrawDeckRemovalCount > remaining
                     || (i == reservedSource && cards[i].DrawOncePerTurn)) {
                     continue;
                 }
@@ -343,17 +354,17 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 bool canPay = cards[i].PreDrawRemovalCount == 0 || CanPay(values, i, reservedSource);
                 if (canPay) {
                     activatable[i] = true;
-                    minimumLegalDrawCount = Math.Min(minimumLegalDrawCount, drawCount);
+                    minimumLegalDeckConsumption = Math.Min(minimumLegalDeckConsumption, drawCount + cards[i].PreDrawDeckRemovalCount);
                 }
                 else if (cards[i].PreDrawRemovalCount > 0) {
                     costDeferred[i] = true;
                 }
             }
 
-            // The smallest legal draw leaves the most room for a deferred source's full batch.
-            int remainingAfterAnotherDraw = minimumLegalDrawCount == int.MaxValue
+            // The smallest legal deck consumption leaves the most room for a deferred source.
+            int remainingAfterAnotherDraw = minimumLegalDeckConsumption == int.MaxValue
                 ? -1
-                : remaining - minimumLegalDrawCount;
+                : remaining - minimumLegalDeckConsumption;
             for (int i = 0; i < n; i++) {
                 if (values[n + i] - (i == reservedSource ? 1 : 0) == 0 || (eligible is not null && !eligible[i])) {
                     continue;
@@ -361,7 +372,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 bool usable = activatable[i];
                 bool redundant = cards[i].DrawOncePerTurn && values[n + i] - (i == reservedSource ? 1 : 0) > 1;
                 bool deferred = costDeferred[i] && !redundant
-                    && cards[i].DrawCount is int drawCount && drawCount <= remainingAfterAnotherDraw;
+                    && cards[i].DrawCount is int drawCount && drawCount + cards[i].PreDrawDeckRemovalCount <= remainingAfterAnotherDraw;
                 int tier = (relevant[i], usable && !redundant, deferred) switch {
                     (true, _, _) => 1,
                     (_, true, _) => 2,

@@ -99,6 +99,12 @@
                             </select>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2">
+                            <label for="cardDeckCost@(Index)" class="form-label mb-0">Banish from deck</label>
+                            <input id="cardDeckCost@(Index)" class="form-control form-control-sm" type="number" min="0" max="60"
+                                   style="width: 4.5rem" value="@Card.PreDrawDeckRemovalCount" aria-describedby="@DrawEffectDescriptionIds"
+                                   @onchange="e => ChangePreDrawDeckRemovalCount(e.Value)" />
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
                             <label for="cardDiscard@(Index)" class="form-label mb-0">After drawing</label>
                             <select id="cardDiscard@(Index)" class="form-select form-select-sm w-auto"
                                     value="@Card.PostDrawDiscardCount" aria-describedby="@DrawEffectDescriptionIds"
@@ -130,6 +136,9 @@
                                             CategoryColorIndices="CategoryColorIndices"
                                             OnChanged="selector => OnReplaceCard.InvokeAsync((Index, Card.WithPostDrawSelector(selector)))" />
                 }
+                @if (Card.PreDrawDeckRemovalCount > 0) {
+                    <p class="form-text mb-1">Banish face-down before drawing. Tracks deck size only, not banished identities or remaining combo pieces.</p>
+                }
                 <div id="cardDrawHelp@(Index)" class="form-text">
                     @if (Card.DrawCount is null) {
                         <span>Choose a draw amount to enable an automatic draw effect.</span>
@@ -138,7 +147,7 @@
                         <span>Stored draw settings are retained and apply when Draw effects are on.</span>
                     }
                     else if (ConditionalEffectsEnabled && Card.PreDrawRemovalCount > 0) {
-                        <span>Check the full draw batch and hand cost before activating. If either is unavailable, keep the source and OPT unused; cost-blocked sources retry after another activation. Keep active combo pieces first, then usable draw cards. Only hand costs are modeled.</span>
+                        <span>Check the full draw batch and hand cost before activating. If either is unavailable, keep the source and OPT unused; cost-blocked sources retry after another activation. Keep active combo pieces first, then usable draw cards.</span>
                     }
                     else if (Card.DrawOncePerTurn) {
                         <span>The first copy drawn resolves automatically and is consumed; later copies stay in hand. Separate entries resolve independently.</span>
@@ -147,7 +156,12 @@
                         <span>Every copy drawn resolves automatically and is consumed, including copies drawn by another effect.</span>
                     }
                     @if (Card.DrawCount is not null && DrawEffectsEnabled) {
-                        <span> The effect activates only when the full draw amount is available; otherwise it stays in hand.</span>
+                        @if (ConditionalEffectsEnabled && Card.PreDrawDeckRemovalCount > 0) {
+                            <span> The full deck cost and draw amount must fit; otherwise the source stays in hand.</span>
+                        }
+                        else {
+                            <span> The effect activates only when the full draw amount is available; otherwise it stays in hand.</span>
+                        }
                     }
                     @if (Card.PostDrawDiscardCount > 0) {
                         @if (DrawEffectsEnabled && ConditionalEffectsEnabled) {
@@ -390,6 +404,15 @@
     private Task ChangeDrawOncePerTurn(object? value) => value is bool oncePerTurn
         ? OnReplaceCard.InvokeAsync((Index, Card.WithDrawOncePerTurn(oncePerTurn)))
         : Task.CompletedTask;
+
+    private Task ChangePreDrawDeckRemovalCount(object? value) {
+        if (!int.TryParse(value?.ToString(), out int count) || count is < 0 or > 60 || Card.DrawCount is null) {
+            _error = "Choose a deck banish count from 0 to 60 with a draw effect.";
+            return Task.CompletedTask;
+        }
+
+        return OnReplaceCard.InvokeAsync((Index, Card.WithPreDrawDeckRemovalCount(count)));
+    }
 
     private Task ChangePreDrawRemovalCount(object? value) {
         if (!int.TryParse(value?.ToString(), out int count) || count is < 0 or > 2 || Card.DrawCount is null) {

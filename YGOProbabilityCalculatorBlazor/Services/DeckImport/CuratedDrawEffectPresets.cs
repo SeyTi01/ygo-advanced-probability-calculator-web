@@ -12,7 +12,8 @@ public sealed record CuratedDrawEffectPreset(
     CardSelector? PostDrawSelector = null,
     int PreDrawRemovalCount = 0,
     CardSelector? PreDrawSelector = null,
-    PostDrawFailureBehavior? FailureBehavior = null
+    PostDrawFailureBehavior? FailureBehavior = null,
+    int PreDrawDeckRemovalCount = 0
 );
 
 public static class CuratedDrawEffectPresets {
@@ -38,7 +39,7 @@ public static class CuratedDrawEffectPresets {
                 CardSelector.AllOf([FilterProperties[3].Identity, FilterProperties[6].Identity])])),
         new(55144522, "Pot of Greed", 2, false),
         new(20508881, "Radiant Typhoon Vision", 2, true, 1, CardSelector.AnyOf(FilterProperties.Skip(1).Take(2).Select(category => category.Identity))),
-        new(35261759, "Pot of Desires", 2, true),
+        new(35261759, "Pot of Desires", 2, true, PreDrawDeckRemovalCount: 10),
         new(70368879, "Upstart Goblin", 1, false),
         new(1475311, "Allure of Darkness", 2, false, 1, CardSelector.For(FilterProperties[0])),
         new(49238328, "Pot of Extravagance", 2, true),
@@ -77,7 +78,7 @@ public static class CuratedDrawEffectPresets {
     }
 
     public static Card ApplyToSelectedCardIfPristine(Card card, CardInfo cardInfo) {
-        if (card.PreDrawRemovalCount != 0 || card.PreDrawSelector.Kind != CardSelectorKind.Any
+        if (card.PreDrawDeckRemovalCount != 0 || card.PreDrawRemovalCount != 0 || card.PreDrawSelector.Kind != CardSelectorKind.Any
             || card.DrawCount is not null || !card.DrawOncePerTurn || card.PostDrawDiscardCount != 0
             || card.PostDrawSelector.Kind != CardSelectorKind.Any
             || card.PostDrawFailureBehavior != PostDrawFailureBehavior.FailBranch) {
@@ -126,6 +127,7 @@ public static class CuratedDrawEffectPresets {
             .WithDrawOncePerTurn(preset.DrawOncePerTurn)
             .WithPostDrawDiscardCount(preset.PostDrawDiscardCount)
             .WithPostDrawSelector(preset.PostDrawSelector ?? CardSelector.Any)
+            .WithPreDrawDeckRemovalCount(preset.PreDrawDeckRemovalCount)
             .WithPreDrawRemovalCount(preset.PreDrawRemovalCount)
             .WithPreDrawSelector(preset.PreDrawSelector ?? CardSelector.Any)
             .WithPostDrawFailureBehavior(preset.FailureBehavior ?? PostDrawFailureBehavior.FailBranch);

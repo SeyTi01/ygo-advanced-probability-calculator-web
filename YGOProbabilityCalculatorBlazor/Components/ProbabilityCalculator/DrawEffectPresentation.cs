@@ -15,6 +15,9 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
         }
 
         string headerText = $"Draw {drawCount}";
+        if (conditionalEffectsEnabled && card.PreDrawDeckRemovalCount > 0) {
+            headerText = $"Banish {card.PreDrawDeckRemovalCount} · {headerText}";
+        }
         if (conditionalEffectsEnabled && card.PreDrawRemovalCount > 0) {
             headerText = $"Cost {card.PreDrawRemovalCount} · {headerText}";
         }
@@ -24,7 +27,7 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
 
         string? inactiveMessage = null;
         if (!conditionalEffectsEnabled && HasAdvancedConfiguration(card)) {
-            inactiveMessage = card.PreDrawRemovalCount > 0
+            inactiveMessage = card.PreDrawRemovalCount > 0 || card.PreDrawDeckRemovalCount > 0
                 ? "Simplified draws ignore both pre-draw costs and post-draw removals; this card may draw unconditionally."
                 : "Simplified draws ignore both pre-draw costs and post-draw removals.";
         }
@@ -58,6 +61,7 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
     }
 
     private static bool HasAdvancedConfiguration(Card card) =>
+        card.PreDrawDeckRemovalCount > 0 ||
         card.PreDrawRemovalCount > 0 ||
         card.PostDrawDiscardCount > 0 ||
         card.PostDrawSelector.Kind != CardSelectorKind.Any ||
