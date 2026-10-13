@@ -3,21 +3,29 @@
 @using Microsoft.AspNetCore.Components.Web
 
 <section class="card-simulation mb-3" aria-label="Simulation" @onkeydown="HandleKeyDown" @oninput:stopPropagation="true">
-    @if (ShowSummary) {
-        <div class="simulation-heading">
-            <span class="simulation-source">@SourceLabel</span>
-            @if (!_effect.CanExecute) {
-                <span class="text-danger" role="status">Unsupported execution model</span>
+    <div class="simulation-heading">
+        <span class="simulation-source">
+            @if (IsSupportedBuiltIn) {
+                <svg class="simulation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" focusable="false">
+                    <circle cx="12" cy="12" r="9" /><path d="m7.5 12 3 3 6-6" />
+                </svg>
             }
-        </div>
-        @if (_effect.Source == EffectSource.BuiltIn) {
-            @if (_effect.CanExecute) {
-                <div class="simulation-status @(_effect.Support == EffectSupport.ModeledWithinRules ? "text-success" : "text-warning-emphasis")">@SupportLabel</div>
+            else if (IsUnconfigured) {
+                <svg class="simulation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" focusable="false">
+                    <path d="M4 7h4m4 0h8M4 17h8m4 0h4" /><circle cx="10" cy="7" r="2" /><circle cx="14" cy="17" r="2" />
+                </svg>
             }
+            @SourceLabel
+        </span>
+        @if (_effect.Source == EffectSource.BuiltIn && _effect.CanExecute && _effect.Support != EffectSupport.ModeledWithinRules) {
+            <span class="simulation-status text-warning-emphasis">@(_effect.Support == EffectSupport.Partial ? "Partial" : "Unmodeled")</span>
         }
-        else {
-            <div class="simulation-summary">@DrawEffectPresentation.DescribePlan(Card.EffectPlan, CategoryBases)</div>
+        @if (!_effect.CanExecute) {
+            <span class="text-danger" role="status">Unsupported execution model</span>
         }
+    </div>
+    @if (!IsUnconfigured && _effect.Source != EffectSource.BuiltIn) {
+        <div class="simulation-summary">@DrawEffectPresentation.DescribePlan(Card.EffectPlan, CategoryBases)</div>
     }
     @if (!_effect.CanExecute) {
         <div class="small text-danger" role="alert">This saved effect cannot run in this calculator.</div>
@@ -164,8 +172,15 @@
     private ElementReference _editButton;
     private ElementReference _detailsButton;
 
-    private bool ShowSummary => Card.DrawCount is not null || _effect.Source == EffectSource.BuiltIn || (_effect.Source == EffectSource.Custom && _effect.CanRestore) || !_effect.CanExecute;
-    private string SourceLabel => _effect.Source switch {
+    // New manual entries are empty legacy profiles; unknown catalog entries are
+    // empty custom profiles with a canonical identity. Neither has a built-in.
+    // Preserve explicit manual custom None and maintained-card overrides.
+    private bool IsUnconfigured => Card.DrawCount is null && _effect.Maintained is null
+        && _effect.CanExecute && (_effect.Source == EffectSource.LegacySnapshot
+            || (_effect.Source == EffectSource.Custom && Card.EffectProfile.CanonicalCardId is not null));
+    private bool IsSupportedBuiltIn => _effect.Source == EffectSource.BuiltIn && _effect.CanExecute
+        && _effect.Support == EffectSupport.ModeledWithinRules;
+    private string SourceLabel => IsUnconfigured ? "No built-in simulation" : _effect.Source switch {
         EffectSource.BuiltIn => "Built-in simulation",
         EffectSource.Custom => "Custom simulation",
         _ => "Saved simulation"
@@ -177,11 +192,6 @@
     private bool HasDetails => (_effect.Source == EffectSource.BuiltIn
         && (!string.IsNullOrWhiteSpace(_effect.Limitations) || HasSavedRevisionDetails))
         || (_effect.Source == EffectSource.LegacySnapshot && Card.DrawCount is not null);
-    private string SupportLabel => _effect.Support switch {
-        EffectSupport.ModeledWithinRules => "Modeled within calculator rules",
-        EffectSupport.Partial => "Partial model",
-        _ => "Unmodeled"
-    };
     private string? ModeNotice => Card.DrawCount is null ? null : !DrawEffectsEnabled
         ? "Opening hand only · saved simulation is off."
         : !ConditionalEffectsEnabled && (Card.PreDrawRemovalCount > 0 || Card.PreDrawDeckRemovalCount > 0 || Card.PostDrawDiscardCount > 0)
