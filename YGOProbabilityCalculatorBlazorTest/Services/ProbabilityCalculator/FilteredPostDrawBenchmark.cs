@@ -16,9 +16,9 @@ public partial class DrawEffectsBenchmark {
     public void ExportFilteredPostDrawWorkerCases() {
         CategoryBase starter = new("Starter");
         CategoryBase extender = new("Extender");
-        CategoryBase dark = CuratedDrawEffectPresets.FilterProperties[0];
-        CategoryBase quick = CuratedDrawEffectPresets.FilterProperties[1];
-        CategoryBase radiant = CuratedDrawEffectPresets.FilterProperties[2];
+        CategoryBase dark = new CategoryBase("Attribute: DARK", CategorySource.Metadata, "attribute:dark");
+        CategoryBase quick = new CategoryBase("Quick-Play Spell", CategorySource.Metadata, "spell-type:quick-play");
+        CategoryBase radiant = new CategoryBase("Archetype: Radiant Typhoon", CategorySource.Metadata, "archetype:radiant%20typhoon");
         List<Combo> combos = [
             new([new(starter, 1, 0, RequirementMaximumMode.HandSize), new(extender, 1, 0, RequirementMaximumMode.HandSize)], "Starter + extender", groupId: "g"),
             new([new(starter, 2, 0, RequirementMaximumMode.HandSize)], "Two starters", groupId: "g"),

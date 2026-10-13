@@ -346,8 +346,8 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     public async Task SelectingDifferentCuratedCardReplacesCustomizedDrawSettings() {
         Card customized = new([], copies: 2, name: "Manual", active: false, id: "customized", externalCardId: 1234,
             drawCount: 1, drawOncePerTurn: false, postDrawDiscardCount: 1,
-            postDrawSelector: CardSelector.For(CuratedDrawEffectPresets.FilterProperties[0]),
-            preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(CuratedDrawEffectPresets.FilterProperties[4]));
+            postDrawSelector: CardSelector.For(new CategoryBase("Attribute: DARK", CategorySource.Metadata, "attribute:dark")),
+            preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(new CategoryBase("Level 8", CategorySource.Metadata, "level:8")));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [customized] });
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
         IElement nameInput = editor.Find("#cardName0");
@@ -370,8 +370,8 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     public async Task SelectingUncuratedCardResetsConfiguredDrawSettingsToOrdinaryDefaults() {
         Card configured = new([], name: "Configured", id: "configured", externalCardId: 1234,
             drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2,
-            postDrawSelector: CardSelector.For(CuratedDrawEffectPresets.FilterProperties[0]),
-            preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(CuratedDrawEffectPresets.FilterProperties[4]));
+            postDrawSelector: CardSelector.For(new CategoryBase("Attribute: DARK", CategorySource.Metadata, "attribute:dark")),
+            preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(new CategoryBase("Level 8", CategorySource.Metadata, "level:8")));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [configured] });
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
         IElement nameInput = editor.Find("#cardName0");
@@ -394,7 +394,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     public async Task SelectingAllureAfterGracefulCharityReplacesEveryDrawField() {
         Card gracefulCharity = CuratedDrawEffectPresets.CreateImportedCard(GracefulCharity, 1, GracefulCharityId)
             .WithPreDrawRemovalCount(1)
-            .WithPreDrawSelector(CardSelector.For(CuratedDrawEffectPresets.FilterProperties[4]));
+            .WithPreDrawSelector(CardSelector.For(new CategoryBase("Level 8", CategorySource.Metadata, "level:8")));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
             Cards = [gracefulCharity],
             HandSize = 5
@@ -410,7 +410,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
             selected.PreDrawSelector, selected.PostDrawDiscardCount, selected.PostDrawSelector,
             selected.PostDrawFailureBehavior),
             Is.EqualTo(((int?)2, false, 0, CardSelector.Any, 1,
-                CardSelector.For(CuratedDrawEffectPresets.FilterProperties[0]), PostDrawFailureBehavior.FailBranch)));
+                CardSelector.For(new CategoryBase("Attribute: DARK", CategorySource.Metadata, "attribute:dark")), PostDrawFailureBehavior.FailBranch)));
         AssertOnlyLocalCatalogWasRequested();
     }
 
