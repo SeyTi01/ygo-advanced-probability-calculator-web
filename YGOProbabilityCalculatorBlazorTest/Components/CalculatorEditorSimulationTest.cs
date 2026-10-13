@@ -17,14 +17,24 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
     [TestCase(35261759)]
     [TestCase(1475311)]
     [TestCase(93946239)]
+    [TestCase(7925734)]
+    [TestCase(49238328)]
+    [TestCase(24940422)]
     public void BuiltInsAreQuietReadOnlyAndExposeSavedDetailsOnRequest(int id) {
         Card card = BuiltIn(id);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
         Assert.That(editor.Find(".simulation-source").TextContent, Is.EqualTo("Built-in simulation"));
         Assert.That(editor.FindAll(".simulation-summary"), Is.Empty);
-        Assert.That(editor.Find(".simulation-status").ClassList,
-            Does.Contain(card.EffectProfile.Support == EffectSupport.ModeledWithinRules ? "text-success" : "text-warning-emphasis"));
+        Assert.That(editor.Find(".card-simulation").TextContent, Does.Not.Contain("Modeled within calculator rules"));
+        if (card.EffectProfile.Support == EffectSupport.ModeledWithinRules) {
+            Assert.That(editor.FindAll(".simulation-status"), Is.Empty);
+            Assert.That(editor.Find(".simulation-source svg").GetAttribute("aria-hidden"), Is.EqualTo("true"));
+        }
+        else {
+            Assert.That(editor.Find(".simulation-heading .simulation-status").TextContent, Is.EqualTo("Partial"));
+            Assert.That(editor.FindAll(".simulation-source svg"), Is.Empty);
+        }
         Assert.That(editor.FindAll(".card-simulation select, .card-simulation input, .card-simulation p"), Is.Empty);
         Assert.That(editor.FindAll(".simulation-restore"), Is.Empty);
         Assert.That(editor.Find(".simulation-edit").TextContent, Is.EqualTo("Customize simulation"));
@@ -41,14 +51,66 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public void UnconfiguredManualAndUnknownCatalogCardsOnlyOfferConfiguration() {
+    public void UnconfiguredManualAndUnknownCatalogCardsIdentifyAbsenceAndOfferConfiguration() {
         Card manual = new([], name: "Manual");
         Card unknown = new Card([], name: "Unknown", externalCardId: 123).WithEffect(manual.EffectPlan, new(EffectSource.Custom, 123));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [manual, unknown] });
         foreach (IRenderedComponent<CardEditor> editor in cut.FindComponents<CardEditor>()) {
-            Assert.That(editor.Find(".card-simulation").TextContent.Trim(), Is.EqualTo("Configure simulation"));
+            Assert.That(editor.Find(".simulation-source").TextContent.Trim(), Is.EqualTo("No built-in simulation"));
+            Assert.That(editor.Find(".simulation-source svg").GetAttribute("aria-hidden"), Is.EqualTo("true"));
+            Assert.That(editor.Find(".simulation-edit").TextContent, Is.EqualTo("Configure simulation"));
+            Assert.That(editor.FindAll(".simulation-details-toggle, .simulation-status, .simulation-summary"), Is.Empty);
             Assert.That(editor.FindAll(".card-simulation select, .card-simulation input"), Is.Empty);
         }
+    }
+
+    [TestCase(null)]
+    [TestCase(123)]
+    public async Task CustomOnlyEffectKeepsItsSourceThroughModeChangesAndDraftCancel(int? identity) {
+        Card card = new Card([], externalCardId: identity).WithDrawCount(2);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        foreach (string mode in new[] { "OpeningHand", "Simplified", "Configured" }) {
+            await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode });
+            Assert.That(editor.Find(".simulation-source").TextContent, Is.EqualTo("Custom simulation"));
+            Assert.That(editor.FindAll(".simulation-status, .simulation-details-toggle, .simulation-restore"), Is.Empty);
+            OpenSimulation(editor);
+            await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "3" });
+            await editor.Find(".simulation-cancel").ClickAsync(new());
+            Assert.That(editor.Instance.Card, Is.SameAs(card));
+        }
+        OpenSimulation(editor);
+        await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "" });
+        await editor.Find(".simulation-save").ClickAsync(new());
+        Assert.That(editor.Find(".simulation-source").TextContent, Is.EqualTo("Custom simulation"));
+        Assert.That(editor.Find(".simulation-summary").TextContent, Is.EqualTo("No draw effect"));
+    }
+
+    [TestCase(35261759)]
+    [TestCase(93946239)]
+    public async Task ModeChangesPreserveBuiltInSupportAndExactSavedNote(int id) {
+        Card card = BuiltIn(id);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        string heading = editor.Find(".simulation-heading").TextContent;
+        foreach (string mode in new[] { "OpeningHand", "Simplified", "Configured" }) {
+            await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode });
+            Assert.That(editor.Find(".simulation-heading").TextContent, Is.EqualTo(heading));
+            Assert.That(editor.FindAll(".simulation-details-toggle"), Has.Count.EqualTo(1));
+            Assert.That(SimulationDetails(editor).Trim(), Is.EqualTo(card.EffectProfile.Limitations));
+            await editor.Find(".simulation-details-toggle").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
+            Assert.That(editor.Instance.Card, Is.SameAs(card));
+        }
+    }
+
+    [Test]
+    public void LegacySnapshotWithoutMaintainedDefinitionKeepsSavedSourceAndDetails() {
+        Card card = new([], drawCount: 1, externalCardId: 123);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        Assert.That(editor.Find(".simulation-source").TextContent, Is.EqualTo("Saved simulation"));
+        Assert.That(editor.FindAll(".simulation-status, .simulation-restore"), Is.Empty);
+        Assert.That(SimulationDetails(editor), Does.Contain("Saved settings; no built-in revision recorded."));
     }
 
     [Test]
@@ -108,6 +170,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "" });
         await editor.Find(".simulation-save").ClickAsync(new());
         Assert.That(editor.Find(".simulation-summary").TextContent, Is.EqualTo("No draw effect"));
+        Assert.That(editor.Find(".simulation-source").TextContent, Is.EqualTo("Custom simulation"));
         await editor.Find(".simulation-restore").ClickAsync(new());
         Card restored = editor.Instance.Card;
         Assert.That(restored.EffectPlan, Is.EqualTo(card.EffectPlan));
@@ -153,6 +216,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         Assert.That(editor.Find(".accordion-button").TextContent, Does.Contain("Unsupported effect"));
         Assert.That(editor.Find(".card-simulation").TextContent, Does.Contain("cannot run"));
         Assert.That(editor.FindAll(".simulation-edit"), Is.Empty);
+        Assert.That(editor.FindAll(".simulation-status, .simulation-source svg"), Is.Empty);
         Assert.That(editor.Instance.Card.EffectProfile.ExecutionModel, Is.EqualTo(EffectExecutionModel.Unsupported));
         SimulationDetails(editor);
         await editor.Find(".simulation-restore").ClickAsync(new());
