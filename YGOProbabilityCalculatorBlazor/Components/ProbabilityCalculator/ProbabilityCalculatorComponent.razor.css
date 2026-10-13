@@ -482,3 +482,12 @@
 @media (max-width: 767.98px) {
     .session-toolbar { flex-wrap: wrap; }
 }
+
+.calculator-workspace ::deep .combo-group-management { margin-top: 1.5rem; }
+.session-toolbar ::deep :is(.session-action, .session-share-compact, .action-menu-trigger) {
+    color: var(--bs-secondary-color);
+}
+.session-toolbar ::deep :is(.session-action, .session-share-compact, .action-menu-trigger):is(:hover, :focus-visible, :active, [aria-expanded="true"]) {
+    color: var(--bs-emphasis-color);
+    background: var(--bs-secondary-bg);
+}
