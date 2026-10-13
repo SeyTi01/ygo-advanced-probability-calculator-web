@@ -77,9 +77,6 @@
     border: 0;
     border-left: 1px solid var(--category-border);
     border-radius: 0;
-    background-position: center;
-    background-size: 0.75rem 0.75rem;
-    filter: none;
     opacity: 0.72;
 }
 

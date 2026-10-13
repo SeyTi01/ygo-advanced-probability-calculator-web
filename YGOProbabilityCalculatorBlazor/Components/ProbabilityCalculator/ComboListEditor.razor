@@ -76,12 +76,12 @@
                             </button>
                             <ReorderControls Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@($"group {group.Name}")" OnMove="OnMoveGroup" />
                             <button type="button" class="category-icon-button"
-                                    aria-label="Exit group edit mode" title="Exit group edit mode"
+                                    aria-label="Cancel group edit" title="Cancel group edit"
                                     @onclick="CancelGroupRename">
                                 <svg class="category-action-icon" viewBox="0 0 24 24"
                                      fill="none" stroke="currentColor" stroke-width="2.5"
                                      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M19 12H5m0 0 7-7m-7 7 7 7"></path>
+                                    <path d="m6 6 12 12M6 18 18 6"></path>
                                 </svg>
                             </button>
                         }
@@ -92,10 +92,16 @@
                                     title="@($"Edit group {group.Name}")"
                                     @onclick="() => BeginGroupRename(group)">@group.Name</button>
                         }
-                        <button type="button" class="btn-close category-delete-button"
+                        <button type="button" class="category-icon-button category-delete-button"
                                 aria-label="@($"Remove group {group.Name}")"
-                                title="@($"Remove group {group.Name}")"
-                                @onclick="() => RemoveGroup(group)"></button>
+                                title="@($"Delete group {group.Name}")"
+                                @onclick="() => RemoveGroup(group)">
+                            <svg class="category-action-icon" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"></path>
+                            </svg>
+                        </button>
                     </span>
                 }
             </div>
