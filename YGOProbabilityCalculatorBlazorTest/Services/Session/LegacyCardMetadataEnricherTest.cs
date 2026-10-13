@@ -12,6 +12,18 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 [TestFixture]
 public class LegacyCardMetadataEnricherTest {
+    [Test]
+    public async Task LegacyEnrichmentKeepsStoredManualArchetypeKeysWhenResolvedMembershipOverlaps() {
+        CardInfo raiden = new() { Id = 77558536, Name = "Raiden, Hand of the Lightsworn", Type = "Effect Monster", ResolvedArchetypes = ["Lightsworn"] };
+        CategoryBase lightsworn = new("Archetype: Lightsworn", CategorySource.Metadata, "archetype:lightsworn");
+        Card card = new([lightsworn], name: raiden.Name, manualMetadataCategoryKeys: [lightsworn.MetadataKey!]);
+        SessionState session = new() { Cards = [card] };
+        await new LegacyCardMetadataEnricher(MatchingService(raiden).Object).EnrichAsync(session);
+        Assert.That(session.Cards[0].ExternalCardId, Is.EqualTo(raiden.Id));
+        Assert.That(session.Cards[0].ManualMetadataCategoryKeys, Does.Contain(lightsworn.MetadataKey));
+        Assert.That(session.Cards[0].Categories.Select(category => category.MetadataKey), Does.Contain("kind:monster"));
+    }
+
     private static readonly CardInfo Ash = new() { Id = 14558127, Name = "Ash Blossom & Joyous Spring",
         Type = "Tuner Monster", Race = "Zombie", Attribute = "FIRE", Level = 3 };
     private static readonly CardInfo Maxx = new() { Id = 23434538, Name = "Maxx \"C\"",

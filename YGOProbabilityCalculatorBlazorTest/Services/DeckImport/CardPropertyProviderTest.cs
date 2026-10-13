@@ -4,6 +4,17 @@ using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
 public class CardPropertyProviderTest {
+    [Test]
+    public void AssociationOrEditableNameAloneNeverCreatesArchetypeMembership() {
+        foreach (CardInfo info in new CardInfo[] {
+            new() { Name = "Solar Recharge", Archetype = "Lightsworn" },
+            new() { Name = "Lightsworn", Id = 123 },
+            new() { Name = "Unknown", Archetype = "Archfiend", ResolvedArchetypes = [] }
+        }) {
+            Assert.That(CardPropertyProvider.GetCategories(info), Is.Empty);
+        }
+    }
+
     // Full documented type list: explicit expectations guard combined-type handling.
     [TestCase("Effect Monster", "Effect")]
     [TestCase("Flip Effect Monster", "Flip,Effect")]
@@ -60,7 +71,7 @@ public class CardPropertyProviderTest {
     [Test]
     public void NumericAndTextFacetsHaveCanonicalKeysAndNoSubjectiveInference() {
         CardInfo info = new() { Type = "Pendulum Effect Monster", Race = "Warrior", Attribute = "FIRE",
-            Level = 5, Scale = 0, Archetype = "Vanquish Soul" };
+            Level = 5, Scale = 0, ResolvedArchetypes = ["Vanquish Soul"] };
         IReadOnlyList<CategoryBase> categories = CardPropertyProvider.GetCategories(info);
         Assert.That(categories.Select(c => c.MetadataKey), Is.EquivalentTo(new[] {
             "kind:monster", "monster-trait:pendulum", "monster-trait:effect", "monster-race:warrior",
@@ -68,7 +79,7 @@ public class CardPropertyProviderTest {
         }));
         Assert.That(categories.Select(c => c.Name), Does.Contain("Pendulum Scale 0").And.Contain("Archetype: Vanquish Soul"));
         Assert.That(categories.Select(c => c.MetadataKey), Is.EqualTo(CardPropertyProvider.GetCategories(info with {
-            Type = "PENDULUM EFFECT EFFECT MONSTER", Attribute = "fire", Race = "warrior", Archetype = "vanquish soul"
+            Type = "PENDULUM EFFECT EFFECT MONSTER", Attribute = "fire", Race = "warrior", ResolvedArchetypes = ["vanquish soul"]
         }).Select(c => c.MetadataKey)));
     }
 

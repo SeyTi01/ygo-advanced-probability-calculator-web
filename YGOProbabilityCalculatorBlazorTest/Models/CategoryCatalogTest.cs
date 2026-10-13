@@ -95,7 +95,7 @@ public class CategoryCatalogTest {
 
     [Test]
     public void HighCardinalityMetadataStaysContextualAndComboReferencesRetainIt() {
-        CategoryBase archetype = CardPropertyProvider.GetCategories(new() { Type = "Effect Monster", Archetype = "Orcust" })
+        CategoryBase archetype = CardPropertyProvider.GetCategories(new() { Type = "Effect Monster", ResolvedArchetypes = ["Orcust"] })
             .Single(static category => category.MetadataKey == "archetype:orcust");
         CategoryBase race = CardPropertyProvider.GetCategories(new() { Type = "Effect Monster", Race = "Warrior" })
             .Single(static category => category.MetadataKey == "monster-race:warrior");

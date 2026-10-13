@@ -45,7 +45,12 @@ public class LegacyCardMetadataEnricher(ICardInfoService cardInfoService) : ILeg
                 continue;
             }
 
-            IReadOnlyList<CategoryBase> properties = CardPropertyProvider.GetCategories(info);
+            // Session restoration must retain explicit archetype overrides even when
+            // the newly resolved objective membership happens to overlap them.
+            IReadOnlyList<CategoryBase> properties = CardPropertyProvider.GetCategories(info)
+                .Where(category => !category.MetadataKey!.StartsWith("archetype:", StringComparison.Ordinal)
+                    || !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey))
+                .ToArray();
 
             if (properties.Count == 0) {
                 continue;

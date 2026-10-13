@@ -12,6 +12,8 @@ public sealed record CardInfo {
     public int? LinkVal { get; init; }
     public int? Scale { get; init; }
     public string? Archetype { get; init; }
+    /// <summary>Offline resolved membership. Null means unverified; the provider association is never a substitute.</summary>
+    public IReadOnlyList<string>? ResolvedArchetypes { get; init; }
     public int? CanonicalCardId { get; init; }
     public IReadOnlyList<int> ArtworkImageIds { get; init; } = Array.Empty<int>();
     public bool ArtworkMetadataKnown { get; init; }

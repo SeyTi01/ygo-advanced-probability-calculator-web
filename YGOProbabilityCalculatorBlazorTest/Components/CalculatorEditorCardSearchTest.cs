@@ -284,7 +284,8 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         Assert.That(selected.Categories, Does.Contain(userCategory));
         Assert.That(selected.Categories.Select(category => category.Name),
             Does.Contain("Tuner Monster").And.Contain("Attribute: FIRE").And.Contain("Monster Type: Zombie")
-                .And.Contain("Level 3").And.Contain("Archetype: Floowandereeze"));
+                .And.Contain("Level 3"));
+        Assert.That(selected.Categories.Any(category => category.MetadataKey == "archetype:floowandereeze"), Is.False);
         Assert.That(cut.FindComponents<CardArtwork>().All(artwork => artwork.Instance.ExternalCardId == AshBlossomId), Is.True);
         Assert.That(await context.Services.GetRequiredService<ICardArtworkService>().GetArtworkUrlAsync(AshBlossomId),
             Is.EqualTo($"{CardArtworkService.ArtworkOrigin}/small/{AshBlossomId}.jpg"));

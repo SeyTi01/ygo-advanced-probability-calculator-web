@@ -35,7 +35,7 @@ test("projects objective metadata and artwork identities while excluding provide
     const catalog = buildCatalog({ data: sourceCards() });
     const cards = new Map(catalog.cards.map(entry => [entry.id, entry]));
 
-    assert.equal(catalog.version, 1);
+    assert.equal(catalog.version, 2);
     assert.equal(cards.get(7).scale, 1);
     assert.equal(cards.get(4).level, 8);
     assert.equal(cards.get(6).race, "Counter");

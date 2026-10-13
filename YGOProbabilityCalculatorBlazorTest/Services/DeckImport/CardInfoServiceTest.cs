@@ -9,6 +9,50 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
 [TestFixture]
 public class CardInfoServiceTests {
+    [Test]
+    public async Task VerifiedCatalogMembershipWinsForSearchImportCanonicalAndArtworkIds() {
+        CardInfo[] cards = [
+            new() { Id = 691925, CanonicalCardId = 691925, Name = "Solar Recharge", Type = "Spell Card",
+                ArtworkMetadataKnown = true, ResolvedArchetypes = [], Archetype = "Lightsworn" },
+            new() { Id = 70781052, CanonicalCardId = 70781052, Name = "Summoned Skull", Type = "Normal Monster",
+                ArtworkMetadataKnown = true, ArtworkImageIds = [70781052, 70781053], ResolvedArchetypes = ["Archfiend"] }
+        ];
+        string json = JsonSerializer.Serialize(new { version = 2, cards }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        RecordingHttpMessageHandler handler = new((_, _) => Task.FromResult(Response(HttpStatusCode.OK, json)));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client);
+        CardInfo solar = (await service.SearchCardsAsync("Solar Recharge")).Single();
+        Assert.That(CardPropertyProvider.GetCategories(solar).Any(category => category.MetadataKey == "archetype:lightsworn"), Is.False);
+        Assert.That((await service.GetCardInfoAsync(691925)).ResolvedArchetypes, Is.Empty);
+        CardInfo artwork = await service.GetCardInfoAsync(70781053);
+        Assert.That((artwork.Id, artwork.CanonicalCardId), Is.EqualTo((70781053, (int?)70781052)));
+        Assert.That(artwork.ResolvedArchetypes, Is.EqualTo(new[] { "Archfiend" }));
+        Card imported = CuratedDrawEffectPresets.CreateImportedCard(artwork, 2, artwork.Id);
+        Assert.That(imported.Categories.Select(category => category.MetadataKey), Does.Contain("archetype:archfiend"));
+        Assert.That((await service.GetCardInfoByExactNamesAsync(["Summoned Skull"]))["Summoned Skull"].ResolvedArchetypes,
+            Is.EqualTo(new[] { "Archfiend" }));
+        Assert.That(await service.GetCatalogCardsAsync(), Has.Count.EqualTo(2));
+        Assert.That(handler.Requests, Has.Length.EqualTo(1));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task LiveAndHistoricalCacheFallbackDoNotTrustAssociationOrStoredResolvedClaims(bool offline) {
+        string cached = """
+            {"schemaVersion":2,"cards":{"691925":{"id":691925,"name":"Solar Recharge","type":"Spell Card",
+             "archetype":"Lightsworn","resolvedArchetypes":["Lightsworn"]}}}
+            """;
+        RecordingHttpMessageHandler handler = new((_, _) => Task.FromResult(offline
+            ? Response(HttpStatusCode.ServiceUnavailable, "{}")
+            : Response(HttpStatusCode.OK, """{"data":[{"id":691925,"name":"Solar Recharge","type":"Spell Card","archetype":"Lightsworn"}]}""")));
+        using HttpClient client = new(handler);
+        CardInfoService service = new(new TestLocalStorage(cached), client);
+        CardInfo card = await service.GetCardInfoAsync(691925);
+        Assert.That(card.ResolvedArchetypes, Is.Null);
+        Assert.That(CardPropertyProvider.GetCategories(card).Select(category => category.MetadataKey), Does.Not.Contain("archetype:lightsworn"));
+        Assert.That((await service.GetCardInfoByExactNamesAsync(["Solar Recharge"]))["Solar Recharge"].ResolvedArchetypes, Is.Null);
+    }
+
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 9, 0, 0, TimeSpan.Zero);
 
     [Test]
