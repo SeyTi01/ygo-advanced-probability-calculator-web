@@ -42,6 +42,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
             Assert.That(editor.FindAll(".simulation-details-toggle"), Is.Empty);
         }
         else {
+            Assert.That(editor.Find(".simulation-details-toggle").TextContent, Is.EqualTo("Model notes"));
             Assert.That(editor.Find(".simulation-details-toggle").GetAttribute("aria-expanded"), Is.EqualTo("false"));
             Assert.That(SimulationDetails(editor).Trim(), Is.EqualTo(card.EffectProfile.Limitations));
             editor.Find(".simulation-details-toggle").KeyDown(new KeyboardEventArgs { Key = "Escape" });

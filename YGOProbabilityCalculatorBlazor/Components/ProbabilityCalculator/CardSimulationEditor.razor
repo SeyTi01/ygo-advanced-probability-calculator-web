@@ -45,7 +45,7 @@
         @if (HasDetails) {
             <button @ref="_detailsButton" type="button" class="btn btn-sm btn-link simulation-details-toggle"
                     aria-expanded="@(_detailsOpen ? "true" : "false")" aria-controls="simulationDetails@(Index)"
-                    @onclick="() => _detailsOpen = !_detailsOpen">Details</button>
+                    @onclick="() => _detailsOpen = !_detailsOpen">Model notes</button>
         }
     </div>
     @if (_detailsOpen && HasDetails) {
