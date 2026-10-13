@@ -18,7 +18,7 @@ public sealed record CuratedDrawEffectPreset(
 
 // Compatibility view for existing callers. Definitions live only in the registry.
 public static class CuratedDrawEffectPresets {
-    public static IReadOnlyList<CategoryBase> FilterProperties => EffectProperties.All;
+    public static IReadOnlyList<CategoryBase> FilterProperties => CardEffectRegistry.Default.FilterProperties;
     public static IReadOnlyList<CuratedDrawEffectPreset> All { get; } = Array.AsReadOnly(
         CardEffectRegistry.Default.All.Select(ToPreset).ToArray());
 

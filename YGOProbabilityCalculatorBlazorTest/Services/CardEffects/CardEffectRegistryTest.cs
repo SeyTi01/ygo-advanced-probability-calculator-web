@@ -17,7 +17,8 @@ public class CardEffectRegistryTest {
     private static readonly CardEffectRegistry Registry = CardEffectRegistry.Default;
     private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
 
-    private sealed class AdditionalEffect(int draw = 1, int revision = 1) : ICardEffectDefinition {
+    private sealed class AdditionalEffect(int draw = 1, int revision = 1, IReadOnlyList<CategoryBase>? properties = null) : ICardEffectDefinition {
+        public IReadOnlyList<CategoryBase> FilterProperties => properties ?? [];
         public int CanonicalCardId => 900001;
         public IReadOnlyList<int> Aliases => [900002];
         public string Name => "Test effect";
@@ -54,6 +55,25 @@ public class CardEffectRegistryTest {
         Assert.That(Run([free, .. cards.Skip(1)], combos, 2).TotalProbability,
             Is.Not.EqualTo(Run(cards, combos, 2).TotalProbability));
         Assert.That(definition.CompileCalls, Is.EqualTo(1), "Compile only at registration, never per draw transition.");
+    }
+
+    [Test]
+    public void RegisteredDefinitionsSupplyDistinctFilterPropertiesWithoutCentralRegistration() {
+        CategoryBase added = new("New property", CategorySource.Metadata, "test:new");
+        List<CategoryBase> properties = [added, new("Same identity", CategorySource.Metadata, "test:new")];
+        CardEffectRegistry registry = new([new AdditionalEffect(properties: properties), new PotOfGreedEffect()]);
+        properties.Clear();
+
+        Assert.That(registry.FilterProperties, Is.EqualTo(new[] { added }));
+        Assert.That(registry.FilterProperties[0].Name, Is.EqualTo("New property"));
+        Assert.That(new CardEffectRegistry([new PotOfGreedEffect()]).FilterProperties, Is.Empty);
+        Assert.That(CuratedDrawEffectPresets.FilterProperties, Is.SameAs(Registry.FilterProperties));
+        Assert.That(Registry.FilterProperties.Select(property => (property.Name, property.MetadataKey)), Is.EquivalentTo(new[] {
+            ("Attribute: DARK", "attribute:dark"), ("Quick-Play Spell", "spell-type:quick-play"),
+            ("Archetype: Radiant Typhoon", "archetype:radiant%20typhoon"), ("Monster", "kind:monster"),
+            ("Level 8", "level:8"), ("Archetype: Orcust", "archetype:orcust"),
+            ("Archetype: World Legacy", "archetype:world%20legacy")
+        }));
     }
 
     // Frozen scalar expectations from dev 2a3c7d9, independently of registry output.
