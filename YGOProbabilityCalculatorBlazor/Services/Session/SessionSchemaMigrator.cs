@@ -107,7 +107,8 @@ public sealed class SessionSchemaMigrator {
             string[] fields = card.Select(property => property.Key)
                 .Where(name => name.Equals("PreDrawRemovalCount", StringComparison.OrdinalIgnoreCase)
                     || name.Equals("PreDrawSelector", StringComparison.OrdinalIgnoreCase)
-                    || name.Equals("PreDrawDeckRemovalCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+                    || name.Equals("PreDrawDeckRemovalCount", StringComparison.OrdinalIgnoreCase)
+                    || name.Equals("EffectProfile", StringComparison.OrdinalIgnoreCase)).ToArray();
             foreach (string field in fields) {
                 card.Remove(field);
             }

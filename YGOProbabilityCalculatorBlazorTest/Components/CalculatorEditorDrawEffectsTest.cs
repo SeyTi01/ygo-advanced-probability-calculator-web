@@ -14,6 +14,22 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
     [Test]
+    public async Task ExistingControlsMarkBuiltInEffectsCustomAndPersistTheChoice() {
+        Card card = YGOProbabilityCalculatorBlazor.Services.CardEffects.CardEffectRegistry.Default.CreateImportedCard(
+            new() { Id = 35261759, Name = "Pot of Desires" }, 3, 35261759);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
+        Assert.That(editor.Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.BuiltIn));
+        await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "1" });
+        Assert.That(editor.Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
+        await Button(cut, "Save Session").ClickAsync(new());
+        SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
+        Assert.That(saved.Cards[0].EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
+        Assert.That(saved.Cards[0].PreDrawDeckRemovalCount, Is.EqualTo(10));
+        Assert.That(saved.Cards[0].Id, Is.EqualTo(card.Id));
+    }
+
+    [Test]
     public async Task CardPresentationTracksEffectiveModeAndKeepsAdvancedSettingsEditable() {
         CategoryBase dark = new("Dark");
         Card advanced = new(

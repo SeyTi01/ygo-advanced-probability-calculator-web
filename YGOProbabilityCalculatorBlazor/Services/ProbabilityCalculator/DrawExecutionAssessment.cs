@@ -28,6 +28,10 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
             || combos.Sum(combo => combo.AllCategories.Sum(requirement => (long)requirement.Selector.CategoryIdentities.Count)) > 2048) {
             return new(DrawExecutionPath.Unknown, false);
         }
+        if (cards.Any(card => card.Active && card.Copies > 0
+            && card.EffectProfile.ExecutionModel != EffectExecutionModel.DrawSequenceV1)) {
+            return new(DrawExecutionPath.Unknown, false);
+        }
         Card[] active = cards.Where(card => card.Active && card.Copies > 0).ToArray();
         Card[] effects = active.Where(card => card.DrawCount is not null).ToArray();
         long copies = active.Sum(card => (long)card.Copies);
