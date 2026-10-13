@@ -1,0 +1,11 @@
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    <path d="M9 3h6m-5 0v6l-3 4v2h10v-2l-3-4V3M12 15v6" />
+    @if (Slashed) {
+        <path d="m3 3 18 18" />
+    }
+</svg>
+
+@code {
+    [Parameter] public bool Slashed { get; set; }
+}

@@ -167,7 +167,7 @@ public class BackgroundCalculationIntegrationTest {
         Assert.That(_cut.Markup, Does.Not.Contain("Obsolete worker"));
         await Complete(2, newer, "Replacement result");
         Assert.That(_cut.Markup, Does.Contain("Replacement result"));
-        Assert.That(_cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
+        Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
     }
 
     [TestCase(false)]
@@ -218,9 +218,9 @@ public class BackgroundCalculationIntegrationTest {
         await export.InvokeAsync(clock.Expire);
         export.WaitForState(() => export.FindAll(".probability-result-copy-success-icon").Count == 0);
         Task cancelled = Start();
-        Assert.That(_cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.True);
+        Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.True);
         await Cancel();
-        Assert.That(_cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
+        Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
         _calculator.Jobs[1].SetResult(Result("Late cancelled result"));
         await cancelled;
         Assert.That(Writes, Is.EqualTo(writes));
@@ -232,15 +232,15 @@ public class BackgroundCalculationIntegrationTest {
         Assert.That(saved.HandSize, Is.EqualTo(3));
         Assert.That(_calculator.Tokens[2].IsCancellationRequested, Is.True);
         Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
-        Assert.That(_cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
-        await _cut.Find("button[title='Copy a summary of these results']").ClickAsync(new());
+        Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
+        await _cut.Find("button[title='Copy results']").ClickAsync(new());
         Assert.That(_context.JSInterop.Invocations["copyText"].Last().Arguments[0],
             Does.StartWith("Previous result — current inputs have changed.\nConfigured draw effects\nProbability results\nHand size: 2"));
         Task latest = Start();
         _calculator.Jobs[2].SetException(new InvalidOperationException("Late edit error"));
         await worker;
         await Complete(3, latest, "Current result");
-        Assert.That(_cut.Find("button[title='Copy a summary of these results']").HasAttribute("disabled"), Is.False);
+        Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
         Assert.That(Writes, Is.EqualTo(writes + 1));
         Assert.That(_cut.Markup, Does.Not.Contain("Late edit error").And.Not.Contain("Calculation was cancelled"));
     }
