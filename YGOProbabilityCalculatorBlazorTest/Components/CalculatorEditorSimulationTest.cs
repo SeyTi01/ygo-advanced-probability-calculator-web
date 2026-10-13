@@ -20,6 +20,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
     [TestCase(7925734)]
     [TestCase(49238328)]
     [TestCase(24940422)]
+    [TestCase(691925)]
     public void BuiltInsAreQuietReadOnlyAndExposeSavedDetailsOnRequest(int id) {
         Card card = BuiltIn(id);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
@@ -102,6 +103,40 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
             await editor.Find(".simulation-details-toggle").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
             Assert.That(editor.Instance.Card, Is.SameAs(card));
         }
+    }
+
+    [Test]
+    public async Task SolarCustomDraftSaveRecoveryAndAtomicRestorePreserveMill() {
+        Card original = BuiltIn(691925).WithName("Solar Recharge");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [original] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        Assert.That(editor.FindAll(".simulation-mill-note"), Is.Empty);
+        OpenSimulation(editor);
+        Assert.That(editor.Find(".simulation-mill-note").TextContent, Does.Contain("top 2 deck cards to the GY"));
+        await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "1" });
+        await editor.Find(".simulation-cancel").ClickAsync(new());
+        Assert.That(editor.Instance.Card, Is.SameAs(original));
+        OpenSimulation(editor);
+        await editor.Find("#cardDrawOnce0").ChangeAsync(new() { Value = true });
+        await editor.Find(".simulation-save").ClickAsync(new());
+        Assert.That(editor.Instance.Card.PostDrawDeckMillCount, Is.EqualTo(2));
+        Assert.That(editor.Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
+        Assert.That(editor.Find(".simulation-summary").TextContent, Does.Contain("send 2 unseen top deck cards to the GY"));
+        await editor.Find("#cardCopies0").InputAsync(new() { Value = "2" });
+        Assert.That(editor.Instance.Card.PostDrawDeckMillCount, Is.EqualTo(2));
+        await Button(cut, "Save Session").ClickAsync(new());
+        ISessionService codec = context.Services.GetRequiredService<ISessionService>();
+        Assert.That((await codec.LoadSessionAsync(SavedSessionJson())).Cards[0].PostDrawDeckMillCount, Is.EqualTo(2));
+        string recovery = context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!.ToString()!;
+        Assert.That(recovery, Does.Contain("PostDrawDeckMillCount"));
+        OpenSimulation(editor);
+        await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "" });
+        await editor.Find(".simulation-save").ClickAsync(new());
+        Assert.That(editor.Instance.Card.PostDrawDeckMillCount, Is.Zero);
+        await editor.Find(".simulation-restore").ClickAsync(new());
+        Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(original.EffectPlan));
+        Assert.That(editor.Instance.Card.EffectProfile, Is.EqualTo(original.EffectProfile));
+        Assert.That(editor.Instance.Card.Copies, Is.EqualTo(2));
     }
 
     [Test]

@@ -72,7 +72,7 @@ public class CardEffectRegistryTest {
             ("Attribute: DARK", "attribute:dark"), ("Quick-Play Spell", "spell-type:quick-play"),
             ("Archetype: Radiant Typhoon", "archetype:radiant%20typhoon"), ("Monster", "kind:monster"),
             ("Level 8", "level:8"), ("Archetype: Orcust", "archetype:orcust"),
-            ("Archetype: World Legacy", "archetype:world%20legacy")
+            ("Archetype: World Legacy", "archetype:world%20legacy"), ("Archetype: Lightsworn", "archetype:lightsworn")
         }));
     }
 
@@ -193,24 +193,26 @@ public class CardEffectRegistryTest {
         Assert.That(Registry.RestoreBuiltIn(loaded).EffectProfile.ExecutionModel, Is.EqualTo(EffectExecutionModel.DrawSequenceV1));
     }
 
-    [Test]
-    public async Task YdkAndYdkeImportsCarryMaintainedProvenance() {
+    [TestCase(35261759, 10, 0)]
+    [TestCase(691925, 0, 2)]
+    public async Task YdkAndYdkeImportsCarryMaintainedProvenance(int id, int banish, int mill) {
         Mock<ICardInfoService> catalog = new();
-        catalog.Setup(service => service.GetCardInfoAsync(35261759))
-            .ReturnsAsync(new CardInfo { Id = 35261759, Name = "Pot of Desires" });
+        catalog.Setup(service => service.GetCardInfoAsync(id))
+            .ReturnsAsync(new CardInfo { Id = id, Name = "Imported card" });
         Mock<IFileService> files = new();
         files.Setup(service => service.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
-            .ReturnsAsync(["#main", "35261759", "35261759", "#extra"]);
+            .ReturnsAsync(["#main", id.ToString(), id.ToString(), "#extra"]);
         DeckImportService importer = new(catalog.Object, files.Object);
         byte[] bytes = new byte[8];
-        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes, 35261759);
-        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4), 35261759);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes, (uint)id);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4), (uint)id);
         string ydke = "ydke://" + Convert.ToBase64String(bytes) + "!!!";
         foreach (List<Card> imported in new[] { await importer.ImportDeckFromYdkAsync(Mock.Of<IBrowserFile>()),
             await importer.ImportDeckFromYdkeAsync(ydke) }) {
             Assert.That(imported.Single().Copies, Is.EqualTo(2));
             Assert.That(imported.Single().EffectProfile.Source, Is.EqualTo(EffectSource.BuiltIn));
-            Assert.That(imported.Single().PreDrawDeckRemovalCount, Is.EqualTo(10));
+            Assert.That(imported.Single().PreDrawDeckRemovalCount, Is.EqualTo(banish));
+            Assert.That(imported.Single().PostDrawDeckMillCount, Is.EqualTo(mill));
         }
     }
 

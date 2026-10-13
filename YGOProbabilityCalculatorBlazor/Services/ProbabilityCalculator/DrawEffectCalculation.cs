@@ -35,12 +35,12 @@ internal sealed class DrawEffectCalculation(List<Card> deck, int handSize, WorkB
         budget.Spend(effects.Count + 1L);
         if (!DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize, conditionalEffectsEnabled)) {
             List<Card> fixedDrawDeck = conditionalEffectsEnabled ? deck
-                : deck.Select(card => card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0).WithPreDrawDeckRemovalCount(0)).ToList();
+                : deck.Select(card => card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0).WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList();
             return new PostDrawCalculation(fixedDrawDeck, handSize, budget).Calculate(combos, groups, totalOnly);
         }
 
-        bool ignoreDeckCosts = !conditionalEffectsEnabled && effects.Any(card => card.PreDrawDeckRemovalCount > 0);
-        List<Card> effectiveEffects = ignoreDeckCosts ? effects.Select(card => card.WithPreDrawDeckRemovalCount(0)).ToList() : effects;
+        bool ignoreDeckCosts = !conditionalEffectsEnabled && effects.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0);
+        List<Card> effectiveEffects = ignoreDeckCosts ? effects.Select(card => card.WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList() : effects;
         DrawResolution resolution = DrawEffectResolver.Resolve(ordinaryCopies, effectiveEffects, handSize, budget);
         ExactProbability total = ExactProbability.Zero;
         ExactProbability[] individual = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : combos.Count).ToArray();

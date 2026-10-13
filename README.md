@@ -69,6 +69,8 @@ Open the gear **Calculation settings** menu to choose how these settings apply:
 
 **Advanced → Banish from deck** sets a hidden top-deck cost before drawing. The built-in Pot of Desires simulation banishes 10 then draws 2, requiring at least 12 cards left in deck. Only physical deck size is tracked: banished identities and remaining combo resources are not simulated. Simplified draws ignores this cost.
 
+Solar Recharge discards one card that is both a Lightsworn and a Monster, draws 2, then sends the top 2 deck cards to the GY. It requires at least 4 cards left in deck. Milling reduces deck capacity before subsequent draws; milled identities and GY effects are outside the model. Simplified draws ignores both its discard and milling. Custom edits preserve the saved milling operation; choosing None removes the entire draw effect, and Restore built-in simulation restores the complete plan.
+
 Requirements apply to the final hand. If the full draw amount is unavailable, the source stays in hand and the outcome is evaluated normally.
 
 ### Use Advanced costs and removals

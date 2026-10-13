@@ -25,6 +25,9 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
         if (conditionalEffectsEnabled && card.PreDrawRemovalCount > 0) {
             headerText = $"Cost {card.PreDrawRemovalCount} · {headerText}";
         }
+        if (conditionalEffectsEnabled && card.PostDrawDeckMillCount > 0) {
+            headerText += $" · Mill {card.PostDrawDeckMillCount}";
+        }
         if (conditionalEffectsEnabled && card.PostDrawDiscardCount > 0) {
             headerText += $" · Remove {card.PostDrawDiscardCount}";
         }
@@ -52,6 +55,9 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
             steps.Add($"Banish {plan.HiddenDeckCost} unseen deck cards");
         }
         steps.Add($"Draw {plan.DrawCount}");
+        if (plan.HiddenPostDrawMill > 0) {
+            steps.Add($"send {plan.HiddenPostDrawMill} unseen top deck cards to the GY");
+        }
         if (plan.RemovalCount > 0) {
             steps.Add($"remove {plan.RemovalCount} from hand ({DescribeSelector(plan.RemovalSelector, categories)})");
         }
@@ -104,7 +110,7 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
     }
 
     private static bool HasAdvancedConfiguration(Card card) =>
-        card.PreDrawDeckRemovalCount > 0 ||
+        card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0 ||
         card.PreDrawRemovalCount > 0 ||
         card.PostDrawDiscardCount > 0 ||
         card.PostDrawSelector.Kind != CardSelectorKind.Any ||

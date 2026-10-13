@@ -19,9 +19,9 @@ internal static class DrawSequenceOracle {
         while (true) {
             pending.RemoveAll(index => !hand.Contains(index)
                 || (order[index].DrawOncePerTurn && used.Contains(order[index].Id))
-                || order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount > order.Count - next);
+                || order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount + order[index].PostDrawDeckMillCount > order.Count - next);
             // Scan physical candidates in encounter order; retain deferred positions.
-            int source = pending.FirstOrDefault(index => order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount <= order.Count - next && Payable(index), -1);
+            int source = pending.FirstOrDefault(index => order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount + order[index].PostDrawDeckMillCount <= order.Count - next && Payable(index), -1);
             if (source < 0) {
                 break;
             }
@@ -41,6 +41,8 @@ internal static class DrawSequenceOracle {
                 }
                 next++;
             }
+            // These are the physical positions AFTER the drawn batch, never observed draws.
+            next += effect.PostDrawDeckMillCount;
             for (int discard = 0; discard < effect.PostDrawDiscardCount; discard++) {
                 if (!Remove(effect.PostDrawSelector)) {
                     return null;
@@ -57,21 +59,21 @@ internal static class DrawSequenceOracle {
             HashSet<int> costDeferred = [];
             int remaining = order.Count - next;
             int minimumLegalDrawCount = reserved >= 0 && order[reserved].DrawCount is int reservedDrawCount
-                && reservedDrawCount + order[reserved].PreDrawDeckRemovalCount <= remaining
-                ? reservedDrawCount + order[reserved].PreDrawDeckRemovalCount
+                && reservedDrawCount + order[reserved].PreDrawDeckRemovalCount + order[reserved].PostDrawDeckMillCount <= remaining
+                ? reservedDrawCount + order[reserved].PreDrawDeckRemovalCount + order[reserved].PostDrawDeckMillCount
                 : int.MaxValue;
             foreach (int candidate in pending) {
                 Card card = order[candidate];
                 if (!hand.Contains(candidate) || candidate == reserved
                     || (reserved >= 0 && card.DrawOncePerTurn && card.Id == order[reserved].Id)
                     || (card.DrawOncePerTurn && (used.Contains(card.Id) || !eligibleOnce.Add(card.Id)))
-                    || card.DrawCount is not int drawCount || drawCount + card.PreDrawDeckRemovalCount > remaining) {
+                    || card.DrawCount is not int drawCount || drawCount + card.PreDrawDeckRemovalCount + card.PostDrawDeckMillCount > remaining) {
                     continue;
                 }
 
                 if (Payable(candidate, reserved)) {
                     usable.Add(candidate);
-                    minimumLegalDrawCount = Math.Min(minimumLegalDrawCount, drawCount + card.PreDrawDeckRemovalCount);
+                    minimumLegalDrawCount = Math.Min(minimumLegalDrawCount, drawCount + card.PreDrawDeckRemovalCount + card.PostDrawDeckMillCount);
                 }
                 else if (card.PreDrawRemovalCount > 0) {
                     int copyCount = hand.Count(index => index != reserved && order[index].Id == card.Id);
@@ -85,7 +87,7 @@ internal static class DrawSequenceOracle {
                 ? -1
                 : remaining - minimumLegalDrawCount;
             HashSet<int> deferred = costDeferred.Where(index =>
-                order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount <= remainingAfterAnotherDraw).ToHashSet();
+                order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount + order[index].PostDrawDeckMillCount <= remainingAfterAnotherDraw).ToHashSet();
             List<int> eligible = hand.Where(index => index != reserved && MatchesSelector(selector, order[index])).ToList();
             if (eligible.Count == 0) {
                 return false;
