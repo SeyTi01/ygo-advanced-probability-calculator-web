@@ -267,7 +267,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
     public void CategoriesRefreshSiblingSelectorsAndRejectEmptyDuplicateOrUsedNames() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
         AddManualCardAsync(cut).GetAwaiter().GetResult();
-        Button(cut, "Add New Combo").Click();
+        Button(cut, "Add combo").Click();
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
         cut.Find("[placeholder='Category name']").Input("A");

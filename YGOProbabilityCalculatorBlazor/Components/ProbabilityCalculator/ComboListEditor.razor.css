@@ -87,3 +87,19 @@
     background-color: var(--category-action-hover);
     opacity: 1;
 }
+
+.combo-add-action {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    min-height: 2.75rem;
+    padding: .35rem .65rem;
+    color: var(--bs-body-color);
+    background: transparent;
+    border: 1px solid var(--bs-border-color);
+}
+.combo-add-action:is(:hover, :focus-visible, :active) {
+    color: var(--bs-emphasis-color);
+    background: var(--bs-secondary-bg);
+    border-color: var(--bs-secondary-color);
+}
