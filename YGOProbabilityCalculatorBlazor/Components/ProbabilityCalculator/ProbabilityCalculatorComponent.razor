@@ -119,6 +119,7 @@
         <summary>Categories <span class="text-body-secondary">· manage card roles</span></summary>
         <CategoryListEditor @key="_sessionVersion"
             OnCategoriesChanged="HandleCategoriesChanged"
+            OnRuleChanged="ChangeCategoryRule"
             OnCategoryColorChanged="SetCategoryColor"
             OnRenameCategory="RenameCategoryBase"
             CategoryBases="_categoryBases"
@@ -757,6 +758,16 @@
         _categoryRename = new CategoryRenameNotice(++_categoryRenameVersion, oldCategory.Name, newCategory.Name);
     }
 
+    private void ChangeCategoryRule((CategoryBase Category, CardSelector? Rule) change) {
+        int index = _categoryBases.FindIndex(category => ReferenceEquals(category, change.Category));
+        if (index < 0) {
+            return;
+        }
+
+        _categoryBases[index] = new CategoryBase(change.Category.Name, rule: change.Rule);
+        InvalidateCalculation();
+    }
+
     private void HandleCategoriesChanged() {
         ReconcileCategoryColorIndices();
         OnCategoriesChanged();
@@ -860,7 +871,8 @@
                 CalculationWorkPolicy.Interactive,
                 model != CalculationModel.OpeningHand,
                 CalculationStoragePolicy.ForTier(_storageTier),
-                new(model == CalculationModel.Configured)
+                new(model == CalculationModel.Configured),
+                _categoryBases
             );
             PinnedCalculationContext comparisonContext = CaptureComparisonContext(model);
             // BackgroundCalculator settles only after disposing its worker handle.

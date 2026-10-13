@@ -65,13 +65,13 @@ public class ComboCategoryConverter : JsonConverter<ComboCategory> {
         writer.WriteStartObject();
         if (value.Selector.Kind == CardSelectorKind.Category) {
             writer.WritePropertyName("BaseCategory");
-            JsonSerializer.Serialize(writer, value.BaseCategory, options);
+            JsonSerializer.Serialize(writer, new CategoryBase(value.BaseCategory.Name, value.BaseCategory.Source, value.BaseCategory.MetadataKey), options);
         }
         else {
             writer.WritePropertyName("Selector");
             JsonSerializer.Serialize(writer, value.Selector, options);
             writer.WritePropertyName("CategoryBases");
-            JsonSerializer.Serialize(writer, value.CategoryBases, options);
+            JsonSerializer.Serialize(writer, value.CategoryBases.Select(category => new CategoryBase(category.Name, category.Source, category.MetadataKey)).ToArray(), options);
         }
         writer.WriteNumber("MinCount", value.MinCount);
         writer.WriteNumber("MaxCount", value.MaxCount);

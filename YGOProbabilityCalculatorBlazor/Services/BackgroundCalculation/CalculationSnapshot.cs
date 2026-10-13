@@ -17,16 +17,17 @@ public sealed record CalculationSnapshot(string Json) {
         CalculationWorkPolicy? workPolicy = null,
         bool drawEffectsEnabled = true,
         CalculationStoragePolicy? storagePolicy = null,
-        CalculationOptions? options = null
+        CalculationOptions? options = null,
+        IEnumerable<CategoryBase>? categoryDefinitions = null
     ) {
-        WorkerCard[] workerCards = cards
+        WorkerCard[] workerCards = CategoryMembership.Materialize(cards, categoryDefinitions ?? [])
             .Where(card => card.Active)
             .Select(card => new WorkerCard(
                 card.Id,
                 card.Copies,
                 card.Name,
                 card.ExternalCardId,
-                card.Categories.ToArray(),
+                card.Categories.Select(category => new CategoryBase(category.Name, category.Source, category.MetadataKey)).ToArray(),
                 card.ManualMetadataCategoryKeys.ToArray(),
                 drawEffectsEnabled ? card.DrawCount : null,
                 drawEffectsEnabled ? card.DrawOncePerTurn : true,

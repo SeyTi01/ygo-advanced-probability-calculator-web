@@ -23,8 +23,17 @@ public class CategoryBaseConverter : JsonConverter<CategoryBase> {
             ? keyProperty.GetString()
             : null;
 
+        JsonProperty[] rules = root.EnumerateObject().Where(property =>
+            property.Name.Equals("Rule", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (rules.Length > 1 || (rules.Length == 1 && rules[0].Name != "Rule")) {
+            throw new JsonException("Invalid or duplicate category rule field.");
+        }
+        CardSelector? rule = rules.Length == 0 ? null
+            : JsonSerializer.Deserialize<CardSelector>(rules[0].Value.GetRawText(), options)
+                ?? throw new JsonException("Category rule must be a nonempty metadata selector.");
+
         try {
-            return new CategoryBase(name ?? throw new JsonException("Name is required"), source, key);
+            return new CategoryBase(name ?? throw new JsonException("Name is required"), source, key, rule);
         }
         catch (ArgumentException exception) {
             throw new JsonException("Invalid category identity.", exception);
@@ -38,6 +47,11 @@ public class CategoryBaseConverter : JsonConverter<CategoryBase> {
 
         if (value.MetadataKey is not null) {
             writer.WriteString("MetadataKey", value.MetadataKey);
+        }
+
+        if (value.Rule is not null) {
+            writer.WritePropertyName("Rule");
+            JsonSerializer.Serialize(writer, value.Rule, options);
         }
 
         writer.WriteEndObject();

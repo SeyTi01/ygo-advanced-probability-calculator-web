@@ -53,6 +53,9 @@ public sealed class SessionSchemaMigrator {
         }
 
         JsonObject root = JsonNode.Parse(json) as JsonObject ?? throw new JsonException("Session root must be a JSON object.");
+        if (sourceVersion <= 3) {
+            RemoveUnreleasedRules(root);
+        }
         int version = sourceVersion;
 
         while (version < SessionState.CurrentSchemaVersion) {
@@ -66,6 +69,24 @@ public sealed class SessionSchemaMigrator {
 
         JsonSerializerOptions options = new() { WriteIndented = true };
         return root.ToJsonString(options);
+    }
+
+    private static void RemoveUnreleasedRules(JsonNode? node) {
+        if (node is JsonObject value) {
+            foreach (string key in value.Select(property => property.Key).ToArray()) {
+                if (key.Equals("Rule", StringComparison.OrdinalIgnoreCase)) {
+                    value.Remove(key);
+                }
+                else {
+                    RemoveUnreleasedRules(value[key]);
+                }
+            }
+        }
+        else if (node is JsonArray array) {
+            foreach (JsonNode? child in array) {
+                RemoveUnreleasedRules(child);
+            }
+        }
     }
 
     private static int ReadSchemaVersion(JsonElement value) {

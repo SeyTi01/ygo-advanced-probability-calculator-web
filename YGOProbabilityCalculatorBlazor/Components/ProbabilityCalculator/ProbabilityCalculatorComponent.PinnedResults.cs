@@ -105,13 +105,14 @@ public partial class ProbabilityCalculatorComponent {
     private PinnedCalculationContext CaptureComparisonContext(CalculationModel model) => PinnedCalculationContext.Capture(
         _comparisonEpoch,
         _handSize,
-        _cards,
+        CategoryMembership.Materialize(_cards, _categoryBases),
         _combos,
         _comboGroups,
         ComboLineage,
         GroupLineage,
         model != CalculationModel.OpeningHand,
-        model == CalculationModel.Configured
+        model == CalculationModel.Configured,
+        _categoryBases
     );
 
     private PinnedResultComparison? CurrentComboComparison(int index) {
