@@ -11,5 +11,4 @@ public sealed class TradeInEffect : ICardEffectDefinition {
     };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
     public string Summary => "Remove a Level 8 card from hand before drawing 2.";
-    public string Limitations => "Uses deterministic hand-cost selection; discard triggers and graveyard state are not modeled.";
 }

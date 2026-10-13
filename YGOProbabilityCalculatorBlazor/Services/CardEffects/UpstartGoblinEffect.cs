@@ -7,7 +7,6 @@ public sealed class UpstartGoblinEffect : ICardEffectDefinition {
     public string Name => "Upstart Goblin";
     public int Revision => 1;
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(1, false);
-    public EffectSupport Support => EffectSupport.Partial;
+    public EffectSupport Support => EffectSupport.ModeledWithinRules;
     public string Summary => "Draw 1.";
-    public string Limitations => "Opponent life-point gain is not modeled.";
 }

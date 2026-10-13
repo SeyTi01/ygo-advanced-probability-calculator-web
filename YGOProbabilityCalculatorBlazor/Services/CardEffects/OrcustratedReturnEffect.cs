@@ -12,7 +12,6 @@ public sealed class OrcustratedReturnEffect : ICardEffectDefinition {
             CardSelector.AllOf(["metadata:kind:monster", "metadata:archetype:orcust"]),
             CardSelector.AllOf(["metadata:kind:monster", "metadata:archetype:world%20legacy"])])
     };
-    public EffectSupport Support => EffectSupport.Partial;
+    public EffectSupport Support => EffectSupport.ModeledWithinRules;
     public string Summary => "Remove an Orcust or World Legacy monster from hand before drawing 2; once per turn.";
-    public string Limitations => "Field alternatives and graveyard triggers are not modeled; hand cost uses deterministic selection.";
 }

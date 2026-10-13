@@ -9,5 +9,5 @@ public sealed class SekkasLightEffect : ICardEffectDefinition {
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true);
     public EffectSupport Support => EffectSupport.Partial;
     public string Summary => "Draw 2; once per turn.";
-    public string Limitations => "Graveyard condition, spell/trap restrictions and graveyard effect are not modeled.";
+    public string Limitations => "The restriction on activating other Spell/Trap cards is not enforced.";
 }

@@ -9,5 +9,5 @@ public sealed class LinkAppleEffect : ICardEffectDefinition {
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(1, true);
     public EffectSupport Support => EffectSupport.Partial;
     public string Summary => "Draw 1; once per turn.";
-    public string Limitations => "Random Extra Deck outcome, summon alternative and reveal are not modeled; always draws one.";
+    public string Limitations => "Assumes the Extra Deck reveal allows drawing.";
 }

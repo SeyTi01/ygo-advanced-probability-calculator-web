@@ -82,7 +82,6 @@ public class CardEffectRegistryTest {
         Assert.That(selected.EffectPlan, Is.EqualTo(card.EffectPlan));
         Assert.That(Registry.Describe(card).Source, Is.EqualTo(EffectSource.BuiltIn));
         Assert.That(Registry.Describe(card).Summary, Is.Not.Empty);
-        Assert.That(Registry.Describe(card).Limitations, Is.Not.Empty);
         foreach (Card variant in new[] { card, card.WithDrawCount(1) }) {
             SessionState session = new() { Cards = [variant] };
             string json = Codec().SerializeSession(session);
