@@ -101,6 +101,30 @@ const { chromium, firefox } = require('playwright');
         assert.equal(await page.getByRole('textbox', { name: 'New name for category Starter', exact: true }).inputValue(), 'Renamed starter');
         await page.getByRole('textbox', { name: 'New name for category Starter', exact: true }).press('Enter');
 
+        const groups = page.locator('.combo-group-management');
+        assert.equal(await groups.getAttribute('open'), null);
+        await groups.locator('summary').focus();
+        await groups.locator('summary').press('Enter');
+        const groupName = page.getByRole('textbox', { name: 'New combo group name', exact: true });
+        await groupName.fill('Routes');
+        await groupName.press('Enter');
+        await page.getByRole('button', { name: 'Edit group Routes', exact: true }).click();
+        const groupRename = page.getByRole('textbox', { name: 'New name for group Routes', exact: true });
+        await groupRename.fill('Main routes');
+        await groupName.fill('Draft group');
+        await groups.locator('summary').click();
+        await page.getByLabel('Hand Size:').fill('2');
+        await page.getByLabel('Hand Size:').press('Tab');
+        await groups.locator('summary').focus();
+        await groups.locator('summary').press('Space');
+        await groupRename.waitFor();
+        assert.equal(await groupRename.inputValue(), 'Main routes');
+        assert.equal(await groupName.inputValue(), 'Draft group');
+        await page.getByRole('button', { name: 'Save group name', exact: true }).click();
+        await page.getByRole('button', { name: 'Edit group Main routes', exact: true }).waitFor();
+        await page.getByRole('button', { name: 'Remove group Main routes', exact: true }).click();
+        await groups.locator('summary').click();
+
         const sample = JSON.parse(await fs.readFile(path.join(root, 'sample-data/example_session_state.json'), 'utf8'));
         await load(sample);
         for (const kind of ['card', 'combo']) {
@@ -138,6 +162,14 @@ const { chromium, firefox } = require('playwright');
                 await page.setViewportSize({ width, height: 1000 });
                 await page.evaluate(() => window.scrollTo(0, 0));
                 await noOverflow();
+                const labelCenters = await page.locator('.session-toolbar > .session-action').evaluateAll(elements => elements.map(element => {
+                    const text = [...element.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+                    const range = document.createRange();
+                    range.selectNodeContents(text);
+                    const rect = range.getBoundingClientRect();
+                    return rect.y + rect.height / 2;
+                }));
+                assert.ok(Math.abs(labelCenters[0] - labelCenters[1]) <= 1, `Save/Load label alignment at ${width}: ${labelCenters}`);
                 await capture(`populated-${width}-${theme.toLowerCase()}`);
                 const last = row('combo', (await page.locator('.combo-editor').count()) - 1);
                 const panel = await open(last);

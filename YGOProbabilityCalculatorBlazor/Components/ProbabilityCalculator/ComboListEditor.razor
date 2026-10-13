@@ -2,73 +2,76 @@
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
 <div class="mb-4">
-    <h4>Combos</h4>
-    <div class="mb-3">
-        <div class="section-add-heading">
-            <h5 class="h6">Groups</h5>
-            <div class="editor-add-row">
-                <div class="editor-select-field">
-                    <input class="form-control" type="text"
-                           aria-label="New combo group name" placeholder="Group name"
-                           @bind="_newGroupName" @bind:event="oninput"
-                           @onkeyup="HandleAddGroupKeyUp" />
-                </div>
-                <div class="editor-add-action">
-                    <button class="btn btn-primary" type="button" aria-label="Add combo group" @onclick="AddGroup">Add</button>
+    <details class="combo-group-management workspace-management">
+        <summary>Combo groups <span class="text-body-secondary">· organize combos</span></summary>
+        <div class="mb-4">
+            <div class="section-add-heading">
+                <h5 class="h6">Groups</h5>
+                <div class="editor-add-row">
+                    <div class="editor-select-field">
+                        <input class="form-control" type="text"
+                               aria-label="New combo group name" placeholder="Group name"
+                               @bind="_newGroupName" @bind:event="oninput"
+                               @onkeyup="HandleAddGroupKeyUp" />
+                    </div>
+                    <div class="editor-add-action">
+                        <button class="btn btn-primary" type="button" aria-label="Add combo group" @onclick="AddGroup">Add</button>
+                    </div>
                 </div>
             </div>
-        </div>
-        @if (_groupError is not null) {
-            <div class="mt-2 combo-group-validation-alert">
-                <DismissibleAlert Message="@_groupError" OnDismiss="@(() => _groupError = null)" />
-            </div>
-        }
-        <div class="mt-2">
-            @for (int index = 0; index < ComboGroups.Count; index++) {
-                ComboGroup group = ComboGroups[index];
-                <span class="badge me-2 category-chip category-tag combo-group-chip" @key="group.Id">
-                    @if (_editingGroupId == group.Id) {
-                        <input @ref="_groupRenameInputReference"
-                               class="form-control form-control-sm category-rename-input"
-                               aria-label="@($"New name for group {group.Name}")"
-                               @bind="_editingGroupName"
-                               @bind:event="oninput"
-                               @onkeydown="HandleGroupRenameKeyDown" />
-                        <button type="button" class="category-icon-button"
-                                aria-label="Save group name" title="Save group name"
-                                @onclick="SaveGroupName">
-                            <svg class="category-action-icon" viewBox="0 0 24 24"
-                                 fill="none" stroke="currentColor" stroke-width="2.5"
-                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                        </button>
-                        <ReorderControls Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@($"group {group.Name}")" OnMove="OnMoveGroup" />
-                        <button type="button" class="category-icon-button"
-                                aria-label="Exit group edit mode" title="Exit group edit mode"
-                                @onclick="CancelGroupRename">
-                            <svg class="category-action-icon" viewBox="0 0 24 24"
-                                 fill="none" stroke="currentColor" stroke-width="2.5"
-                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M19 12H5m0 0 7-7m-7 7 7 7"></path>
-                            </svg>
-                        </button>
-                    }
-                    else {
-                        <button @ref="_groupNameButtonReferences[group.Id]"
-                                type="button" class="category-name-trigger"
-                                aria-label="@($"Edit group {group.Name}")"
-                                title="@($"Edit group {group.Name}")"
-                                @onclick="() => BeginGroupRename(group)">@group.Name</button>
-                    }
-                    <button type="button" class="btn-close category-delete-button"
-                            aria-label="@($"Remove group {group.Name}")"
-                            title="@($"Remove group {group.Name}")"
-                            @onclick="() => RemoveGroup(group)"></button>
-                </span>
+            @if (_groupError is not null) {
+                <div class="mt-2 combo-group-validation-alert">
+                    <DismissibleAlert Message="@_groupError" OnDismiss="@(() => _groupError = null)" />
+                </div>
             }
+            <div class="mt-2">
+                @for (int index = 0; index < ComboGroups.Count; index++) {
+                    ComboGroup group = ComboGroups[index];
+                    <span class="badge me-2 category-chip category-tag combo-group-chip" @key="group.Id">
+                        @if (_editingGroupId == group.Id) {
+                            <input @ref="_groupRenameInputReference"
+                                   class="form-control form-control-sm category-rename-input"
+                                   aria-label="@($"New name for group {group.Name}")"
+                                   @bind="_editingGroupName"
+                                   @bind:event="oninput"
+                                   @onkeydown="HandleGroupRenameKeyDown" />
+                            <button type="button" class="category-icon-button"
+                                    aria-label="Save group name" title="Save group name"
+                                    @onclick="SaveGroupName">
+                                <svg class="category-action-icon" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </button>
+                            <ReorderControls Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@($"group {group.Name}")" OnMove="OnMoveGroup" />
+                            <button type="button" class="category-icon-button"
+                                    aria-label="Exit group edit mode" title="Exit group edit mode"
+                                    @onclick="CancelGroupRename">
+                                <svg class="category-action-icon" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M19 12H5m0 0 7-7m-7 7 7 7"></path>
+                                </svg>
+                            </button>
+                        }
+                        else {
+                            <button @ref="_groupNameButtonReferences[group.Id]"
+                                    type="button" class="category-name-trigger"
+                                    aria-label="@($"Edit group {group.Name}")"
+                                    title="@($"Edit group {group.Name}")"
+                                    @onclick="() => BeginGroupRename(group)">@group.Name</button>
+                        }
+                        <button type="button" class="btn-close category-delete-button"
+                                aria-label="@($"Remove group {group.Name}")"
+                                title="@($"Remove group {group.Name}")"
+                                @onclick="() => RemoveGroup(group)"></button>
+                    </span>
+                }
+            </div>
         </div>
-    </div>
+    </details>
+    <h4>Combos</h4>
     <div class="accordion" id="combosAccordion">
         @for (int index = 0; index < Combos.Count; index++) {
             <ComboEditor @key="_editorKeys[Combos[index]]"
