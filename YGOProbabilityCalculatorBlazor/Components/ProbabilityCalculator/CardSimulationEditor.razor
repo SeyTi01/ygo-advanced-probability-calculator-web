@@ -9,11 +9,15 @@
             @if (!_effect.CanExecute) {
                 <span class="text-danger" role="status">Unsupported execution model</span>
             }
-            else if (_effect.Source == EffectSource.BuiltIn && _effect.Support != EffectSupport.ModeledWithinRules) {
-                <span class="text-warning-emphasis">@(_effect.Support == EffectSupport.Partial ? "Partial model" : "Unmodeled")</span>
-            }
         </div>
-        <div class="simulation-summary">@Summary</div>
+        @if (_effect.Source == EffectSource.BuiltIn) {
+            @if (_effect.CanExecute) {
+                <div class="simulation-status @(_effect.Support == EffectSupport.ModeledWithinRules ? "text-success" : "text-warning-emphasis")">@SupportLabel</div>
+            }
+        }
+        else {
+            <div class="simulation-summary">@DrawEffectPresentation.DescribePlan(Card.EffectPlan, CategoryBases)</div>
+        }
     }
     @if (!_effect.CanExecute) {
         <div class="small text-danger" role="alert">This saved effect cannot run in this calculator.</div>
@@ -30,34 +34,27 @@
         @if (_effect.CanRestore && _effect.Source != EffectSource.BuiltIn) {
             <button type="button" class="btn btn-sm btn-link simulation-restore" @onclick="Restore">Restore built-in simulation</button>
         }
-        @if (ShowSummary || _draft is not null) {
+        @if (HasDetails) {
             <button @ref="_detailsButton" type="button" class="btn btn-sm btn-link simulation-details-toggle"
                     aria-expanded="@(_detailsOpen ? "true" : "false")" aria-controls="simulationDetails@(Index)"
                     @onclick="() => _detailsOpen = !_detailsOpen">Details</button>
         }
     </div>
-    @if (_detailsOpen) {
+    @if (_detailsOpen && HasDetails) {
         <div id="simulationDetails@(Index)" class="simulation-details small">
             @if (_effect.Source == EffectSource.BuiltIn) {
-                <div>Saved built-in revision @Card.EffectProfile.Revision · @SupportLabel</div>
-                <p>@_effect.Summary</p>
                 @if (!string.IsNullOrWhiteSpace(_effect.Limitations)) {
                     <p>@_effect.Limitations</p>
                 }
-                @if (_effect.CanRestore && (Card.EffectProfile != _effect.Maintained!.Profile || Card.EffectPlan != _effect.Maintained.Plan)) {
-                    <button type="button" class="btn btn-sm btn-outline-secondary simulation-restore" @onclick="Restore">Restore built-in simulation</button>
+                @if (HasSavedRevisionDetails) {
+                    <p>Saved built-in revision @Card.EffectProfile.Revision</p>
+                    @if (_effect.CanRestore) {
+                        <button type="button" class="btn btn-sm btn-outline-secondary simulation-restore" @onclick="Restore">Restore built-in simulation</button>
+                    }
                 }
             }
             else if (_effect.Source == EffectSource.LegacySnapshot) {
                 <p>Saved settings; no built-in revision recorded.</p>
-            }
-            @if (_effect.CanExecute) {
-                <p>The activating copy is consumed. Once per turn keeps later copies in hand; otherwise every copy can activate. Separate entries resolve independently.</p>
-                <p>The full draw batch and costs must be available. If not, the source stays in hand with OPT unused. Hand-cost-blocked effects retry after another activation.</p>
-                <p>After drawing, missing eligible material fails the branch. Removals keep active combo pieces first, then usable draw cards. This policy does not optimize play.</p>
-                @if (Card.PreDrawDeckRemovalCount > 0 || _draft?.PreDrawDeckRemovalCount > 0) {
-                    <p>Hidden deck costs track deck size only, not banished identities or remaining combo resources.</p>
-                }
             }
         </div>
     }
@@ -175,8 +172,11 @@
     };
     private string EditLabel => _draft is not null ? "Close editor" : Card.DrawCount is null && _effect.Source != EffectSource.BuiltIn
         ? "Configure simulation" : "Customize simulation";
-    private string Summary => _effect.Source == EffectSource.BuiltIn
-        ? _effect.Summary : DrawEffectPresentation.DescribePlan(Card.EffectPlan, CategoryBases);
+    private bool HasSavedRevisionDetails => _effect.Source == EffectSource.BuiltIn
+        && (_effect.Maintained is null || Card.EffectProfile != _effect.Maintained.Profile || Card.EffectPlan != _effect.Maintained.Plan);
+    private bool HasDetails => (_effect.Source == EffectSource.BuiltIn
+        && (!string.IsNullOrWhiteSpace(_effect.Limitations) || HasSavedRevisionDetails))
+        || (_effect.Source == EffectSource.LegacySnapshot && Card.DrawCount is not null);
     private string SupportLabel => _effect.Support switch {
         EffectSupport.ModeledWithinRules => "Modeled within calculator rules",
         EffectSupport.Partial => "Partial model",

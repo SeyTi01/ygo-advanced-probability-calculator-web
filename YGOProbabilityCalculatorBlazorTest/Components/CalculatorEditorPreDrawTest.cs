@@ -33,8 +33,6 @@ public class CalculatorEditorPreDrawTest : CalculatorEditorTestBase {
         Assert.That(editor.Find("#cardDrawModeHelp0").TextContent, Does.Contain("costs and removals ignored"));
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
-        Assert.That(SimulationDetails(editor),
-            Does.Contain("full draw batch").And.Contain("OPT unused"));
         await editor.Find("#cardCost0").ChangeAsync(new() { Value = "0" });
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PreDrawSelector, Is.EqualTo(CardSelector.Any));

@@ -57,8 +57,6 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(allureEditor.Find("#cardDiscard0").HasAttribute("disabled"), Is.False);
         Assert.That(allureEditor.Find("#cardEligibility0"), Is.Not.Null);
         Assert.That(gracefulEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 3").And.Not.Contain("Remove"));
-        Assert.That(SimulationDetails(gracefulEditor),
-            Does.Contain("full draw batch").And.Contain("stays in hand"));
         Assert.That(gracefulEditor.FindAll("#cardDrawModeHelp1"), Is.Empty);
         Assert.That(ordinaryEditor.FindAll(".accordion-button .badge").ToArray(), Is.Empty);
 
@@ -75,8 +73,6 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(inactiveHeader, Does.Contain("Draw configured · Off").And.Not.Contain("Draw 2").And.Not.Contain("Remove 1"));
         Assert.That(allureEditor.Find("#cardDrawModeHelp0").TextContent,
             Does.Contain("saved simulation is off"));
-        Assert.That(SimulationDetails(allureEditor),
-            Does.Contain("The activating copy is consumed"));
         Assert.That(allureEditor.Find("#cardDiscard0").HasAttribute("disabled"), Is.False);
         Assert.That(allureEditor.Find("#cardEligibility0"), Is.Not.Null);
         Assert.That((allureEditor.Instance.Card.DrawCount,
@@ -104,7 +100,6 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
         AssertPreviousResult(cut);
-        Assert.That(SimulationDetails(editor), Does.Contain("Separate entries resolve independently"));
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
         Assert.That(saved.Cards[0].DrawCount, Is.EqualTo(2));
@@ -135,7 +130,6 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawOncePerTurn, Is.False);
         Assert.That(editor.Instance.Card.DrawCount, Is.EqualTo(2));
-        Assert.That(SimulationDetails(editor), Does.Contain("every copy can activate"));
         AssertPreviousResult(cut);
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
@@ -155,7 +149,6 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await editor.Find("#cardDrawOnce1").ChangeAsync(new() { Value = true });
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawOncePerTurn, Is.True);
-        Assert.That(SimulationDetails(editor), Does.Contain("keeps later copies in hand"));
     }
 
     [Test]

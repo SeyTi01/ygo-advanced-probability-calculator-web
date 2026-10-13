@@ -25,7 +25,6 @@ public class CalculatorEditorHiddenDeckRemovalTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Card.PreDrawDeckRemovalCount, Is.EqualTo(10));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(editor.Markup, Does.Contain("Banish 10"));
-        Assert.That(SimulationDetails(editor), Does.Contain("not banished identities"));
         await Button(cut, "Save Session").ClickAsync(new());
         ISessionService codec = context.Services.GetRequiredService<ISessionService>();
         Assert.That((await codec.LoadSessionAsync(SavedSessionJson())).Cards[0].PreDrawDeckRemovalCount, Is.EqualTo(10));
