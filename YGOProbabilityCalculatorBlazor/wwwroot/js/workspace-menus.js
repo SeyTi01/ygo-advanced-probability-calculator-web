@@ -10,7 +10,21 @@
     const cleanups = new WeakMap();
     const dispose = panel => { cleanups.get(panel)?.(); cleanups.delete(panel); };
     window.workspaceMenus = {
-        open(panel, trigger, receiver) {
+        watchOutside(panel, trigger, receiver) {
+            dispose(panel);
+            const outside = event => {
+                if (panel.contains(event.target) || trigger.contains(event.target)) return;
+                dispose(panel);
+                receiver.invokeMethodAsync('Dismiss');
+            };
+            document.addEventListener('pointerdown', outside, true);
+            document.addEventListener('focusin', outside, true);
+            cleanups.set(panel, () => {
+                document.removeEventListener('pointerdown', outside, true);
+                document.removeEventListener('focusin', outside, true);
+            });
+        },
+        open(panel, trigger, receiver, focusFirst = true) {
             dispose(panel);
             const position = () => {
                 const anchor = trigger.getBoundingClientRect();
@@ -43,7 +57,7 @@
                 }
             };
             position();
-            panel.querySelector('button:not(:disabled), input:not(:disabled)')?.focus({ preventScroll: true });
+            if (focusFirst) panel.querySelector('button:not(:disabled), input:not(:disabled)')?.focus({ preventScroll: true });
             document.addEventListener('pointerdown', outside, true);
             document.addEventListener('focusin', outside, true);
             panel.addEventListener('keydown', keydown);

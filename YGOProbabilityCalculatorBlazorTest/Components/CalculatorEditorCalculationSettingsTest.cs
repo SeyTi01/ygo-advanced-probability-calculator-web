@@ -28,6 +28,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(3));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
         Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain("pre-draw costs").And.Contain("post-draw removals"));
+        context.JSInterop.VerifyInvoke("workspaceMenus.watchOutside", 1);
         await cut.Find("#storageSafetyTier").ChangeAsync(new() { Value = "High" });
         await cut.Find("#calculationModel").KeyDownAsync(new() { Key = "Escape" });
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
@@ -36,6 +37,11 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
         Assert.That(cut.Find("#drawEffectsHelp").TextContent,
             Does.Contain("Hypothetical").And.Contain("both pre-draw costs and post-draw removals").And.Contain("Trade-In").And.Contain("unconditionally"));
+        await cut.InvokeAsync(() => cut.FindComponent<CalculationSettingsMenu>().Instance.Dismiss());
+        Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
+        Assert.That(cut.Find(".calculation-settings-trigger").GetAttribute("aria-expanded"), Is.EqualTo("false"));
+        await cut.Find(".calculation-settings-trigger").ClickAsync(new());
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Simplified"));
     }
 
     [TestCase(true)]
