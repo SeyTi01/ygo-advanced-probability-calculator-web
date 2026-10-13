@@ -2,7 +2,6 @@
 
 <section class="category-rule-editor border rounded p-3 mt-3" aria-label="Rule for @Category.Name" @onkeydown="KeyDown">
     <h5 class="fs-6" tabindex="-1" @ref="_heading">Properties for @Category.Name</h5>
-    <p class="small text-body-secondary">AND means one card matches every property in a row. OR accepts either row. Separate combo requirements still need separate copies.</p>
     @for (int index = 0; index < _alternatives.Count; index++) {
         int branch = index;
         @if (index > 0) { <div class="small fw-semibold my-2">OR</div> }
@@ -36,17 +35,15 @@
     </select>
     <div class="small mt-3" role="status" aria-live="polite">
         @if (Draft is null) {
-            <span>No automatic matches. Choose a property to define a rule.</span>
+            <span>0 matching entries</span>
         }
         else {
             <strong>@_matches.Length matching @(_matches.Length == 1 ? "entry" : "entries") (@_matches.Sum(card => (long)card.Copies) copies)</strong>
-            <div class="text-body-secondary">Includes inactive entries. Membership updates when card properties change.</div>
             @if (_matches.Length > 0) {
                 <div class="category-rule-preview mt-1">@string.Join(", ", _matches.Select(card => card.Name ?? "Unnamed card"))</div>
             }
         }
     </div>
-    <p class="form-text">@_manualCount manually included @(_manualCount == 1 ? "entry is" : "entries are") kept, including cards that do not match. Editing or removing the rule never removes manual inclusions; automatic-only memberships follow the rule.</p>
     <div class="d-flex flex-wrap gap-2 mt-3">
         <button type="button" class="btn btn-primary btn-sm" disabled="@(Draft is null)" @onclick="() => OnApply.InvokeAsync(Draft)">Apply rule</button>
         <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OnCancel">Cancel</button>
@@ -66,7 +63,6 @@
     private readonly List<List<string>> _alternatives = [];
     private CategoryBase[] _properties = [];
     private Card[] _matches = [];
-    private int _manualCount;
     private ElementReference _heading;
     private CardSelector? Draft { get; set; }
 
@@ -123,7 +119,6 @@
     private void UpdatePreview() {
         Draft = _alternatives.Count == 0 ? null : CardSelector.AnyOfSelectors(_alternatives.Select(CardSelector.AllOf));
         _matches = Draft is null ? [] : Cards.Where(card => Draft.Matches(card.Categories)).ToArray();
-        _manualCount = Cards.Count(card => card.Categories.Contains(Category));
     }
 
     private Task KeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
