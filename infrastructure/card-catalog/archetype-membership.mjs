@@ -73,8 +73,14 @@ export function createResolver(policy = membershipPolicy) {
                 const name = renamed[2].slice(1, -1);
                 (renamed[1] ? extraNames : replacements).add(name);
                 declarations.push(clause);
-            } else if (/\balways\b|\b(?:not|never) treated as an? ["“]/i.test(clause)) {
-                unresolved.push({ reason: "unsupported-identity-clause", excerpt: clause });
+            } else {
+                const assertsPermanence = /\balways\b|\b(?:not|never) treated as an? ["“]/i.test(clause);
+                const hasQuotedIdentity = /(?:treated as|becomes)\s+(?:an?\s+)?"/i.test(clause);
+                const hasExplicitCondition = /\b(?:while|when|if|until|during)\b|\b(?:on the field|in (?:your|the|either player's) (?:hand|deck|gy|graveyard))\b/i.test(clause)
+                    || /^[^"\r\n]*[:;]/.test(clause);
+                if (assertsPermanence || (hasQuotedIdentity && !hasExplicitCondition)) {
+                    unresolved.push({ reason: "unsupported-identity-clause", excerpt: clause });
+                }
             }
         }
         if (!text.trim()) unresolved.push({ reason: "missing-description", excerpt: "" });

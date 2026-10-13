@@ -20,6 +20,8 @@ The parser scans complete descriptions, including text after flavor, materials a
 
 Unknown/malformed permanent declarations and missing descriptions produce an offline audit entry with ID and a bounded excerpt. Such cards ship `null` (unverified), rather than a confidently empty set. A verified absence ships `[]`. The audit also lists every addition/removal relative to provider association and every overlap, so review it across the full source before publication. Zero unresolved recognized declarations does **not** prove the absence of unsupported wording or localization anomalies. Non-identity Level/Rank conditions are explicitly ignored. The candidate list and naming policy remain maintained data.
 
+Quoted identity statements without an explicit permanence marker or zone/activation condition are also audited, not assumed permanent. In the current source this surfaces Lemuria, the Forgotten City; Neo-Spacian Marine Dolphin; Neo-Spacian Twinkle Moss; and the Skill Card It's a Toon World! Their older wording requires separate rule-level review before adding a safe supported construction; their records remain unverified.
+
 Representative primary checks: [Summoned Skull](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=4028&ope=2&request_locale=en), [Hardened Armed Dragon](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=8374&ope=2&request_locale=en), [Double Iris Magician](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=12908&ope=2&request_locale=en), and [Harpie Perfumer](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=14165&ope=2&request_locale=en). Provider field/endpoint documentation: [API guide](https://ygoprodeck.com/api-guide/).
 
 ## Runtime and saved-state compatibility
