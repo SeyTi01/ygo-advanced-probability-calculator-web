@@ -211,7 +211,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(header.QuerySelectorAll(".manual-property-header-badge").Length, Is.EqualTo(1));
         Assert.That(header.QuerySelectorAll(".category-tag").Select(badge => badge.TextContent.Trim()), Does.Not.Contain(monster.Name));
         Assert.That(cut.FindComponents<CardEditor>()[0].Find("details.card-property-inspector summary").TextContent.Trim(),
-            Is.EqualTo("Card properties (2)"));
+            Is.EqualTo("Card properties (3)"));
 
         IElement manualHeader = cut.FindComponents<CardEditor>()[1].Find(".accordion-button");
         Assert.That(manualHeader.QuerySelectorAll(".category-tag").Length, Is.EqualTo(1));
@@ -280,23 +280,23 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         IElement inspector = editor.Find("details.card-property-inspector");
 
         Assert.That(inspector.HasAttribute("open"), Is.False);
-        Assert.That(inspector.QuerySelector("summary")!.TextContent.Trim(), Is.EqualTo("Card properties (6)"));
-        Assert.That(inspector.QuerySelector(".detected-card-properties .form-text")!.TextContent.Trim(), Is.EqualTo("Detected from card data"));
-        Assert.That(inspector.QuerySelector(".manual-card-properties .form-text")!.TextContent.Trim(), Is.EqualTo("Added manually"));
+        Assert.That(inspector.QuerySelector("summary")!.TextContent.Trim(), Is.EqualTo("Card properties (7)"));
+        Assert.That(inspector.QuerySelector(".detected-card-properties .form-text")!.TextContent.Trim(), Is.EqualTo("Automatic"));
+        Assert.That(inspector.QuerySelector(".manual-card-properties .form-text")!.TextContent.Trim(), Is.EqualTo("Manual"));
         Assert.That(inspector.QuerySelectorAll(".detected-card-property").Select(property => property.TextContent.Trim()),
             Is.EquivalentTo(detected.Select(property => property.Name)));
         Assert.That(inspector.QuerySelectorAll(".detected-card-properties button.btn-close"), Is.Empty);
         Assert.That(inspector.QuerySelectorAll(".manual-card-property").Select(property => property.TextContent.Trim()),
-            Is.EqualTo(new[] { manual.Name }));
-        Assert.That(inspector.QuerySelector(".manual-card-property button.btn-close")!.GetAttribute("aria-label"),
+            Is.EqualTo(new[] { user.Name, manual.Name }));
+        Assert.That(inspector.QuerySelector(".manual-card-property button[aria-label^='Remove manually added']")!.GetAttribute("aria-label"),
             Is.EqualTo($"Remove manually added card property {manual.Name} from card {card.Name}"));
 
-        await inspector.QuerySelector(".manual-card-property button.btn-close")!.ClickAsync(new());
+        await inspector.QuerySelector(".manual-card-property button[aria-label^='Remove manually added']")!.ClickAsync(new());
 
         Assert.That(editor.Instance.Card.Categories, Does.Not.Contain(manual));
         Assert.That(editor.Instance.Card.ManualMetadataCategoryKeys, Is.Empty);
-        Assert.That(editor.Find("details.card-property-inspector summary").TextContent.Trim(), Is.EqualTo("Card properties (5)"));
-        Assert.That(editor.FindAll(".manual-card-properties"), Is.Empty);
+        Assert.That(editor.Find("details.card-property-inspector summary").TextContent.Trim(), Is.EqualTo("Card properties (6)"));
+        Assert.That(editor.Find(".manual-card-properties").TextContent, Does.Contain(user.Name).And.Not.Contain(manual.Name));
         Assert.That(editor.FindAll(".manual-property-header-badge"), Is.Empty);
         Assert.That(editor.FindAll(".detected-card-properties button.btn-close"), Is.Empty);
         Assert.That(editor.Find("[aria-label='Remove category VS Monster from card Vanquish Soul Razen']"), Is.Not.Null,
@@ -382,7 +382,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(editor.Instance.Card.ExternalCardId, Is.Null);
         Assert.That(editor.FindAll("optgroup[label='Relevant properties']"), Is.Empty);
         Assert.That(editor.FindAll("option[value='metadata:attribute:fire']"), Is.Empty);
-        Assert.That(editor.Find(".manual-card-properties").TextContent, Does.Contain("Added manually").And.Contain(fire.Name));
+        Assert.That(editor.Find(".manual-card-properties").TextContent, Does.Contain("Manual").And.Contain(fire.Name));
         Assert.That(editor.FindAll(".accordion-button .category-tag").Select(badge => badge.TextContent.Trim()),
             Is.EqualTo(new[] { fire.Name }));
         Assert.That(editor.Find(".manual-property-header-badge").ClassList,

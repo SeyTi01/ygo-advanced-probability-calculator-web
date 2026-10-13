@@ -191,64 +191,39 @@
                 </div>
             </div>
 
-            <div>
-                @foreach (CategoryBase category in UserCategories) {
-                    <span class="badge me-2 category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
-                        @category.Name
-                        @if (category.Rule is not null) {
-                            bool automatic = CategoryMembership.IsAutomatic(Card, category);
-                            bool manual = Card.Categories.Contains(category);
-                            string provenance = (automatic, manual) switch {
-                                (true, true) => "Automatic + manual",
-                                (true, false) => "Automatic",
-                                _ => "Manual"
-                            };
-                            <small class="ms-1">@provenance</small>
-                            @if (!manual) {
-                                <button type="button" class="btn btn-sm btn-link text-reset p-0 ms-1"
-                                        title="Keep this inclusion even if the rule changes"
-                                        aria-label="@($"Include {category.Name} manually on card {CardDisplayName}")"
-                                        @onclick="() => IncludeManually(category)">Keep manually</button>
-                            }
-                        }
-                        @if (Card.Categories.Contains(category)) {
-                            <button type="button" class="btn-close category-remove-button ms-1"
-                                    aria-label="@($"Remove category {category.Name} from card {CardDisplayName}")"
-                                    title="@(category.Rule is null ? $"Remove category {category.Name} from card {CardDisplayName}" : "Remove manual inclusion; automatic matches remain")"
-                                    @onclick="() => RemoveCategory(category.Identity)"></button>
-                        }
-                    </span>
-                }
-            </div>
-            @if (UserCategories.Any(category => category.Rule is not null)) {
-                <div class="form-text">Automatic memberships follow the category rule. Edit it under Categories; removing a manual inclusion keeps any automatic match.</div>
-            }
-            @if (EffectiveMetadataProperties.Length > 0) {
+            @if (AutomaticProperties.Any() || ManuallyAssignedProperties.Any()) {
                 <details class="card-property-inspector mt-3">
-                    <summary class="small fw-semibold">Card properties (@EffectiveMetadataProperties.Length)</summary>
+                    <summary class="small fw-semibold">Card properties (@PropertyCount)</summary>
                     <div class="mt-2">
-                        @if (DetectedProperties.Length > 0) {
+                        @if (AutomaticProperties.Any()) {
                             <div class="detected-card-properties mb-2">
-                                <div class="form-text mb-1">Detected from card data</div>
+                                <div class="form-text mb-1">Automatic</div>
                                 <div class="d-flex flex-wrap">
-                                    @foreach (CategoryBase property in DetectedProperties) {
-                                        <span class="badge category-tag card-property-tag me-2 mb-1 detected-card-property @CardPropertyColorPalette.GetCssClass(property)">@property.Name</span>
+                                    @foreach (CategoryBase property in AutomaticProperties) {
+                                        <span class="badge category-tag card-property-tag me-2 mb-1 detected-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">@property.Name</span>
                                     }
                                 </div>
                             </div>
                         }
-                        @if (ManualProperties.Length > 0) {
+                        @if (ManuallyAssignedProperties.Any()) {
                             <div class="manual-card-properties">
-                                <div class="form-text mb-1">Added manually</div>
+                                <div class="form-text mb-1">Manual</div>
                                 <div class="d-flex flex-wrap">
-                                    @foreach (CategoryBase property in ManualProperties) {
-                                        <span class="badge category-tag card-property-tag me-2 mb-1 manual-card-property @CardPropertyColorPalette.GetCssClass(property)">
+                                    @foreach (CategoryBase property in ManuallyAssignedProperties) {
+                                        <span class="badge category-tag card-property-tag me-2 mb-1 manual-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">
                                             @property.Name
-                                            <button type="button" class="btn-close category-remove-button ms-1"
-                                                    aria-label="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
-                                                    title="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
-                                                    @onclick="() => RemoveManualProperty(property.MetadataKey!)">
-                                            </button>
+                                            @if (property.Source == CategorySource.User) {
+                                                <button type="button" class="btn-close category-remove-button ms-1"
+                                                        aria-label="@($"Remove category {property.Name} from card {CardDisplayName}")"
+                                                        title="@($"Remove category {property.Name} from card {CardDisplayName}")"
+                                                        @onclick="() => RemoveCategory(property.Identity)"></button>
+                                            }
+                                            else {
+                                                <button type="button" class="btn-close category-remove-button ms-1"
+                                                        aria-label="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
+                                                        title="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
+                                                        @onclick="() => RemoveManualProperty(property.MetadataKey!)"></button>
+                                            }
                                         </span>
                                     }
                                 </div>
@@ -282,16 +257,16 @@
     [Parameter] public EventCallback<int> OnDuplicateCard { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
 
-    private Task IncludeManually(CategoryBase category) =>
-        OnReplaceCard.InvokeAsync((Index, Card.WithCategories(Card.Categories.Append(category))));
-
     private IEnumerable<CategoryBase> ManualUserCategories => Card.Categories
         .Where(category => category.Source == CategorySource.User);
 
-    private CategoryBase[] UserCategories => CategoryMembership.EffectiveCategories(Card, CategoryBases)
-        .Where(category => category.Source == CategorySource.User)
-        .Select(category => CategoryBases.FirstOrDefault(definition => definition.Identity == category.Identity) ?? category)
-        .ToArray();
+    private IEnumerable<CategoryBase> AutomaticProperties => DetectedProperties.Concat(
+        CategoryBases.Where(category => CategoryMembership.IsAutomatic(Card, category)));
+
+    private IEnumerable<CategoryBase> ManuallyAssignedProperties => ManualUserCategories.Concat(ManualProperties);
+
+    private int PropertyCount => AutomaticProperties.Concat(ManuallyAssignedProperties)
+        .DistinctBy(category => category.Identity).Count();
 
     private IEnumerable<CategoryBase> AvailableUserCategoryOptions => CategoryBases
         .Where(static category => category.Source == CategorySource.User);

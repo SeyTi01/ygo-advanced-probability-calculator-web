@@ -33,7 +33,7 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(RuleSession());
         DefineVs(cut);
         Assert.That(cut.FindComponent<CategoryRuleEditor>().Markup, Does.Contain("1 matching entry (3 copies)"));
-        Assert.That(cut.FindComponent<CategoryRuleEditor>().Markup, Does.Contain("1 manually included entry is kept"));
+        Assert.That(cut.FindComponent<CategoryRuleEditor>().FindAll("p"), Is.Empty);
         Button(cut, "Apply rule").Click();
         Assert.That(cut.FindComponents<CategoryRuleEditor>(), Is.Empty);
         IRenderedComponent<CardEditor>[] cards = cut.FindComponents<CardEditor>().ToArray();
@@ -88,13 +88,16 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
     }
 
     [Test]
-    public void KeepManuallyAndRemoveInclusionLeaveAutomaticMembershipIntact() {
+    public void ManualAssignmentAndRemovalLeaveAutomaticSectionIntact() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(RuleSession());
         DefineVs(cut);
         Button(cut, "Apply rule").Click();
-        cut.Find("[aria-label='Include VS Monster manually on card Razen']").Click();
         IRenderedComponent<CardEditor> card = cut.FindComponents<CardEditor>().First();
-        Assert.That(card.Markup, Does.Contain("Automatic + manual"));
+        Assert.That(card.Markup, Does.Not.Contain("Keep manually"));
+        card.Find("#cardCategory0").Change(Role.Identity);
+        Button(card, "Add").Click();
+        Assert.That(card.Find(".detected-card-properties").TextContent, Does.Contain("VS Monster"));
+        Assert.That(card.Find(".manual-card-properties").TextContent, Does.Contain("VS Monster"));
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("VS Monster"));
         cut.Find("[aria-label='Remove category VS Monster from card Razen']").Click();
         Assert.That(card.Instance.Card.Categories, Does.Not.Contain(Role));
