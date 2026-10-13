@@ -213,16 +213,16 @@
                                         <span class="badge category-tag card-property-tag me-2 mb-1 manual-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">
                                             @property.Name
                                             @if (property.Source == CategorySource.User) {
-                                                <button type="button" class="btn-close category-remove-button ms-1"
+                                                <ChipRemoveButton Class="category-remove-button ms-1"
                                                         aria-label="@($"Remove category {property.Name} from card {CardDisplayName}")"
                                                         title="@($"Remove category {property.Name} from card {CardDisplayName}")"
-                                                        @onclick="() => RemoveCategory(property.Identity)"></button>
+                                                        OnClick="() => RemoveCategory(property.Identity)" />
                                             }
                                             else {
-                                                <button type="button" class="btn-close category-remove-button ms-1"
+                                                <ChipRemoveButton Class="category-remove-button ms-1"
                                                         aria-label="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
                                                         title="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
-                                                        @onclick="() => RemoveManualProperty(property.MetadataKey!)"></button>
+                                                        OnClick="() => RemoveManualProperty(property.MetadataKey!)" />
                                             }
                                         </span>
                                     }

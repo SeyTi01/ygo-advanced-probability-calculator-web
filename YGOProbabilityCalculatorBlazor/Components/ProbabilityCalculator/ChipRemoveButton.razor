@@ -1,0 +1,12 @@
+<button type="button" class="chip-remove-button @Class" @attributes="AdditionalAttributes" @onclick="OnClick">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"></path>
+    </svg>
+</button>
+
+@code {
+    [Parameter] public string Class { get; set; } = "category-remove-button ms-1";
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

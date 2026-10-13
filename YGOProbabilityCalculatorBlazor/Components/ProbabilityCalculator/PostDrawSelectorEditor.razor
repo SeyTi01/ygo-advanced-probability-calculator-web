@@ -43,9 +43,9 @@
                         @if (conjunct > 0) { <span class="small">AND</span> }
                         <span class="badge category-tag draw-selector-chip text-wrap d-inline-flex align-items-center @ChipCssClass(identity)">
                             <span>@label</span>
-                            <button type="button" class="btn-close category-remove-button ms-1"
-                                    aria-label="Remove eligibility @label" title="Remove eligibility @label"
-                                    @onclick="() => Remove(branch, identity)"></button>
+                            <ChipRemoveButton Class="category-remove-button ms-1"
+                                    aria-label="@($"Remove eligibility {label}")" title="@($"Remove eligibility {label}")"
+                                    OnClick="() => Remove(branch, identity)" />
                         </span>
                     }
                     <select class="form-select form-select-sm" style="width:auto;max-width:100%" aria-label="Add AND eligibility to alternative @(index + 1)"
