@@ -52,6 +52,9 @@ test("malformed or unknown permanent clauses surface uncertainty without claimin
         'This card is always treated as a "Unreviewed Family" card.',
         'This card is always treated as a "Lightsworn" card',
         'This card is always considered a "Lightsworn" card.',
+        'This card\'s name is treated as "Umi" at all times.',
+        'This card\'s name is also treated as "Neo-Spacian Aqua Dolphin".',
+        'This card isn\'t treated as a "Lightsworn" card.',
         '(This card\'s name is always treated as "Umi".) (This card\'s name is always treated as "Harpie Lady".)',
         '', null
     ]) {
