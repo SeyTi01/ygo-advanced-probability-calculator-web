@@ -18,7 +18,7 @@
                        placeholder="Category name"/>
             </div>
             <div class="editor-add-action">
-                <button class="btn btn-primary" @onclick="AddCategoryBase">Add</button>
+                <button class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(_newCategoryName)" @onclick="AddCategoryBase">Add</button>
             </div>
         </div>
     </div>
