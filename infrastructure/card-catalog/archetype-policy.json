@@ -1,0 +1,2267 @@
+{
+  "version": 1,
+  "source": "https://db.ygoprodeck.com/api/v7/archetypes.php",
+  "excluded": [
+    " supports_archetypes    Power Patron",
+    "25th Anniversary Monsters",
+    "A-to-Z",
+    "ABC",
+    "Albaz Dragon",
+    "Alligator",
+    "Ancient Treasure",
+    "Anti",
+    "Attribute Summoner",
+    "Book of",
+    "Butterfly",
+    "Cataclysmic",
+    "Celebration",
+    "Circular",
+    "Clown Crew",
+    "Corn",
+    "Cosmic Synchro Monster",
+    "Counter Fairy",
+    "Dark counterpart",
+    "Dark Tuner",
+    "Death",
+    "Dice",
+    "Divine Dragon",
+    "Dragon Card",
+    "Dragon Mech",
+    "Egyptian God",
+    "Fan-Made Cards",
+    "Field Searcher",
+    "Gem Dragon",
+    "Heart",
+    "Holy Knight",
+    "Jar",
+    "Jester",
+    "King",
+    "Knight",
+    "Koala",
+    "Konami Arcade Games",
+    "Maju",
+    "Mask",
+    "Moth",
+    "P",
+    "Paladins of Dragons",
+    "PaniK's monsters",
+    "Parasite",
+    "Priestess",
+    "Ra",
+    "Recolored counterpart",
+    "Rescue Squad",
+    "Rites",
+    "Royal",
+    "Saber",
+    "Schoolwork",
+    "Season",
+    "Signature move",
+    "Slime",
+    "Spell Card",
+    "Spider",
+    "Star",
+    "Sun God",
+    "Swamp",
+    "Swarm of",
+    "Test",
+    "Tiki",
+    "Train",
+    "Trap Monster",
+    "Uniform Nomenclature",
+    "Vassal",
+    "Warrior",
+    "Wicked God",
+    "Winter Raven",
+    "Yokai",
+    "Zombie counterpart",
+    "\"C\"",
+    "-Eyes Dragon",
+    "Adventurer",
+    "Anotherverse",
+    "Assault Mode",
+    "Boot-Up",
+    "Broken World",
+    "Bugroth",
+    "Chaos Phantom",
+    "Chimera",
+    "Clear",
+    "Contact",
+    "Cupid",
+    "Cyclone",
+    "D.D.",
+    "Deep Sea",
+    "Demise",
+    "Digital Bug",
+    "Doll",
+    "Doriado",
+    "Draconia",
+    "Empower",
+    "Evol",
+    "Fairy",
+    "Felgrand",
+    "Fleur",
+    "From the Underworld",
+    "Gaia Knight",
+    "Garbage",
+    "Gearfried",
+    "Gizmek",
+    "Glacial Beast",
+    "Gorgonic",
+    "Greed",
+    "Grepher",
+    "Guardragon",
+    "Gun Dragon",
+    "Herald",
+    "Heraldic",
+    "Hi-Speedroid",
+    "Hunting Scout of the Deep Forest",
+    "Indestructible Insect",
+    "Light and Darkness Dragon",
+    "Madoor",
+    "Man-Eater Bug",
+    "Martial Art Spirit",
+    "Mirror Trap",
+    "Mischief",
+    "Motor",
+    "Nemurelia",
+    "Overlay",
+    "Piece Golem",
+    "Risebell",
+    "Ritual Art",
+    "Scrap-Iron",
+    "Shinobird",
+    "Skilled Magician",
+    "Sky Scourge",
+    "Solemn",
+    "Spiritual Art",
+    "Starliege",
+    "Superheavy",
+    "Supreme King",
+    "Timaeus",
+    "Transcendosaurus",
+    "Underworld",
+    "WAKE CUP!",
+    "White",
+    "Wight",
+    "Zera",
+    "hunder",
+    "with Eyes of Blue"
+  ],
+  "candidates": [
+    {
+      "name": "/Assault Mode",
+      "match": "suffix"
+    },
+    {
+      "name": "@Ignister",
+      "match": "token"
+    },
+    {
+      "name": "A.I.",
+      "match": "substring"
+    },
+    {
+      "name": "Abyss Actor",
+      "match": "token"
+    },
+    {
+      "name": "Abyss Script",
+      "match": "token"
+    },
+    {
+      "name": "Abyss-",
+      "match": "prefix"
+    },
+    {
+      "name": "Adamancipator",
+      "match": "token"
+    },
+    {
+      "name": "Advanced Crystal Beast",
+      "match": "token"
+    },
+    {
+      "name": "Adventurer Token",
+      "match": "token"
+    },
+    {
+      "name": "Aesir",
+      "match": "token"
+    },
+    {
+      "name": "Aether",
+      "match": "token"
+    },
+    {
+      "name": "Aleister",
+      "match": "token"
+    },
+    {
+      "name": "Alien",
+      "match": "token"
+    },
+    {
+      "name": "Allure Queen",
+      "match": "token"
+    },
+    {
+      "name": "Ally of Justice",
+      "match": "token"
+    },
+    {
+      "name": "Altergeist",
+      "match": "token"
+    },
+    {
+      "name": "Amazement",
+      "match": "token"
+    },
+    {
+      "name": "Amazoness",
+      "match": "token"
+    },
+    {
+      "name": "Amorphage",
+      "match": "token"
+    },
+    {
+      "name": "Ancient Fairy Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Ancient Gear",
+      "match": "token"
+    },
+    {
+      "name": "Ancient Warriors",
+      "match": "token"
+    },
+    {
+      "name": "Angelechy",
+      "match": "token"
+    },
+    {
+      "name": "Apophis",
+      "match": "token"
+    },
+    {
+      "name": "Apoqliphort",
+      "match": "token"
+    },
+    {
+      "name": "Appliancer",
+      "match": "token"
+    },
+    {
+      "name": "Aqua Jet",
+      "match": "token"
+    },
+    {
+      "name": "Aquaactress",
+      "match": "token"
+    },
+    {
+      "name": "Aquamirror",
+      "match": "token"
+    },
+    {
+      "name": "Arcana Force",
+      "match": "token"
+    },
+    {
+      "name": "Archfiend",
+      "match": "token"
+    },
+    {
+      "name": "Argostars",
+      "match": "token"
+    },
+    {
+      "name": "Armed Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Armored Xyz",
+      "match": "token"
+    },
+    {
+      "name": "Aroma",
+      "match": "substring"
+    },
+    {
+      "name": "Ars Magna",
+      "match": "token"
+    },
+    {
+      "name": "Artifact",
+      "match": "token"
+    },
+    {
+      "name": "Artmage",
+      "match": "token"
+    },
+    {
+      "name": "Ashened",
+      "match": "token"
+    },
+    {
+      "name": "Ashtra",
+      "match": "prefix"
+    },
+    {
+      "name": "Assault Blackwing",
+      "match": "token"
+    },
+    {
+      "name": "Atlantean",
+      "match": "token"
+    },
+    {
+      "name": "Atlantis, City of the Sea Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Attraction",
+      "match": "token"
+    },
+    {
+      "name": "Azamina",
+      "match": "token"
+    },
+    {
+      "name": "B.E.S.",
+      "match": "token"
+    },
+    {
+      "name": "Bamboo Sword",
+      "match": "token"
+    },
+    {
+      "name": "Barbaros",
+      "match": "token"
+    },
+    {
+      "name": "Barian's",
+      "match": "token"
+    },
+    {
+      "name": "Batteryman",
+      "match": "token"
+    },
+    {
+      "name": "Battleguard",
+      "match": "token"
+    },
+    {
+      "name": "Battlewasp",
+      "match": "token"
+    },
+    {
+      "name": "Battlin' Boxer",
+      "match": "token"
+    },
+    {
+      "name": "Battlin' Boxing",
+      "match": "token"
+    },
+    {
+      "name": "Beetrooper",
+      "match": "token"
+    },
+    {
+      "name": "Black Luster Soldier",
+      "match": "token"
+    },
+    {
+      "name": "Blackwing",
+      "match": "token"
+    },
+    {
+      "name": "Blaze Accelerator",
+      "match": "token"
+    },
+    {
+      "name": "Blitzclique",
+      "match": "token"
+    },
+    {
+      "name": "Blue Tears",
+      "match": "token"
+    },
+    {
+      "name": "Blue-Eyes",
+      "match": "token"
+    },
+    {
+      "name": "Bonding",
+      "match": "token"
+    },
+    {
+      "name": "Borrel",
+      "match": "substring"
+    },
+    {
+      "name": "Bounzer",
+      "match": "token"
+    },
+    {
+      "name": "Branded",
+      "match": "token"
+    },
+    {
+      "name": "Bujin",
+      "match": "substring"
+    },
+    {
+      "name": "Bunnillin",
+      "match": "token"
+    },
+    {
+      "name": "Burning Abyss",
+      "match": "token"
+    },
+    {
+      "name": "Buster Blader",
+      "match": "token"
+    },
+    {
+      "name": "Butterspy",
+      "match": "token"
+    },
+    {
+      "name": "Bystial",
+      "match": "token"
+    },
+    {
+      "name": "CXyz",
+      "match": "token"
+    },
+    {
+      "name": "Call of the Haunted",
+      "match": "token"
+    },
+    {
+      "name": "Celtic Guard",
+      "match": "prefix"
+    },
+    {
+      "name": "Centur-Ion",
+      "match": "token"
+    },
+    {
+      "name": "Change",
+      "match": "token"
+    },
+    {
+      "name": "Chaos",
+      "match": "prefix"
+    },
+    {
+      "name": "Charmer",
+      "match": "token"
+    },
+    {
+      "name": "Chemicritter",
+      "match": "token"
+    },
+    {
+      "name": "Chronomaly",
+      "match": "token"
+    },
+    {
+      "name": "Chrysalis",
+      "match": "token"
+    },
+    {
+      "name": "Cipher",
+      "match": "token"
+    },
+    {
+      "name": "Clear Wing",
+      "match": "token"
+    },
+    {
+      "name": "Cloudian",
+      "match": "token"
+    },
+    {
+      "name": "Code Talker",
+      "match": "substring"
+    },
+    {
+      "name": "Codebreaker",
+      "match": "token"
+    },
+    {
+      "name": "Constellar",
+      "match": "token"
+    },
+    {
+      "name": "Crusadia",
+      "match": "token"
+    },
+    {
+      "name": "Crystal",
+      "match": "token"
+    },
+    {
+      "name": "Crystal Beast",
+      "match": "token"
+    },
+    {
+      "name": "Crystron",
+      "match": "token"
+    },
+    {
+      "name": "Cubic",
+      "match": "token"
+    },
+    {
+      "name": "Curse of Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Cyber",
+      "match": "prefix"
+    },
+    {
+      "name": "Cyber Angel",
+      "match": "token"
+    },
+    {
+      "name": "Cyber Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Cyberdark",
+      "match": "prefix"
+    },
+    {
+      "name": "Cynet",
+      "match": "token"
+    },
+    {
+      "name": "D/D",
+      "match": "token"
+    },
+    {
+      "name": "Daedalus",
+      "match": "token"
+    },
+    {
+      "name": "Danger!",
+      "match": "token"
+    },
+    {
+      "name": "Dark Contract",
+      "match": "token"
+    },
+    {
+      "name": "Dark Magician",
+      "match": "token"
+    },
+    {
+      "name": "Dark Scorpion",
+      "match": "token"
+    },
+    {
+      "name": "Dark Time Wizard",
+      "match": "token"
+    },
+    {
+      "name": "Dark World",
+      "match": "token"
+    },
+    {
+      "name": "Darklord",
+      "match": "token"
+    },
+    {
+      "name": "Deskbot",
+      "match": "token"
+    },
+    {
+      "name": "Despia",
+      "match": "prefix"
+    },
+    {
+      "name": "Destiny HERO",
+      "match": "token"
+    },
+    {
+      "name": "Destruction Sword",
+      "match": "substring"
+    },
+    {
+      "name": "Diabell",
+      "match": "substring"
+    },
+    {
+      "name": "Diabellstar",
+      "match": "token"
+    },
+    {
+      "name": "Dinomist",
+      "match": "token"
+    },
+    {
+      "name": "Dinomorphia",
+      "match": "token"
+    },
+    {
+      "name": "Dinowrestler",
+      "match": "token"
+    },
+    {
+      "name": "Djinn",
+      "match": "substring"
+    },
+    {
+      "name": "Dododo",
+      "match": "substring"
+    },
+    {
+      "name": "Dogmatika",
+      "match": "substring"
+    },
+    {
+      "name": "Doll Monster",
+      "match": "token"
+    },
+    {
+      "name": "Dominus",
+      "match": "prefix"
+    },
+    {
+      "name": "Doodle Beast",
+      "match": "token"
+    },
+    {
+      "name": "Doodlebook",
+      "match": "token"
+    },
+    {
+      "name": "DoomZ",
+      "match": "token"
+    },
+    {
+      "name": "Dracoslayer",
+      "match": "token"
+    },
+    {
+      "name": "Dracotail",
+      "match": "token"
+    },
+    {
+      "name": "Dracoverlord",
+      "match": "token"
+    },
+    {
+      "name": "Dragon Ruler",
+      "match": "token"
+    },
+    {
+      "name": "Dragonmaid",
+      "match": "token"
+    },
+    {
+      "name": "Dragunity",
+      "match": "token"
+    },
+    {
+      "name": "Dream Mirror",
+      "match": "token"
+    },
+    {
+      "name": "Drytron",
+      "match": "token"
+    },
+    {
+      "name": "Dual Avatar",
+      "match": "token"
+    },
+    {
+      "name": "Duston",
+      "match": "substring"
+    },
+    {
+      "name": "Earthbound",
+      "match": "token"
+    },
+    {
+      "name": "Ecclesia",
+      "match": "token"
+    },
+    {
+      "name": "Edge Imp",
+      "match": "token"
+    },
+    {
+      "name": "Eldlich",
+      "match": "token"
+    },
+    {
+      "name": "Eldlixir",
+      "match": "token"
+    },
+    {
+      "name": "Elemental HERO",
+      "match": "token"
+    },
+    {
+      "name": "Elemental Lord",
+      "match": "token"
+    },
+    {
+      "name": "Elementsaber",
+      "match": "token"
+    },
+    {
+      "name": "Elfnote",
+      "match": "token"
+    },
+    {
+      "name": "Elvennotes",
+      "match": "token"
+    },
+    {
+      "name": "Emblema",
+      "match": "token"
+    },
+    {
+      "name": "Empowered Warrior",
+      "match": "token"
+    },
+    {
+      "name": "End of the World",
+      "match": "token"
+    },
+    {
+      "name": "Endymion",
+      "match": "token"
+    },
+    {
+      "name": "Enneacraft",
+      "match": "token"
+    },
+    {
+      "name": "Evil Eye",
+      "match": "prefix"
+    },
+    {
+      "name": "Evil HERO",
+      "match": "token"
+    },
+    {
+      "name": "Evil★Twin",
+      "match": "token"
+    },
+    {
+      "name": "Evolsaur",
+      "match": "token"
+    },
+    {
+      "name": "Evoltile",
+      "match": "token"
+    },
+    {
+      "name": "Evolzar",
+      "match": "token"
+    },
+    {
+      "name": "Exchange of the Spirit",
+      "match": "token"
+    },
+    {
+      "name": "Exodd",
+      "match": "token"
+    },
+    {
+      "name": "Exodia",
+      "match": "token"
+    },
+    {
+      "name": "Exosister",
+      "match": "token"
+    },
+    {
+      "name": "Eyes Restrict",
+      "match": "token"
+    },
+    {
+      "name": "F.A.",
+      "match": "token"
+    },
+    {
+      "name": "Fabled",
+      "match": "token"
+    },
+    {
+      "name": "Fairy Tail",
+      "match": "token"
+    },
+    {
+      "name": "Familiar-Possessed",
+      "match": "token"
+    },
+    {
+      "name": "Favorite",
+      "match": "token"
+    },
+    {
+      "name": "Fiendsmith",
+      "match": "token"
+    },
+    {
+      "name": "Fire Fist",
+      "match": "token"
+    },
+    {
+      "name": "Fire Formation",
+      "match": "token"
+    },
+    {
+      "name": "Fire King",
+      "match": "token"
+    },
+    {
+      "name": "Firewall",
+      "match": "token"
+    },
+    {
+      "name": "Fishborg",
+      "match": "token"
+    },
+    {
+      "name": "Flame Swordsman",
+      "match": "token"
+    },
+    {
+      "name": "Flamvell",
+      "match": "token"
+    },
+    {
+      "name": "Floowandereeze",
+      "match": "token"
+    },
+    {
+      "name": "Flower Cardian",
+      "match": "token"
+    },
+    {
+      "name": "Fluffal",
+      "match": "token"
+    },
+    {
+      "name": "Forbidden",
+      "match": "token"
+    },
+    {
+      "name": "Fortress Whale",
+      "match": "token"
+    },
+    {
+      "name": "Fortune Fairy",
+      "match": "token"
+    },
+    {
+      "name": "Fortune Lady",
+      "match": "token"
+    },
+    {
+      "name": "Fossil",
+      "match": "token"
+    },
+    {
+      "name": "Frightfur",
+      "match": "token"
+    },
+    {
+      "name": "Frog",
+      "match": "substring"
+    },
+    {
+      "name": "Fur Hire",
+      "match": "token"
+    },
+    {
+      "name": "Fusion",
+      "match": "substring"
+    },
+    {
+      "name": "Fusion Dragon",
+      "match": "token"
+    },
+    {
+      "name": "G Golem",
+      "match": "token"
+    },
+    {
+      "name": "GMX",
+      "match": "token"
+    },
+    {
+      "name": "Gadget",
+      "match": "token"
+    },
+    {
+      "name": "Gagaga",
+      "match": "substring"
+    },
+    {
+      "name": "Gaia The Fierce Knight",
+      "match": "token"
+    },
+    {
+      "name": "Galaxy",
+      "match": "token"
+    },
+    {
+      "name": "Galaxy-Eyes",
+      "match": "token"
+    },
+    {
+      "name": "Gandora",
+      "match": "token"
+    },
+    {
+      "name": "Gate Guardian",
+      "match": "token"
+    },
+    {
+      "name": "Geargia",
+      "match": "substring"
+    },
+    {
+      "name": "Gem-",
+      "match": "prefix"
+    },
+    {
+      "name": "Gem-Knight",
+      "match": "token"
+    },
+    {
+      "name": "Generaider",
+      "match": "token"
+    },
+    {
+      "name": "Genex",
+      "match": "token"
+    },
+    {
+      "name": "Ghostrick",
+      "match": "token"
+    },
+    {
+      "name": "Ghoti",
+      "match": "token"
+    },
+    {
+      "name": "Gimmick Puppet",
+      "match": "token"
+    },
+    {
+      "name": "Gishki",
+      "match": "substring"
+    },
+    {
+      "name": "Gladiator",
+      "match": "token"
+    },
+    {
+      "name": "Gladiator Beast",
+      "match": "token"
+    },
+    {
+      "name": "Goblin",
+      "match": "prefix"
+    },
+    {
+      "name": "Gogogo",
+      "match": "substring"
+    },
+    {
+      "name": "Gold Pride",
+      "match": "token"
+    },
+    {
+      "name": "Golden Castle of Stromberg",
+      "match": "token"
+    },
+    {
+      "name": "Golden Land",
+      "match": "token"
+    },
+    {
+      "name": "Gottoms",
+      "match": "token"
+    },
+    {
+      "name": "Gouki",
+      "match": "token"
+    },
+    {
+      "name": "GranSolfachord",
+      "match": "token"
+    },
+    {
+      "name": "Gravekeeper's",
+      "match": "token"
+    },
+    {
+      "name": "Graydle",
+      "match": "token"
+    },
+    {
+      "name": "Guardian",
+      "match": "token"
+    },
+    {
+      "name": "Gunkan",
+      "match": "token"
+    },
+    {
+      "name": "Gusto",
+      "match": "substring"
+    },
+    {
+      "name": "HERO",
+      "match": "token",
+      "caseSensitive": true,
+      "aliases": [
+        "HEROES"
+      ]
+    },
+    {
+      "name": "Harpie",
+      "match": "token"
+    },
+    {
+      "name": "Hazy",
+      "match": "token"
+    },
+    {
+      "name": "Hecahands",
+      "match": "token"
+    },
+    {
+      "name": "Heraldry",
+      "match": "token"
+    },
+    {
+      "name": "Heroic",
+      "match": "token"
+    },
+    {
+      "name": "Hieratic",
+      "match": "token"
+    },
+    {
+      "name": "Hole",
+      "match": "substring"
+    },
+    {
+      "name": "Horus",
+      "match": "token"
+    },
+    {
+      "name": "Horus the Black Flame Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Hyperion",
+      "match": "token"
+    },
+    {
+      "name": "Ice Barrier",
+      "match": "token"
+    },
+    {
+      "name": "Icejade",
+      "match": "token"
+    },
+    {
+      "name": "Igknight",
+      "match": "token"
+    },
+    {
+      "name": "Impcantation",
+      "match": "token"
+    },
+    {
+      "name": "Infernity",
+      "match": "token"
+    },
+    {
+      "name": "Infernoble Arms",
+      "match": "token"
+    },
+    {
+      "name": "Infernoble Knight",
+      "match": "token"
+    },
+    {
+      "name": "Infernoid",
+      "match": "token"
+    },
+    {
+      "name": "Infestation",
+      "match": "token"
+    },
+    {
+      "name": "Infinitrack",
+      "match": "token"
+    },
+    {
+      "name": "Invoked",
+      "match": "substring"
+    },
+    {
+      "name": "Inzektor",
+      "match": "token"
+    },
+    {
+      "name": "Iron Chain",
+      "match": "token"
+    },
+    {
+      "name": "Jinzo",
+      "match": "token"
+    },
+    {
+      "name": "Junk",
+      "match": "substring"
+    },
+    {
+      "name": "Jurrac",
+      "match": "token"
+    },
+    {
+      "name": "K9",
+      "match": "token"
+    },
+    {
+      "name": "Kaiju",
+      "match": "token"
+    },
+    {
+      "name": "Kairyu-Shin",
+      "match": "token"
+    },
+    {
+      "name": "Karakuri",
+      "match": "token"
+    },
+    {
+      "name": "Kashtira",
+      "match": "prefix"
+    },
+    {
+      "name": "Kewl Tune",
+      "match": "token"
+    },
+    {
+      "name": "Ki-sikil",
+      "match": "token"
+    },
+    {
+      "name": "Knightmare",
+      "match": "token"
+    },
+    {
+      "name": "Koa'ki Meiru",
+      "match": "token"
+    },
+    {
+      "name": "Kozmo",
+      "match": "prefix"
+    },
+    {
+      "name": "Krawler",
+      "match": "token"
+    },
+    {
+      "name": "Kuriboh",
+      "match": "substring"
+    },
+    {
+      "name": "Labrynth",
+      "match": "token"
+    },
+    {
+      "name": "Labyrinth Wall",
+      "match": "token"
+    },
+    {
+      "name": "Lady of Lament",
+      "match": "token"
+    },
+    {
+      "name": "Laval",
+      "match": "substring"
+    },
+    {
+      "name": "Legendary Knight",
+      "match": "token"
+    },
+    {
+      "name": "Libromancer",
+      "match": "token"
+    },
+    {
+      "name": "Light and Darkness Ritual",
+      "match": "token"
+    },
+    {
+      "name": "Lightsworn",
+      "match": "substring"
+    },
+    {
+      "name": "Lil-la",
+      "match": "token"
+    },
+    {
+      "name": "Live☆Twin",
+      "match": "token"
+    },
+    {
+      "name": "Lswarm",
+      "match": "substring"
+    },
+    {
+      "name": "Lunalight",
+      "match": "token"
+    },
+    {
+      "name": "Lyrilusc",
+      "match": "token"
+    },
+    {
+      "name": "Machina",
+      "match": "token"
+    },
+    {
+      "name": "Machine Angel",
+      "match": "token"
+    },
+    {
+      "name": "Madolche",
+      "match": "prefix"
+    },
+    {
+      "name": "Magical Musket",
+      "match": "prefix"
+    },
+    {
+      "name": "Magician",
+      "match": "token"
+    },
+    {
+      "name": "Magician Girl",
+      "match": "token"
+    },
+    {
+      "name": "Magikey",
+      "match": "token"
+    },
+    {
+      "name": "Magistus",
+      "match": "substring"
+    },
+    {
+      "name": "Magna Warrior",
+      "match": "token"
+    },
+    {
+      "name": "Magnet",
+      "match": "substring"
+    },
+    {
+      "name": "Magnet Warrior",
+      "match": "substring"
+    },
+    {
+      "name": "Majespecter",
+      "match": "token"
+    },
+    {
+      "name": "Majestic",
+      "match": "token"
+    },
+    {
+      "name": "Malefic",
+      "match": "token"
+    },
+    {
+      "name": "Malicevorous",
+      "match": "token"
+    },
+    {
+      "name": "Maliss",
+      "match": "token"
+    },
+    {
+      "name": "Mannadium",
+      "match": "token"
+    },
+    {
+      "name": "Marincess",
+      "match": "token"
+    },
+    {
+      "name": "Masked HERO",
+      "match": "token"
+    },
+    {
+      "name": "Masquerade",
+      "match": "token"
+    },
+    {
+      "name": "Materiactor",
+      "match": "token"
+    },
+    {
+      "name": "Mathmech",
+      "match": "substring"
+    },
+    {
+      "name": "Mayakashi",
+      "match": "token"
+    },
+    {
+      "name": "Mecha Phantom Beast",
+      "match": "token"
+    },
+    {
+      "name": "Medius",
+      "match": "token"
+    },
+    {
+      "name": "Megalith",
+      "match": "token"
+    },
+    {
+      "name": "Mekk-Knight",
+      "match": "token"
+    },
+    {
+      "name": "Meklord",
+      "match": "token"
+    },
+    {
+      "name": "Melffy",
+      "match": "token"
+    },
+    {
+      "name": "Melodious",
+      "match": "token"
+    },
+    {
+      "name": "Memento",
+      "match": "prefix"
+    },
+    {
+      "name": "Mermail",
+      "match": "token"
+    },
+    {
+      "name": "Metalfoes",
+      "match": "substring"
+    },
+    {
+      "name": "Metalmorph",
+      "match": "token"
+    },
+    {
+      "name": "Metaphys",
+      "match": "substring"
+    },
+    {
+      "name": "Mikanko",
+      "match": "token"
+    },
+    {
+      "name": "Millennium",
+      "match": "token"
+    },
+    {
+      "name": "Mimighoul",
+      "match": "token"
+    },
+    {
+      "name": "Mist Valley",
+      "match": "token"
+    },
+    {
+      "name": "Mitsurugi",
+      "match": "token"
+    },
+    {
+      "name": "Mokey Mokey",
+      "match": "token"
+    },
+    {
+      "name": "Monarch",
+      "match": "prefix"
+    },
+    {
+      "name": "Morganite",
+      "match": "token"
+    },
+    {
+      "name": "Morphtronic",
+      "match": "token"
+    },
+    {
+      "name": "Mulcharmy",
+      "match": "token"
+    },
+    {
+      "name": "Mystical Beast of the Forest",
+      "match": "token"
+    },
+    {
+      "name": "Mythical Beast",
+      "match": "token"
+    },
+    {
+      "name": "Myutant",
+      "match": "token"
+    },
+    {
+      "name": "Naturia",
+      "match": "token"
+    },
+    {
+      "name": "Nekroz",
+      "match": "token"
+    },
+    {
+      "name": "Nemeses",
+      "match": "substring"
+    },
+    {
+      "name": "Nemleria",
+      "match": "token"
+    },
+    {
+      "name": "Neo Space",
+      "match": "token"
+    },
+    {
+      "name": "Neo-Spacian",
+      "match": "token"
+    },
+    {
+      "name": "Neos",
+      "match": "token"
+    },
+    {
+      "name": "Nephthys",
+      "match": "token"
+    },
+    {
+      "name": "Nimble",
+      "match": "token"
+    },
+    {
+      "name": "Ninja",
+      "match": "token"
+    },
+    {
+      "name": "Ninjitsu Art",
+      "match": "token"
+    },
+    {
+      "name": "Noble Arms",
+      "match": "substring"
+    },
+    {
+      "name": "Noble Knight",
+      "match": "substring"
+    },
+    {
+      "name": "Nordic",
+      "match": "token"
+    },
+    {
+      "name": "Nouvelles",
+      "match": "token"
+    },
+    {
+      "name": "Number",
+      "match": "token"
+    },
+    {
+      "name": "Numeron",
+      "match": "token"
+    },
+    {
+      "name": "Obliterate!!!",
+      "match": "token"
+    },
+    {
+      "name": "Odd-Eyes",
+      "match": "token"
+    },
+    {
+      "name": "Ogdoadic",
+      "match": "token"
+    },
+    {
+      "name": "Ojama",
+      "match": "prefix"
+    },
+    {
+      "name": "Onomat",
+      "match": "prefix"
+    },
+    {
+      "name": "Orcust",
+      "match": "substring"
+    },
+    {
+      "name": "P.U.N.K.",
+      "match": "token"
+    },
+    {
+      "name": "PSY-Frame",
+      "match": "prefix"
+    },
+    {
+      "name": "Paleozoic",
+      "match": "token"
+    },
+    {
+      "name": "Parshath",
+      "match": "token"
+    },
+    {
+      "name": "Patissciel",
+      "match": "token"
+    },
+    {
+      "name": "Pendulum",
+      "match": "prefix"
+    },
+    {
+      "name": "Pendulum Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Penguin",
+      "match": "substring"
+    },
+    {
+      "name": "Performage",
+      "match": "token"
+    },
+    {
+      "name": "Performapal",
+      "match": "token"
+    },
+    {
+      "name": "Phantasm",
+      "match": "prefix"
+    },
+    {
+      "name": "Phantasm Spiral",
+      "match": "token"
+    },
+    {
+      "name": "Phantom Beast",
+      "match": "token"
+    },
+    {
+      "name": "Phantom Knights",
+      "match": "token",
+      "aliases": [
+        "The Phantom Knights"
+      ]
+    },
+    {
+      "name": "Photon",
+      "match": "substring"
+    },
+    {
+      "name": "Plunder Patroll",
+      "match": "prefix"
+    },
+    {
+      "name": "Polymerization",
+      "match": "token"
+    },
+    {
+      "name": "Possessed",
+      "match": "token"
+    },
+    {
+      "name": "Potan",
+      "match": "token"
+    },
+    {
+      "name": "Power Patron",
+      "match": "token"
+    },
+    {
+      "name": "Power Tool",
+      "match": "token"
+    },
+    {
+      "name": "Prank-Kids",
+      "match": "token"
+    },
+    {
+      "name": "Predap",
+      "match": "substring"
+    },
+    {
+      "name": "Predaplant",
+      "match": "token"
+    },
+    {
+      "name": "Prediction Princess",
+      "match": "token"
+    },
+    {
+      "name": "Primite",
+      "match": "token"
+    },
+    {
+      "name": "Prophecy",
+      "match": "token"
+    },
+    {
+      "name": "Puppet",
+      "match": "token"
+    },
+    {
+      "name": "Purrely",
+      "match": "substring"
+    },
+    {
+      "name": "Qli",
+      "match": "substring"
+    },
+    {
+      "name": "R.B.",
+      "match": "token"
+    },
+    {
+      "name": "Radiant Typhoon",
+      "match": "token"
+    },
+    {
+      "name": "Ragnaraika",
+      "match": "token"
+    },
+    {
+      "name": "Raidraptor",
+      "match": "token"
+    },
+    {
+      "name": "Rainbow Bridge",
+      "match": "token"
+    },
+    {
+      "name": "Raise Moon",
+      "match": "token"
+    },
+    {
+      "name": "Rank-Up-Magic",
+      "match": "token"
+    },
+    {
+      "name": "Recipe",
+      "match": "token"
+    },
+    {
+      "name": "Red-Eyes",
+      "match": "token"
+    },
+    {
+      "name": "Regenesis",
+      "match": "token"
+    },
+    {
+      "name": "Reindsurm",
+      "match": "token"
+    },
+    {
+      "name": "Relinquished",
+      "match": "token"
+    },
+    {
+      "name": "Reptilianne",
+      "match": "token"
+    },
+    {
+      "name": "Rescue-ACE",
+      "match": "token"
+    },
+    {
+      "name": "Resonator",
+      "match": "token"
+    },
+    {
+      "name": "Rikka",
+      "match": "token"
+    },
+    {
+      "name": "Ritual Beast",
+      "match": "substring"
+    },
+    {
+      "name": "Roid",
+      "match": "substring"
+    },
+    {
+      "name": "Rokket",
+      "match": "substring"
+    },
+    {
+      "name": "Roland",
+      "match": "token"
+    },
+    {
+      "name": "Rose",
+      "match": "substring"
+    },
+    {
+      "name": "Rose Dragon",
+      "match": "substring"
+    },
+    {
+      "name": "Runick",
+      "match": "token"
+    },
+    {
+      "name": "Ryu-Ge",
+      "match": "token"
+    },
+    {
+      "name": "Ryzeal",
+      "match": "token"
+    },
+    {
+      "name": "S-Force",
+      "match": "token"
+    },
+    {
+      "name": "SPYRAL",
+      "match": "token"
+    },
+    {
+      "name": "Sacred Beast",
+      "match": "token"
+    },
+    {
+      "name": "Salamandra",
+      "match": "token"
+    },
+    {
+      "name": "Salamangreat",
+      "match": "token"
+    },
+    {
+      "name": "Sangen",
+      "match": "prefix"
+    },
+    {
+      "name": "Scareclaw",
+      "match": "token"
+    },
+    {
+      "name": "Scrap",
+      "match": "prefix"
+    },
+    {
+      "name": "Sea Stealth",
+      "match": "token"
+    },
+    {
+      "name": "Secret Six Samurai",
+      "match": "token"
+    },
+    {
+      "name": "Serket",
+      "match": "token"
+    },
+    {
+      "name": "Seventh",
+      "match": "token"
+    },
+    {
+      "name": "Shaddoll",
+      "match": "substring"
+    },
+    {
+      "name": "Shark",
+      "match": "token"
+    },
+    {
+      "name": "Shining Sarcophagus",
+      "match": "token"
+    },
+    {
+      "name": "Shiranui",
+      "match": "token"
+    },
+    {
+      "name": "Silent Magician",
+      "match": "token"
+    },
+    {
+      "name": "Silent Swordsman",
+      "match": "token"
+    },
+    {
+      "name": "Simorgh",
+      "match": "token"
+    },
+    {
+      "name": "Sinful Spoils",
+      "match": "token"
+    },
+    {
+      "name": "Six Samurai",
+      "match": "token"
+    },
+    {
+      "name": "Six Strike",
+      "match": "token"
+    },
+    {
+      "name": "Skull Servant",
+      "match": "token"
+    },
+    {
+      "name": "Sky Striker",
+      "match": "token"
+    },
+    {
+      "name": "Sky Striker Ace",
+      "match": "token"
+    },
+    {
+      "name": "Skyblaster",
+      "match": "token"
+    },
+    {
+      "name": "Snake-Eye",
+      "match": "token"
+    },
+    {
+      "name": "Solfachord",
+      "match": "substring"
+    },
+    {
+      "name": "Speedroid",
+      "match": "substring"
+    },
+    {
+      "name": "Spellbook",
+      "match": "token"
+    },
+    {
+      "name": "Sphinx",
+      "match": "substring"
+    },
+    {
+      "name": "Spirit Message",
+      "match": "token"
+    },
+    {
+      "name": "Spright",
+      "match": "token"
+    },
+    {
+      "name": "Springans",
+      "match": "token"
+    },
+    {
+      "name": "Star Seraph",
+      "match": "token"
+    },
+    {
+      "name": "Stardust",
+      "match": "token"
+    },
+    {
+      "name": "Starry Knight",
+      "match": "token"
+    },
+    {
+      "name": "Starving Venom",
+      "match": "token"
+    },
+    {
+      "name": "Stealth Kragen",
+      "match": "token"
+    },
+    {
+      "name": "Steelswarm",
+      "match": "token"
+    },
+    {
+      "name": "Stellarknight",
+      "match": "substring"
+    },
+    {
+      "name": "Subterror",
+      "match": "token"
+    },
+    {
+      "name": "Sunavalon",
+      "match": "token"
+    },
+    {
+      "name": "Sunseed",
+      "match": "token"
+    },
+    {
+      "name": "Sunvine",
+      "match": "token"
+    },
+    {
+      "name": "Super Defense Robot",
+      "match": "token"
+    },
+    {
+      "name": "Super Quant",
+      "match": "prefix"
+    },
+    {
+      "name": "Superheavy Samurai",
+      "match": "token"
+    },
+    {
+      "name": "Swordsoul",
+      "match": "token"
+    },
+    {
+      "name": "Sylvan",
+      "match": "prefix"
+    },
+    {
+      "name": "Symphonic Warrior",
+      "match": "token"
+    },
+    {
+      "name": "Synchro",
+      "match": "prefix"
+    },
+    {
+      "name": "Synchro Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Synchron",
+      "match": "prefix"
+    },
+    {
+      "name": "T.G.",
+      "match": "token"
+    },
+    {
+      "name": "Tachyon",
+      "match": "token"
+    },
+    {
+      "name": "Tearlaments",
+      "match": "token"
+    },
+    {
+      "name": "Teleport",
+      "match": "token"
+    },
+    {
+      "name": "Tellarknight",
+      "match": "substring"
+    },
+    {
+      "name": "Temple of the Kings",
+      "match": "token"
+    },
+    {
+      "name": "Tenpai Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Tenyi",
+      "match": "prefix"
+    },
+    {
+      "name": "The Agent",
+      "match": "token"
+    },
+    {
+      "name": "The Sanctuary in the Sky",
+      "match": "token"
+    },
+    {
+      "name": "The Weather",
+      "match": "token"
+    },
+    {
+      "name": "Theorealize",
+      "match": "token"
+    },
+    {
+      "name": "Therion",
+      "match": "token"
+    },
+    {
+      "name": "Thunder Dragon",
+      "match": "prefix"
+    },
+    {
+      "name": "Time Thief",
+      "match": "token"
+    },
+    {
+      "name": "Timelord",
+      "match": "token"
+    },
+    {
+      "name": "Tindangle",
+      "match": "token"
+    },
+    {
+      "name": "Tistina",
+      "match": "substring"
+    },
+    {
+      "name": "Toon",
+      "match": "token"
+    },
+    {
+      "name": "Topologic",
+      "match": "token"
+    },
+    {
+      "name": "Toy",
+      "match": "token"
+    },
+    {
+      "name": "Trap Hole",
+      "match": "token"
+    },
+    {
+      "name": "Traptrix",
+      "match": "token"
+    },
+    {
+      "name": "Tri-Brigade",
+      "match": "token"
+    },
+    {
+      "name": "Triamid",
+      "match": "token"
+    },
+    {
+      "name": "Trickstar",
+      "match": "token"
+    },
+    {
+      "name": "Trirealm Rift",
+      "match": "token"
+    },
+    {
+      "name": "True Draco",
+      "match": "prefix"
+    },
+    {
+      "name": "U.A.",
+      "match": "token"
+    },
+    {
+      "name": "Ultimate Crystal",
+      "match": "token"
+    },
+    {
+      "name": "Umbral Horror",
+      "match": "token"
+    },
+    {
+      "name": "Umi",
+      "match": "exact"
+    },
+    {
+      "name": "Unchained",
+      "match": "token"
+    },
+    {
+      "name": "Ursarctic",
+      "match": "token"
+    },
+    {
+      "name": "Utopia",
+      "match": "token"
+    },
+    {
+      "name": "Utopic",
+      "match": "token"
+    },
+    {
+      "name": "Utopic Future",
+      "match": "token"
+    },
+    {
+      "name": "Vaalmonica",
+      "match": "prefix"
+    },
+    {
+      "name": "Valkyrie",
+      "match": "token"
+    },
+    {
+      "name": "Vampire",
+      "match": "token"
+    },
+    {
+      "name": "Vanquish Soul",
+      "match": "token"
+    },
+    {
+      "name": "Vaylantz",
+      "match": "token"
+    },
+    {
+      "name": "Veda",
+      "match": "token"
+    },
+    {
+      "name": "Vendread",
+      "match": "substring"
+    },
+    {
+      "name": "Venom",
+      "match": "token"
+    },
+    {
+      "name": "Vernusylph",
+      "match": "token"
+    },
+    {
+      "name": "Virtual World",
+      "match": "token"
+    },
+    {
+      "name": "Visas",
+      "match": "token"
+    },
+    {
+      "name": "Vision HERO",
+      "match": "token"
+    },
+    {
+      "name": "Voiceless Voice",
+      "match": "token"
+    },
+    {
+      "name": "Void",
+      "match": "token"
+    },
+    {
+      "name": "Volcanic",
+      "match": "token"
+    },
+    {
+      "name": "Vylon",
+      "match": "token"
+    },
+    {
+      "name": "War Rock",
+      "match": "token"
+    },
+    {
+      "name": "Watt",
+      "match": "prefix"
+    },
+    {
+      "name": "Wedju",
+      "match": "token"
+    },
+    {
+      "name": "White Forest",
+      "match": "token"
+    },
+    {
+      "name": "White Knight",
+      "match": "token"
+    },
+    {
+      "name": "Wind-Up",
+      "match": "token"
+    },
+    {
+      "name": "Windwitch",
+      "match": "token"
+    },
+    {
+      "name": "Witchcrafter",
+      "match": "token"
+    },
+    {
+      "name": "World Chalice",
+      "match": "token"
+    },
+    {
+      "name": "World Legacy",
+      "match": "token"
+    },
+    {
+      "name": "Worm",
+      "match": "token"
+    },
+    {
+      "name": "X-Saber",
+      "match": "substring"
+    },
+    {
+      "name": "Xyz",
+      "match": "substring"
+    },
+    {
+      "name": "Xyz Dragon",
+      "match": "token"
+    },
+    {
+      "name": "Yang Zing",
+      "match": "token"
+    },
+    {
+      "name": "Yosenju",
+      "match": "substring"
+    },
+    {
+      "name": "Yubel",
+      "match": "token"
+    },
+    {
+      "name": "Yummy",
+      "match": "prefix"
+    },
+    {
+      "name": "Zefra",
+      "match": "prefix"
+    },
+    {
+      "name": "Zenet",
+      "match": "substring"
+    },
+    {
+      "name": "Zexal",
+      "match": "token"
+    },
+    {
+      "name": "Zoodiac",
+      "match": "token"
+    },
+    {
+      "name": "Zubaba",
+      "match": "substring"
+    }
+  ]
+}

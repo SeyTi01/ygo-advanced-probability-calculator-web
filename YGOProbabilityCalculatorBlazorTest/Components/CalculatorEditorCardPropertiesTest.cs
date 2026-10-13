@@ -100,6 +100,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Mock<IFileService> files = new();
         files.Setup(service => service.ReadAllTextAsync("sample-data/example_session_state.json")).ReturnsAsync(source);
         Mock<ICardInfoService> offline = new(MockBehavior.Strict);
+        offline.Setup(service => service.GetCatalogCardsAsync()).ReturnsAsync(Array.Empty<CardInfo>());
         context.Services.AddSingleton(files.Object);
         context.Services.AddSingleton(offline.Object);
         IRenderedComponent<YGOProbabilityCalculatorBlazor.Pages.Help> help = context.RenderComponent<YGOProbabilityCalculatorBlazor.Pages.Help>();
@@ -109,6 +110,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(cut.FindComponent<ComboEditor>().FindAll("optgroup[label='Relevant properties'] option").Select(option => option.TextContent),
             Does.Contain("Monster").And.Contain("Quick-Play Spell"));
         Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
+        offline.Verify(service => service.GetCatalogCardsAsync(), Times.Once);
         offline.VerifyNoOtherCalls();
     }
 

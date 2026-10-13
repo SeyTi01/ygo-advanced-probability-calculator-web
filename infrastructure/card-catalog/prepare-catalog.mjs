@@ -6,6 +6,7 @@
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { resolveMembership, auditMembership } from "./archetype-membership.mjs";
 
 export const CATALOG_URL = "https://db.ygoprodeck.com/api/v7/cardinfo.php";
 export const MAX_INPUT_BYTES = 100 * 1024 * 1024;
@@ -32,9 +33,12 @@ export function projectCard(card) {
     if (typeof cardType !== "string" || !cardType.trim() || cardType.length > MAX_TEXT_LENGTH) {
         throw new Error(`Card ${cardId} has an invalid type`);
     }
+    if (card.archetype != null && (typeof card.archetype !== "string" || card.archetype.length > MAX_TEXT_LENGTH)) {
+        throw new Error(`Card ${cardId} has an invalid association tag`);
+    }
 
     const projected = { id: cardId, name, type: cardType };
-    for (const property of ["frameType", "race", "attribute", "archetype"]) {
+    for (const property of ["frameType", "race", "attribute"]) {
         const value = card[property];
         if (value === undefined || value === null) {
             continue;
@@ -57,7 +61,7 @@ export function projectCard(card) {
     }
 
     const images = card.card_images ?? [];
-    if (!Array.isArray(images)) {
+    if (!Array.isArray(images) || images.length > 100) {
         throw new Error(`Card ${cardId} has invalid artwork metadata`);
     }
 
@@ -80,6 +84,12 @@ export function projectCard(card) {
     projected.canonicalCardId = cardId;
     projected.artworkImageIds = artworkImageIds;
     projected.artworkMetadataKnown = true;
+    const membership = resolveMembership(card);
+    if (membership.archetypes.length > 32) {
+        throw new Error(`Card ${cardId} exceeds the supported membership limit`);
+    }
+    // null is unknown; [] is a verified absence. Only the latter can repair a session.
+    projected.resolvedArchetypes = membership.unresolved.length ? null : membership.archetypes;
     return projected;
 }
 
@@ -102,7 +112,7 @@ export function buildCatalog(response, minimumCards = 1) {
     cards.sort((left, right) => compareText(left.name.toLowerCase(), right.name.toLowerCase())
         || compareText(left.name, right.name)
         || left.id - right.id);
-    return { version: 1, cards };
+    return { version: 2, cards };
 }
 
 export function serializeCatalog(catalog) {
@@ -166,7 +176,7 @@ function parseArguments(args) {
     const options = {};
     for (let index = 0; index < args.length; index++) {
         const key = args[index];
-        if (key !== "--catalog" && key !== "--output") {
+        if (!["--catalog", "--output", "--audit", "--save-source"].includes(key)) {
             throw new Error(`Unknown argument: ${key}`);
         }
         const value = args[++index];
@@ -177,6 +187,10 @@ function parseArguments(args) {
     }
     if (!options.output) {
         throw new Error("--output is required");
+    }
+    const paths = Object.values(options).map(path => resolve(path));
+    if (new Set(paths).size !== paths.length) {
+        throw new Error("Input, output, audit and saved-source paths must be different");
     }
     return options;
 }
@@ -189,6 +203,12 @@ async function main() {
     const catalog = buildCatalog(source, MIN_FULL_CATALOG_CARDS);
     const output = serializeCatalog(catalog);
     await writeAtomically(resolve(options.output), output);
+    if (options.audit) {
+        await writeAtomically(resolve(options.audit), `${JSON.stringify(auditMembership(source.data), null, 2)}\n`);
+    }
+    if (options["save-source"]) {
+        await writeAtomically(resolve(options["save-source"]), input);
+    }
     process.stdout.write(`Wrote ${catalog.cards.length.toLocaleString("en-US")} cards (${output.length.toLocaleString("en-US")} bytes) to ${options.output}\n`);
 }
 

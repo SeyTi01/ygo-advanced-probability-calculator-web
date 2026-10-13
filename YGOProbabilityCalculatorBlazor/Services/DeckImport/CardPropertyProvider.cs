@@ -124,7 +124,9 @@ public static class CardPropertyProvider {
             }
         }
 
-        Text("archetype", "Archetype", info.Archetype);
+        foreach (string archetype in info.ResolvedArchetypes ?? []) {
+            Text("archetype", "Archetype", archetype);
+        }
 
         return result.Values.ToArray();
 

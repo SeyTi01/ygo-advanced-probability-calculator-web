@@ -206,10 +206,10 @@ public class CardInfoService : ICardInfoService {
     public async Task<CardInfo> GetCardInfoAsync(int id) {
         await _loadCacheTask.Value;
         IReadOnlyList<CardInfo>? catalog = await TryLoadCatalogAsync();
-        CardInfo? catalogCard = catalog?.FirstOrDefault(card => card.Id == id);
+        CardInfo? catalogCard = FindCatalogCard(catalog, id);
 
         if (catalogCard is not null) {
-            return catalogCard;
+            return catalogCard.Id == id ? catalogCard : catalogCard with { Id = id };
         }
 
         await _singleLookupGate.WaitAsync();
@@ -227,7 +227,7 @@ public class CardInfoService : ICardInfoService {
             }
 
             return _cache.Cards.TryGetValue(id, out card)
-                ? card
+                ? WithCatalogMembership(card, catalog)
                 : new CardInfo { Id = id, Name = id.ToString(CultureInfo.InvariantCulture) };
         }
         finally {
@@ -244,6 +244,23 @@ public class CardInfoService : ICardInfoService {
     }
 
     public async Task<string> GetCardNameAsync(int id) => (await GetCardInfoAsync(id)).Name;
+
+    public async Task<IReadOnlyList<CardInfo>> GetCatalogCardsAsync() => await TryLoadCatalogAsync() ?? [];
+
+    private static CardInfo? FindCatalogCard(IReadOnlyList<CardInfo>? catalog, int id) {
+        CardInfo? canonical = catalog?.FirstOrDefault(card => card.Id == id);
+        if (canonical is not null || catalog is null) {
+            return canonical;
+        }
+
+        CardInfo[] artworkMatches = catalog.Where(card => card.ArtworkImageIds.Contains(id)).Take(2).ToArray();
+        return artworkMatches.Length == 1 ? artworkMatches[0] : null;
+    }
+
+    private static CardInfo WithCatalogMembership(CardInfo info, IReadOnlyList<CardInfo>? catalog) {
+        CardInfo? canonical = FindCatalogCard(catalog, info.CanonicalCardId ?? info.Id);
+        return canonical?.ResolvedArchetypes is null ? info : info with { ResolvedArchetypes = canonical.ResolvedArchetypes };
+    }
 
     public async Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names) {
         string[] requested = names
@@ -272,7 +289,7 @@ public class CardInfoService : ICardInfoService {
                 }
 
                 if (matches.Length == 1 && HasMetadata(matches[0])) {
-                    resolved[name] = matches[0];
+                    resolved[name] = WithCatalogMembership(matches[0], catalog);
                 }
             }
 
@@ -281,7 +298,7 @@ public class CardInfoService : ICardInfoService {
                 CardInfo? info = await FetchExactNameAsync(name);
 
                 if (info is not null) {
-                    resolved[name] = info;
+                    resolved[name] = WithCatalogMembership(info, catalog);
                 }
             }
 
@@ -370,19 +387,27 @@ public class CardInfoService : ICardInfoService {
         byte[] json = await ReadCatalogBytesAsync(stream);
         CatalogDocument? document = JsonSerializer.Deserialize<CatalogDocument>(json, CatalogJsonOptions);
 
-        if (document?.Version != 1 || document.Cards is null || document.Cards.Length is 0 or > MaximumCatalogCards) {
+        if (document?.Version is not (1 or 2) || document.Cards is null || document.Cards.Length is 0 or > MaximumCatalogCards) {
             throw new InvalidDataException("The local card catalog is empty, oversized, or unsupported.");
         }
 
         HashSet<int> ids = new();
 
         foreach (CardInfo card in document.Cards) {
-            if (card.Id <= 0 || string.IsNullOrWhiteSpace(card.Name) || !card.ArtworkMetadataKnown || !ids.Add(card.Id)) {
+            if (card.Id <= 0 || string.IsNullOrWhiteSpace(card.Name) || card.Name.Length > 512
+                || !card.ArtworkMetadataKnown || card.ArtworkImageIds is null || card.ArtworkImageIds.Count > 100
+                || card.ArtworkImageIds.Any(id => id <= 0) || !ids.Add(card.Id)) {
                 throw new InvalidDataException("The local card catalog contains an invalid card record.");
+            }
+            if (card.ResolvedArchetypes is { } memberships && (memberships.Count > 32
+                || memberships.Any(name => string.IsNullOrWhiteSpace(name) || name.Length > 100)
+                || memberships.Distinct(StringComparer.OrdinalIgnoreCase).Count() != memberships.Count)) {
+                throw new InvalidDataException("The local card catalog contains invalid archetype memberships.");
             }
         }
 
         return document.Cards
+            .Select(card => document.Version == 1 ? card with { ResolvedArchetypes = null } : card)
             .OrderBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(card => card.Name, StringComparer.Ordinal)
             .ThenBy(card => card.Id)

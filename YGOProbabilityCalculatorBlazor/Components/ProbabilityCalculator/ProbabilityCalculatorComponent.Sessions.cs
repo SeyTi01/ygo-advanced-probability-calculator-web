@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Forms;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.Session;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
@@ -130,14 +131,27 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
             throw new InvalidOperationException("Session contains duplicate card IDs.");
         }
 
-        // Metadata is best effort; a hung network must not gate recovery/startup.
-        // Enrichment receives its own model so a late completion cannot mutate applied work.
+        // Resolve the same-origin bundle before applying saved objective memberships.
         List<Card> preparedCards = session.Cards.ToList();
+        IReadOnlyList<CardInfo> catalog = [];
+        try {
+            if (preparedCards.Any(card => card.ExternalCardId is not null || !string.IsNullOrWhiteSpace(card.Name))) {
+                catalog = await _cardInfoService.GetCatalogCardsAsync() ?? [];
+                CatalogArchetypeReconciler.Reconcile(preparedCards, catalog);
+            }
+        }
+        catch {
+            // An unavailable bundled catalog is not evidence about an unknown card.
+        }
+
+        // Optional legacy network enrichment is bounded and receives its own model,
+        // so a late completion cannot mutate the already reconciled workspace.
         SessionState enriched = await _sessionService.LoadSessionAsync(_sessionService.SerializeSession(session));
         Card[] originalEnrichmentCards = [.. enriched.Cards];
 
         try {
             await _legacyMetadataEnricher.EnrichAsync(enriched).WaitAsync(TimeSpan.FromSeconds(2));
+            CatalogArchetypeReconciler.Reconcile(enriched.Cards, catalog);
 
             for (int i = 0; i < enriched.Cards.Count; i++) {
                 if (!ReferenceEquals(enriched.Cards[i], originalEnrichmentCards[i])) {
