@@ -21,8 +21,8 @@
                         <span class="badge text-bg-secondary ms-1">@drawSummary</span>
                     }
 
-                    @if (UserCategories.Any() || ManualProperties.Any()) {
-                        @foreach (CategoryBase category in UserCategories) {
+                    @if (ManualUserCategories.Any() || ManualProperties.Any()) {
+                        @foreach (CategoryBase category in ManualUserCategories) {
                             <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">@category.Name</span>
                         }
                         @foreach (CategoryBase property in ManualProperties) {
@@ -284,6 +284,9 @@
 
     private Task IncludeManually(CategoryBase category) =>
         OnReplaceCard.InvokeAsync((Index, Card.WithCategories(Card.Categories.Append(category))));
+
+    private IEnumerable<CategoryBase> ManualUserCategories => Card.Categories
+        .Where(category => category.Source == CategorySource.User);
 
     private CategoryBase[] UserCategories => CategoryMembership.EffectiveCategories(Card, CategoryBases)
         .Where(category => category.Source == CategorySource.User)

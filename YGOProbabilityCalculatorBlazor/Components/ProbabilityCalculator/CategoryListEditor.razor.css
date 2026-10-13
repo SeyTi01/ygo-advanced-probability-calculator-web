@@ -32,6 +32,13 @@
     text-underline-offset: 0.12em;
 }
 
+.category-rule-trigger {
+    margin-inline: 0.75rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--category-border);
+    border-radius: 0.25rem;
+}
+
 .category-rename-input {
     flex: 1 1 7rem;
     width: clamp(4rem, 35vw, 12rem);
@@ -131,8 +138,6 @@
     border: 0;
     border-left: 1px solid var(--category-border);
     border-radius: 0;
-    background-position: center;
-    background-size: 0.75rem 0.75rem;
     opacity: 0.72;
 }
 

@@ -143,7 +143,7 @@ public class CategoryRenameTest {
         BeginRename(cut, "Old");
 
         AssertIconButton(cut, "Save category name");
-        AssertIconButton(cut, "Exit category edit mode");
+        AssertIconButton(cut, "Cancel category edit");
 
         cut.Find("[aria-label='New name for category Old']").Input("  ");
         Button(cut, "Save category name").Click();
@@ -155,7 +155,7 @@ public class CategoryRenameTest {
         Assert.That(cut.Find("[aria-label='New name for category Old']"), Is.Not.Null);
 
         cut.Find("[aria-label='New name for category Old']").Input("Discarded");
-        Button(cut, "Exit category edit mode").Click();
+        Button(cut, "Cancel category edit").Click();
         Assert.That(cut.FindAll("[aria-label='Edit category Old']"), Has.Count.EqualTo(1));
         Assert.That(cut.FindAll("[aria-label='Edit category Discarded']"), Is.Empty);
 
@@ -167,7 +167,7 @@ public class CategoryRenameTest {
     }
 
     [Test]
-    public void CategoryNameStartsRenameAndDeleteCrossRemainsASeparateAction() {
+    public void CategoryNameStartsRenameAndDeleteRemainsASeparateAction() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(SessionWithOverlappingReferences());
         IElement categoryName = cut.Find("[aria-label='Edit category Old']");
         Assert.That(categoryName.TextContent.Trim(), Is.EqualTo("Old"));
@@ -177,13 +177,13 @@ public class CategoryRenameTest {
         Assert.That(cut.FindAll("[aria-label='New name for category Old']"), Is.Empty);
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
         Assert.That(cut.Find("[aria-label='Remove category Old']").GetAttribute("title"),
-            Is.EqualTo("Remove category Old"));
+            Is.EqualTo("Delete category Old"));
 
         categoryName = cut.Find("[aria-label='Edit category Old']");
         categoryName.Click();
         Assert.That(cut.Find("[aria-label='New name for category Old']"), Is.Not.Null);
         AssertIconButton(cut, "Save category name");
-        AssertIconButton(cut, "Exit category edit mode");
+        AssertIconButton(cut, "Cancel category edit");
         Assert.That(cut.Find("[aria-label='Remove category Old']"), Is.Not.Null);
     }
 

@@ -146,7 +146,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", k9Starter.Name), Is.EqualTo("category-color-2"));
 
         categories = cut.FindComponent<CategoryListEditor>();
-        await categories.Find("[aria-label='Exit category edit mode']").ClickAsync(new());
+        await categories.Find("[aria-label='Cancel category edit']").ClickAsync(new());
         await categories.Find("[aria-label='Edit category VS Starter']").ClickAsync(new());
         await categories.Find("[aria-label='Choose color for category VS Starter']").ClickAsync(new());
         Assert.That(categories.Find("[aria-label='Set VS Starter color to Blue']").GetAttribute("aria-pressed"), Is.EqualTo("true"));

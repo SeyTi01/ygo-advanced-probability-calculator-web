@@ -56,16 +56,16 @@
                     </button>
                     <ReorderControls Horizontal="true" Index="index" Count="CategoryBases.Count" ItemLabel="@($"category {category.Name}")" OnMove="OnMoveCategory" />
                     <button type="button" class="category-icon-button"
-                            aria-label="Exit category edit mode"
-                            title="Exit category edit mode"
+                            aria-label="Cancel category edit"
+                            title="Cancel category edit"
                             @onclick="CancelCategoryRename">
                         <svg class="category-action-icon" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor" stroke-width="2.5"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M19 12H5m0 0 7-7m-7 7 7 7"></path>
+                            <path d="m6 6 12 12M6 18 18 6"></path>
                         </svg>
                     </button>
-                    <button type="button" class="category-name-trigger" aria-label="@(category.Rule is null ? "Define by properties" : "Edit rule")" @onclick="() => OpenRule(category)">
+                    <button type="button" class="category-name-trigger category-rule-trigger" aria-label="@(category.Rule is null ? "Define by properties" : "Edit rule")" @onclick="() => OpenRule(category)">
                         @(category.Rule is null ? "Define by properties" : "Edit rule")
                     </button>
                     <button type="button" class="category-icon-button category-color-picker-trigger"
@@ -85,10 +85,16 @@
                             title="@($"Edit category {category.Name}")"
                             @onclick="() => BeginCategoryRename(category)">@category.Name@(category.Rule is null ? "" : " · rule")</button>
                 }
-                <button type="button" class="btn-close category-delete-button"
+                <button type="button" class="category-icon-button category-delete-button"
                         aria-label="@($"Remove category {category.Name}")"
-                        title="@($"Remove category {category.Name}")"
-                        @onclick="() => RemoveCategoryBase(category)"></button>
+                        title="@($"Delete category {category.Name}")"
+                        @onclick="() => RemoveCategoryBase(category)">
+                    <svg class="category-action-icon" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"></path>
+                    </svg>
+                </button>
             </span>
             @if (ReferenceEquals(_editingCategory, category) && _colorPickerExpanded) {
                 <div id="categoryColorPalette@(index)" class="category-color-palette mt-2" role="group"
