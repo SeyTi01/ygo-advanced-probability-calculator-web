@@ -178,7 +178,15 @@
         }
 
         @if (CanCalculate && ExecutionAssessment.ElevatedRisk) {
-            <p class="form-text mt-3 mb-0 draw-complexity-notice" role="note">This calculation may require more time or exceed resource limits because its draw effects need detailed processing.</p>
+            <p class="form-text mt-3 mb-0 draw-complexity-notice" role="note">
+                This calculation may require more time or exceed resource limits because its draw effects need detailed processing.
+                @if (_performanceCandidateIndices.Length > 0) {
+                    <span>Potential contributors: @PerformanceCandidates. See their Model notes (Performance).</span>
+                }
+                else {
+                    <span>Cost can depend on effect combinations and deck constraints; no individual effect is identified.</span>
+                }
+            </p>
         }
         @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null) {
             <div class="calculation-recovery mt-3 d-flex flex-wrap align-items-center gap-2">

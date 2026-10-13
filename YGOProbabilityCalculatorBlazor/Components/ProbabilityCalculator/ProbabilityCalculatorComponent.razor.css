@@ -494,3 +494,5 @@
 .session-file-action.menu-command:focus-within {
     background: var(--bs-secondary-bg);
 }
+
+.draw-complexity-notice { overflow-wrap: anywhere; }

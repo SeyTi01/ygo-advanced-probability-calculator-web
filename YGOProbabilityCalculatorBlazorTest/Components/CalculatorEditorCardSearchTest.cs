@@ -411,6 +411,8 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
 
         await SelectCatalogCardAsync(editor, AllureOfDarkness);
 
+        Assert.That(SimulationDetails(editor), Does.Contain("Performance:"));
+
         Card selected = cut.FindComponents<CardEditor>().Single().Instance.Card;
         Assert.That((selected.Id, selected.ExternalCardId, selected.Name),
             Is.EqualTo((gracefulCharity.Id, AllureOfDarknessId, AllureOfDarkness.Name)));
@@ -430,8 +432,10 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
             HandSize = 5
         });
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
+        Assert.That(SimulationDetails(editor), Does.Contain("Performance:"));
 
         await SelectCatalogCardAsync(editor, GracefulCharity);
+        Assert.That(editor.FindAll(".simulation-performance, .simulation-details-toggle"), Is.Empty);
 
         Card selected = cut.FindComponents<CardEditor>().Single().Instance.Card;
         Assert.That((selected.Id, selected.ExternalCardId, selected.Name),
