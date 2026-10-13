@@ -195,7 +195,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         IElement categoryChip = cut.FindAll(".category-chip").Single(chip =>
             chip.QuerySelector("[aria-label='New name for category A']") is not null);
         Assert.That(categoryChip.QuerySelectorAll("button").Select(button => button.GetAttribute("aria-label")),
-            Is.EqualTo(new[] { "Save category name", "Move category A left", "Move category A right", "Exit category edit mode", "Define by properties", "Choose color for category A", "Remove category A" }));
+            Is.EqualTo(new[] { "Save category name", "Move category A left", "Move category A right", "Cancel category edit", "Define by properties", "Choose color for category A", "Remove category A" }));
         cut.Find("[aria-label='Move category A right']").Click();
         Assert.That(cut.Find("[aria-label='New name for category A']").GetAttribute("value"), Is.EqualTo("Renamed"));
         cut.Find("[aria-label='Save category name']").Click();

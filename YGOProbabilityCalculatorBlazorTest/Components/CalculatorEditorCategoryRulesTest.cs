@@ -38,6 +38,8 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
         Assert.That(cut.FindComponents<CategoryRuleEditor>(), Is.Empty);
         IRenderedComponent<CardEditor>[] cards = cut.FindComponents<CardEditor>().ToArray();
         Assert.That(cards[0].Markup, Does.Contain("Automatic"));
+        Assert.That(cards[0].Find(".accordion-button").TextContent, Does.Not.Contain("VS Monster"));
+        Assert.That(cards[1].Find(".accordion-button").TextContent, Does.Contain("VS Monster"));
         Assert.That(cards[0].FindAll("[aria-label='Remove category VS Monster from card Razen']"), Is.Empty);
         Assert.That(cards[1].Markup, Does.Contain("Manual"));
         Assert.That(cards[0].Instance.Card.Categories, Does.Not.Contain(Role));
@@ -93,8 +95,10 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
         cut.Find("[aria-label='Include VS Monster manually on card Razen']").Click();
         IRenderedComponent<CardEditor> card = cut.FindComponents<CardEditor>().First();
         Assert.That(card.Markup, Does.Contain("Automatic + manual"));
+        Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("VS Monster"));
         cut.Find("[aria-label='Remove category VS Monster from card Razen']").Click();
         Assert.That(card.Instance.Card.Categories, Does.Not.Contain(Role));
+        Assert.That(card.Find(".accordion-button").TextContent, Does.Not.Contain("VS Monster"));
         Assert.That(card.Markup, Does.Contain("Automatic"));
         Assert.That(card.FindAll("[aria-label='Remove category VS Monster from card Razen']"), Is.Empty);
     }
