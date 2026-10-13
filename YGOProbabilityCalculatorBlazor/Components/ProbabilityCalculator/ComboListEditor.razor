@@ -45,7 +45,7 @@
                                @onkeyup="HandleAddGroupKeyUp" />
                     </div>
                     <div class="editor-add-action">
-                        <button class="btn btn-primary" type="button" aria-label="Add combo group" @onclick="AddGroup">Add</button>
+                        <button class="btn btn-primary" type="button" aria-label="Add combo group" disabled="@string.IsNullOrWhiteSpace(_newGroupName)" @onclick="AddGroup">Add</button>
                     </div>
                 </div>
             </div>
