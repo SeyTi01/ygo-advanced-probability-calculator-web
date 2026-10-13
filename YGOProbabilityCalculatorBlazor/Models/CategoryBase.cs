@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace YGOProbabilityCalculatorBlazor.Models;
 
 public enum CategorySource { User, Metadata }
@@ -6,9 +8,11 @@ public record CategoryBase {
     public string Name { get; }
     public CategorySource Source { get; }
     public string? MetadataKey { get; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public CardSelector? Rule { get; }
     public string Identity => Source == CategorySource.User ? $"user:{Name}" : $"metadata:{MetadataKey}";
 
-    public CategoryBase(string name, CategorySource source = CategorySource.User, string? metadataKey = null) {
+    public CategoryBase(string name, CategorySource source = CategorySource.User, string? metadataKey = null, CardSelector? rule = null) {
         if (string.IsNullOrWhiteSpace(name)) {
             throw new ArgumentException("Category cannot be empty.", nameof(name));
         }
@@ -25,6 +29,14 @@ public record CategoryBase {
             throw new ArgumentException("User categories cannot have a metadata key.", nameof(metadataKey));
         }
 
+        if (rule is not null) {
+            CategoryMembership.ValidateRule(rule);
+            if (source != CategorySource.User) {
+                throw new ArgumentException("Only user categories can have rules.", nameof(rule));
+            }
+        }
+
+        Rule = rule;
         Name = name;
         Source = source;
         MetadataKey = metadataKey;

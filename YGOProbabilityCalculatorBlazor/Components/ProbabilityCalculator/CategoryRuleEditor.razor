@@ -1,0 +1,130 @@
+@using YGOProbabilityCalculatorBlazor.Models
+
+<section class="category-rule-editor border rounded p-3 mt-3" aria-label="Rule for @Category.Name" @onkeydown="KeyDown">
+    <h5 class="fs-6" tabindex="-1" @ref="_heading">Properties for @Category.Name</h5>
+    <p class="small text-body-secondary">AND means one card matches every property in a row. OR accepts either row. Separate combo requirements still need separate copies.</p>
+    @for (int index = 0; index < _alternatives.Count; index++) {
+        int branch = index;
+        @if (index > 0) { <div class="small fw-semibold my-2">OR</div> }
+        <div class="d-flex flex-wrap align-items-center gap-2 border rounded p-2">
+            @for (int term = 0; term < _alternatives[index].Count; term++) {
+                string identity = _alternatives[index][term];
+                @if (term > 0) { <span class="small">AND</span> }
+                <span class="badge text-bg-secondary text-wrap category-rule-term">
+                    @Label(identity)
+                    <button type="button" class="btn-close category-remove-button ms-1" aria-label="Remove property @Label(identity) from alternative @(index + 1)"
+                            @onclick="() => Remove(branch, identity)"></button>
+                </span>
+            }
+            <select class="form-select form-select-sm category-rule-select" value="" aria-label="Add AND property to alternative @(index + 1)"
+                    disabled="@(_alternatives[index].Count >= CategoryMembership.MaximumPropertiesPerAlternative)"
+                    @onchange="args => AddProperty(branch, args.Value?.ToString())">
+                <option value="">Add property (AND)…</option>
+                @foreach (CategoryBase property in _properties.Where(property => !_alternatives[branch].Contains(property.Identity))) {
+                    <option value="@property.Identity">@property.Name</option>
+                }
+            </select>
+        </div>
+    }
+    <select class="form-select form-select-sm mt-2" value="" aria-label="Add rule alternative"
+            disabled="@(_alternatives.Count >= CategoryMembership.MaximumAlternatives)"
+            @onchange="args => AddAlternative(args.Value?.ToString())">
+        <option value="">@(_alternatives.Count == 0 ? "Choose a property…" : "Add alternative (OR)…")</option>
+        @foreach (CategoryBase property in _properties) {
+            <option value="@property.Identity">@property.Name</option>
+        }
+    </select>
+    <div class="small mt-3" role="status" aria-live="polite">
+        @if (Draft is null) {
+            <span>No automatic matches. Choose a property to define a rule.</span>
+        }
+        else {
+            <strong>@_matches.Length matching @(_matches.Length == 1 ? "entry" : "entries") (@_matches.Sum(card => (long)card.Copies) copies)</strong>
+            <div class="text-body-secondary">Includes inactive entries. Membership updates when card properties change.</div>
+            @if (_matches.Length > 0) {
+                <div class="category-rule-preview mt-1">@string.Join(", ", _matches.Select(card => card.Name ?? "Unnamed card"))</div>
+            }
+        }
+    </div>
+    <p class="form-text">@_manualCount manually included @(_manualCount == 1 ? "entry is" : "entries are") kept, including cards that do not match. Editing or removing the rule never removes manual inclusions; automatic-only memberships follow the rule.</p>
+    <div class="d-flex flex-wrap gap-2 mt-3">
+        <button type="button" class="btn btn-primary btn-sm" disabled="@(Draft is null)" @onclick="() => OnApply.InvokeAsync(Draft)">Apply rule</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OnCancel">Cancel</button>
+        @if (Category.Rule is not null) {
+            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => OnApply.InvokeAsync((CardSelector?)null)">Remove rule</button>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public CategoryBase Category { get; set; } = null!;
+    [Parameter] public IEnumerable<Card> Cards { get; set; } = [];
+    [Parameter] public IEnumerable<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public EventCallback<CardSelector?> OnApply { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private readonly List<List<string>> _alternatives = [];
+    private CategoryBase[] _properties = [];
+    private Card[] _matches = [];
+    private int _manualCount;
+    private ElementReference _heading;
+    private CardSelector? Draft { get; set; }
+
+    protected override void OnInitialized() {
+        foreach (CardSelector alternative in Category.Rule?.Alternatives ?? []) {
+            _alternatives.Add(alternative.CategoryIdentities.ToList());
+        }
+        UpdatePreview();
+    }
+
+    protected override void OnParametersSet() {
+        // Retain draft terms even when the last card providing a contextual property disappears.
+        IEnumerable<string> identities = _alternatives.SelectMany(alternative => alternative);
+        _properties = CategoryCatalog.Build(CategoryBases, Cards, [])
+            .Where(category => category.Source == CategorySource.Metadata)
+            .Concat(identities.Select(identity => new CategoryBase(Uri.UnescapeDataString(identity[9..]), CategorySource.Metadata, identity[9..])))
+            .DistinctBy(category => category.Identity).ToArray();
+        UpdatePreview();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            await _heading.FocusAsync();
+        }
+    }
+
+    private string Label(string identity) => _properties.FirstOrDefault(property => property.Identity == identity)?.Name ?? Uri.UnescapeDataString(identity[9..]);
+
+    private void AddAlternative(string? identity) {
+        if (_alternatives.Count >= CategoryMembership.MaximumAlternatives || !_properties.Any(property => property.Identity == identity)) {
+            return;
+        }
+        _alternatives.Add([identity!]);
+        UpdatePreview();
+    }
+
+    private void AddProperty(int branch, string? identity) {
+        if (_alternatives[branch].Count >= CategoryMembership.MaximumPropertiesPerAlternative
+            || !_properties.Any(property => property.Identity == identity) || _alternatives[branch].Contains(identity!)) {
+            return;
+        }
+        _alternatives[branch].Add(identity!);
+        UpdatePreview();
+    }
+
+    private void Remove(int branch, string identity) {
+        _alternatives[branch].Remove(identity);
+        if (_alternatives[branch].Count == 0) {
+            _alternatives.RemoveAt(branch);
+        }
+        UpdatePreview();
+    }
+
+    private void UpdatePreview() {
+        Draft = _alternatives.Count == 0 ? null : CardSelector.AnyOfSelectors(_alternatives.Select(CardSelector.AllOf));
+        _matches = Draft is null ? [] : Cards.Where(card => Draft.Matches(card.Categories)).ToArray();
+        _manualCount = Cards.Count(card => card.Categories.Contains(Category));
+    }
+
+    private Task KeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
+}

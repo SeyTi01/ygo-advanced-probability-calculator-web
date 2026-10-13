@@ -145,7 +145,7 @@ public class CardConverter : JsonConverter<Card> {
     public override void Write(Utf8JsonWriter writer, Card value, JsonSerializerOptions options) {
         writer.WriteStartObject();
         writer.WritePropertyName("Categories");
-        JsonSerializer.Serialize(writer, value.Categories, options);
+        JsonSerializer.Serialize(writer, value.Categories.Select(category => new CategoryBase(category.Name, category.Source, category.MetadataKey)).ToArray(), options);
         writer.WriteNumber("Copies", value.Copies);
         writer.WriteString("Name", value.Name);
         writer.WriteBoolean("Active", value.Active);

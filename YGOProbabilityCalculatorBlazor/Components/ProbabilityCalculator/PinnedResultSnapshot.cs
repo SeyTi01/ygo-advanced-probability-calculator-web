@@ -35,7 +35,8 @@ public sealed record PinnedCalculationContext(
         Func<Combo, Guid> comboLineage,
         Func<string, Guid> groupLineage,
         bool drawEffectsEnabled = true,
-        bool conditionalEffectsEnabled = false
+        bool conditionalEffectsEnabled = false,
+        IEnumerable<CategoryBase>? categoryDefinitions = null
     ) {
         Combo[] active = [.. combos.Where(combo => combo.Active)];
         ImmutableArray<PinnedComboDefinition> definitions = [.. active.Select(combo => new PinnedComboDefinition(comboLineage(combo), Signature(combo)))];
@@ -70,6 +71,12 @@ public sealed record PinnedCalculationContext(
             card.PostDrawDiscardCount > 0 ? card.PostDrawFailureBehavior.ToString() : "",
             Pack(card.Categories.Select(category => category.Identity).Order(StringComparer.Ordinal))
         ])));
+
+        string[] rules = (categoryDefinitions ?? []).Where(category => category.Rule is not null)
+            .Select(category => Pack([category.Identity, category.Rule!.Signature])).Order(StringComparer.Ordinal).ToArray();
+        if (rules.Length > 0) {
+            deckDefinition = Pack([deckDefinition, Pack(rules)]);
+        }
 
         return new(epoch, handSize, copies, deck.Length, deckDefinition, definitions, groupDefinitions, drawEffectsEnabled, conditionalEffectsEnabled);
 

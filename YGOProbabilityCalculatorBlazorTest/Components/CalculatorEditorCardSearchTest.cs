@@ -86,12 +86,14 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     [SetUp]
     public void UseLocalSearchCatalog() => RegisterCardInfoService(new SearchCatalogHandler());
 
-    [Test]
-    public async Task FortyCardTypingKeepsUnchangedRowsAndDuplicateInputKeepsTheModel() {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task FortyCardTypingKeepsUnchangedRowsAndDuplicateInputKeepsTheModel(bool withRule) {
+        CategoryBase definition = withRule ? new(a.Name, rule: CardSelector.For(new("Monster", CategorySource.Metadata, "kind:monster"))) : a;
         Card[] cards = Enumerable.Range(0, 14)
             .Select(index => new Card([a], copies: index == 13 ? 1 : 3, id: $"row-{index}"))
             .ToArray();
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [.. cards], Categories = [a], HandSize = 5 });
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [.. cards], Categories = [definition], HandSize = 5 });
         IRenderedComponent<CardEditor>[] editors = cut.FindComponents<CardEditor>().ToArray();
         IRenderedComponent<CardEditor> first = editors[0];
         IElement input = first.Find("#cardName0");

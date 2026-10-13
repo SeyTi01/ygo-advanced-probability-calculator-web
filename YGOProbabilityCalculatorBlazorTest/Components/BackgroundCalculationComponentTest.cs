@@ -54,6 +54,36 @@ public class BackgroundCalculationComponentTest {
 
     private Task Start() => _cut.Find(".calculate-action > button").ClickAsync(new());
 
+    [Test]
+    public async Task RuleChangeCancelsOwnedRequestAndKeepsPinnedResultProvenance() {
+        CategoryBase role = new("Role");
+        IRenderedComponent<CategoryListEditor> categories = _cut.FindComponent<CategoryListEditor>();
+        categories.Find("[aria-label='Category name']").Input(role.Name);
+        categories.Find("button.btn-primary").Click();
+        Task accepted = Start();
+        _calculator.Jobs[0].SetResult(Result("accepted"));
+        await accepted;
+        await _cut.Find(".pin-result-action").ClickAsync(new());
+        PinnedResultSnapshot pin = _cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+        Task pending = Start();
+        _cut.Find("[aria-label='Edit category Role']").Click();
+        _cut.Find("[aria-label='Define by properties']").Click();
+        _cut.Find("[aria-label='Add rule alternative']").Change("metadata:kind:monster");
+        _cut.FindComponent<CategoryRuleEditor>().Find("button.btn-primary").Click();
+        Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
+        _calculator.Jobs[1].SetResult(Result("late rule result"));
+        await pending;
+        Assert.That(_cut.Markup, Does.Not.Contain("late rule result"));
+        Assert.That(_cut.Markup, Does.Contain("Previous result"));
+        Assert.That(_cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pin));
+        Task current = Start();
+        _calculator.Jobs[2].SetResult(Result("current"));
+        await current;
+        PinnedResultSnapshot comparison = _cut.FindComponent<PinnedResultPanel>().Instance.Current!;
+        Assert.That(comparison.Context.DeckDefinition, Is.Not.EqualTo(pin.Context.DeckDefinition),
+            "Changing a rule is recorded even when it currently matches no cards.");
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task AdvancedDraftCancellationKeepsAcceptedResultPinAndRecoveryBytes(bool close) {

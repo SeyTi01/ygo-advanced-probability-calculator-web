@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
@@ -20,7 +21,7 @@ public partial class ProbabilityCalculatorComponent {
     private DrawExecutionAssessment ExecutionAssessment {
         get {
             if (_assessmentDirty) {
-                _executionAssessment = DrawExecutionAssessment.Assess(_cards, _combos, _handSize, _drawEffectsEnabled, _conditionalEffectsEnabled);
+                _executionAssessment = DrawExecutionAssessment.Assess(CategoryMembership.Materialize(_cards, _categoryBases), _combos, _handSize, _drawEffectsEnabled, _conditionalEffectsEnabled);
                 _assessmentDirty = false;
             }
 

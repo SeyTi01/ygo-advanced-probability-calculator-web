@@ -195,15 +195,34 @@
                 @foreach (CategoryBase category in UserCategories) {
                     <span class="badge me-2 category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
                         @category.Name
-                        <button type="button"
-                                class="btn-close category-remove-button ms-1"
-                                aria-label="@($"Remove category {category.Name} from card {CardDisplayName}")"
-                                title="@($"Remove category {category.Name} from card {CardDisplayName}")"
-                                @onclick="() => RemoveCategory(category.Identity)">
-                        </button>
+                        @if (category.Rule is not null) {
+                            bool automatic = CategoryMembership.IsAutomatic(Card, category);
+                            bool manual = Card.Categories.Contains(category);
+                            string provenance = (automatic, manual) switch {
+                                (true, true) => "Automatic + manual",
+                                (true, false) => "Automatic",
+                                _ => "Manual"
+                            };
+                            <small class="ms-1">@provenance</small>
+                            @if (!manual) {
+                                <button type="button" class="btn btn-sm btn-link text-reset p-0 ms-1"
+                                        title="Keep this inclusion even if the rule changes"
+                                        aria-label="@($"Include {category.Name} manually on card {CardDisplayName}")"
+                                        @onclick="() => IncludeManually(category)">Keep manually</button>
+                            }
+                        }
+                        @if (Card.Categories.Contains(category)) {
+                            <button type="button" class="btn-close category-remove-button ms-1"
+                                    aria-label="@($"Remove category {category.Name} from card {CardDisplayName}")"
+                                    title="@(category.Rule is null ? $"Remove category {category.Name} from card {CardDisplayName}" : "Remove manual inclusion; automatic matches remain")"
+                                    @onclick="() => RemoveCategory(category.Identity)"></button>
+                        }
                     </span>
                 }
             </div>
+            @if (UserCategories.Any(category => category.Rule is not null)) {
+                <div class="form-text">Automatic memberships follow the category rule. Edit it under Categories; removing a manual inclusion keeps any automatic match.</div>
+            }
             @if (EffectiveMetadataProperties.Length > 0) {
                 <details class="card-property-inspector mt-3">
                     <summary class="small fw-semibold">Card properties (@EffectiveMetadataProperties.Length)</summary>
@@ -263,8 +282,12 @@
     [Parameter] public EventCallback<int> OnDuplicateCard { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
 
-    private CategoryBase[] UserCategories => Card.Categories
+    private Task IncludeManually(CategoryBase category) =>
+        OnReplaceCard.InvokeAsync((Index, Card.WithCategories(Card.Categories.Append(category))));
+
+    private CategoryBase[] UserCategories => CategoryMembership.EffectiveCategories(Card, CategoryBases)
         .Where(category => category.Source == CategorySource.User)
+        .Select(category => CategoryBases.FirstOrDefault(definition => definition.Identity == category.Identity) ?? category)
         .ToArray();
 
     private IEnumerable<CategoryBase> AvailableUserCategoryOptions => CategoryBases

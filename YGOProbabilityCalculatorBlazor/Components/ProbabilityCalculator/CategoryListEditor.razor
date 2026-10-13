@@ -65,6 +65,9 @@
                             <path d="M19 12H5m0 0 7-7m-7 7 7 7"></path>
                         </svg>
                     </button>
+                    <button type="button" class="category-name-trigger" aria-label="@(category.Rule is null ? "Define by properties" : "Edit rule")" @onclick="() => OpenRule(category)">
+                        @(category.Rule is null ? "Define by properties" : "Edit rule")
+                    </button>
                     <button type="button" class="category-icon-button category-color-picker-trigger"
                             aria-label="@($"Choose color for category {category.Name}")"
                             title="@($"Choose color for category {category.Name}")"
@@ -80,7 +83,7 @@
                             class="category-name-trigger"
                             aria-label="@($"Edit category {category.Name}")"
                             title="@($"Edit category {category.Name}")"
-                            @onclick="() => BeginCategoryRename(category)">@category.Name</button>
+                            @onclick="() => BeginCategoryRename(category)">@category.Name@(category.Rule is null ? "" : " · rule")</button>
                 }
                 <button type="button" class="btn-close category-delete-button"
                         aria-label="@($"Remove category {category.Name}")"
@@ -108,6 +111,10 @@
             }
         }
     </div>
+    @if (_ruleCategory is not null) {
+        <CategoryRuleEditor @key="_ruleCategory" Category="_ruleCategory" Cards="Cards" CategoryBases="CategoryBases"
+                            OnApply="ApplyRule" OnCancel="CloseRule" />
+    }
 </div>
 
 @code {
@@ -121,6 +128,47 @@
     [Parameter] public EventCallback<(string CategoryName, int ColorIndex)> OnCategoryColorChanged { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMoveCategory { get; set; }
     [Parameter] public EventCallback<(CategoryBase OldCategory, CategoryBase NewCategory)> OnRenameCategory { get; set; }
+
+    [Parameter] public EventCallback<(CategoryBase Category, CardSelector? Rule)> OnRuleChanged { get; set; }
+
+    private CategoryBase? _ruleCategory;
+    private string? _ruleRenameDraft;
+    private string? _ruleCategoryName;
+
+    private void OpenRule(CategoryBase category) {
+        _ruleRenameDraft = _editingCategoryName != category.Name ? _editingCategoryName : null;
+        _ruleCategoryName = category.Name;
+        _ruleCategory = category;
+        ClearCategoryRename();
+    }
+
+    private Task CloseRule() {
+        _pendingCategoryNameFocus = _ruleCategoryName;
+        _ruleCategory = null;
+        if (_ruleRenameDraft is not null) {
+            _editingCategory = CategoryBases.FirstOrDefault(category => category.Name == _ruleCategoryName);
+            _editingCategoryName = _ruleRenameDraft;
+            _focusRenameInput = _editingCategory is not null;
+            _pendingCategoryNameFocus = null;
+        }
+        _ruleRenameDraft = null;
+        _ruleCategoryName = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ApplyRule(CardSelector? rule) {
+        if (_ruleCategory is null) {
+            return;
+        }
+        await OnRuleChanged.InvokeAsync((_ruleCategory, rule));
+        await CloseRule();
+    }
+
+    protected override void OnParametersSet() {
+        if (_ruleCategory is not null && !CategoryBases.Any(category => ReferenceEquals(category, _ruleCategory))) {
+            _ruleCategory = null;
+        }
+    }
 
     private string? _newCategoryName;
     private string? _categoryError;
@@ -202,6 +250,7 @@
     }
 
     private void BeginCategoryRename(CategoryBase category) {
+        _ruleCategory = null;
         _editingCategory = category;
         _editingCategoryName = category.Name;
         _colorPickerExpanded = false;
@@ -246,7 +295,7 @@
         }
 
         CategoryBase oldCategory = _editingCategory;
-        CategoryBase newCategory = new(_editingCategoryName);
+        CategoryBase newCategory = new(_editingCategoryName, rule: oldCategory.Rule);
         await OnRenameCategory.InvokeAsync((oldCategory, newCategory));
         _pendingCategoryNameFocus = newCategory.Name;
         ClearCategoryRename();

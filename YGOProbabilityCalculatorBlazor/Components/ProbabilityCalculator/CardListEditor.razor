@@ -82,8 +82,8 @@
 
         // Name edits do not change selector choices. Retain their references so
         // unchanged rows can skip rendering their (also collapsed) editor bodies.
-        if (!_categoryOptions.All.Select(category => (category.Identity, category.Name))
-                .SequenceEqual(options.All.Select(category => (category.Identity, category.Name)))
+        if (!_categoryOptions.All.Select(category => (category.Identity, category.Name, category.Rule?.Signature))
+                .SequenceEqual(options.All.Select(category => (category.Identity, category.Name, category.Rule?.Signature)))
             || !_categoryOptions.RelevantMetadataIdentities.SetEquals(options.RelevantMetadataIdentities)) {
             _categoryOptions = options;
         }
