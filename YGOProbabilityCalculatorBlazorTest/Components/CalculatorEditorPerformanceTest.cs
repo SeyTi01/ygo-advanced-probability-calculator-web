@@ -43,6 +43,9 @@ public sealed class CalculatorEditorPerformanceTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [allure] });
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
         Assert.That(SimulationDetails(editor), Does.Contain("Performance:").And.Contain("Saved limitation").And.Contain("revision 7"));
+        Assert.That(editor.Find(".simulation-performance strong").TextContent, Is.EqualTo("Performance:"));
+        Assert.That(editor.Find(".simulation-limitations strong").TextContent, Is.EqualTo("Model limits:"));
+        Assert.That(editor.Find(".simulation-limitations").TextContent.Trim(), Is.EqualTo("Model limits: Saved limitation"));
         OpenSimulation(editor);
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "" });
         Assert.That(editor.FindAll(".simulation-performance"), Has.Count.EqualTo(1), "unsaved drafts do not change the effective plan");

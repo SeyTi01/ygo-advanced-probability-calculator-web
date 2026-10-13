@@ -57,7 +57,7 @@
             }
             @if (_effect.Source == EffectSource.BuiltIn) {
                 @if (!string.IsNullOrWhiteSpace(_effect.Limitations)) {
-                    <p>@_effect.Limitations</p>
+                    <p class="simulation-limitations"><strong>Model limits:</strong> @_effect.Limitations</p>
                 }
                 @if (HasSavedRevisionDetails) {
                     <p>Saved built-in revision @Card.EffectProfile.Revision</p>

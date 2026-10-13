@@ -50,7 +50,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
             SimulationDetails(editor);
             Assert.That(editor.FindAll(".simulation-performance"), Has.Count.EqualTo(performance ? 1 : 0));
             Assert.That(editor.FindAll(".simulation-details p:not(.simulation-performance)").Select(element => element.TextContent.Trim()),
-                Is.EqualTo(string.IsNullOrWhiteSpace(card.EffectProfile.Limitations) ? Array.Empty<string>() : new[] { card.EffectProfile.Limitations }));
+                Is.EqualTo(string.IsNullOrWhiteSpace(card.EffectProfile.Limitations) ? Array.Empty<string>() : new[] { $"Model limits: {card.EffectProfile.Limitations}" }));
             editor.Find(".simulation-details-toggle").KeyDown(new KeyboardEventArgs { Key = "Escape" });
             Assert.That(editor.FindAll(".simulation-details"), Is.Empty);
         }
@@ -104,7 +104,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
             await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode });
             Assert.That(editor.Find(".simulation-heading").TextContent, Is.EqualTo(heading));
             Assert.That(editor.FindAll(".simulation-details-toggle"), Has.Count.EqualTo(1));
-            Assert.That(SimulationDetails(editor).Trim(), Is.EqualTo(card.EffectProfile.Limitations));
+            Assert.That(SimulationDetails(editor).Trim(), Is.EqualTo($"Model limits: {card.EffectProfile.Limitations}"));
             await editor.Find(".simulation-details-toggle").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
             Assert.That(editor.Instance.Card, Is.SameAs(card));
         }
