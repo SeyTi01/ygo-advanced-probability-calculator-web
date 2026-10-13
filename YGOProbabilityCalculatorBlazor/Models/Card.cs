@@ -9,14 +9,16 @@ public class Card {
     public string? Name { get; }
     public bool Active { get; }
     public int? ExternalCardId { get; }
-    public int? DrawCount { get; }
-    public bool DrawOncePerTurn { get; }
-    public int PreDrawDeckRemovalCount { get; }
-    public int PreDrawRemovalCount { get; }
-    public CardSelector PreDrawSelector { get; }
-    public int PostDrawDiscardCount { get; }
-    public CardSelector PostDrawSelector { get; }
-    public PostDrawFailureBehavior PostDrawFailureBehavior { get; }
+    public DrawEffectPlan EffectPlan { get; }
+    public EffectProfile EffectProfile { get; }
+    public int? DrawCount => EffectPlan.DrawCount;
+    public bool DrawOncePerTurn => EffectPlan.OncePerTurn;
+    public int PreDrawDeckRemovalCount => EffectPlan.HiddenDeckCost;
+    public int PreDrawRemovalCount => EffectPlan.HandCost;
+    public CardSelector PreDrawSelector => EffectPlan.HandCostSelector;
+    public int PostDrawDiscardCount => EffectPlan.RemovalCount;
+    public CardSelector PostDrawSelector => EffectPlan.RemovalSelector;
+    public PostDrawFailureBehavior PostDrawFailureBehavior => EffectPlan.FailureBehavior;
     public IReadOnlySet<string> ManualMetadataCategoryKeys { get; }
 
     public Card(
@@ -34,7 +36,8 @@ public class Card {
         PostDrawFailureBehavior postDrawFailureBehavior = PostDrawFailureBehavior.FailBranch,
         int preDrawRemovalCount = 0,
         CardSelector? preDrawSelector = null,
-        int preDrawDeckRemovalCount = 0
+        int preDrawDeckRemovalCount = 0,
+        EffectProfile? effectProfile = null
     ) {
         if (drawCount is not null and not (>= 1 and <= 3)) {
             throw new ArgumentOutOfRangeException(nameof(drawCount), "Draw count must be 1, 2, 3, or absent.");
@@ -62,20 +65,22 @@ public class Card {
             throw new ArgumentOutOfRangeException(nameof(preDrawDeckRemovalCount), "Hidden deck removal requires a draw effect and must be between 0 and 60.");
         }
 
-        PreDrawDeckRemovalCount = preDrawDeckRemovalCount;
-        PreDrawRemovalCount = preDrawRemovalCount;
-        PreDrawSelector = preDrawSelector ?? CardSelector.Any;
-        PostDrawSelector = postDrawSelector ?? CardSelector.Any;
-        PostDrawFailureBehavior = postDrawFailureBehavior;
+        EffectPlan = new(drawCount, drawOncePerTurn, preDrawRemovalCount, preDrawSelector ?? CardSelector.Any,
+            preDrawDeckRemovalCount, postDrawDiscardCount, postDrawSelector ?? CardSelector.Any, postDrawFailureBehavior);
+        EffectProfile = effectProfile ?? EffectProfile.Legacy;
+        if (!Enum.IsDefined(EffectProfile.Source) || !Enum.IsDefined(EffectProfile.Support)
+            || EffectProfile.CanonicalCardId is <= 0 || EffectProfile.Revision is <= 0
+            || (EffectProfile.Source == EffectSource.BuiltIn && (EffectProfile.CanonicalCardId is null
+                || EffectProfile.Revision is null || string.IsNullOrWhiteSpace(EffectProfile.Summary)))) {
+            throw new ArgumentException("Invalid effect profile provenance.", nameof(effectProfile));
+        }
+
         Id = string.IsNullOrWhiteSpace(id) ? Guid.NewGuid().ToString("N") : id;
         Copies = copies;
         Categories = categories.ToList();
         Name = name;
         Active = active;
         ExternalCardId = externalCardId;
-        DrawCount = drawCount;
-        DrawOncePerTurn = drawOncePerTurn;
-        PostDrawDiscardCount = postDrawDiscardCount;
         ManualMetadataCategoryKeys = ValidateManualKeys(Categories, manualMetadataCategoryKeys);
     }
 
@@ -93,16 +98,17 @@ public class Card {
         postDrawFailureBehavior: PostDrawFailureBehavior,
         preDrawRemovalCount: PreDrawRemovalCount,
         preDrawSelector: PreDrawSelector,
-        preDrawDeckRemovalCount: PreDrawDeckRemovalCount
+        preDrawDeckRemovalCount: PreDrawDeckRemovalCount,
+        effectProfile: EffectProfile
     );
 
-    public Card WithPreDrawDeckRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, count);
+    public Card WithPreDrawDeckRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, count, EffectProfile.AsCustom());
 
-    public Card WithPreDrawRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, count, count == 0 ? CardSelector.Any : PreDrawSelector, PreDrawDeckRemovalCount);
+    public Card WithPreDrawRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, count, count == 0 ? CardSelector.Any : PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom());
 
-    public Card WithPreDrawSelector(CardSelector selector) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, selector, PreDrawDeckRemovalCount);
+    public Card WithPreDrawSelector(CardSelector selector) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, selector, PreDrawDeckRemovalCount, EffectProfile.AsCustom());
 
-    public Card WithPostDrawDiscardCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, count, count == 0 ? CardSelector.Any : PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount);
+    public Card WithPostDrawDiscardCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, count, count == 0 ? CardSelector.Any : PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom());
 
     public Card WithPostDrawSelector(CardSelector selector) => new(
         Categories,
@@ -119,7 +125,8 @@ public class Card {
         PostDrawFailureBehavior,
         PreDrawRemovalCount,
         PreDrawSelector,
-        PreDrawDeckRemovalCount
+        PreDrawDeckRemovalCount,
+        EffectProfile.AsCustom()
     );
 
     public Card WithPostDrawFailureBehavior(PostDrawFailureBehavior behavior) => new(
@@ -137,12 +144,13 @@ public class Card {
         behavior,
         PreDrawRemovalCount,
         PreDrawSelector,
-        PreDrawDeckRemovalCount
+        PreDrawDeckRemovalCount,
+        EffectProfile.AsCustom()
     );
 
-    public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount);
+    public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile);
 
-    public Card WithCopies(int copies) => new(Categories, copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount);
+    public Card WithCopies(int copies) => new(Categories, copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile);
 
     public Card WithDrawCount(int? drawCount) => new(
         Categories,
@@ -159,10 +167,11 @@ public class Card {
         PostDrawFailureBehavior,
         drawCount is null ? 0 : PreDrawRemovalCount,
         drawCount is null ? CardSelector.Any : PreDrawSelector,
-        drawCount is null ? 0 : PreDrawDeckRemovalCount
+        drawCount is null ? 0 : PreDrawDeckRemovalCount,
+        EffectProfile.AsCustom()
     );
 
-    public Card WithDrawOncePerTurn(bool oncePerTurn) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, oncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount);
+    public Card WithDrawOncePerTurn(bool oncePerTurn) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, oncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom());
 
     public Card WithCategories(IEnumerable<CategoryBase> categories) {
         List<CategoryBase> effective = categories.ToList();
@@ -182,11 +191,12 @@ public class Card {
             PostDrawFailureBehavior,
             PreDrawRemovalCount,
             PreDrawSelector,
-            PreDrawDeckRemovalCount
+            PreDrawDeckRemovalCount,
+            EffectProfile
         );
     }
 
-    public Card WithActive(bool active) => new(Categories, Copies, Name, active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount);
+    public Card WithActive(bool active) => new(Categories, Copies, Name, active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile);
 
     public Card WithManualMetadataCategory(CategoryBase category) {
         if (category.Source != CategorySource.Metadata) {
@@ -198,7 +208,7 @@ public class Card {
             return this;
         }
 
-        return new(Categories.Concat([category]), Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys.Append(category.MetadataKey!), DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount);
+        return new(Categories.Concat([category]), Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys.Append(category.MetadataKey!), DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile);
     }
 
     public Card WithoutManualMetadataCategory(string key) {
@@ -221,7 +231,8 @@ public class Card {
             PostDrawFailureBehavior,
             PreDrawRemovalCount,
             PreDrawSelector,
-            PreDrawDeckRemovalCount
+            PreDrawDeckRemovalCount,
+            EffectProfile
         );
     }
 
@@ -239,8 +250,13 @@ public class Card {
             .DistinctBy(static category => category.Identity);
 
         // Once materialized objectively, an overlapping override is no longer removable.
-        return new(effective, Copies, Name, Active, Id, externalCardId, ManualMetadataCategoryKeys.Where(key => !objectiveKeys.Contains(key)), DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount);
+        return new(effective, Copies, Name, Active, Id, externalCardId, ManualMetadataCategoryKeys.Where(key => !objectiveKeys.Contains(key)), DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile);
     }
+
+    public Card WithEffect(DrawEffectPlan plan, EffectProfile profile) => new(
+        Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys,
+        plan.DrawCount, plan.OncePerTurn, plan.RemovalCount, plan.RemovalSelector,
+        plan.FailureBehavior, plan.HandCost, plan.HandCostSelector, plan.HiddenDeckCost, profile);
 
     private static IReadOnlySet<string> ValidateManualKeys(IEnumerable<CategoryBase> categories, IEnumerable<string>? keys) {
         FrozenSet<string> result = (keys ?? []).ToFrozenSet(StringComparer.Ordinal);

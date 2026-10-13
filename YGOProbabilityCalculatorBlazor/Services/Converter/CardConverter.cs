@@ -128,6 +128,15 @@ public class CardConverter : JsonConverter<Card> {
             throw new JsonException("Hidden deck removal must be a single integer.");
         }
 
+        JsonProperty[] profileProperties = root.EnumerateObject()
+            .Where(property => property.Name.Equals("EffectProfile", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (profileProperties.Length > 1) {
+            throw new JsonException("Effect profile is duplicated.");
+        }
+        EffectProfile? profile = profileProperties.Length == 0 ? null
+            : JsonSerializer.Deserialize<EffectProfile>(profileProperties[0].Value.GetRawText(), options)
+                ?? throw new JsonException("Missing effect profile.");
+
         try {
             return new Card(
                 categories,
@@ -143,7 +152,8 @@ public class CardConverter : JsonConverter<Card> {
                 selector,
                 preDrawRemovalCount: costCount,
                 preDrawSelector: costSelector,
-                preDrawDeckRemovalCount: deckCost
+                preDrawDeckRemovalCount: deckCost,
+                effectProfile: profile
             );
         }
         catch (ArgumentException exception) {
@@ -195,6 +205,11 @@ public class CardConverter : JsonConverter<Card> {
 
         if (value.PreDrawDeckRemovalCount > 0) {
             writer.WriteNumber("PreDrawDeckRemovalCount", value.PreDrawDeckRemovalCount);
+        }
+
+        if (value.EffectProfile != EffectProfile.Legacy) {
+            writer.WritePropertyName("EffectProfile");
+            JsonSerializer.Serialize(writer, value.EffectProfile, options);
         }
 
         writer.WriteEndObject();

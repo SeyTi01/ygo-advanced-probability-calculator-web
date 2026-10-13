@@ -1,4 +1,5 @@
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
@@ -22,6 +23,9 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         ArgumentNullException.ThrowIfNull(storagePolicy);
         ValidateComboCount(combos);
         ValidateCardIds(deck);
+        foreach (Card card in deck) {
+            CardEffectCompiler.RequireExecutable(card);
+        }
 
         if (!deck.Any(card => card.DrawCount is not null)) {
             return new ProbabilityCalculation(deck, handSize, workPolicy, storagePolicy).CalculateUnion(combos);
@@ -60,6 +64,9 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         ArgumentNullException.ThrowIfNull(storagePolicy);
         ValidateComboCount(combos);
         ValidateCardIds(deck);
+        foreach (Card card in deck) {
+            CardEffectCompiler.RequireExecutable(card);
+        }
 
         if (!deck.Any(card => card.DrawCount is not null)) {
             return new ProbabilityCalculation(deck, handSize, workPolicy, storagePolicy).CalculateResults(combos, groups);
