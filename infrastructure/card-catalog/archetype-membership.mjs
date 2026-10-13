@@ -1,12 +1,21 @@
 import { readFileSync } from "node:fs";
 
 export const membershipPolicy = JSON.parse(readFileSync(new URL("./archetype-policy.json", import.meta.url), "utf8"));
+const reviewedNameClauses = JSON.parse(readFileSync(new URL("./reviewed-name-clauses.json", import.meta.url), "utf8"));
 const normalize = text => text.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[‐‑–]/g, "-").toLowerCase();
 const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-export function createResolver(policy = membershipPolicy) {
+export function createResolver(policy = membershipPolicy, reviewedClauses = reviewedNameClauses) {
     if (policy.version !== 1 || !Array.isArray(policy.candidates) || policy.candidates.length > 1000) {
         throw new Error("Invalid archetype policy");
+    }
+    if (!Array.isArray(reviewedClauses) || reviewedClauses.length > 100
+        || new Set(reviewedClauses.map(entry => entry.id)).size !== reviewedClauses.length
+        || reviewedClauses.some(entry => !Number.isInteger(entry.id) || entry.id <= 0
+            || !["add", "replace"].includes(entry.operation)
+            || [entry.name, entry.type, entry.clause, entry.treatedName, entry.source]
+                .some(value => typeof value !== "string" || !value.trim() || value.length > 512))) {
+        throw new Error("Invalid reviewed name clauses");
     }
     const names = new Map();
     const candidates = policy.candidates.map(({ name, match = "token", aliases = [], caseSensitive = false }) => {
@@ -53,7 +62,19 @@ export function createResolver(policy = membershipPolicy) {
             if (/^This card's original (?:Level|Rank) is always treated as \d+\.$/i.test(clause)) continue;
             const member = membership.exec(clause);
             const renamed = alias.exec(clause);
-            if (member) {
+            const reviewed = reviewedClauses.find(entry => entry.id === card.id && entry.name === card.name
+                && entry.type === card.type && entry.clause === clause);
+            const hasQuotedIdentity = /(?:treated as|becomes)\s+(?:an?\s+)?"/i.test(clause);
+            const hasExplicitCondition = /\b(?:while|when|if|until|during)\b|\b(?:on the field|in (?:your|the|either player's) (?:hand|deck|gy|graveyard))\b/i.test(clause)
+                || /^[^"\r\n]*[:;]/.test(clause);
+            // Skill identity applies through Speed Duel setup/effects, outside
+            // this deck/hand classifier. Never extrapolate it into a name alias.
+            if (card.type === "Skill Card" && (member || renamed || (hasQuotedIdentity && !hasExplicitCondition))) {
+                unresolved.push({ reason: "out-of-scope-skill-identity-clause", excerpt: clause });
+            } else if (reviewed) {
+                (reviewed.operation === "add" ? extraNames : replacements).add(reviewed.treatedName);
+                declarations.push(clause);
+            } else if (member) {
                 const negative = /is (?:not|never) treated/i.test(clause);
                 for (const value of (member[1] ?? member[2]).matchAll(/"([^"]+)"/g)) {
                     const canonical = names.get(normalize(value[1]));
@@ -75,9 +96,6 @@ export function createResolver(policy = membershipPolicy) {
                 declarations.push(clause);
             } else {
                 const assertsPermanence = /\balways\b|\b(?:not|never) treated as an? ["“]/i.test(clause);
-                const hasQuotedIdentity = /(?:treated as|becomes)\s+(?:an?\s+)?"/i.test(clause);
-                const hasExplicitCondition = /\b(?:while|when|if|until|during)\b|\b(?:on the field|in (?:your|the|either player's) (?:hand|deck|gy|graveyard))\b/i.test(clause)
-                    || /^[^"\r\n]*[:;]/.test(clause);
                 if (assertsPermanence || (hasQuotedIdentity && !hasExplicitCondition)) {
                     unresolved.push({ reason: "unsupported-identity-clause", excerpt: clause });
                 }

@@ -34,6 +34,8 @@ public class CatalogArchetypeReconcilerTest {
             ("Solar Recharge", []), ("Charge of the Light Brigade", []),
             ("Summoned Skull", ["Archfiend"]), ("Hardened Armed Dragon", []),
             ("A Legendary Ocean", ["Umi"]), ("Fusion Substitute", ["Polymerization"]),
+            ("Lemuria, the Forgotten City", ["Umi"]),
+            ("Neo-Spacian Marine Dolphin", ["Neo-Spacian"]), ("Neo-Spacian Twinkle Moss", ["Neo-Spacian"]),
             ("Double Iris Magician", ["Magician", "Pendulum", "Pendulum Dragon"]),
             ("Orcustrated Return", ["Orcust"]), ("World Legacy - \"World Wand\"", ["World Legacy"]),
             ("Radiant Typhoon Vision", ["Radiant Typhoon"])
@@ -43,6 +45,39 @@ public class CatalogArchetypeReconcilerTest {
         CardInfo raiden = catalog.Single(card => card.Name == "Raiden, Hand of the Lightsworn");
         Assert.That(CardPropertyProvider.GetCategories(raiden).Select(category => category.MetadataKey),
             Does.Contain("archetype:lightsworn").And.Contain("kind:monster"));
+    }
+
+    [Test]
+    public async Task ReviewedNameTreatmentPreservesImportedAndRecoveredIdentityAndSavedSimulation() {
+        IReadOnlyList<CardInfo> catalog = BundledCatalog();
+        CategoryBase manual = new("Archetype: Lightsworn", CategorySource.Metadata, "archetype:lightsworn");
+        foreach (int externalId in new[] { 34103656, 13857930, 78734254 }) {
+            CardInfo info = catalog.Single(card => card.Id == externalId);
+            Assert.That(info.CanonicalCardId, Is.EqualTo(externalId));
+            Card imported = CuratedDrawEffectPresets.CreateImportedCard(info, 2, info.Id);
+            Assert.That((imported.Name, imported.ExternalCardId, imported.Copies, imported.EffectProfile.CanonicalCardId),
+                Is.EqualTo((info.Name, (int?)externalId, 2, (int?)externalId)));
+            Assert.That(imported.Categories.All(category => category.MetadataKey?.Contains("treated-as", StringComparison.Ordinal) != true), Is.True);
+            Card savedCard = new([manual, Fire, new("Manual role")], 2, imported.Name, active: false,
+                id: imported.Id, externalCardId: externalId, manualMetadataCategoryKeys: [manual.MetadataKey!],
+                drawCount: 1, drawOncePerTurn: false,
+                effectProfile: new(EffectSource.Custom, externalId, 7, "Saved plan", EffectSupport.Partial, "Saved limitation"));
+            using Bunit.TestContext context = new();
+            SessionService sessions = new(context.JSInterop.JSRuntime, new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+            SessionState loaded = await sessions.LoadSessionAsync(sessions.SerializeSession(new() { Cards = [savedCard] }));
+            CatalogArchetypeReconciler.Reconcile(loaded.Cards, catalog);
+            Card repaired = loaded.Cards.Single();
+            Assert.That((repaired.Id, repaired.Name, repaired.ExternalCardId, repaired.Copies, repaired.Active, repaired.EffectPlan, repaired.EffectProfile),
+                Is.EqualTo((savedCard.Id, savedCard.Name, savedCard.ExternalCardId, savedCard.Copies, savedCard.Active, savedCard.EffectPlan, savedCard.EffectProfile)));
+            Assert.That(repaired.ManualMetadataCategoryKeys, Is.EquivalentTo(savedCard.ManualMetadataCategoryKeys));
+            Assert.That(repaired.Categories.Select(category => category.Identity), Is.EquivalentTo(
+                savedCard.Categories.Select(category => category.Identity).Concat(imported.Categories
+                    .Where(category => category.MetadataKey?.StartsWith("archetype:", StringComparison.Ordinal) == true)
+                    .Select(category => category.Identity))));
+            Assert.That(repaired.Categories.All(category => category.MetadataKey?.Contains("treated-as", StringComparison.Ordinal) != true), Is.True);
+        }
+        Assert.That(catalog.Single(card => card.Id == 300201007).ResolvedArchetypes, Is.Null);
+        Assert.That(catalog.Single(card => card.Id == 300101005).ResolvedArchetypes, Is.Null);
     }
 
     [Test]
