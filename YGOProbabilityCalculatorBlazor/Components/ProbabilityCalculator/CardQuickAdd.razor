@@ -1,0 +1,43 @@
+@using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Services.DeckImport
+
+<div class="quick-add mb-3">
+    <div class="quick-add-row" @oninput:stopPropagation="true">
+        <CardSearchInput @ref="_search" Value="@_name" Label="Add card by name" Placeholder="Search cards or enter a name"
+                         OnInput="NameChanged" OnSelected="AddCatalogCard" OnSubmit="AddManualCard" />
+        <button type="button" class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(_name)"
+                @onclick="AddManualCard">Add card</button>
+    </div>
+    @if (_status.Length > 0) {
+        <span class="visually-hidden" role="status">@_status</span>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<Card> OnAdd { get; set; }
+    private CardSearchInput? _search;
+    private string _name = string.Empty;
+    private string _status = string.Empty;
+
+    private Task NameChanged(string value) {
+        _name = value;
+        StateHasChanged();
+
+        return Task.CompletedTask;
+    }
+
+    private Task AddCatalogCard(CardInfo card) => Add(CuratedDrawEffectPresets.CreateImportedCard(card, 1, card.Id));
+
+    private Task AddManualCard() => string.IsNullOrWhiteSpace(_name)
+        ? Task.CompletedTask
+        : Add(new Card([], name: _name.Trim()));
+
+    private async Task Add(Card card) {
+        await OnAdd.InvokeAsync(card);
+        _status = $"Added {card.Name}.";
+        _name = string.Empty;
+        if (_search is not null) {
+            await _search.ResetAsync();
+        }
+    }
+}

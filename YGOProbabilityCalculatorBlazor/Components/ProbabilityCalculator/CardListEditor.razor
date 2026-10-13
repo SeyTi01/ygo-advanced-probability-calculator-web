@@ -12,6 +12,7 @@
             Sort A–Z
         </button>
     </div>
+    <CardQuickAdd @key="ResetVersion" OnAdd="OnAddCard" />
     <div class="accordion" id="cardsAccordion">
         @for (int index = 0; index < Cards.Count; index++) {
             <CardEditor @key="_editorKeys[Cards[index]]"
@@ -29,15 +30,14 @@
                 OnRenameCard="NameChangeHandler"
                 OnNameEditFinished="OnNameEditFinished"
                 OnRemoveCard="OnRemoveCard"
+                OnDuplicateCard="OnDuplicateCard"
                 Count="Cards.Count"
                 OnMove="OnMoveCard"
             />
         }
     </div>
 
-    <div class="mt-3">
-        <button class="btn btn-primary" @onclick="() => OnAddNewCard.InvokeAsync()">Add New Card</button>
-    </div>
+
 </div>
 
 @code {
@@ -57,7 +57,9 @@
     [Parameter] public Func<(int Index, Card NewCard), Task>? OnRenameCard { get; set; }
     [Parameter] public EventCallback OnNameEditFinished { get; set; }
     [Parameter] public EventCallback<int> OnRemoveCard { get; set; }
-    [Parameter] public EventCallback OnAddNewCard { get; set; }
+    [Parameter] public EventCallback<Card> OnAddCard { get; set; }
+    [Parameter] public EventCallback<int> OnDuplicateCard { get; set; }
+    [Parameter] public int ResetVersion { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMoveCard { get; set; }
     [Parameter] public EventCallback OnSortAlphabetically { get; set; }
 

@@ -4,8 +4,8 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<button type="button" class="btn btn-secondary d-inline-flex align-items-center gap-2" title="Copy a link to the accepted session" @onclick="CopyAsync">
-    <span class="share-icon" aria-hidden="true">@(_copied ? "✓" : "↗")</span><span>Copy share link</span>
+<button type="button" class="btn @(Compact ? "btn-outline-secondary session-share-compact" : "btn-secondary") d-inline-flex align-items-center gap-2" aria-label="Copy share link" title="Copy a link to the accepted session" @onclick="CopyAsync">
+    <span class="share-icon" aria-hidden="true">@(_copied ? "✓" : "↗")</span><span>@(Compact ? "Share" : "Copy share link")</span>
 </button>
 @if (_copied) {
     <span class="visually-hidden" role="status">Share link copied.</span>
@@ -24,6 +24,7 @@
 }
 
 @code {
+    [Parameter] public bool Compact { get; set; }
     [Parameter, EditorRequired] public string Snapshot { get; set; } = "";
     [Parameter, EditorRequired] public Func<string> Capture { get; set; } = null!;
     [Parameter] public TimeProvider FeedbackTimeProvider { get; set; } = TimeProvider.System;

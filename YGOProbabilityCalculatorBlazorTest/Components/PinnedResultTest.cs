@@ -534,7 +534,7 @@ public class PinnedResultTest {
     public async Task InactiveMemberChangesGroupCompositionWithoutInvalidatingOtherRouteContinuity() {
         await Accept();
         await Pin();
-        await _cut.Find("[aria-label='Active combo Duplicate']").ChangeAsync(new() { Value = false });
+        await WorkspaceActions.FirstRowAction(_cut, "combo", "Deactivate").ClickAsync(new());
         await Accept(.786);
         PinnedResultSnapshot current = Field<PinnedResultSnapshot>("_acceptedComparison");
         Assert.That(current.CompareGroup(current.Groups[0], Pinned, true), Is.EqualTo("Composition changed"));

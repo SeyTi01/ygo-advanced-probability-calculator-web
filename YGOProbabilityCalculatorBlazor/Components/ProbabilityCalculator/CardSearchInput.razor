@@ -1,0 +1,212 @@
+@using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+@implements IDisposable
+@inject ICardInfoService CardInfoService
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+<div class="card-name-field">
+    <input @ref="_input" id="@Id" aria-label="@Label" placeholder="@Placeholder" class="form-control"
+           value="@Value"
+           role="combobox" aria-autocomplete="list" aria-haspopup="listbox"
+           aria-expanded="@(_searchOpen && _searchResults.Length > 0)"
+           aria-controls="@ResultsId"
+           aria-activedescendant="@ActiveSuggestionId"
+           autocomplete="off"
+           @oninput="SearchCards"
+           @oninput:stopPropagation="true"
+           @onfocus="OpenSearch"
+           @onblur="CloseSearch"
+           @onkeydown="HandleSearchKeyDown" />
+    @if (_searchOpen && _catalogLoading) {
+        <div class="card-search-status" role="status">Loading local card catalog…</div>
+    }
+    else if (_searchOpen && _searchError is not null) {
+        <div class="card-search-status card-search-error" role="status">Card search is unavailable. You can still enter a manual card.</div>
+    }
+    else if (_searchOpen && _searchResults.Length > 0) {
+        <ul id="@ResultsId" class="card-search-results" role="listbox" aria-label="Card search results">
+            @for (int resultIndex = 0; resultIndex < _searchResults.Length; resultIndex++) {
+                CardInfo result = _searchResults[resultIndex];
+                int currentResultIndex = resultIndex;
+                <li id="@($"{OptionPrefix}-{result.Id}")"
+                    class="card-search-result @(currentResultIndex == _activeSuggestionIndex ? "active" : "")"
+                    role="option" aria-selected="@(currentResultIndex == _activeSuggestionIndex ? "true" : "false")"
+                    @onmousedown:preventDefault="true"
+                    @onclick="() => SelectCard(result)">
+                    @result.Name
+                </li>
+            }
+        </ul>
+    }
+    else if (_searchOpen && _searchQuery.Trim().Length >= 2) {
+        <div class="card-search-status" role="status">No matching cards.</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "quickCardName";
+    [Parameter] public string Identity { get; set; } = "quick-add";
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string ResultsId { get; set; } = "quickCardResults";
+    [Parameter] public string OptionPrefix { get; set; } = "quickCardOption";
+    [Parameter] public Func<string, Task>? OnInput { get; set; }
+    [Parameter] public EventCallback<CardInfo> OnSelected { get; set; }
+    [Parameter] public EventCallback OnFinished { get; set; }
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    private ElementReference _input;
+    private CardInfo[] _searchResults = [];
+    private string _searchQuery = string.Empty;
+    private string? _searchError;
+    private int _activeSuggestionIndex = -1;
+    private long _searchRequestVersion;
+    private bool _searchOpen;
+    private bool _catalogLoading;
+    private bool _disposed;
+    private bool _revealSuggestion;
+
+    private string? ActiveSuggestionId => _activeSuggestionIndex >= 0 && _activeSuggestionIndex < _searchResults.Length
+        ? $"{OptionPrefix}-{_searchResults[_activeSuggestionIndex].Id}"
+        : null;
+
+    private async Task SearchCards(ChangeEventArgs args) {
+        string query = args.Value?.ToString() ?? string.Empty;
+        Value = _searchQuery = query;
+        _searchOpen = true;
+        _activeSuggestionIndex = -1;
+        _searchResults = [];
+
+        if (OnInput is not null) {
+            await OnInput(query);
+        }
+
+        if (!_disposed && _searchOpen && string.Equals(_searchQuery, query, StringComparison.Ordinal)) {
+            await RefreshSearchResultsAsync(query);
+        }
+    }
+
+    private Task OpenSearch(FocusEventArgs args) {
+        _searchQuery = Value;
+        _searchOpen = true;
+        _activeSuggestionIndex = -1;
+
+        return RefreshSearchResultsAsync(_searchQuery);
+    }
+
+    private Task CloseSearch(FocusEventArgs args) {
+        _searchOpen = false;
+        _searchRequestVersion++;
+        _activeSuggestionIndex = -1;
+        _searchResults = [];
+        _catalogLoading = false;
+
+        return OnFinished.InvokeAsync();
+    }
+
+    private async Task RefreshSearchResultsAsync(string query) {
+        long requestVersion = ++_searchRequestVersion;
+        string cardId = Identity;
+        _catalogLoading = true;
+        _searchError = null;
+
+        try {
+            IReadOnlyList<CardInfo> results = await CardInfoService.SearchCardsAsync(query);
+
+            if (!IsCurrentSearch(requestVersion, cardId, query)) {
+                return;
+            }
+
+            _searchResults = results.ToArray();
+        }
+        catch {
+            if (!IsCurrentSearch(requestVersion, cardId, query)) {
+                return;
+            }
+
+            _searchResults = [];
+            _searchError = "Local catalog unavailable";
+        }
+        finally {
+            if (IsCurrentSearch(requestVersion, cardId, query)) {
+                _catalogLoading = false;
+            }
+        }
+    }
+
+    private bool IsCurrentSearch(long requestVersion, string cardId, string query) =>
+        !_disposed && _searchOpen && requestVersion == _searchRequestVersion &&
+        string.Equals(Identity, cardId, StringComparison.Ordinal) &&
+        string.Equals(_searchQuery, query, StringComparison.Ordinal);
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs args) {
+        if (!_searchOpen || _searchResults.Length == 0) {
+            if (args.Key == "Escape") {
+                await CloseSearch(new FocusEventArgs());
+            }
+            else if (args.Key == "Enter") {
+                await OnFinished.InvokeAsync();
+                await OnSubmit.InvokeAsync();
+            }
+
+            return;
+        }
+
+        _revealSuggestion = args.Key is "ArrowDown" or "ArrowUp";
+
+        if (args.Key == "ArrowDown") {
+            _activeSuggestionIndex = _activeSuggestionIndex < 0
+                ? 0
+                : (_activeSuggestionIndex + 1) % _searchResults.Length;
+        }
+        else if (args.Key == "ArrowUp") {
+            _activeSuggestionIndex = _activeSuggestionIndex <= 0
+                ? _searchResults.Length - 1
+                : _activeSuggestionIndex - 1;
+        }
+        else if (args.Key == "Enter" && _activeSuggestionIndex >= 0) {
+            await SelectCard(_searchResults[_activeSuggestionIndex]);
+        }
+        else if (args.Key == "Escape") {
+            await CloseSearch(new FocusEventArgs());
+        }
+        else if (args.Key == "Enter") {
+            await OnFinished.InvokeAsync();
+            await OnSubmit.InvokeAsync();
+        }
+    }
+
+    private Task SelectCard(CardInfo selectedCard) {
+        if (_disposed) {
+            return Task.CompletedTask;
+        }
+
+        _searchRequestVersion++;
+        _searchOpen = false;
+        _catalogLoading = false;
+        _searchError = null;
+        _searchResults = [];
+        _activeSuggestionIndex = -1;
+
+        return OnSelected.InvokeAsync(selectedCard);
+    }
+
+    public async Task ResetAsync() {
+        Value = _searchQuery = string.Empty;
+        await CloseSearch(new FocusEventArgs());
+        await _input.FocusAsync();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_revealSuggestion) {
+            _revealSuggestion = false;
+            await JS.InvokeVoidAsync("workspaceSearch.reveal", ActiveSuggestionId);
+        }
+    }
+
+    public void Dispose() {
+        _disposed = true;
+        _searchRequestVersion++;
+    }
+}

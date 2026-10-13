@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
@@ -177,8 +178,8 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         }
 
         IRenderedComponent<ComboEditor> secondComboEditor = cut.FindComponents<ComboEditor>()[1];
-        await secondComboEditor.Find("#comboActive1").ChangeAsync(new() { Value = false });
-        Assert.That(secondComboEditor.Find("#comboActive1").HasAttribute("checked"), Is.False);
+        await SetActiveAsync(secondComboEditor, "#comboActive1", false);
+        Assert.That(secondComboEditor.Find("#comboActive1").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
         Assert.That(secondComboEditor.Instance.Combo.Active, Is.False);
         AssertPreviousResult(cut);
         await Button(cut, "Calculate").ClickAsync(new());
@@ -205,7 +206,7 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         cut.Find("[aria-label='Add combo group']").Click();
         string groupId = cut.Find("#comboGroup0 option:not([value=''])").GetAttribute("value")!;
         cut.Find("#comboGroup0").Change(groupId);
-        cut.Find("#comboActive0").Change(false);
+        SetActiveAsync(cut, "#comboActive0", false).GetAwaiter().GetResult();
         Button(cut, "Save Session").Click();
         JSRuntimeInvocation invocation = context.JSInterop.Invocations["saveSessionFile"].Single();
         string json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)invocation.Arguments[1]!));

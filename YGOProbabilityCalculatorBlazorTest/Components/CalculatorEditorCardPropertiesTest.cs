@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
@@ -177,7 +178,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         await categories.Find("[aria-label='Remove category Role']").ClickAsync(new());
         Assert.That(categories.FindAll(".category-chip"), Has.Count.EqualTo(1));
         Assert.That(combo.Instance.Combo.Categories.Single().BaseCategory, Is.EqualTo(spell));
-        await cut.Find("[aria-label='Remove card']").ClickAsync(new());
+        await FirstRowAction(cut, "card", "Remove").ClickAsync(new());
         Assert.That(combo.FindAll("optgroup[label='Relevant properties'] option").Select(o => o.GetAttribute("value")),
             Is.EquivalentTo(new[] { orphan.Identity, spell.Identity }));
         await combo.Find("#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
@@ -229,11 +230,9 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         foreach (string kind in new[] { "card", "combo" }) {
             IElement header = cut.Find($".{kind}-editor .entry-editor-header");
             Assert.That(header.QuerySelectorAll("h2 button").Length, Is.EqualTo(1));
-            Assert.That(header.QuerySelectorAll(".entry-actions button").Length, Is.EqualTo(kind == "combo" ? 4 : 3));
-            Assert.That(header.QuerySelectorAll("input[type=checkbox]").Length, Is.EqualTo(1));
-            IElement toggle = header.QuerySelector("input[type=checkbox]")!;
-            Assert.That(header.QuerySelector("label")?.GetAttribute("for"), Is.EqualTo(toggle.Id));
-            toggle.Change(false);
+            Assert.That(header.QuerySelectorAll(".entry-actions .action-menu-trigger").Length, Is.EqualTo(1));
+            Assert.That(header.QuerySelectorAll("input[type=checkbox]").Length, Is.Zero);
+            WorkspaceActions.FirstRowAction(cut, kind, "Deactivate").Click();
 
             header = cut.Find($".{kind}-editor .entry-editor-header");
             Assert.That(header.QuerySelector(".accordion-button")?.GetAttribute("aria-expanded"), Is.EqualTo("false"));
@@ -259,7 +258,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
             Assert.That(input.ClassList, Does.Not.Contain("d-none"));
             Assert.That(input.ParentElement?.TagName, Is.EqualTo("LABEL"));
             Assert.That(input.ParentElement?.GetAttribute("for"), Is.EqualTo(id));
-            Assert.That(input.ParentElement?.TextContent.Trim(), Is.EqualTo(name));
+            Assert.That(input.ParentElement?.TextContent.Trim(), Is.EqualTo(id == "sessionFileInput" ? "Load" : name));
         }
     }
 
@@ -477,7 +476,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         Assert.That(editor.FindAll("optgroup[label='Relevant properties'] option").Select(o => o.TextContent), Is.EqualTo(new[] { property.Name }));
         await editor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = property.Identity });
-        await editor.Find("[aria-label='Move card Custom, row 1 down']").ClickAsync(new());
+        await RowAction(editor, "card Custom, row 1", "Move down").ClickAsync(new());
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { property.MetadataKey }));
         Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Categories, Is.Empty);

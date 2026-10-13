@@ -21,7 +21,7 @@ const fixture = {
 
 (async () => {
     const useFirefox = process.env.COMBO_BROWSER === 'firefox';
-    const browser = await (useFirefox ? firefox : chromium).launch({ headless: true, channel: useFirefox ? undefined : process.env.PLAYWRIGHT_CHROMIUM_CHANNEL || undefined });
+    const browser = await (useFirefox ? firefox : chromium).launch({ headless: true, executablePath: process.env.WORKSPACE_BROWSER_PATH || undefined, channel: useFirefox ? undefined : process.env.PLAYWRIGHT_CHROMIUM_CHANNEL || undefined });
     try {
         const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, hasTouch: true });
         const errors = [];
@@ -89,14 +89,15 @@ const fixture = {
         }
         await load(fixture);
         await capture('after-blank-1440-light');
-        const duplicate = editor.getByRole('button', { name: 'Duplicate combo Browser route', exact: true });
-        assert.equal((await duplicate.innerText()).trim(), '');
-        assert.equal(await duplicate.getAttribute('title'), 'Duplicate combo Browser route');
-        await editor.locator('#comboActive0').focus();
-        await editor.locator('#comboActive0').press('Tab');
-        assert.equal(await duplicate.evaluate(element => element === document.activeElement), true);
+        await editor.locator('.action-menu-trigger').click();
+        const duplicate = editor.getByRole('button', { name: 'Duplicate', exact: true });
+        assert.equal((await duplicate.innerText()).trim(), 'Duplicate');
+        await duplicate.focus();
         await duplicate.press('Tab');
-        assert.equal(await editor.getByRole('button', { name: 'Remove combo', exact: true }).evaluate(element => element === document.activeElement), true);
+        assert.equal(await editor.getByRole('button', { name: 'Deactivate', exact: true }).evaluate(element => element === document.activeElement), true);
+        await editor.getByRole('button', { name: 'Deactivate', exact: true }).press('Tab');
+        assert.equal(await editor.getByRole('button', { name: 'Remove', exact: true }).evaluate(element => element === document.activeElement), true);
+        await editor.getByRole('button', { name: 'Remove', exact: true }).press('Escape');
         assert.equal(await editor.locator('[data-action]').count(), 0);
         await picker().focus();
         await picker().press('Tab');
@@ -268,11 +269,13 @@ const fixture = {
         await editor.locator('.accordion-button').click();
         await second.locator('.accordion-button').click();
         assert.equal(await second.locator('#minCount1').inputValue(), '3');
-        await editor.getByRole('button', { name: 'Remove combo', exact: true }).click();
+        await editor.locator('.action-menu-trigger').click();
+        await editor.getByRole('button', { name: 'Remove', exact: true }).click();
         assert.equal(await page.locator('.combo-editor').first().locator('#minCount0').inputValue(), '3', 'Deleting an earlier combo retains the surviving editor draft');
         const comboCount = await page.locator('.combo-editor').count();
         await page.locator('.combo-editor').first().locator('.accordion-button').click();
-        const collapsedDuplicate = page.locator('.combo-editor').first().locator('.combo-duplicate');
+        await page.locator('.combo-editor').first().locator('.action-menu-trigger').click();
+        const collapsedDuplicate = page.locator('.combo-editor').first().getByRole('button', { name: 'Duplicate', exact: true });
         await collapsedDuplicate.focus();
         await collapsedDuplicate.press('Enter');
         assert.equal(await page.locator('.combo-editor').count(), comboCount + 1);

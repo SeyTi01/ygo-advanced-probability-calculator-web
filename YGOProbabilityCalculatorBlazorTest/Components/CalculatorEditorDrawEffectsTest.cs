@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using Bunit;
 using AngleSharp.Dom;
 using Microsoft.AspNetCore.Components.Forms;
@@ -89,7 +90,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
         Assert.That(saved.Cards[0].DrawCount, Is.EqualTo(2));
-        await cut.Find("[aria-label='Move card First, row 1 down']").ClickAsync(new());
+        await RowAction(cut, "card First, row 1", "Move down").ClickAsync(new());
         editor = cut.FindComponents<CardEditor>()[1];
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
         Assert.That(editor.Find("#cardDraw1").GetAttribute("value"), Is.EqualTo("2"));
@@ -118,7 +119,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
         Assert.That(saved.Cards[0].DrawOncePerTurn, Is.False);
-        await cut.Find("[aria-label='Move card First, row 1 down']").ClickAsync(new());
+        await RowAction(cut, "card First, row 1", "Move down").ClickAsync(new());
         editor = cut.FindComponents<CardEditor>()[1];
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
         Assert.That(editor.Find("#cardCategory1").GetAttribute("value"), Is.EqualTo("user:B"));
@@ -278,7 +279,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
         Assert.That(saved.Cards[0].PostDrawDiscardCount, Is.EqualTo(2));
-        await cut.Find("[aria-label='Move card First, row 1 down']").ClickAsync(new());
+        await RowAction(cut, "card First, row 1", "Move down").ClickAsync(new());
         editor = cut.FindComponents<CardEditor>()[1];
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
         Assert.That(editor.Find("#cardDiscard1").GetAttribute("value"), Is.EqualTo("2"));

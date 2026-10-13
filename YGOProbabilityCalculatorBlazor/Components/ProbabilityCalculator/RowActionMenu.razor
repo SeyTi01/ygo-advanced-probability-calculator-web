@@ -1,0 +1,44 @@
+@using YGOProbabilityCalculatorBlazor.Components.Shared
+
+<ActionMenu @ref="_menu" Compact="true" Label="@($"Actions for {ItemLabel}")">
+    <button type="button" class="menu-command" disabled="@(Index <= 0)" @onclick="() => Move(-1)">Move up</button>
+    <button type="button" class="menu-command" disabled="@(Index >= Count - 1)" @onclick="() => Move(1)">Move down</button>
+    <button type="button" class="menu-command" @onclick="() => Run(OnDuplicate)">Duplicate</button>
+    <button id="@($"{Kind}Active{Index}")" type="button" class="menu-command" @onclick="() => Run(OnToggle)">@(Active ? "Deactivate" : "Activate")</button>
+    <button type="button" class="menu-command menu-remove" @onclick="() => Run(OnRemove, true)">Remove</button>
+</ActionMenu>
+
+@code {
+    [Parameter] public string Kind { get; set; } = string.Empty;
+    [Parameter] public string ItemLabel { get; set; } = string.Empty;
+    [Parameter] public int Index { get; set; }
+    [Parameter] public int Count { get; set; }
+    [Parameter] public bool Active { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
+    [Parameter] public EventCallback OnDuplicate { get; set; }
+    [Parameter] public EventCallback OnToggle { get; set; }
+    [Parameter] public EventCallback OnRemove { get; set; }
+    private ActionMenu? _menu;
+
+    private async Task Move(int direction) {
+        int destination = Index + direction;
+        if (destination < 0 || destination >= Count) {
+            return;
+        }
+
+        if (_menu is not null) {
+            await _menu.Close();
+        }
+        await OnMove.InvokeAsync((Index, destination));
+        if (_menu is not null) {
+            await _menu.RestoreFocusAsync();
+        }
+    }
+
+    private async Task Run(EventCallback action, bool removing = false) {
+        if (_menu is not null) {
+            await _menu.Close(removing);
+        }
+        await action.InvokeAsync();
+    }
+}

@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
@@ -265,7 +266,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
     [Test]
     public void CategoriesRefreshSiblingSelectorsAndRejectEmptyDuplicateOrUsedNames() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
-        Button(cut, "Add New Card").Click();
+        AddManualCardAsync(cut).GetAwaiter().GetResult();
         Button(cut, "Add New Combo").Click();
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
