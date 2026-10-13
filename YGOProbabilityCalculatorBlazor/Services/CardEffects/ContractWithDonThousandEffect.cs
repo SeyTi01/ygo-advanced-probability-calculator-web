@@ -7,7 +7,6 @@ public sealed class ContractWithDonThousandEffect : ICardEffectDefinition {
     public string Name => "Contract with Don Thousand";
     public int Revision => 1;
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(1, true);
-    public EffectSupport Support => EffectSupport.Partial;
+    public EffectSupport Support => EffectSupport.ModeledWithinRules;
     public string Summary => "Draw 1; once per turn.";
-    public string Limitations => "Life points, opponent draw, reveals and restrictions are not modeled.";
 }

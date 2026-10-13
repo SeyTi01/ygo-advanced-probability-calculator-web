@@ -12,7 +12,8 @@ public interface ICardEffectDefinition {
     DrawEffectPlan Compile();
     EffectSupport Support { get; }
     string Summary { get; }
-    string Limitations { get; }
+    // Reserve notes for omissions that change opening-hand draw calculations.
+    string Limitations => "";
     EffectExecutionModel ExecutionModel => EffectExecutionModel.DrawSequenceV1;
 }
 
@@ -127,7 +128,7 @@ public sealed class CardEffectRegistry {
         return new(maintained, card.EffectPlan, profile.Source,
             executable && builtin ? profile.Support : EffectSupport.Unmodeled,
             builtin ? profile.Summary! : card.EffectPlan.Describe(),
-            builtin ? profile.Limitations ?? "" : "User/legacy simulation snapshot; correspondence to real card text is not verified.",
+            builtin ? profile.Limitations ?? "" : "",
             profile.ExecutionModel, card.EffectPlan.Capabilities,
             executable, maintained?.Profile.ExecutionModel == EffectExecutionModel.DrawSequenceV1);
     }

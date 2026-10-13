@@ -9,5 +9,5 @@ public sealed class PotOfExtravaganceEffect : ICardEffectDefinition {
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true);
     public EffectSupport Support => EffectSupport.Partial;
     public string Summary => "Draw 2; once per turn.";
-    public string Limitations => "Extra Deck cost, timing and subsequent draw restrictions are not modeled.";
+    public string Limitations => "Activation timing and the restriction on subsequent draws are not enforced.";
 }

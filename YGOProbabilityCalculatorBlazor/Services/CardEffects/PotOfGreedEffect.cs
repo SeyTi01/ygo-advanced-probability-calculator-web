@@ -9,5 +9,4 @@ public sealed class PotOfGreedEffect : ICardEffectDefinition {
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, false);
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
     public string Summary => "Draw 2.";
-    public string Limitations => "Automatic activation within calculator rules; no optional-play decisions.";
 }

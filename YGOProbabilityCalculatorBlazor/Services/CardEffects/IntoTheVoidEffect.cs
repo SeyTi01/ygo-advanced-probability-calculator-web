@@ -9,5 +9,5 @@ public sealed class IntoTheVoidEffect : ICardEffectDefinition {
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(1, false);
     public EffectSupport Support => EffectSupport.Partial;
     public string Summary => "Draw 1.";
-    public string Limitations => "Minimum hand size and End Phase discard are not modeled.";
+    public string Limitations => "Minimum hand size is not checked.";
 }
