@@ -1,0 +1,29 @@
+[
+  {
+    "id": 13857930,
+    "name": "Neo-Spacian Twinkle Moss",
+    "type": "Fusion Monster",
+    "clause": "This card's name is also treated as \"Neo-Spacian Glow Moss\".",
+    "operation": "add",
+    "treatedName": "Neo-Spacian Glow Moss",
+    "source": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=7441&ope=2&request_locale=en"
+  },
+  {
+    "id": 78734254,
+    "name": "Neo-Spacian Marine Dolphin",
+    "type": "Fusion Monster",
+    "clause": "This card's name is also treated as \"Neo-Spacian Aqua Dolphin\".",
+    "operation": "add",
+    "treatedName": "Neo-Spacian Aqua Dolphin",
+    "source": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=7174&ope=2&request_locale=en"
+  },
+  {
+    "id": 34103656,
+    "name": "Lemuria, the Forgotten City",
+    "type": "Spell Card",
+    "clause": "This card's name is treated as \"Umi\".",
+    "operation": "replace",
+    "treatedName": "Umi",
+    "source": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=10279&ope=2&request_locale=en"
+  }
+]
