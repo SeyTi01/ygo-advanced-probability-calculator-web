@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
@@ -51,7 +52,7 @@ public class CalculatorEditorPreDrawTest : CalculatorEditorTestBase {
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
         Assert.That(saved.Cards[0].PreDrawSelector, Is.EqualTo(editor.Instance.Card.PreDrawSelector));
-        await cut.Find("[aria-label='Move card First, row 1 down']").ClickAsync(new());
+        await RowAction(cut, "card First, row 1", "Move down").ClickAsync(new());
         editor = cut.FindComponents<CardEditor>().ToArray()[1];
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
         await editor.Find("[aria-label='Remove eligibility A']").ClickAsync(new());

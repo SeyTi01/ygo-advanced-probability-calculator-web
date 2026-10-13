@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using Bunit;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
@@ -192,7 +193,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
         await cut.Find("#cardName0").InputAsync(new() { Value = "Renamed only" });
         for (int index = 0; index < 5; index++) {
-            await cut.Find($"#comboActive{index}").ChangeAsync(new() { Value = false });
+            await SetActiveAsync(cut, $"#comboActive{index}", false);
         }
         Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         compiler.VerifyNoOtherCalls();

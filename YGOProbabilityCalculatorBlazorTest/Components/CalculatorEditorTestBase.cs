@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
@@ -55,7 +56,7 @@ public abstract class CalculatorEditorTestBase {
     // Patched AngleSharp is binary-incompatible with bUnit 1.x's FindAll indexer.
     // Use Single for unique queries or ToArray before indexing; requery after edits.
     protected static IElement Button(IRenderedFragment fragment, string text) =>
-        fragment.FindAll("button").Single(element => element.TextContent.Trim() == text);
+        fragment.FindAll("button").Single(element => element.TextContent.Trim() == text || element.GetAttribute("aria-label") == text);
 
     protected static string CardTarget(string id) => string.IsNullOrEmpty(id) ? string.Empty : $"card:{id}";
 
@@ -96,11 +97,7 @@ public abstract class CalculatorEditorTestBase {
     protected static async Task DuplicateComboAsync(IRenderedFragment fragment, int index) {
         IRenderedComponent<ComboEditor> editor = fragment.FindComponents<ComboEditor>()[index];
 
-        if (editor.Find(".accordion-button").GetAttribute("aria-expanded") != "true") {
-            await editor.Find(".accordion-button").ClickAsync(new());
-        }
-
-        await editor.Find("button[aria-label^='Duplicate combo ']").ClickAsync(new());
+        await FirstRowAction(editor, "combo", "Duplicate").ClickAsync(new());
     }
 
     protected static void AssertPreviousResult(IRenderedFragment fragment) {

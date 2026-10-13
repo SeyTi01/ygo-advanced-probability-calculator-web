@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using AngleSharp.Dom;
 using Bunit;
 using Microsoft.AspNetCore.Components.Web;
@@ -72,7 +73,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Renamed" });
         await cut.Find("[aria-label='Save category name']").ClickAsync(new());
-        await editor.Find("[aria-label='Move combo First, row 1 down']").ClickAsync(new());
+        await RowAction(editor, "combo First, row 1", "Move down").ClickAsync(new());
         Assert.That(editor.Find("#minCount1").GetAttribute("value"), Is.EqualTo("2"));
         await Button(editor, "Save").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories.Single().MinCount, Is.EqualTo(2));

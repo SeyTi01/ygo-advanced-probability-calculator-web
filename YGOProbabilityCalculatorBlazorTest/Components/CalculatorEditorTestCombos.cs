@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
@@ -99,30 +100,19 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         Assert.That(accordionButton.QuerySelector(".combo-header-content .badge.bg-secondary")?.TextContent, Is.EqualTo("+1 more"));
         Assert.That(accordionButton.TextContent, Does.Contain("Long Category 1 (1–5)"));
 
-        IHtmlCollection<IElement> actionButtons = header.QuerySelectorAll("button");
-        IElement? activeToggle = header.QuerySelector("input.entry-editor-active-checkbox");
-        IElement? removeButton = header.QuerySelector("button[aria-label='Remove combo']");
-        IElement duplicateButton = header.QuerySelector($"button[aria-label='Duplicate combo {comboName}']")!;
-        Assert.That(duplicateButton, Is.Not.Null);
-        Assert.That(actionButtons.Length, Is.EqualTo(5));
-        Assert.That(header.QuerySelectorAll(".reorder-controls button").Length, Is.EqualTo(2));
-        Assert.That(activeToggle?.GetAttribute("aria-label"), Is.EqualTo($"Active combo {comboName}"));
-        Assert.That(activeToggle?.GetAttribute("title"), Is.EqualTo($"Toggle {comboName} active state"));
-        Assert.That(removeButton?.GetAttribute("title"), Is.EqualTo("Remove combo"));
+        Assert.That(header.QuerySelectorAll(".action-menu-trigger").Length, Is.EqualTo(1));
+        Assert.That(header.QuerySelectorAll(".reorder-controls, input").Length, Is.Zero);
+        IElement duplicateButton = FirstRowAction(editor, "combo", "Duplicate");
+        Assert.That(duplicateButton.TextContent.Trim(), Is.EqualTo("Duplicate"));
+        Assert.That(duplicateButton.GetAttribute("type"), Is.EqualTo("button"));
+        Assert.That(duplicateButton.NextElementSibling!.TextContent.Trim(), Is.EqualTo("Deactivate"));
+        Assert.That(duplicateButton.ParentElement!.LastElementChild!.TextContent.Trim(), Is.EqualTo("Remove"));
+        Assert.That(accordionButton.GetAttribute("aria-expanded"), Is.EqualTo("false"));
         accordionButton.Click();
-        Assert.That(editor.Find(".combo-editor-header .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
-        Assert.Multiple(() => {
-            Assert.That(duplicateButton.TextContent.Trim(), Is.Empty);
-            Assert.That(duplicateButton.GetAttribute("title"), Is.EqualTo($"Duplicate combo {comboName}"));
-            Assert.That(duplicateButton.GetAttribute("type"), Is.EqualTo("button"));
-            Assert.That(duplicateButton.ClassList, Does.Contain("btn-outline-secondary"));
-            Assert.That(duplicateButton.PreviousElementSibling!.ClassList, Does.Contain("entry-editor-active-toggle"));
-            Assert.That(duplicateButton.NextElementSibling!.GetAttribute("aria-label"), Is.EqualTo("Remove combo"));
-            Assert.That(duplicateButton.QuerySelector("svg")!.GetAttribute("aria-hidden"), Is.EqualTo("true"));
-        });
-        editor.Find(".combo-editor-header .accordion-button").Click();
-        Assert.That(editor.Find(".combo-editor-header .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
-        Assert.That(editor.FindAll(".accordion-body button[aria-label^='Duplicate combo ']"), Is.Empty);
+        Assert.That(editor.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        editor.Find(".accordion-button").Click();
+        Assert.That(editor.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
+        Assert.That(editor.FindAll(".accordion-body .menu-command"), Is.Empty);
     }
 
     [Test]
@@ -136,26 +126,16 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IReadOnlyList<IRenderedComponent<ComboEditor>> combos = cut.FindComponents<ComboEditor>();
         IElement cardHeader = cut.FindComponent<CardEditor>().Find(".entry-editor-header");
 
-        Assert.That(cut.FindAll(".combo-editor-header button[aria-label^='Duplicate combo ']"), Has.Count.EqualTo(2));
-        Assert.Multiple(() => {
-            Assert.That(cardHeader.QuerySelectorAll("button").Length, Is.EqualTo(4));
-            Assert.That(cardHeader.QuerySelectorAll(".reorder-controls button").Length, Is.EqualTo(2));
-            Assert.That(cardHeader.QuerySelector("input.entry-editor-active-checkbox"), Is.Not.Null);
-            Assert.That(cardHeader.QuerySelector("button[aria-label='Remove card']"), Is.Not.Null);
-            Assert.That(combos[0].Find(".combo-editor-header").QuerySelectorAll("button").Length, Is.EqualTo(5));
-            Assert.That(combos[0].Find(".combo-editor-header").QuerySelector("button[aria-label='Remove combo']"), Is.Not.Null);
-        });
-
-        await combos[0].Find(".accordion-button").ClickAsync(new());
-        Assert.That(cut.FindAll("button[aria-label^='Duplicate combo ']"), Has.Count.EqualTo(2));
-        Assert.That(combos[0].Find(".combo-editor-header button[aria-label^='Duplicate combo ']").TextContent.Trim(), Is.Empty);
-        Assert.That(combos[1].FindAll(".accordion-body button[aria-label^='Duplicate combo ']"), Is.Empty);
-
-        await combos[1].Find(".accordion-button").ClickAsync(new());
-        Assert.That(cut.FindAll("button[aria-label^='Duplicate combo ']"), Has.Count.EqualTo(2));
-        Assert.That(combos[0].FindAll(".accordion-body button[aria-label^='Duplicate combo ']"), Is.Empty);
-        Assert.That(combos[1].Find(".combo-editor-header button[aria-label^='Duplicate combo ']").GetAttribute("aria-label"),
-            Is.EqualTo("Duplicate combo Second combo"));
+        Assert.That(cardHeader.QuerySelectorAll(".action-menu-trigger").Length, Is.EqualTo(1));
+        Assert.That(cardHeader.QuerySelectorAll(".reorder-controls, input").Length, Is.Zero);
+        foreach (IRenderedComponent<ComboEditor> editor in combos) {
+            Assert.That(editor.FindAll(".action-menu-trigger"), Has.Count.EqualTo(1));
+            Assert.That(editor.Find(".action-menu-panel").HasAttribute("hidden"), Is.True);
+            Assert.That(editor.FindAll(".accordion-body .menu-command"), Is.Empty);
+            await editor.Find(".accordion-button").ClickAsync(new());
+            Assert.That(FirstRowAction(editor, "combo", "Duplicate").TextContent.Trim(), Is.EqualTo("Duplicate"));
+            Assert.That(editor.FindAll(".action-menu-trigger"), Has.Count.EqualTo(1));
+        }
     }
 
     [Test]
@@ -165,7 +145,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> source = cut.FindComponent<ComboEditor>();
         Assert.That(source.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
-        await source.Find("button[aria-label='Duplicate combo Source']").ClickAsync(new());
+        await FirstRowAction(source, "combo", "Duplicate").ClickAsync(new());
         IReadOnlyList<IRenderedComponent<ComboEditor>> editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors, Has.Count.EqualTo(2));
         Assert.That(editors[0].Instance, Is.SameAs(source.Instance));
@@ -199,12 +179,12 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<ComboEditor> sourceEditor = cut.FindComponents<ComboEditor>()[1];
 
-        Assert.That(cut.FindAll("button[aria-label^='Duplicate combo ']"), Has.Count.EqualTo(3));
+        Assert.That(cut.FindAll(".combo-editor .menu-command:nth-child(3)"), Has.Count.EqualTo(3));
         await sourceEditor.Find(".accordion-button").ClickAsync(new());
-        Assert.That(cut.FindAll("button[aria-label^='Duplicate combo ']"), Has.Count.EqualTo(3));
-        IElement duplicateAction = sourceEditor.Find(".combo-editor-header button[aria-label='Duplicate combo Starter']");
+        Assert.That(cut.FindAll(".combo-editor .menu-command:nth-child(3)"), Has.Count.EqualTo(3));
+        IElement duplicateAction = FirstRowAction(sourceEditor, "combo", "Duplicate");
         Assert.Multiple(() => {
-            Assert.That(duplicateAction.GetAttribute("title"), Is.EqualTo("Duplicate combo Starter"));
+            Assert.That(duplicateAction.TextContent.Trim(), Is.EqualTo("Duplicate"));
             Assert.That(duplicateAction.GetAttribute("type"), Is.EqualTo("button"));
             Assert.That(duplicateAction.ClassList, Does.Not.Contain("btn-danger"));
         });
@@ -245,7 +225,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         await Button(duplicateEditor, "Update requirement").ClickAsync(new());
         await DeleteRequirement(duplicateEditor, "card:0");
         await duplicateEditor.Find("#comboGroup2").ChangeAsync(new() { Value = "group-two" });
-        await duplicateEditor.Find("#comboActive2").ChangeAsync(new() { Value = true });
+        await SetActiveAsync(duplicateEditor, "#comboActive2", true);
 
         Assert.Multiple(() => {
             Assert.That(source.Name, Is.EqualTo("Starter"));
@@ -342,7 +322,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
             Assert.That(otherEditor.Find("#maxCount3").GetAttribute("value"), Is.EqualTo("2"));
         });
 
-        await cut.Find("[aria-label='Move combo Middle copy, row 3 down']").ClickAsync(new());
+        await RowAction(cut, "combo Middle copy, row 3", "Move down").ClickAsync(new());
         editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors.Select(editor => editor.Instance.Combo.Name),
             Is.EqualTo(new[] { "Before", "Middle", "After", "Middle copy" }));

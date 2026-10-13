@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using AngleSharp.Dom;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using Bunit;
@@ -88,26 +89,21 @@ public class ActiveEntriesEditorTest {
     }
 
     [Test]
-    public void ActiveCheckboxesHaveAccessibleNamesAndAssociatedTouchLabels() {
+    public void InactiveRowsHaveAccessibleActionMenusAndContextualCommands() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session(
             [new([_a], 2, "A copies", active: false)],
             [new([new(_a, 1, 2)], "Exactly one A", active: false)]));
         IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
         IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
 
-        Assert.That(card.Find("#cardActive0").GetAttribute("aria-label"), Is.EqualTo("Active card A copies"));
-        Assert.That(card.Find("#cardActive0").GetAttribute("title"), Is.EqualTo("Toggle A copies active state"));
-        Assert.That(card.FindAll("label[for='cardActive0']"), Has.Count.EqualTo(1));
-        Assert.That(card.FindAll(".entry-active-label"), Is.Empty);
-        Assert.That(card.Find("button[title='Remove card']").GetAttribute("aria-label"), Is.EqualTo("Remove card"));
-        Assert.That(card.Find("button[title='Remove card'] svg").GetAttribute("aria-hidden"), Is.EqualTo("true"));
-
-        Assert.That(combo.Find("#comboActive0").GetAttribute("aria-label"), Is.EqualTo("Active combo Exactly one A"));
-        Assert.That(combo.Find("#comboActive0").GetAttribute("title"), Is.EqualTo("Toggle Exactly one A active state"));
-        Assert.That(combo.FindAll("label[for='comboActive0']"), Has.Count.EqualTo(1));
-        Assert.That(combo.FindAll(".entry-active-label"), Is.Empty);
-        Assert.That(combo.Find("button[title='Remove combo']").GetAttribute("aria-label"), Is.EqualTo("Remove combo"));
-        Assert.That(combo.Find("button[title='Remove combo'] svg").GetAttribute("aria-hidden"), Is.EqualTo("true"));
+        Assert.That(card.Find(".action-menu-trigger").GetAttribute("aria-label"), Is.EqualTo("Actions for card A copies, row 1"));
+        Assert.That(combo.Find(".action-menu-trigger").GetAttribute("aria-label"), Is.EqualTo("Actions for combo Exactly one A, row 1"));
+        Assert.That(card.Find("#cardActive0").TextContent, Is.EqualTo("Activate"));
+        Assert.That(combo.Find("#comboActive0").TextContent, Is.EqualTo("Activate"));
+        Assert.That(card.FindAll(".entry-editor-header input"), Is.Empty);
+        Assert.That(combo.FindAll(".entry-editor-header input"), Is.Empty);
+        Assert.That(FirstRowAction(card, "card", "Remove").ClassList, Does.Contain("menu-remove"));
+        Assert.That(FirstRowAction(combo, "combo", "Remove").ClassList, Does.Contain("menu-remove"));
     }
 
     [Test]
@@ -116,31 +112,31 @@ public class ActiveEntriesEditorTest {
             [new([_a], 1, "First card"), new([_b], 1, "Second card")],
             [new([new(_a, 1, 1)], "First combo"), new([new(_b, 1, 1)], "Second combo")]));
 
-        await cut.Find("#cardActive0").ChangeAsync(new() { Value = false });
-        await cut.Find("#comboActive1").ChangeAsync(new() { Value = false });
+        await SetActiveAsync(cut, "#cardActive0", false);
+        await SetActiveAsync(cut, "#comboActive1", false);
 
         Assert.Multiple(() => {
-            Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.False);
-            Assert.That(cut.Find("#cardActive1").HasAttribute("checked"), Is.True);
-            Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.True);
-            Assert.That(cut.Find("#comboActive1").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find("#cardActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
+            Assert.That(cut.Find("#cardActive1").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.True);
+            Assert.That(cut.Find("#comboActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.True);
+            Assert.That(cut.Find("#comboActive1").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
             Assert.That(cut.FindAll(".card-editor .accordion-button").Select(button => button.GetAttribute("aria-expanded")),
                 Is.All.EqualTo("false"));
             Assert.That(cut.FindAll(".combo-editor .accordion-button").Select(button => button.GetAttribute("aria-expanded")),
                 Is.All.EqualTo("false"));
         });
 
-        await cut.FindComponents<CardEditor>()[1].Find("[title='Remove card']").ClickAsync(new());
-        await cut.FindComponents<ComboEditor>()[0].Find("[title='Remove combo']").ClickAsync(new());
+        await FirstRowAction(cut.FindComponents<CardEditor>()[1], "card", "Remove").ClickAsync(new());
+        await FirstRowAction(cut.FindComponents<ComboEditor>()[0], "combo", "Remove").ClickAsync(new());
 
         Assert.Multiple(() => {
             Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
             Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Name, Is.EqualTo("First card"));
-            Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find("#cardActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
             Assert.That(cut.Find(".card-editor .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
             Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(1));
             Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.Name, Is.EqualTo("Second combo"));
-            Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find("#comboActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
             Assert.That(cut.Find(".combo-editor .accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         });
     }
@@ -154,16 +150,16 @@ public class ActiveEntriesEditorTest {
 
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (3)"));
 
-        cut.Find("#cardActive0").Change(false);
+        SetActiveAsync(cut, "#cardActive0", false).GetAwaiter().GetResult();
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
 
-        cut.Find("#cardActive1").Change(true);
+        SetActiveAsync(cut, "#cardActive1", true).GetAwaiter().GetResult();
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (4)"));
 
         cut.Find("#cardCopies1").Input("6");
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (6)"));
 
-        cut.Find("#cardActive1").Change(false);
+        SetActiveAsync(cut, "#cardActive1", false).GetAwaiter().GetResult();
         cut.Find("#cardCopies1").Input("2");
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
     }
@@ -193,9 +189,9 @@ public class ActiveEntriesEditorTest {
 
         IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
-        await card.Find("#cardActive0").ChangeAsync(new() { Value = false });
+        await SetActiveAsync(card, "#cardActive0", false);
 
-        Assert.That(card.Find("#cardActive0").HasAttribute("checked"), Is.False);
+        Assert.That(card.Find("#cardActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
         Assert.That(card.Find(".accordion-item").ClassList.Contains("entry-inactive"), Is.True);
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Inactive"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"),
@@ -204,7 +200,7 @@ public class ActiveEntriesEditorTest {
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (2)"));
         await AssertProbabilityAsync(cut, 0.0);
 
-        await card.Find("#cardActive0").ChangeAsync(new() { Value = true });
+        await SetActiveAsync(card, "#cardActive0", true);
         AssertPreviousResult(cut);
         await AssertProbabilityAsync(cut, 5.0 / 6.0);
     }
@@ -219,15 +215,15 @@ public class ActiveEntriesEditorTest {
         Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("incomplete active combo"));
 
         IRenderedComponent<ComboEditor> incompleteCombo = cut.FindComponents<ComboEditor>()[2];
-        await incompleteCombo.Find("#comboActive2").ChangeAsync(new() { Value = false });
+        await SetActiveAsync(incompleteCombo, "#comboActive2", false);
         Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.False);
         await AssertProbabilityAsync(cut, 5.0 / 6.0);
 
-        await cut.FindComponents<ComboEditor>()[0].Find("#comboActive0").ChangeAsync(new() { Value = false });
+        await SetActiveAsync(cut.FindComponents<ComboEditor>()[0], "#comboActive0", false);
         AssertPreviousResult(cut);
         await AssertProbabilityAsync(cut, 0.5);
 
-        await cut.FindComponents<ComboEditor>()[0].Find("#comboActive0").ChangeAsync(new() { Value = true });
+        await SetActiveAsync(cut.FindComponents<ComboEditor>()[0], "#comboActive0", true);
         await AssertProbabilityAsync(cut, 5.0 / 6.0);
     }
 
@@ -245,16 +241,16 @@ public class ActiveEntriesEditorTest {
         Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("Hand size must be at least 1"));
 
         cut.Find("#handSize").Change("3");
-        cut.Find("#cardActive0").Change(false);
+        SetActiveAsync(cut, "#cardActive0", false).GetAwaiter().GetResult();
         Assert.That(calculate().HasAttribute("disabled"), Is.True);
         Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("fewer than the hand size"));
 
-        cut.Find("#cardActive1").Change(false);
+        SetActiveAsync(cut, "#cardActive1", false).GetAwaiter().GetResult();
         Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("Activate at least one card"));
 
-        cut.Find("#cardActive0").Change(true);
-        cut.Find("#cardActive1").Change(true);
-        cut.Find("#comboActive0").Change(false);
+        SetActiveAsync(cut, "#cardActive0", true).GetAwaiter().GetResult();
+        SetActiveAsync(cut, "#cardActive1", true).GetAwaiter().GetResult();
+        SetActiveAsync(cut, "#comboActive0", false).GetAwaiter().GetResult();
         Assert.That(calculate().HasAttribute("disabled"), Is.True);
         Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("Activate at least one combo"));
     }
@@ -269,8 +265,8 @@ public class ActiveEntriesEditorTest {
 
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
-        card.Find("#cardActive0").Change(false);
-        combo.Find("#comboActive0").Change(false);
+        SetActiveAsync(card, "#cardActive0", false).GetAwaiter().GetResult();
+        SetActiveAsync(combo, "#comboActive0", false).GetAwaiter().GetResult();
 
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
@@ -278,10 +274,10 @@ public class ActiveEntriesEditorTest {
         combo.Find("select").Change("user:B");
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("0");
-        card.Find("#cardActive0").Change(true);
-        card.Find("#cardActive0").Change(false);
-        combo.Find("#comboActive0").Change(true);
-        combo.Find("#comboActive0").Change(false);
+        SetActiveAsync(card, "#cardActive0", true).GetAwaiter().GetResult();
+        SetActiveAsync(card, "#cardActive0", false).GetAwaiter().GetResult();
+        SetActiveAsync(combo, "#comboActive0", true).GetAwaiter().GetResult();
+        SetActiveAsync(combo, "#comboActive0", false).GetAwaiter().GetResult();
 
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("user:B"));
@@ -296,10 +292,10 @@ public class ActiveEntriesEditorTest {
         combo.Find("#comboName0").Input("Edited combo");
         combo.FindAll("button").Single(button => button.TextContent.Trim() == "Add").Click();
 
-        Assert.That(card.Find("#cardActive0").HasAttribute("checked"), Is.False);
+        Assert.That(card.Find("#cardActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Edited card").And.Contain("(3)"));
         Assert.That(card.Find(".accordion-body").TextContent, Does.Contain("A").And.Contain("B"));
-        Assert.That(combo.Find("#comboActive0").HasAttribute("checked"), Is.False);
+        Assert.That(combo.Find("#comboActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
         Assert.That(combo.Find(".accordion-button").TextContent, Does.Contain("Edited combo"));
         Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("A (1–2)").And.Contain("B (None)"));
     }
@@ -311,10 +307,10 @@ public class ActiveEntriesEditorTest {
             [new([new(_a, 1, 2)], "Combo")]));
         IElement deckHeading = cut.FindComponent<CardListEditor>().Find("h4");
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (2)"));
-        cut.Find("#cardActive0").Change(false);
-        cut.Find("#comboActive0").Change(false);
+        SetActiveAsync(cut, "#cardActive0", false).GetAwaiter().GetResult();
+        SetActiveAsync(cut, "#comboActive0", false).GetAwaiter().GetResult();
         Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
-        cut.FindAll("button").Single(button => button.TextContent.Trim() == "Save Session").Click();
+        cut.FindAll("button").Single(button => button.GetAttribute("aria-label") == "Save Session").Click();
 
         string savedJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String((string)_context.JSInterop.Invocations["saveSessionFile"].Single().Arguments[1]!));
         using (System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(savedJson)) {
@@ -325,8 +321,8 @@ public class ActiveEntriesEditorTest {
         IRenderedComponent<InputFile> sessionInput = cut.FindComponents<InputFile>()[1];
         sessionInput.UploadFiles(InputFileContent.CreateFromText(savedJson, "session.json"));
         cut.WaitForAssertion(() => {
-            Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.False);
-            Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.False);
+            Assert.That(cut.Find("#cardActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
+            Assert.That(cut.Find("#comboActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
             Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (0)"));
         });
 
@@ -335,8 +331,8 @@ public class ActiveEntriesEditorTest {
             """;
         sessionInput.UploadFiles(InputFileContent.CreateFromText(legacyJson, "legacy-session.json"));
         cut.WaitForAssertion(() => {
-            Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.True);
-            Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.True);
+            Assert.That(cut.Find("#cardActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.True);
+            Assert.That(cut.Find("#comboActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.True);
             Assert.That(deckHeading.TextContent.Trim(), Is.EqualTo("Deck (2)"));
         });
     }
@@ -360,10 +356,10 @@ public class ActiveEntriesEditorTest {
         cut.Find("[aria-label='New name for category A']").Input("Renamed A");
         cut.Find("[aria-label='Save category name']").Click();
 
-        Assert.That(card.Find("#cardActive0").HasAttribute("checked"), Is.False);
+        Assert.That(card.Find("#cardActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Inactive").And.Contain("Renamed A"));
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
-        Assert.That(combo.Find("#comboActive0").HasAttribute("checked"), Is.False);
+        Assert.That(combo.Find("#comboActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
         Assert.That(combo.Find(".accordion-button").TextContent, Does.Contain("Inactive").And.Contain("Renamed A"));
         Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
         Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
@@ -378,14 +374,14 @@ public class ActiveEntriesEditorTest {
             [new([_a], 1, "First"), new([_b], 1, "Second", active: false)],
             [new([new(_a, 0, 1)], "First combo"), new([new(_b, 0, 1)], "Second combo", active: false)]));
 
-        cut.FindComponents<CardEditor>()[0].Find("[title='Remove card']").Click();
-        cut.FindComponents<ComboEditor>()[0].Find("[title='Remove combo']").Click();
+        FirstRowAction(cut.FindComponents<CardEditor>()[0], "card", "Remove").Click();
+        FirstRowAction(cut.FindComponents<ComboEditor>()[0], "combo", "Remove").Click();
 
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<CardEditor>()[0].Find(".accordion-button").TextContent, Does.Contain("Second"));
-        Assert.That(cut.Find("#cardActive0").HasAttribute("checked"), Is.False);
+        Assert.That(cut.Find("#cardActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
         Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").TextContent, Does.Contain("Second combo"));
-        Assert.That(cut.Find("#comboActive0").HasAttribute("checked"), Is.False);
+        Assert.That(cut.Find("#comboActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
     }
 }

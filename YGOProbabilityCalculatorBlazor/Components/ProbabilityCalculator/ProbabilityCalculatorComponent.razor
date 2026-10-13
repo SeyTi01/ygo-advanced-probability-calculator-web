@@ -12,49 +12,22 @@
 <div class="calculator-workspace" @oninput="ObserveWorkspaceEdit">
     <div class="session-controls">
         <div class="session-toolbar">
-            <label class="btn btn-primary session-file-action" for="fileInput">
-                Import YDK
-                <InputFile OnChange="@ImportDeckAsync" accept=".ydk" class="session-file-input" id="fileInput" aria-label="Import YDK"/>
-            </label>
-            <button type="button" class="btn btn-outline-primary" @onclick="OpenYdkeImport" disabled="@_isYdkeImportOpen">
-                Import YDKe
-            </button>
-            <button class="btn btn-secondary" @onclick="SaveCurrentSession">
-                Save Session
-            </button>
-            <label class="btn btn-secondary session-file-action" for="sessionFileInput">
-                Load Session
+            <ActionMenu @ref="_importMenu" Text="Import" Label="Import deck">
+                <label class="menu-command session-file-action" for="fileInput">
+                    Import YDK
+                    <InputFile OnChange="ImportDeckFromMenu" accept=".ydk" class="session-file-input" id="fileInput" aria-label="Import YDK"/>
+                </label>
+                <button type="button" class="menu-command" @onclick="OpenYdkeFromMenu" disabled="@_isYdkeImportOpen">Import YDKe</button>
+            </ActionMenu>
+            <button type="button" class="btn btn-outline-secondary session-action" aria-label="Save Session" @onclick="SaveCurrentSession">Save</button>
+            <label class="btn btn-outline-secondary session-file-action session-action" for="sessionFileInput">
+                Load
                 <InputFile OnChange="@LoadSessionFile" accept=".json" class="session-file-input" id="sessionFileInput" aria-label="Load Session"/>
             </label>
-            <SessionShareButton Snapshot="@_sessionService.SerializeSession(CaptureSession())" Capture="@(() => _sessionService.SerializeSession(CaptureSession()))" />
-            <button type="button" class="btn btn-outline-danger" @onclick="RequestClearWorkspace">
-                Clear workspace
-            </button>
-            @if (_isClearWorkspaceConfirmationOpen) {
-                <div class="clear-workspace-confirmation" role="group" aria-label="Confirm clearing workspace">
-                    <span>Clear the current deck, categories, and combos?</span>
-                    <button type="button" class="btn btn-danger" @onclick="ConfirmClearWorkspace">Clear</button>
-                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelClearWorkspace">Cancel</button>
-                </div>
-            }
-            @if (_isYdkeImportOpen) {
-                <form class="ydke-import-form"
-                      aria-label="YDKe deck import"
-                      @onsubmit="ImportYdkeAsync"
-                      @onsubmit:preventDefault="true">
-                    <label for="ydkeCodeInput" class="visually-hidden">YDKe deck code</label>
-                    <input id="ydkeCodeInput"
-                           class="form-control"
-                           type="text"
-                           autocomplete="off"
-                           aria-label="YDKe deck code"
-                           placeholder="Paste ydke://..."
-                           @bind="_ydkeCode"
-                           @bind:event="oninput"/>
-                    <button type="submit" class="btn btn-primary">Import</button>
-                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelYdkeImport">Cancel</button>
-                </form>
-            }
+            <SessionShareButton Compact="true" Snapshot="@_sessionService.SerializeSession(CaptureSession())" Capture="@(() => _sessionService.SerializeSession(CaptureSession()))" />
+            <ActionMenu @ref="_workspaceMenu" Text="More" Label="More workspace actions">
+                <button type="button" class="menu-command menu-remove" @onclick="ClearFromMenu">Clear workspace</button>
+            </ActionMenu>
         </div>
 
         <div class="calculation-controls">
@@ -71,6 +44,33 @@
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
         </div>
+    </div>
+    <div class="session-secondary">
+        @if (_isClearWorkspaceConfirmationOpen) {
+            <div class="clear-workspace-confirmation" role="group" aria-label="Confirm clearing workspace">
+                <span>Clear the current deck, categories, and combos?</span>
+                <button type="button" class="btn btn-danger" @onclick="ConfirmClearWorkspace">Clear</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelClearWorkspace">Cancel</button>
+            </div>
+        }
+        @if (_isYdkeImportOpen) {
+            <form class="ydke-import-form"
+                  aria-label="YDKe deck import"
+                  @onsubmit="ImportYdkeAsync"
+                  @onsubmit:preventDefault="true">
+                <label for="ydkeCodeInput" class="visually-hidden">YDKe deck code</label>
+                <input id="ydkeCodeInput"
+                       class="form-control"
+                       type="text"
+                       autocomplete="off"
+                       aria-label="YDKe deck code"
+                       placeholder="Paste ydke://..."
+                       @bind="_ydkeCode"
+                       @bind:event="oninput"/>
+                <button type="submit" class="btn btn-primary">Import</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelYdkeImport">Cancel</button>
+            </form>
+        }
     </div>
     @if (_importError is not null) {
         <DismissibleAlert Message="@_importError" OnDismiss="@(() => _importError = null)"/>
@@ -93,17 +93,6 @@
         <SessionRecovery @ref="_sharingRecovery" Session="CaptureSession()" ReplacementVersion="_autosaveReplacementVersion" EditVersion="_workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" Suspended="@(_sharedFragment is not null)" OnInspectionComplete="@(() => StateHasChanged())" />
     }
 
-    <CategoryListEditor @key="_sessionVersion"
-        OnCategoriesChanged="HandleCategoriesChanged"
-        OnCategoryColorChanged="SetCategoryColor"
-        OnRenameCategory="RenameCategoryBase"
-        CategoryBases="_categoryBases"
-        CategoryColorIndices="_categoryColorIndices"
-        Combos="_combos"
-        Cards="_cards"
-        OnMoveCategory="MoveCategory"
-    />
-
     <CardListEditor @ref="_cardListEditor"
         Cards="_cards"
         Combos="_combos"
@@ -119,10 +108,26 @@
         OnRenameCard="RenameCard"
         OnNameEditFinished="FinishNameEdit"
         OnRemoveCard="@(i => RemoveCard(i))"
-        OnAddNewCard="AddNewCard"
+        OnAddCard="AddCard"
+        OnDuplicateCard="DuplicateCard"
+        ResetVersion="_sessionVersion"
         OnMoveCard="MoveCard"
         OnSortAlphabetically="SortCardsAlphabetically"
     />
+
+    <details class="category-management">
+        <summary>Categories <span class="text-body-secondary">· manage card roles</span></summary>
+        <CategoryListEditor @key="_sessionVersion"
+            OnCategoriesChanged="HandleCategoriesChanged"
+            OnCategoryColorChanged="SetCategoryColor"
+            OnRenameCategory="RenameCategoryBase"
+            CategoryBases="_categoryBases"
+            CategoryColorIndices="_categoryColorIndices"
+            Combos="_combos"
+            Cards="_cards"
+            OnMoveCategory="MoveCategory"
+        />
+    </details>
 
     <ComboListEditor @key="ComboListKey"
         Combos="_combos"
@@ -327,6 +332,32 @@
 </div>
 
 @code {
+    private ActionMenu? _importMenu;
+    private ActionMenu? _workspaceMenu;
+
+    private async Task ImportDeckFromMenu(InputFileChangeEventArgs args) {
+        if (_importMenu is not null) {
+            await _importMenu.Close();
+        }
+
+        await ImportDeckAsync(args);
+    }
+
+    private async Task OpenYdkeFromMenu() {
+        if (_importMenu is not null) {
+            await _importMenu.Close();
+        }
+
+        OpenYdkeImport();
+    }
+
+    private async Task ClearFromMenu() {
+        if (_workspaceMenu is not null) {
+            await _workspaceMenu.Close();
+        }
+
+        RequestClearWorkspace();
+    }
 
     private readonly List<CategoryBase> _categoryBases = [];
     private readonly List<Card> _cards = [];
@@ -520,10 +551,23 @@
         }
     }
 
-    private void AddNewCard() {
-        _cards.Add(new Card([]));
+    private void AddCard(Card card) {
+        _cards.Add(card);
         InvalidateCalculation();
-        _activeCardIndex = _cards.Count - 1;
+    }
+
+    private void DuplicateCard(int index) {
+        if (index < 0 || index >= _cards.Count) {
+            return;
+        }
+
+        _cards.Insert(index + 1, _cards[index].Duplicate());
+
+        if (_activeCardIndex > index) {
+            _activeCardIndex++;
+        }
+
+        InvalidateCalculation();
     }
 
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {

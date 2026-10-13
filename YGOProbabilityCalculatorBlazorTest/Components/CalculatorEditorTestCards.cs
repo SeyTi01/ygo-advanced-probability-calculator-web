@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
@@ -64,13 +65,13 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
 
         Assert.That(cut.FindComponent<CategoryListEditor>().FindAll(".category-chip .reorder-controls"), Is.Empty);
         Assert.That(cut.FindComponent<ComboListEditor>().FindAll(".combo-group-chip .reorder-controls"), Is.Empty);
-        IElement firstCardUpButton = cut.Find("[aria-label='Move card Same, row 1 up']");
-        Assert.That(firstCardUpButton.TextContent, Is.EqualTo("▲"));
-        Assert.That(firstCardUpButton.GetAttribute("class"), Does.Contain("reorder-button"));
-        Assert.That(firstCardUpButton.GetAttribute("title"), Is.EqualTo("Move card Same, row 1 up"));
-        Assert.That(cut.Find("[aria-label='Move combo Same, row 1 up']").TextContent, Is.EqualTo("▲"));
+        IElement firstCardUpButton = RowAction(cut, "card Same, row 1", "Move up");
+        Assert.That(firstCardUpButton.TextContent, Is.EqualTo("Move up"));
+        Assert.That(firstCardUpButton.GetAttribute("class"), Does.Contain("menu-command"));
+        Assert.That(cut.Find("button[aria-label='Actions for card Same, row 1']").GetAttribute("title"), Is.EqualTo("Actions for card Same, row 1"));
+        Assert.That(RowAction(cut, "combo Same, row 1", "Move up").TextContent, Is.EqualTo("Move up"));
         Assert.That(firstCardUpButton.HasAttribute("disabled"), Is.True);
-        Assert.That(cut.Find("[aria-label='Move combo Combo 3, row 3 down']").HasAttribute("disabled"), Is.True);
+        Assert.That(RowAction(cut, "combo Combo 3, row 3", "Move down").HasAttribute("disabled"), Is.True);
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         Assert.That(cut.Find("[aria-label='Move category A left']").HasAttribute("disabled"), Is.True);
         await cut.Find("[aria-label='Edit group One']").ClickAsync(new());
@@ -98,12 +99,12 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(cut.Find("[aria-label='Move category A right']").HasAttribute("disabled"), Is.True);
         await cut.Find("[aria-label='Edit group One']").ClickAsync(new());
         Assert.That(cut.Find("[aria-label='Move group One right']").HasAttribute("disabled"), Is.True);
-        await cut.Find("[aria-label='Move card Same, row 1 down']").ClickAsync(new());
-        await cut.Find("[aria-label='Move card Same, row 2 down']").ClickAsync(new());
-        await cut.Find("[aria-label='Move card Card 2, row 2 up']").ClickAsync(new());
-        await cut.Find("[aria-label='Move combo Same, row 1 down']").ClickAsync(new());
-        await cut.Find("[aria-label='Move combo Same, row 2 down']").ClickAsync(new());
-        await cut.Find("[aria-label='Move combo Combo 2, row 2 up']").ClickAsync(new());
+        await RowAction(cut, "card Same, row 1", "Move down").ClickAsync(new());
+        await RowAction(cut, "card Same, row 2", "Move down").ClickAsync(new());
+        await RowAction(cut, "card Card 2, row 2", "Move up").ClickAsync(new());
+        await RowAction(cut, "combo Same, row 1", "Move down").ClickAsync(new());
+        await RowAction(cut, "combo Same, row 2", "Move down").ClickAsync(new());
+        await RowAction(cut, "combo Combo 2, row 2", "Move up").ClickAsync(new());
 
         Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Select(category => category.Name),
             Is.EqualTo(new[] { "C", "B", "A" }));
@@ -160,8 +161,8 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         cut.FindComponents<ComboEditor>()[0].Find("#comboTarget0").Change("user:B");
         cut.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");
 
-        cut.Find("[aria-label='Move card First, row 1 down']").Click();
-        cut.Find("[aria-label='Move combo First combo, row 1 down']").Click();
+        RowAction(cut, "card First, row 1", "Move down").Click();
+        RowAction(cut, "combo First combo, row 1", "Move down").Click();
         Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card.Name, Is.EqualTo("First"));
         Assert.That(cut.FindComponents<CardEditor>()[1].Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(cut.FindComponents<CardEditor>()[1].Find("#cardCategory1").GetAttribute("value"), Is.EqualTo("user:B"));
@@ -175,8 +176,8 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(cut.FindComponents<ComboEditor>()[1].Instance.Combo.Name, Is.EqualTo("Moved combo"));
         Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.Active, Is.False);
         Assert.That(cut.FindComponents<ComboEditor>()[0].Instance.Combo.Active, Is.False);
-        cut.FindComponents<CardEditor>()[1].Find("[title='Remove card']").Click();
-        cut.FindComponents<ComboEditor>()[1].Find("[title='Remove combo']").Click();
+        FirstRowAction(cut.FindComponents<CardEditor>()[1], "card", "Remove").Click();
+        FirstRowAction(cut.FindComponents<ComboEditor>()[1], "combo", "Remove").Click();
         Assert.That(cut.FindComponents<CardEditor>().Single().Instance.Card.Name, Is.EqualTo("Second"));
         Assert.That(cut.FindComponents<ComboEditor>().Single().Instance.Combo.Name, Is.EqualTo("Second combo"));
     }
@@ -358,7 +359,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(comboEditor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("3"));
         Assert.That(comboEditor.Instance.Combo.Cards.Single().CardId, Is.EqualTo(zebra.Id));
 
-        await cut.Find("[aria-label='Move card alpha, row 1 down']").ClickAsync(new());
+        await RowAction(cut, "card alpha, row 1", "Move down").ClickAsync(new());
         Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id), Is.EqualTo(new[] {
             alphaUpper.Id, alphaLower.Id, betaFirst.Id, betaCase.Id, betaSecond.Id, zebra.Id,
             unnamedFirst.Id, unnamedSecond.Id
@@ -395,7 +396,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id),
             Is.EqualTo(new[] { alpha.Id, zebra.Id })));
 
-        await cut.Find("[aria-label='Move card Alpha, row 1 down']").ClickAsync(new());
+        await RowAction(cut, "card Alpha, row 1", "Move down").ClickAsync(new());
         Assert.That(cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card.Id), Is.EqualTo(new[] { zebra.Id, alpha.Id }));
         await Button(cut, "Save Session").ClickAsync(new());
         string secondSave = SavedSessionJson(1);
@@ -415,8 +416,8 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         combo.Find("select").Change("user:A");
         combo.Find("#minCount1").Input("0");
         combo.Find("#maxCount1").Input("0");
-        cut.FindComponents<CardEditor>()[0].Find("[title='Remove card']").Click();
-        cut.FindComponents<ComboEditor>()[0].Find("[title='Remove combo']").Click();
+        FirstRowAction(cut.FindComponents<CardEditor>()[0], "card", "Remove").Click();
+        FirstRowAction(cut.FindComponents<ComboEditor>()[0], "combo", "Remove").Click();
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(1));
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:A"));
@@ -427,8 +428,8 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Button(combo, "Add").Click();
         Assert.That(card.Find(".accordion-button").TextContent, Does.Contain("Second"));
         Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("A (None)"));
-        card.Find("[title='Remove card']").Click();
-        combo.Find("[title='Remove combo']").Click();
+        FirstRowAction(card, "card", "Remove").Click();
+        FirstRowAction(combo, "combo", "Remove").Click();
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
     }
 

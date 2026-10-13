@@ -22,7 +22,7 @@ const { chromium } = require('playwright');
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     let browser;
     try {
-        browser = await chromium.launch({ channel: process.env.YGO_BROWSER_CHANNEL || 'msedge', headless: true });
+        browser = await chromium.launch({ executablePath: process.env.WORKSPACE_BROWSER_PATH || undefined, channel: process.env.WORKSPACE_BROWSER_PATH ? undefined : process.env.YGO_BROWSER_CHANNEL || 'msedge', headless: true });
         const sample = JSON.parse(await fs.readFile(path.join(root, 'sample-data/example_session_state.json'), 'utf8'));
         assert.equal(sample.Cards.reduce((sum, card) => sum + card.Copies, 0), 40);
         assert.equal(sample.HandSize, 5);

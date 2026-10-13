@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
@@ -63,7 +64,7 @@ public sealed class CalculatorEditorTestClearWorkspace : CalculatorEditorTestBas
         Assert.That(cut.FindComponents<ComboEditor>(), Is.Empty);
         Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("5"));
 
-        await Button(cut, "Add New Card").ClickAsync(new());
+        await AddManualCardAsync(cut);
         await Button(cut, "Add New Combo").ClickAsync(new());
         IRenderedComponent<CardEditor> freshCard = cut.FindComponent<CardEditor>();
         IRenderedComponent<ComboEditor> freshCombo = cut.FindComponent<ComboEditor>();

@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -234,7 +235,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
             case "new-query": await input.InputAsync(new() { Value = "P" }); break;
             case "blur": await input.BlurAsync(new()); break;
             case "escape": await input.KeyDownAsync(new() { Key = "Escape" }); break;
-            case "unmount": await cut.Find("[aria-label='Remove card']").ClickAsync(new()); break;
+            case "unmount": await FirstRowAction(cut, "card", "Remove").ClickAsync(new()); break;
         }
         pending.SetResult(new[] { BlueEyes });
         await search;
@@ -252,11 +253,11 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
             HandSize = 5
         });
 
-        await Button(cut, "Add New Card").ClickAsync(new());
+        await AddManualCardAsync(cut);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
         Card original = editor.Instance.Card;
         await editor.Find("#cardCopies0").InputAsync(new() { Value = "2" });
-        await editor.Find("#cardActive0").ChangeAsync(new() { Value = false });
+        await SetActiveAsync(editor, "#cardActive0", false);
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "2" });
         await editor.Find("#cardDrawOnce0").ChangeAsync(new() { Value = false });
         await editor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = userCategory.Identity });
@@ -306,7 +307,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     [Test]
     public async Task SelectingCuratedCardAppliesEditablePresetAndReloadKeepsOverride() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
-        await Button(cut, "Add New Card").ClickAsync(new());
+        await AddManualCardAsync(cut);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
         string cardId = editor.Instance.Card.Id;
         IElement nameInput = editor.Find("#cardName0");
@@ -453,7 +454,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     [Test]
     public async Task ManualCardWithSameNameAsCatalogCardIsTreatedAsANewIdentity() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
-        await Button(cut, "Add New Card").ClickAsync(new());
+        await AddManualCardAsync(cut);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "1" });
         await editor.Find("#cardDrawOnce0").ChangeAsync(new() { Value = false });
@@ -535,7 +536,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     [Test]
     public async Task TypingAnExactDatabaseNameDoesNotBindWithoutSelectingAndEscapeKeepsText() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
-        await Button(cut, "Add New Card").ClickAsync(new());
+        await AddManualCardAsync(cut);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single();
         IElement nameInput = editor.Find("#cardName0");
 
@@ -565,7 +566,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
             ],
             HandSize = 5
         });
-        await cut.Find("[aria-label='Move card Second, row 2 up']").ClickAsync(new());
+        await RowAction(cut, "card Second, row 2", "Move up").ClickAsync(new());
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single(item => item.Instance.Card.Id == "second-card");
         Assert.That(editor.Instance.Index, Is.Zero);
 
@@ -588,8 +589,8 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     public async Task LateCatalogLoadShowsOnlyResultsForTheNewestInput() {
         DelayedSearchCatalogHandler delayed = new(CatalogJson());
         RegisterCardInfoService(delayed);
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
-        await Button(cut, "Add New Card").ClickAsync(new());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [new([])] });
+        await cut.FindComponent<CardEditor>().Find(".accordion-button").ClickAsync(new());
         IElement nameInput = cut.Find("#cardName0");
 
         Task focus = nameInput.FocusAsync(new FocusEventArgs());

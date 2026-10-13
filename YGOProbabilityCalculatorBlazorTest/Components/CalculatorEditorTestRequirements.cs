@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
@@ -357,7 +358,7 @@ public sealed class CalculatorEditorTestRequirements : CalculatorEditorTestBase 
         cut.FindComponent<CardEditor>().Find("#cardName0").Blur();
         Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-card-tag").TextContent,
             Does.Contain("Card: Renamed (1)"));
-        cut.FindComponent<CardEditor>().Find("[title='Remove card']").Click();
+        FirstRowAction(cut.FindComponent<CardEditor>(), "card", "Remove").Click();
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Markup, Does.Contain("missing card reference"));
         Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-missing-card").TextContent,
@@ -405,10 +406,10 @@ public sealed class CalculatorEditorTestRequirements : CalculatorEditorTestBase 
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Markup, Does.Contain("at most 30 active combos"));
-        await cut.Find("#comboActive30").ChangeAsync(new() { Value = false });
+        await SetActiveAsync(cut, "#comboActive30", false);
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
         for (int index = 1; index < 30; index++) {
-            await cut.Find($"#comboActive{index}").ChangeAsync(new() { Value = false });
+            await SetActiveAsync(cut, $"#comboActive{index}", false);
         }
 
         await Button(cut, "Calculate").ClickAsync(new());

@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using Bunit;
 using Bunit.TestDoubles;
 using Microsoft.JSInterop;
@@ -80,7 +81,7 @@ public class SessionSharingTest {
     }
 
     private static AngleSharp.Dom.IElement Button(IRenderedFragment cut, string text) => cut.FindAll("button")
-        .Single(button => button.TextContent.Trim().EndsWith(text, StringComparison.Ordinal));
+        .Single(button => button.GetAttribute("aria-label") == text || button.TextContent.Trim().EndsWith(text, StringComparison.Ordinal));
 
     private static string Snapshot(IRenderedComponent<ProbabilityCalculatorComponent> cut) => cut.FindComponent<SessionShareButton>().Instance.Snapshot;
     private int Writes => _context.JSInterop.Invocations["sessionRecovery.update"].Count;
@@ -135,7 +136,7 @@ public class SessionSharingTest {
     [Test]
     public async Task LaterNavigationPreservesDraftAndDismissedLinkCanBeOfferedAgain() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = _context.RenderComponent<ProbabilityCalculatorComponent>();
-        await Button(cut, "Add New Card").ClickAsync(new());
+        await AddManualCardAsync(cut);
         cut.Find("[aria-label='Category name']").Input("Unsaved draft");
         string before = Snapshot(cut);
         int writes = Writes;
@@ -182,8 +183,8 @@ public class SessionSharingTest {
                 cut.Find("#handSize").Change("6");
                 break;
             case "reverted buttons":
-                await Button(cut, "Add New Card").ClickAsync(new());
-                await cut.Find("[aria-label='Remove card']").ClickAsync(new());
+                await AddManualCardAsync(cut);
+                await FirstRowAction(cut, "card", "Remove").ClickAsync(new());
                 break;
             case "link":
                 await cut.InvokeAsync(() => _navigation.NavigateTo(Link(Session("New link"))));
@@ -260,7 +261,7 @@ public class SessionSharingTest {
     public async Task ClipboardDenialExposesExactCapturedLinkAndDraftIsExcluded() {
         _context.JSInterop.Setup<bool>("sessionSharing.copy", _ => true).SetResult(false);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = _context.RenderComponent<ProbabilityCalculatorComponent>();
-        await Button(cut, "Add New Card").ClickAsync(new());
+        await AddManualCardAsync(cut);
         cut.Find("[aria-label='Category name']").Input("Not saved");
         string before = Snapshot(cut);
         await Button(cut, "Copy share link").ClickAsync(new());

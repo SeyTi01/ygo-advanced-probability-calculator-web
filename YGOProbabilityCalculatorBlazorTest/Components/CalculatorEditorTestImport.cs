@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using AngleSharp.Dom;
 using Bunit;
@@ -39,7 +40,7 @@ public sealed class CalculatorEditorTestImport : CalculatorEditorTestBase {
             Assert.That(cut.FindComponent<ComboEditor>().Find(".combo-missing-card").TextContent,
                 Does.Contain("Missing card"));
         });
-        cut.Find("#comboActive0").Change(false);
+        SetActiveAsync(cut, "#comboActive0", false).GetAwaiter().GetResult();
         Assert.That(cut.Markup, Does.Not.Contain("An active combo has a missing card reference"));
     }
 

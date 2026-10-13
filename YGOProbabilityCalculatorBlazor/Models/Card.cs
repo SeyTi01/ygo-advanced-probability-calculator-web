@@ -72,6 +72,22 @@ public class Card {
         ManualMetadataCategoryKeys = ValidateManualKeys(Categories, manualMetadataCategoryKeys);
     }
 
+    public Card Duplicate() => new(
+        Categories,
+        Copies,
+        Name,
+        Active,
+        externalCardId: ExternalCardId,
+        manualMetadataCategoryKeys: ManualMetadataCategoryKeys,
+        drawCount: DrawCount,
+        drawOncePerTurn: DrawOncePerTurn,
+        postDrawDiscardCount: PostDrawDiscardCount,
+        postDrawSelector: PostDrawSelector,
+        postDrawFailureBehavior: PostDrawFailureBehavior,
+        preDrawRemovalCount: PreDrawRemovalCount,
+        preDrawSelector: PreDrawSelector
+    );
+
     public Card WithPreDrawRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, count, count == 0 ? CardSelector.Any : PreDrawSelector);
 
     public Card WithPreDrawSelector(CardSelector selector) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, selector);

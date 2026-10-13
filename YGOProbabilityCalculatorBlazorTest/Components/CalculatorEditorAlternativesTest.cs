@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using AngleSharp.Dom;
 using Bunit;
 using Microsoft.AspNetCore.Components.Forms;
@@ -199,7 +200,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Renamed" });
         await cut.Find("[aria-label='Save category name']").ClickAsync(new());
-        await editor.Find("[aria-label='Move combo First, row 1 down']").ClickAsync(new());
+        await RowAction(editor, "combo First, row 1", "Move down").ClickAsync(new());
         Assert.That(editor.Instance.Index, Is.EqualTo(1));
         Assert.That(editor.Find("#minCount1").GetAttribute("value"), Is.EqualTo("2"));
         Assert.That(editor.Find("#comboTarget1").GetAttribute("value"), Is.EqualTo("user:Renamed"));
@@ -318,13 +319,13 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await editor.Find(".accordion-button").ClickAsync(new());
         await cut.Find("[aria-label='Remove category A']").ClickAsync(new());
         Assert.That(cut.Markup, Does.Contain("This category is still used"));
-        await editor.Find("[aria-label='Duplicate combo Grouped']").ClickAsync(new());
+        await FirstRowAction(editor, "combo", "Duplicate").ClickAsync(new());
         IRenderedComponent<ComboEditor> copy = cut.FindComponents<ComboEditor>().ToArray()[1];
         await RemoveOrLeaf(copy, 1, 1);
         Assert.That(cut.FindComponents<ComboEditor>().ToArray()[0].Instance.Combo.AlternativeGroups[0].Alternatives, Has.Count.EqualTo(2));
         Assert.That(copy.Instance.Combo.AlternativeGroups, Is.Empty);
         Assert.That(copy.Instance.Combo.Categories.Single().BaseCategory.Identity, Is.EqualTo(a.Identity));
-        await cut.FindComponent<CardEditor>().Find("[aria-label='Remove card']").ClickAsync(new());
+        await FirstRowAction(cut.FindComponent<CardEditor>(), "card", "Remove").ClickAsync(new());
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.True);
         Assert.That(cut.Markup, Does.Contain("missing card reference").IgnoreCase);
     }

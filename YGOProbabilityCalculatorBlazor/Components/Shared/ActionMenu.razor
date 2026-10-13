@@ -1,0 +1,76 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="action-menu" @onkeydown="HandleKeyDown" @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
+    <button @ref="_trigger" type="button" class="btn btn-outline-secondary action-menu-trigger"
+            aria-label="@Label" title="@Label" aria-expanded="@(_open ? "true" : "false")" aria-controls="@_id"
+            @onclick="Toggle">
+        @if (Compact) {
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        }
+        else {
+            <span>@Text <span aria-hidden="true">⌄</span></span>
+        }
+    </button>
+    <div @ref="_panel" id="@_id" class="action-menu-panel" hidden="@(!_open)" role="group" aria-label="@Label">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Actions";
+    [Parameter] public string Text { get; set; } = "More";
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    private readonly string _id = "actions-" + Guid.NewGuid().ToString("N");
+    private ElementReference _trigger;
+    private ElementReference _panel;
+    private DotNetObjectReference<ActionMenu>? _reference;
+    private bool _open;
+    private bool _attach;
+
+    private async Task Toggle() {
+        if (_open) {
+            await Close();
+        }
+        else {
+            _open = _attach = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_attach) {
+            _attach = false;
+            _reference ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("workspaceMenus.open", _panel, _trigger, _reference);
+        }
+    }
+
+    [JSInvokable]
+    public async Task Dismiss() {
+        _open = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task Close(bool removing = false) {
+        _open = false;
+        await JS.InvokeVoidAsync("workspaceMenus.close", _panel, _trigger, removing);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public ValueTask RestoreFocusAsync() => _trigger.FocusAsync();
+
+    private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? Close() : Task.CompletedTask;
+
+    public async ValueTask DisposeAsync() {
+        try {
+            await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or OperationCanceledException) {
+        }
+        _reference?.Dispose();
+    }
+}

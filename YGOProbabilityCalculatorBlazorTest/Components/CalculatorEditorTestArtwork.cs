@@ -1,3 +1,4 @@
+using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Components.Forms;
@@ -65,11 +66,11 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase {
         IRenderedComponent<CardArtwork> thumbnail = editor.FindComponents<CardArtwork>().First();
         CardArtwork.ArtworkResolution resolved = await thumbnail.Instance.ResolveArtwork(1);
         await thumbnail.InvokeAsync(() => thumbnail.Instance.ArtworkReady(1, resolved.Url));
-        await editor.Find("[aria-label='Move card First, row 1 down']").ClickAsync(new());
+        await RowAction(editor, "card First, row 1", "Move down").ClickAsync(new());
         Assert.That(cut.FindComponents<CardEditor>()[1].Instance, Is.SameAs(editor.Instance));
         Assert.That(editor.Find("#cardCategory1").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(editor.Find("img").GetAttribute("src"), Does.EndWith("/small/1234.jpg"));
-        await editor.Find("[aria-label='Remove card']").ClickAsync(new());
+        await FirstRowAction(editor, "card", "Remove").ClickAsync(new());
         Assert.That(cut.FindAll("img"), Is.Empty);
         Assert.That(cut.FindComponents<CardEditor>().Single().Instance.Card.Name, Is.EqualTo("Second"));
         artwork.Verify(x => x.GetArtworkUrlAsync(1234), Times.Once);
@@ -100,7 +101,7 @@ public sealed class CalculatorEditorTestArtwork : CalculatorEditorTestBase {
                 cut.FindComponent<CardEditor>().Instance.Card.Name == "Replacement");
         }
         else {
-            await editor.Find("[aria-label='Remove card']").ClickAsync(new());
+            await FirstRowAction(editor, "card", "Remove").ClickAsync(new());
         }
 
         pending.SetResult(CardArtworkService.ArtworkOrigin + "/small/1234.jpg");
