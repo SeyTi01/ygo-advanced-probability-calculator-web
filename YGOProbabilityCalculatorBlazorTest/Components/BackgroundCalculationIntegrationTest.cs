@@ -257,7 +257,7 @@ public class BackgroundCalculationIntegrationTest {
         Task load = File(Workspace("Delayed load"));
         await Milestone(started, "pending load before unmount");
         _host.SetParametersAndRender(p => p.Add(x => x.Visible, false));
-        await _host.InvokeAsync(oldInstance.Dispose); // Repeated disposal must be harmless.
+        await _host.InvokeAsync(() => oldInstance.DisposeAsync().AsTask()); // Repeated disposal must be harmless.
         Assert.That(_calculator.Tokens[0].IsCancellationRequested, Is.True);
         Assert.That(_context.JSInterop.Invocations["sessionRecovery.dispose"].Count(x => Equals(x.Arguments[0], oldOwner)), Is.EqualTo(1));
         Task<string> update = NextUpdate();
@@ -344,6 +344,7 @@ public class BackgroundCalculationIntegrationTest {
     }
 
     private sealed class ControlledCalculator : IBackgroundCalculator {
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         public List<TaskCompletionSource<ProbabilityCalculationResult>> Jobs { get; } = [];
         public List<CancellationToken> Tokens { get; } = [];
         public Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken token) {

@@ -23,8 +23,30 @@ Results retain their existing public data contract. Each request captures its
 own input JSON, excluding inactive
 entries and including nested requirements, stable identities and group order.
 
-Cancel, input changes, replacement and component disposal revoke request
-ownership and terminate that request's worker. Later requests use fresh workers.
+Each calculator component receives a transient `BackgroundCalculator` owner.
+The first request lazily imports the module and creates a runtime; successful
+requests reuse that runtime with distinct IDs. C# validates the wire result before
+acknowledging the lease. Cancellation or handle-cleanup failure after acknowledgement
+uses the released request ID to discard only that lease, never a newer one. Request handles and the temporary module handle are
+released separately from the physical Worker. Neither snapshots nor results are
+cached. Duplicate/concurrent callers are rejected while a lease is busy; nothing
+queues behind synchronous engine work.
+
+At most one idle runtime is retained per component. It expires after **60 seconds
+idle** and is recycled after **20 successful requests**, even under continuous use.
+There is no prewarming. Work/Storage limits, input errors, invalid responses and
+transport faults all retire the runtime immediately, avoiding retention of a heap
+potentially enlarged by a failed request. Successful requests can also grow the
+WASM heap; idle expiry/recycling bounds retention, not peak bytes or per-request
+allocation. These lifecycle limits do not alter engine resource budgets.
+
+Cancel, input changes, replacement and component disposal revoke active request
+ownership and terminate that request's worker. A cancelled worker is never reused;
+the next request starts a fresh runtime. Edits between completed requests may reuse
+the idle runtime because it owns no request data. Component `DisposeAsync` explicitly
+terminates idle or busy workers and releases the owner handle on navigation, rather
+than waiting for the browser-long DI scope to end. Initialization still cleans up
+late handles during cancellation or teardown.
 The cancellation signal is sent from the UI thread, not queued behind the
 worker's synchronous computation. Browser termination is asynchronous:
 [Chromium schedules forcible termination after a two-second grace period](https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/core/workers/worker_thread.cc).
@@ -63,7 +85,7 @@ live memory. Browser timing and shutdown evidence belong in the PR discussion.
 Transport tests run with Node.js 24, without a browser or additional packages:
 
 ```sh
-node --test scripts/background-calculation/transport.test.mjs
+node --test scripts/background-calculation/*.test.mjs
 dotnet test YGOProbabilityCalculatorBlazor.sln --filter FullyQualifiedName~BackgroundCalculation
 ```
 
@@ -146,9 +168,9 @@ a second request in the same worker separately, checking both against the native
 reference. These request times include serialization/transport.
 The worker log's `work` field is frozen native reference metadata; obtain the
 candidate's current work from its native replay. Browser assets
-can be cached within the context; this is not a cold-network benchmark. The app
-currently creates a fresh worker per request, so first-request time plus startup
-is the relevant user latency; the warm repeat is diagnostic headroom only.
+can be cached within the context; this is not a cold-network benchmark. This raw-worker harness bypasses the production service owner, so its warm repeat
+is diagnostic headroom only. Use the UI lifecycle harness below to measure user
+latency and actual reuse.
 The per-trial 60-second deadline covers bootstrap and both requests; a timeout is
 a censored failure, never a completed measurement. `YGO_BROWSER_CHANNEL=msedge`
 selects installed Edge; `YGO_BROWSER_ENGINE=firefox` selects Playwright Firefox.
@@ -180,3 +202,38 @@ The historical `post-mixed` and hand-7 cases remain synthetic stress controls;
 they are not evidence about a representative deck. Existing single-effect,
 no-conditional and exchangeable Graceful controls are also retained. Native
 replay checks complete frozen public rows as well as exact fractions.
+
+### Production worker lifecycle
+
+```sh
+node scripts/background-calculation/measure-worker-lifecycle.cjs <baseline/wwwroot> <before.json> 3
+node scripts/background-calculation/measure-worker-lifecycle.cjs <candidate/wwwroot> <after.json> 3 <before.json>
+node scripts/background-calculation/lifecycle-smoke.cjs <candidate/wwwroot> <lifecycle.json>
+# Optional unchanged baseline (workers terminate after every success):
+YGO_EXPECT_REUSE=0 node scripts/background-calculation/lifecycle-smoke.cjs <baseline/wwwroot> <lifecycle-before.json>
+```
+
+These opt-in Playwright harnesses serve freshly published output themselves and
+use the actual Calculate button, `CalculationSnapshot`, C# service, JS owner, worker,
+and rendered results. The measurement defaults to Firefox; set `YGO_BROWSER_ENGINE`
+to `chromium` to select Chromium. Use the same browser and build configuration for
+before/after runs, serially and away from builds. Each case uses a fresh browser
+context and four calculations (hand sizes 5, 6, 5, 5). Timing starts at the button
+click and ends when the UI returns to idle with the result; worker bootstrap and
+send-to-response times are recorded separately. Assets may be cached within the
+context; this is not a cold-network comparison. The frozen baseline is required
+for input equality and full public response parity, including every group/combo.
+The fixtures cover a 40-card opening control, configured Allure-style post-draw
+removal, and Return/Allure pre/post-removal interaction. They aggregate equivalent
+roles from the existing frontier matrix (15 eligible DARK/Return monsters, 6 other
+engine cards, 2 of each modeled effect and 15 blanks for the mixed case); they are
+not tournament deck lists. Session version and effect-count assertions prevent
+legacy migrations from silently removing the configured effects.
+
+The lifecycle smoke asserts physical execution-context reuse, cancellation of
+heavy synchronous work, fresh-worker restart, real 60-second idle expiry/recreation,
+and idle-owner teardown on navigation. It records runtime heap bytes only if the
+browser runtime exposes them; a missing observation is not a zero-byte heap.
+All timing values are observations, never CI thresholds. Existing browser/policy
+smokes still assert zero live workers after cancellation and explicit teardown;
+successful sequential UI requests now assert one retained execution context.

@@ -5,7 +5,7 @@ using YGOProbabilityCalculatorBlazor.Services.Session;
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 // Every workspace replacement checks the same request, draft, and accepted-model boundary.
-public partial class ProbabilityCalculatorComponent : IDisposable {
+public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     private int _autosaveReplacementVersion;
     private long _sessionLoadVersion;
     private bool _sessionInitialized;
@@ -205,7 +205,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         return true;
     }
 
-    public void Dispose() {
+    public async ValueTask DisposeAsync() {
         if (_disposed) {
             return;
         }
@@ -214,6 +214,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         _sessionLoadVersion++;
         _disposed = true;
         StopCalculation();
+        await _backgroundCalculator.DisposeAsync();
     }
 
     private async Task ImportDeckAsync(InputFileChangeEventArgs e) {

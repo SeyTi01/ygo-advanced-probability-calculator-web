@@ -326,12 +326,23 @@ public class BackgroundCalculationComponentTest {
         Assert.That((cards[0].DrawCount, cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
     }
 
+    [Test]
+    public async Task IdleComponentExplicitlyDisposesWorkerOwnerOnce() {
+        Task accepted = Start();
+        _calculator.Jobs[0].SetResult(Result("accepted"));
+        await accepted;
+        await _cut.InvokeAsync(() => _cut.Instance.DisposeAsync().AsTask());
+        await _cut.InvokeAsync(() => _cut.Instance.DisposeAsync().AsTask());
+        Assert.That(_calculator.Disposals, Is.EqualTo(1));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task DisposedComponentCancelsAndIgnoresLateSuccessAndError(bool error) {
         Task first = Start();
-        await _cut.InvokeAsync(_cut.Instance.Dispose);
+        await _cut.InvokeAsync(() => _cut.Instance.DisposeAsync().AsTask());
         Assert.That(_calculator.Tokens[0].IsCancellationRequested, Is.True);
+        Assert.That(_calculator.Disposals, Is.EqualTo(1));
         if (error) {
             _calculator.Jobs[0].SetException(new InvalidOperationException("late"));
         }
@@ -382,6 +393,12 @@ public class BackgroundCalculationComponentTest {
     }
 
     private sealed class ControlledCalculator : IBackgroundCalculator {
+        public int Disposals { get; private set; }
+        public ValueTask DisposeAsync() {
+            Disposals++;
+
+            return ValueTask.CompletedTask;
+        }
         public List<TaskCompletionSource<ProbabilityCalculationResult>> Jobs { get; } = [];
         public List<CancellationToken> Tokens { get; } = [];
         public List<CalculationSnapshot> Snapshots { get; } = [];

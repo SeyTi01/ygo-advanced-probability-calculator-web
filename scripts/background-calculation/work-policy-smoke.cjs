@@ -267,6 +267,15 @@ function probability(count, hand = 5) {
   await start(); await load(fixture(1)); await settle();
   await calculate.click(); await page.locator('.probability-total-value').waitFor();
   assert.equal(await page.getByRole('alert').count(), 0);
+  // A successful UI request now retains its runtime. Explicit owner teardown
+  // must close it before substituting Worker for the decoding probes below.
+  assert.equal(live, 1);
+  await page.getByRole('link', { name: 'Help', exact: true }).click();
+  await settle();
+  await page.goBack();
+  await calculate.waitFor();
+  await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
+  await load(fixture(1));
   // Exercise the trimmed UI reader with malformed/generic response envelopes.
   // The real runtime/wire work above is separate from these transport injections.
   for (const response of ['{}', '{"Result":{}}', '{"Error":"ordinary worker failure","FailureKind":2}', '{"Error":"invalid reason","LimitReason":999}']) {
@@ -275,7 +284,7 @@ function probability(count, hand = 5) {
     window.policyInjectedResponses = 0;
     window.Worker = class {
      constructor() { queueMicrotask(() => this.onmessage?.({ data: { ready: true } })); }
-     postMessage() { window.policyInjectedResponses++; queueMicrotask(() => this.onmessage?.({ data: { id: 1, response } })); }
+     postMessage({ id }) { window.policyInjectedResponses++; queueMicrotask(() => this.onmessage?.({ data: { id, response } })); }
      terminate() {}
     };
    }, response);
@@ -290,6 +299,8 @@ function probability(count, hand = 5) {
   await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
   assert.equal(await page.getByRole('alert').count(), 0); assert.deepEqual(errors, []);
   await comparisons();
+  await page.getByRole('link', { name: 'Help', exact: true }).click();
+  await settle();
   console.log(JSON.stringify({ engine, browser: browser.version(), slowdown, phase, ...wireEvidence,
    cancellation, rapid: { peak, rapidClosedMs, closed }, errors }));
  } finally { clearTimeout(deadline); await browser.close(); }

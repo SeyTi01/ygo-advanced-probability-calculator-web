@@ -9,6 +9,8 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 // Keep existing editor tests and their adversarial synchronous fakes meaningful at the new boundary.
 // Browser execution/termination is covered separately; this adapter exists only in the test assembly.
 internal sealed class BackgroundCalculatorTestAdapter(IProbabilityCalculatorService engine) : IBackgroundCalculator {
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
     public Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken token) {
         CalculationInput input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
         if (engine is ProbabilityCalculatorService) {

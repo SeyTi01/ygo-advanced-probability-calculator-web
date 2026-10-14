@@ -11,6 +11,8 @@ public class BackgroundCalculatorTest {
     private Mock<IJSRuntime> _js = null!;
     private Mock<IJSObjectReference> _module = null!;
     private Mock<IJSObjectReference> _job = null!;
+    private Mock<IJSObjectReference> _owner = null!;
+    private BackgroundCalculator _service = null!;
 
     private static CalculationSnapshot Snapshot() => CalculationSnapshot.Capture(
         [new Card([], 2, id: "card")], [new Combo([], cards: [new("card", 1, 1)])], 1, []);
@@ -20,21 +22,31 @@ public class BackgroundCalculatorTest {
         _js = new();
         _module = new();
         _job = new();
+        _owner = new();
+        _service = new(_js.Object);
 
         _js.Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>())).ReturnsAsync(_module.Object);
-        _module.Setup(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>())).ReturnsAsync(_job.Object);
+        _module.Setup(j => j.InvokeAsync<IJSObjectReference>("createOwner", It.IsAny<object?[]?>())).ReturnsAsync(_owner.Object);
+        _owner.Setup(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>())).ReturnsAsync(_job.Object);
     }
 
+    [TearDown]
+    public async Task TearDown() => await _service.DisposeAsync();
+
     [Test]
-    public async Task SuccessPassesTheSnapshotThroughAndDisposesBothHandles() {
+    public async Task SuccessPassesTheSnapshotThroughReleasesItsLeaseAndDisposesTemporaryHandles() {
         CalculationSnapshot snapshot = Snapshot();
         _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
             .ReturnsAsync(CalculationWire.Execute(snapshot.Json));
-        ProbabilityCalculationResult result = await new BackgroundCalculator(_js.Object).CalculateAsync(snapshot, default);
+        ProbabilityCalculationResult result = await _service.CalculateAsync(snapshot, default);
         Assert.That(result.ComboProbabilities, Has.Count.EqualTo(1));
         _job.Verify(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(),
             It.Is<object?[]?>(a => (string)a![0]! == snapshot.Json)), Times.Once);
-        VerifyDisposed();
+        _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Once);
+        _job.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("dispose", It.IsAny<object?[]?>()), Times.Never);
+        _job.Verify(j => j.DisposeAsync(), Times.Once);
+        _module.Verify(j => j.DisposeAsync(), Times.Once);
+        _owner.Verify(j => j.DisposeAsync(), Times.Never);
     }
 
     [TestCase(false)]
@@ -48,7 +60,7 @@ public class BackgroundCalculatorTest {
                 .ThrowsAsync(new JSException("transport failed"));
         }
 
-        Assert.ThrowsAsync<JSException>(() => new BackgroundCalculator(_js.Object).CalculateAsync(Snapshot(), default));
+        Assert.ThrowsAsync<JSException>(() => _service.CalculateAsync(Snapshot(), default));
 
         if (!importing) {
             VerifyDisposed();
@@ -61,11 +73,11 @@ public class BackgroundCalculatorTest {
         _js.Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()))
             .Returns(new ValueTask<IJSObjectReference>(completion.Task));
         using CancellationTokenSource cancellation = new();
-        Task<ProbabilityCalculationResult> task = new BackgroundCalculator(_js.Object).CalculateAsync(Snapshot(), cancellation.Token);
+        Task<ProbabilityCalculationResult> task = _service.CalculateAsync(Snapshot(), cancellation.Token);
         cancellation.Cancel();
         completion.SetResult(_module.Object);
         Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
-        _module.Verify(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()), Times.Never);
+        _owner.Verify(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()), Times.Never);
         _module.Verify(j => j.DisposeAsync(), Times.Once);
         await Task.CompletedTask;
     }
@@ -73,13 +85,13 @@ public class BackgroundCalculatorTest {
     [Test]
     public void CancellationDuringCreationDisposesTheLateWorkerHandle() {
         using CancellationTokenSource cancellation = new();
-        _module.Setup(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()))
+        _owner.Setup(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()))
             .Returns(() => {
                 cancellation.Cancel();
 
                 return ValueTask.FromResult(_job.Object);
             });
-        Assert.ThrowsAsync<OperationCanceledException>(() => new BackgroundCalculator(_js.Object).CalculateAsync(Snapshot(), cancellation.Token));
+        Assert.ThrowsAsync<OperationCanceledException>(() => _service.CalculateAsync(Snapshot(), cancellation.Token));
         VerifyDisposed();
         _job.Verify(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()), Times.Never);
     }
@@ -96,7 +108,7 @@ public class BackgroundCalculatorTest {
             return default!;
         }
         using CancellationTokenSource cancellation = new();
-        BackgroundCalculator service = new(_js.Object);
+        BackgroundCalculator service = _service;
         Task<ProbabilityCalculationResult> task = service.CalculateAsync(Snapshot(), cancellation.Token);
         cancellation.Cancel();
         Assert.That(task.IsCompleted, Is.False);
@@ -105,6 +117,216 @@ public class BackgroundCalculatorTest {
         _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
             .ReturnsAsync(CalculationWire.Execute(Snapshot().Json));
         Assert.That((await service.CalculateAsync(Snapshot(), default)).ComboProbabilities, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public async Task SequentialRequestsShareOwnerButKeepSnapshotsResultsAndHandlesSeparate() {
+        List<string> inputs = [];
+        List<Mock<IJSObjectReference>> jobs = [];
+        _owner.Setup(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()))
+            .Returns(() => {
+                Mock<IJSObjectReference> job = new();
+                job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+                    .Returns((string _, CancellationToken _, object?[]? args) => {
+                        string input = (string)args![0]!;
+                        inputs.Add(input);
+
+                        return ValueTask.FromResult(CalculationWire.Execute(input));
+                    });
+                jobs.Add(job);
+
+                return ValueTask.FromResult(job.Object);
+            });
+        CalculationSnapshot first = Snapshot();
+        CalculationSnapshot second = CalculationSnapshot.Capture(
+            [new Card([], 1, id: "target"), new Card([], 3, id: "blank")],
+            [new Combo([], "Changed", cards: [new("target", 1, 1)])], 1, []);
+        ProbabilityCalculationResult a = await _service.CalculateAsync(first, default);
+        ProbabilityCalculationResult b = await _service.CalculateAsync(second, default);
+        Assert.Multiple(() => {
+            Assert.That(inputs, Is.EqualTo(new[] { first.Json, second.Json }));
+            Assert.That(a.TotalProbability, Is.EqualTo(1));
+            Assert.That(b.TotalProbability, Is.EqualTo(0.25));
+            Assert.That(a.ComboProbabilities, Is.Not.SameAs(b.ComboProbabilities));
+        });
+        _js.Verify(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()), Times.Once);
+        _module.Verify(j => j.InvokeAsync<IJSObjectReference>("createOwner", It.IsAny<object?[]?>()), Times.Once);
+        foreach (Mock<IJSObjectReference> job in jobs) {
+            job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Once);
+            job.Verify(j => j.DisposeAsync(), Times.Once);
+        }
+        await _service.DisposeAsync();
+        await _service.DisposeAsync();
+        _owner.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("dispose", It.IsAny<object?[]?>()), Times.Once);
+        _owner.Verify(j => j.DisposeAsync(), Times.Once);
+        Assert.ThrowsAsync<ObjectDisposedException>(() => _service.CalculateAsync(first, default));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task FailedInitializationCanBeRetried(bool creating) {
+        if (creating) {
+            _module.SetupSequence(j => j.InvokeAsync<IJSObjectReference>("createOwner", It.IsAny<object?[]?>()))
+                .ThrowsAsync(new JSException("creation failed")).ReturnsAsync(_owner.Object);
+        } else {
+            _js.SetupSequence(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()))
+                .ThrowsAsync(new JSException("import failed")).ReturnsAsync(_module.Object);
+        }
+        Assert.ThrowsAsync<JSException>(() => _service.CalculateAsync(Snapshot(), default));
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(CalculationWire.Execute(Snapshot().Json));
+        Assert.That((await _service.CalculateAsync(Snapshot(), default)).TotalProbability, Is.EqualTo(1));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task DisposalDuringInitializationCleansLateOwnerAndNeverStartsWorker(bool creating) {
+        TaskCompletionSource<IJSObjectReference> pending = new();
+        if (creating) {
+            _module.Setup(j => j.InvokeAsync<IJSObjectReference>("createOwner", It.IsAny<object?[]?>()))
+                .Returns(new ValueTask<IJSObjectReference>(pending.Task));
+        } else {
+            _js.Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()))
+                .Returns(new ValueTask<IJSObjectReference>(pending.Task));
+        }
+        Task<ProbabilityCalculationResult> calculation = _service.CalculateAsync(Snapshot(), default);
+        Task disposal = _service.DisposeAsync().AsTask();
+        Assert.That(disposal.IsCompleted, Is.False);
+        pending.SetResult(creating ? _owner.Object : _module.Object);
+        Assert.That(async () => await calculation, Throws.InstanceOf<OperationCanceledException>());
+        await disposal;
+        _owner.Verify(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()), Times.Never);
+        _module.Verify(j => j.DisposeAsync(), Times.Once);
+        _owner.Verify(j => j.DisposeAsync(), creating ? Times.Once() : Times.Never());
+    }
+
+    [Test]
+    public async Task OwnerDisposalCancelsActiveRunAndTerminatesIdleOrBusyRuntime() {
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .Returns((string _, CancellationToken token, object?[]? _) => new ValueTask<string>(WaitForCancellation(token)));
+        Task<ProbabilityCalculationResult> calculation = _service.CalculateAsync(Snapshot(), default);
+        await _service.DisposeAsync();
+        Assert.That(async () => await calculation, Throws.InstanceOf<OperationCanceledException>());
+        _owner.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("dispose", It.IsAny<object?[]?>()), Times.Once);
+        _owner.Verify(j => j.DisposeAsync(), Times.Once);
+        VerifyDisposed();
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void CancellationAtResponseOrIdleHandoffDoesNotRetainTheWorker(bool handoff) {
+        using CancellationTokenSource cancellation = new();
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .Returns(() => {
+                if (!handoff) {
+                    cancellation.Cancel();
+                }
+
+                return ValueTask.FromResult(CalculationWire.Execute(Snapshot().Json));
+            });
+        if (handoff) {
+            _job.Setup(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()))
+                .Callback(() => cancellation.Cancel());
+        }
+        Assert.ThrowsAsync<OperationCanceledException>(() => _service.CalculateAsync(Snapshot(), cancellation.Token));
+        if (handoff) {
+            _owner.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("discard", It.IsAny<object?[]?>()), Times.Once);
+            _job.Verify(j => j.DisposeAsync(), Times.Once);
+        } else {
+            VerifyDisposed();
+        }
+    }
+
+    [TestCase(1)]
+    [TestCase(2)]
+    public void TypedLimitsRemainDistinctAndRetireWorker(int reason) {
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync($"{{\"Result\":null,\"Error\":\"limit\",\"LimitReason\":{reason}}}");
+        ProbabilityCalculationLimitException error = Assert.ThrowsAsync<ProbabilityCalculationLimitException>(
+            () => _service.CalculateAsync(Snapshot(), default))!;
+        Assert.That(error.Reason, Is.EqualTo((ProbabilityCalculationLimitReason)reason));
+        VerifyDisposed();
+        _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Never);
+    }
+
+    [TestCase("not json", typeof(System.Text.Json.JsonException))]
+    [TestCase("{}", typeof(InvalidOperationException))]
+    [TestCase("{\"Error\":\"bad input\",\"FailureKind\":1}", typeof(ArgumentException))]
+    [TestCase("{\"Error\":\"engine error\",\"FailureKind\":2}", typeof(InvalidOperationException))]
+    public void DecodeAndValidWireFailuresRetireWorker(string response, Type exceptionType) {
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>())).ReturnsAsync(response);
+        Assert.ThrowsAsync(exceptionType, () => _service.CalculateAsync(Snapshot(), default));
+        VerifyDisposed();
+        _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Never);
+    }
+
+    [Test]
+    public async Task DisposalDuringJobCreationCleansLateHandleWithoutRunningIt() {
+        TaskCompletionSource<IJSObjectReference> pending = new();
+        _owner.Setup(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()))
+            .Returns(new ValueTask<IJSObjectReference>(pending.Task));
+        Task<ProbabilityCalculationResult> calculation = _service.CalculateAsync(Snapshot(), default);
+        await _service.DisposeAsync();
+        _owner.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("dispose", It.IsAny<object?[]?>()), Times.Once);
+        pending.SetResult(_job.Object);
+        Assert.That(async () => await calculation, Throws.InstanceOf<OperationCanceledException>());
+        VerifyDisposed();
+        _job.Verify(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CancelledImporterDoesNotPoisonNextRequestSharingInitialization() {
+        TaskCompletionSource<IJSObjectReference> pending = new();
+        _js.Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()))
+            .Returns(new ValueTask<IJSObjectReference>(pending.Task));
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(CalculationWire.Execute(Snapshot().Json));
+        using CancellationTokenSource cancellation = new();
+        Task<ProbabilityCalculationResult> old = _service.CalculateAsync(Snapshot(), cancellation.Token);
+        cancellation.Cancel();
+        Task<ProbabilityCalculationResult> next = _service.CalculateAsync(Snapshot(), default);
+        pending.SetResult(_module.Object);
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await old);
+        Assert.That((await next).TotalProbability, Is.EqualTo(1));
+        _owner.Verify(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()), Times.Once);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task LateHandleCleanupRevokesReleasedLeaseOnCancellationOrFailure(bool failure) {
+        TaskCompletionSource disposed = new();
+        using CancellationTokenSource cancellation = new();
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(CalculationWire.Execute(Snapshot().Json));
+        _job.Setup(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>())).ReturnsAsync(7L);
+        _job.Setup(j => j.DisposeAsync()).Returns(new ValueTask(disposed.Task));
+        Task<ProbabilityCalculationResult> calculation = _service.CalculateAsync(Snapshot(), cancellation.Token);
+        if (failure) {
+            disposed.SetException(new JSException("handle cleanup failed"));
+            Assert.ThrowsAsync<JSException>(async () => await calculation);
+        } else {
+            cancellation.Cancel();
+            disposed.SetResult();
+            Assert.That(async () => await calculation, Throws.InstanceOf<OperationCanceledException>());
+        }
+        _owner.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("discard",
+            It.Is<object?[]?>(args => (long)args![0]! == 7L)), Times.Once);
+        await _service.DisposeAsync();
+    }
+
+    [Test]
+    public async Task OwnerDisposalDuringLateJobCleanupDoesNotReuseDisposedOwnerHandle() {
+        TaskCompletionSource disposed = new();
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(CalculationWire.Execute(Snapshot().Json));
+        _job.Setup(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>())).ReturnsAsync(7L);
+        _job.Setup(j => j.DisposeAsync()).Returns(new ValueTask(disposed.Task));
+        Task<ProbabilityCalculationResult> calculation = _service.CalculateAsync(Snapshot(), default);
+        await _service.DisposeAsync();
+        disposed.SetResult();
+        Assert.That(async () => await calculation, Throws.InstanceOf<OperationCanceledException>());
+        _owner.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("dispose", It.IsAny<object?[]?>()), Times.Once);
+        _owner.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("discard", It.IsAny<object?[]?>()), Times.Never);
     }
 
     private static async Task<string> WaitForCancellation(CancellationToken token) {
