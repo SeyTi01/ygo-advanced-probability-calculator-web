@@ -2,7 +2,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-public enum DrawExecutionPath { Ordinary, DrawCountState, ExchangeableConditional, OrderedFrontier, Unknown }
+public enum DrawExecutionPath { Ordinary, DrawCountState, ExchangeableConditional, OrderedFrontier, Unknown, DeferredConditional }
 
 // Structural guidance only. Never compiles events, reduces the deck, or enumerates hands.
 public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bool ElevatedRisk) {
@@ -11,6 +11,11 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         && effect.DrawCount == effect.PostDrawDiscardCount + 1
         && effect.PostDrawSelector.Kind == CardSelectorKind.Any
         && (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) * (long)effect.Copies <= copies - handSize;
+
+    internal static bool CanDeferIdentities(Card effect) =>
+        effect.PostDrawDiscardCount > 0 && effect.PostDrawSelector.Kind != CardSelectorKind.Any
+        && effect.PreDrawRemovalCount == 0 && effect.PreDrawDeckRemovalCount == 0
+        && effect.PostDrawDeckMillCount == 0 && !effect.EffectPlan.HasActivationRestrictions;
 
     public static DrawExecutionAssessment Assess(
         IReadOnlyList<Card> cards,
@@ -55,7 +60,10 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         Combo[] routes = combos.Where(combo => combo.Active).ToArray();
         HashSet<string> trackedCategories = routes.SelectMany(combo => combo.AllCategories)
             .SelectMany(requirement => requirement.Selector.CategoryIdentities).ToHashSet(StringComparer.Ordinal);
+        HashSet<string> directIds = routes.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
+            .ToHashSet(StringComparer.Ordinal);
         string Signature(Card card) => Membership(card, trackedCategories);
+        string PolicySignature(Card card) => Signature(card) + (directIds.Contains(card.Id) ? ":" + card.Id : "");
         bool Relevant(Card card) => routes.Any(combo =>
             combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
             || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card.Categories)));
@@ -69,12 +77,18 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         if (effects.Length == 1 && oneFillerClass && IsExchangeableEffect(effects[0], Relevant(effects[0]), (int)copies, handSize)) {
             return new(DrawExecutionPath.ExchangeableConditional, false);
         }
+        if (effects.Length == 1 && active.Count(card => card.DrawCount is not null) == 1 && CanDeferIdentities(effects[0])
+            && active.Where(card => card.DrawCount is null && !effects[0].PostDrawSelector.Matches(card.Categories))
+                .Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(2).Count() == 2) {
+            int observedClasses = active.Where(card => card.DrawCount is not null || effects[0].PostDrawSelector.Matches(card.Categories))
+                .Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(8).Count();
+            return new(DrawExecutionPath.DeferredConditional, observedClasses >= 8 && routes.Length >= 4);
+        }
         bool couldSpecialize = effects.Length == 1 && IsExchangeableEffect(effects[0], Relevant(effects[0]), (int)copies, handSize);
         DrawExecutionPath path = couldSpecialize ? DrawExecutionPath.Unknown : DrawExecutionPath.OrderedFrontier;
         // Initial conservative rule: many membership classes AND several active routes,
         // plus multiple effects or a filtered/cost effect. General alone is not risky.
-        int classes = active.Select(card => Signature(card) + (routes.Any(combo => combo.AllCards.Any(requirement => requirement.CardId == card.Id))
-            ? ":" + card.Id : "")).Distinct(StringComparer.Ordinal).Take(8).Count();
+        int classes = active.Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(8).Count();
         bool detailedEffect = effects.Length > 1 || effects.Any(card => card.PreDrawRemovalCount > 0 || card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0 || card.PostDrawSelector.Kind != CardSelectorKind.Any);
         bool elevated = !couldSpecialize && classes >= 8 && routes.Length >= 4 && detailedEffect;
         return new(path, elevated);

@@ -54,6 +54,17 @@ public class DrawExecutionAssessmentTest {
         Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true, true).Path, Is.EqualTo(DrawExecutionPath.Unknown));
     }
 
+    [Test]
+    public void DeferredRouteStillWarnsWhenManyObservedIdentitiesRemain() {
+        CategoryBase dark = new("Dark");
+        List<Card> cards = Enumerable.Range(0, 10).Select(index => new Card([dark], id: $"dark-{index}")).ToList();
+        cards.AddRange([new([], id: "light-a"), new([], id: "light-b"),
+            new([], id: "draw", drawCount: 2, postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(dark))]);
+        List<Combo> combos = cards.Take(12).Select(card => new Combo([], cards: [new(card.Id, 1, 1)])).ToList();
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true, true),
+            Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DeferredConditional, true)));
+    }
+
     private static DrawExecutionAssessment Assess(SessionState session) =>
         DrawExecutionAssessment.Assess(session.Cards, session.Combos, session.HandSize, true, true);
 }
