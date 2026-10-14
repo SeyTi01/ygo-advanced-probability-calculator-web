@@ -119,7 +119,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
             cut.WaitForState(() => _tokens[0].IsCancellationRequested);
         }
         else if (ending == "dispose") {
-            await cut.InvokeAsync(cut.Instance.Dispose);
+            await cut.InvokeAsync(() => cut.Instance.DisposeAsync().AsTask());
         }
         Complete(0);
         await active;

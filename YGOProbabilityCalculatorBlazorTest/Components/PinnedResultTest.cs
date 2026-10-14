@@ -775,6 +775,7 @@ public class PinnedResultTest {
     }
 
     private sealed class ControlledCalculator : IBackgroundCalculator {
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         public List<TaskCompletionSource<ProbabilityCalculationResult>> Jobs { get; } = [];
         public List<CalculationSnapshot> Inputs { get; } = [];
         public Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken token) {

@@ -2,7 +2,7 @@
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 @using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation
-@implements IDisposable
+@implements IAsyncDisposable
 @inject IDeckImportService _deckImportService
 @inject ISessionService _sessionService
 @inject ILegacyCardMetadataEnricher _legacyMetadataEnricher
@@ -896,7 +896,7 @@
                 _categoryBases
             );
             PinnedCalculationContext comparisonContext = CaptureComparisonContext(model);
-            // BackgroundCalculator settles only after disposing its worker handle.
+            // BackgroundCalculator settles cancellation only after terminating its worker.
             // A replacement may own the UI immediately, but must await that cleanup.
             try {
                 await _recoveryCleanup;

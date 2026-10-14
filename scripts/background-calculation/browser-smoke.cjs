@@ -54,6 +54,11 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  async function runSuccess(){await calculate.click();await waitIdle();await page.locator('.probability-total-value').waitFor();assert.match(await page.locator('.probability-total-value').innerText(),/50[.,]00/);assert.equal(await page.locator('.probability-group').count(),1);assert.equal(await page.locator('.combo-probability-item').count(),1);}
  async function captureLayout(phase,width,theme){if(!screenshotDirectory||!((width===1440&&theme==='light')||(width===320&&theme==='dark')))return;fs.mkdirSync(screenshotDirectory,{recursive:true});const y=await page.evaluate(()=>scrollY);await page.locator('.results-section').screenshot({path:path.join(screenshotDirectory,`${engine}-${width}-${theme}-${phase}.png`)});await page.evaluate(y=>window.scrollTo({top:y,behavior:'instant'}),y)}
  await load(simple);await runSuccess();
+ assert.equal(liveWorkers,1,'successful UI calculation retains one ready runtime');
+ const closedBeforeRepeat=closedWorkers;
+ await runSuccess();
+ assert.equal(liveWorkers,1,'sequential success reuses the retained execution context');
+ assert.equal(closedWorkers,closedBeforeRepeat,'the prior runtime was not replaced');
  // Exercise the real trimmed WASM worker's conversion of counts beyond the
  // double range, including a representable subnormal. Python Fraction/comb
  // independently gives 550/1100 and float(1 / C(1080,540)) = Number.MIN_VALUE.
@@ -93,6 +98,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
   await page.waitForTimeout(100);
   assert.equal(await page.getByRole('button',{name:'Cancel calculation',exact:true}).count(),1,'CPU job should still be active');
   await page.getByLabel('Color theme preference').selectOption(theme==='dark'?'light':'dark');
+  await page.getByRole('button',{name:'Import deck',exact:true}).click();
   await page.getByRole('button',{name:'Import YDKe',exact:true}).click();
   await page.getByLabel('YDKe deck code',{exact:true}).fill('responsive input');
   assert.equal(await page.getByLabel('YDKe deck code',{exact:true}).inputValue(),'responsive input');
@@ -283,8 +289,8 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
   assert.equal(await page.locator('.card-editor').count(),0,'refresh must wait for explicit recovery acceptance');
   assert.equal(await page.evaluate(()=>localStorage.getItem('ygo-calculator:session-recovery:v1')),editedRecord,'default startup must preserve the edited draft');
   await page.getByRole('button',{name:'Dismiss',exact:true}).click();
-  const dismissalGap=await page.getByRole('heading',{name:'Categories',exact:true}).evaluate(e=>e.getBoundingClientRect().top-document.querySelector('.session-recovery-dismissed').getBoundingClientRect().bottom);
-  assert.ok(dismissalGap>=12,'dismissed recovery row should remain separated from Categories');
+  const dismissalGap=await page.getByRole('heading',{name:/^Deck \(/}).evaluate(e=>e.getBoundingClientRect().top-document.querySelector('.session-recovery-dismissed').getBoundingClientRect().bottom);
+  assert.ok(dismissalGap>=12,'dismissed recovery row should remain separated from Deck');
   if(screenshotDirectory){await page.screenshot({path:path.join(screenshotDirectory,`${engine}-${width}-${theme}-dismissed-recovery.png`)})}
   await page.getByRole('button',{name:'Show recovery',exact:true}).click();
   await page.getByRole('button',{name:'Restore previous session',exact:true}).click();
@@ -304,6 +310,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
   await page.getByLabel('Color theme preference').selectOption('dark');
   fs.mkdirSync(screenshotDirectory,{recursive:true});await page.screenshot({path:path.join(screenshotDirectory,`${engine}-final.png`),fullPage:true});
  }
+ await page.getByRole('link',{name:'Help',exact:true}).click();await waitClosed();
  console.log(JSON.stringify({engine,evidence,layoutEvidence,legacyRowEvidence,combinedEvidence,errors,browser:browser.version()}));assert.deepEqual(errors,[]);
  }finally{clearTimeout(deadline);await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

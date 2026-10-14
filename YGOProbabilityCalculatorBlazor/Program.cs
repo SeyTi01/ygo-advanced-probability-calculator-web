@@ -33,6 +33,6 @@ public static class Program {
         services.AddScoped<IPendingSessionService, PendingSessionService>();
         services.AddScoped<ILocalStorageService, LocalStorageService>();
         services.AddScoped<IProbabilityCalculatorService, ProbabilityCalculatorService>();
-        services.AddScoped<IBackgroundCalculator, BackgroundCalculator>();
+        services.AddTransient<IBackgroundCalculator, BackgroundCalculator>();
     }
 }
