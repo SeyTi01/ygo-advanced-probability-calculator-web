@@ -31,7 +31,7 @@ public class DrawExecutionAssessmentTest {
         Assert.That(DrawExecutionAssessment.Assess(cards, combos, 2, true, true),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.OrderedFrontier, false)));
         Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true, false),
-            Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.OrderedFrontier, false)));
+            Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.Ordinary, false)));
         cards[0] = cards[0].WithActive(false);
         Assert.That(DrawExecutionAssessment.Assess(cards, combos, 2, true, true),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.Ordinary, false)));

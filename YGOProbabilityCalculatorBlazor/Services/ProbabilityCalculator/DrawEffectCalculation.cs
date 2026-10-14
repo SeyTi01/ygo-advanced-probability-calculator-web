@@ -10,10 +10,6 @@ internal sealed class DrawEffectCalculation(
     DrawActivationPriority? priority = null
 ) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
-        if (conditionalEffectsEnabled && deck.Any(card => card.Copies > 0 && (card.PostDrawDiscardCount > 0 || card.PreDrawRemovalCount > 0))) {
-            return new PostDrawCalculation(deck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
-        }
-
         List<Card> ordinary = [];
         List<Card> effects = [];
         int ordinaryCopies = 0;
@@ -31,6 +27,22 @@ internal sealed class DrawEffectCalculation(
             }
 
             budget.CheckStorage(deck.Count, deck.Count + (long)effects.Count);
+        }
+
+        HashSet<Card>? inert = effects.Count == 0 ? null
+            : DrawEffectFeasibility.FindInert(deck, deckCopies, handSize, conditionalEffectsEnabled, budget);
+        if (inert is not null) {
+            // Retain the actual cards, including identities and memberships. Only
+            // the activation partition changes; no saved or executable plan is edited.
+            foreach (Card effect in effects.Where(inert.Contains)) {
+                ordinary.Add(effect);
+                ordinaryCopies = checked(ordinaryCopies + effect.Copies);
+            }
+            effects.RemoveAll(inert.Contains);
+        }
+
+        if (conditionalEffectsEnabled && effects.Any(card => card.EffectPlan.RequiresHandResolution)) {
+            return new PostDrawCalculation(deck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
         }
 
         if (effects.Count == 0) {

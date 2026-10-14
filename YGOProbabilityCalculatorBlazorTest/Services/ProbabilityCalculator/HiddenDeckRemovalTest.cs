@@ -107,7 +107,8 @@ public class HiddenDeckRemovalTest {
         List<Combo> combos = [new([new(A, 1, 2)])];
         Assert.That(DrawExecutionAssessment.Assess(deck, combos, 2, true, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
         Verify(deck, 2, combos);
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 3, true, true).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
+        DrawExecutionPath expected = effectCopies == 1 ? DrawExecutionPath.Ordinary : DrawExecutionPath.OrderedFrontier;
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 3, true, true).Path, Is.EqualTo(expected));
         Verify(deck, 3, combos);
     }
 
@@ -178,7 +179,7 @@ public class HiddenDeckRemovalTest {
         Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => CalculationWire.ReadResult(CalculationWire.Execute(input)))!.Reason,
             Is.EqualTo(ProbabilityCalculationLimitReason.Work));
         Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true, false).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true, true).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
     }
 
     private static void Verify(List<Card> deck, int handSize, List<Combo> combos, bool collapseCopies = false) {
