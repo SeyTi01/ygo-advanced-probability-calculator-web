@@ -201,6 +201,26 @@ public class BackgroundCalculatorTest {
     }
 
     [Test]
+    public async Task ModuleHandleCleanupFailureDisposesUnreturnedOwnerAndAllowsRetry() {
+        _module.SetupSequence(j => j.DisposeAsync())
+            .ThrowsAsync(new JSException("module cleanup failed")).Returns(ValueTask.CompletedTask);
+        Assert.ThrowsAsync<JSException>(() => _service.CalculateAsync(Snapshot(), default));
+        _owner.Verify(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()), Times.Never);
+        _owner.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("dispose", It.IsAny<object?[]?>()), Times.Once);
+        _owner.Verify(j => j.DisposeAsync(), Times.Once);
+
+        Mock<IJSObjectReference> replacement = new();
+        replacement.Setup(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>())).ReturnsAsync(_job.Object);
+        _module.Setup(j => j.InvokeAsync<IJSObjectReference>("createOwner", It.IsAny<object?[]?>())).ReturnsAsync(replacement.Object);
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(CalculationWire.Execute(Snapshot().Json));
+        Assert.That((await _service.CalculateAsync(Snapshot(), default)).TotalProbability, Is.EqualTo(1));
+        await _service.DisposeAsync();
+        replacement.Verify(j => j.DisposeAsync(), Times.Once);
+        _owner.Verify(j => j.DisposeAsync(), Times.Once);
+    }
+
+    [Test]
     public async Task OwnerDisposalCancelsActiveRunAndTerminatesIdleOrBusyRuntime() {
         _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
             .Returns((string _, CancellationToken token, object?[]? _) => new ValueTask<string>(WaitForCancellation(token)));

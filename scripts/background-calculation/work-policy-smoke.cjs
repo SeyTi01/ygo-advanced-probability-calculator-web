@@ -56,7 +56,11 @@ function probability(count, hand = 5) {
    const Original = Worker;
    window.Worker = class extends Original {
     constructor(...args) { super(...args); workProbe.creations.push(performance.now()); }
-    postMessage(message) { workProbe.inputs.push(message.json); super.postMessage(message); }
+    postMessage(message) {
+     workProbe.inputs.push(message.json);
+     if (workProbe.holdRequests) (workProbe.pendingPosts ??= []).push(() => super.postMessage(message));
+     else super.postMessage(message);
+    }
     terminate() { workProbe.terminations.push(performance.now()); super.terminate(); }
    };
   });
@@ -201,10 +205,21 @@ function probability(count, hand = 5) {
   await page.locator('#handSize').fill('6'); await page.locator('#handSize').press('Tab');
   const measureAction = () => page.locator('.calculate-action').evaluate(e => { const r = e.getBoundingClientRect(); return { top: r.top + scrollY, height: r.height, width: r.width }; });
   const idle = await measureAction();
-  await start(); const busy = await measureAction();
-  for (const dimension of ['top', 'height', 'width'])
-   assert.ok(Math.abs(busy[dimension] - idle[dimension]) <= .1, `Calculate/Cancel ${dimension} stays fixed with a pin (allowing browser subpixel precision)`);
-  assert.equal(await page.getByRole('button', { name: 'Copy results', exact: true }).isDisabled(), true);
+  // A warm runtime can finish this tiny fixture before browser automation
+  // observes busy controls. Hold dispatch until those assertions finish.
+  await page.evaluate(() => { workProbe.holdRequests = true; });
+  let busy;
+  try {
+   await start(); busy = await measureAction();
+   for (const dimension of ['top', 'height', 'width'])
+    assert.ok(Math.abs(busy[dimension] - idle[dimension]) <= .1, `Calculate/Cancel ${dimension} stays fixed with a pin (allowing browser subpixel precision)`);
+   assert.equal(await page.getByRole('button', { name: 'Copy results', exact: true }).isDisabled(), true);
+  } finally {
+   await page.evaluate(() => {
+    workProbe.holdRequests = false;
+    for (const dispatch of workProbe.pendingPosts?.splice(0) ?? []) dispatch();
+   });
+  }
   await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
   assert.match(await page.locator('.probability-total .result-difference').innerText(), /^\+\d+(?:[.,]\d+)?\s*%$/);
   const inline = await page.locator('.probability-total .result-difference').evaluate(e => {
