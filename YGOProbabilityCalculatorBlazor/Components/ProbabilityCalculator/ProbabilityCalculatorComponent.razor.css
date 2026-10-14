@@ -139,14 +139,6 @@
     border-bottom: 1px solid var(--bs-border-color);
 }
 
-.session-loading-slot {
-    flex: 1 0 100%;
-    min-height: 1.25rem;
-    display: flex;
-    align-items: center;
-    pointer-events: none;
-}
-
 .hand-size-control {
     display: flex;
     flex: 0 0 auto;

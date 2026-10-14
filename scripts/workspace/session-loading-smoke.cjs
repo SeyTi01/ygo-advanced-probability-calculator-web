@@ -80,8 +80,21 @@ const { chromium } = require('playwright');
             const rect = document.querySelector(selector).getBoundingClientRect();
             return [rect.x, rect.y, rect.width, rect.height];
         };
-        return { controls: bounds('.session-controls'), toolbar: bounds('.session-toolbar'), overflow: document.documentElement.scrollWidth - innerWidth };
+        return { controls: bounds('.session-controls'), toolbar: bounds('.session-toolbar'), deckHeader: bounds('.deck-header'), overflow: document.documentElement.scrollWidth - innerWidth };
     });
+    const deckStatusSpacing = async page => {
+        const spacing = await page.locator('.session-loading-content').evaluate(content => {
+            const box = content.getBoundingClientRect();
+            const header = content.closest('.deck-header');
+            const row = header.getBoundingClientRect();
+            const title = header.querySelector('h4').getBoundingClientRect();
+            const sort = header.querySelector('button').getBoundingClientRect();
+            const controls = document.querySelector('.session-controls').getBoundingClientRect();
+            return { headingGap: box.left - title.right, sortGap: sort.left - box.right, separatorGap: box.top - controls.bottom, sameRow: box.top >= row.top && box.bottom <= row.bottom && box.top < title.bottom && sort.top < box.bottom };
+        });
+        assert(spacing.headingGap >= 4 && spacing.sortGap >= 4 && spacing.separatorGap >= 8 && spacing.sameRow, `Loader must fit to the right of Deck without overlap: ${JSON.stringify(spacing)}`);
+        return spacing;
+    };
     const newPage = async options => {
         const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, locale: 'en-US', ...options });
         const page = await context.newPage();
@@ -122,14 +135,7 @@ const { chromium } = require('playwright');
                 assert.equal(await page.locator('html').getAttribute('data-bs-theme'), colorScheme);
                 const before = await geometry(page);
                 assert(before.overflow <= 0);
-                const spacing = await page.locator('.session-loading-content').evaluate(content => {
-                    const box = content.getBoundingClientRect();
-                    const controls = content.closest('.session-controls').getBoundingClientRect();
-                    const slot = content.closest('.session-loading-slot').getBoundingClientRect();
-                    const previous = content.closest('.session-loading-slot').previousElementSibling.getBoundingClientRect();
-                    return { above: box.top - previous.bottom, below: controls.bottom - box.bottom, insideSlot: box.top >= slot.top && box.bottom <= slot.bottom };
-                });
-                assert(spacing.above >= 8 && spacing.below >= 8 && spacing.insideSlot, `Loader needs breathing room above the separator: ${JSON.stringify(spacing)}`);
+                const spacing = await deckStatusSpacing(page);
                 if (entry === 'json') assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Save Session');
                 await page.screenshot({ path: path.join(evidence, `${entry}-${width}-${colorScheme}-pending.png`) });
                 catalogHold.release();
@@ -138,7 +144,24 @@ const { chromium } = require('playwright');
                 assert.deepEqual(after, before, 'toolbar geometry remains unchanged through completion');
                 assert.equal(await page.locator('#sessionFileInput').isEnabled(), true);
                 // Warm repeat retains exactly the same full example; status must finish.
+                await page.evaluate(() => {
+                    const original = Blob.prototype.arrayBuffer;
+                    Blob.prototype.arrayBuffer = function () {
+                        const blob = this;
+                        return new Promise(resolve => {
+                            window.releaseWarmLoad = async () => {
+                                Blob.prototype.arrayBuffer = original;
+                                resolve(await original.call(blob));
+                            };
+                        });
+                    };
+                });
                 await upload(page);
+                await visible(page);
+                await deckStatusSpacing(page);
+                assert.deepEqual(await geometry(page), after, 'populated Deck (40) header must retain its geometry while loading');
+                await page.screenshot({ path: path.join(evidence, `${entry}-${width}-${colorScheme}-populated-pending.png`) });
+                await page.evaluate(() => releaseWarmLoad());
                 await ready(page);
                 // A malformed newer file cannot erase the restored workspace.
                 await upload(page, Buffer.from('{ malformed'));

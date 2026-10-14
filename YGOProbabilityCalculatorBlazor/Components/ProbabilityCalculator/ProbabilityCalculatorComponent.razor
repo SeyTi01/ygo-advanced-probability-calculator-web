@@ -47,9 +47,6 @@
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
         </div>
-        <div class="session-loading-slot">
-            <SessionLoadingStatus RequestVersion="_loadingSessionVersion" />
-        </div>
     </div>
     <div class="session-secondary">
         @if (_isClearWorkspaceConfirmationOpen) {
@@ -100,6 +97,7 @@
     }
 
     <CardListEditor @ref="_cardListEditor"
+        LoadingSessionVersion="_loadingSessionVersion"
         Cards="_cards"
         Combos="_combos"
         DrawEffectsEnabled="_drawEffectsEnabled"

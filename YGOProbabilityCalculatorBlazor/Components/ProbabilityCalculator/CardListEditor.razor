@@ -1,9 +1,13 @@
 @using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Components.Shared
 @implements IHandleEvent
 
 <div class="mb-4">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div class="deck-header d-flex flex-wrap align-items-center justify-content-between mb-3">
         <h4 class="mb-0">Deck (@ActiveCopies)</h4>
+        <div class="deck-loading-status">
+            <SessionLoadingStatus RequestVersion="LoadingSessionVersion" />
+        </div>
         <button class="btn btn-outline-secondary btn-sm"
                 type="button"
                 aria-label="Sort deck A–Z"
@@ -47,6 +51,7 @@
     [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
     [Parameter] public bool ConditionalEffectsEnabled { get; set; }
     [Parameter] public bool DeferNameEditRendering { get; set; }
+    [Parameter] public long? LoadingSessionVersion { get; set; }
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
 
@@ -66,6 +71,7 @@
     private readonly EditorKeys<Card> _editorKeys = new();
     private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
     private bool _skipParameterRender;
+    private long? _loadingSessionVersion;
     private Func<(int Index, Card NewCard), Task>? NameChangeHandler => OnRenameCard is null ? null : RenameCard;
 
     // These callbacks forward edits to the owning calculator, which renders
@@ -75,7 +81,8 @@
     private long ActiveCopies => Cards.Where(card => card.Active).Sum(card => (long)card.Copies);
 
     protected override void OnParametersSet() {
-        _skipParameterRender = DeferNameEditRendering;
+        _skipParameterRender = DeferNameEditRendering && LoadingSessionVersion == _loadingSessionVersion;
+        _loadingSessionVersion = LoadingSessionVersion;
         _editorKeys.Synchronize(Cards);
 
         CategoryCatalogOptions options = CategoryCatalog.BuildOptions(CategoryBases, Cards, Combos);
