@@ -91,6 +91,8 @@ Recognized imports and database selections receive authoritative built-in defini
 
 A small pre-calculation notice flags potentially expensive draw configurations without blocking Calculate. If a request is slow or reaches a Work or Storage limit, **Calculate without draw effects** explicitly runs an exact alternative for that request. It preserves configured settings and the saved preference. This answers a different question and is not a guaranteed lower bound. Results and copied/pinned comparisons identify the model used; the next ordinary Calculate uses the selected setting.
 
+Interactive calculations allow 150 million bounded work units and remain cancelable. Storage limits apply separately: larger mixed draw configurations can require an explicit **High** or **VeryHigh** storage selection. Work units are not seconds, and increasing work does not resolve a Storage limit.
+
 See the calculator's [Help page](https://dev.ygo-calculator.pages.dev/help) for detailed rules and built-in examples.
 
 ## How the calculation works

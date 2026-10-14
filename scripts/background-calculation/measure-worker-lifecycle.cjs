@@ -102,7 +102,7 @@ async function run(page, hand) {
 
 async function serve(rootArgument) {
     const root = path.resolve(rootArgument);
-    const types = { '.js': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm', '.html': 'text/html', '.css': 'text/css' };
+    const types = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm', '.html': 'text/html', '.css': 'text/css' };
     const server = http.createServer(async (request, response) => {
         try {
             const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);

@@ -201,6 +201,6 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
 
     private static void AssertWorkAllowance(string request) {
         JsonObject input = JsonNode.Parse(request)!.AsObject();
-        Assert.That(input[nameof(CalculationInput.WorkUnits)]!.GetValue<long>(), Is.EqualTo(50_000_000));
+        Assert.That(input[nameof(CalculationInput.WorkUnits)]!.GetValue<long>(), Is.EqualTo(150_000_000));
     }
 }

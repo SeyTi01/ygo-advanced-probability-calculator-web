@@ -255,14 +255,14 @@ async function main() {
             assert.equal(percent(await result()), Number((fixture.Probability * 100).toFixed(2)));
             const inputs = await page.evaluate(() => workerProbe.inputs);
             const requests = inputs.map(message => JSON.parse(message.json));
-            assert(requests.every(input => input.WorkUnits === 50000000));
+            assert(requests.every(input => input.WorkUnits === 150000000));
             for (const tier of [0, 1, 2]) {
                 assert(requests.some(input => input.StorageTier === tier && input.Options.ConditionalEffectsEnabled
                     && input.Cards.some(card => card.PostDrawDiscardCount === 2)));
             }
             assert(requests.some(input => !input.Options.ConditionalEffectsEnabled && input.Cards.some(card => card.PostDrawDiscardCount === 2)));
             assert(requests.some(input => !input.Options.ConditionalEffectsEnabled && input.Cards.every(card => card.DrawCount === null && card.PostDrawDiscardCount === 0)));
-            console.log(JSON.stringify({ workerRequests: requests.length, storageTiers: [0, 1, 2], workUnits: 50000000 }));
+            console.log(JSON.stringify({ workerRequests: requests.length, storageTiers: [0, 1, 2], workUnits: 150000000 }));
             const recovery = await page.evaluate(() => Object.entries(localStorage));
             assert(!JSON.stringify(recovery).includes('ConditionalEffectsEnabled'));
             assert(!JSON.stringify(recovery).includes('StorageTier'));

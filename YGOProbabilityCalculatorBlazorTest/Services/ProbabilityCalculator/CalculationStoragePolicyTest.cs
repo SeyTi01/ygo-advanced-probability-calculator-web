@@ -57,7 +57,7 @@ public class CalculationStoragePolicyTest {
         highBudget.Spend(1234);
         veryHighBudget.Spend(1234);
 
-        Assert.That(workPolicy.WorkUnits, Is.EqualTo(50_000_000));
+        Assert.That(workPolicy.WorkUnits, Is.EqualTo(150_000_000));
         Assert.That(standardBudget.Spent, Is.EqualTo(1234));
         Assert.That(highBudget.Spent, Is.EqualTo(1234));
         Assert.That(veryHighBudget.Spent, Is.EqualTo(1234));
