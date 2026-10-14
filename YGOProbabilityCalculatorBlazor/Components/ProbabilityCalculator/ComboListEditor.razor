@@ -35,18 +35,15 @@
     <details class="combo-group-management workspace-management">
         <summary>Combo groups <span class="text-body-secondary">· organize combos</span></summary>
         <div class="mb-4">
-            <div class="section-add-heading">
-                <h5 class="h6">Groups</h5>
-                <div class="editor-add-row">
-                    <div class="editor-select-field">
-                        <input class="form-control" type="text"
-                               aria-label="New combo group name" placeholder="Group name"
-                               @bind="_newGroupName" @bind:event="oninput"
-                               @onkeyup="HandleAddGroupKeyUp" />
-                    </div>
-                    <div class="editor-add-action">
-                        <button class="btn btn-primary" type="button" aria-label="Add combo group" disabled="@string.IsNullOrWhiteSpace(_newGroupName)" @onclick="AddGroup">Add</button>
-                    </div>
+            <div class="editor-add-row">
+                <div class="editor-select-field">
+                    <input class="form-control" type="text"
+                           aria-label="New combo group name" placeholder="Group name"
+                           @bind="_newGroupName" @bind:event="oninput"
+                           @onkeyup="HandleAddGroupKeyUp" />
+                </div>
+                <div class="editor-add-action">
+                    <button class="btn btn-primary" type="button" aria-label="Add combo group" disabled="@string.IsNullOrWhiteSpace(_newGroupName)" @onclick="AddGroup">Add</button>
                 </div>
             </div>
             @if (_groupError is not null) {

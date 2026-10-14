@@ -36,6 +36,69 @@ const { chromium, firefox } = require('playwright');
             await page.screenshot({ path: path.join(evidence, `${name}.png`) });
         };
         const noOverflow = async () => assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        const managementSections = [
+            { details: page.locator('details.category-management'), title: 'Categories', chipSelector: '.category-chip', inputLabel: 'Category name' },
+            { details: page.locator('details.combo-group-management'), title: 'Combo groups', chipSelector: '.combo-group-chip', inputLabel: 'New combo group name' }
+        ];
+        const setExpanded = async (section, expanded) => {
+            if (await section.details.evaluate(element => element.open) !== expanded) {
+                await section.details.locator('summary').click();
+            }
+        };
+        const checkManagementLayout = async (content, width, theme) => {
+            const themePreference = page.getByLabel('Color theme preference');
+            const priorViewport = page.viewportSize();
+            const priorTheme = await themePreference.inputValue();
+            const priorOpenStates = await Promise.all(managementSections.map(section => section.details.evaluate(element => element.open)));
+            const captureLayout = (width === 1440 && theme === 'Light') || (width === 390 && theme === 'Dark');
+
+            try {
+                await themePreference.selectOption({ label: theme });
+                await page.setViewportSize({ width, height: 1000 });
+                for (const section of managementSections) {
+                    await setExpanded(section, false);
+                    assert.ok((await section.details.locator('summary').innerText()).startsWith(section.title));
+                    assert.equal(await section.details.locator('h4, h5').count(), 0);
+                }
+                await noOverflow();
+                if (captureLayout) await capture(`management-${content}-${width}-${theme.toLowerCase()}-closed`);
+
+                for (const section of managementSections) {
+                    await setExpanded(section, true);
+
+                    assert.equal(await section.details.locator('h4, h5').count(), 0, `${section.title} has no duplicate inner heading`);
+                    assert.equal(await section.details.locator('.mb-4 > .editor-add-row').count(), 1);
+                    assert.equal(await section.details.evaluate(element => {
+                        const content = element.querySelector(':scope > .mb-4');
+                        return content?.firstElementChild?.classList.contains('editor-add-row') ?? false;
+                    }), true, `${section.title} starts with its creation row`);
+                    assert.equal(await section.details.getByRole('textbox', { name: section.inputLabel, exact: true }).count(), 1);
+                    assert.equal(await section.details.locator('.editor-add-row button').isDisabled(), true);
+                    assert.equal((await section.details.locator(section.chipSelector).count()) > 0, content === 'populated');
+
+                    const summaryBox = await section.details.locator('summary').boundingBox();
+                    const row = section.details.locator('.editor-add-row');
+                    const rowBox = await row.boundingBox();
+                    const inputBox = await row.locator('input').boundingBox();
+                    const buttonBox = await row.locator('button').boundingBox();
+                    assert.ok(summaryBox && rowBox && inputBox && buttonBox);
+                    assert.ok(Math.abs(rowBox.x - summaryBox.x) <= 1, `${section.title} creation row aligns with its summary at ${width}px`);
+                    assert.ok(rowBox.width <= 513 && rowBox.x + rowBox.width <= width + 1);
+                    assert.ok(inputBox.width > 0 && buttonBox.x >= inputBox.x + inputBox.width);
+                    assert.ok(Math.abs(inputBox.y - buttonBox.y) <= 1);
+                }
+
+                assert.equal(await page.getByRole('heading', { name: 'Combos', exact: true }).count(), 1);
+                await noOverflow();
+                if (captureLayout) await capture(`management-${content}-${width}-${theme.toLowerCase()}-open`);
+            } finally {
+                for (let index = 0; index < managementSections.length; index++) {
+                    await setExpanded(managementSections[index], priorOpenStates[index]);
+                }
+                await page.setViewportSize(priorViewport);
+                await themePreference.selectOption(priorTheme);
+            }
+        };
         const quick = page.getByRole('combobox', { name: 'Add card by name' });
         const addManual = async name => { await quick.fill(name); await quick.press('Escape'); await page.getByRole('button', { name: 'Add card', exact: true }).click(); };
         const row = (kind, index = 0) => page.locator(`.${kind}-editor`).nth(index);
@@ -51,6 +114,11 @@ const { chromium, firefox } = require('playwright');
             return JSON.parse(await fs.readFile(await (await download).path(), 'utf8'));
         };
         await capture('empty-desktop');
+        for (const theme of ['Light', 'Dark']) {
+            for (const width of [1440, 768, 390, 375]) {
+                await checkManagementLayout('empty', width, theme);
+            }
+        }
         await quick.focus();
         assert.equal(await page.locator('.card-editor').count(), 0);
         await addManual('Manual card');
@@ -109,6 +177,11 @@ const { chromium, firefox } = require('playwright');
         const groupName = page.getByRole('textbox', { name: 'New combo group name', exact: true });
         await groupName.fill('Routes');
         await groupName.press('Enter');
+        for (const theme of ['Light', 'Dark']) {
+            for (const width of [1440, 768, 390, 375]) {
+                await checkManagementLayout('populated', width, theme);
+            }
+        }
         await page.getByRole('button', { name: 'Edit group Routes', exact: true }).click();
         const groupRename = page.getByRole('textbox', { name: 'New name for group Routes', exact: true });
         await groupRename.fill('Main routes');

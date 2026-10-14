@@ -287,6 +287,22 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
     }
 
     [Test]
+    public void CategoryCreationUsesEnterAndKeepsAddDisabledForAnEmptyName() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
+        IElement categoryManagement = cut.Find("details.category-management");
+        IElement input = categoryManagement.QuerySelector("input[aria-label='Category name']")!;
+        IElement addButton = categoryManagement.QuerySelector(".editor-add-row button")!;
+
+        Assert.That(addButton.HasAttribute("disabled"), Is.True);
+        input.Input("Keyboard role");
+        input.KeyUp(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+
+        Assert.That(categoryManagement.QuerySelector("[aria-label='Edit category Keyboard role']")!.TextContent, Is.EqualTo("Keyboard role"));
+        Assert.That(categoryManagement.QuerySelector("input[aria-label='Category name']")!.GetAttribute("value") ?? string.Empty, Is.Empty);
+        Assert.That(categoryManagement.QuerySelector(".editor-add-row button")!.HasAttribute("disabled"), Is.True);
+    }
+
+    [Test]
     public void LoadedComboAlonePreventsCategoryDeletionUntilConstraintIsRemoved() {
         SessionState session = Session();
         session.Cards.Clear();
