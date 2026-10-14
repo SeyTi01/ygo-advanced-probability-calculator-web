@@ -52,6 +52,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
 
         InvalidateCalculation(clearPreviousResult: true);
         _categoryBases.Clear();
+        _drawActivationPriority = DrawActivationPriority.Default;
         _cards.Clear();
         _combos.Clear();
         _comboGroups.Clear();
@@ -75,6 +76,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
         ComboGroups = _comboGroups,
         HandSize = _handSize,
         DrawEffectsEnabled = _drawEffectsEnabled,
+        DrawActivationPriority = _drawActivationPriority,
         CategoryColorIndices = new(_categoryColorIndices, StringComparer.Ordinal)
     };
 
@@ -192,6 +194,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
 
         RestoreCategoryColorIndices(session);
         _handSize = session.HandSize;
+        _drawActivationPriority = (session.DrawActivationPriority ?? DrawActivationPriority.Default).RetainEntries(_cards);
         _drawEffectsEnabled = session.DrawEffectsEnabled;
         _conditionalEffectsEnabled = _drawEffectsEnabled;
 
@@ -292,6 +295,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
     private void ReplaceImportedDeck(List<Card> importedCards) {
         ConsumeSharedFragment();
         _isClearWorkspaceConfirmationOpen = false;
+        _drawActivationPriority = DrawActivationPriority.Default;
         _cards.Clear();
         _cards.AddRange(importedCards);
         InvalidateCalculation(clearPreviousResult: true);

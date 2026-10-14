@@ -2,10 +2,16 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-internal sealed class DrawEffectCalculation(List<Card> deck, int handSize, WorkBudget budget, bool conditionalEffectsEnabled = false) {
+internal sealed class DrawEffectCalculation(
+    List<Card> deck,
+    int handSize,
+    WorkBudget budget,
+    bool conditionalEffectsEnabled = false,
+    DrawActivationPriority? priority = null
+) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
         if (conditionalEffectsEnabled && deck.Any(card => card.Copies > 0 && (card.PostDrawDiscardCount > 0 || card.PreDrawRemovalCount > 0))) {
-            return new PostDrawCalculation(deck, handSize, budget).Calculate(combos, groups, totalOnly);
+            return new PostDrawCalculation(deck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
         }
 
         List<Card> ordinary = [];
@@ -36,9 +42,13 @@ internal sealed class DrawEffectCalculation(List<Card> deck, int handSize, WorkB
         if (!DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize, conditionalEffectsEnabled)) {
             List<Card> fixedDrawDeck = conditionalEffectsEnabled ? deck
                 : deck.Select(card => card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0).WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList();
-            return new PostDrawCalculation(fixedDrawDeck, handSize, budget).Calculate(combos, groups, totalOnly);
+            return new PostDrawCalculation(fixedDrawDeck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
         }
 
+        // The count-state proof bounds ALL possible activations collectively. With no
+        // hand operations, every encountered source can resolve in any priority order;
+        // its visible-draw contribution and OPT remainder are identical. Hidden positions
+        // remain exchangeable. Priority therefore does not invalidate this fast path.
         bool ignoreDeckCosts = !conditionalEffectsEnabled && effects.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0);
         List<Card> effectiveEffects = ignoreDeckCosts ? effects.Select(card => card.WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList() : effects;
         DrawResolution resolution = DrawEffectResolver.Resolve(ordinaryCopies, effectiveEffects, handSize, budget);

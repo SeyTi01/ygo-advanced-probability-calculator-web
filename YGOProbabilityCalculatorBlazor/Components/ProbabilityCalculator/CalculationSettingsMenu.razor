@@ -1,5 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using Microsoft.JSInterop
+@using YGOProbabilityCalculatorBlazor.Models
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
@@ -33,6 +34,45 @@
                 <option value="OpeningHand">Ignore draw effects (opening hand only)</option>
             </select>
             <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
+            <div class="mt-3">
+                <label class="form-label mb-1" for="drawActivationPriority">Draw activation priority</label>
+                <select id="drawActivationPriority" class="form-select" value="@Priority.Mode" @onchange="OnPriorityModeChanged">
+                    <option value="EncounterOrder">Encounter order (default)</option>
+                    <option value="CustomPriority">Custom priority</option>
+                </select>
+                @if (Priority.Mode == DrawActivationMode.CustomPriority) {
+                    <div class="small text-body-secondary mt-2">Highest first</div>
+                    @if (_entries.Length == 0) {
+                        <p class="form-text mb-0">No draw effects configured.</p>
+                    }
+                    <ol class="draw-priority-list" aria-label="Draw activation priority, highest first">
+                        @for (int i = 0; i < _entries.Length; i++) {
+                            Card entry = _entries[i];
+                            int index = i;
+                            string label = EntryLabel(entry);
+                            <li @key="entry.Id" data-priority-id="@entry.Id" tabindex="-1" @ref="_entryElements[entry.Id]">
+                                <span class="draw-priority-name">
+                                    @label
+                                    @if (!entry.Active || entry.Copies == 0) {
+                                        <small class="text-body-secondary"> (inactive)</small>
+                                    }
+                                    @if (!Priority.CardIds.Contains(entry.Id)) {
+                                        <small class="text-body-secondary"> (unranked)</small>
+                                    }
+                                </span>
+                                <button type="button" class="btn btn-outline-secondary" disabled="@(i == 0)"
+                                        aria-label="Move @label up" title="Move up" @onclick="() => MovePriority(index, -1)">↑</button>
+                                <button type="button" class="btn btn-outline-secondary" disabled="@(i == _entries.Length - 1)"
+                                        aria-label="Move @label down" title="Move down" @onclick="() => MovePriority(index, 1)">↓</button>
+                            </li>
+                        }
+                    </ol>
+                    <details class="small mt-2">
+                        <summary>About priority</summary>
+                        <p class="form-text mb-0">Chooses the highest legal effect after each completed resolution, including newly drawn effects. Unranked effects use encounter order after ranked entries. This is a fixed policy, not optimal play.</p>
+                    </details>
+                }
+            </div>
         </section>
 
         <div class="border-top mt-3 pt-3 calculation-settings-option">
@@ -66,6 +106,57 @@
     [Parameter]
     public EventCallback<CalculationStorageTier> StorageTierChanged { get; set; }
 
+    [Parameter]
+    public DrawActivationPriority Priority { get; set; } = DrawActivationPriority.Default;
+
+    [Parameter]
+    public EventCallback<DrawActivationPriority> PriorityChanged { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<Card> Cards { get; set; } = [];
+
+    private Card[] _entries = [];
+    private readonly Dictionary<string, ElementReference> _entryElements = new(StringComparer.Ordinal);
+    private string? _focusPriorityId;
+
+    protected override void OnParametersSet() {
+        Dictionary<string, int> ranks = Priority.CardIds.Select((id, index) => (id, index))
+            .ToDictionary(entry => entry.id, entry => entry.index, StringComparer.Ordinal);
+        _entries = Cards.Where(card => card.DrawCount is not null)
+            .OrderBy(card => ranks.GetValueOrDefault(card.Id, int.MaxValue))
+            .ThenBy(card => card.Id, StringComparer.Ordinal).ToArray();
+        HashSet<string> visible = _entries.Select(card => card.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (string removed in _entryElements.Keys.Where(id => !visible.Contains(id)).ToArray()) {
+            _entryElements.Remove(removed);
+        }
+    }
+
+    private string EntryLabel(Card entry) {
+        string name = string.IsNullOrWhiteSpace(entry.Name) ? "Unnamed card" : entry.Name;
+        Card[] sameName = _entries.Where(card => card.Name == entry.Name).OrderBy(card => card.Id, StringComparer.Ordinal).ToArray();
+        return sameName.Length > 1 ? $"{name} (entry {Array.IndexOf(sameName, entry) + 1})" : name;
+    }
+
+    private Task OnPriorityModeChanged(ChangeEventArgs eventArgs) {
+        if (!Enum.TryParse(eventArgs.Value?.ToString(), out DrawActivationMode mode) || !Enum.IsDefined(mode)) {
+            return Task.CompletedTask;
+        }
+        return PriorityChanged.InvokeAsync(new DrawActivationPriority(mode, Priority.CardIds));
+    }
+
+    private Task MovePriority(int index, int offset) {
+        int target = index + offset;
+        if (target < 0 || target >= _entries.Length) {
+            return Task.CompletedTask;
+        }
+        string[] ids = _entries.Select(card => card.Id).ToArray();
+        _focusPriorityId = ids[index];
+        (ids[index], ids[target]) = (ids[target], ids[index]);
+        // Effectless entries keep their inactive preference; new identities get no inherited rank.
+        string[] retained = Priority.CardIds.Where(id => !ids.Contains(id, StringComparer.Ordinal)).ToArray();
+        return PriorityChanged.InvokeAsync(new DrawActivationPriority(Priority.Mode, [.. ids, .. retained]));
+    }
+
     private bool _isOpen;
     private bool _focusDrawEffectsAfterRender;
     private bool _focusTriggerAfterRender;
@@ -80,6 +171,10 @@
     };
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_focusPriorityId is { } id && _entryElements.TryGetValue(id, out ElementReference element)) {
+            _focusPriorityId = null;
+            await element.FocusAsync();
+        }
         if (_focusDrawEffectsAfterRender) {
             _focusDrawEffectsAfterRender = false;
             await _drawEffectsInput.FocusAsync();

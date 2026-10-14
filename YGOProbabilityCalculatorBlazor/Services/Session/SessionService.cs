@@ -37,6 +37,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             ComboGroups = session.ComboGroups,
             HandSize = session.HandSize,
             DrawEffectsEnabled = session.DrawEffectsEnabled,
+            DrawActivationPriority = (session.DrawActivationPriority ?? DrawActivationPriority.Default).RetainEntries(session.Cards),
             CategoryColorIndices = session.CategoryColorIndices
         };
 

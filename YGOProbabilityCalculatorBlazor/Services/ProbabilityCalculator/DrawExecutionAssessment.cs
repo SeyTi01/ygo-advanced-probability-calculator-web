@@ -41,6 +41,8 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         if (effects.Length == 0) {
             return new(DrawExecutionPath.Ordinary, false);
         }
+        // Activation priority does not change the all-batches-fit proof or the single-identity
+        // exchangeable proof below. No policy-specific UI enumeration is needed.
         bool countStateFits = DrawEffectResolver.CanUseCountStateFastPath(effects, (int)copies, handSize, conditionsEnabled);
         bool conditional = conditionsEnabled && effects.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0
             || ((card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0) && !countStateFits));

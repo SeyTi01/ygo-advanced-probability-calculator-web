@@ -10,5 +10,6 @@ public class SessionState {
     public List<ComboGroup> ComboGroups { get; init; } = [];
     public int HandSize { get; init; }
     public bool DrawEffectsEnabled { get; init; } = true;
+    public DrawActivationPriority DrawActivationPriority { get; init; } = DrawActivationPriority.Default;
     public Dictionary<string, int> CategoryColorIndices { get; init; } = new(StringComparer.Ordinal);
 }

@@ -42,6 +42,7 @@
                        min="1"/>
             </div>
             <CalculationSettingsMenu @ref="_settingsMenu" Model="SelectedModel" ModelChanged="OnModelChanged"
+                                      Priority="_drawActivationPriority" PriorityChanged="OnDrawActivationPriorityChanged" Cards="_cards"
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
         </div>
@@ -236,6 +237,9 @@
                     @if (accepted.Context.Model == CalculationModel.Simplified) {
                         <p class="small mb-2">Hypothetical, often optimistic: cost-dependent draw cards may draw unconditionally. This can mislead deck-building decisions.</p>
                     }
+                    @if (_pinnedResult is { } priorityPin && priorityPin.Context.DrawPriorityDefinition != accepted.Context.DrawPriorityDefinition) {
+                        <p class="small text-body-secondary mb-2 result-priority-difference">Draw activation priority differs from the pinned result.</p>
+                    }
                     @if (_pinnedResult is { } pin && pin.Context.Model != accepted.Context.Model) {
                         <p class="small mb-2 comparison-model-difference">Different calculation models: these results answer different questions.</p>
                     }
@@ -386,6 +390,7 @@
     private CategoryRenameNotice? _categoryRename;
     private int _handSize = 5;
     private bool _drawEffectsEnabled = true;
+    private DrawActivationPriority _drawActivationPriority = DrawActivationPriority.Default;
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
     private bool _conditionalEffectsEnabled = true;
     private bool _isCalculating;
@@ -459,6 +464,13 @@
 
     private Task ReplaceCard((int Index, Card NewCard) payload) {
         (int index, Card newCard) = payload;
+        Card previous = _cards[index];
+        if (previous.ExternalCardId != newCard.ExternalCardId) {
+            _drawActivationPriority = new(
+                _drawActivationPriority.Mode,
+                _drawActivationPriority.CardIds.Where(id => id != previous.Id).ToArray()
+            );
+        }
         _cards[index] = newCard;
         InvalidateCalculation();
 
@@ -880,7 +892,7 @@
                 CalculationWorkPolicy.Interactive,
                 model != CalculationModel.OpeningHand,
                 CalculationStoragePolicy.ForTier(_storageTier),
-                new(model == CalculationModel.Configured),
+                new(model == CalculationModel.Configured, _drawActivationPriority),
                 _categoryBases
             );
             PinnedCalculationContext comparisonContext = CaptureComparisonContext(model);
@@ -970,6 +982,11 @@
         InvalidateCalculation();
     }
 
+    private void OnDrawActivationPriorityChanged(DrawActivationPriority priority) {
+        _drawActivationPriority = priority.RetainEntries(_cards);
+        InvalidateCalculation();
+    }
+
     private void OnStorageTierChanged(CalculationStorageTier tier) {
         if (_storageTier == tier) {
             return;
@@ -982,6 +999,7 @@
     private void OnCategoriesChanged() => InvalidateCalculation();
 
     private void InvalidateCalculation(bool clearPreviousResult = false, bool reassess = true) {
+        _drawActivationPriority = _drawActivationPriority.RetainEntries(_cards);
         _deferNameEditRendering = false;
         _assessmentDirty |= reassess;
         ObserveWorkspaceEdit();

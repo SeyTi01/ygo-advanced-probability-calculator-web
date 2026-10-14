@@ -62,3 +62,28 @@
 [data-bs-theme="dark"] .calculation-settings-panel .form-check-input:not(:checked) {
     --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%28255, 255, 255, 0.25%29'/%3e%3c/svg%3e");
 }
+
+.draw-priority-list {
+    padding: 0;
+    margin: 0.25rem 0 0;
+    list-style: none;
+}
+
+.draw-priority-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+}
+
+.draw-priority-name {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.draw-priority-list button {
+    flex: 0 0 2.5rem;
+    min-height: 2.5rem;
+    padding: 0.25rem;
+}

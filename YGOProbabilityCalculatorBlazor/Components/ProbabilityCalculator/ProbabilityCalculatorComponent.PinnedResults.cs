@@ -112,7 +112,8 @@ public partial class ProbabilityCalculatorComponent {
         GroupLineage,
         model != CalculationModel.OpeningHand,
         model == CalculationModel.Configured,
-        _categoryBases
+        _categoryBases,
+        _drawActivationPriority
     );
 
     private PinnedResultComparison? CurrentComboComparison(int index) {

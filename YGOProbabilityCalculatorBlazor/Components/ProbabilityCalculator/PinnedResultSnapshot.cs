@@ -21,10 +21,11 @@ public sealed record PinnedCalculationContext(
     ImmutableArray<PinnedComboDefinition> Combos,
     ImmutableDictionary<string, PinnedGroupDefinition> Groups,
     bool DrawEffectsEnabled = true,
-    bool ConditionalEffectsEnabled = false
+    bool ConditionalEffectsEnabled = false,
+    string DrawPriorityDefinition = ""
 ) {
     public CalculationModel Model => CalculationModelPresentation.FromFlags(DrawEffectsEnabled, ConditionalEffectsEnabled);
-    public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards · {Model.Description()}";
+    public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards · {Model.Description()}{(DrawPriorityDefinition.Length > 0 ? " · Custom draw priority" : "")}";
 
     internal static PinnedCalculationContext Capture(
         int epoch,
@@ -36,7 +37,8 @@ public sealed record PinnedCalculationContext(
         Func<string, Guid> groupLineage,
         bool drawEffectsEnabled = true,
         bool conditionalEffectsEnabled = false,
-        IEnumerable<CategoryBase>? categoryDefinitions = null
+        IEnumerable<CategoryBase>? categoryDefinitions = null,
+        DrawActivationPriority? priority = null
     ) {
         Combo[] active = [.. combos.Where(combo => combo.Active)];
         ImmutableArray<PinnedComboDefinition> definitions = [.. active.Select(combo => new PinnedComboDefinition(comboLineage(combo), Signature(combo)))];
@@ -81,7 +83,13 @@ public sealed record PinnedCalculationContext(
             deckDefinition = Pack([deckDefinition, Pack(rules)]);
         }
 
-        return new(epoch, handSize, copies, deck.Length, deckDefinition, definitions, groupDefinitions, drawEffectsEnabled, conditionalEffectsEnabled);
+        string priorityDefinition = drawEffectsEnabled && priority?.Mode == DrawActivationMode.CustomPriority
+            ? Pack(["custom", .. priority.CardIds.Where(id => deck.Any(card => card.Id == id && card.Copies > 0 && card.DrawCount is not null))]) : "";
+        if (priorityDefinition.Length > 0) {
+            deckDefinition = Pack([deckDefinition, priorityDefinition]);
+        }
+
+        return new(epoch, handSize, copies, deck.Length, deckDefinition, definitions, groupDefinitions, drawEffectsEnabled, conditionalEffectsEnabled, priorityDefinition);
 
         string CardRequirementSignature(ComboCard card) {
             int maximum = card.MaximumMode == RequirementMaximumMode.Fixed ? card.MaxCount : 0;
