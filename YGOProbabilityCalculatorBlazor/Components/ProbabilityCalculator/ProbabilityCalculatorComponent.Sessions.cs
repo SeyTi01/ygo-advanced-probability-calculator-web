@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.JSInterop;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 
@@ -10,8 +11,29 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     private long _sessionLoadVersion;
     private bool _sessionInitialized;
     private long _workspaceEditVersion;
+    private long? _loadingSessionVersion;
 
-    private void ObserveWorkspaceEdit() => _workspaceEditVersion++;
+    private void ObserveWorkspaceEdit() {
+        _workspaceEditVersion++;
+        _loadingSessionVersion = null;
+    }
+
+    private void InvalidateSessionLoad() {
+        _sessionLoadVersion++;
+        _loadingSessionVersion = null;
+        _sharedLoading = false;
+    }
+
+    private async Task BeforeSessionWorkAsync() {
+        StateHasChanged();
+        await SessionLoadingJS.InvokeVoidAsync("sessionLoading.beforeWork");
+    }
+
+    private void EndSessionLoad(SessionLoadRequest request) {
+        if (_loadingSessionVersion == request.Version) {
+            _loadingSessionVersion = null;
+        }
+    }
 
     private bool HasMeaningfulWorkspaceContent =>
         _cards.Count > 0
@@ -43,7 +65,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
 
     private void ClearWorkspace() {
         _isClearWorkspaceConfirmationOpen = false;
-        _sessionLoadVersion++;
+        InvalidateSessionLoad();
         _ydkeImportRequest = null;
         _pendingSessionService.PendingSession = null;
         ConsumeSharedFragment();
@@ -84,11 +106,13 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
 
     private SessionLoadRequest? _ydkeImportRequest;
 
-    private SessionLoadRequest BeginSessionLoad() {
+    private SessionLoadRequest BeginSessionLoad(bool fullSession = false) {
         _isClearWorkspaceConfirmationOpen = false;
+        InvalidateSessionLoad();
+        _loadingSessionVersion = fullSession ? _sessionLoadVersion : null;
 
         return new(
-            ++_sessionLoadVersion,
+            _sessionLoadVersion,
             _workspaceEditVersion,
             _sessionService.SerializeSession(CaptureSession())
         );
@@ -112,20 +136,29 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         return request.Before == currentSession;
     }
 
-    private async Task<bool> ApplyRecoveryAsync(SessionState session) {
+    private Task<bool> ApplyRecoveryAsync(SessionState session) => RestoreRecoveryAsync(() => Task.FromResult(session));
+
+    private Task<bool> ApplyRecoveryPayloadAsync(string json) => RestoreRecoveryAsync(() => _sessionService.LoadSessionAsync(json));
+
+    private async Task<bool> RestoreRecoveryAsync(Func<Task<SessionState>> load) {
         if (_disposed) {
             return false;
         }
 
-        SessionLoadRequest request = BeginSessionLoad();
+        SessionLoadRequest request = BeginSessionLoad(fullSession: true);
 
-        if (!await RestoreSessionDataAsync(session, request)) {
-            return false;
+        try {
+            await BeforeSessionWorkAsync();
+            SessionState session = await load();
+
+            return await RestoreSessionDataAsync(session, request);
         }
-
-        StateHasChanged();
-
-        return true;
+        finally {
+            EndSessionLoad(request);
+            if (!_disposed) {
+                StateHasChanged();
+            }
+        }
     }
 
     private async Task<List<Card>> PrepareSessionCardsAsync(SessionState session) {
@@ -217,7 +250,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         }
 
         SharingNavigation.LocationChanged -= SharingLocationChanged;
-        _sessionLoadVersion++;
+        InvalidateSessionLoad();
         _disposed = true;
         StopCalculation();
         await _backgroundCalculator.DisposeAsync();
@@ -257,7 +290,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     private void CancelYdkeImport() {
         // Revoke this form's request without invalidating a newer file/recovery load.
         if (_ydkeImportRequest is { } request && OwnsSessionLoad(request)) {
-            _sessionLoadVersion++;
+            InvalidateSessionLoad();
         }
 
         _ydkeImportRequest = null;
@@ -320,9 +353,10 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     }
 
     private async Task LoadSessionFile(InputFileChangeEventArgs e) {
-        SessionLoadRequest request = BeginSessionLoad();
+        SessionLoadRequest request = BeginSessionLoad(fullSession: true);
 
         try {
+            await BeforeSessionWorkAsync();
             IBrowserFile file = e.File;
             using StreamReader streamReader = new(file.OpenReadStream());
             string fileContent = await streamReader.ReadToEndAsync();
@@ -340,6 +374,9 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
                 _errorMessage = $"Failed to load session: {ex.Message}";
             }
         }
+        finally {
+            EndSessionLoad(request);
+        }
     }
 
     private async Task SaveCurrentSession() {
@@ -355,10 +392,11 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         }
 
         if (_sharedFragment is null && _pendingSessionService.PendingSession is { } session) {
-            SessionLoadRequest request = BeginSessionLoad();
+            SessionLoadRequest request = BeginSessionLoad(fullSession: true);
 
             try {
                 _pendingSessionService.PendingSession = null;
+                await BeforeSessionWorkAsync();
 
                 if (!await RestoreSessionDataAsync(session, request) && OwnsSessionLoad(request)) {
                     _errorMessage = "Current work changed while loading the example. Load the example again to replace it.";
@@ -368,6 +406,9 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
                 if (OwnsSessionLoad(request)) {
                     _errorMessage = $"Failed to load example session: {ex.Message}";
                 }
+            }
+            finally {
+                EndSessionLoad(request);
             }
         }
 

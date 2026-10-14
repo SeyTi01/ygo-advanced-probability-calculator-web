@@ -212,7 +212,7 @@ public class ActiveEntriesEditorTest {
             [new([new(_a, 1, 1)], "Exactly one A"), new([new(_b, 1, 1)], "Exactly one B"), new([], "Draft combo")]));
 
         Assert.That(cut.FindAll("button").Single(button => button.TextContent.Trim() == "Calculate").HasAttribute("disabled"), Is.True);
-        Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("incomplete active combo"));
+        Assert.That(cut.Find("p.form-text[role=status]").TextContent, Does.Contain("incomplete active combo"));
 
         IRenderedComponent<ComboEditor> incompleteCombo = cut.FindComponents<ComboEditor>()[2];
         await SetActiveAsync(incompleteCombo, "#comboActive2", false);
@@ -238,21 +238,21 @@ public class ActiveEntriesEditorTest {
 
         cut.Find("#handSize").Change("0");
         Assert.That(calculate().HasAttribute("disabled"), Is.True);
-        Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("Hand size must be at least 1"));
+        Assert.That(cut.Find("p.form-text[role=status]").TextContent, Does.Contain("Hand size must be at least 1"));
 
         cut.Find("#handSize").Change("3");
         SetActiveAsync(cut, "#cardActive0", false).GetAwaiter().GetResult();
         Assert.That(calculate().HasAttribute("disabled"), Is.True);
-        Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("fewer than the hand size"));
+        Assert.That(cut.Find("p.form-text[role=status]").TextContent, Does.Contain("fewer than the hand size"));
 
         SetActiveAsync(cut, "#cardActive1", false).GetAwaiter().GetResult();
-        Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("Activate at least one card"));
+        Assert.That(cut.Find("p.form-text[role=status]").TextContent, Does.Contain("Activate at least one card"));
 
         SetActiveAsync(cut, "#cardActive0", true).GetAwaiter().GetResult();
         SetActiveAsync(cut, "#cardActive1", true).GetAwaiter().GetResult();
         SetActiveAsync(cut, "#comboActive0", false).GetAwaiter().GetResult();
         Assert.That(calculate().HasAttribute("disabled"), Is.True);
-        Assert.That(cut.Find("[role=status]").TextContent, Does.Contain("Activate at least one combo"));
+        Assert.That(cut.Find("p.form-text[role=status]").TextContent, Does.Contain("Activate at least one combo"));
     }
 
     [Test]

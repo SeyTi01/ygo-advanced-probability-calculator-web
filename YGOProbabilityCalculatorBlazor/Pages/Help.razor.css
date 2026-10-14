@@ -11,3 +11,14 @@
 .help-content h1 small {
     display: inline-block;
 }
+
+.example-session-action {
+    position: relative;
+    padding-bottom: 1.25rem;
+}
+
+.example-session-status {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+}

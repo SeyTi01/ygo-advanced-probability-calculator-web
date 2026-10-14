@@ -9,9 +9,13 @@
 @inject ICardInfoService _cardInfoService
 @inject IPendingSessionService _pendingSessionService
 @inject IBackgroundCalculator _backgroundCalculator
+@inject IJSRuntime SessionLoadingJS
 
 <div class="calculator-workspace" @oninput="ObserveWorkspaceEdit">
     <div class="session-controls">
+        <div class="session-loading-slot">
+            <SessionLoadingStatus RequestVersion="_loadingSessionVersion" />
+        </div>
         <div class="session-toolbar">
             <ActionMenu @ref="_importMenu" Text="Import" Label="Import deck">
                 <label class="menu-command session-file-action" for="fileInput">
@@ -92,7 +96,7 @@
         </section>
     }
     @if (_sessionInitialized) {
-        <SessionRecovery @ref="_sharingRecovery" Session="CaptureSession()" ReplacementVersion="_autosaveReplacementVersion" EditVersion="_workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" Suspended="@(_sharedFragment is not null)" OnInspectionComplete="@(() => StateHasChanged())" />
+        <SessionRecovery @ref="_sharingRecovery" Session="CaptureSession()" ReplacementVersion="_autosaveReplacementVersion" EditVersion="_workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" ApplyRecoveryPayload="ApplyRecoveryPayloadAsync" Suspended="@(_sharedFragment is not null)" OnInspectionComplete="@(() => StateHasChanged())" />
     }
 
     <CardListEditor @ref="_cardListEditor"
