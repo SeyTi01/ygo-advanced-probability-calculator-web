@@ -43,6 +43,8 @@ public class TradeInAllureTest {
 
     // Frozen on unchanged post-#195 dev with an explicit test-only allowance.
     // Compare the entire exact/public output, not just the displayed total.
+    [TestCase(false, CalculationStorageTier.Standard, 5)]
+    [TestCase(true, CalculationStorageTier.Standard, 5)]
     [TestCase(false, CalculationStorageTier.High, 5)]
     [TestCase(false, CalculationStorageTier.VeryHigh, 5)]
     [TestCase(true, CalculationStorageTier.High, 5)]
@@ -72,7 +74,7 @@ public class TradeInAllureTest {
             expected.GetProperty("ReferenceResults")), Is.True);
     }
 
-    [TestCase(CalculationStorageTier.Standard, 150_000_000, ProbabilityCalculationLimitReason.Storage)]
+    [TestCase(CalculationStorageTier.Standard, 50_000_000, ProbabilityCalculationLimitReason.Work)]
     [TestCase(CalculationStorageTier.High, 50_000_000, ProbabilityCalculationLimitReason.Work)]
     [TestCase(CalculationStorageTier.VeryHigh, 50_000_000, ProbabilityCalculationLimitReason.Work)]
     public async Task HistoricalAndIndependentResourceLimitsRemainTyped(CalculationStorageTier tier, long units, ProbabilityCalculationLimitReason reason) {
@@ -82,5 +84,32 @@ public class TradeInAllureTest {
         ProbabilityCalculationLimitException error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
             CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)))!;
         Assert.That(error.Reason, Is.EqualTo(reason));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task WideReferenceStillHitsStandardStorageAndPackingReducesRetainedPayload(bool custom) {
+        SessionState session = await TradeInAllureFixture.Load();
+        DrawActivationPriority priority = custom ? new(DrawActivationMode.CustomPriority, ["benchmark-allure", "benchmark-trade-in"])
+            : DrawActivationPriority.Default;
+        PostDrawCalculation limited = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive), priority,
+            compactFrontierThreshold: int.MaxValue);
+        Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => limited.Calculate(session.Combos, session.ComboGroups))!.Reason,
+            Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
+        PostDrawCalculation reference = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.High), priority,
+            compactFrontierThreshold: int.MaxValue);
+        ExactCalculationResult expected = reference.Calculate(session.Combos, session.ComboGroups);
+        PostDrawCalculation packed = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive), priority);
+        ExactCalculationResult actual = packed.Calculate(session.Combos, session.ComboGroups);
+        Assert.Multiple(() => {
+            Assert.That(actual.Total, Is.EqualTo(expected.Total));
+            Assert.That(actual.Combos, Is.EqualTo(expected.Combos));
+            Assert.That(actual.Groups, Is.EqualTo(expected.Groups));
+            Assert.That(packed.PackedLayers, Is.GreaterThan(0));
+            Assert.That(packed.TerminalStates, Is.EqualTo(reference.TerminalStates));
+            Assert.That(packed.PeakStates, Is.EqualTo(reference.PeakStates));
+            Assert.That(packed.PeakCells, Is.LessThan(reference.PeakCells / 2));
+            Assert.That(packed.PeakConcurrentCells, Is.LessThan(reference.PeakConcurrentCells / 2));
+        });
     }
 }

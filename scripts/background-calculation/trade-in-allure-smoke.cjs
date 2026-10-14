@@ -19,7 +19,7 @@ async function main() {
         for (const fixture of fixtures) {
             assert.equal(fixture.Outcome, 'Success');
             assert.equal(fixture.Input.HandSize, 5);
-            assert.equal(fixture.Input.StorageTier, 1, 'High is the lowest successful tier');
+            assert([0, 1, 2].includes(fixture.Input.StorageTier));
             assert.equal(fixture.Input.Cards.reduce((sum, card) => sum + card.Copies, 0), 40);
             assert.equal(fixture.Input.Combos.length, 8);
             assert.equal(fixture.Input.Groups.length, 2);
@@ -37,7 +37,7 @@ async function main() {
                 if (!worker.url().includes('calculation-worker.js')) return;
                 const entry = { worker, closed: false };
                 workers.push(entry);
-                worker.on('close', () => { entry.closed = true; });
+                worker.on('close', () => { entry.closed = true; entry.closedAt = Date.now(); });
             });
             await page.addInitScript(installProbe);
             await page.addInitScript(() => {
@@ -51,7 +51,7 @@ async function main() {
                     .DrawActivationPriority.Mode === mode; } catch { return false; }
             }, fixture.Session.DrawActivationPriority.Mode);
             await page.getByRole('button', { name: 'Calculation settings', exact: true }).click();
-            await page.locator('#storageSafetyTier').selectOption('High');
+            await page.locator('#storageSafetyTier').selectOption(['Standard', 'High', 'VeryHigh'][fixture.Input.StorageTier]);
             await page.keyboard.press('Escape');
             const first = await run(page, 5);
             const repeat = await run(page, 5);
@@ -59,7 +59,7 @@ async function main() {
             assert.deepEqual(repeat.response, first.response);
             const input = JSON.parse(first.input);
             assert.equal(input.WorkUnits, 150000000, 'normal UI policy, no benchmark override');
-            assert.equal(input.StorageTier, 1);
+            assert.equal(input.StorageTier, fixture.Input.StorageTier);
             assert.deepEqual(input.Options, fixture.Input.Options);
             assert.equal(workers.length, 1, 'cold and reused-worker requests');
             const heapBytes = await workers[0].worker.evaluate(() => globalThis.getDotnetRuntime(0).Module.HEAPU8.buffer.byteLength);
@@ -72,12 +72,41 @@ async function main() {
             await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
             await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
             const uiCancelMs = Date.now() - cancelled;
+            // Restart as soon as the UI allows it, including Chromium's old-worker
+            // shutdown grace period. The old request must lose result ownership.
+            const restart = await run(page, 5);
             for (let attempt = 0; attempt < 200 && !workers[0].closed; attempt++) await page.waitForTimeout(25);
             assert.equal(workers[0].closed, true);
-            const cancelCloseMs = Date.now() - cancelled;
-            const restart = await run(page, 5);
+            const cancelCloseMs = workers[0].closedAt - cancelled;
             assert.equal(workers.length, 2);
             assert.deepEqual(restart.response, first.response, 'cancelled results cannot overwrite restart');
+            const invalidations = [];
+            for (const reason of ['hand edit', 'session replacement']) {
+                const count = await page.evaluate(() => lifecycle.requests.length);
+                await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+                await page.waitForFunction(n => lifecycle.requests.length > n, count);
+                await page.waitForTimeout(100);
+                assert.equal(await page.evaluate(() => lifecycle.requests.at(-1).response === undefined), true,
+                    'invalidate while the calculation is actually running');
+                const active = workers.at(-1);
+                if (reason === 'hand edit') {
+                    await page.locator('#handSize').fill('4');
+                    await page.locator('#handSize').press('Tab');
+                } else {
+                    await load(page, { ...fixture.Session, HandSize: 4 });
+                }
+                await page.waitForFunction(() => document.querySelector('#handSize')?.value === '4');
+                await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
+                for (let attempt = 0; attempt < 200 && !active.closed; attempt++) await page.waitForTimeout(25);
+                assert.equal(active.closed, true, reason);
+                if (reason === 'session replacement') {
+                    assert.equal(await page.locator('.probability-total-value').count(), 0,
+                        'the replaced session cannot accept the previous result');
+                }
+                const recovered = await run(page, 5);
+                assert.deepEqual(recovered.response, first.response, reason);
+                invalidations.push({ reason, workerClosed: active.closed, restartMs: recovered.responseMs });
+            }
             // Exclude session rendering/bootstrap and result rendering from the
             // heartbeat observation of synchronous work on the worker thread.
             const heartbeats = await page.evaluate(runs => runs.map(request => {
@@ -92,7 +121,7 @@ async function main() {
             assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
             evidence.push({ name: fixture.Name, browser: browser.version(), heapBytes, uiCancelMs, cancelCloseMs,
                 firstMs: first.responseMs, repeatMs: repeat.responseMs, restartMs: restart.responseMs,
-                bootstrapMs: first.bootstrapMs, heartbeats });
+                bootstrapMs: first.bootstrapMs, heartbeats, invalidations });
             console.log(JSON.stringify(evidence.at(-1)));
             await context.close();
         }

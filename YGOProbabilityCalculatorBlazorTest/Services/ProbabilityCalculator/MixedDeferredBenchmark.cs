@@ -68,6 +68,8 @@ public class MixedDeferredBenchmark {
     // outcomes becoming successful, but compares every previously successful row.
     [Test]
     public void Replay() {
+        bool wideReference = Environment.GetEnvironmentVariable("YGO_FRONTIER_WIDE_REFERENCE") == "1";
+        bool sampleMemory = Environment.GetEnvironmentVariable("YGO_FRONTIER_MEMORY") == "1";
         JsonElement[] fixtures = JsonSerializer.Deserialize<JsonElement[]>(File.ReadAllText(Environment.GetEnvironmentVariable("YGO_AUDIT_INPUT")!))!;
         List<object> output = [];
         foreach (JsonElement fixture in fixtures) {
@@ -89,10 +91,22 @@ public class MixedDeferredBenchmark {
             ExactCalculationResult? exact = null;
             ProbabilityCalculationResult? result = null;
             string outcome = "Success";
+            long sampledManagedBytes = 0;
+            long sampledResidentBytes = 0;
             for (int trial = 0; trial < 4; trial++) {
                 budget = new(new(input.WorkUnits!.Value), CalculationStoragePolicy.ForTier(input.StorageTier ?? CalculationStorageTier.Standard));
-                post = configured && cards.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0)
-                    ? new(cards, input.HandSize, budget, priority) : null;
+                post = null;
+                if (configured && cards.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0)) {
+                    post = new(
+                        cards,
+                        input.HandSize,
+                        budget,
+                        priority,
+                        compactFrontierThreshold: wideReference ? int.MaxValue : PostDrawCalculation.DefaultCompactFrontierThreshold
+                    ) {
+                        ObserveFrontier = sampleMemory ? ObserveMemory : null
+                    };
+                }
                 long allocated = GC.GetAllocatedBytesForCurrentThread();
                 Stopwatch timer = Stopwatch.StartNew();
                 exact = null;
@@ -110,6 +124,16 @@ public class MixedDeferredBenchmark {
                 times.Add(timer.Elapsed.TotalMilliseconds);
                 allocations.Add(GC.GetAllocatedBytesForCurrentThread() - allocated);
             }
+
+            void ObserveMemory() {
+                // Separate diagnostic runs only: full collection changes timings.
+                // These are whole-test-process samples at completed layer boundaries,
+                // not a per-request allocation count or a total process-memory bound.
+                sampledManagedBytes = Math.Max(sampledManagedBytes, GC.GetTotalMemory(true));
+                using Process process = Process.GetCurrentProcess();
+                sampledResidentBytes = Math.Max(sampledResidentBytes, process.WorkingSet64);
+            }
+
             string[]? fractions = exact is null ? null : new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups)
                 .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray();
             if (fixture.TryGetProperty("ExactResults", out JsonElement expected) && expected.ValueKind == JsonValueKind.Array) {
@@ -121,7 +145,10 @@ public class MixedDeferredBenchmark {
                 Assert.That(JsonSerializer.Serialize(wire), Is.EqualTo(JsonSerializer.Serialize(result)), name);
             }
             output.Add(new { Name = name, Outcome = outcome, Work = budget.Spent,
+                WideReference = wideReference, MemorySampling = sampleMemory,
+                SampledManagedBytes = sampledManagedBytes, SampledResidentBytes = sampledResidentBytes,
                 Milliseconds = times, AllocatedBytes = allocations,
+                post?.PackedLayers, post?.PeakConcurrentCells,
                 PeakStates = post?.PeakStates ?? 0, PeakCells = post?.PeakCells ?? 0,
                 AllStructuresPeakEntries = budget.PeakEntries, AllStructuresPeakCells = budget.PeakCells,
                 ReducedRows = post?.ReducedRows ?? 0, DeferredRows = post?.DeferredRows ?? 0,
