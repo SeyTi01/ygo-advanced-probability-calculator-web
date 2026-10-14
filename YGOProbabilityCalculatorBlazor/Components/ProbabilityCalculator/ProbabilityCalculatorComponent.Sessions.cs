@@ -194,7 +194,7 @@ public partial class ProbabilityCalculatorComponent : IDisposable {
 
         RestoreCategoryColorIndices(session);
         _handSize = session.HandSize;
-        _drawActivationPriority = (session.DrawActivationPriority ?? DrawActivationPriority.Default).RetainEntries(_cards);
+        _drawActivationPriority = (session.DrawActivationPriority ?? DrawActivationPriority.Default).ForWorkspace(_cards);
         _drawEffectsEnabled = session.DrawEffectsEnabled;
         _conditionalEffectsEnabled = _drawEffectsEnabled;
 

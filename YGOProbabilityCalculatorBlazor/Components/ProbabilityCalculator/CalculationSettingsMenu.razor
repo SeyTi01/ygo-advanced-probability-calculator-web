@@ -53,12 +53,6 @@
                             <li @key="entry.Id" data-priority-id="@entry.Id" tabindex="-1" @ref="_entryElements[entry.Id]">
                                 <span class="draw-priority-name">
                                     @label
-                                    @if (!entry.Active || entry.Copies == 0) {
-                                        <small class="text-body-secondary"> (inactive)</small>
-                                    }
-                                    @if (!Priority.CardIds.Contains(entry.Id)) {
-                                        <small class="text-body-secondary"> (unranked)</small>
-                                    }
                                 </span>
                                 <button type="button" class="btn btn-outline-secondary" disabled="@(i == 0)"
                                         aria-label="Move @label up" title="Move up" @onclick="() => MovePriority(index, -1)">↑</button>
@@ -69,7 +63,7 @@
                     </ol>
                     <details class="small mt-2">
                         <summary>About priority</summary>
-                        <p class="form-text mb-0">Chooses the highest legal effect after each completed resolution, including newly drawn effects. Unranked effects use encounter order after ranked entries. This is a fixed policy, not optimal play.</p>
+                        <p class="form-text mb-0">Chooses the highest legal effect after each completed resolution, including newly drawn effects.</p>
                     </details>
                 }
             </div>
@@ -152,7 +146,7 @@
         string[] ids = _entries.Select(card => card.Id).ToArray();
         _focusPriorityId = ids[index];
         (ids[index], ids[target]) = (ids[target], ids[index]);
-        // Effectless entries keep their inactive preference; new identities get no inherited rank.
+        // Effectless entries retain their preference until their effect is restored.
         string[] retained = Priority.CardIds.Where(id => !ids.Contains(id, StringComparer.Ordinal)).ToArray();
         return PriorityChanged.InvokeAsync(new DrawActivationPriority(Priority.Mode, [.. ids, .. retained]));
     }
