@@ -69,10 +69,28 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IBackgroundCalculator 
     }
 
     private async Task<IJSObjectReference> CreateOwnerAsync() {
-        await using IJSObjectReference module = await js.InvokeAsync<IJSObjectReference>("import", "./js/background-calculation.js");
-        _lifetime.Token.ThrowIfCancellationRequested();
+        IJSObjectReference? owner = null;
+        try {
+            await using (IJSObjectReference module = await js.InvokeAsync<IJSObjectReference>("import", "./js/background-calculation.js")) {
+                _lifetime.Token.ThrowIfCancellationRequested();
+                owner = await module.InvokeAsync<IJSObjectReference>("createOwner");
+            }
+        }
+        catch {
+            // If temporary module-handle cleanup fails, initialization cannot
+            // return its owner. Release that otherwise unreachable handle too.
+            if (owner is not null) {
+                try {
+                    await owner.InvokeVoidAsync("dispose");
+                }
+                finally {
+                    await owner.DisposeAsync();
+                }
+            }
+            throw;
+        }
 
-        return await module.InvokeAsync<IJSObjectReference>("createOwner");
+        return owner;
     }
 
     public ValueTask DisposeAsync() {
