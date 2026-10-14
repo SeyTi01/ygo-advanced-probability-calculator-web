@@ -238,24 +238,6 @@
     max-width: 32rem;
 }
 
-/* Section labels share the left edge; compact creation fields share the right. */
-@media (min-width: 768px) {
-    .calculator-workspace ::deep .section-add-heading {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-    }
-
-    .calculator-workspace ::deep .section-add-heading > :is(h4, h5) {
-        margin-bottom: 0;
-    }
-
-    .calculator-workspace ::deep .section-add-heading > .editor-add-row {
-        flex: 1 1 32rem;
-    }
-}
-
 .calculator-workspace ::deep .entry-editor-header {
     display: flex;
     align-items: center;
@@ -467,7 +449,6 @@
 .calculator-workspace ::deep .workspace-management { margin: -.25rem 0 1.5rem; padding-block: .5rem; border-block: 1px solid var(--bs-border-color); }
 .calculator-workspace ::deep .workspace-management > summary { cursor: pointer; padding: .5rem 0; font-weight: 600; }
 .calculator-workspace ::deep .workspace-management > summary span { font-weight: normal; font-size: .875rem; }
-.calculator-workspace ::deep .workspace-management h4 { font-size: 1rem; }
 .calculator-workspace ::deep .workspace-management > .mb-4 { margin: .5rem 0 !important; }
 @media (max-width: 374px) {
     .session-action { padding-inline: .4rem; }

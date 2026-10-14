@@ -2,24 +2,21 @@
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
 <div class="mb-4">
-    <div class="section-add-heading">
-        <h4>Categories</h4>
-        <div class="editor-add-row">
-            <div class="editor-select-field">
-                <input @bind="_newCategoryName"
-                       @bind:event="oninput"
-                       @onkeyup="@(async e => {
-                                     if (e.Key == "Enter") {
-                                         await AddCategoryBase();
-                                     }
-                                 })"
-                       class="form-control"
-                       aria-label="Category name"
-                       placeholder="Category name"/>
-            </div>
-            <div class="editor-add-action">
-                <button class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(_newCategoryName)" @onclick="AddCategoryBase">Add</button>
-            </div>
+    <div class="editor-add-row">
+        <div class="editor-select-field">
+            <input @bind="_newCategoryName"
+                   @bind:event="oninput"
+                   @onkeyup="@(async e => {
+                                 if (e.Key == "Enter") {
+                                     await AddCategoryBase();
+                                 }
+                             })"
+                   class="form-control"
+                   aria-label="Category name"
+                   placeholder="Category name"/>
+        </div>
+        <div class="editor-add-action">
+            <button class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(_newCategoryName)" @onclick="AddCategoryBase">Add</button>
         </div>
     </div>
 

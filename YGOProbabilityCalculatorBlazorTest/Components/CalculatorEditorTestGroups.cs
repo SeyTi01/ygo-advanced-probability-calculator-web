@@ -71,6 +71,33 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
     }
 
     [Test]
+    public void ManagementAccordionsKeepSummaryTitlesAndLeadWithCreationControls() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
+        IElement categoryManagement = cut.Find("details.category-management");
+        IElement groupManagement = cut.Find("details.combo-group-management");
+        IElement categoryContent = categoryManagement.QuerySelector(".mb-4")!;
+        IElement groupContent = groupManagement.QuerySelector(".mb-4")!;
+
+        Assert.Multiple(() => {
+            Assert.That(categoryManagement.QuerySelector("summary")!.TextContent.Trim(), Does.StartWith("Categories"));
+            Assert.That(categoryManagement.QuerySelector("h4, h5"), Is.Null);
+            Assert.That(categoryContent.Children.First().ClassList, Does.Contain("editor-add-row"));
+            Assert.That(categoryManagement.QuerySelector(".editor-add-row input[aria-label='Category name']"), Is.Not.Null);
+            Assert.That(categoryManagement.QuerySelector(".editor-add-row button")!.HasAttribute("disabled"), Is.True);
+            Assert.That(categoryManagement.QuerySelectorAll(".category-chip"), Has.Length.EqualTo(2));
+            Assert.That(categoryManagement.HasAttribute("open"), Is.False);
+
+            Assert.That(groupManagement.QuerySelector("summary")!.TextContent.Trim(), Does.StartWith("Combo groups"));
+            Assert.That(groupManagement.QuerySelector("h4, h5"), Is.Null);
+            Assert.That(groupContent.Children.First().ClassList, Does.Contain("editor-add-row"));
+            Assert.That(groupManagement.QuerySelector(".editor-add-row input[aria-label='New combo group name']"), Is.Not.Null);
+            Assert.That(groupManagement.QuerySelector(".editor-add-row button")!.HasAttribute("disabled"), Is.True);
+            Assert.That(groupManagement.HasAttribute("open"), Is.False);
+            Assert.That(cut.FindComponent<ComboListEditor>().Find("h4").TextContent.Trim(), Is.EqualTo("Combos"));
+        });
+    }
+
+    [Test]
     public void ComboGroupsUseCategoryStyleInlineEditingAndKeepAssignmentsAndComboDrafts() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         IRenderedComponent<ComboEditor> first = cut.FindComponents<ComboEditor>()[0];
