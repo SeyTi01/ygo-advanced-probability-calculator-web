@@ -7,7 +7,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 // effects in batches. No production scenario, mask, Hall or fraction helpers.
 internal static class DrawSequenceOracle {
     // Physical labels distinguish copies; encounter order breaks ties within an ID.
-    internal static List<Card>? Resolve(IReadOnlyList<Card> order, int handSize, IReadOnlyList<Combo> combos) {
+    internal static List<Card>? Resolve(IReadOnlyList<Card> order, int handSize, IReadOnlyList<Combo> combos, IReadOnlyList<string>? priorityIds = null) {
         List<int> hand = Enumerable.Range(0, handSize).ToList();
         List<int> pending = hand.Where(index => order[index].DrawCount is not null).ToList();
         HashSet<string> used = new(StringComparer.Ordinal);
@@ -21,7 +21,12 @@ internal static class DrawSequenceOracle {
                 || (order[index].DrawOncePerTurn && used.Contains(order[index].Id))
                 || order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount + order[index].PostDrawDeckMillCount > order.Count - next);
             // Scan physical candidates in encounter order; retain deferred positions.
-            int source = pending.FirstOrDefault(index => order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount + order[index].PostDrawDeckMillCount <= order.Count - next && Payable(index), -1);
+            // Independent physical scheduling: visit ranked identities in user order,
+            // then all remaining physical candidates in their original encounter order.
+            IEnumerable<int> candidates = priorityIds is null ? pending
+                : priorityIds.SelectMany(id => pending.Where(index => order[index].Id == id))
+                    .Concat(pending.Where(index => !priorityIds.Contains(order[index].Id)));
+            int source = candidates.FirstOrDefault(index => order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount + order[index].PostDrawDeckMillCount <= order.Count - next && Payable(index), -1);
             if (source < 0) {
                 break;
             }
@@ -142,7 +147,7 @@ internal static class DrawSequenceOracle {
         Dictionary<string, BigInteger> Hands
     );
 
-    internal static Counts Enumerate(List<Card> deck, int handSize, IReadOnlyList<Combo> combos, IReadOnlyList<ComboGroup> groups, bool collapseIdenticalCopies = false) {
+    internal static Counts Enumerate(List<Card> deck, int handSize, IReadOnlyList<Combo> combos, IReadOnlyList<ComboGroup> groups, bool collapseIdenticalCopies = false, IReadOnlyList<string>? priorityIds = null) {
         Card[] physical = deck.SelectMany(card => Enumerable.Repeat(card, card.Copies)).ToArray();
         int[] order = Enumerable.Range(0, physical.Length).ToArray();
         Card[] effects = deck.Where(card => card.DrawCount is not null && card.Copies > 0).ToArray();
@@ -185,7 +190,7 @@ internal static class DrawSequenceOracle {
 
         void Evaluate() {
             total += orderMultiplicity;
-            List<Card>? hand = Resolve(order.Select(index => physical[index]).ToArray(), handSize, combos);
+            List<Card>? hand = Resolve(order.Select(index => physical[index]).ToArray(), handSize, combos, priorityIds);
             if (hand is null) {
                 failed += orderMultiplicity;
                 return;

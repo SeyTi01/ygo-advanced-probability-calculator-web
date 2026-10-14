@@ -11,7 +11,12 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 // uniform in that pool. Unobserved suffixes contribute (N - depth)!, including
 // hidden positions, so all outcomes share N! even when physical capacity is zero.
 // No physical permutations are enumerated and no probability mass is rounded.
-internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize, WorkBudget budget) {
+internal sealed partial class PostDrawCalculation(
+    List<Card> deck,
+    int handSize,
+    WorkBudget budget,
+    DrawActivationPriority? priority = null
+) {
     internal int TerminalStates { get; private set; }
     internal int PeakStates { get; private set; }
     internal long PeakCells { get; private set; }
@@ -46,6 +51,12 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
         List<Card> cards = ReduceDeck(combos);
         int n = cards.Count;
+        bool customPriority = priority?.Mode == DrawActivationMode.CustomPriority;
+        if (customPriority) {
+            budget.Spend(n + (long)priority!.CardIds.Count);
+            budget.CheckStorage(n, n);
+        }
+        int[] ranks = customPriority ? cards.Select(card => priority!.Rank(card.Id)).ToArray() : [];
         ReducedRows = n;
         int[] optSlots = new int[n];
         Array.Fill(optSlots, -1);
@@ -92,7 +103,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
 
         int[] effects = Enumerable.Range(0, n).Where(index => cards[index].DrawCount is not null).ToArray();
         int[] filler = Enumerable.Range(0, n).Where(index => !relevant[index] && cards[index].DrawCount is null).ToArray();
-        // A single homogeneous FIFO has no order dimension. For a hand-neutral,
+        // A single effect identity has no order dimension under either priority policy. For a hand-neutral,
         // irrelevant, non-OPT effect, relevant ordinary cards always retain the
         // best handSize copies seen so far. Keep this optimization only when all
         // possible batches fit; exhaustion can change both the final hand size and
@@ -260,7 +271,10 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                 }
                 values[phase + 1] = 0;
 
-                bool activated = false;
+                int selectedCandidate = -1;
+                int selectedRank = int.MaxValue;
+                // Keep the physical FIFO intact, including for cost/removal choices. Custom
+                // priority selects only among legal candidates; equal/unlisted ranks keep FIFO.
                 // Deferred candidates retain FIFO position. Restart at the oldest
                 // survivor after an activation's batch/removal. A pass with no
                 // activation terminates: nothing changed that could help a retry.
@@ -281,7 +295,18 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                         candidate++;
                         continue;
                     }
-                    values = RemoveCandidate(values, candidate);
+                    if (selectedCandidate < 0 || ranks[source] < selectedRank) {
+                        selectedCandidate = candidate;
+                        if (!customPriority) {
+                            break;
+                        }
+                        selectedRank = ranks[source];
+                    }
+                    candidate++;
+                }
+                if (selectedCandidate >= 0) {
+                    int source = values[selectedCandidate];
+                    values = RemoveCandidate(values, selectedCandidate);
                     // Check the whole cost before mutating activation state, and
                     // reserve this source copy while selecting/removing material.
                     for (int cost = 0; cost < cards[source].PreDrawRemovalCount; cost++) {
@@ -302,10 +327,8 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     }
                     values[phase] = cards[source].DrawCount!.Value;
                     values[phase + 1] = cards[source].PostDrawDiscardCount > 0 || cards[source].PostDrawDeckMillCount > 0 ? source + 1 : 0;
-                    activated = true;
-                    break;
                 }
-                if (!activated) {
+                else {
                     if (values.Length > queueStart) {
                         // No pending draw/removal can change this hand. Retain the
                         // cards, but canonicalize the terminal queue so the next
@@ -510,6 +533,7 @@ internal sealed partial class PostDrawCalculation(List<Card> deck, int handSize,
                     previousEligibility = eligibility;
                 }
             }
+            // Effect entries stay separate, preserving OPT identity AND custom rank.
             reduced.AddRange(group.Where(entry => entry.Card.DrawCount is not null).Select(entry => entry.Card)
                 .OrderBy(card => card.Id, StringComparer.Ordinal));
         }

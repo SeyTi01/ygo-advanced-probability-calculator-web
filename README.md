@@ -67,6 +67,10 @@ Open the gear **Calculation settings** menu to choose how these settings apply:
 - **Opening hand only:** Resolve no draws; configured draw cards still occupy initial-hand slots.
 - **Simplified draws (hypothetical):** Apply draw counts and once-per-turn limits while ignoring both pre-draw costs and post-draw removals. Cost-dependent cards may draw unconditionally, producing misleading, often optimistic deck-building probabilities.
 
+**Draw activation priority** in the same settings menu defaults to **Encounter order**. Choose **Custom priority** to rank workspace entries, highest first, using the up/down buttons. The highest-ranked legal effect activates after the current draw batch, mill and mandatory removal finish. Newly drawn effects can then overtake earlier waiting effects; a blocked effect waits while another legal effect resolves. Unranked effects follow ranked entries in encounter order. Copies share their entry's priority and existing once-per-turn allowance.
+
+Priority is one fixed policy for all combos and groups, not an optimal-play search. It does not change the shuffle, deck order or cost/removal choices. Rankings are saved with sessions and share links. Renames, visual sorting and inactive entries retain their preferences; duplicated/new entries start unranked, and replacing/importing a deck clears the old ranking. Switching back to Encounter order ignores the saved ranking.
+
 **Advanced → Banish from deck** sets a hidden top-deck cost before drawing. The built-in Pot of Desires simulation banishes 10 then draws 2, requiring at least 12 cards left in deck. Only physical deck size is tracked: banished identities and remaining combo resources are not simulated. Simplified draws ignores this cost.
 
 Solar Recharge discards one card that is both a Lightsworn and a Monster, draws 2, then sends the top 2 deck cards to the GY. It requires at least 4 cards left in deck. Milling reduces deck capacity before subsequent draws; milled identities and GY effects are outside the model. Simplified draws ignores both its discard and milling. Custom edits preserve the saved milling operation; choosing None removes the entire draw effect, and Restore built-in simulation restores the complete plan.
@@ -113,7 +117,7 @@ The same principle extends to larger sets of combos.
 
 With draw-only effects, an exact count-state dynamic program produces weighted scenarios. Each scenario fixes retained duplicate effect cards and counts the remaining ordinary cards with the same Hall constraints. Scenario probabilities are combined as exact fractions before converting the final results for display.
 
-Pre-draw costs and post-draw removals use a separate bounded count-state resolver that tracks hand composition, remaining multiplicities, FIFO candidates, and used once-per-turn entries; equivalent ordinary entries and resolution states are merged. Exact integer weights count labeled draw prefixes and their unseen suffixes. Final hands are evaluated against the same compiled Hall constraints, and results are converted for display only after exact aggregation.
+Pre-draw costs and post-draw removals use a separate bounded count-state resolver that tracks hand composition, remaining multiplicities, encounter-ordered candidates with an optional activation priority, and used once-per-turn entries; equivalent ordinary entries and resolution states are merged. Exact integer weights count labeled draw prefixes and their unseen suffixes. Final hands are evaluated against the same compiled Hall constraints, and results are converted for display only after exact aggregation.
 
 Cards that behave identically for the remaining conditions are grouped together, and exact combinatorial counts are used to determine how many opening hands succeed without checking every physical hand one by one.
 
