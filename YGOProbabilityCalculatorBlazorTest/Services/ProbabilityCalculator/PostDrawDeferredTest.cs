@@ -66,14 +66,21 @@ public class PostDrawDeferredTest {
     public void DistinctSameNameEntriesAndUnsafeShapesRetainOrderedResolution() {
         List<Card> original = Deck(1);
         Card source = original[^1];
-        foreach (Card changed in new[] { source.WithPreDrawRemovalCount(1), source.WithPreDrawDeckRemovalCount(1),
-            source.WithPostDrawDeckMillCount(1), source.WithEffect(source.EffectPlan with { FirstActivationOnly = true }, source.EffectProfile) }) {
+        foreach (Card changed in new[] { source.WithPreDrawRemovalCount(1),
+            source.WithEffect(source.EffectPlan with { FirstActivationOnly = true }, source.EffectProfile) }) {
             List<Card> deck = [.. original.Take(original.Count - 1), changed];
             AssertOracle(deck, 2, Combos(), deferred: false);
         }
         original.Add(new([], name: source.Name, id: "source-two", drawCount: 2, drawOncePerTurn: true,
             postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(Dark)));
         AssertOracle(original, 2, Combos(), deferred: false);
+    }
+
+    [TestCase(1, 0), TestCase(0, 1), TestCase(1, 1)]
+    public void HiddenOperationsPreserveFilteredPostRemovalExchangeability(int hiddenCost, int mill) {
+        List<Card> deck = Deck(2);
+        deck[^1] = deck[^1].WithPreDrawDeckRemovalCount(hiddenCost).WithPostDrawDeckMillCount(mill);
+        AssertOracle(deck, 2, Combos());
     }
 
     [Test]
