@@ -26,6 +26,8 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
         await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
         Assert.That(cut.FindAll(".draw-priority-list li"), Has.Count.EqualTo(2));
+        Assert.That(cut.FindComponent<SessionRecovery>().Instance.Session.DrawActivationPriority.CardIds, Is.EqualTo(Rows(cut)));
+        Assert.That(cut.Find("#calculationSettingsPanel").TextContent, Does.Not.Contain("unranked").And.Not.Contain("optimal play"));
         Assert.That(Button(cut, "Move Duplicate name (entry 1) up").HasAttribute("disabled"), Is.True);
         Assert.That(Button(cut, "Move Duplicate name (entry 2) down").HasAttribute("disabled"), Is.True);
         int focusCalls = context.JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count;
@@ -95,10 +97,10 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
         Card original = list.Cards.Single(card => card.Id == "b");
         await cut.InvokeAsync(() => list.OnReplaceCard.InvokeAsync((0, original.WithName("Renamed").WithActive(false))));
         Assert.That(Rows(cut), Is.EqualTo(new[] { "b", "a" }));
-        Assert.That(cut.Find("[data-priority-id='b']").TextContent, Does.Contain("inactive").And.Contain("Renamed"));
+        Assert.That(cut.Find("[data-priority-id='b']").TextContent, Does.Contain("Renamed"));
         await cut.InvokeAsync(() => list.OnDuplicateCard.InvokeAsync(0));
         Assert.That(Rows(cut).Take(2), Is.EqualTo(new[] { "b", "a" }));
-        Assert.That(cut.FindAll(".draw-priority-list li").Last().TextContent, Does.Contain("unranked"));
+        Assert.That(cut.FindComponent<SessionRecovery>().Instance.Session.DrawActivationPriority.CardIds, Is.EqualTo(Rows(cut)));
         await cut.InvokeAsync(() => list.OnReplaceCard.InvokeAsync((0, original.WithDrawCount(null))));
         Assert.That(Rows(cut), Does.Not.Contain("b"));
         await cut.InvokeAsync(() => list.OnReplaceCard.InvokeAsync((0, original)));

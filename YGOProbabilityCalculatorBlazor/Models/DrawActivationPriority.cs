@@ -33,9 +33,18 @@ public sealed class DrawActivationPriority {
     public int Rank(string cardId) => Mode == DrawActivationMode.CustomPriority
         ? _ranks.GetValueOrDefault(cardId, int.MaxValue) : int.MaxValue;
 
-    // Retain inactive/effectless entries, but never transfer a removed identity's preference.
-    public DrawActivationPriority RetainEntries(IEnumerable<Card> cards) {
-        HashSet<string> existing = cards.Select(card => card.Id).ToHashSet(StringComparer.Ordinal);
-        return CardIds.All(existing.Contains) ? this : new(Mode, CardIds.Where(existing.Contains).ToArray());
+    // Preserve existing preferences and append new effect identities in a stable order.
+    // Visual deck sorting must not change the custom activation order.
+    public DrawActivationPriority ForWorkspace(IEnumerable<Card> cards) {
+        Card[] entries = cards.ToArray();
+        HashSet<string> existing = entries.Select(card => card.Id).ToHashSet(StringComparer.Ordinal);
+        List<string> ids = CardIds.Where(existing.Contains).ToList();
+        if (Mode == DrawActivationMode.CustomPriority) {
+            HashSet<string> ranked = ids.ToHashSet(StringComparer.Ordinal);
+            ids.AddRange(entries.Where(card => card.DrawCount is not null && ranked.Add(card.Id))
+                .Select(card => card.Id).Order(StringComparer.Ordinal));
+        }
+
+        return CardIds.SequenceEqual(ids) ? this : new(Mode, ids);
     }
 }

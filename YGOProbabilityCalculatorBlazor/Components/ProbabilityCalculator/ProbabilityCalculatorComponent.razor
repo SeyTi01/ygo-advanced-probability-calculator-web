@@ -983,7 +983,7 @@
     }
 
     private void OnDrawActivationPriorityChanged(DrawActivationPriority priority) {
-        _drawActivationPriority = priority.RetainEntries(_cards);
+        _drawActivationPriority = priority.ForWorkspace(_cards);
         InvalidateCalculation();
     }
 
@@ -999,7 +999,7 @@
     private void OnCategoriesChanged() => InvalidateCalculation();
 
     private void InvalidateCalculation(bool clearPreviousResult = false, bool reassess = true) {
-        _drawActivationPriority = _drawActivationPriority.RetainEntries(_cards);
+        _drawActivationPriority = _drawActivationPriority.ForWorkspace(_cards);
         _deferNameEditRendering = false;
         _assessmentDirty |= reassess;
         ObserveWorkspaceEdit();

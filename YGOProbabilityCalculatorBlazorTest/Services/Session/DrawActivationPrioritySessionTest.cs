@@ -68,15 +68,15 @@ public class DrawActivationPrioritySessionTest {
     }
 
     [Test]
-    public void InactiveAndEffectlessPreferencesSurviveButNewIdentitiesNeverInheritRanks() {
+    public void InactiveAndEffectlessPreferencesSurviveAndNewIdentitiesAppend() {
         DrawActivationPriority priority = new(DrawActivationMode.CustomPriority, ["b", "a"]);
         Card a = new([], id: "a", drawCount: 1);
         Card b = new([], id: "b", drawCount: 2);
         Card duplicate = a.Duplicate();
-        DrawActivationPriority retained = priority.RetainEntries([b.WithActive(false).WithCopies(0), a.WithName("Renamed").WithDrawCount(null), duplicate]);
-        Assert.That(retained.CardIds, Is.EqualTo(priority.CardIds));
-        Assert.That(retained.Rank(duplicate.Id), Is.EqualTo(int.MaxValue));
-        Assert.That(retained.RetainEntries([a, duplicate]).CardIds, Is.EqualTo(new[] { "a" }));
+        DrawActivationPriority retained = priority.ForWorkspace([b.WithActive(false).WithCopies(0), a.WithName("Renamed").WithDrawCount(null), duplicate]);
+        Assert.That(retained.CardIds, Is.EqualTo(new[] { "b", "a", duplicate.Id }));
+        Assert.That(retained.Rank(duplicate.Id), Is.EqualTo(2));
+        Assert.That(retained.ForWorkspace([a, duplicate]).CardIds, Is.EqualTo(new[] { "a", duplicate.Id }));
     }
 
     [Test]
