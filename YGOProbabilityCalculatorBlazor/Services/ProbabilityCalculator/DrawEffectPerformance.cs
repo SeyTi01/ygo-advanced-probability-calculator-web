@@ -10,8 +10,9 @@ public static class DrawEffectPerformance {
             return false;
         }
 
-        // Every hand cost excludes the current exchangeable specialization.
-        if (plan.HandCost > 0 || plan.HasActivationRestrictions) {
+        // OPT can make activation restrictions redundant in a single-entry workspace.
+        // Multiple entries and deck capacity remain workspace assessment facts.
+        if (plan.HandCost > 0 || (plan.HasActivationRestrictions && !plan.OncePerTurn)) {
             return true;
         }
 

@@ -130,9 +130,15 @@ internal static class DrawEffectResolver {
             return false;
         }
 
-        // Timing and draw locks invalidate the collective-contribution proof, even
-        // for one identity: a copy drawn by another copy need not activate.
-        if (conditionsEnabled && effects.Any(effect => effect.EffectPlan.HasActivationRestrictions)) {
+        // One OPT entry can only start drawing from the opening hand. Its own
+        // first-activation requirement and later-draw lock add no restriction:
+        // after that activation, OPT already prevents every remaining copy.
+        // Distinct entries have separate OPT allowances, so this proof cannot
+        // combine entries merely because their definitions or card IDs match.
+        bool restrictionsAreRedundant = effects.Count == 1 && effects[0].DrawOncePerTurn
+            && !effects[0].EffectPlan.RequiresHandResolution;
+        if (conditionsEnabled && !restrictionsAreRedundant
+            && effects.Any(effect => effect.EffectPlan.HasActivationRestrictions)) {
             return false;
         }
 

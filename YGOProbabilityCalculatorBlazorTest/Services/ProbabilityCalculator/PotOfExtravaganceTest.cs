@@ -35,14 +35,14 @@ public class PotOfExtravaganceTest {
         Assert.That(DrawSequenceOracle.Resolve([pot, reward], 1, [])!.Single(), Is.SameAs(pot), "An unavailable Draw 2 stays in hand");
     }
 
-    [TestCase(1), TestCase(2)]
+    [TestCase(1), TestCase(2), TestCase(3)]
     public void PotCopiesAloneAndMixedEffectsMatchExactPhysicalOracle(int copies) {
         foreach (bool mixed in new[] { false, true }) {
             List<Card> deck = [Pot(copies), new([A, B], id: "target"), new([A], id: "material"), new([], 2, id: "f")];
             if (mixed) {
                 deck.Add(new([B], id: "draw", drawCount: 1, drawOncePerTurn: false));
             }
-            foreach (int hand in new[] { 1, 2, 3 }) {
+            foreach (int hand in new[] { 1, 2, 3, deck.Sum(card => card.Copies) - 1, deck.Sum(card => card.Copies) }.Distinct()) {
                 foreach (DrawActivationPriority priority in new[] { DrawActivationPriority.Default, Custom("pot", "draw"), Custom("draw", "pot") }) {
                     AssertParity(deck, hand, priority);
                 }
@@ -101,7 +101,7 @@ public class PotOfExtravaganceTest {
         Assert.That(DrawExecutionAssessment.Assess(deck, [], 2, true, configured).Path,
             Is.EqualTo(configured ? DrawExecutionPath.OrderedFrontier : DrawExecutionPath.DrawCountState));
         Assert.That(DrawEffectResolver.CanUseCountStateFastPath(deck.Where(card => card.DrawCount is not null).ToArray(), 7, 2, configured), Is.EqualTo(!configured));
-        Assert.That(DrawEffectPerformance.RequiresDetailedHandState(Pot().EffectPlan, EffectExecutionModel.DrawSequenceV1), Is.True);
+        Assert.That(DrawEffectPerformance.RequiresDetailedHandState(Pot().EffectPlan, EffectExecutionModel.DrawSequenceV1), Is.False);
         List<Combo> combos = [new([], cards: [new("pot", 1, 2)])];
         CalculationSnapshot opening = CalculationSnapshot.Capture(deck, combos, 2, [], drawEffectsEnabled: false);
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(opening.Json)).TotalProbability,
@@ -144,6 +144,59 @@ public class PotOfExtravaganceTest {
         foreach (string extra in new[] { $"\"{field}\":1", $"\"{field}\":true,\"{field.ToLowerInvariant()}\":false", $"\"{field}\":true" }) {
             Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Card>("{" + card + "," + extra + "}", options));
         }
+    }
+
+    [Test]
+    public void SingleEntryProofRejectsIndependentAllowancesHandOperationsAndExhaustion() {
+        Card pot = Pot(3);
+        Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot], 40, 5), Is.True);
+        Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot], 6, 5), Is.False);
+        Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot, pot.Duplicate()], 40, 5), Is.False);
+        Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot, new([], drawCount: 1)], 40, 5), Is.False);
+        foreach (DrawEffectPlan plan in new[] { pot.EffectPlan with { OncePerTurn = false },
+            pot.EffectPlan with { HandCost = 1 }, pot.EffectPlan with { RemovalCount = 1 } }) {
+            Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot.WithEffect(plan, pot.EffectProfile)], 40, 5), Is.False);
+        }
+        List<Card> zeroCopy = [pot, new([], 0, id: "zero", drawCount: 1), new([], 37, id: "f")];
+        List<Card> inactive = [pot, new([], active: false, id: "inactive", drawCount: 1), new([], 37, id: "f")];
+        foreach (List<Card> cards in new[] { zeroCopy, inactive }) {
+            Assert.That(DrawExecutionAssessment.Assess(cards, [], 5, true, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, [new([], cards: [new(pot.Id, 1, 3)])], 5, [], options: new(true));
+            Assert.DoesNotThrow(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
+        }
+    }
+
+    [TestCase(false), TestCase(true)]
+    public async Task ExampleFuwalosReplacementFitsStandardStorageAndMatchesOptDrawTwo(bool customPriority) {
+        SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        SessionState session = await codec.LoadSessionAsync(File.ReadAllText(Path.Combine(
+            TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json")));
+        Card original = session.Cards.Single(card => card.Name == "Mulcharmy Fuwalos");
+        Card pot = Registry.RestoreBuiltIn(new([], original.Copies, id: original.Id, externalCardId: 49238328));
+        session.Cards[session.Cards.IndexOf(original)] = pot;
+        List<Card> deck = CategoryMembership.Materialize(session.Cards, session.Categories).Where(card => card.Active).ToList();
+        List<Combo> combos = session.Combos.Where(combo => combo.Active).ToList();
+        DrawActivationPriority priority = customPriority ? Custom(pot.Id) : DrawActivationPriority.Default;
+        Assert.That(pot.Copies, Is.EqualTo(3));
+        Assert.That(deck.Sum(card => card.Copies), Is.EqualTo(40));
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
+        Stopwatch watch = Stopwatch.StartNew();
+        ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, budget, true, priority).Calculate(combos, session.ComboGroups);
+        TestContext.Out.WriteLine($"example priority={priority.Mode}, ms={watch.Elapsed.TotalMilliseconds:F1}, work={budget.Spent}, total={actual.Total.ToDouble(budget):R}");
+        List<Card> generic = deck.Select(card => card.Id == pot.Id ? card.WithDrawCount(2) : card).ToList();
+        ExactCalculationResult expected = new DrawEffectCalculation(generic, 5, new(CalculationWorkPolicy.Interactive), true, priority).Calculate(combos, session.ComboGroups);
+        Assert.That(actual.Total, Is.EqualTo(expected.Total));
+        Assert.That(actual.Combos, Is.EqualTo(expected.Combos));
+        Assert.That(actual.Groups, Is.EqualTo(expected.Groups));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 5, true, true),
+            Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DrawCountState, false)));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, combos, 5, session.ComboGroups,
+            storagePolicy: CalculationStoragePolicy.Standard, options: new(true, priority), categoryDefinitions: session.Categories);
+        ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
+        Assert.That(worker.TotalProbability, Is.EqualTo(actual.Total.ToDouble(budget)).Within(1e-12));
+        Assert.That(worker.ComboProbabilities.Select(row => row.Probability),
+            Is.EqualTo(actual.Combos.Select(row => row.ToDouble(budget))));
+        Assert.That(pot.EffectPlan.HasActivationRestrictions, Is.True, "Fast-path proof must not rewrite saved semantics");
     }
 
     [Test, Explicit("40-card/5-hand repeatable mixed-effect benchmark")]
