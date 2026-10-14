@@ -129,7 +129,6 @@
 }
 
 .session-controls {
-    position: relative;
     display: flex;
     flex-wrap: wrap;
     align-items: start;
@@ -141,10 +140,10 @@
 }
 
 .session-loading-slot {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    padding-top: .1rem;
+    flex: 1 0 100%;
+    min-height: 1.25rem;
+    display: flex;
+    align-items: center;
     pointer-events: none;
 }
 

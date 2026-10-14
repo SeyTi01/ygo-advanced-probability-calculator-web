@@ -122,6 +122,14 @@ const { chromium } = require('playwright');
                 assert.equal(await page.locator('html').getAttribute('data-bs-theme'), colorScheme);
                 const before = await geometry(page);
                 assert(before.overflow <= 0);
+                const spacing = await page.locator('.session-loading-content').evaluate(content => {
+                    const box = content.getBoundingClientRect();
+                    const controls = content.closest('.session-controls').getBoundingClientRect();
+                    const slot = content.closest('.session-loading-slot').getBoundingClientRect();
+                    const previous = content.closest('.session-loading-slot').previousElementSibling.getBoundingClientRect();
+                    return { above: box.top - previous.bottom, below: controls.bottom - box.bottom, insideSlot: box.top >= slot.top && box.bottom <= slot.bottom };
+                });
+                assert(spacing.above >= 8 && spacing.below >= 8 && spacing.insideSlot, `Loader needs breathing room above the separator: ${JSON.stringify(spacing)}`);
                 if (entry === 'json') assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Save Session');
                 await page.screenshot({ path: path.join(evidence, `${entry}-${width}-${colorScheme}-pending.png`) });
                 catalogHold.release();
@@ -138,7 +146,7 @@ const { chromium } = require('playwright');
                 await idle(page);
                 assert.equal(await page.locator('.card-editor').count(), 25);
                 assert.equal(await page.locator('#blazor-error-ui').isVisible(), false, JSON.stringify(errors));
-                results.push({ entry, width, colorScheme, reducedMotion, before, after, heldStatusPainted: true });
+                results.push({ entry, width, colorScheme, reducedMotion, before, after, spacing, heldStatusPainted: true });
                 await context.close();
             }
         }
