@@ -30,8 +30,8 @@ public class CalculatorEditorHiddenDeckRemovalTest : CalculatorEditorTestBase {
         Assert.That((await codec.LoadSessionAsync(SavedSessionJson())).Cards[0].PreDrawDeckRemovalCount, Is.EqualTo(10));
         string recovery = (string)context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!;
         Assert.That((await codec.LoadSessionAsync(recovery)).Cards[0].PreDrawDeckRemovalCount, Is.EqualTo(10));
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
-        Assert.That(editor.Find("#cardDrawModeHelp0").TextContent, Does.Contain("costs and removals ignored"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
+        Assert.That(editor.Find("#cardDrawModeHelp0").TextContent, Does.Contain("saved simulation is off"));
         foreach (string invalid in new[] { "-1", "61", "wrong" }) {
             await editor.Find("#cardDeckCost0").ChangeAsync(new() { Value = invalid });
             await SaveSimulation(editor);

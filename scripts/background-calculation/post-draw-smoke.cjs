@@ -73,7 +73,7 @@ async function main() {
         assert.equal(await model.evaluate(element => element === document.activeElement), true);
 
         await page.keyboard.press('Tab');
-        assert.equal(await storage.evaluate(element => element === document.activeElement), true);
+        assert.equal(await page.locator('#drawActivationPriority').evaluate(element => element === document.activeElement), true);
         await closeSettings();
         await settings();
         assert.equal(await model.inputValue(), 'Configured');
@@ -91,6 +91,12 @@ async function main() {
         async function expand(index) {
             const button = page.locator('.card-editor .accordion-button').nth(index);
             if (await button.getAttribute('aria-expanded') !== 'true') await button.click();
+            const editor = page.locator('.card-editor').nth(index);
+            if (!await editor.locator('.simulation-editor').count()) await editor.locator('.simulation-edit').click();
+        }
+        async function saveSimulation(index) {
+            await page.locator('.card-editor').nth(index).locator('.simulation-save').click();
+            await expand(index);
         }
         async function saved() {
             const download = page.waitForEvent('download');
@@ -102,6 +108,7 @@ async function main() {
         await expand(0);
         await page.locator('#cardName0').fill('Dark World Dealings');
         await page.getByRole('option', { name: 'Dark World Dealings', exact: true }).click();
+        await expand(0);
         assert.equal(await page.locator('#cardDraw0').inputValue(), '1');
         assert.equal(await page.locator('#cardDiscard0').inputValue(), '1');
         assert.equal(await page.locator('#cardDrawOnce0').isChecked(), false);
@@ -110,15 +117,19 @@ async function main() {
         await expand(0);
         await page.locator('#cardName0').fill('Graceful Charity');
         await page.getByRole('option', { name: 'Graceful Charity', exact: true }).click();
+        await expand(0);
         assert.equal(await page.locator('#cardDraw0').inputValue(), '3');
         assert.equal(await page.locator('#cardDiscard0').inputValue(), '2');
         assert.equal(await page.locator('#cardDrawOnce0').isChecked(), false);
         assert.match(await page.locator('.card-editor .badge').first().innerText(), /Draw 3 · Remove 2/);
         await page.locator('#cardDiscard0').selectOption('1');
+        await saveSimulation(0);
         assert.equal((await saved()).Cards[0].PostDrawDiscardCount, 1);
         await page.locator('#cardDraw0').selectOption('');
+        await saveSimulation(0);
         assert.equal(await page.locator('#cardDiscard0').count(), 0);
         await page.locator('#cardDraw0').selectOption('3');
+        await saveSimulation(0);
         assert.equal(await page.locator('#cardDiscard0').inputValue(), '0');
 
         await page.locator('#fileInput').setInputFiles({ name: 'post-draw.ydk', mimeType: 'text/plain',
@@ -142,7 +153,7 @@ async function main() {
                 assert.equal(await page.getByRole('heading', { name: 'Draw simulation', exact: true }).isVisible(), true);
                 assert.equal(await model.isVisible(), true);
                 const selected = await model.inputValue();
-                await model.selectOption('Simplified');
+                await model.selectOption('OpeningHand');
                 await model.selectOption(selected);
                 await model.focus();
                 assert.equal(await model.evaluate(element => element === document.activeElement), true);
@@ -168,15 +179,16 @@ async function main() {
             return page.locator('.probability-total-value').innerText();
         }
         await settings();
-        await model.selectOption('Simplified');
+        await model.selectOption('OpeningHand');
         await closeSettings();
-        assert.match(await result(), /100[.,]00/);
+        assert.match(await result(), /16[.,]67/);
         await settings();
         await model.selectOption('Configured');
         await closeSettings();
         assert.match(await result(), /16[.,]67/);
         await expand(0);
         await page.locator('#cardDiscard0').selectOption('0');
+        await saveSimulation(0);
         assert.match(await result(), /100[.,]00/);
         await settings();
         await model.selectOption('OpeningHand');
@@ -196,17 +208,16 @@ async function main() {
             const fixtures = JSON.parse(await fs.readFile(process.argv[4], 'utf8'));
             const fixture = fixtures.find(value => value.Name === 'realistic-three-graceful');
             const off = fixtures.find(value => value.Name === 'realistic-three-graceful-global-off');
-            const basic = fixtures.find(value => value.Name === 'realistic-three-graceful-conditional-off');
             await load(fixture.Session);
             await page.waitForFunction(() => document.querySelectorAll('.card-editor').length > 10);
             function percent(text) { return Number(text.replace('%', '').replace(',', '.').trim()); }
             assert.equal(await model.inputValue(), 'Configured');
             await settings();
-            await model.selectOption('Simplified');
+            await model.selectOption('OpeningHand');
             await closeSettings();
-            assert.equal(percent(await result()), Number((basic.Probability * 100).toFixed(2)));
+            assert.equal(percent(await result()), Number((off.Probability * 100).toFixed(2)));
             await page.locator('.pin-result-action').click();
-            assert.match(await page.locator('.pinned-result').innerText(), /Simplified draws/);
+            assert.match(await page.locator('.pinned-result').innerText(), /Opening hand only/);
             await settings();
             await model.selectOption('Configured');
             assert.equal(await page.locator('.pin-result-action').isDisabled(), true);
@@ -257,11 +268,10 @@ async function main() {
             const requests = inputs.map(message => JSON.parse(message.json));
             assert(requests.every(input => input.WorkUnits === 150000000));
             for (const tier of [0, 1, 2]) {
-                assert(requests.some(input => input.StorageTier === tier && input.Options.ConditionalEffectsEnabled
+                assert(requests.some(input => input.StorageTier === tier
                     && input.Cards.some(card => card.PostDrawDiscardCount === 2)));
             }
-            assert(requests.some(input => !input.Options.ConditionalEffectsEnabled && input.Cards.some(card => card.PostDrawDiscardCount === 2)));
-            assert(requests.some(input => !input.Options.ConditionalEffectsEnabled && input.Cards.every(card => card.DrawCount === null && card.PostDrawDiscardCount === 0)));
+            assert(requests.some(input => input.Cards.every(card => card.DrawCount === null && card.PostDrawDiscardCount === 0)));
             console.log(JSON.stringify({ workerRequests: requests.length, storageTiers: [0, 1, 2], workUnits: 150000000 }));
             const recovery = await page.evaluate(() => Object.entries(localStorage));
             assert(!JSON.stringify(recovery).includes('ConditionalEffectsEnabled'));

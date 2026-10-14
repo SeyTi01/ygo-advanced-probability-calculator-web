@@ -55,7 +55,7 @@ public class TreatedNameIdentityTest {
                     };
                     ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(
                         CalculationSnapshot.Capture(state.Cards, requirements, 1, [],
-                            drawEffectsEnabled: mode > 0, options: new(configured)).Json));
+                            drawEffectsEnabled: mode > 0, options: new()).Json));
                     Assert.That(result.TotalProbability, Is.EqualTo(expected).Within(1e-14));
                     Assert.That(result.ComboProbabilities.Single().Probability, Is.EqualTo(expected).Within(1e-14));
                     if (mode == 0) {
@@ -63,7 +63,7 @@ public class TreatedNameIdentityTest {
                     } else {
                         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 1, requirements, []);
                         ExactCalculationResult exact = new DrawEffectCalculation(state.Cards, 1,
-                            new(CalculationWorkPolicy.Interactive), configured).Calculate(requirements, []);
+                            new(CalculationWorkPolicy.Interactive)).Calculate(requirements, []);
                         Assert.That(exact.Combos[0].Numerator * oracle.Total,
                             Is.EqualTo(oracle.Wins[1] * exact.Combos[0].Denominator));
                     }

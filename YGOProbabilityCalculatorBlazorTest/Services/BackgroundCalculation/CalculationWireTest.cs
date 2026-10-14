@@ -133,7 +133,7 @@ public class CalculationWireTest {
     [Test]
     public void OrdinaryAndMalformedResponsesNeverBecomeZeroResults() {
         string response = CalculationWire.Execute("not JSON");
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(response));
+        Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(response));
         Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult("{}"));
         Assert.Throws<JsonException>(() => CalculationWire.ReadResult("not JSON"));
     }

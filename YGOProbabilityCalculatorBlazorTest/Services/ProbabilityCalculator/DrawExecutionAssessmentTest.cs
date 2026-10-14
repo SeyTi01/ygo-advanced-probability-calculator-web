@@ -16,9 +16,9 @@ public class DrawExecutionAssessmentTest {
             postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(dark)));
         session.Cards.Add(new([], 1, "Filler", id: "filler"));
         Assert.That(Assess(session), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DeferredConditional, false)));
-        Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, true, false),
+        Assert.That(DrawExecutionAssessment.Assess(session.Cards.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), session.Combos, 5, true),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DrawCountState, false)));
-        Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, false, false),
+        Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, false),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.Ordinary, false)));
     }
 
@@ -28,12 +28,12 @@ public class DrawExecutionAssessmentTest {
         List<Card> cards = [new([], id: "draw", drawCount: 2, postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(role)),
             new([role], 3, id: "target"), new([], 2, id: "filler")];
         List<Combo> combos = [new([new(role, 1, 3)])];
-        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 2, true, true),
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 2, true),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.OrderedFrontier, false)));
-        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true, false),
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.Ordinary, false)));
         cards[0] = cards[0].WithActive(false);
-        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 2, true, true),
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 2, true),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.Ordinary, false)));
     }
 
@@ -43,15 +43,15 @@ public class DrawExecutionAssessmentTest {
         List<Card> cards = [new([], 3, id: "draw", drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2),
             new([role], 20, id: "target"), new([], 17, id: "filler")];
         List<Combo> combos = [new([new(role, 1, 5)])];
-        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
-        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 35, true, true).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 35, true).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
         CategoryBase unrelated = new("Unrelated");
         cards.Add(new([unrelated], id: "different-filler"));
         combos.Add(new([new(unrelated, 0, 0)]));
-        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true, true),
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.Unknown, false)));
         cards.AddRange(Enumerable.Range(0, 130).Select(index => new Card([], id: $"extra-{index}")));
-        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true, true).Path, Is.EqualTo(DrawExecutionPath.Unknown));
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true).Path, Is.EqualTo(DrawExecutionPath.Unknown));
     }
 
     [Test]
@@ -61,10 +61,10 @@ public class DrawExecutionAssessmentTest {
         cards.AddRange([new([], id: "light-a"), new([], id: "light-b"),
             new([], id: "draw", drawCount: 2, postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(dark))]);
         List<Combo> combos = cards.Take(12).Select(card => new Combo([], cards: [new(card.Id, 1, 1)])).ToList();
-        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true, true),
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 5, true),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DeferredConditional, true)));
     }
 
     private static DrawExecutionAssessment Assess(SessionState session) =>
-        DrawExecutionAssessment.Assess(session.Cards, session.Combos, session.HandSize, true, true);
+        DrawExecutionAssessment.Assess(session.Cards, session.Combos, session.HandSize, true);
 }

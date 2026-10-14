@@ -85,7 +85,7 @@ public class TradeInAllureBenchmark {
         DrawActivationPriority priority = custom ? new(DrawActivationMode.CustomPriority, ["benchmark-allure", "benchmark-trade-in"])
             : DrawActivationPriority.Default;
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups,
-            new(work), storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(true, priority));
+            new(work), storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(priority));
         SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
         SessionState exported = new() {
             Cards = session.Cards, Categories = session.Categories, Combos = session.Combos,

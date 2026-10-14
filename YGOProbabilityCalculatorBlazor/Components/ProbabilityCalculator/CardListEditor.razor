@@ -23,7 +23,6 @@
                 Index="index"
                 Card="Cards[index]"
                 DrawEffectsEnabled="DrawEffectsEnabled"
-                ConditionalEffectsEnabled="ConditionalEffectsEnabled"
                 CategoryBases="_categoryOptions.All"
                 RelevantMetadataCategoryIdentities="_categoryOptions.RelevantMetadataIdentities"
                 CategoryColorIndices="CategoryColorIndices"
@@ -49,7 +48,6 @@
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];
     [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
-    [Parameter] public bool ConditionalEffectsEnabled { get; set; }
     [Parameter] public bool DeferNameEditRendering { get; set; }
     [Parameter] public long? LoadingSessionVersion { get; set; }
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);

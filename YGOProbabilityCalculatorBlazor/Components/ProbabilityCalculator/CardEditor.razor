@@ -70,8 +70,7 @@
                 </div>
 
             </div>
-            <CardSimulationEditor Card="Card" Index="Index" DrawEffectsEnabled="DrawEffectsEnabled"
-                                  ConditionalEffectsEnabled="ConditionalEffectsEnabled" CategoryBases="CategoryBases"
+            <CardSimulationEditor Card="Card" Index="Index" DrawEffectsEnabled="DrawEffectsEnabled" CategoryBases="CategoryBases"
                                   RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                                   CategoryColorIndices="CategoryColorIndices" CategoryRename="CategoryRename"
                                   OnChanged="card => OnReplaceCard.InvokeAsync((Index, card))" />
@@ -161,7 +160,6 @@
     [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
     [Parameter] public Card Card { get; set; } = null!;
     [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
-    [Parameter] public bool ConditionalEffectsEnabled { get; set; }
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlySet<string> RelevantMetadataCategoryIdentities { get; set; } = new HashSet<string>(StringComparer.Ordinal);
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -226,7 +224,6 @@
         int Count,
         int ActiveCardIndex,
         bool DrawEffectsEnabled,
-        bool ConditionalEffectsEnabled,
         IReadOnlyList<CategoryBase> CategoryBases,
         IReadOnlySet<string> RelevantMetadataCategoryIdentities,
         IReadOnlyDictionary<string, int> CategoryColorIndices,
@@ -235,7 +232,7 @@
 
     private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? $"Card {Index + 1}" : Card.Name;
     private DrawEffectPresentation DrawPresentation =>
-        DrawEffectPresentation.ForCard(Card, DrawEffectsEnabled, ConditionalEffectsEnabled);
+        DrawEffectPresentation.ForCard(Card, DrawEffectsEnabled);
     private Task ToggleCard() {
         int next = ActiveCardIndex == Index ? -1 : Index;
 
@@ -338,7 +335,6 @@
             Count,
             ActiveCardIndex,
             DrawEffectsEnabled,
-            ConditionalEffectsEnabled,
             CategoryBases,
             RelevantMetadataCategoryIdentities,
             CategoryColorIndices,

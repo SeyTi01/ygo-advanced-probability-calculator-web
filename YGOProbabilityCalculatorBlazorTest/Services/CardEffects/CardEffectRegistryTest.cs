@@ -184,8 +184,8 @@ public class CardEffectRegistryTest {
         Assert.That(loaded.EffectProfile.ExecutionModel, Is.EqualTo(model));
         Assert.That(Registry.Describe(loaded).CanExecute, Is.False);
         List<Card> cards = [loaded, new([], 5)];
-        foreach (bool conditions in new[] { false, true }) {
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, [new([])], 1, [], options: new(conditions));
+        foreach (CalculationOptions? options in new CalculationOptions?[] { null, new() }) {
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, [new([])], 1, [], options: options);
             Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
             Assert.Throws<ArgumentException>(() => new ProbabilityCalculatorService().CalculateProbabilityResults(cards, [new([])], 1));
         }
@@ -258,7 +258,7 @@ public class CardEffectRegistryTest {
 
     private static ProbabilityCalculationResult Run(List<Card> cards, List<Combo> combos, int hand, bool enabled = true) =>
         CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(cards, combos, hand,
-            [new("g", "Group"), new("empty", "Empty")], drawEffectsEnabled: enabled, options: new(true)).Json));
+            [new("g", "Group"), new("empty", "Empty")], drawEffectsEnabled: enabled, options: new()).Json));
 
     private static void VerifyOracleAndWorker(List<Card> deck, int hand, List<Combo> combos) {
         List<ComboGroup> groups = [new("g", "Group"), new("empty", "Empty")];
@@ -266,13 +266,13 @@ public class CardEffectRegistryTest {
         // mandatory failure mass, in addition to individual and grouped rows.
         combos = [.. combos, new([])];
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, hand, combos, groups, true);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, hand, new(CalculationWorkPolicy.Interactive), true).Calculate(combos, groups);
+        ExactCalculationResult result = new DrawEffectCalculation(deck, hand, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups);
         ExactProbability[] fractions = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < fractions.Length; i++) {
             Assert.That(fractions[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * fractions[i].Denominator));
         }
         ProbabilityCalculationResult native = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, hand,
-            groups, CalculationWorkPolicy.Interactive, new(true));
+            groups, CalculationWorkPolicy.Interactive, new());
         Assert.That(JsonSerializer.Serialize(Run(deck, combos, hand)), Is.EqualTo(JsonSerializer.Serialize(native)));
     }
 }

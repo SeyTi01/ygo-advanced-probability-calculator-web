@@ -63,21 +63,20 @@ The custom editor offers **None**, **Draw 1**, **Draw 2**, or **Draw 3**. An act
 
 Open the gear **Calculation settings** menu to choose how these settings apply:
 
-- **Configured draw effects (default):** Apply supported draws, once-per-turn limits, pre-draw costs, removals and eligibility filters.
+- **Configured draw effects (default):** Apply each saved card plan, including draws, once-per-turn limits, pre-draw costs, removals and eligibility filters.
 - **Opening hand only:** Resolve no draws; configured draw cards still occupy initial-hand slots.
-- **Simplified draws (hypothetical):** Apply draw counts and once-per-turn limits while ignoring both pre-draw costs and post-draw removals. Cost-dependent cards may draw unconditionally, producing misleading, often optimistic deck-building probabilities.
 
 **Draw activation priority** in the same settings menu defaults to **Encounter order**. Choose **Custom priority** to rank workspace entries, highest first, using the up/down buttons. The highest-ranked legal effect activates after the current draw batch, mill and mandatory removal finish. Newly drawn effects can then overtake earlier waiting effects; a blocked effect waits while another legal effect resolves. Copies share their entry's priority and existing once-per-turn allowance.
 
 Priority is one fixed order for all combos and groups. It does not change the shuffle, deck order or cost/removal choices. Rankings are saved with sessions and share links. Renames, visual sorting and inactive entries retain their preferences; duplicated/new effect entries are appended to the list, and replacing/importing a deck clears the old ranking. Switching back to Encounter order ignores the saved ranking.
 
-**Advanced → Banish from deck** sets a hidden top-deck cost before drawing. The built-in Pot of Desires simulation banishes 10 then draws 2, requiring at least 12 cards left in deck. Only physical deck size is tracked: banished identities and remaining combo resources are not simulated. Simplified draws ignores this cost.
+**Advanced → Banish from deck** sets a hidden top-deck cost before drawing. The built-in Pot of Desires simulation banishes 10 then draws 2, requiring at least 12 cards left in deck. Only physical deck size is tracked: banished identities and remaining combo resources are not simulated.
 
-Solar Recharge discards one card that is both a Lightsworn and a Monster, draws 2, then sends the top 2 deck cards to the GY. It requires at least 4 cards left in deck. Milling reduces deck capacity before subsequent draws; milled identities and GY effects are outside the model. Simplified draws ignores both its discard and milling. Custom edits preserve the saved milling operation; choosing None removes the entire draw effect, and Restore built-in simulation restores the complete plan.
+Solar Recharge discards one card that is both a Lightsworn and a Monster, draws 2, then sends the top 2 deck cards to the GY. It requires at least 4 cards left in deck. Milling reduces deck capacity before subsequent draws; milled identities and GY effects are outside the model. Custom edits preserve the saved milling operation; choosing None removes the entire draw effect, and Restore built-in simulation restores the complete plan.
 
 Requirements apply to the final hand. If the full draw amount is unavailable, the source stays in hand and the outcome is evaluated normally.
 
-### Use Advanced costs and removals
+### Customize costs and removals
 
 With a draw amount set, **Before drawing** and **After drawing** can each remove one or two cards. **Eligible** accepts any card, a category/property, a same-card AND group, or OR alternatives.
 
@@ -85,9 +84,9 @@ With a draw amount set, **Before drawing** and **After drawing** can each remove
 - A required post-draw removal can use newly drawn cards. If eligible material is missing after a legal draw, that branch fails and remains in the probability denominator.
 - Removal follows a deterministic policy: keep cards matching positive requirements in active routes first, then usable draw cards, then other cards. Changing active routes can change the resulting hands.
 
-Results are exact for this policy, **not optimal-play simulation**. Optional activation, searches, discard triggers, and general card effects are unsupported.
+Individual cards can have hypothetical custom plans: set **Before drawing: None**, **After drawing: None**, or **Banish from deck: 0** to remove only that operation. Other cards keep their own costs. **Restore built-in simulation** restores the maintained plan. Results are exact for each saved plan and this policy, **not optimal-play simulation**. A custom plan need not represent the printed card or unsupported interactions such as Maliss banish triggers; its result is not a guaranteed upper bound under maxima or exclusions. Optional activation, searches, discard triggers, and general card effects are unsupported.
 
-Recognized imports and database selections receive authoritative built-in definitions. Saved cards retain their exact plan, source, revision and limitations until explicitly changed or restored; older snapshots are labeled **Saved simulation**. An unavailable execution model is reported rather than replaced with generic draws. Choosing **Draw None** clears pre- and post-draw configuration. Simplified mode and **Storage safety limit** are runtime preferences, not session fields. New workspaces and restored ON sessions use configured effects; saved OFF sessions restore opening-hand-only. Re-enabling effects selects configured behavior.
+Recognized imports and database selections receive authoritative built-in definitions. Saved cards retain their exact plan, source, revision and limitations until explicitly changed or restored; older snapshots are labeled **Saved simulation**. An unavailable execution model is reported rather than replaced with generic draws. Choosing **Draw None** clears pre- and post-draw configuration. **Storage safety limit** is a runtime preference, not a session field. New workspaces and restored ON sessions use configured effects; saved OFF sessions restore opening-hand-only. Re-enabling effects selects configured behavior.
 
 A small pre-calculation notice flags potentially expensive draw configurations without blocking Calculate. If a request is slow or reaches a Work or Storage limit, **Calculate without draw effects** explicitly runs an exact alternative for that request. It preserves configured settings and the saved preference. This answers a different question and is not a guaranteed lower bound. Results and copied/pinned comparisons identify the model used; the next ordinary Calculate uses the selected setting.
 

@@ -6,7 +6,6 @@ internal sealed class DrawEffectCalculation(
     List<Card> deck,
     int handSize,
     WorkBudget budget,
-    bool conditionalEffectsEnabled = false,
     DrawActivationPriority? priority = null
 ) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
@@ -30,7 +29,7 @@ internal sealed class DrawEffectCalculation(
         }
 
         HashSet<Card>? inert = effects.Count == 0 ? null
-            : DrawEffectFeasibility.FindInert(deck, deckCopies, handSize, conditionalEffectsEnabled, budget);
+            : DrawEffectFeasibility.FindInert(deck, deckCopies, handSize, budget);
         if (inert is not null) {
             // Retain the actual cards, including identities and memberships. Only
             // the activation partition changes; no saved or executable plan is edited.
@@ -41,7 +40,7 @@ internal sealed class DrawEffectCalculation(
             effects.RemoveAll(inert.Contains);
         }
 
-        if (conditionalEffectsEnabled && effects.Any(card => card.EffectPlan.RequiresHandResolution)) {
+        if (effects.Any(card => card.EffectPlan.RequiresHandResolution)) {
             return new PostDrawCalculation(deck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
         }
 
@@ -51,19 +50,15 @@ internal sealed class DrawEffectCalculation(
         }
 
         budget.Spend(effects.Count + 1L);
-        if (!DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize, conditionalEffectsEnabled)) {
-            List<Card> fixedDrawDeck = conditionalEffectsEnabled ? deck
-                : deck.Select(card => card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0).WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList();
-            return new PostDrawCalculation(fixedDrawDeck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
+        if (!DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize)) {
+            return new PostDrawCalculation(deck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
         }
 
         // The count-state proof bounds ALL possible activations collectively. With no
         // hand operations, every encountered source can resolve in any priority order;
         // its visible-draw contribution and OPT remainder are identical. Hidden positions
         // remain exchangeable. Priority therefore does not invalidate this fast path.
-        bool simplifyEffects = !conditionalEffectsEnabled && effects.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0 || card.EffectPlan.HasActivationRestrictions);
-        List<Card> effectiveEffects = simplifyEffects ? effects.Select(card => card.WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList() : effects;
-        DrawResolution resolution = DrawEffectResolver.Resolve(ordinaryCopies, effectiveEffects, handSize, budget);
+        DrawResolution resolution = DrawEffectResolver.Resolve(ordinaryCopies, effects, handSize, budget);
         ExactProbability total = ExactProbability.Zero;
         ExactProbability[] individual = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : combos.Count).ToArray();
         ExactProbability[] grouped = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : groups?.Count ?? 0).ToArray();

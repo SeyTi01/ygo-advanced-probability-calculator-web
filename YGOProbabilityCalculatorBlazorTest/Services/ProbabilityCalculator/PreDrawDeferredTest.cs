@@ -158,8 +158,8 @@ public class PreDrawDeferredTest {
                     ? card.WithPreDrawRemovalCount(0).WithPreDrawDeckRemovalCount(0).WithPostDrawDiscardCount(0).WithPostDrawDeckMillCount(0)
                     : card).ToList();
             DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(modeled, 2, combos, groups, collapseIdenticalCopies: true);
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 2, groups,
-                CalculationWorkPolicy.Interactive, enabled, options: new(configured));
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(enabled ? modeled : deck, combos, 2, groups,
+                CalculationWorkPolicy.Interactive, enabled, options: new());
             ProbabilityCalculationResult actual = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
             double[] rows = [actual.TotalProbability, .. actual.ComboProbabilities.Select(row => row.Probability),
                 .. actual.GroupProbabilities.Select(row => row.Probability)];
@@ -183,7 +183,7 @@ public class PreDrawDeferredTest {
             Assert.That(result.Total.Numerator, Is.GreaterThan(BigInteger.Zero));
             Assert.That(result.Total.Numerator, Is.LessThan(result.Total.Denominator));
             Assert.That(calculation.DeferredRows, Is.GreaterThan(1));
-            Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, session.HandSize, true, true).Path,
+            Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, session.HandSize, true).Path,
                 Is.EqualTo(DrawExecutionPath.DeferredConditional));
         });
     }
@@ -207,7 +207,7 @@ public class PreDrawDeferredTest {
                 .Calculate(combos, groups, totalOnly: true);
             Assert.That(total.Total.Numerator * expected.Total, Is.EqualTo(expected.Wins[0] * total.Total.Denominator));
         }
-        AssertRows(new DrawEffectCalculation(deck, hand, new(CalculationWorkPolicy.Interactive), true).Calculate(combos, groups), oracle);
+        AssertRows(new DrawEffectCalculation(deck, hand, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups), oracle);
         return oracle;
     }
 

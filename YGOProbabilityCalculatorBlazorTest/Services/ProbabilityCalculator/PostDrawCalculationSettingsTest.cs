@@ -9,46 +9,46 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 [TestFixture]
 public class PostDrawCalculationSettingsTest {
     [Test]
-    public void MissingAndDefaultOptionsUseBasicWhileExplicitAdvancedMatchesPhysicalOracle() {
+    public void MissingAndDefaultNativeAndWorkerOptionsHonorSavedCosts() {
         CategoryBase role = new("Role");
         List<Card> deck = [new([], id: "effect", drawCount: 1, drawOncePerTurn: false, postDrawDiscardCount: 1), new([role], 5, id: "r")];
         List<Combo> combos = [new([new(role, 5, 5)], "Five", groupId: "g")];
         List<ComboGroup> groups = [new("g", "Group")];
-        Assert.That(new CalculationOptions().ConditionalEffectsEnabled, Is.False);
-        foreach (bool advanced in new[] { false, true }) {
-            List<Card> modeled = advanced ? deck : deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
-            DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 5, combos, groups);
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-            ExactCalculationResult result = new DrawEffectCalculation(deck, 5, budget, advanced).Calculate(combos, groups);
-            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
-            for (int i = 0; i < rows.Length; i++) {
-                Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator));
-            }
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 5, groups, options: new(advanced));
-            ProbabilityCalculationResult wire = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
-            Assert.That(wire.TotalProbability, Is.EqualTo(result.Total.ToDouble(budget)));
-            if (!advanced) {
-                WorkBudget omitted = new(CalculationWorkPolicy.Interactive);
-                ExactCalculationResult defaultResult = new DrawEffectCalculation(deck, 5, omitted).Calculate(combos, groups);
-                Assert.That(defaultResult.Total, Is.EqualTo(result.Total));
-                Assert.That(defaultResult.Combos, Is.EqualTo(result.Combos));
-                Assert.That(defaultResult.Groups, Is.EqualTo(result.Groups));
-                Assert.That(omitted.Spent, Is.LessThanOrEqualTo(budget.Spent));
-                ProbabilityCalculatorService service = new();
-                Assert.That(service.CalculateProbabilityResults(deck, combos, 5, groups).TotalProbability, Is.EqualTo(wire.TotalProbability));
-                Assert.That(service.CalculateProbabilityForCombos(deck, combos, 5), Is.EqualTo(wire.TotalProbability));
-                foreach (JsonNode? options in new JsonNode?[] { null, new JsonObject() }) {
-                    JsonObject input = JsonNode.Parse(snapshot.Json)!.AsObject();
-                    input.Remove(nameof(CalculationInput.Options));
-                    input.Remove(nameof(CalculationInput.StorageTier));
-                    if (options is not null) {
-                        input[nameof(CalculationInput.Options)] = options;
-                    }
-                    Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(input.ToJsonString())).TotalProbability, Is.EqualTo(wire.TotalProbability));
-                }
-            }
+        DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 5, combos, groups);
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+        ExactCalculationResult result = new DrawEffectCalculation(deck, 5, budget).Calculate(combos, groups);
+        ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+        for (int i = 0; i < rows.Length; i++) {
+            Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator));
         }
-        Assert.That(deck[0].PostDrawDiscardCount, Is.EqualTo(1));
+        ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult expected = result.ToPublic(combos, groups, budget);
+        Assert.That(System.Text.Json.JsonSerializer.Serialize(service.CalculateProbabilityResults(deck, combos, 5, groups)), Is.EqualTo(System.Text.Json.JsonSerializer.Serialize(expected)));
+        Assert.That(service.CalculateProbabilityForCombos(deck, combos, 5), Is.EqualTo(expected.TotalProbability));
+        Assert.That(service.CalculateProbabilityForCombos(deck, combos, 5, CalculationWorkPolicy.Default, options: new()), Is.EqualTo(expected.TotalProbability));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 5, groups);
+        foreach (JsonNode? options in new JsonNode?[] { null, new JsonObject() }) {
+            JsonObject input = JsonNode.Parse(snapshot.Json)!.AsObject();
+            input.Remove(nameof(CalculationInput.Options));
+            if (options is not null) {
+                input[nameof(CalculationInput.Options)] = options;
+            }
+            Assert.That(System.Text.Json.JsonSerializer.Serialize(CalculationWire.ReadResult(CalculationWire.Execute(input.ToJsonString()))), Is.EqualTo(System.Text.Json.JsonSerializer.Serialize(expected)));
+        }
+        List<Card> custom = deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
+        Assert.That(service.CalculateProbabilityForCombos(custom, combos, 5), Is.Not.EqualTo(expected.TotalProbability));
+        CalculationSnapshot opening = CalculationSnapshot.Capture(deck, combos, 5, groups, drawEffectsEnabled: false);
+        Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(opening.Json)).TotalProbability,
+            Is.EqualTo((double)SmallDeckOracle.EnumerateProbability(deck.Select(card => card.WithDrawCount(null)).ToList(), combos, 5)));
+    }
+
+    [TestCase(false), TestCase(true)]
+    public void ObsoleteWorkerOptionsAreRejectedAsInput(bool enabled) {
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture([new([], 6)], [new([])], 5, []);
+        JsonObject input = JsonNode.Parse(snapshot.Json)!.AsObject();
+        input[nameof(CalculationInput.Options)] = new JsonObject { ["ConditionalEffectsEnabled"] = enabled };
+        ArgumentException error = Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(CalculationWire.Execute(input.ToJsonString())))!;
+        Assert.That(error.Message, Does.Contain("ConditionalEffectsEnabled"));
     }
 
     [Test]
@@ -58,7 +58,7 @@ public class PostDrawCalculationSettingsTest {
         WorkBudget basic = new(CalculationWorkPolicy.Interactive);
         WorkBudget advanced = new(CalculationWorkPolicy.Interactive);
         ExactCalculationResult expected = new DrawEffectCalculation(deck, 5, basic).Calculate(combos, []);
-        ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, advanced, true).Calculate(combos, []);
+        ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, advanced).Calculate(combos, []);
         Assert.That(actual.Total, Is.EqualTo(expected.Total));
         Assert.That(actual.Combos, Is.EqualTo(expected.Combos));
         Assert.That(advanced.Spent, Is.EqualTo(basic.Spent));
@@ -122,13 +122,13 @@ public class PostDrawCalculationSettingsTest {
             previous = result;
             work = budget.Spent;
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 5, [], CalculationWorkPolicy.Interactive,
-                storagePolicy: policy, options: new(true));
+                storagePolicy: policy, options: new());
             Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability, Is.EqualTo(1));
-            CalculationSnapshot limited = CalculationSnapshot.Capture(deck, combos, 5, [], new(1), storagePolicy: policy, options: new(true));
+            CalculationSnapshot limited = CalculationSnapshot.Capture(deck, combos, 5, [], new(1), storagePolicy: policy, options: new());
             Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => CalculationWire.ReadResult(CalculationWire.Execute(limited.Json)))!.Reason,
                 Is.EqualTo(ProbabilityCalculationLimitReason.Work));
         }
-        CalculationSnapshot standard = CalculationSnapshot.Capture(deck, combos, 5, [], CalculationWorkPolicy.Interactive, options: new(true));
+        CalculationSnapshot standard = CalculationSnapshot.Capture(deck, combos, 5, [], CalculationWorkPolicy.Interactive, options: new());
         Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => CalculationWire.ReadResult(CalculationWire.Execute(standard.Json)))!.Reason,
             Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }

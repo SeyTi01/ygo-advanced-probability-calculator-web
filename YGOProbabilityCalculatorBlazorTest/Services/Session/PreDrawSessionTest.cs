@@ -24,7 +24,7 @@ public class PreDrawSessionTest {
         Assert.That(loaded.Cards[0].PreDrawRemovalCount, Is.EqualTo(1));
         Assert.That(loaded.Cards[0].PreDrawSelector, Is.EqualTo(card.PreDrawSelector));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 1, [], options: new(true));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 1, [], options: new());
         CalculationInput input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
         Assert.That(input.Cards[0].PreDrawSelector, Is.EqualTo(card.PreDrawSelector));
         Assert.That(input.Cards[0].PreDrawRemovalCount, Is.EqualTo(1));

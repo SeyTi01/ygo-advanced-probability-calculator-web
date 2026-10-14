@@ -67,6 +67,7 @@ public partial class DrawEffectsBenchmark {
         }
 
         void Measure(string name, SessionState session, bool advanced, CalculationStorageTier tier) {
+            List<Card> modeled = advanced ? session.Cards : session.Cards.Select(card => card.WithPreDrawRemovalCount(0)).ToList();
             WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.ForTier(tier));
             PostDrawCalculation calculation = new(session.Cards, session.HandSize, budget);
             Stopwatch timer = Stopwatch.StartNew();
@@ -75,15 +76,21 @@ public partial class DrawEffectsBenchmark {
             string outcome = "Success";
             try {
                 exact = advanced ? calculation.Calculate(session.Combos, session.ComboGroups)
-                    : new DrawEffectCalculation(session.Cards, session.HandSize, budget, false).Calculate(session.Combos, session.ComboGroups);
+                    : new DrawEffectCalculation(modeled, session.HandSize, budget).Calculate(session.Combos, session.ComboGroups);
                 reference = exact.ToPublic(session.Combos, session.ComboGroups, budget);
             }
             catch (ProbabilityCalculationLimitException error) {
                 outcome = error.Reason.ToString();
             }
             timer.Stop();
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups,
-                CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(advanced));
+            SessionState modeledSession = new() {
+                Cards = modeled, Categories = session.Categories, Combos = session.Combos,
+                ComboGroups = session.ComboGroups, HandSize = session.HandSize,
+                DrawEffectsEnabled = session.DrawEffectsEnabled, DrawActivationPriority = session.DrawActivationPriority,
+                CategoryColorIndices = session.CategoryColorIndices
+            };
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, session.Combos, session.HandSize, session.ComboGroups,
+                CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new());
             if (reference is not null) {
                 ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
                 Assert.That(worker.TotalProbability, Is.EqualTo(reference.TotalProbability));
@@ -96,7 +103,7 @@ public partial class DrawEffectsBenchmark {
                 Milliseconds = timer.Elapsed.TotalMilliseconds, Probability = reference?.TotalProbability, ReferenceResults = reference,
                 ExactResults = exact is null ? null : new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups)
                     .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),
-                Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(session)),
+                Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(modeledSession)),
                 Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json)
             });
             TestContext.Out.WriteLine($"{name}: {outcome}; work={budget.Spent}; terminal={calculation.TerminalStates}; peak={calculation.PeakStates}; cells={calculation.PeakCells}; ms={timer.Elapsed.TotalMilliseconds:F2}");

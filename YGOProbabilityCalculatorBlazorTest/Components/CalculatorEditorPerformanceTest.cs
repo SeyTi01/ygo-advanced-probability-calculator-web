@@ -15,10 +15,8 @@ public sealed class CalculatorEditorPerformanceTest : CalculatorEditorTestBase {
     private static Card BuiltIn(int identity) => CardEffectRegistry.Default.RestoreBuiltIn(new([], 1, externalCardId: identity));
 
     [TestCase("Configured", true, 1)]
-    [TestCase("Simplified", true, 1)]
     [TestCase("OpeningHand", true, 1)]
     [TestCase("Configured", false, 1)]
-    [TestCase("Simplified", false, 0)]
     [TestCase("OpeningHand", false, 0)]
     public async Task PerformanceIsPermanentWithoutGlobalRiskAndPreservesDisclosure(string mode, bool active, int copies) {
         Card allure = BuiltIn(1475311).WithActive(active).WithCopies(copies);
@@ -86,7 +84,7 @@ public sealed class CalculatorEditorPerformanceTest : CalculatorEditorTestBase {
         await cut.Find($"#cardName{index}").InputAsync(new() { Value = "Current candidate name" });
         await cut.Find($"#cardName{index}").BlurAsync(new());
         Assert.That(cut.Find(".draw-complexity-notice").TextContent, Does.Contain("Current candidate name").And.Not.Contain("Allure candidate"));
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         Assert.That(SimulationDetails(cut.FindComponents<CardEditor>().Single(editor => editor.Instance.Card.Id == allure.Id)), Does.Contain("Performance:"));
         compiler.VerifyNoOtherCalls();

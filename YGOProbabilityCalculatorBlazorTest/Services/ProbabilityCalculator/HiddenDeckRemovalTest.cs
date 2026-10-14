@@ -55,7 +55,7 @@ public class HiddenDeckRemovalTest {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 1, [], []);
         List<Combo> hands = oracle.Hands.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
             new Combo([], cards: pair.Key.Split(',').Select((count, i) => new ComboCard(oracle.CardIds[i], int.Parse(count), int.Parse(count))).ToArray(), groupId: "g")).ToList();
-        Assert.That(DrawExecutionAssessment.Assess(deck, hands, 1, true, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+        Assert.That(DrawExecutionAssessment.Assess(deck, hands, 1, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
         Verify(deck, 1, hands);
     }
 
@@ -75,7 +75,7 @@ public class HiddenDeckRemovalTest {
             }
         }
         List<Combo> combos = [new([], cards: [new("pot", 1, 1)]), new([], cards: [new("target", 1, 1)])];
-        ExactCalculationResult result = new DrawEffectCalculation(deck, 1, new(CalculationWorkPolicy.Interactive), true).Calculate(combos, []);
+        ExactCalculationResult result = new DrawEffectCalculation(deck, 1, new(CalculationWorkPolicy.Interactive)).Calculate(combos, []);
         AssertFraction(result.Combos[0], remaining < 12 ? 1 : 0, remaining + 1);
         AssertFraction(result.Combos[1], remaining == 0 ? 0 : remaining < 12 ? 1 : remaining + 2, remaining < 12 ? remaining + 1 : remaining * (remaining + 1));
     }
@@ -105,10 +105,10 @@ public class HiddenDeckRemovalTest {
         Card effect = new([], effectCopies, id: "graceful", drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1, preDrawDeckRemovalCount: 1);
         List<Card> deck = [effect, new([A], 2, id: "a"), new([], 2 * effectCopies, id: "filler")];
         List<Combo> combos = [new([new(A, 1, 2)])];
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 2, true, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 2, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
         Verify(deck, 2, combos);
         DrawExecutionPath expected = effectCopies == 1 ? DrawExecutionPath.Ordinary : DrawExecutionPath.OrderedFrontier;
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 3, true, true).Path, Is.EqualTo(expected));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 3, true).Path, Is.EqualTo(expected));
         Verify(deck, 3, combos);
     }
 
@@ -151,10 +151,10 @@ public class HiddenDeckRemovalTest {
             new([], 3, active: false, id: "inactive", drawCount: 3, preDrawDeckRemovalCount: 60)];
         List<Card> manual = raw.Where(card => card.Active).Select(card => card.Id == "target" ? card.WithCategories([dark, monster, role]) : card).ToList();
         List<Combo> combos = [new([new(role, 1, 1)], groupId: "g"), new([ComboCategory.SameCard([role, dark], 1, 2)]), new([new(role, 0, 0)])];
-        CalculationSnapshot projected = CalculationSnapshot.Capture(raw, combos, 2, [], options: new(true), categoryDefinitions: [role]);
-        Assert.That(projected.Json, Is.EqualTo(CalculationSnapshot.Capture(manual, combos, 2, [], options: new(true)).Json));
+        CalculationSnapshot projected = CalculationSnapshot.Capture(raw, combos, 2, [], options: new(), categoryDefinitions: [role]);
+        Assert.That(projected.Json, Is.EqualTo(CalculationSnapshot.Capture(manual, combos, 2, [], options: new()).Json));
         Verify(manual, 2, combos);
-        Assert.That(CalculationWire.Execute(projected.Json), Is.EqualTo(CalculationWire.Execute(CalculationSnapshot.Capture(manual, combos, 2, [], options: new(true)).Json)));
+        Assert.That(CalculationWire.Execute(projected.Json), Is.EqualTo(CalculationWire.Execute(CalculationSnapshot.Capture(manual, combos, 2, [], options: new()).Json)));
         Assert.That(raw[1].Categories, Does.Not.Contain(role));
     }
 
@@ -171,15 +171,15 @@ public class HiddenDeckRemovalTest {
         List<Card> deck = [new([], id: "pot", drawCount: 2, preDrawDeckRemovalCount: 10), new([], id: "target"), new([], id: "filler")];
         List<Combo> combos = [new([], cards: [new("target", 1, 1)])];
         double Run(bool enabled, bool conditions) => CalculationWire.ReadResult(CalculationWire.Execute(
-            CalculationSnapshot.Capture(deck, combos, 1, [], drawEffectsEnabled: enabled, options: new(conditions)).Json)).TotalProbability;
+            CalculationSnapshot.Capture(conditions ? deck : deck.Select(card => card.WithPreDrawDeckRemovalCount(0)), combos, 1, [], drawEffectsEnabled: enabled, options: new()).Json)).TotalProbability;
         Assert.That(Run(true, true), Is.EqualTo(1d / 3));
         Assert.That(Run(false, true), Is.EqualTo(1d / 3));
         Assert.That(Run(true, false), Is.EqualTo(2d / 3));
-        string input = CalculationSnapshot.Capture(deck, combos, 1, [], new(1), options: new(true)).Json;
+        string input = CalculationSnapshot.Capture(deck, combos, 1, [], new(1), options: new()).Json;
         Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => CalculationWire.ReadResult(CalculationWire.Execute(input)))!.Reason,
             Is.EqualTo(ProbabilityCalculationLimitReason.Work));
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true, false).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
+        Assert.That(DrawExecutionAssessment.Assess(deck.Select(card => card.WithPreDrawDeckRemovalCount(0)).ToList(), combos, 1, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
     }
 
     private static void Verify(List<Card> deck, int handSize, List<Combo> combos, bool collapseCopies = false) {
@@ -187,7 +187,7 @@ public class HiddenDeckRemovalTest {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, handSize, combos, groups, collapseCopies);
         foreach (ExactCalculationResult result in new[] {
             new PostDrawCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups),
-            new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive), true).Calculate(combos, groups)
+            new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups)
         }) {
             ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < rows.Length; i++) {

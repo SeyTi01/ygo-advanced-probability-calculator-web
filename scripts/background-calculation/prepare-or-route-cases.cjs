@@ -42,7 +42,7 @@ for (const count of [8, 16]) {
             input.Cards.push({ Id: 'effect', Copies: 1, Categories: [], ManualMetadataCategoryKeys: [],
                 DrawCount: 2, DrawOncePerTurn: true, PreDrawRemovalCount: advanced ? 1 : 0,
                 PostDrawDiscardCount: advanced ? 1 : 0 });
-            input.Options = { ConditionalEffectsEnabled: advanced };
+            input.Options = {};
         });
     }
 }

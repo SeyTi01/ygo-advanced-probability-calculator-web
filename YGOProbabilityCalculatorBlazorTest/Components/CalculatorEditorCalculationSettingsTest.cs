@@ -17,7 +17,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase {
     [Test]
-    public async Task SettingsMenuHasThreeExplicitModesAndRestoresFocusContract() {
+    public async Task SettingsMenuHasTwoExplicitModesAndRestoresFocusContract() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         IElement trigger = cut.Find(".calculation-settings-trigger");
         Assert.That(trigger.GetAttribute("aria-label"), Is.EqualTo("Calculation settings"));
@@ -25,7 +25,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         await trigger.ClickAsync(new());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.False);
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
-        Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(3));
+        Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(2));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
         Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain("pre-draw costs").And.Contain("post-draw removals"));
         context.JSInterop.VerifyInvoke("workspaceMenus.watchOutside", 1);
@@ -34,23 +34,23 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
         Assert.That(cut.Find("#storageSafetyTier").GetAttribute("value"), Is.EqualTo("High"));
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Does.Contain("Hypothetical").And.Contain("both pre-draw costs and post-draw removals").And.Contain("Trade-In").And.Contain("unconditionally"));
+            Does.Contain("Draws are ignored").And.Contain("Card settings are preserved"));
         await cut.InvokeAsync(() => cut.FindComponent<CalculationSettingsMenu>().Instance.Dismiss());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
         Assert.That(cut.Find(".calculation-settings-trigger").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Simplified"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
     }
 
     [TestCase(true)]
     [TestCase(false)]
-    public async Task RestoreHonorsSavedDrawPreferenceAndResetsRuntimeSimplification(bool enabled) {
+    public async Task RestoreHonorsSavedDrawPreferenceAndRestoresConfiguredPlans(bool enabled) {
         SessionState session = ConditionalSession(enabled);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo(enabled ? "Configured" : "OpeningHand"));
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = enabled ? "OpeningHand" : "Configured" });
         string source = context.Services.GetRequiredService<ISessionService>().SerializeSession(session);
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(source, "session.json"));
         cut.WaitForAssertion(() => Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo(enabled ? "Configured" : "OpeningHand")));
@@ -82,25 +82,21 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         SessionState session = ConditionalSession();
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         ISessionService codec = context.Services.GetRequiredService<ISessionService>();
-        foreach (CalculationModel mode in new[] { CalculationModel.Configured, CalculationModel.OpeningHand, CalculationModel.Configured, CalculationModel.Simplified }) {
+        foreach (CalculationModel mode in new[] { CalculationModel.Configured, CalculationModel.OpeningHand, CalculationModel.Configured }) {
             await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode.ToString() });
             await Button(cut, "Calculate").ClickAsync(new());
             CalculationInput input = requests[^1];
-            Assert.That(input.Options!.ConditionalEffectsEnabled, Is.EqualTo(mode == CalculationModel.Configured));
             Assert.That(input.Cards[0].DrawCount, Is.EqualTo(mode == CalculationModel.OpeningHand ? null : (int?)1));
             Assert.That(input.Cards[0].PostDrawDiscardCount, Is.EqualTo(mode == CalculationModel.OpeningHand ? 0 : 1));
             List<Card> modeled = mode == CalculationModel.OpeningHand
                 ? session.Cards.Select(card => card.WithDrawCount(null)).ToList() : session.Cards;
-            if (mode == CalculationModel.Simplified) {
-                modeled = modeled.Select(card => card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0)).ToList();
-            }
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 5, session.Combos, []);
             double expected = new ExactProbability(oracle.Wins[0], oracle.Total).ToDouble(new(CalculationWorkPolicy.Interactive));
             Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(expected.ToString("P2")));
             Assert.That(cut.Find(".result-model").TextContent, Does.EndWith(mode.Description()));
             Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(mode.Description()));
         }
-        Assert.That(cut.Find(".probability-results").TextContent, Does.Contain("Hypothetical, often optimistic"));
+        Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Hypothetical, often optimistic"));
         await Button(cut, "Save Session").ClickAsync(new());
         string saved = SavedSessionJson();
         Assert.That(saved, Does.Not.Contain("ConditionalEffectsEnabled").And.Not.Contain("StorageTier"));
@@ -111,18 +107,17 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(Render(stored).Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
     }
 
-    [TestCase("OpeningHand")]
-    [TestCase("Simplified")]
-    public async Task ChangingModelCancelsAndRejectsLateResult(string model) {
+    [TestCase(true), TestCase(false)]
+    public async Task ChangingModelCancelsAndRejectsLateResult(bool draws) {
         TaskCompletionSource<ProbabilityCalculationResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken captured = default;
         Mock<IBackgroundCalculator> background = new();
         background.Setup(calculator => calculator.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
             .Returns((CalculationSnapshot _, CancellationToken token) => { captured = token; return completion.Task; });
         context.Services.AddSingleton(background.Object);
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(ConditionalSession());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(ConditionalSession(draws));
         Task calculation = Button(cut, "Calculate").ClickAsync(new());
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = model });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = draws ? "OpeningHand" : "Configured" });
         Assert.That(captured.IsCancellationRequested, Is.True);
         completion.SetResult(new(0.99, [new(0, "Late result", 0.99)]));
         await calculation;

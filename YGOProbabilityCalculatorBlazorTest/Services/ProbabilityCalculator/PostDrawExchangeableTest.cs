@@ -81,8 +81,9 @@ public class PostDrawExchangeableTest {
         });
         ProbabilityCalculatorService service = new();
         foreach ((bool global, bool conditional) in new[] { (true, true), (true, false), (false, true), (false, false) }) {
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize,
-                session.ComboGroups, CalculationWorkPolicy.Interactive, global, options: new(conditional));
+            List<Card> modeled = conditional ? session.Cards : session.Cards.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, session.Combos, session.HandSize,
+                session.ComboGroups, CalculationWorkPolicy.Interactive, global, options: new());
             ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
             List<Card> expectedDeck = global ? session.Cards.Select(card => card.WithPostDrawDiscardCount(0)).ToList()
                 : session.Cards.Select(card => card.WithDrawCount(null)).ToList();

@@ -24,7 +24,7 @@ public class FilteredPostDrawSessionTest {
         Assert.That(loaded.Cards[0].PostDrawSelector, Is.EqualTo(card.PostDrawSelector));
         Assert.That(loaded.Cards[0].PostDrawFailureBehavior, Is.EqualTo(PostDrawFailureBehavior.FailBranch));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 1, [], options: new(true));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 1, [], options: new());
         CalculationInput input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
         Assert.That(input.Cards[0].PostDrawSelector, Is.EqualTo(card.PostDrawSelector));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability, Is.EqualTo(0.75));

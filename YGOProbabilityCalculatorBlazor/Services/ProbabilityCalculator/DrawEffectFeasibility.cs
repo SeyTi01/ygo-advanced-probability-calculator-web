@@ -11,7 +11,6 @@ internal static class DrawEffectFeasibility {
         IReadOnlyList<Card> deck,
         int totalCopies,
         int handSize,
-        bool conditionsEnabled,
         WorkBudget? budget = null
     ) {
         if (handSize < 0 || handSize > totalCopies) {
@@ -34,9 +33,9 @@ internal static class DrawEffectFeasibility {
                 return null;
             }
 
-            int consumption = drawCount + (conditionsEnabled ? source.PreDrawDeckRemovalCount + source.PostDrawDeckMillCount : 0);
+            int consumption = drawCount + (source.PreDrawDeckRemovalCount + source.PostDrawDeckMillCount);
             bool impossible = consumption > totalCopies - handSize;
-            if (!impossible && conditionsEnabled && source.PreDrawRemovalCount > 0) {
+            if (!impossible && source.PreDrawRemovalCount > 0) {
                 // Count the entire physical deck, reserving exactly ONE source copy.
                 // Stop as soon as sufficient material exists; an opening-hand cost
                 // failure alone cannot prove that a later draw will not supply it.
@@ -65,7 +64,7 @@ internal static class DrawEffectFeasibility {
                 inert.Add(source);
                 budget?.CheckStorage(inert.Count, inert.Count);
             }
-            else if (conditionsEnabled && source.EffectPlan.RequiresHandResolution) {
+            else if (source.EffectPlan.RequiresHandResolution) {
                 return null;
             }
         }

@@ -97,21 +97,21 @@ public class SolarRechargeTest {
         Card effect = new([], id: "effect", drawCount: 1, postDrawDeckMillCount: mill);
         List<Card> deck = [effect, new([A], id: "target"), new([], 4, id: "filler")];
         List<Combo> combos = [new([new(A, 1, 1)])];
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
         Verify(deck, 1, combos);
         deck[0] = effect.WithDrawCount(2).WithPostDrawDiscardCount(1).WithDrawOncePerTurn(false);
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
         Verify(deck, 1, combos);
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 4, true, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 4, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
         Verify(deck, 4, combos);
     }
 
     [Test]
-    public void AllThreeModesPreserveTheSavedPlanAndWorkerResults() {
+    public void CustomPlanAndBothModelsPreserveTheSavedPlanAndWorkerResults() {
         List<Card> deck = [Solar(), new([], id: "target"), new([], id: "filler")];
         List<Combo> combos = [new([], cards: [new("target", 1, 1)])];
         double Run(bool enabled, bool conditions) => CalculationWire.ReadResult(CalculationWire.Execute(
-            CalculationSnapshot.Capture(deck, combos, 1, [], drawEffectsEnabled: enabled, options: new(conditions)).Json)).TotalProbability;
+            CalculationSnapshot.Capture(conditions ? deck : deck.Select(card => card.WithPreDrawRemovalCount(0).WithPostDrawDeckMillCount(0)), combos, 1, [], drawEffectsEnabled: enabled, options: new()).Json)).TotalProbability;
         Assert.That(Run(true, true), Is.EqualTo(1d / 3));
         Assert.That(Run(false, true), Is.EqualTo(1d / 3));
         Assert.That(Run(true, false), Is.EqualTo(2d / 3));
@@ -123,7 +123,7 @@ public class SolarRechargeTest {
         DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(deck, handSize, combos, groups, collapse);
         foreach (ExactCalculationResult actual in new[] {
             new PostDrawCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups),
-            new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive), true).Calculate(combos, groups)
+            new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups)
         }) {
             ExactProbability[] rows = [actual.Total, .. actual.Combos, .. actual.Groups];
             for (int i = 0; i < rows.Length; i++) {

@@ -29,9 +29,8 @@
             <label class="form-label mb-1" for="calculationModel">Calculation model</label>
             <select @ref="_drawEffectsInput" id="calculationModel" class="form-select"
                     value="@Model" aria-describedby="drawEffectsHelp" @onchange="OnModelChanged">
-                <option value="Configured">Draw effects with costs/requirements (default)</option>
-                <option value="Simplified">Draw effects without costs/requirements</option>
-                <option value="OpeningHand">Ignore draw effects (opening hand only)</option>
+                <option value="Configured">Configured draw effects (default)</option>
+                <option value="OpeningHand">Opening hand only</option>
             </select>
             <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
             <div class="mt-3">
@@ -159,9 +158,9 @@
     private DotNetObjectReference<CalculationSettingsMenu>? _reference;
     private ElementReference _drawEffectsInput;
     private string ModelHelp => Model switch {
-        CalculationModel.Configured => "Applies supported draws, once-per-turn limits, pre-draw costs, post-draw removals and filters.",
+        CalculationModel.Configured => "Applies each saved card plan, including draws, once-per-turn limits, pre-draw costs, post-draw removals and filters.",
         CalculationModel.OpeningHand => "Draws are ignored; configured draw cards still occupy hand slots. Card settings are preserved.",
-        _ => "Hypothetical: ignores both pre-draw costs and post-draw removals. Cost-dependent cards such as Trade-In may draw unconditionally, giving misleading, often optimistic deck-building probabilities."
+        _ => throw new ArgumentOutOfRangeException(nameof(Model))
     };
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

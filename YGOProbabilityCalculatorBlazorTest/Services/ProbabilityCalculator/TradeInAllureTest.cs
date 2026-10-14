@@ -32,7 +32,7 @@ public class TradeInAllureTest {
             DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(deck, hand, combos, groups,
                 collapseIdenticalCopies: true, priorityIds: priority.CardIds);
             foreach (CalculationWorkPolicy policy in new[] { CalculationWorkPolicy.Default, new(50_000_000), CalculationWorkPolicy.Interactive }) {
-                ExactCalculationResult result = new DrawEffectCalculation(deck, hand, new(policy), true, priority).Calculate(combos, groups);
+                ExactCalculationResult result = new DrawEffectCalculation(deck, hand, new(policy), priority).Calculate(combos, groups);
                 ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
                 for (int i = 0; i < rows.Length; i++) {
                     Assert.That(rows[i].Numerator * expected.Total, Is.EqualTo(expected.Wins[i] * rows[i].Denominator));
@@ -69,7 +69,7 @@ public class TradeInAllureTest {
             Assert.That(budget.Spent, Is.LessThan(policy.WorkUnits));
         }
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, hand, session.ComboGroups,
-            CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(true, priority));
+            CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(priority));
         Assert.That(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json))),
             expected.GetProperty("ReferenceResults")), Is.True);
     }
@@ -80,7 +80,7 @@ public class TradeInAllureTest {
     public async Task HistoricalAndIndependentResourceLimitsRemainTyped(CalculationStorageTier tier, long units, ProbabilityCalculationLimitReason reason) {
         SessionState session = await TradeInAllureFixture.Load();
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, 5, session.ComboGroups,
-            new(units), storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(true));
+            new(units), storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new());
         ProbabilityCalculationLimitException error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
             CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)))!;
         Assert.That(error.Reason, Is.EqualTo(reason));

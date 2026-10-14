@@ -27,8 +27,7 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         IReadOnlyList<Card> cards,
         IReadOnlyList<Combo> combos,
         int handSize,
-        bool drawsEnabled,
-        bool conditionsEnabled
+        bool drawsEnabled
     ) {
         if (!drawsEnabled) {
             return new(DrawExecutionPath.Ordinary, false);
@@ -48,15 +47,15 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         if (copies > int.MaxValue || handSize < 1 || handSize > copies) {
             return new(DrawExecutionPath.Unknown, false);
         }
-        HashSet<Card>? inert = DrawEffectFeasibility.FindInert(active, (int)copies, handSize, conditionsEnabled);
+        HashSet<Card>? inert = DrawEffectFeasibility.FindInert(active, (int)copies, handSize);
         Card[] effects = active.Where(card => card.DrawCount is not null && (inert is null || !inert.Contains(card))).ToArray();
         if (effects.Length == 0) {
             return new(DrawExecutionPath.Ordinary, false);
         }
         // The shared proof rejects timing/lock interactions before testing collective capacity.
         // Priority itself does not invalidate the remaining exchangeability proofs.
-        bool countStateFits = DrawEffectResolver.CanUseCountStateFastPath(effects, (int)copies, handSize, conditionsEnabled);
-        bool conditional = conditionsEnabled && effects.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0
+        bool countStateFits = DrawEffectResolver.CanUseCountStateFastPath(effects, (int)copies, handSize);
+        bool conditional = effects.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0
             || (card.EffectPlan.HasActivationRestrictions && !countStateFits)
             || ((card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0) && !countStateFits));
         if (!conditional) {

@@ -41,7 +41,7 @@ public class DrawEffectsSessionTest {
         Assert.That(loaded.Cards[0].PostDrawDiscardCount, Is.EqualTo(discard));
         Assert.That(codec.SerializeSession(loaded), Is.EqualTo(json));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, loaded.HandSize, loaded.ComboGroups,
-            options: new(true));
+            options: new());
         loaded.Cards[0] = loaded.Cards[0].WithDrawCount(null);
         CalculationInput input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
         Assert.That(input.Cards[0].DrawCount, Is.EqualTo(drawCount));
@@ -243,14 +243,14 @@ public class DrawEffectsSessionTest {
     }
 
     [Test]
-    public void PostDrawWorkerSwitchPreservesConfigurationAndUsesFixedDrawResults() {
+    public void CustomPostDrawPlanIsIndependentOfBuiltInWorkerPlan() {
         List<Card> deck = [new([], 3, id: "source", drawCount: 3, postDrawDiscardCount: 2), new([], 10, id: "filler")];
         List<Combo> combos = [new([], cards: [new("filler", 5, 5)])];
-        CalculationSnapshot disabled = CalculationSnapshot.Capture(deck, combos, 5, [], options: new(false));
+        CalculationSnapshot disabled = CalculationSnapshot.Capture(deck.Select(card => card.WithPostDrawDiscardCount(0)), combos, 5, []);
         CalculationSnapshot ordinary = CalculationSnapshot.Capture(deck.Select(card => card.WithPostDrawDiscardCount(0)), combos, 5, []);
         Assert.That(CalculationWire.Execute(disabled.Json), Is.EqualTo(CalculationWire.Execute(ordinary.Json)));
-        Assert.That(JsonSerializer.Deserialize<CalculationInput>(disabled.Json)!.Cards[0].PostDrawDiscardCount, Is.EqualTo(2));
-        CalculationSnapshot enabled = CalculationSnapshot.Capture(deck, combos, 5, [], options: new(true));
+        Assert.That(JsonSerializer.Deserialize<CalculationInput>(disabled.Json)!.Cards[0].PostDrawDiscardCount, Is.Zero);
+        CalculationSnapshot enabled = CalculationSnapshot.Capture(deck, combos, 5, [], options: new());
         Assert.That(CalculationWire.Execute(enabled.Json), Is.Not.EqualTo(CalculationWire.Execute(disabled.Json)));
     }
 }

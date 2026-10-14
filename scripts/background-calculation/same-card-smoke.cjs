@@ -135,7 +135,7 @@ async function main() {
             await load(fixture.Session);
             const gear = page.getByRole('button', { name: 'Calculation settings', exact: true });
             if (await gear.getAttribute('aria-expanded') !== 'true') await gear.click();
-            await page.locator('#calculationModel').selectOption(fixture.Advanced ? 'Configured' : 'Simplified');
+            await page.locator('#calculationModel').selectOption('Configured');
             await page.locator('#storageSafetyTier').focus();
             await page.keyboard.press('Escape');
             await page.getByRole('button', { name: 'Calculate', exact: true }).click();

@@ -1,4 +1,4 @@
-// Opt-in checks against a normal optimized WASM publish. Startup delay is
+// Opt-in checks against a normal optimized WASM publish. Request delivery delay is
 // injected only for deterministic cancel/recovery interaction checks.
 // NODE_PATH=<Playwright modules> node configured-draw-smoke.cjs <wwwroot> <screenshots> [chromium|firefox]
 const assert = require('node:assert/strict');
@@ -52,6 +52,12 @@ async function main() {
                 }
                 postMessage(message) {
                     if (message.json) probe.requests.push(JSON.parse(message.json));
+                    if (message.json && probe.delayRequest) {
+                        const delay = probe.delayRequest;
+                        probe.delayRequest = 0;
+                        setTimeout(() => { if (!this.terminated) super.postMessage(message); }, delay);
+                        return;
+                    }
                     super.postMessage(message);
                 }
                 terminate() {
@@ -67,6 +73,7 @@ async function main() {
         await page.getByRole('button', { name: 'Calculation settings', exact: true }).click();
         assert.equal(await page.locator('#calculationModel').inputValue(), 'Configured');
         assert.equal(await page.locator('#storageSafetyTier').inputValue(), 'Standard');
+        assert.deepEqual(await page.locator('#calculationModel option').evaluateAll(options => options.map(option => option.value)), ['Configured', 'OpeningHand']);
         await page.locator('#calculationModel').press('Escape');
         await page.getByRole('button', { name: 'Calculation settings', exact: true }).evaluate(button => {
             if (document.activeElement !== button) throw Error('Escape did not return focus');
@@ -97,6 +104,7 @@ async function main() {
         Object.assign(effect, { Name: 'Pot of Desires', Copies: 1, DrawCount: 2, DrawOncePerTurn: true, PostDrawDiscardCount: 0 });
         proxy.Cards.push({ ...effect, Id: 'allure-smoke', Name: 'Allure of Darkness', PostDrawDiscardCount: 1,
             PostDrawSelector: { Kind: 'Category', Categories: ['metadata:attribute:dark'] } });
+        proxy.Cards.push({ ...effect, Id: 'graceful-smoke', Name: 'Graceful Charity', DrawCount: 3, DrawOncePerTurn: false, PostDrawDiscardCount: 2 });
         proxy.Cards.push({ Id: 'blank-smoke', Name: 'Blank', Copies: 1, Active: true, Categories: [] });
         await load(proxy);
         assert.equal(await page.locator('.draw-complexity-notice').count(), 1);
@@ -155,10 +163,10 @@ async function main() {
         assert.equal(await calculate.isEnabled(), true);
         const off = await page.evaluate(() => probe.requests.at(-1));
         assert(off.Cards.every(card => card.DrawCount === null && card.PreDrawRemovalCount === 0));
-        assert.equal(off.Options.ConditionalEffectsEnabled, false);
+        assert.equal(off.Options.ConditionalEffectsEnabled, undefined);
         await page.getByRole('button', { name: 'Pin result', exact: true }).click();
         assert.match(await page.locator('.pinned-result').innerText(), /Opening hand only/);
-        await page.evaluate(() => { probe.delayNext = 4500; probe.peak = 0; });
+        await page.evaluate(() => { probe.delayRequest = 4500; probe.peak = 0; });
         await calculate.click();
         assert.equal(await page.locator('.calculation-elapsed').count(), 0);
         await page.getByRole('button', { name: 'Calculate without draw effects', exact: true }).waitFor();
@@ -172,16 +180,16 @@ async function main() {
         assert.equal(await page.locator('.calculation-elapsed').count(), 0);
         await page.screenshot({ path: path.join(screenshots, `${engine}-recovery.png`) });
         await page.getByRole('button', { name: 'Calculation settings', exact: true }).click();
-        await page.locator('#calculationModel').selectOption('Simplified');
-        assert.match(await page.locator('#drawEffectsHelp').innerText(), /both pre-draw costs and post-draw removals/);
+        await page.locator('#calculationModel').selectOption('Configured');
+        assert.match(await page.locator('#drawEffectsHelp').innerText(), /each saved card plan/);
         await page.locator('#calculationModel').press('Escape');
+        await load(graceful);
         await calculate.click();
         await idle();
-        assert.match(await page.locator('.result-model').innerText(), /Simplified draws/);
-        assert.match(await page.locator('.probability-results').innerText(), /Hypothetical, often optimistic/);
+        assert.match(await page.locator('.result-model').innerText(), /Configured draw effects/);
         assert.match(await page.locator('.comparison-model-difference').innerText(), /different questions/);
         assert.deepEqual(errors, []);
-        assert.equal(await page.evaluate(() => probe.live), 0);
+        assert.equal(await page.evaluate(() => probe.live), 1);
         console.log(JSON.stringify({ engine, failure, typing, screenshots, result: 'PASS: default, preflight warning retained, no elapsed message, proxy failure, exact one-shot recovery, cancel controls, keyboard focus, narrow layout, provenance, no worker overlap or JS errors' }));
     } finally {
         await browser.close();

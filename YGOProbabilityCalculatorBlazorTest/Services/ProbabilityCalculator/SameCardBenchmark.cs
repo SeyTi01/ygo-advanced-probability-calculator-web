@@ -43,7 +43,7 @@ public class SameCardBenchmark {
             WorkBudget budget = new(CalculationWorkPolicy.Interactive);
             ExactCalculationResult result = advanced ? new PostDrawCalculation(cards, 5, budget).Calculate(combos, [])
                 : new ProbabilityCalculation(cards, 5, budget).CalculateExactResults(combos, []);
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, combos, 5, [], CalculationWorkPolicy.Interactive, options: new(advanced));
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, combos, 5, [], CalculationWorkPolicy.Interactive, options: new());
             exported.Add(new { Name = name, Outcome = "Success", Advanced = advanced, Work = budget.Spent,
                 Probability = result.Total.ToDouble(budget), Exact = $"{result.Total.Numerator}/{result.Total.Denominator}",
                 Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(session)),

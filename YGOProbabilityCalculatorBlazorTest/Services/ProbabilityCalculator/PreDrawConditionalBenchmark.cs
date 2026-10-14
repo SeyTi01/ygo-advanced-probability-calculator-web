@@ -66,7 +66,7 @@ public partial class DrawEffectsBenchmark {
         List<(string Name, SessionState Session, string Mode)> cases = [];
         foreach (int copies in new[] { 1, 3 }) {
             SessionState solar = await RealisticSolarFixture.Load(copies);
-            foreach (string mode in new[] { "configured", "opening", "simplified" }) {
+            foreach (string mode in new[] { "configured", "opening" }) {
                 cases.Add(($"solar-{copies}-{mode}", solar, mode));
             }
 
@@ -98,7 +98,7 @@ public partial class DrawEffectsBenchmark {
                 try {
                     result = post is not null ? post.Calculate(session.Combos, session.ComboGroups)
                         : mode == "opening" ? new ProbabilityCalculation(session.Cards, session.HandSize, budget).CalculateExactResults(session.Combos, session.ComboGroups)
-                        : new DrawEffectCalculation(session.Cards, session.HandSize, budget, false).Calculate(session.Combos, session.ComboGroups);
+                        : new DrawEffectCalculation(session.Cards, session.HandSize, budget).Calculate(session.Combos, session.ComboGroups);
                     outcome = "Success";
                 }
                 catch (ProbabilityCalculationLimitException exception) {
@@ -112,7 +112,7 @@ public partial class DrawEffectsBenchmark {
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(
                 session.Cards, session.Combos, session.HandSize, session.ComboGroups,
                 CalculationWorkPolicy.Interactive, mode != "opening",
-                storagePolicy: CalculationStoragePolicy.ForTier(CalculationStorageTier.Standard), options: new(mode != "simplified")
+                storagePolicy: CalculationStoragePolicy.ForTier(CalculationStorageTier.Standard), options: new()
             );
             ProbabilityCalculationResult? publicResult = result?.ToPublic(session.Combos, session.ComboGroups, budget);
             TestContext.Out.WriteLine($"{name}: {outcome}; reference={reference}; work={budget.Spent}; states={post?.PeakStates}; cells={post?.PeakCells}; allCells={budget.PeakCells}; rows={post?.ReducedRows}; deferred={post?.DeferredRows}; terminal={post?.TerminalStates}; ms={string.Join(',', times)}; allocated={string.Join(',', allocations)}");
@@ -126,7 +126,7 @@ public partial class DrawEffectsBenchmark {
                 DeferredRows = post?.DeferredRows ?? 0, TerminalStates = post?.TerminalStates ?? 0,
                 Milliseconds = times, AllocatedBytes = allocations,
                 Path = (mode == "configured" && reference ? DrawExecutionPath.OrderedFrontier
-                    : DrawExecutionAssessment.Assess(session.Cards, session.Combos, session.HandSize, mode != "opening", mode != "simplified").Path).ToString(),
+                    : DrawExecutionAssessment.Assess(session.Cards, session.Combos, session.HandSize, mode != "opening").Path).ToString(),
                 ExactResults = result is null ? null : new[] { result.Total }.Concat(result.Combos).Concat(result.Groups)
                     .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),
                 Probability = publicResult?.TotalProbability, ReferenceResults = publicResult,

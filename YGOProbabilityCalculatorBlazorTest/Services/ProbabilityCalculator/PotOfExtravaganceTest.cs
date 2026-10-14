@@ -57,9 +57,9 @@ public class PotOfExtravaganceTest {
         ExactCalculationResult drawFirst = AssertParity(deck, 2, Custom("draw", "pot"));
         Assert.That(potFirst.Combos[1], Is.Not.EqualTo(drawFirst.Combos[1]));
         List<Combo> retainedPot = [new([], cards: [new("pot", 1, 1)])];
-        Assert.That(new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), true, Custom("pot", "draw")).Calculate(retainedPot, []).Total,
-            Is.Not.EqualTo(new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), true, Custom("draw", "pot")).Calculate(retainedPot, []).Total));
-        Card custom = deck[0].WithDrawCount(2);
+        Assert.That(new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), Custom("pot", "draw")).Calculate(retainedPot, []).Total,
+            Is.Not.EqualTo(new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), Custom("draw", "pot")).Calculate(retainedPot, []).Total));
+        Card custom = deck[0].WithEffect(DrawEffectPlan.Draw(2, deck[0].DrawOncePerTurn), deck[0].EffectProfile.AsCustom());
         Assert.That(custom.EffectPlan.HasActivationRestrictions, Is.False);
         Assert.That(custom.EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
         AssertParity([custom, .. deck.Skip(1)], 2, Custom("pot", "draw"));
@@ -98,9 +98,9 @@ public class PotOfExtravaganceTest {
     public void ModesWorkerAndRoutingUseTheSameSavedSemantics(bool configured) {
         List<Card> deck = [Pot(2), new([], id: "draw", drawCount: 1), new([A], 2, id: "target"), new([], 2, id: "f")];
         AssertParity(deck, 2, Custom("draw", "pot"), configured);
-        Assert.That(DrawExecutionAssessment.Assess(deck, [], 2, true, configured).Path,
-            Is.EqualTo(configured ? DrawExecutionPath.OrderedFrontier : DrawExecutionPath.DrawCountState));
-        Assert.That(DrawEffectResolver.CanUseCountStateFastPath(deck.Where(card => card.DrawCount is not null).ToArray(), 7, 2, configured), Is.EqualTo(!configured));
+        Assert.That(DrawExecutionAssessment.Assess(deck, [], 2, true).Path,
+            Is.EqualTo(DrawExecutionPath.OrderedFrontier));
+        Assert.That(DrawEffectResolver.CanUseCountStateFastPath(deck.Where(card => card.DrawCount is not null).ToArray(), 7, 2), Is.False);
         Assert.That(DrawEffectPerformance.RequiresDetailedHandState(Pot().EffectPlan, EffectExecutionModel.DrawSequenceV1), Is.False);
         List<Combo> combos = [new([], cards: [new("pot", 1, 2)])];
         CalculationSnapshot opening = CalculationSnapshot.Capture(deck, combos, 2, [], drawEffectsEnabled: false);
@@ -130,7 +130,7 @@ public class PotOfExtravaganceTest {
         }
         foreach (Card edited in new[] { pot.WithDrawCount(2), pot.WithDrawOncePerTurn(false), pot.WithPreDrawRemovalCount(1),
             pot.WithPostDrawDiscardCount(1), pot.WithPreDrawDeckRemovalCount(1), pot.WithPostDrawDeckMillCount(1), pot.WithDrawCount(null) }) {
-            Assert.That(edited.EffectPlan.HasActivationRestrictions, Is.False);
+            Assert.That(edited.EffectPlan.HasActivationRestrictions, Is.EqualTo(edited.DrawCount is not null));
         }
         string legacy = codec.SerializeSession(new() { Cards = [old], HandSize = 1 }).Replace("\"SchemaVersion\": 5", "\"SchemaVersion\": 4");
         Assert.That((await codec.LoadSessionAsync(legacy)).Cards.Single().EffectPlan.HasActivationRestrictions, Is.False);
@@ -160,8 +160,8 @@ public class PotOfExtravaganceTest {
         List<Card> zeroCopy = [pot, new([], 0, id: "zero", drawCount: 1), new([], 37, id: "f")];
         List<Card> inactive = [pot, new([], active: false, id: "inactive", drawCount: 1), new([], 37, id: "f")];
         foreach (List<Card> cards in new[] { zeroCopy, inactive }) {
-            Assert.That(DrawExecutionAssessment.Assess(cards, [], 5, true, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, [new([], cards: [new(pot.Id, 1, 3)])], 5, [], options: new(true));
+            Assert.That(DrawExecutionAssessment.Assess(cards, [], 5, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, [new([], cards: [new(pot.Id, 1, 3)])], 5, [], options: new());
             Assert.DoesNotThrow(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
         }
     }
@@ -181,17 +181,17 @@ public class PotOfExtravaganceTest {
         Assert.That(deck.Sum(card => card.Copies), Is.EqualTo(40));
         WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
         Stopwatch watch = Stopwatch.StartNew();
-        ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, budget, true, priority).Calculate(combos, session.ComboGroups);
+        ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, budget, priority).Calculate(combos, session.ComboGroups);
         TestContext.Out.WriteLine($"example priority={priority.Mode}, ms={watch.Elapsed.TotalMilliseconds:F1}, work={budget.Spent}, total={actual.Total.ToDouble(budget):R}");
-        List<Card> generic = deck.Select(card => card.Id == pot.Id ? card.WithDrawCount(2) : card).ToList();
-        ExactCalculationResult expected = new DrawEffectCalculation(generic, 5, new(CalculationWorkPolicy.Interactive), true, priority).Calculate(combos, session.ComboGroups);
+        List<Card> generic = deck.Select(card => card.Id == pot.Id ? card.WithEffect(DrawEffectPlan.Draw(2, card.DrawOncePerTurn), card.EffectProfile.AsCustom()) : card).ToList();
+        ExactCalculationResult expected = new DrawEffectCalculation(generic, 5, new(CalculationWorkPolicy.Interactive), priority).Calculate(combos, session.ComboGroups);
         Assert.That(actual.Total, Is.EqualTo(expected.Total));
         Assert.That(actual.Combos, Is.EqualTo(expected.Combos));
         Assert.That(actual.Groups, Is.EqualTo(expected.Groups));
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 5, true, true),
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 5, true),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DrawCountState, false)));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, combos, 5, session.ComboGroups,
-            storagePolicy: CalculationStoragePolicy.Standard, options: new(true, priority), categoryDefinitions: session.Categories);
+            storagePolicy: CalculationStoragePolicy.Standard, options: new(priority), categoryDefinitions: session.Categories);
         ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
         Assert.That(worker.TotalProbability, Is.EqualTo(actual.Total.ToDouble(budget)).Within(1e-12));
         Assert.That(worker.ComboProbabilities.Select(row => row.Probability),
@@ -206,11 +206,11 @@ public class PotOfExtravaganceTest {
             new([A], 8, id: "target"), new([B], 6, id: "material"), new([A, B], 4, id: "both"), new([], 15, id: "f")];
         List<Combo> combos = [new([new(A, 1, 5)]), new([], cards: [new("pot", 1, 3)])];
         foreach (bool restricted in new[] { false, true }) {
-            List<Card> modeled = restricted ? deck : deck.Select(card => card.Id == "pot" ? card.WithDrawCount(2) : card).ToList();
+            List<Card> modeled = restricted ? deck : deck.Select(card => card.Id == "pot" ? card.WithEffect(card.EffectPlan with { FirstActivationOnly = false, BlocksLaterDraws = false }, card.EffectProfile.AsCustom()) : card).ToList();
             foreach (DrawActivationPriority priority in new[] { DrawActivationPriority.Default, Custom("pot", "desires", "cost") }) {
                 WorkBudget budget = new(CalculationWorkPolicy.Interactive);
                 Stopwatch watch = Stopwatch.StartNew();
-                ExactCalculationResult result = new DrawEffectCalculation(modeled, 5, budget, true, priority).Calculate(combos, []);
+                ExactCalculationResult result = new DrawEffectCalculation(modeled, 5, budget, priority).Calculate(combos, []);
                 TestContext.Out.WriteLine($"restricted={restricted}, priority={priority.Mode}, ms={watch.Elapsed.TotalMilliseconds:F1}, work={budget.Spent}, total={result.Total}");
             }
         }
@@ -224,12 +224,12 @@ public class PotOfExtravaganceTest {
             .WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList();
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, hand, combos, groups, true,
             priority.Mode == DrawActivationMode.CustomPriority ? priority.CardIds : null);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, hand, new(CalculationWorkPolicy.Interactive), configured, priority).Calculate(combos, groups);
+        ExactCalculationResult result = new DrawEffectCalculation(modeled, hand, new(CalculationWorkPolicy.Interactive), priority).Calculate(combos, groups);
         ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < rows.Length; i++) {
             Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row={i}, hand={hand}, priority={priority.Mode}");
         }
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, hand, groups, options: new(configured, priority));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, combos, hand, groups, options: new(priority));
         ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
         Assert.That(worker.TotalProbability, Is.EqualTo(rows[0].ToDouble(new(CalculationWorkPolicy.Interactive))).Within(1e-12));
         for (int i = 0; i < result.Combos.Length; i++) {

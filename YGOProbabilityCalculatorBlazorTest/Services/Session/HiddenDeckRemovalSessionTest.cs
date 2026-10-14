@@ -26,7 +26,7 @@ public class HiddenDeckRemovalSessionTest {
         Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
         Assert.That(loaded.Cards[0].PreDrawDeckRemovalCount, Is.EqualTo(10));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 5, [], options: new(true));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 5, [], options: new());
         Assert.That(JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!.Cards[0].PreDrawDeckRemovalCount, Is.EqualTo(10));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability, Is.EqualTo(1));
         Card custom = pot.WithPreDrawDeckRemovalCount(3);

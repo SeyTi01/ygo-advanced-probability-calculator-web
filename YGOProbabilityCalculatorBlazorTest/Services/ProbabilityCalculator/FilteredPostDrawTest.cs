@@ -99,16 +99,17 @@ public class FilteredPostDrawTest {
         AssertParity(deck, 1, combos, []);
         foreach (bool global in new[] { false, true }) {
             foreach (bool advanced in new[] { false, true }) {
-                CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 1, [],
-                    drawEffectsEnabled: global, options: new(advanced));
+                List<Card> modeled = advanced ? deck : deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
+                CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, combos, 1, [],
+                    drawEffectsEnabled: global, options: new());
                 ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
                 Assert.That(result.TotalProbability, Is.EqualTo(global && advanced && !qualifies ? 2.0 / 3 : 1));
             }
         }
         WorkBudget filteredBasic = new(CalculationWorkPolicy.Interactive);
         WorkBudget pureBasic = new(CalculationWorkPolicy.Interactive);
-        new DrawEffectCalculation(deck, 1, filteredBasic, false).Calculate(combos, []);
-        new DrawEffectCalculation(deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), 1, pureBasic, false).Calculate(combos, []);
+        new DrawEffectCalculation(deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), 1, filteredBasic).Calculate(combos, []);
+        new DrawEffectCalculation(deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), 1, pureBasic).Calculate(combos, []);
         Assert.That(filteredBasic.Spent, Is.EqualTo(pureBasic.Spent));
     }
 

@@ -147,7 +147,7 @@ public class ComboAlternativeReductionTest {
             DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(deck, hand, combos, groups);
             foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
                 WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-                ExactCalculationResult actual = new DrawEffectCalculation(order, hand, budget, advanced).Calculate(combos, groups);
+                ExactCalculationResult actual = new DrawEffectCalculation(order, hand, budget).Calculate(combos, groups);
                 ExactProbability[] values = [actual.Total, .. actual.Combos, .. actual.Groups];
                 for (int index = 0; index < values.Length; index++) {
                     Assert.That(values[index].Numerator * expected.Total, Is.EqualTo(expected.Wins[index] * values[index].Denominator));

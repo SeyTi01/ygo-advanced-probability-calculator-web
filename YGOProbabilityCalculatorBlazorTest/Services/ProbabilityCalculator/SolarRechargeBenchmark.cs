@@ -43,7 +43,7 @@ public class SolarRechargeBenchmark {
                     long start = GC.GetAllocatedBytesForCurrentThread();
                     Stopwatch timer = Stopwatch.StartNew();
                     try {
-                        exact = post is null ? new DrawEffectCalculation(deck, hand, budget, true).Calculate(combos, groups) : post.Calculate(combos, groups);
+                        exact = post is null ? new DrawEffectCalculation(deck, hand, budget).Calculate(combos, groups) : post.Calculate(combos, groups);
                         result = exact.ToPublic(combos, groups, budget);
                     }
                     catch (ProbabilityCalculationLimitException error) {
@@ -58,9 +58,9 @@ public class SolarRechargeBenchmark {
                     peakStates = post?.PeakStates ?? 0;
                     peakCells = post?.PeakCells ?? 0;
                 }
-                CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, hand, groups, options: new(true));
+                CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, hand, groups, options: new());
                 output.Add(new { Name = $"{size}-{hand}-{name}", Outcome = outcome, Work = work, PeakStates = peakStates, PeakCells = peakCells,
-                    Milliseconds = timings, AllocatedBytes = allocations, Path = DrawExecutionAssessment.Assess(deck, combos, hand, true, true).Path.ToString(),
+                    Milliseconds = timings, AllocatedBytes = allocations, Path = DrawExecutionAssessment.Assess(deck, combos, hand, true).Path.ToString(),
                     Probability = result?.TotalProbability, ReferenceResults = result,
                     ExactResults = exact is null ? null : new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups).Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),
                     Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json) });

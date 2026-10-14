@@ -54,7 +54,7 @@ public class PostDrawDeferredTest {
         deck.RemoveAll(card => card.Categories.Contains(Dark));
         List<Combo> combos = [new([], cards: [new("light-ab", 1, 1)]), new([], cards: [new("light-b", 1, 1)])];
         DrawSequenceOracle.Counts oracle = AssertOracle(deck, 2, combos);
-        ExactCalculationResult routed = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), true)
+        ExactCalculationResult routed = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive))
             .Calculate(combos, [new("g", "Group"), new("empty", "Empty")]);
         AssertRows(routed, oracle);
         Assert.That(oracle.Failed > 0, Is.True);
@@ -149,16 +149,17 @@ public class PostDrawDeferredTest {
             Assert.That(calculation.DeferredRows, Is.GreaterThan(1));
             Assert.That(calculation.PeakCells, Is.LessThan(20_000));
             Assert.That(budget.Spent, Is.LessThan(5_000_000));
-            Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, true, true).Path,
+            Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, true).Path,
                 Is.EqualTo(DrawExecutionPath.DeferredConditional));
         });
         foreach ((bool enabled, bool configured) in new[] { (true, true), (true, false), (false, true) }) {
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, 5, session.ComboGroups,
-                CalculationWorkPolicy.Interactive, enabled, options: new(configured));
+            List<Card> modeled = configured ? session.Cards : session.Cards.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, session.Combos, 5, session.ComboGroups,
+                CalculationWorkPolicy.Interactive, enabled, options: new());
             ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
             ExactCalculationResult expected = !enabled
                 ? new ProbabilityCalculation(session.Cards, 5, new WorkBudget(CalculationWorkPolicy.Interactive)).CalculateExactResults(session.Combos, session.ComboGroups)
-                : configured ? exact : new DrawEffectCalculation(session.Cards, 5, new(CalculationWorkPolicy.Interactive)).Calculate(session.Combos, session.ComboGroups);
+                : configured ? exact : new DrawEffectCalculation(modeled, 5, new(CalculationWorkPolicy.Interactive)).Calculate(session.Combos, session.ComboGroups);
             ProbabilityCalculationResult reference = expected.ToPublic(session.Combos, session.ComboGroups, new(CalculationWorkPolicy.Interactive));
             Assert.That(result.TotalProbability, Is.EqualTo(reference.TotalProbability));
             Assert.That(result.ComboProbabilities.Select(row => row.Probability), Is.EqualTo(reference.ComboProbabilities.Select(row => row.Probability)));
