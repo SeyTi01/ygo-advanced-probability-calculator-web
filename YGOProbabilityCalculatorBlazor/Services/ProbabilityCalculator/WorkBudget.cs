@@ -14,6 +14,9 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
     private long _remaining = policy.WorkUnits;
     private readonly CalculationStoragePolicy _storagePolicy = storagePolicy ?? CalculationStoragePolicy.Standard;
 
+    internal long PeakEntries { get; private set; }
+    internal long PeakCells { get; private set; }
+
     internal long Spent => policy.WorkUnits - _remaining;
     internal CalculationStoragePolicy StoragePolicy => _storagePolicy;
 
@@ -28,6 +31,8 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
     }
 
     public void CheckStorage(long entries, long cells) {
+        PeakEntries = Math.Max(PeakEntries, entries);
+        PeakCells = Math.Max(PeakCells, cells);
         if (entries > _storagePolicy.EntryLimit || cells > _storagePolicy.CellLimit) {
             throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
         }

@@ -15,7 +15,8 @@ internal sealed partial class PostDrawCalculation(
     List<Card> deck,
     int handSize,
     WorkBudget budget,
-    DrawActivationPriority? priority = null
+    DrawActivationPriority? priority = null,
+    bool deferIdentities = true
 ) {
     internal int TerminalStates { get; private set; }
     internal int PeakStates { get; private set; }
@@ -50,6 +51,7 @@ internal sealed partial class PostDrawCalculation(
 
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
         List<Card> cards = ReduceDeck(combos);
+        List<Card> deferred = deferIdentities ? DeferUnobservedIdentities(ref cards) : [];
         int n = cards.Count;
         bool customPriority = priority?.Mode == DrawActivationMode.CustomPriority;
         if (customPriority) {
@@ -195,6 +197,9 @@ internal sealed partial class PostDrawCalculation(
         }
 
         TerminalStates = terminal.Count;
+        if (deferred.Count > 0) {
+            return CountDeferredHands(cards, deferred, terminal, factorial[copies], combos, groups, totalOnly);
+        }
         int resultCount = 1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0));
         long resultIntegerCells = WorkBudget.IntegerCells(factorial[copies]);
         CheckStorage(resultCount, resultCount * (resultIntegerCells + 1), "result accumulators");
