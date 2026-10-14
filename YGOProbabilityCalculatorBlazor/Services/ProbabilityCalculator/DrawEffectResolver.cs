@@ -125,8 +125,14 @@ internal static class DrawEffectResolver {
         }
     }
 
-    internal static bool CanUseCountStateFastPath(IReadOnlyList<Card> effects, int totalCopies, int handSize, bool deckCostsEnabled = true) {
+    internal static bool CanUseCountStateFastPath(IReadOnlyList<Card> effects, int totalCopies, int handSize, bool conditionsEnabled = true) {
         if (handSize < 0 || handSize > totalCopies) {
+            return false;
+        }
+
+        // Timing and draw locks invalidate the collective-contribution proof, even
+        // for one identity: a copy drawn by another copy need not activate.
+        if (conditionsEnabled && effects.Any(effect => effect.EffectPlan.HasActivationRestrictions)) {
             return false;
         }
 
@@ -136,7 +142,7 @@ internal static class DrawEffectResolver {
         long maximumDraws = 0;
         foreach (Card effect in effects) {
             int activations = effect.DrawOncePerTurn ? 1 : effect.Copies;
-            maximumDraws += (effect.DrawCount!.Value + (deckCostsEnabled ? effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount : 0)) * (long)activations;
+            maximumDraws += (effect.DrawCount!.Value + (conditionsEnabled ? effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount : 0)) * (long)activations;
         }
 
         return maximumDraws <= totalCopies - handSize;

@@ -61,6 +61,12 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
         if (plan.RemovalCount > 0) {
             steps.Add($"remove {plan.RemovalCount} from hand ({DescribeSelector(plan.RemovalSelector, categories)})");
         }
+        if (plan.FirstActivationOnly) {
+            steps.Add("first draw activation only");
+        }
+        if (plan.BlocksLaterDraws) {
+            steps.Add("no further draws");
+        }
         if (plan.OncePerTurn) {
             steps.Add("once per turn");
         }

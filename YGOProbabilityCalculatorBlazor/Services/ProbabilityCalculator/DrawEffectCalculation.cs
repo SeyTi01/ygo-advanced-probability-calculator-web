@@ -49,8 +49,8 @@ internal sealed class DrawEffectCalculation(
         // hand operations, every encountered source can resolve in any priority order;
         // its visible-draw contribution and OPT remainder are identical. Hidden positions
         // remain exchangeable. Priority therefore does not invalidate this fast path.
-        bool ignoreDeckCosts = !conditionalEffectsEnabled && effects.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0);
-        List<Card> effectiveEffects = ignoreDeckCosts ? effects.Select(card => card.WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList() : effects;
+        bool simplifyEffects = !conditionalEffectsEnabled && effects.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0 || card.EffectPlan.HasActivationRestrictions);
+        List<Card> effectiveEffects = simplifyEffects ? effects.Select(card => card.WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList() : effects;
         DrawResolution resolution = DrawEffectResolver.Resolve(ordinaryCopies, effectiveEffects, handSize, budget);
         ExactProbability total = ExactProbability.Zero;
         ExactProbability[] individual = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : combos.Count).ToArray();

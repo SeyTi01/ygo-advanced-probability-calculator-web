@@ -109,6 +109,8 @@ public sealed class SessionSchemaMigrator {
                     || name.Equals("PreDrawSelector", StringComparison.OrdinalIgnoreCase)
                     || name.Equals("PreDrawDeckRemovalCount", StringComparison.OrdinalIgnoreCase)
                     || name.Equals("PostDrawDeckMillCount", StringComparison.OrdinalIgnoreCase)
+                    || name.Equals("FirstActivationOnly", StringComparison.OrdinalIgnoreCase)
+                    || name.Equals("BlocksLaterDraws", StringComparison.OrdinalIgnoreCase)
                     || name.Equals("EffectProfile", StringComparison.OrdinalIgnoreCase)).ToArray();
             foreach (string field in fields) {
                 card.Remove(field);
