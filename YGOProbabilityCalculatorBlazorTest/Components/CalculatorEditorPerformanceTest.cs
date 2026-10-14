@@ -74,6 +74,9 @@ public sealed class CalculatorEditorPerformanceTest : CalculatorEditorTestBase {
         Card desires = BuiltIn(35261759).WithName("Desires counterexample");
         session.Cards[session.Cards.IndexOf(graceful)] = desires;
         session.Cards.Add(allure);
+        // Unfiltered Graceful removal prevents the common-pool proof. Keep this
+        // warning/rename test on a genuinely expensive ordered configuration.
+        session.Cards.Add(graceful.WithCopies(1));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         Assert.That(cut.Find(".draw-complexity-notice").TextContent,
             Does.Contain("Potential contributors: Allure candidate").And.Contain("Model notes (Performance)").And.Not.Contain("Desires counterexample"));
@@ -86,6 +89,16 @@ public sealed class CalculatorEditorPerformanceTest : CalculatorEditorTestBase {
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
         Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         Assert.That(SimulationDetails(cut.FindComponents<CardEditor>().Single(editor => editor.Instance.Card.Id == allure.Id)), Does.Contain("Performance:"));
+        compiler.VerifyNoOtherCalls();
+    }
+
+    [Test]
+    public async Task SafeMixedPoolRemovesGlobalWarningWithoutRunningTheCalculator() {
+        Mock<IProbabilityCalculatorService> compiler = new(MockBehavior.Strict);
+        context.Services.AddSingleton(compiler.Object);
+        SessionState session = await RealisticMixedFixture.Load(vision: false);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         compiler.VerifyNoOtherCalls();
     }
 

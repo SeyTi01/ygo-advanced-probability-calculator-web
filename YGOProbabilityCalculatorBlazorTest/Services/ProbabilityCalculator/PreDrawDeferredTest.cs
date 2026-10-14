@@ -141,7 +141,7 @@ public class PreDrawDeferredTest {
         }
         List<Card> mixed = Deck(1);
         mixed.Add(new([], id: "other", drawCount: 1));
-        AssertExact(mixed, 2, deferred: false);
+        AssertExact(mixed, 2);
     }
 
     [Test]
@@ -196,7 +196,7 @@ public class PreDrawDeferredTest {
             List<Card> ordered = reversed ? deck.AsEnumerable().Reverse().ToList() : deck;
             DrawActivationPriority priority = reversed
                 ? new(DrawActivationMode.CustomPriority, ["other", "source"]) : DrawActivationPriority.Default;
-            DrawSequenceOracle.Counts expected = reversed && !deferred
+            DrawSequenceOracle.Counts expected = reversed
                 ? DrawSequenceOracle.Enumerate(deck, hand, combos, groups, collapseIdenticalCopies: true, priorityIds: priority.CardIds) : oracle;
             PostDrawCalculation calculation = new(ordered, hand, new(CalculationWorkPolicy.Interactive), priority);
             AssertRows(calculation.Calculate(combos, groups), expected);

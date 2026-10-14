@@ -63,7 +63,7 @@ public class PostDrawDeferredTest {
     }
 
     [Test]
-    public void DistinctSameNameEntriesAndUnsafeShapesRetainOrderedResolution() {
+    public void DistinctSameNameEntriesStaySeparateAndUnsafeShapesRetainOrderedResolution() {
         List<Card> original = Deck(1);
         Card source = original[^1];
         foreach (Card changed in new[] { source.WithPreDrawRemovalCount(1),
@@ -73,7 +73,7 @@ public class PostDrawDeferredTest {
         }
         original.Add(new([], name: source.Name, id: "source-two", drawCount: 2, drawOncePerTurn: true,
             postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(Dark)));
-        AssertOracle(original, 2, Combos(), deferred: false);
+        AssertOracle(original, 2, Combos());
     }
 
     [TestCase(1, 0), TestCase(0, 1), TestCase(1, 1)]
@@ -114,7 +114,7 @@ public class PostDrawDeferredTest {
             foreach (bool custom in new[] { false, true }) {
                 DrawActivationPriority priority = custom ? new(DrawActivationMode.CustomPriority, ["source-two", "source"])
                     : DrawActivationPriority.Default;
-                DrawSequenceOracle.Counts expected = custom && !deferred
+                DrawSequenceOracle.Counts expected = custom
                     ? DrawSequenceOracle.Enumerate(deck, hand, combos, groups, collapseIdenticalCopies: true, priorityIds: priority.CardIds)
                     : oracle;
                 PostDrawCalculation calculation = new(ordered, hand, new(CalculationWorkPolicy.Interactive), priority);
