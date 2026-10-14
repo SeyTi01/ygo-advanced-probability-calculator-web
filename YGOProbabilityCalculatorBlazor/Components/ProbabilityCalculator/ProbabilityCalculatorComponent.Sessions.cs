@@ -146,6 +146,12 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
             // An unavailable bundled catalog is not evidence about an unknown card.
         }
 
+        // Check the supplied snapshot, just as the legacy enricher does. Catalog
+        // reconciliation still repairs automatic archetypes on the fast path.
+        if (!session.Cards.Any(LegacyCardMetadataEnricher.NeedsNameEnrichment)) {
+            return preparedCards;
+        }
+
         // Optional legacy network enrichment is bounded and receives its own model,
         // so a late completion cannot mutate the already reconciled workspace.
         SessionState enriched = await _sessionService.LoadSessionAsync(_sessionService.SerializeSession(session));

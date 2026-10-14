@@ -45,9 +45,9 @@ public class SessionRecoveryTest {
     [TearDown]
     public void Cleanup() => _context.Dispose();
 
-    private static SessionState Working() => new() {
+    private static SessionState Working(bool legacy = false) => new() {
         HandSize = 5, Categories = [new("Role")],
-        Cards = [new([], 3, "Fixture", false, "stable-id", 1234)],
+        Cards = [new([], 3, "Fixture", false, "stable-id", legacy ? null : 1234)],
         Combos = [new([], "Incomplete", false)],
         ComboGroups = [new("group", "Group")], CategoryColorIndices = new() { ["Role"] = 3 }
     };
@@ -240,7 +240,7 @@ public class SessionRecoveryTest {
     [TestCase(false)]
     [TestCase(true)]
     public async Task SlowRecoveryEnrichmentCannotUndoNewEditOrDraft(bool draft) {
-        Recovery(_sessions.SerializeSession(Working()));
+        Recovery(_sessions.SerializeSession(Working(legacy: true)));
         TaskCompletionSource response = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(response.Task);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = _context.RenderComponent<ProbabilityCalculatorComponent>();
@@ -275,7 +275,7 @@ public class SessionRecoveryTest {
     [TestCase(false)]
     [TestCase(true)]
     public async Task ExampleEnrichmentDoesNotMutateIncomingSessionEvenWhenRejected(bool reject) {
-        SessionState source = Working();
+        SessionState source = Working(legacy: true);
         Card original = source.Cards[0];
         TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -325,7 +325,7 @@ public class SessionRecoveryTest {
 
     [Test]
     public async Task TimedOutEnrichmentCannotMutateAppliedWorkspaceOnLateCompletion() {
-        SessionState source = Working();
+        SessionState source = Working(legacy: true);
         SessionState? enrichmentInput = null;
         TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(async (SessionState session) => {
@@ -377,7 +377,7 @@ public class SessionRecoveryTest {
         Task<string> update = ObserveNextRecoveryUpdate();
         TaskCompletionSource response = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _enricher.Setup(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(response.Task);
-        _context.Services.GetRequiredService<IPendingSessionService>().PendingSession = Working();
+        _context.Services.GetRequiredService<IPendingSessionService>().PendingSession = Working(legacy: true);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = _context.RenderComponent<ProbabilityCalculatorComponent>();
         Assert.That(_context.JSInterop.Invocations["sessionRecovery.initialize"], Is.Empty);
         await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
@@ -418,7 +418,7 @@ public class SessionRecoveryTest {
 
     [Test]
     public async Task NewExplicitFileLoadWinsOverOlderRecoveryCompletion() {
-        Recovery(_sessions.SerializeSession(Working()));
+        Recovery(_sessions.SerializeSession(Working(legacy: true)));
         TaskCompletionSource response = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _enricher.SetupSequence(x => x.EnrichAsync(It.IsAny<SessionState>()))
             .Returns(response.Task).Returns(Task.CompletedTask);
@@ -450,7 +450,7 @@ public class SessionRecoveryTest {
 
     [Test]
     public async Task DisposedParentRejectsLateRecoveryAndComponentReinitializesWithNewOwner() {
-        Recovery(_sessions.SerializeSession(Working()));
+        Recovery(_sessions.SerializeSession(Working(legacy: true)));
         TaskCompletionSource response = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _enricher.SetupSequence(x => x.EnrichAsync(It.IsAny<SessionState>())).Returns(response.Task).Returns(Task.CompletedTask);
         IRenderedComponent<RecoveryHost> host = _context.RenderComponent<RecoveryHost>(p => p.Add(x => x.Visible, true));

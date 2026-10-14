@@ -111,6 +111,26 @@ public class CatalogArchetypeReconcilerTest {
     }
 
     [Test]
+    public void TargetedIndexesKeepCanonicalPrecedenceUniqueArtworkAndExactNameRules() {
+        CardInfo[] catalog = [
+            new() { Id = 1, Name = "Unique", ArtworkImageIds = [10, 10, 2], ResolvedArchetypes = ["Lightsworn"] },
+            new() { Id = 2, Name = "Other", ArtworkImageIds = [20], ResolvedArchetypes = [] },
+            new() { Id = 3, Name = "unique", ArtworkImageIds = [30], ResolvedArchetypes = [] }
+        ];
+        List<Card> cards = [new([], externalCardId: 10), new([Lightsworn], externalCardId: 2),
+            new([], name: "Unique"), new([Lightsworn], name: "unique"), new([Lightsworn], name: "UNIQUE"),
+            new([Lightsworn], name: "Unique", externalCardId: 999)];
+        Card[] original = cards.ToArray();
+        CatalogArchetypeReconciler.Reconcile(cards, catalog);
+        Assert.That(cards[0].Categories, Is.EqualTo(new[] { Lightsworn }));
+        Assert.That(cards[1].Categories, Is.Empty, "canonical ID wins over another card's artwork ID");
+        Assert.That(cards[2].Categories, Is.EqualTo(new[] { Lightsworn }));
+        Assert.That(cards[3].Categories, Is.Empty);
+        Assert.That(cards[4], Is.SameAs(original[4]));
+        Assert.That(cards[5], Is.SameAs(original[5]), "unknown external IDs do not fall back to names");
+    }
+
+    [Test]
     public void UnknownEvidenceAndAmbiguousNamesOrArtworkNeverRewriteSavedCards() {
         CardInfo[] catalog = [
             new() { Id = 1, Name = "Twin", ArtworkImageIds = [10], ResolvedArchetypes = [] },

@@ -10,12 +10,20 @@ public static class CatalogArchetypeReconciler {
             return;
         }
 
-        Dictionary<int, CardInfo> byId = catalog.ToDictionary(info => info.Id);
-        Dictionary<int, CardInfo[]> byArtwork = catalog
-            .SelectMany(info => info.ArtworkImageIds.Distinct().Select(id => (Id: id, Info: info)))
+        // Only index evidence this session can use. Canonical IDs take precedence,
+        // so ordinary identified sessions need neither artwork nor name indexes.
+        HashSet<int> externalIds = cards.Where(card => card.ExternalCardId is not null)
+            .Select(card => card.ExternalCardId!.Value).ToHashSet();
+        HashSet<string> exactNames = cards.Where(card => card.ExternalCardId is null && card.Name is not null)
+            .Select(card => card.Name!).ToHashSet(StringComparer.Ordinal);
+        Dictionary<int, CardInfo> byId = catalog.Where(info => externalIds.Contains(info.Id)).ToDictionary(info => info.Id);
+        externalIds.ExceptWith(byId.Keys);
+        Dictionary<int, CardInfo[]> byArtwork = externalIds.Count == 0 ? [] : catalog
+            .SelectMany(info => info.ArtworkImageIds.Distinct().Where(externalIds.Contains).Select(id => (Id: id, Info: info)))
             .GroupBy(entry => entry.Id)
             .ToDictionary(group => group.Key, group => group.Select(entry => entry.Info).ToArray());
-        Dictionary<string, CardInfo[]> byName = catalog
+        Dictionary<string, CardInfo[]> byName = exactNames.Count == 0 ? new(StringComparer.Ordinal) : catalog
+            .Where(info => exactNames.Contains(info.Name))
             .GroupBy(info => info.Name, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
 
