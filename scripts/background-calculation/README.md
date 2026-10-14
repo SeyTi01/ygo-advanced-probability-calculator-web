@@ -78,11 +78,22 @@ checks exact results. Measured charged-work brackets were 11.52–11.63 million
 for 20 routes / five cards, 19.53–19.63 million for 18 routes / six cards, and
 43.84–43.95 million for the 15-route / 15-card stress case. The complete bundled
 40-card / five-card / eight-combo example with six nonparticipating copies replaced
-by three maintained Trade-In and three Allure charges **90,766,510** units in
-encounter order and **82,871,355** with Allure-first priority. The current allowance
-provides finite headroom. **High** is its lowest successful storage tier;
-Standard still reaches Storage. Storage thresholds are unchanged and selection
-remains explicit. Twenty-two routes / five cards still reaches storage exhaustion.
+by three maintained Trade-In and three Allure charges **85,695,137** units in
+encounter order and **78,570,835** with Allure-first priority. Both finish on
+**Standard**, with peak checked frontier payloads of **161,669** and **147,720**
+cells. Storage thresholds and the work allowance are unchanged. Larger inputs
+can still reach independent Work or Storage limits.
+
+Large ordered frontiers whose counts and source indices fit in one byte retain
+four values per integer, plus a full-width vector-length word. This is a lossless
+encoding of the entire original state, including FIFO order and trailing zeros;
+it introduces no new equivalence between play histories. Packing starts after a
+layer reaches 65,536 cells. Small frontiers and the count-state/exchangeable fast
+paths keep their original representation. Each map uses one encoding, and only
+one parent is decoded at a time. Checks count the actual retained integer array
+and exact weight payload. There are no partitions, persistent decoded caches,
+or changes to the N! weights or terminal counting. Retained memory decreases at
+the cost of additional transient allocations; this is not a universal speedup.
 The native opt-in benchmark reports elapsed time, cumulative
 allocations and sampled heap/working set; cumulative allocations are not peak
 live memory. Browser timing and shutdown evidence belong in the PR discussion.
@@ -95,8 +106,15 @@ The six-copy fixture removes 3 Fuwalos, 1 Maxx "C", 1 Triple Tactics Talent and
 to the historical 50M comparison. Run `MixedDeferredBenchmark.Replay` with
 `YGO_AUDIT_INPUT` and `YGO_AUDIT_OUTPUT` to freeze all exact/public rows and
 measure four native Release calls (discard the first for warm measurements).
+`YGO_FRONTIER_WIDE_REFERENCE=1` retains the original frontier representation for
+paired comparisons. `YGO_FRONTIER_MEMORY=1` separately samples the whole test
+process's managed heap after full GC and resident working set at completed layer
+boundaries while both layers are live. Those sampled maxima are not exact process
+peaks, and those timings must not be used as ordinary runtime measurements.
+`PeakConcurrentCells` sums the retained old/new/terminal map payloads at completed
+layer boundaries; individual `CheckStorage` protections remain separate.
 Use `--blame-hang-timeout 3m` to bound each opt-in test process. For normal-policy
-verification, export both priorities with 150M and High, combine their completed
+verification, export both priorities with 150M and Standard/High, combine their completed
 replay records, then run:
 
 ```sh
@@ -104,7 +122,8 @@ node scripts/background-calculation/trade-in-allure-smoke.cjs <publish/wwwroot> 
 ```
 
 This smoke checks the actual UI allowance and selected tier, complete native
-parity on cold/reused workers, cancellation/restart, UI heartbeats, runtime heap
+parity on cold/reused workers, cancellation/immediate restart, edit/session
+replacement invalidation, UI heartbeats, runtime heap
 size and rendered error state. Its isolated browser has a three-minute deadline;
 this does not add a product calculation deadline.
 

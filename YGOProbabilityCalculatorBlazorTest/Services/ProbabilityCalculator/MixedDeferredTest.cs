@@ -200,6 +200,14 @@ public class MixedDeferredTest {
                 Assert.That(calculation.DeferredRows > 0, Is.EqualTo(deferred));
                 AssertRows(new PostDrawCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority,
                     deferIdentities: false).Calculate(Combos(), Groups()), expected);
+                // Exercise the representation change even on these small labeled decks,
+                // with and without deferred identities. Keep the oracle independent.
+                foreach (bool pool in new[] { false, true }) {
+                    PostDrawCalculation packed = new(ordered, hand, new(CalculationWorkPolicy.Interactive), priority,
+                        deferIdentities: pool, compactFrontierThreshold: 0);
+                    AssertRows(packed.Calculate(Combos(), Groups()), expected);
+                    Assert.That(packed.PackedLayers, Is.GreaterThan(0));
+                }
                 AssertRows(new DrawEffectCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), true, priority)
                     .Calculate(Combos(), Groups()), expected);
                 ExactCalculationResult total = new PostDrawCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority)

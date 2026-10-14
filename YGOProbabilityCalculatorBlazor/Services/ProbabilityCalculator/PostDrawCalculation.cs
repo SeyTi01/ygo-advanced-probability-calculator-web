@@ -16,13 +16,22 @@ internal sealed partial class PostDrawCalculation(
     int handSize,
     WorkBudget budget,
     DrawActivationPriority? priority = null,
-    bool deferIdentities = true
+    bool deferIdentities = true,
+    int compactFrontierThreshold = PostDrawCalculation.DefaultCompactFrontierThreshold
 ) {
+    // A quarter of Standard's cell allowance. Small conditional frontiers retain
+    // their original representation; this is a trigger, never a raised limit.
+    internal const int DefaultCompactFrontierThreshold = 65_536;
     internal int TerminalStates { get; private set; }
     internal int PeakStates { get; private set; }
     internal long PeakCells { get; private set; }
     internal string? LargestStructure { get; private set; }
     internal int ReducedRows { get; private set; }
+    internal int PackedLayers { get; private set; }
+    // Completed-layer payload sum, not a process-memory or per-structure limit.
+    internal long PeakConcurrentCells { get; private set; }
+    // Opt-in profiling only: called while old/new layers and terminal hands coexist.
+    internal Action? ObserveFrontier { get; init; }
 
     private void CheckStorage(long entries, long cells, string structure) {
         if (cells > PeakCells) {
@@ -153,16 +162,29 @@ internal sealed partial class PostDrawCalculation(
         initial[phase] = handSize;
         Dictionary<State, BigInteger> current = new() { [new(initial)] = 1 };
         Dictionary<State, BigInteger> terminal = new();
+        long currentCells = initial.Length + 1L;
         long terminalCells = 0;
+        bool currentPacked = false;
+        // Every count/phase is at most copies; source + 1 is at most n.
+        // Keep small frontiers and the exchangeable/count-state fast paths unchanged.
+        bool canPack = copies <= byte.MaxValue && n <= byte.MaxValue;
         for (int depth = 0; current.Count > 0; depth++) {
             Dictionary<State, BigInteger> next = new();
             long nextCells = 0;
+            bool nextPacked = canPack && (currentPacked || currentCells >= compactFrontierThreshold);
+            if (nextPacked) {
+                PackedLayers++;
+            }
             foreach ((State state, BigInteger weight) in current) {
                 // Initial state is ready; every later state was settled before
-                // insertion. Read its immutable vector directly. Only freshly
-                // allocated child vectors may be changed by drawing or Settle.
+                // insertion. Decode at most this one parent when packed. Only
+                // freshly allocated children may be changed by drawing or Settle.
                 budget.Spend(1);
                 int[] values = state.Values;
+                if (currentPacked) {
+                    budget.Spend(values[0]);
+                    values = DrawFrontierPacking.Unpack(values);
+                }
                 int remaining = copies - depth;
                 if (values[phase] == 0) {
                     budget.Spend(WorkBudget.IntegerCells(weight) * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
@@ -188,12 +210,21 @@ internal sealed partial class PostDrawCalculation(
                     // Normalize immediately so batches differing only in discarded
                     // cards or obsolete candidates merge before the next layer.
                     if (Settle(ref drawn, remaining - 1) != ResolutionOutcome.RemovalUnavailable) {
+                        if (nextPacked) {
+                            budget.Spend(drawn.Length);
+                            drawn = DrawFrontierPacking.Pack(drawn);
+                        }
                         Add(next, new(drawn), weight * values[i], ref nextCells);
                     }
                 }
             }
             PeakStates = Math.Max(PeakStates, next.Count);
+            PeakConcurrentCells = Math.Max(PeakConcurrentCells, currentCells + nextCells + terminalCells);
+            ObserveFrontier?.Invoke();
+            GC.KeepAlive(current);
             current = next;
+            currentCells = nextCells;
+            currentPacked = nextPacked;
         }
 
         TerminalStates = terminal.Count;
@@ -465,6 +496,8 @@ internal sealed partial class PostDrawCalculation(
             BigInteger previous = exists ? slot : BigInteger.Zero;
             budget.Spend(WorkBudget.IntegerCells(previous));
             BigInteger value = previous + increment;
+            // Packed keys really own a shorter int[] (including its length word).
+            // Charge that retained payload and the unchanged exact integer weight.
             cells += WorkBudget.IntegerCells(value) - WorkBudget.IntegerCells(previous) + (exists ? 0 : key.Values.Length);
             int count = map.Count + (exists ? 0 : 1);
             PeakStates = Math.Max(PeakStates, count);
