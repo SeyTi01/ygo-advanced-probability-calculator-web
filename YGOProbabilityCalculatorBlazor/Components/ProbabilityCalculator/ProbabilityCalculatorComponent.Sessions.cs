@@ -24,10 +24,9 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         _sharedLoading = false;
     }
 
-    private async Task BeforeSessionWorkAsync() {
-        StateHasChanged();
+    // Initialization and workspace events render at their first incomplete await.
+    private async Task BeforeSessionWorkAsync() =>
         await SessionLoadingJS.InvokeVoidAsync("sessionLoading.beforeWork");
-    }
 
     private void EndSessionLoad(SessionLoadRequest request) {
         if (_loadingSessionVersion == request.Version) {
@@ -148,6 +147,8 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         SessionLoadRequest request = BeginSessionLoad(fullSession: true);
 
         try {
+            // This callback belongs to the recovery child, so render its owner here.
+            StateHasChanged();
             await BeforeSessionWorkAsync();
             SessionState session = await load();
 
