@@ -137,11 +137,16 @@ public class SessionLoadingTest {
 
     [TestCase("edit")]
     [TestCase("draft")]
+    [TestCase("name")]
     [TestCase("clear")]
     [TestCase("navigation")]
     [TestCase("dispose")]
     public async Task InvalidatedPendingFileNeverRecreatesStatusOrOverwritesWorkspace(string action) {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Mount();
+        if (action == "name") {
+            // A visible error makes name edits render their owner while deferring row updates.
+            await Upload(cut, "malformed JSON");
+        }
         TaskCompletionSource<IReadOnlyList<CardInfo>> gate = HoldCatalog();
         Task load = Upload(cut, Session("Obsolete"));
         Loading(cut, true);
@@ -152,6 +157,11 @@ public class SessionLoadingTest {
             await cut.Find("#quickCardName").InputAsync(new() { Value = "Unsubmitted draft" });
             // bUnit does not bubble DOM events to the workspace's draft observer.
             await cut.Find(".calculator-workspace").InputAsync(new() { Value = "Unsubmitted draft" });
+        }
+        else if (action == "name") {
+            IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+            await editor.Find(".accordion-button").ClickAsync(new());
+            await editor.Find("input[id^='cardName']").InputAsync(new() { Value = "Renamed while loading" });
         }
         else if (action == "clear") {
             await cut.Find("button[aria-label='More workspace actions']").ClickAsync(new());

@@ -1,0 +1,19 @@
+.deck-header {
+    gap: .5rem;
+}
+
+.deck-loading-status {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: right;
+    pointer-events: none;
+}
+
+.deck-loading-status ::deep .session-loading-content {
+    white-space: nowrap;
+}
+
+@media (max-width: 379.98px) {
+    .deck-header { column-gap: .25rem; }
+    .deck-loading-status ::deep .session-loading-status { font-size: .6875rem; }
+}
