@@ -153,7 +153,6 @@
 
         _loadingExample = true;
         try {
-            StateHasChanged();
             await SessionLoadingJS.InvokeVoidAsync("sessionLoading.beforeWork");
             string? fileContent = await _fileService.ReadAllTextAsync("sample-data/example_session_state.json");
 
