@@ -13,8 +13,7 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         && (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) * (long)effect.Copies <= copies - handSize;
 
     internal static bool CanDeferIdentities(Card effect) =>
-        (effect.PreDrawRemovalCount > 0 || effect.PostDrawDiscardCount > 0)
-        && (effect.PreDrawRemovalCount == 0 || effect.PreDrawSelector.Kind != CardSelectorKind.Any)
+        (effect.PreDrawRemovalCount == 0 || effect.PreDrawSelector.Kind != CardSelectorKind.Any)
         && (effect.PostDrawDiscardCount == 0 || effect.PostDrawSelector.Kind != CardSelectorKind.Any)
         && !effect.EffectPlan.HasActivationRestrictions;
 
@@ -84,10 +83,15 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         if (effects.Length == 1 && oneFillerClass && IsExchangeableEffect(effects[0], Relevant(effects[0]), (int)copies, handSize)) {
             return new(DrawExecutionPath.ExchangeableConditional, false);
         }
-        if (effects.Length == 1 && active.Count(card => card.DrawCount is not null) == 1 && CanDeferIdentities(effects[0])
-            && active.Where(card => card.DrawCount is null && !IsRemovalMaterial(effects[0], card))
+        // The resolver retains even preflight-inert sources. Use the same complete
+        // source set for this proof; do not forget a selector or merge source IDs.
+        Card[] allSources = active.Where(card => card.DrawCount is not null).ToArray();
+        bool Material(Card card) => allSources.Any(effect => IsRemovalMaterial(effect, card));
+        if (allSources.All(CanDeferIdentities)
+            && allSources.Any(effect => effect.PreDrawRemovalCount > 0 || effect.PostDrawDiscardCount > 0)
+            && active.Where(card => card.DrawCount is null && !Material(card))
                 .Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(2).Count() == 2) {
-            int observedClasses = active.Where(card => card.DrawCount is not null || IsRemovalMaterial(effects[0], card))
+            int observedClasses = allSources.Length + active.Where(card => card.DrawCount is null && Material(card))
                 .Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(8).Count();
             return new(DrawExecutionPath.DeferredConditional, observedClasses >= 8 && routes.Length >= 4);
         }

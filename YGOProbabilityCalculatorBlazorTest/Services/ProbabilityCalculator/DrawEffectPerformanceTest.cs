@@ -71,7 +71,7 @@ public class DrawEffectPerformanceTest {
         session.Cards[session.Cards.IndexOf(greed)] = CardEffectRegistry.Default.RestoreBuiltIn(new([], 1, externalCardId: 35261759));
         Card allure = CardEffectRegistry.Default.RestoreBuiltIn(new([], 1, externalCardId: 1475311));
         session.Cards[session.Cards.FindIndex(card => card.Id == graceful.Id)] = allure;
-        Assert.That(Assess(session.Cards, session.Combos, 5), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.OrderedFrontier, true)));
+        Assert.That(Assess(session.Cards, session.Combos, 5), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DeferredConditional, false)));
         Assert.That(session.Cards.Where(NeedsDetail), Is.EqualTo(new[] { allure }));
         Assert.That(Assess([allure, new([], 39)], [], 5), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.OrderedFrontier, false)));
     }

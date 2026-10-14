@@ -6,7 +6,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 [TestFixture]
 public class DrawExecutionAssessmentTest {
     [Test]
-    public async Task BundledProxyGracefulIsSpecializedButPotAllureNeedsDetailedProcessing() {
+    public async Task BundledGracefulIsSpecializedAndSafePotAllureUsesDeferredCounting() {
         SessionState session = await RealisticGracefulFixture.Load();
         Assert.That(Assess(session), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.ExchangeableConditional, false)));
         Card graceful = session.Cards.Single(card => card.Name == "Graceful Charity");
@@ -15,7 +15,7 @@ public class DrawExecutionAssessmentTest {
         session.Cards.Add(new([], 1, "Allure of Darkness", id: "allure", drawCount: 2,
             postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(dark)));
         session.Cards.Add(new([], 1, "Filler", id: "filler"));
-        Assert.That(Assess(session), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.OrderedFrontier, true)));
+        Assert.That(Assess(session), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DeferredConditional, false)));
         Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, true, false),
             Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DrawCountState, false)));
         Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, false, false),

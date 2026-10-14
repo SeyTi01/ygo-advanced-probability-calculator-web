@@ -9,21 +9,37 @@ internal sealed partial class PostDrawCalculation {
     private List<Card> DeferUnobservedIdentities(ref List<Card> cards) {
         budget.Spend(cards.Count);
         Card[] effects = cards.Where(card => card.Copies > 0 && card.DrawCount is not null).ToArray();
-        if (effects.Length != 1 || !DrawExecutionAssessment.CanDeferIdentities(effects[0])) {
+        if (effects.Length == 0 || !effects.All(DrawExecutionAssessment.CanDeferIdentities)
+            || !effects.Any(effect => effect.PreDrawRemovalCount > 0 || effect.PostDrawDiscardCount > 0)) {
             return [];
         }
 
         CheckStorage(cards.Count + 1L, 5L * cards.Count + 1, "deferred identity partition");
-        Card effect = effects[0];
-        bool[]? costEligible = effect.PreDrawRemovalCount > 0
-            ? CardSelectorCompiler.Compile(effect.PreDrawSelector, cards, budget) : null;
-        bool[]? removalEligible = effect.PostDrawDiscardCount > 0
-            ? CardSelectorCompiler.Compile(effect.PostDrawSelector, cards, budget) : null;
+        // Compile one selector at a time; retain only their union, not an E x N
+        // table. Every source stays explicit, even if currently unpayable or used
+        // as material by another source. A later draw can make it payable again.
+        bool[] material = new bool[cards.Count];
+        foreach (Card effect in effects) {
+            if (effect.PreDrawRemovalCount > 0) {
+                Include(effect.PreDrawSelector, cards);
+            }
+            if (effect.PostDrawDiscardCount > 0) {
+                Include(effect.PostDrawSelector, cards);
+            }
+        }
+
+        void Include(CardSelector selector, List<Card> originals) {
+            bool[] eligible = CardSelectorCompiler.Compile(selector, originals, budget);
+            budget.Spend(originals.Count);
+            for (int i = 0; i < originals.Count; i++) {
+                material[i] |= eligible[i];
+            }
+        }
         List<Card> deferred = [];
         List<Card> observed = [];
         for (int i = 0; i < cards.Count; i++) {
             budget.Spend(1);
-            if (cards[i].DrawCount is null && costEligible?[i] != true && removalEligible?[i] != true) {
+            if (cards[i].Copies > 0 && cards[i].DrawCount is null && !material[i]) {
                 deferred.Add(cards[i]);
             }
             else {
@@ -36,8 +52,11 @@ internal sealed partial class PostDrawCalculation {
 
         // Keep the canonical relative order of every eligible identity and source.
         // No pooled card can be removed, activate, or affect a policy decision.
-        // Both selectors are retained jointly, including source-copy material;
-        // source reservation, relevance tiers and ties still use explicit rows.
+        // All sources' selectors are retained jointly, including source-copy
+        // material. Swapping pool labels cannot change any source's payability,
+        // relevance tiers among eligible cards, reserved source, pending FIFO,
+        // custom rank, OPT usage, retry, batch completion or physical capacity.
+        // Thus the same trace is followed jointly, not independently per effect.
         // Its representative is used only for capacity, never for combo evaluation.
         observed.Add(deferred[0].WithCopies(deferred.Sum(card => card.Copies)));
         cards = observed;
