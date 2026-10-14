@@ -149,7 +149,7 @@ function probability(count, hand = 5) {
   // Verify the policy and accepted comparison/export context together through
   // the ordinary UI, using the same request that exceeded the old wire budget.
   await load(fixture(21)); await start();
-  assert.equal(JSON.parse(await page.evaluate(() => workProbe.inputs.at(-1))).WorkUnits, 50_000_000);
+  assert.equal(JSON.parse(await page.evaluate(() => workProbe.inputs.at(-1))).WorkUnits, 150_000_000);
   await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
   await page.locator('.probability-total-value').waitFor();
   assert.equal(await page.locator('.combo-probability-item').count(), 21);
@@ -256,7 +256,7 @@ function probability(count, hand = 5) {
    await start(); await page.waitForTimeout(200);
    await page.getByLabel('Color theme preference').selectOption('dark');
    const sent = JSON.parse(await page.evaluate(() => workProbe.inputs.at(-1)));
-   assert.equal(sent.WorkUnits, 50_000_000, 'ordinary Calculate selects the reviewed allowance once');
+   assert.equal(sent.WorkUnits, 150_000_000, 'ordinary Calculate selects the reviewed allowance once');
    const began = Date.now(); await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
    const closedMs = await settle();
    const metrics = await page.evaluate(() => ({ width: innerWidth, client: document.documentElement.clientWidth,

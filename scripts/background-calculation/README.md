@@ -14,7 +14,7 @@ The browser must support module workers and the app's .NET WebAssembly runtime.
 Startup/transport failures are shown in the existing calculation alert, with no
 foreground fallback. Worker initialization times out after 30 seconds; this is
 not a running-time deadline. Ordinary Calculate captures a request-local
-**50,000,000-unit** work allowance immediately. Synchronous engine callers omitting
+**150,000,000-unit** work allowance immediately. Synchronous engine callers omitting
 the explicit `CalculationWorkPolicy` overload and wire requests omitting
 `WorkUnits` retain the bounded **10,000,000-unit** default. Policies are immutable,
 positive `long` values; invalid input cannot select unlimited work. There is no
@@ -72,15 +72,41 @@ checks are per structure, not a total-byte ceiling. Inclusion-exclusion
 coefficients stay within the 30-combo `long` boundary; deck totals use checked
 arithmetic, and binomial array lengths are checked in `long` before allocation.
 
-The allowance was selected from deterministic 60-card sessions with two copies
+The earlier 50-million allowance was measured against deterministic 60-card sessions with two copies
 per disjoint role and one `1/1` route per role. Independent complement counting
 checks exact results. Measured charged-work brackets were 11.52–11.63 million
 for 20 routes / five cards, 19.53–19.63 million for 18 routes / six cards, and
-43.84–43.95 million for the 15-route / 15-card stress case. Fifty million admits
-these requests with bounded headroom; 22 routes / five cards still reaches
-storage exhaustion. The native opt-in benchmark reports elapsed time, cumulative
+43.84–43.95 million for the 15-route / 15-card stress case. The complete bundled
+40-card / five-card / eight-combo example with six nonparticipating copies replaced
+by three maintained Trade-In and three Allure charges **90,766,510** units in
+encounter order and **82,871,355** with Allure-first priority. The current allowance
+provides finite headroom. **High** is its lowest successful storage tier;
+Standard still reaches Storage. Storage thresholds are unchanged and selection
+remains explicit. Twenty-two routes / five cards still reaches storage exhaustion.
+The native opt-in benchmark reports elapsed time, cumulative
 allocations and sampled heap/working set; cumulative allocations are not peak
 live memory. Browser timing and shutdown evidence belong in the PR discussion.
+
+The six-copy fixture removes 3 Fuwalos, 1 Maxx "C", 1 Triple Tactics Talent and
+1 Snow Devil, after checking all original active direct/property requirements.
+`TradeInAllureBenchmark.Export` exports its native session and wire request to
+`YGO_AUDIT_INPUT`; `YGO_ACCEPTANCE_WORK`, `YGO_ACCEPTANCE_TIER` and
+`YGO_ACCEPTANCE_CUSTOM=1` select explicit diagnostic inputs. The export defaults
+to the historical 50M comparison. Run `MixedDeferredBenchmark.Replay` with
+`YGO_AUDIT_INPUT` and `YGO_AUDIT_OUTPUT` to freeze all exact/public rows and
+measure four native Release calls (discard the first for warm measurements).
+Use `--blame-hang-timeout 3m` to bound each opt-in test process. For normal-policy
+verification, export both priorities with 150M and High, combine their completed
+replay records, then run:
+
+```sh
+node scripts/background-calculation/trade-in-allure-smoke.cjs <publish/wwwroot> <frozen-cases.json> <evidence.json>
+```
+
+This smoke checks the actual UI allowance and selected tier, complete native
+parity on cold/reused workers, cancellation/restart, UI heartbeats, runtime heap
+size and rendered error state. Its isolated browser has a three-minute deadline;
+this does not add a product calculation deadline.
 
 Transport tests run with Node.js 24, without a browser or additional packages:
 
@@ -115,7 +141,7 @@ fixture cards avoid metadata-provider requests. Its browser process has a
 three-minute external deadline per invocation. Firefox's slower execution uses
 separate wire and UI invocations so comparisons cannot consume the UI probe's
 deadline; no request timeout or retry is increased. The comparison phase can also
-run separately. It checks accepted 50M results, pin/unpin, historical clipboard
+run separately. It checks accepted interactive results, pin/unpin, historical clipboard
 and fallback bytes with and without a pin, captured summaries and inline colored
 deltas in both themes at desktop and narrow widths. The combined recovery/export
 smoke has a five-minute browser deadline. The slowdown argument applies Chromium main-thread

@@ -199,7 +199,7 @@ public class PinnedResultTest {
     public async Task PinOwnsRequestContextAndCopiesMutableResultsAndNestedDefinitions() {
         Task action = Start();
         CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs[0].Json)!;
-        Assert.That(input.WorkUnits, Is.EqualTo(50_000_000), "ordinary Calculate selects the interactive policy on its first request");
+        Assert.That(input.WorkUnits, Is.EqualTo(150_000_000), "ordinary Calculate selects the interactive policy on its first request");
         Assert.That(input.HandSize, Is.EqualTo(2));
         ProbabilityCalculationResult result = Result(0, .814);
         // An unannounced edit specifically verifies capture timing, independent of invalidation.
@@ -398,7 +398,7 @@ public class PinnedResultTest {
         await _cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
         Task current = Start();
-        Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs[2].Json)!.WorkUnits, Is.EqualTo(50_000_000));
+        Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs[2].Json)!.WorkUnits, Is.EqualTo(150_000_000));
         if (limit) {
             _worker.Jobs[1].SetException(new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage));
         }
