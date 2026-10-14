@@ -102,7 +102,7 @@ public class SolarRechargeTest {
         deck[0] = effect.WithDrawCount(2).WithPostDrawDiscardCount(1).WithDrawOncePerTurn(false);
         Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
         Verify(deck, 1, combos);
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 4, true, true).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 4, true, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
         Verify(deck, 4, combos);
     }
 

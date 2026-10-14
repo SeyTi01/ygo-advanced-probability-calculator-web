@@ -33,11 +33,12 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
             return new(DrawExecutionPath.Unknown, false);
         }
         Card[] active = cards.Where(card => card.Active && card.Copies > 0).ToArray();
-        Card[] effects = active.Where(card => card.DrawCount is not null).ToArray();
         long copies = active.Sum(card => (long)card.Copies);
         if (copies > int.MaxValue || handSize < 1 || handSize > copies) {
             return new(DrawExecutionPath.Unknown, false);
         }
+        HashSet<Card>? inert = DrawEffectFeasibility.FindInert(active, (int)copies, handSize, conditionsEnabled);
+        Card[] effects = active.Where(card => card.DrawCount is not null && (inert is null || !inert.Contains(card))).ToArray();
         if (effects.Length == 0) {
             return new(DrawExecutionPath.Ordinary, false);
         }

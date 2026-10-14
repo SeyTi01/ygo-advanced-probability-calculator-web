@@ -48,7 +48,7 @@ public class DrawEffectPerformanceTest {
     public void DesiresCapacityAndUnknownProofDoNotCreateIntrinsicWarnings() {
         Card desires = CardEffectRegistry.Default.RestoreBuiltIn(new([], externalCardId: 35261759));
         Assert.That(Assess([desires, new([], 39)], [], 5).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
-        Assert.That(Assess([desires, new([], 11)], [], 5).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
+        Assert.That(Assess([desires, new([], 11)], [], 5).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
         Assert.That(NeedsDetail(desires), Is.False);
         CategoryBase excluded = new("Excluded");
         Card graceful = new([], 3, drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2);
