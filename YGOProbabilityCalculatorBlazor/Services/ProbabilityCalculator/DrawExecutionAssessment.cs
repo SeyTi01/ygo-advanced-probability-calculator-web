@@ -44,7 +44,8 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         // The shared proof rejects timing/lock interactions before testing collective capacity.
         // Priority itself does not invalidate the remaining exchangeability proofs.
         bool countStateFits = DrawEffectResolver.CanUseCountStateFastPath(effects, (int)copies, handSize, conditionsEnabled);
-        bool conditional = conditionsEnabled && effects.Any(card => card.EffectPlan.HasActivationRestrictions || card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0
+        bool conditional = conditionsEnabled && effects.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0
+            || (card.EffectPlan.HasActivationRestrictions && !countStateFits)
             || ((card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0) && !countStateFits));
         if (!conditional) {
             return new(countStateFits
