@@ -13,13 +13,17 @@ internal sealed partial class PostDrawCalculation {
             return [];
         }
 
-        CheckStorage(cards.Count + 1L, 4L * cards.Count + 1, "deferred identity partition");
-        bool[] eligible = CardSelectorCompiler.Compile(effects[0].PostDrawSelector, cards, budget);
+        CheckStorage(cards.Count + 1L, 5L * cards.Count + 1, "deferred identity partition");
+        Card effect = effects[0];
+        bool[]? costEligible = effect.PreDrawRemovalCount > 0
+            ? CardSelectorCompiler.Compile(effect.PreDrawSelector, cards, budget) : null;
+        bool[]? removalEligible = effect.PostDrawDiscardCount > 0
+            ? CardSelectorCompiler.Compile(effect.PostDrawSelector, cards, budget) : null;
         List<Card> deferred = [];
         List<Card> observed = [];
         for (int i = 0; i < cards.Count; i++) {
             budget.Spend(1);
-            if (cards[i].DrawCount is null && !eligible[i]) {
+            if (cards[i].DrawCount is null && costEligible?[i] != true && removalEligible?[i] != true) {
                 deferred.Add(cards[i]);
             }
             else {
@@ -32,6 +36,8 @@ internal sealed partial class PostDrawCalculation {
 
         // Keep the canonical relative order of every eligible identity and source.
         // No pooled card can be removed, activate, or affect a policy decision.
+        // Both selectors are retained jointly, including source-copy material;
+        // source reservation, relevance tiers and ties still use explicit rows.
         // Its representative is used only for capacity, never for combo evaluation.
         observed.Add(deferred[0].WithCopies(deferred.Sum(card => card.Copies)));
         cards = observed;
@@ -51,6 +57,11 @@ internal sealed partial class PostDrawCalculation {
         // Relabeling physical copies inside the deferred pool leaves the complete
         // resolution trace unchanged. Given a terminal summary, its k held pool
         // cards are therefore a uniform k-subset, independent of the fixed hand.
+        // Hidden positions are never conditioned on an identity. Permuting pool
+        // labels across held, unseen and skipped positions preserves capacity,
+        // all cost/removal choices and the activation schedule. The resolver's
+        // (N - visibleDepth)! suffix counts those skipped positions as well, so
+        // each k-subset has identical integer mass even after repeated milling.
         // Failed removals contribute no wins but remain in the original N! space.
         // The ordinary counter projects ALL combo constraints onto this subset;
         // the resolver's removal policy always used the full original combo list.

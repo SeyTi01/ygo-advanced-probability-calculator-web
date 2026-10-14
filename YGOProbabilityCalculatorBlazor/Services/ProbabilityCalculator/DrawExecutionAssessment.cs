@@ -13,9 +13,16 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         && (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) * (long)effect.Copies <= copies - handSize;
 
     internal static bool CanDeferIdentities(Card effect) =>
-        effect.PostDrawDiscardCount > 0 && effect.PostDrawSelector.Kind != CardSelectorKind.Any
-        && effect.PreDrawRemovalCount == 0 && effect.PreDrawDeckRemovalCount == 0
-        && effect.PostDrawDeckMillCount == 0 && !effect.EffectPlan.HasActivationRestrictions;
+        (effect.PreDrawRemovalCount > 0 || effect.PostDrawDiscardCount > 0)
+        && (effect.PreDrawRemovalCount == 0 || effect.PreDrawSelector.Kind != CardSelectorKind.Any)
+        && (effect.PostDrawDiscardCount == 0 || effect.PostDrawSelector.Kind != CardSelectorKind.Any)
+        && !effect.EffectPlan.HasActivationRestrictions;
+
+    // Every hand operation must exclude the pool. Hidden deck operations depend
+    // only on physical capacity, which the ordered resolver already tracks.
+    private static bool IsRemovalMaterial(Card effect, Card card) =>
+        (effect.PreDrawRemovalCount > 0 && effect.PreDrawSelector.Matches(card.Categories))
+        || (effect.PostDrawDiscardCount > 0 && effect.PostDrawSelector.Matches(card.Categories));
 
     public static DrawExecutionAssessment Assess(
         IReadOnlyList<Card> cards,
@@ -78,9 +85,9 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
             return new(DrawExecutionPath.ExchangeableConditional, false);
         }
         if (effects.Length == 1 && active.Count(card => card.DrawCount is not null) == 1 && CanDeferIdentities(effects[0])
-            && active.Where(card => card.DrawCount is null && !effects[0].PostDrawSelector.Matches(card.Categories))
+            && active.Where(card => card.DrawCount is null && !IsRemovalMaterial(effects[0], card))
                 .Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(2).Count() == 2) {
-            int observedClasses = active.Where(card => card.DrawCount is not null || effects[0].PostDrawSelector.Matches(card.Categories))
+            int observedClasses = active.Where(card => card.DrawCount is not null || IsRemovalMaterial(effects[0], card))
                 .Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(8).Count();
             return new(DrawExecutionPath.DeferredConditional, observedClasses >= 8 && routes.Length >= 4);
         }
