@@ -7,7 +7,9 @@ const { fixtures, installProbe, load, run, serve } = require('./measure-worker-l
 async function main() {
     const { server, url } = await serve(process.argv[2]);
     const engine = process.env.YGO_BROWSER_ENGINE || 'firefox';
-    const browser = await ({ firefox, chromium }[engine]).launch({ headless: true }).catch(error => { server.close(); throw error; });
+    const browser = await ({ firefox, chromium }[engine]).launch({ headless: true,
+        ...(engine === 'chromium' && process.env.YGO_BROWSER_CHANNEL ? { channel: process.env.YGO_BROWSER_CHANNEL } : {})
+    }).catch(error => { server.close(); throw error; });
     const deadline = setTimeout(() => browser.close(), 180000);
     const reuse = process.env.YGO_EXPECT_REUSE !== '0';
     const evidence = { engine, version: browser.version(), reuse };

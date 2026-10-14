@@ -111,7 +111,6 @@ public partial class ProbabilityCalculatorComponent {
         ComboLineage,
         GroupLineage,
         model != CalculationModel.OpeningHand,
-        model == CalculationModel.Configured,
         _categoryBases,
         _drawActivationPriority
     );

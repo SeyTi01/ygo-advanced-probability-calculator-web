@@ -57,7 +57,7 @@ public class PostDrawEffectsTest {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, size, combos, groups);
         foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
             WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-            ExactCalculationResult result = new DrawEffectCalculation(ordered, size, budget, true).Calculate(combos, groups);
+            ExactCalculationResult result = new DrawEffectCalculation(ordered, size, budget).Calculate(combos, groups);
             ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
@@ -126,13 +126,13 @@ public class PostDrawEffectsTest {
     }
 
     [Test]
-    public void PostDrawDisabledHasIdenticalFixedDrawWorkAndResults() {
+    public void CustomZeroRemovalHasIdenticalFixedDrawWorkAndResults() {
         List<Card> deck = [new([A], 10, id: "a"), new([], 27, id: "filler"),
             new([], 3, id: "d", drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2)];
         List<Combo> combos = [new([new(A, 1, 5)])];
         WorkBudget disabled = new(CalculationWorkPolicy.Interactive);
         WorkBudget ordinary = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, disabled, false).Calculate(combos, []);
+        ExactCalculationResult actual = new DrawEffectCalculation(deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), 5, disabled).Calculate(combos, []);
         ExactCalculationResult expected = new DrawEffectCalculation(deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), 5, ordinary).Calculate(combos, []);
         Assert.That(actual.Total, Is.EqualTo(expected.Total));
         Assert.That(disabled.Spent, Is.EqualTo(ordinary.Spent));
@@ -147,15 +147,15 @@ public class PostDrawEffectsTest {
         Combo second = new([], cards: [new("b", 1, 1)]);
         foreach (List<Combo> combos in new[] { new List<Combo> { first }, [second], [first, second], [new([])] }) {
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 2, combos, []);
-            ExactCalculationResult result = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), true).Calculate(combos, []);
+            ExactCalculationResult result = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive)).Calculate(combos, []);
             ExactProbability[] rows = [result.Total, .. result.Combos];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator));
             }
         }
         ProbabilityCalculatorService service = new();
-        double protectedAlone = service.CalculateProbabilityForCombos(deck, [first], 2, CalculationWorkPolicy.Interactive, options: new(true));
-        double inGlobalPolicy = service.CalculateProbabilityResults(deck, [first, second], 2, [], CalculationWorkPolicy.Interactive, options: new(true)).ComboProbabilities[0].Probability;
+        double protectedAlone = service.CalculateProbabilityForCombos(deck, [first], 2, CalculationWorkPolicy.Interactive, options: new());
+        double inGlobalPolicy = service.CalculateProbabilityResults(deck, [first, second], 2, [], CalculationWorkPolicy.Interactive, options: new()).ComboProbabilities[0].Probability;
         Assert.That(protectedAlone, Is.GreaterThan(inGlobalPolicy));
     }
 

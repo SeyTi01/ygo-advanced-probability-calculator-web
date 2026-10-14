@@ -14,6 +14,83 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
     private static Card BuiltIn(int id) => CardEffectRegistry.Default.RestoreBuiltIn(new([], 3, externalCardId: id));
 
+    [TestCase(38120068, "cardCost")]
+    [TestCase(1475311, "cardDiscard")]
+    [TestCase(35261759, "cardDeckCost")]
+    public async Task SelectiveZeroOperationKeepsOtherEntriesSnapshotsAndRestoresBuiltIn(int identity, string control) {
+        Card original = BuiltIn(identity).WithName("Same name");
+        Card other = original.Duplicate().WithCopies(1);
+        SessionState session = new() {
+            Cards = [original, other, new([], 4, id: "target")], HandSize = 2,
+            Combos = [new([], cards: [new("target", 1, 2)])]
+        };
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        await Button(cut, "Calculate").ClickAsync(new());
+        await Button(cut, "Pin result").ClickAsync(new());
+        PinnedResultSnapshot pinned = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+        string fingerprint = pinned.Context.DeckDefinition;
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
+        OpenSimulation(editor);
+        await editor.Find($"#{control}0").ChangeAsync(new() { Value = "0" });
+        await editor.Find(".simulation-cancel").ClickAsync(new());
+        Assert.That(editor.Instance.Card, Is.SameAs(original));
+        OpenSimulation(editor);
+        await editor.Find($"#{control}0").ChangeAsync(new() { Value = "0" });
+        await editor.Find(".simulation-save").ClickAsync(new());
+        Card custom = editor.Instance.Card;
+        DrawEffectPlan expected = control switch {
+            "cardCost" => original.EffectPlan with { HandCost = 0, HandCostSelector = CardSelector.Any },
+            "cardDiscard" => original.EffectPlan with { RemovalCount = 0, RemovalSelector = CardSelector.Any },
+            _ => original.EffectPlan with { HiddenDeckCost = 0 }
+        };
+        Assert.That(custom.EffectPlan, Is.EqualTo(expected));
+        Assert.That(custom.Id, Is.EqualTo(original.Id));
+        Assert.That(custom.EffectProfile, Is.EqualTo(original.EffectProfile.AsCustom()));
+        Assert.That(editor.Find(".simulation-source").TextContent, Is.EqualTo("Custom simulation"));
+        Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card, Is.SameAs(other));
+        AssertPreviousResult(cut);
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pinned));
+        Assert.That(pinned.Context.DeckDefinition, Is.EqualTo(fingerprint));
+
+        ISessionService codec = context.Services.GetRequiredService<ISessionService>();
+        string share = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
+        string recovery = context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!.ToString()!;
+        await Button(cut, "Save Session").ClickAsync(new());
+        foreach (string json in new[] { share, recovery, SavedSessionJson() }) {
+            SessionState loaded = await codec.LoadSessionAsync(json);
+            Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+            Assert.That(loaded.Cards[0].EffectPlan, Is.EqualTo(expected));
+            Assert.That(loaded.Cards[0].EffectProfile, Is.EqualTo(custom.EffectProfile));
+            Assert.That(loaded.Cards[1].EffectPlan, Is.EqualTo(other.EffectPlan));
+        }
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Configured draw effects"));
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Context.DeckDefinition, Is.EqualTo(fingerprint));
+        await editor.Find(".simulation-restore").ClickAsync(new());
+        Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(original.EffectPlan));
+        Assert.That(editor.Instance.Card.EffectProfile, Is.EqualTo(original.EffectProfile));
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(pinned.Total.ToString("P2")));
+    }
+
+    [TestCase("cardCost"), TestCase("cardDiscard"), TestCase("cardDeckCost")]
+    public async Task ZeroingOneOperationPreservesTimingMillAndAllOtherOperations(string control) {
+        Card card = BuiltIn(49238328);
+        DrawEffectPlan plan = card.EffectPlan with { HandCost = 1, RemovalCount = 1, HiddenDeckCost = 1, HiddenPostDrawMill = 2 };
+        card = card.WithEffect(plan, card.EffectProfile.AsCustom());
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        OpenSimulation(editor);
+        await editor.Find($"#{control}0").ChangeAsync(new() { Value = "0" });
+        await editor.Find(".simulation-save").ClickAsync(new());
+        DrawEffectPlan expected = control switch {
+            "cardCost" => plan with { HandCost = 0 },
+            "cardDiscard" => plan with { RemovalCount = 0 },
+            _ => plan with { HiddenDeckCost = 0 }
+        };
+        Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(expected));
+    }
+
     [TestCase(55144522)]
     [TestCase(35261759)]
     [TestCase(1475311)]
@@ -77,7 +154,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         Card card = new Card([], externalCardId: identity).WithDrawCount(2);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
-        foreach (string mode in new[] { "OpeningHand", "Simplified", "Configured" }) {
+        foreach (string mode in new[] { "OpeningHand", "Configured" }) {
             await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode });
             Assert.That(editor.Find(".simulation-source").TextContent, Is.EqualTo("Custom simulation"));
             Assert.That(editor.FindAll(".simulation-status, .simulation-details-toggle, .simulation-restore"), Is.Empty);
@@ -100,7 +177,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
         string heading = editor.Find(".simulation-heading").TextContent;
-        foreach (string mode in new[] { "OpeningHand", "Simplified", "Configured" }) {
+        foreach (string mode in new[] { "OpeningHand", "Configured" }) {
             await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode });
             Assert.That(editor.Find(".simulation-heading").TextContent, Is.EqualTo(heading));
             Assert.That(editor.FindAll(".simulation-details-toggle"), Has.Count.EqualTo(1));
@@ -246,7 +323,6 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
     }
 
     [TestCase("Configured")]
-    [TestCase("Simplified")]
     [TestCase("OpeningHand")]
     public async Task UnsupportedModelIsNeverOfferedAsAnEditableGenericDraw(string mode) {
         Card unsupported = BuiltIn(55144522);

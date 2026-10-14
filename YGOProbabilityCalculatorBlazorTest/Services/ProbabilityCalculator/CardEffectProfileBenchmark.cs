@@ -52,7 +52,7 @@ public class CardEffectProfileBenchmark {
                 long start = GC.GetAllocatedBytesForCurrentThread();
                 Stopwatch timer = Stopwatch.StartNew();
                 try {
-                    exact = post is null ? new DrawEffectCalculation(cards, 5, budget, true).Calculate(combos, groups)
+                    exact = post is null ? new DrawEffectCalculation(cards, 5, budget).Calculate(combos, groups)
                         : post.Calculate(combos, groups);
                     result = exact.ToPublic(combos, groups, budget);
                 }
@@ -67,7 +67,7 @@ public class CardEffectProfileBenchmark {
                 }
                 start = GC.GetAllocatedBytesForCurrentThread();
                 timer.Restart();
-                snapshot = CalculationSnapshot.Capture(cards, combos, 5, groups, CalculationWorkPolicy.Interactive, options: new(true));
+                snapshot = CalculationSnapshot.Capture(cards, combos, 5, groups, CalculationWorkPolicy.Interactive, options: new());
                 timer.Stop();
                 if (trial >= 0) {
                     captureTimes.Add(timer.Elapsed.TotalMilliseconds);
@@ -83,8 +83,8 @@ public class CardEffectProfileBenchmark {
             }
             output.Add(new { Name = name, Outcome = outcome, Work = work, PeakStates = peakStates, PeakCells = peakCells,
                 Milliseconds = times, AllocatedBytes = allocations, CaptureMilliseconds = captureTimes, CaptureAllocatedBytes = captureAllocations,
-                Path = DrawExecutionAssessment.Assess(cards, combos, 5, true, true).Path.ToString(),
-                Risk = DrawExecutionAssessment.Assess(cards, combos, 5, true, true).ElevatedRisk,
+                Path = DrawExecutionAssessment.Assess(cards, combos, 5, true).Path.ToString(),
+                Risk = DrawExecutionAssessment.Assess(cards, combos, 5, true).ElevatedRisk,
                 Probability = result?.TotalProbability, ReferenceResults = result,
                 ExactResults = exact is null ? null : new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups)
                     .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),

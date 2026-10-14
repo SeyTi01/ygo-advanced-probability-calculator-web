@@ -125,7 +125,7 @@ internal static class DrawEffectResolver {
         }
     }
 
-    internal static bool CanUseCountStateFastPath(IReadOnlyList<Card> effects, int totalCopies, int handSize, bool conditionsEnabled = true) {
+    internal static bool CanUseCountStateFastPath(IReadOnlyList<Card> effects, int totalCopies, int handSize) {
         if (handSize < 0 || handSize > totalCopies) {
             return false;
         }
@@ -137,7 +137,7 @@ internal static class DrawEffectResolver {
         // combine entries merely because their definitions or card IDs match.
         bool restrictionsAreRedundant = effects.Count == 1 && effects[0].DrawOncePerTurn
             && !effects[0].EffectPlan.RequiresHandResolution;
-        if (conditionsEnabled && !restrictionsAreRedundant
+        if (!restrictionsAreRedundant
             && effects.Any(effect => effect.EffectPlan.HasActivationRestrictions)) {
             return false;
         }
@@ -148,7 +148,7 @@ internal static class DrawEffectResolver {
         long maximumDraws = 0;
         foreach (Card effect in effects) {
             int activations = effect.DrawOncePerTurn ? 1 : effect.Copies;
-            maximumDraws += (effect.DrawCount!.Value + (conditionsEnabled ? effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount : 0)) * (long)activations;
+            maximumDraws += (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) * (long)activations;
         }
 
         return maximumDraws <= totalCopies - handSize;

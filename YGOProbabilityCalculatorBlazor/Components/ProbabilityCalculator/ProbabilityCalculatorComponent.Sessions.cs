@@ -236,7 +236,6 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         _handSize = session.HandSize;
         _drawActivationPriority = (session.DrawActivationPriority ?? DrawActivationPriority.Default).ForWorkspace(_cards);
         _drawEffectsEnabled = session.DrawEffectsEnabled;
-        _conditionalEffectsEnabled = _drawEffectsEnabled;
 
         _activeCardIndex = _activeComboIndex = -1;
         _sessionVersion++;

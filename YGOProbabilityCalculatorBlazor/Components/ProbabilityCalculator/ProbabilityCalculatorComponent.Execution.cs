@@ -17,13 +17,13 @@ public partial class ProbabilityCalculatorComponent {
     private bool _assessmentDirty = true;
     private DrawExecutionAssessment _executionAssessment;
     private int[] _performanceCandidateIndices = [];
-    private CalculationModel SelectedModel => CalculationModelPresentation.FromFlags(_drawEffectsEnabled, _conditionalEffectsEnabled);
+    private CalculationModel SelectedModel => CalculationModelPresentation.FromDrawEffects(_drawEffectsEnabled);
 
     private DrawExecutionAssessment ExecutionAssessment {
         get {
             if (_assessmentDirty) {
                 IReadOnlyList<Card> cards = CategoryMembership.Materialize(_cards, _categoryBases);
-                _executionAssessment = DrawExecutionAssessment.Assess(cards, _combos, _handSize, _drawEffectsEnabled, _conditionalEffectsEnabled);
+                _executionAssessment = DrawExecutionAssessment.Assess(cards, _combos, _handSize, _drawEffectsEnabled);
                 _performanceCandidateIndices = _executionAssessment.ElevatedRisk
                     ? Enumerable.Range(0, cards.Count).Where(index => cards[index].Active && cards[index].Copies > 0
                         && DrawEffectPerformance.RequiresDetailedHandState(cards[index].EffectPlan, cards[index].EffectProfile.ExecutionModel)).Take(3).ToArray()

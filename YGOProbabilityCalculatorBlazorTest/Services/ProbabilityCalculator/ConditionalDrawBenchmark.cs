@@ -54,7 +54,7 @@ public partial class DrawEffectsBenchmark {
         List<object> output = [];
         foreach (int copies in new[] { 1, 3 }) {
             SessionState session = await RealisticAllureFixture.Load(copies);
-            foreach (string mode in new[] { "configured", "opening", "simplified", "greed", "extravagance", "desires", "graceful" }) {
+            foreach (string mode in new[] { "configured", "opening", "greed", "extravagance", "desires", "graceful" }) {
                 List<Card> deck = session.Cards;
                 int? canonical = mode switch { "greed" => 55144522, "extravagance" => 49238328,
                     "desires" => 35261759, "graceful" => 79571449, _ => null };
@@ -76,7 +76,7 @@ public partial class DrawEffectsBenchmark {
                     try {
                         result = mode == "configured" ? post.Calculate(session.Combos, session.ComboGroups)
                             : mode == "opening" ? new ProbabilityCalculation(deck, 5, budget).CalculateExactResults(session.Combos, session.ComboGroups)
-                            : new DrawEffectCalculation(deck, 5, budget, mode != "simplified").Calculate(session.Combos, session.ComboGroups);
+                            : new DrawEffectCalculation(deck, 5, budget).Calculate(session.Combos, session.ComboGroups);
                     }
                     catch (ProbabilityCalculationLimitException exception) {
                         outcome = exception.Reason.ToString();
@@ -88,14 +88,14 @@ public partial class DrawEffectsBenchmark {
                 string name = $"allure-{copies}-{mode}";
                 TestContext.Out.WriteLine($"{name}: {outcome}; work={budget.Spent}; states={post.PeakStates}; cells={post.PeakCells}; allCells={budget.PeakCells}; rows={post.ReducedRows}; terminal={post.TerminalStates}; ms={string.Join(',', times)}; allocated={string.Join(',', allocations)}");
                 CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, session.Combos, 5, session.ComboGroups,
-                    policy, mode != "opening", storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(mode != "simplified"));
+                    policy, mode != "opening", storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new());
                 ProbabilityCalculationResult? publicResult = result?.ToPublic(session.Combos, session.ComboGroups, budget);
                 output.Add(new { Name = name, Outcome = outcome, Work = budget.Spent, Reference = reference, Tier = tier.ToString(),
                     PeakStates = post.PeakStates, PeakCells = post.PeakCells, AllStructuresPeakEntries = budget.PeakEntries,
                     AllStructuresPeakCells = budget.PeakCells,
                     ReducedRows = post.ReducedRows, Milliseconds = times, AllocatedBytes = allocations,
                     Path = (mode == "configured" && reference ? DrawExecutionPath.OrderedFrontier
-                        : DrawExecutionAssessment.Assess(deck, session.Combos, 5, mode != "opening", mode != "simplified").Path).ToString(),
+                        : DrawExecutionAssessment.Assess(deck, session.Combos, 5, mode != "opening").Path).ToString(),
                     ExactResults = result is null ? null : new[] { result.Total }.Concat(result.Combos).Concat(result.Groups)
                         .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),
                     Probability = publicResult?.TotalProbability, ReferenceResults = publicResult,

@@ -97,7 +97,7 @@ public class DrawActivationPriorityTest {
         List<Card> deck = [new([], 3, id: "a", drawCount: 2), new([], 3, id: "b", drawCount: 1),
             new([A], 10, id: "reward"), new([], 24, id: "f")];
         List<Combo> combos = [new([new(A, 1, 5)])];
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 5, true, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 5, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
         Assert.That(Calculate(deck, 5, combos, Custom("a", "b")).Total, Is.EqualTo(Calculate(deck, 5, combos, Custom("b", "a")).Total));
         // A small version also checks the retained path against independent physical enumeration.
         List<Card> small = [deck[0].WithCopies(1), deck[1].WithCopies(1), deck[2].WithCopies(2), deck[3].WithCopies(2)];
@@ -105,13 +105,13 @@ public class DrawActivationPriorityTest {
         AssertParity(small, 2, combos, [], Custom("b", "a"));
         List<Card> exchangeable = [new([], 3, id: "exchange", drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1),
             new([A], 10, id: "reward"), new([], 27, id: "f")];
-        Assert.That(DrawExecutionAssessment.Assess(exchangeable, combos, 5, true, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
+        Assert.That(DrawExecutionAssessment.Assess(exchangeable, combos, 5, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
         Assert.That(Calculate(exchangeable, 5, combos, Custom("exchange")).Total,
             Is.EqualTo(Calculate(exchangeable, 5, combos, DrawActivationPriority.Default).Total));
     }
 
     [TestCase(false), TestCase(true)]
-    public void SimplifiedAndConfiguredRoutesAgreeWithIndependentPolicyOracle(bool configured) {
+    public void CustomAndBuiltInPlansAgreeWithIndependentPolicyOracle(bool configured) {
         List<Card> deck = [new([], id: "a", drawCount: 2, preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(A), postDrawDeckMillCount: 1),
             new([], id: "b", drawCount: 1, preDrawDeckRemovalCount: 1), new([A], id: "reward"), new([], 3, id: "f")];
         List<Combo> combos = [new([], cards: [new("a", 1, 1)]), new([new(A, 1, 1)])];
@@ -119,9 +119,9 @@ public class DrawActivationPriorityTest {
         List<Card> modeled = configured ? deck : deck.Select(card => card.WithPreDrawRemovalCount(0)
             .WithPostDrawDiscardCount(0).WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList();
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 2, combos, [], priorityIds: priority.CardIds);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), configured, priority).Calculate(combos, []);
+        ExactCalculationResult result = new DrawEffectCalculation(modeled, 2, new(CalculationWorkPolicy.Interactive), priority).Calculate(combos, []);
         Assert.That(result.Total.Numerator * oracle.Total, Is.EqualTo(oracle.Wins[0] * result.Total.Denominator));
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 2, [], options: new(configured, priority));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, combos, 2, [], options: new(priority));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability,
             Is.EqualTo((double)oracle.Wins[0] / (double)oracle.Total).Within(1e-12));
     }
@@ -132,7 +132,7 @@ public class DrawActivationPriorityTest {
         List<Card> all = [.. active, new([], 3, active: false, id: "inactive", drawCount: 3), new([], 0, id: "zero", drawCount: 3)];
         List<Combo> combos = [new([], cards: [new("b", 1, 1)])];
         DrawActivationPriority priority = Custom("inactive", "zero", "b", "a");
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(all, combos, 2, [], options: new(true, priority));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(all, combos, 2, [], options: new(priority));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability, Is.EqualTo(1d / 6).Within(1e-12));
     }
 
@@ -140,7 +140,7 @@ public class DrawActivationPriorityTest {
     public void PriorityStillHonorsWorkLimits() {
         List<Card> deck = [new([], 2, id: "a", drawCount: 2, postDrawDiscardCount: 1), new([], 2, id: "b", drawCount: 2), new([A], 4, id: "reward")];
         List<Combo> combos = [new([new(A, 1, 5)])];
-        Assert.Throws<ProbabilityCalculationLimitException>(() => new DrawEffectCalculation(deck, 2, new(new CalculationWorkPolicy(1)), true, Custom("b", "a")).Calculate(combos, []));
+        Assert.Throws<ProbabilityCalculationLimitException>(() => new DrawEffectCalculation(deck, 2, new(new CalculationWorkPolicy(1)), Custom("b", "a")).Calculate(combos, []));
     }
 
     [Test, Explicit("Repeatable local benchmark; run with an explicit test filter.")]
@@ -150,39 +150,40 @@ public class DrawActivationPriorityTest {
             new([], 2, id: "b", drawCount: 2, postDrawDiscardCount: 1, preDrawDeckRemovalCount: 1),
             new([A], 8, id: "reward"), new([B], 6, id: "cost"), new([A, B], 4, id: "both"), new([], 18, id: "f")];
         foreach (bool configured in new[] { true, false }) {
+            List<Card> modeled = configured ? deck : deck.Select(card => card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0).WithPreDrawDeckRemovalCount(0)).ToList();
             foreach (DrawActivationPriority priority in new[] { DrawActivationPriority.Default, Custom("b", "a") }) {
                 List<double> times = [];
                 long work = 0;
                 for (int repeat = 0; repeat < 6; repeat++) {
                     Stopwatch watch = Stopwatch.StartNew();
                     WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-                    ExactCalculationResult result = new DrawEffectCalculation(deck, 5, budget, configured, priority).Calculate(combos, []);
+                    ExactCalculationResult result = new DrawEffectCalculation(modeled, 5, budget, priority).Calculate(combos, []);
                     work = budget.Spent;
                     if (repeat > 0) {
                         times.Add(watch.Elapsed.TotalMilliseconds);
                     }
                 }
-                TestContext.Out.WriteLine($"configured={configured}, priority={priority.Mode}, path={DrawExecutionAssessment.Assess(deck, combos, 5, true, configured).Path}, work={work}, median-ms={times.Order().ElementAt(2):F3}");
+                TestContext.Out.WriteLine($"configured={configured}, priority={priority.Mode}, path={DrawExecutionAssessment.Assess(modeled, combos, 5, true).Path}, work={work}, median-ms={times.Order().ElementAt(2):F3}");
             }
         }
     }
 
     private static ExactCalculationResult Calculate(List<Card> deck, int handSize, List<Combo> combos, DrawActivationPriority priority) =>
-        new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive), true, priority).Calculate(combos, []);
+        new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive), priority).Calculate(combos, []);
 
     private static DrawSequenceOracle.Counts AssertParity(List<Card> deck, int handSize, List<Combo> combos, List<ComboGroup> groups, DrawActivationPriority priority) {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, handSize, combos, groups,
             priorityIds: priority.Mode == DrawActivationMode.CustomPriority ? priority.CardIds : null);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive), true, priority).Calculate(combos, groups);
+        ExactCalculationResult result = new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive), priority).Calculate(combos, groups);
         ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < rows.Length; i++) {
             Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}, hand {handSize}, priority {string.Join(',', priority.CardIds)}");
         }
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, handSize, groups, options: new(true, priority));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, handSize, groups, options: new(priority));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability,
             Is.EqualTo((double)oracle.Wins[0] / (double)oracle.Total).Within(1e-12));
         Assert.That(new ProbabilityCalculatorService().CalculateProbabilityForCombos(deck, combos, handSize,
-            CalculationWorkPolicy.Interactive, new CalculationOptions(true, priority)),
+            CalculationWorkPolicy.Interactive, new CalculationOptions(priority)),
             Is.EqualTo((double)oracle.Wins[0] / (double)oracle.Total).Within(1e-12));
         return oracle;
     }

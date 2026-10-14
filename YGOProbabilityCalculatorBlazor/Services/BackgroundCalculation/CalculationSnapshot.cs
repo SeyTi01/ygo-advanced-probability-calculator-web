@@ -176,7 +176,7 @@ public static class CalculationWire {
         catch (ProbabilityCalculationLimitException ex) {
             response = new(null, ex.Message, ex.Reason);
         }
-        catch (Exception ex) when (ex is ArgumentException or OverflowException) {
+        catch (Exception ex) when (ex is ArgumentException or OverflowException or JsonException) {
             response = new(null, ex.Message, FailureKind: CalculationFailureKind.Input);
         }
         catch (Exception ex) {

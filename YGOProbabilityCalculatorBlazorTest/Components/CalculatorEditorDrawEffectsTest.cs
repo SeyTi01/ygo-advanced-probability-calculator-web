@@ -45,15 +45,13 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Card ordinary = new([], name: "Ordinary card", id: "ordinary");
         SessionState session = new() { Categories = [dark], Cards = [advanced, fixedDraw, ordinary] };
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
         IRenderedComponent<CardEditor> allureEditor = cut.FindComponents<CardEditor>()[0];
         IRenderedComponent<CardEditor> gracefulEditor = cut.FindComponents<CardEditor>()[1];
         IRenderedComponent<CardEditor> ordinaryEditor = cut.FindComponents<CardEditor>()[2];
 
-        Assert.That(allureEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 2").And.Not.Contain("Remove 1"));
+        Assert.That(allureEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 2 · Remove 1"));
         OpenSimulation(allureEditor);
-        Assert.That(allureEditor.Find("#cardDrawModeHelp0").TextContent,
-            Does.Contain("costs and removals ignored"));
+        Assert.That(allureEditor.FindAll("#cardDrawModeHelp0"), Is.Empty);
         Assert.That(allureEditor.Find("#cardDiscard0").HasAttribute("disabled"), Is.False);
         Assert.That(allureEditor.Find("#cardEligibility0"), Is.Not.Null);
         Assert.That(gracefulEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 3").And.Not.Contain("Remove"));
@@ -233,7 +231,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
 
         void AssertDrawEffectsHelpIsStable(bool ignored) {
             Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
-            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain(ignored ? "Draws are ignored" : "Applies supported draws"));
+            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain(ignored ? "Draws are ignored" : "Applies each saved card plan"));
         }
     }
 

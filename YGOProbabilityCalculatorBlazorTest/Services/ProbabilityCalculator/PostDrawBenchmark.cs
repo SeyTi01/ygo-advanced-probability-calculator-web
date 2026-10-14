@@ -31,8 +31,15 @@ public partial class DrawEffectsBenchmark {
             string outcome = "Success";
             ProbabilityCalculationResult? reference = null;
             ExactCalculationResult? exact = null;
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos,
-                session.HandSize, session.ComboGroups, CalculationWorkPolicy.Interactive, global, storagePolicy, new(conditional));
+            List<Card> modeled = conditional ? session.Cards : session.Cards.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
+            SessionState modeledSession = new() {
+                Cards = modeled, Categories = session.Categories, Combos = session.Combos,
+                ComboGroups = session.ComboGroups, HandSize = session.HandSize,
+                DrawEffectsEnabled = global, DrawActivationPriority = session.DrawActivationPriority,
+                CategoryColorIndices = session.CategoryColorIndices
+            };
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, session.Combos,
+                session.HandSize, session.ComboGroups, CalculationWorkPolicy.Interactive, global, storagePolicy, new());
             try {
                 if (global && conditional) {
                     exact = calculation.Calculate(session.Combos, session.ComboGroups);
@@ -40,7 +47,7 @@ public partial class DrawEffectsBenchmark {
                 }
                 else {
                     exact = global
-                        ? new DrawEffectCalculation(session.Cards, session.HandSize, budget, false).Calculate(session.Combos, session.ComboGroups)
+                        ? new DrawEffectCalculation(modeled, session.HandSize, budget).Calculate(session.Combos, session.ComboGroups)
                         : new ProbabilityCalculation(session.Cards.Select(card => card.WithDrawCount(null)).ToList(), session.HandSize, budget)
                             .CalculateExactResults(session.Combos, session.ComboGroups);
                     reference = exact.ToPublic(session.Combos, session.ComboGroups, budget);
@@ -62,7 +69,7 @@ public partial class DrawEffectsBenchmark {
                 ReferenceResults = reference,
                 ExactResults = exact is null ? null : new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups)
                     .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),
-                Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(session)),
+                Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(modeledSession)),
                 Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json)
             };
             exported.Add(measurement);
@@ -111,6 +118,7 @@ public partial class DrawEffectsBenchmark {
                 ? deck.Select(card => new Combo([], cards: [new(card.Id, 1, 1)])).Take(25).ToList()
                 : combos;
             foreach (bool enabled in new[] { true, false }) {
+                List<Card> modeled = enabled ? deck : deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
                 WorkBudget budget = new(CalculationWorkPolicy.Interactive);
                 PostDrawCalculation? conditional = enabled && deck.Any(card => card.PostDrawDiscardCount > 0)
                     ? new(deck, 5, budget) : null;
@@ -123,7 +131,7 @@ public partial class DrawEffectsBenchmark {
                         result = conditional.Calculate(active, groups);
                     }
                     else if (deck.Any(card => card.DrawCount is not null)) {
-                        result = new DrawEffectCalculation(deck, 5, budget, enabled).Calculate(active, groups);
+                        result = new DrawEffectCalculation(modeled, 5, budget).Calculate(active, groups);
                     }
                     else {
                         result = new ProbabilityCalculation(deck, 5, budget).CalculateExactResults(active, groups);
@@ -136,13 +144,13 @@ public partial class DrawEffectsBenchmark {
                 timer.Stop();
                 int? terminalStates = conditional?.TerminalStates;
                 if (conditional is null) {
-                    List<Card> effects = deck.Where(card => card.DrawCount is not null).ToList();
+                    List<Card> effects = modeled.Where(card => card.DrawCount is not null).ToList();
                     int ordinary = deck.Where(card => card.DrawCount is null).Sum(card => card.Copies);
                     terminalStates = DrawEffectResolver.Resolve(ordinary, effects, 5, new(CalculationWorkPolicy.Interactive)).Scenarios.Count;
                 }
                 string name = $"post-{kind}-{(enabled ? "enabled" : "disabled")}";
-                CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, active, 5, groups,
-                    CalculationWorkPolicy.Interactive, options: new(enabled));
+                CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, active, 5, groups,
+                    CalculationWorkPolicy.Interactive, options: new());
                 exported.Add(new {
                     Name = name, Outcome = outcome, Work = budget.Spent,
                     TerminalStates = terminalStates, PeakStates = conditional?.PeakStates,

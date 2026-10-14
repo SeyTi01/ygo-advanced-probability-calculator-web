@@ -21,10 +21,9 @@ public sealed record PinnedCalculationContext(
     ImmutableArray<PinnedComboDefinition> Combos,
     ImmutableDictionary<string, PinnedGroupDefinition> Groups,
     bool DrawEffectsEnabled = true,
-    bool ConditionalEffectsEnabled = false,
     string DrawPriorityDefinition = ""
 ) {
-    public CalculationModel Model => CalculationModelPresentation.FromFlags(DrawEffectsEnabled, ConditionalEffectsEnabled);
+    public CalculationModel Model => CalculationModelPresentation.FromDrawEffects(DrawEffectsEnabled);
     public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards · {Model.Description()}{(DrawPriorityDefinition.Length > 0 ? " · Custom draw priority" : "")}";
 
     internal static PinnedCalculationContext Capture(
@@ -36,7 +35,6 @@ public sealed record PinnedCalculationContext(
         Func<Combo, Guid> comboLineage,
         Func<string, Guid> groupLineage,
         bool drawEffectsEnabled = true,
-        bool conditionalEffectsEnabled = false,
         IEnumerable<CategoryBase>? categoryDefinitions = null,
         DrawActivationPriority? priority = null
     ) {
@@ -91,7 +89,7 @@ public sealed record PinnedCalculationContext(
             deckDefinition = Pack([deckDefinition, priorityDefinition]);
         }
 
-        return new(epoch, handSize, copies, deck.Length, deckDefinition, definitions, groupDefinitions, drawEffectsEnabled, conditionalEffectsEnabled, priorityDefinition);
+        return new(epoch, handSize, copies, deck.Length, deckDefinition, definitions, groupDefinitions, drawEffectsEnabled, priorityDefinition);
 
         string CardRequirementSignature(ComboCard card) {
             int maximum = card.MaximumMode == RequirementMaximumMode.Fixed ? card.MaxCount : 0;

@@ -128,7 +128,7 @@ public class SameCardSelectorTest {
         }
         foreach (bool global in new[] { false, true }) {
             foreach (bool advanced in new[] { false, true }) {
-                CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 2, [], drawEffectsEnabled: global, options: new(advanced));
+                CalculationSnapshot snapshot = CalculationSnapshot.Capture(advanced ? deck : deck.Select(card => card.WithPostDrawDiscardCount(0)), combos, 2, [], drawEffectsEnabled: global, options: new());
                 double actual = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability;
                 List<Card> effective = global ? deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList()
                     : deck.Select(card => card.WithDrawCount(null)).ToList();

@@ -64,7 +64,6 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         string saved = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         Task recovery = Button(cut, "Calculate without draw effects").ClickAsync(new());
         CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_requests[2].Json)!;
-        Assert.That(input.Options!.ConditionalEffectsEnabled, Is.False);
         Assert.That(input.Cards.All(card => card.DrawCount is null && card.PreDrawRemovalCount == 0), Is.True);
         Complete(2);
         await recovery;
@@ -81,7 +80,6 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         await Button(cut, "Replace pin with current result").ClickAsync(new());
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Context.Model, Is.EqualTo(CalculationModel.OpeningHand));
         Task normal = Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_requests[3].Json)!.Options!.ConditionalEffectsEnabled, Is.True);
         Complete(3);
         await normal;
         Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Configured draw effects"));
@@ -111,7 +109,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
             await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         }
         else if (ending == "mode") {
-            await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Simplified" });
+            await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         }
         else if (ending == "session") {
             string source = context.Services.GetRequiredService<ISessionService>().SerializeSession(Session());

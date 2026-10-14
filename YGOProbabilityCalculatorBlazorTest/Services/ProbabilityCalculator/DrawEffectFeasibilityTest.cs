@@ -32,13 +32,14 @@ public class DrawEffectFeasibilityTest {
         int consumption = draw + banish + mill;
         foreach (bool configured in new[] { true, false }) {
             int required = configured ? consumption : draw;
+            List<Card> modeled = configured ? deck : deck.Select(card => card.WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList();
             foreach (int remaining in new[] { required - 1, required, required + 1 }.Distinct()) {
                 int hand = 6 - remaining;
-                HashSet<Card>? inert = DrawEffectFeasibility.FindInert(deck, 6, hand, configured);
-                Assert.That(inert?.Contains(effect) ?? false, Is.EqualTo(remaining < required));
-                AssertParity(deck, hand, configured);
+                HashSet<Card>? inert = DrawEffectFeasibility.FindInert(modeled, 6, hand);
+                Assert.That(inert?.Contains(modeled[0]) ?? false, Is.EqualTo(remaining < required));
+                AssertParity(modeled, hand);
                 if (remaining < required) {
-                    Assert.That(DrawExecutionAssessment.Assess(deck, Combos, hand, true, configured).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
+                    Assert.That(DrawExecutionAssessment.Assess(modeled, Combos, hand, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
                 }
             }
         }
@@ -51,9 +52,9 @@ public class DrawEffectFeasibilityTest {
             preDrawRemovalCount: cost, preDrawSelector: Material);
         List<Card> deck = [effect, new([A, B], extra, id: "target"), new([], 3, id: "f")];
         bool impossible = copies + extra - 1 < cost;
-        Assert.That(DrawEffectFeasibility.FindInert(deck, deck.Sum(card => card.Copies), 1, true)?.Contains(effect) ?? false,
+        Assert.That(DrawEffectFeasibility.FindInert(deck, deck.Sum(card => card.Copies), 1)?.Contains(effect) ?? false,
             Is.EqualTo(impossible));
-        Assert.That(DrawEffectFeasibility.FindInert(deck, deck.Sum(card => card.Copies), 1, false), Is.Null);
+        Assert.That(DrawEffectFeasibility.FindInert(deck.Select(card => card.WithPreDrawRemovalCount(0)).ToList(), deck.Sum(card => card.Copies), 1), Is.Null);
         AssertParity(deck, 1);
         AssertParity(deck, 2);
     }
@@ -63,11 +64,11 @@ public class DrawEffectFeasibilityTest {
         Card cost = new([B], 2, id: "cost", drawCount: 2, preDrawRemovalCount: 1, preDrawSelector: Material);
         List<Card> deck = [Pot(2), cost, new([A], id: "target"), new([], 2, id: "f")];
         DrawActivationPriority priority = custom ? new(DrawActivationMode.CustomPriority, ["cost", "pot"]) : DrawActivationPriority.Default;
-        Assert.That(DrawEffectFeasibility.FindInert(deck, 7, 2, true), Is.EquivalentTo(new[] { cost }));
-        Assert.That(DrawExecutionAssessment.Assess(deck, Combos, 2, true, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+        Assert.That(DrawEffectFeasibility.FindInert(deck, 7, 2), Is.EquivalentTo(new[] { cost }));
+        Assert.That(DrawExecutionAssessment.Assess(deck, Combos, 2, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
         AssertParity(deck, 2, priority: priority);
         AssertParity(deck, 2, false, priority);
-        Assert.That(DrawEffectFeasibility.FindInert(deck, 7, 2, false), Is.Null);
+        Assert.That(DrawEffectFeasibility.FindInert(deck.Select(card => card.WithPreDrawRemovalCount(0)).ToList(), 7, 2), Is.Null);
         // Both retained Pot copies and drawn cost cards remain direct/category targets.
         Assert.That(deck[1], Is.SameAs(cost));
         Assert.That(cost.PreDrawRemovalCount, Is.EqualTo(1));
@@ -76,9 +77,9 @@ public class DrawEffectFeasibilityTest {
     [Test]
     public void CapacityInertSecondEffectEnablesPotWithoutWeakeningCollectiveBound() {
         List<Card> deck = [Pot(2), new([B], id: "cost", drawCount: 3), new([A], id: "target"), new([], 2, id: "f")];
-        Assert.That(DrawExecutionAssessment.Assess(deck, Combos, 4, true, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+        Assert.That(DrawExecutionAssessment.Assess(deck, Combos, 4, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
         AssertParity(deck, 4);
-        Assert.That(DrawExecutionAssessment.Assess(deck, Combos, 3, true, true).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
+        Assert.That(DrawExecutionAssessment.Assess(deck, Combos, 3, true).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
         AssertParity(deck, 3);
         AssertParity([.. deck, Pot().WithName("Independent Pot").Duplicate()], 4);
     }
@@ -89,7 +90,7 @@ public class DrawEffectFeasibilityTest {
         Card draw = new([], id: "draw", drawCount: 1);
         Card target = new([A, B], id: "target");
         List<Card> deck = [cost, draw, target, new([], 2, id: "f")];
-        Assert.That(DrawEffectFeasibility.FindInert(deck, 5, 2, true), Is.Null);
+        Assert.That(DrawEffectFeasibility.FindInert(deck, 5, 2), Is.Null);
         Assert.That(DrawSequenceOracle.Resolve([cost, draw, target, new([], id: "f"), new([], id: "last")], 2, [])!
             .Any(card => card.Id == "cost"), Is.False, "Cost becomes payable after the other draw");
         AssertParity(deck, 2);
@@ -104,14 +105,14 @@ public class DrawEffectFeasibilityTest {
             Card live = new([], id: "draw", drawCount: 2,
                 preDrawRemovalCount: preCost ? 1 : 0, postDrawDiscardCount: preCost ? 0 : 1);
             List<Card> deck = [inert, live, new([A, B], id: "target"), new([], 3, id: "f")];
-            Assert.That(DrawEffectFeasibility.FindInert(deck, 6, 2, true), Is.Null, "Preserve effect-first removal ties and deferred tier");
+            Assert.That(DrawEffectFeasibility.FindInert(deck, 6, 2), Is.Null, "Preserve effect-first removal ties and deferred tier");
             foreach (int hand in new[] { 2, 3, 4 }) {
                 AssertParity(deck, hand);
             }
         }
         List<Card> failure = [inert, new([], id: "draw", drawCount: 1, postDrawDiscardCount: 2,
             postDrawSelector: Material), new([A, B], id: "target"), new([], 2, id: "f")];
-        Assert.That(DrawEffectFeasibility.FindInert(failure, 5, 2, true), Is.Null);
+        Assert.That(DrawEffectFeasibility.FindInert(failure, 5, 2), Is.Null);
         DrawSequenceOracle.Counts oracle = AssertParity(failure, 2);
         Assert.That(oracle.Failed, Is.GreaterThan(System.Numerics.BigInteger.Zero), "A post-draw failure must remain failed denominator mass");
     }
@@ -126,9 +127,9 @@ public class DrawEffectFeasibilityTest {
         List<Card> naiveHand = DrawSequenceOracle.Resolve(order.Select(card => card == inert ? card.WithDrawCount(null) : card).ToList(), 3, excludeInert)!;
         Assert.That(originalHand.Any(card => card.Id == inert.Id), Is.True);
         Assert.That(naiveHand.Any(card => card.Id == inert.Id), Is.False);
-        Assert.That(DrawEffectFeasibility.FindInert(order, 6, 3, true), Is.Null);
+        Assert.That(DrawEffectFeasibility.FindInert(order, 6, 3), Is.Null);
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(order, 3, excludeInert, [], true);
-        ExactProbability actual = new DrawEffectCalculation(order, 3, new(CalculationWorkPolicy.Interactive), true).Calculate(excludeInert, []).Total;
+        ExactProbability actual = new DrawEffectCalculation(order, 3, new(CalculationWorkPolicy.Interactive)).Calculate(excludeInert, []).Total;
         Assert.That(actual.Numerator * oracle.Total, Is.EqualTo(oracle.Wins[0] * actual.Denominator));
     }
 
@@ -138,12 +139,12 @@ public class DrawEffectFeasibilityTest {
         Card cost = new([], id: "cost", drawCount: 1, preDrawRemovalCount: 2, preDrawSelector: selector);
         List<Card> cards = [cost, new([A], id: "partial"), new([A, B], id: "target"), new([Missing], 0, id: "zero"),
             new([Missing], 2, active: false, id: "inactive"), new([], 3, id: "f")];
-        Assert.That(DrawExecutionAssessment.Assess(cards, Combos, 2, true, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
+        Assert.That(DrawExecutionAssessment.Assess(cards, Combos, 2, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
         AssertParity(cards.Where(card => card.Active).ToList(), 2);
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, Combos, 2, Groups, options: new(true));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, Combos, 2, Groups, options: new());
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability,
             Is.EqualTo(new ProbabilityCalculatorService().CalculateProbabilityResults(cards.Where(card => card.Active).ToList(), Combos, 2, Groups,
-                CalculationWorkPolicy.Interactive, new CalculationOptions(true)).TotalProbability));
+                CalculationWorkPolicy.Interactive, new CalculationOptions()).TotalProbability));
     }
 
     [Test]
@@ -164,7 +165,7 @@ public class DrawEffectFeasibilityTest {
             ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(
                 loaded.Cards, Combos, 2, Groups, drawEffectsEnabled: false).Json));
             Assert.That(worker.TotalProbability, Is.EqualTo(opening.Total.ToDouble(new(CalculationWorkPolicy.Interactive))));
-            Assert.That(DrawExecutionAssessment.Assess(loaded.Cards, Combos, 2, false, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
+            Assert.That(DrawExecutionAssessment.Assess(loaded.Cards, Combos, 2, false).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
         }
     }
 
@@ -185,17 +186,17 @@ public class DrawEffectFeasibilityTest {
         foreach (DrawActivationPriority priority in new[] { DrawActivationPriority.Default,
             new DrawActivationPriority(DrawActivationMode.CustomPriority, [inert.Id, pot.Id]) }) {
             WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
-            ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, budget, true, priority).Calculate(combos, session.ComboGroups);
+            ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, budget, priority).Calculate(combos, session.ComboGroups);
             ExactCalculationResult expected = new DrawEffectCalculation(deck.Select(card => card.Id == inert.Id ? ordinary : card).ToList(),
-                5, new(CalculationWorkPolicy.Interactive), true, priority).Calculate(combos, session.ComboGroups);
+                5, new(CalculationWorkPolicy.Interactive), priority).Calculate(combos, session.ComboGroups);
             ExactProbability[] rows = [actual.Total, .. actual.Combos, .. actual.Groups];
             ExactProbability[] reference = [expected.Total, .. expected.Combos, .. expected.Groups];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * reference[i].Denominator, Is.EqualTo(reference[i].Numerator * rows[i].Denominator));
             }
-            Assert.That(DrawExecutionAssessment.Assess(deck, combos, 5, true, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+            Assert.That(DrawExecutionAssessment.Assess(deck, combos, 5, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
             ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(
-                session.Cards, combos, 5, session.ComboGroups, options: new(true, priority), categoryDefinitions: session.Categories).Json));
+                session.Cards, combos, 5, session.ComboGroups, options: new(priority), categoryDefinitions: session.Categories).Json));
             Assert.That(worker.TotalProbability, Is.EqualTo(actual.Total.ToDouble(budget)));
         }
         Assert.That(inert.DrawCount, Is.EqualTo(2));
@@ -206,8 +207,8 @@ public class DrawEffectFeasibilityTest {
         Card invalid = new([], id: "cost", drawCount: 3, preDrawRemovalCount: 1, preDrawSelector: Material,
             effectProfile: new(ExecutionModel: EffectExecutionModel.Unsupported));
         List<Card> deck = [invalid, new([], id: "f")];
-        Assert.That(DrawEffectFeasibility.FindInert(deck, 2, 1, true), Is.Null);
-        Assert.That(DrawExecutionAssessment.Assess(deck, Combos, 1, true, true).Path, Is.EqualTo(DrawExecutionPath.Unknown));
+        Assert.That(DrawEffectFeasibility.FindInert(deck, 2, 1), Is.Null);
+        Assert.That(DrawExecutionAssessment.Assess(deck, Combos, 1, true).Path, Is.EqualTo(DrawExecutionPath.Unknown));
         Assert.Throws<ArgumentException>(() => new ProbabilityCalculatorService().CalculateProbabilityResults(deck, Combos, 1));
     }
 
@@ -217,7 +218,7 @@ public class DrawEffectFeasibilityTest {
             .WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList();
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, hand, Combos, Groups, true,
             priority.Mode == DrawActivationMode.CustomPriority ? priority.CardIds : null);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, hand, new(CalculationWorkPolicy.Interactive), configured, priority).Calculate(Combos, Groups);
+        ExactCalculationResult result = new DrawEffectCalculation(modeled, hand, new(CalculationWorkPolicy.Interactive), priority).Calculate(Combos, Groups);
         ExactCalculationResult ordered = new PostDrawCalculation(modeled, hand, new(CalculationWorkPolicy.Interactive), priority).Calculate(Combos, Groups);
         ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
         ExactProbability[] reference = [ordered.Total, .. ordered.Combos, .. ordered.Groups];
@@ -226,7 +227,7 @@ public class DrawEffectFeasibilityTest {
             Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row={i}, hand={hand}, configured={configured}");
         }
         ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(
-            deck, Combos, hand, Groups, options: new(configured, priority)).Json));
+            modeled, Combos, hand, Groups, options: new(priority)).Json));
         Assert.That(worker.TotalProbability, Is.EqualTo(rows[0].ToDouble(new(CalculationWorkPolicy.Interactive))));
         Assert.That(worker.ComboProbabilities.Select(row => row.Probability), Is.EqualTo(result.Combos.Select(row => row.ToDouble(new(CalculationWorkPolicy.Interactive)))));
         Assert.That(worker.GroupProbabilities.Select(row => row.Probability), Is.EqualTo(result.Groups.Select(row => row.ToDouble(new(CalculationWorkPolicy.Interactive)))));

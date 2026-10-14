@@ -11,7 +11,7 @@ const copy = (name, source, edit) => {
     edit(input);
     cases.push({ Name: name, Input: input });
 };
-copy('example-advanced-no-conditions', 'example-baseline', input => { input.Options = { ConditionalEffectsEnabled: true }; });
+copy('example-advanced-no-conditions', 'example-baseline', input => { input.Options = {}; });
 copy('trade-in-hand6', 'pre-draw-38120068-advanced', input => { input.HandSize = 6; });
 copy('return-hand6-deck60', 'pre-draw-26845680-advanced', input => {
     input.HandSize = 6; input.Cards.find(card => card.Id === 'z').Copies += 20;

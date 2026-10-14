@@ -27,7 +27,7 @@ public class DrawActivationPrioritySessionTest {
         Assert.That(loaded.DrawActivationPriority.Mode, Is.EqualTo(DrawActivationMode.CustomPriority));
         Assert.That(loaded.DrawActivationPriority.CardIds, Is.EqualTo(new[] { "b", "a" }));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(saved));
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 2, [], options: new(true, loaded.DrawActivationPriority));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 2, [], options: new(loaded.DrawActivationPriority));
         Assert.That(JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!.Options!.DrawActivationPriority!.CardIds, Is.EqualTo(new[] { "b", "a" }));
         Assert.DoesNotThrow(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
     }
@@ -46,7 +46,7 @@ public class DrawActivationPrioritySessionTest {
         JsonObject document = JsonNode.Parse(json)!.AsObject();
         document[nameof(SessionState.DrawActivationPriority)] = JsonNode.Parse(policy);
         Assert.That(async () => await Codec().LoadSessionAsync(document.ToJsonString()), Throws.Exception);
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(Session(DrawActivationPriority.Default).Cards, [], 2, [], options: new(true));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(Session(DrawActivationPriority.Default).Cards, [], 2, [], options: new());
         JsonObject input = JsonNode.Parse(snapshot.Json)!.AsObject();
         input["Options"]!["DrawActivationPriority"] = JsonNode.Parse(policy);
         CalculationResponse response = JsonSerializer.Deserialize<CalculationResponse>(CalculationWire.Execute(input.ToJsonString()))!;
@@ -59,7 +59,7 @@ public class DrawActivationPrioritySessionTest {
         string[] ids = ["b", "a"];
         DrawActivationPriority policy = new(DrawActivationMode.CustomPriority, ids);
         SessionState session = Session(policy);
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, 2, [], options: new(true, policy));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, 2, [], options: new(policy));
         ids[0] = "f";
         session.Cards.Clear();
         Assert.That(policy.CardIds, Is.EqualTo(new[] { "b", "a" }));
@@ -83,7 +83,7 @@ public class DrawActivationPrioritySessionTest {
     public void PinnedContextDistinguishesPoliciesAndRanksButIgnoresDisabledPreferences() {
         SessionState session = Session(DrawActivationPriority.Default);
         PinnedCalculationContext Capture(DrawActivationPriority policy, bool draws = true) => PinnedCalculationContext.Capture(
-            0, 2, session.Cards, session.Combos, [], _ => Guid.Empty, _ => Guid.Empty, draws, true, priority: policy);
+            0, 2, session.Cards, session.Combos, [], _ => Guid.Empty, _ => Guid.Empty, draws, priority: policy);
         PinnedCalculationContext fifo = Capture(DrawActivationPriority.Default);
         PinnedCalculationContext first = Capture(new(DrawActivationMode.CustomPriority, ["a", "b"]));
         PinnedCalculationContext reverse = Capture(new(DrawActivationMode.CustomPriority, ["b", "a"]));

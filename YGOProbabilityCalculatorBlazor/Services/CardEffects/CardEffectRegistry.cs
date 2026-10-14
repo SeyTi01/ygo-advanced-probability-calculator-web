@@ -145,7 +145,7 @@ public sealed class CardEffectRegistry {
 // Only this bounded execution model is supported by the current exact interpreters.
 // A future model must add an explicit compiler and solver capability/routing proof.
 // An unavailable definition can still execute its saved V1 snapshot; an unavailable
-// execution model cannot fall through to Draw N (even in simplified mode).
+// execution model cannot fall through to Draw N.
 public static class CardEffectCompiler {
     public static void RequireExecutable(Card card) {
         if (card.EffectProfile.ExecutionModel != EffectExecutionModel.DrawSequenceV1) {

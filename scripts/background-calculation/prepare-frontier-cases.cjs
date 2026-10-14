@@ -36,8 +36,8 @@ for (const [size, hand] of [[40, 5], [40, 6], [60, 5], [60, 6]]) {
     cases.push({ Name: `return-allure-${size}-${hand}`, Input: input });
 }
 const basic = structuredClone(mixed);
-basic.Options.ConditionalEffectsEnabled = false;
-// Snapshot.Capture strips conditional configuration in Basic mode.
+basic.Options = {};
+// Explicit hypothetical plans provide the historical cost-free control.
 for (const card of basic.Cards) {
     card.PreDrawRemovalCount = 0;
     card.PostDrawDiscardCount = 0;

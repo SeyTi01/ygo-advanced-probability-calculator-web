@@ -36,7 +36,12 @@ public class PerformanceAuditBenchmark {
                 card.PostDrawSelector,
                 card.PostDrawFailureBehavior,
                 card.PreDrawRemovalCount,
-                card.PreDrawSelector
+                card.PreDrawSelector,
+                card.PreDrawDeckRemovalCount,
+                card.EffectProfile,
+                card.PostDrawDeckMillCount,
+                card.FirstActivationOnly,
+                card.BlocksLaterDraws
             )).ToList();
             List<Combo> combos = input.Combos.Select(combo => new Combo(
                 combo.Categories,
@@ -48,9 +53,8 @@ public class PerformanceAuditBenchmark {
             )).ToList();
             for (int trial = -1; trial < trials; trial++) {
                 WorkBudget budget = new(new(input.WorkUnits!.Value), CalculationStoragePolicy.ForTier(input.StorageTier ?? CalculationStorageTier.Standard));
-                PostDrawCalculation? conditional = input.Options?.ConditionalEffectsEnabled == true
-                    && cards.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0)
-                    ? new(cards, input.HandSize, budget) : null;
+                PostDrawCalculation? conditional = cards.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0)
+                    ? new(cards, input.HandSize, budget, input.Options?.DrawActivationPriority) : null;
                 long allocated = GC.GetAllocatedBytesForCurrentThread();
                 Stopwatch timer = Stopwatch.StartNew();
                 ExactCalculationResult? exact = null;
@@ -58,7 +62,7 @@ public class PerformanceAuditBenchmark {
                 string outcome = "Success";
                 try {
                     exact = conditional is null
-                        ? new DrawEffectCalculation(cards, input.HandSize, budget).Calculate(combos, input.Groups)
+                        ? new DrawEffectCalculation(cards, input.HandSize, budget, input.Options?.DrawActivationPriority).Calculate(combos, input.Groups)
                         : conditional.Calculate(combos, input.Groups);
                     result = exact.ToPublic(combos, input.Groups, budget);
                 }

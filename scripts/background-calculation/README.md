@@ -23,6 +23,18 @@ Results retain their existing public data contract. Each request captures its
 own input JSON, excluding inactive
 entries and including nested requirements, stable identities and group order.
 
+Native and worker calls always execute each card's saved effective plan, including
+custom zero-valued costs or removals. `CalculationOptions` contains only activation
+priority. Its version-local worker JSON rejects obsolete/unknown options as typed
+input errors; saved sessions remain schema v5. Opening-hand-only snapshots clear
+execution fields on their owned worker cards while preserving the workspace plans.
+
+`custom-plan-smoke.cjs <published-wwwroot> <frozen-cases.json> <evidence-directory>`
+checks both global models and selective Trade-In, Allure and Desires overrides,
+cancel/save, independent same-name entries, pins, restore, focus and narrow layouts.
+Supply frozen exports containing maintained card sessions, such as the mixed and
+Trade-In/Allure fixtures below. `YGO_BROWSER_CHANNEL=msedge` selects installed Edge.
+
 Each calculator component receives a transient `BackgroundCalculator` owner.
 The first request lazily imports the module and creates a runtime; successful
 requests reuse that runtime with distinct IDs. C# validates the wire result before

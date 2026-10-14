@@ -51,7 +51,7 @@ public class MixedDeferredBenchmark {
                 DrawActivationPriority priority = custom ? new(DrawActivationMode.CustomPriority,
                     ["benchmark-secondary", "benchmark-allure"]) : DrawActivationPriority.Default;
                 CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, 5,
-                    session.ComboGroups, CalculationWorkPolicy.Interactive, options: new(true, priority));
+                    session.ComboGroups, CalculationWorkPolicy.Interactive, options: new(priority));
                 output.Add(new { Name = $"mixed-example-{(vision ? "vision" : "desires")}-{(custom ? "custom" : "configured")}",
                     Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json),
                     Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(new() {
@@ -82,7 +82,6 @@ public class MixedDeferredBenchmark {
                 card.FirstActivationOnly, card.BlocksLaterDraws)).ToList();
             List<Combo> combos = input.Combos.Select(combo => new Combo(combo.Categories, combo.Name, true,
                 combo.GroupId, combo.Cards, combo.AlternativeGroups)).ToList();
-            bool configured = input.Options?.ConditionalEffectsEnabled == true;
             DrawActivationPriority? priority = input.Options?.DrawActivationPriority;
             List<double> times = [];
             List<long> allocations = [];
@@ -96,7 +95,7 @@ public class MixedDeferredBenchmark {
             for (int trial = 0; trial < 4; trial++) {
                 budget = new(new(input.WorkUnits!.Value), CalculationStoragePolicy.ForTier(input.StorageTier ?? CalculationStorageTier.Standard));
                 post = null;
-                if (configured && cards.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0)) {
+                if (cards.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0)) {
                     post = new(
                         cards,
                         input.HandSize,
@@ -112,7 +111,7 @@ public class MixedDeferredBenchmark {
                 exact = null;
                 result = null;
                 try {
-                    exact = post is null ? new DrawEffectCalculation(cards, input.HandSize, budget, configured, priority).Calculate(combos, input.Groups)
+                    exact = post is null ? new DrawEffectCalculation(cards, input.HandSize, budget, priority).Calculate(combos, input.Groups)
                         : post.Calculate(combos, input.Groups);
                     result = exact.ToPublic(combos, input.Groups, budget);
                     outcome = "Success";
@@ -154,7 +153,7 @@ public class MixedDeferredBenchmark {
                 ReducedRows = post?.ReducedRows ?? 0, DeferredRows = post?.DeferredRows ?? 0,
                 ExplicitRows = post is null ? 0 : post.ReducedRows - (post.DeferredRows > 0 ? 1 : 0),
                 TerminalStates = post?.TerminalStates ?? 0, post?.LargestStructure,
-                Path = DrawExecutionAssessment.Assess(cards, combos, input.HandSize, true, configured).Path.ToString(),
+                Path = DrawExecutionAssessment.Assess(cards, combos, input.HandSize, true).Path.ToString(),
                 ExactResults = fractions, Probability = result?.TotalProbability, ReferenceResults = result, Input = fixture.GetProperty("Input"),
                 Session = fixture.TryGetProperty("Session", out JsonElement session) ? session : (JsonElement?)null });
             TestContext.Out.WriteLine($"{name}: {outcome}; work={budget.Spent}; rows={post?.ReducedRows}; pool={post?.DeferredRows}; states={post?.PeakStates}; cells={post?.PeakCells}; allCells={budget.PeakCells}; ms={string.Join(',', times)}");

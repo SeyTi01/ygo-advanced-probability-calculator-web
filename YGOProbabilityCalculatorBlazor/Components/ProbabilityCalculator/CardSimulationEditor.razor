@@ -160,7 +160,6 @@
     [Parameter, EditorRequired] public Card Card { get; set; } = null!;
     [Parameter] public int Index { get; set; }
     [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
-    [Parameter] public bool ConditionalEffectsEnabled { get; set; }
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlySet<string> RelevantMetadataCategoryIdentities { get; set; } = new HashSet<string>(StringComparer.Ordinal);
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -201,10 +200,9 @@
     private bool HasDetails => _performanceNote || (_effect.Source == EffectSource.BuiltIn
         && (!string.IsNullOrWhiteSpace(_effect.Limitations) || HasSavedRevisionDetails))
         || (_effect.Source == EffectSource.LegacySnapshot && Card.DrawCount is not null);
-    private string? ModeNotice => Card.DrawCount is null ? null : !DrawEffectsEnabled
+    private string? ModeNotice => Card.DrawCount is not null && !DrawEffectsEnabled
         ? "Opening hand only · saved simulation is off."
-        : !ConditionalEffectsEnabled && (Card.PreDrawRemovalCount > 0 || Card.PreDrawDeckRemovalCount > 0 || Card.PostDrawDeckMillCount > 0 || Card.PostDrawDiscardCount > 0)
-            ? $"Simplified · Draw {Card.DrawCount}; costs and removals ignored." : null;
+        : null;
 
     private void ToggleEditor() {
         if (_draft is not null) {

@@ -72,7 +72,7 @@ public partial class DrawEffectsBenchmark {
                 long allocated = GC.GetAllocatedBytesForCurrentThread();
                 Stopwatch timer = Stopwatch.StartNew();
                 try {
-                    exact = post is null ? new DrawEffectCalculation(deck, hand, budget, true).Calculate(routes, groups)
+                    exact = post is null ? new DrawEffectCalculation(deck, hand, budget).Calculate(routes, groups)
                         : post.Calculate(routes, groups);
                     reference = exact.ToPublic(routes, groups, budget);
                 }
@@ -90,9 +90,9 @@ public partial class DrawEffectsBenchmark {
                 }
             }
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, routes, hand, groups, CalculationWorkPolicy.Interactive,
-                storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(true));
+                storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new());
             output.Add(new { Name = name, Outcome = outcome, Work = work, PeakCells = peakCells, PeakStates = peakStates,
-                Milliseconds = timings, AllocatedBytes = allocations, Path = DrawExecutionAssessment.Assess(deck, routes, hand, true, true).Path.ToString(),
+                Milliseconds = timings, AllocatedBytes = allocations, Path = DrawExecutionAssessment.Assess(deck, routes, hand, true).Path.ToString(),
                 Probability = reference?.TotalProbability, ReferenceResults = reference,
                 ExactResults = exact is null ? null : new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups).Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),
                 Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json) });

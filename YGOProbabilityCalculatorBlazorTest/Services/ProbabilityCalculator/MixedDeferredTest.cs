@@ -158,14 +158,14 @@ public class MixedDeferredTest {
                 ? card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0) : card).ToList();
             DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(modeled, 2, Combos(), Groups(),
                 collapseIdenticalCopies: true, priorityIds: priority.CardIds);
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, Combos(), 2, Groups(),
-                CalculationWorkPolicy.Interactive, enabled, options: new(configured, priority));
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(enabled ? modeled : deck, Combos(), 2, Groups(),
+                CalculationWorkPolicy.Interactive, enabled, options: new(priority));
             ProbabilityCalculationResult actual = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
             Assert.That(new[] { actual.TotalProbability }.Concat(actual.ComboProbabilities.Select(row => row.Probability))
                 .Concat(actual.GroupProbabilities.Select(row => row.Probability)),
                 Is.EqualTo(expected.Wins.Select(win => (double)win / (double)expected.Total)).Within(1e-14));
         }
-        Assert.That(DrawExecutionAssessment.Assess(deck, Combos(), 2, true, true).Path, Is.EqualTo(DrawExecutionPath.DeferredConditional));
+        Assert.That(DrawExecutionAssessment.Assess(deck, Combos(), 2, true).Path, Is.EqualTo(DrawExecutionPath.DeferredConditional));
         Assert.That(deck[0].PreDrawRemovalCount, Is.EqualTo(1));
         Assert.That(deck[1].PostDrawDiscardCount, Is.EqualTo(1));
     }
@@ -178,7 +178,7 @@ public class MixedDeferredTest {
         Assert.That(result.Combos, Has.Length.EqualTo(8));
         Assert.That(result.Groups, Has.Length.EqualTo(2));
         Assert.That(calculation.DeferredRows, Is.GreaterThan(1));
-        Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, true, true).Path,
+        Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, true).Path,
             Is.EqualTo(DrawExecutionPath.DeferredConditional));
     }
 
@@ -208,14 +208,14 @@ public class MixedDeferredTest {
                     AssertRows(packed.Calculate(Combos(), Groups()), expected);
                     Assert.That(packed.PackedLayers, Is.GreaterThan(0));
                 }
-                AssertRows(new DrawEffectCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), true, priority)
+                AssertRows(new DrawEffectCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority)
                     .Calculate(Combos(), Groups()), expected);
                 ExactCalculationResult total = new PostDrawCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority)
                     .Calculate(Combos(), Groups(), totalOnly: true);
                 Assert.That(total.Total.Numerator * expected.Total, Is.EqualTo(expected.Wins[0] * total.Total.Denominator));
             }
         }
-        Assert.That(DrawExecutionAssessment.Assess(deck, Combos(), hand, true, true).Path,
+        Assert.That(DrawExecutionAssessment.Assess(deck, Combos(), hand, true).Path,
             Is.EqualTo(deferred ? DrawExecutionPath.DeferredConditional : DrawExecutionPath.OrderedFrontier));
         return encounter;
     }

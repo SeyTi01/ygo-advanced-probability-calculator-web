@@ -78,5 +78,5 @@ public class DrawEffectPerformanceTest {
 
     private static bool NeedsDetail(Card card) => DrawEffectPerformance.RequiresDetailedHandState(card.EffectPlan, card.EffectProfile.ExecutionModel);
     private static DrawExecutionAssessment Assess(IReadOnlyList<Card> cards, IReadOnlyList<Combo> combos, int handSize) =>
-        DrawExecutionAssessment.Assess(cards, combos, handSize, true, true);
+        DrawExecutionAssessment.Assess(cards, combos, handSize, true);
 }

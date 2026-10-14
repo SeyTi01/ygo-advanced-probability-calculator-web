@@ -26,7 +26,7 @@ public class SolarRechargeSessionTest {
         Assert.That(loaded.Cards[0].EffectPlan, Is.EqualTo(saved.EffectPlan));
         Assert.That(loaded.Cards[0].EffectProfile, Is.EqualTo(saved.EffectProfile));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 5, [], options: new(true));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 5, [], options: new());
         WorkerCard wire = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!.Cards[0];
         Assert.That(wire.PostDrawDeckMillCount, Is.EqualTo(1));
         Assert.That(wire.EffectProfile, Is.EqualTo(saved.EffectProfile));

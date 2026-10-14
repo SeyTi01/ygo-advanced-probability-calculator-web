@@ -39,7 +39,7 @@ public class DrawEffectFeasibilityBenchmark {
                     WorkBudget budget = new(CalculationWorkPolicy.Interactive);
                     long before = GC.GetAllocatedBytesForCurrentThread();
                     Stopwatch timer = Stopwatch.StartNew();
-                    ExactCalculationResult result = new DrawEffectCalculation(deck, 5, budget, true, priority).Calculate(combos, groups);
+                    ExactCalculationResult result = new DrawEffectCalculation(deck, 5, budget, priority).Calculate(combos, groups);
                     timer.Stop();
                     long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
                     ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
@@ -53,7 +53,7 @@ public class DrawEffectFeasibilityBenchmark {
                 }
                 times.Sort();
                 allocations.Sort();
-                DrawExecutionAssessment assessment = DrawExecutionAssessment.Assess(deck, combos, 5, true, true);
+                DrawExecutionAssessment assessment = DrawExecutionAssessment.Assess(deck, combos, 5, true);
                 long peak = 0;
                 int states = 0;
                 if (assessment.Path is DrawExecutionPath.OrderedFrontier or DrawExecutionPath.ExchangeableConditional) {
@@ -66,7 +66,7 @@ public class DrawEffectFeasibilityBenchmark {
                 TestContext.Out.WriteLine($"{name}|{priority.Mode}|route={assessment.Path}|work={work}|ms={times[0]:F3}/{times[3]:F3}/{times[^1]:F3}|allocated={allocations[3]}|ordered-peak={states}/{peak}|exact={string.Join(';', expected!.Select(row => $"{row.Numerator}/{row.Denominator}"))}");
                 Stopwatch preflight = Stopwatch.StartNew();
                 for (int repeat = 0; repeat < 10000; repeat++) {
-                    _ = DrawExecutionAssessment.Assess(deck, combos, 5, true, true);
+                    _ = DrawExecutionAssessment.Assess(deck, combos, 5, true);
                 }
                 TestContext.Out.WriteLine($"{name}|{priority.Mode}|assessment-us={preflight.Elapsed.TotalMilliseconds / 10:F3}");
             }

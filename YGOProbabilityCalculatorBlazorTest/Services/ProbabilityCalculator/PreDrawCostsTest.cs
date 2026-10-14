@@ -197,7 +197,7 @@ public class PreDrawCostsTest {
                 List<Card> modeled = deck.Select(card => !global ? card.WithDrawCount(null)
                     : !advanced ? card.WithPreDrawRemovalCount(0) : card).ToList();
                 DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 2, combos, []);
-                CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 2, [], drawEffectsEnabled: global, options: new(advanced));
+                CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, combos, 2, [], drawEffectsEnabled: global, options: new());
                 double probability = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability;
                 Assert.That(probability, Is.EqualTo((double)oracle.Wins[0] / (double)oracle.Total));
                 TestContext.Out.WriteLine($"global={global}, advanced={advanced}: {oracle.Wins[0]}/{oracle.Total}");
@@ -205,8 +205,8 @@ public class PreDrawCostsTest {
         }
         WorkBudget costBasic = new(CalculationWorkPolicy.Interactive);
         WorkBudget plainBasic = new(CalculationWorkPolicy.Interactive);
-        new DrawEffectCalculation(deck, 2, costBasic, false).Calculate(combos, []);
-        new DrawEffectCalculation(deck.Select(card => card.WithPreDrawRemovalCount(0)).ToList(), 2, plainBasic, false).Calculate(combos, []);
+        new DrawEffectCalculation(deck.Select(card => card.WithPreDrawRemovalCount(0)).ToList(), 2, costBasic).Calculate(combos, []);
+        new DrawEffectCalculation(deck.Select(card => card.WithPreDrawRemovalCount(0)).ToList(), 2, plainBasic).Calculate(combos, []);
         Assert.That(costBasic.Spent, Is.EqualTo(plainBasic.Spent));
     }
 
@@ -214,7 +214,7 @@ public class PreDrawCostsTest {
     public void PreDrawResourceFailuresRemainTypedAndReturnNoPartialResult() {
         List<Card> deck = [Trade(copies: 3), new([Monster, Level], 12, id: "material"), new([Role], 9, id: "target"), new([], 16, id: "f")];
         List<Combo> combos = [new([new(Role, 1, 3)])];
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 5, [], new(10), options: new(true));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 5, [], new(10), options: new());
         ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
         // Many distinct direct roles force a storage-bound exact frontier.
@@ -251,8 +251,8 @@ public class PreDrawCostsTest {
                     ? card.WithDrawCount(null).WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0)
                     : !advanced ? card.WithPreDrawRemovalCount(0).WithPostDrawDiscardCount(0) : card).ToList();
                 DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, handSize, combos, []);
-                CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, handSize, [],
-                    drawEffectsEnabled: drawEffectsEnabled, options: new(advanced));
+                CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, combos, handSize, [],
+                    drawEffectsEnabled: drawEffectsEnabled, options: new());
                 double actual = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability;
                 double expected = (double)oracle.Wins[0] / (double)oracle.Total;
 

@@ -119,15 +119,15 @@ public class Card {
         blocksLaterDraws: BlocksLaterDraws
     );
 
-    public Card WithPostDrawDeckMillCount(int count) => WithEffect(EffectPlan with { HiddenPostDrawMill = count, FirstActivationOnly = false, BlocksLaterDraws = false }, EffectProfile.AsCustom());
+    public Card WithPostDrawDeckMillCount(int count) => WithEffect(EffectPlan with { HiddenPostDrawMill = count }, EffectProfile.AsCustom());
 
-    public Card WithPreDrawDeckRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, count, EffectProfile.AsCustom(), PostDrawDeckMillCount);
+    public Card WithPreDrawDeckRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, count, EffectProfile.AsCustom(), PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws);
 
-    public Card WithPreDrawRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, count, count == 0 ? CardSelector.Any : PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount);
+    public Card WithPreDrawRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, count, count == 0 ? CardSelector.Any : PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws);
 
-    public Card WithPreDrawSelector(CardSelector selector) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, selector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount);
+    public Card WithPreDrawSelector(CardSelector selector) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, selector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws);
 
-    public Card WithPostDrawDiscardCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, count, count == 0 ? CardSelector.Any : PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount);
+    public Card WithPostDrawDiscardCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, count, count == 0 ? CardSelector.Any : PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws);
 
     public Card WithPostDrawSelector(CardSelector selector) => new(
         Categories,
@@ -146,7 +146,9 @@ public class Card {
         PreDrawSelector,
         PreDrawDeckRemovalCount,
         EffectProfile.AsCustom(),
-        PostDrawDeckMillCount
+        PostDrawDeckMillCount,
+        FirstActivationOnly,
+        BlocksLaterDraws
     );
 
     public Card WithPostDrawFailureBehavior(PostDrawFailureBehavior behavior) => new(
@@ -166,7 +168,9 @@ public class Card {
         PreDrawSelector,
         PreDrawDeckRemovalCount,
         EffectProfile.AsCustom(),
-        PostDrawDeckMillCount
+        PostDrawDeckMillCount,
+        FirstActivationOnly,
+        BlocksLaterDraws
     );
 
     public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile, PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws);
@@ -190,10 +194,12 @@ public class Card {
         drawCount is null ? CardSelector.Any : PreDrawSelector,
         drawCount is null ? 0 : PreDrawDeckRemovalCount,
         EffectProfile.AsCustom(),
-        drawCount is null ? 0 : PostDrawDeckMillCount
+        drawCount is null ? 0 : PostDrawDeckMillCount,
+        drawCount is not null && FirstActivationOnly,
+        drawCount is not null && BlocksLaterDraws
     );
 
-    public Card WithDrawOncePerTurn(bool oncePerTurn) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, oncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount);
+    public Card WithDrawOncePerTurn(bool oncePerTurn) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, oncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws);
 
     public Card WithCategories(IEnumerable<CategoryBase> categories) {
         List<CategoryBase> effective = categories.ToList();

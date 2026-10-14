@@ -52,11 +52,22 @@ async function main() {
         async function load(session) {
             await page.locator('#sessionFileInput').setInputFiles({ name: 'filtered.json', mimeType: 'application/json',
                 buffer: Buffer.from(JSON.stringify(session)) });
-            await page.waitForFunction(name => document.querySelector('.card-header-name')?.textContent.includes(name), session.Cards[0].Name);
+            await page.waitForFunction(expected => {
+                try {
+                    const card = JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Cards[0];
+                    return card.Name === expected.name && (card.PostDrawDiscardCount || 0) === expected.removal;
+                } catch { return false; }
+            }, { name: session.Cards[0].Name, removal: session.Cards[0].PostDrawDiscardCount || 0 });
         }
         async function expand(index) {
             const button = page.locator('.card-editor .accordion-button').nth(index);
             if (await button.getAttribute('aria-expanded') !== 'true') await button.click();
+            const editor = page.locator('.card-editor').nth(index);
+            if (!await editor.locator('.simulation-editor').count()) await editor.locator('.simulation-edit').click();
+        }
+        async function saveSimulation(index) {
+            await page.locator('.card-editor').nth(index).locator('.simulation-save').click();
+            await expand(index);
         }
         async function saved() {
             const download = page.waitForEvent('download');
@@ -79,6 +90,7 @@ async function main() {
             await expand(0);
             await page.locator('#cardName0').fill(name);
             await page.getByRole('option', { name, exact: true }).click();
+            await expand(0);
             assert.equal(await page.locator('#cardDraw0').inputValue(), '2');
             assert.equal(await page.locator('#cardDiscard0').inputValue(), '1');
             assert.equal(await page.locator('#cardDrawOnce0').isChecked(), opt);
@@ -86,8 +98,12 @@ async function main() {
             assert.deepEqual(selection.Cards[0].PostDrawSelector.Categories, identities);
             assert.equal(selection.Cards[0].PostDrawFailureBehavior, 'FailBranch');
             await page.locator('#cardEligibility0').selectOption('any');
+            await saveSimulation(0);
             assert.equal((await saved()).Cards[0].PostDrawSelector, undefined);
-            for (const identity of identities) await page.locator('#cardEligibility0').selectOption(identity);
+            for (const identity of identities) {
+                await page.locator('#cardEligibility0').selectOption(identity);
+                await saveSimulation(0);
+            }
             const restored = await saved();
             assert.deepEqual(restored.Cards[0].PostDrawSelector.Categories, identities);
             restored.Cards[0].Name = `Round trip ${id}`;
@@ -99,8 +115,10 @@ async function main() {
             await page.keyboard.press('Tab');
             assert.match(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), /Remove eligibility/);
             await page.keyboard.press('Enter');
+            await saveSimulation(0);
             assert.equal((await saved()).Cards[0].PostDrawSelector?.Categories.length || 0, identities.length - 1);
             await page.locator('#cardEligibility0').selectOption(identities[0]);
+            await saveSimulation(0);
         }
         await page.locator('#fileInput').setInputFiles({ name: 'filtered.ydk', mimeType: 'text/plain',
             buffer: Buffer.from('#main\n1475311\n20508881\n89631139\n#extra\n!side\n') });
@@ -121,13 +139,18 @@ async function main() {
             }
         }
         await page.setViewportSize({ width: 1280, height: 1000 });
-        for (const fixture of cases.filter(value => value.Name.startsWith('small-') && value.Input.Options.ConditionalEffectsEnabled)) {
+        for (const fixture of cases.filter(value => value.Name.startsWith('small-') && value.Input.Cards.some(card => card.PostDrawDiscardCount > 0))) {
             fixture.Session.Cards[0].Name = fixture.Name;
             await load(fixture.Session);
             await settings();
-            await model.selectOption('Simplified');
+            await model.selectOption('Configured');
             await closeSettings();
-            assert.equal(await result(), 100, `${fixture.Name}: Basic`);
+            const custom = structuredClone(fixture.Session);
+            custom.Cards[0].PostDrawDiscardCount = 0;
+            custom.Cards[0].PostDrawSelector = { Kind: 'Any', Categories: [] };
+            await load(custom);
+            assert.equal(await result(), 100, `${fixture.Name}: custom removal-free`);
+            await load(fixture.Session);
             await settings();
             await model.selectOption('Configured');
             await closeSettings();
@@ -159,7 +182,7 @@ async function main() {
         assert.equal(await storage.inputValue(), 'Standard');
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
-        console.log('PASS: curated search/import, clear/edit/recreate, save/load, keyboard removal, 8 layouts, Basic/Advanced/failure/global off, storage tiers, reload defaults, no Blazor/JS errors.');
+        console.log('PASS: curated search/import, clear/edit/recreate, save/load, keyboard removal, 8 layouts, configured/custom/failure/opening-only, storage tiers, reload defaults, no Blazor/JS errors.');
     } finally {
         await browser.close();
         await new Promise(resolve => server.close(resolve));
