@@ -1,0 +1,12 @@
+<div class="session-loading-status text-body-secondary" role="status" aria-live="polite" aria-atomic="true">
+    @if (RequestVersion is { } version) {
+        <span @key="version" class="session-loading-content">
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span>Loading session…</span>
+        </span>
+    }
+</div>
+
+@code {
+    [Parameter] public long? RequestVersion { get; set; }
+}

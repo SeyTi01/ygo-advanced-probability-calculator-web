@@ -33,7 +33,7 @@ public partial class ProbabilityCalculatorComponent {
 
         if (!recognized) {
             if (_sharedFragment is not null) {
-                _sessionLoadVersion++;
+                InvalidateSessionLoad();
             }
 
             _sharedFragment = _sharedJson = _sharedError = null;
@@ -49,7 +49,7 @@ public partial class ProbabilityCalculatorComponent {
             return;
         }
 
-        _sessionLoadVersion++;
+        InvalidateSessionLoad();
         _sharedFragment = fragment;
         _sharedJson = _sharedError = null;
         _sharedLoading = false;
@@ -101,10 +101,11 @@ public partial class ProbabilityCalculatorComponent {
             return;
         }
 
-        SessionLoadRequest request = BeginSessionLoad();
+        SessionLoadRequest request = BeginSessionLoad(fullSession: true);
         _sharedLoading = true;
 
         try {
+            await BeforeSessionWorkAsync();
             SessionState session = await _sessionService.LoadSessionAsync(json);
 
             if (!await RestoreSessionDataAsync(session, request)) {
@@ -121,6 +122,7 @@ public partial class ProbabilityCalculatorComponent {
             }
         }
         finally {
+            EndSessionLoad(request);
             if (OwnsSessionLoad(request)) {
                 _sharedLoading = false;
             }
@@ -128,7 +130,7 @@ public partial class ProbabilityCalculatorComponent {
     }
 
     private void DismissSharedSession() {
-        _sessionLoadVersion++;
+        InvalidateSessionLoad();
         ConsumeSharedFragment();
     }
 

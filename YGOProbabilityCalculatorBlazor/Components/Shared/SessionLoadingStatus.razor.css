@@ -1,0 +1,26 @@
+.session-loading-status {
+    font-size: .75rem;
+    line-height: 1rem;
+}
+
+.session-loading-content {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    opacity: 0;
+    animation: session-loading-reveal 1ms 200ms forwards;
+}
+
+.spinner-border {
+    width: .75rem;
+    height: .75rem;
+    border-width: .1rem;
+}
+
+@keyframes session-loading-reveal {
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spinner-border { animation: none; }
+}

@@ -568,7 +568,7 @@ public class PinnedResultTest {
             await Call("ApplyRecoveryAsync", replacement);
         }
         else {
-            object request = typeof(ProbabilityCalculatorComponent).GetMethod("BeginSessionLoad", Private)!.Invoke(_cut.Instance, null)!;
+            object request = typeof(ProbabilityCalculatorComponent).GetMethod("BeginSessionLoad", Private)!.Invoke(_cut.Instance, [true])!;
             await Call("RestoreSessionDataAsync", replacement, request);
         }
         Assert.That(Pinned, Is.SameAs(pin));

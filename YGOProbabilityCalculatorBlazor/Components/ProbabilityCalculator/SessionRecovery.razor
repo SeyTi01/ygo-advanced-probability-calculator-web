@@ -46,6 +46,7 @@ else if (_hasRecovery) {
     [Parameter] public bool Suspended { get; set; }
     [Parameter] public EventCallback OnInspectionComplete { get; set; }
     [Parameter, EditorRequired] public Func<SessionState, Task<bool>> ApplyRecovery { get; set; } = null!;
+    [Parameter] public Func<string, Task<bool>>? ApplyRecoveryPayload { get; set; }
 
     private bool? _appliedSuspension;
     private bool _observedSuspension;
@@ -220,13 +221,20 @@ else if (_hasRecovery) {
         long version = _generation;
 
         try {
-            SessionState session = await Sessions.LoadSessionAsync(_recoveryPayload);
-
-            if (_disposed || version != _generation) {
-                return;
+            bool accepted;
+            if (ApplyRecoveryPayload is { } restorePayload) {
+                // Let the workspace owner show its status before decoding, too.
+                accepted = await restorePayload(_recoveryPayload);
             }
+            else {
+                SessionState session = await Sessions.LoadSessionAsync(_recoveryPayload);
 
-            bool accepted = await ApplyRecovery(session);
+                if (_disposed || version != _generation) {
+                    return;
+                }
+
+                accepted = await ApplyRecovery(session);
+            }
 
             if (_disposed) {
                 return;
