@@ -13,6 +13,29 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 [TestFixture]
 public class LegacyCardMetadataEnricherTest {
     [Test]
+    public async Task EligibilityAndEnrichmentShareExternalIdentityObjectiveAndManualMetadataRules() {
+        CategoryBase fire = new("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
+        Card identified = new([], name: Ash.Name, externalCardId: Ash.Id);
+        Card objective = new([fire], name: Ash.Name);
+        Card blank = new([], name: " ");
+        Card custom = new([], name: "Custom unmatched name");
+        Card manual = new([fire], name: Ash.Name, manualMetadataCategoryKeys: [fire.MetadataKey!]);
+        Card legacy = new([], name: Ash.Name, drawCount: 1);
+        SessionState session = new() { Cards = [identified, objective, blank, custom, manual, legacy] };
+        Assert.That(session.Cards.Select(LegacyCardMetadataEnricher.NeedsNameEnrichment),
+            Is.EqualTo(new[] { false, false, false, true, true, true }));
+        Mock<ICardInfoService> service = MatchingService(Ash);
+        await new LegacyCardMetadataEnricher(service.Object).EnrichAsync(session);
+        service.Verify(info => info.GetCardInfoByExactNamesAsync(It.Is<IEnumerable<string>>(names =>
+            names.SequenceEqual(new[] { custom.Name, Ash.Name }))), Times.Once);
+        Assert.That(session.Cards.Take(4), Is.EqualTo(new[] { identified, objective, blank, custom }));
+        Assert.That(session.Cards[4].ExternalCardId, Is.EqualTo(Ash.Id));
+        Assert.That(session.Cards[5].ExternalCardId, Is.EqualTo(Ash.Id));
+        Assert.That(session.Cards[5].EffectPlan, Is.EqualTo(legacy.EffectPlan));
+        Assert.That(session.Cards[5].EffectProfile, Is.EqualTo(legacy.EffectProfile));
+    }
+
+    [Test]
     public async Task LegacyEnrichmentKeepsStoredManualArchetypeKeysWhenResolvedMembershipOverlaps() {
         CardInfo raiden = new() { Id = 77558536, Name = "Raiden, Hand of the Lightsworn", Type = "Effect Monster", ResolvedArchetypes = ["Lightsworn"] };
         CategoryBase lightsworn = new("Archetype: Lightsworn", CategorySource.Metadata, "archetype:lightsworn");

@@ -5,18 +5,20 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 namespace YGOProbabilityCalculatorBlazor.Services.Session;
 
 public class LegacyCardMetadataEnricher(ICardInfoService cardInfoService) : ILegacyCardMetadataEnricher {
+    public static bool NeedsNameEnrichment(Card card) {
+        if (card.ExternalCardId is not null) {
+            return false;
+        }
+
+        bool hasImportedMetadataCategory = card.Categories.Any(category =>
+            category.Source == CategorySource.Metadata &&
+            !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!));
+
+        return !hasImportedMetadataCategory && !string.IsNullOrWhiteSpace(card.Name);
+    }
+
     public async Task EnrichAsync(SessionState session) {
-        Card[] candidates = session.Cards.Where(card => {
-            if (card.ExternalCardId is not null) {
-                return false;
-            }
-
-            bool hasImportedMetadataCategory = card.Categories.Any(category =>
-                category.Source == CategorySource.Metadata &&
-                !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!));
-
-            return !hasImportedMetadataCategory && !string.IsNullOrWhiteSpace(card.Name);
-        }).ToArray();
+        Card[] candidates = session.Cards.Where(NeedsNameEnrichment).ToArray();
 
         if (candidates.Length == 0) {
             return;
