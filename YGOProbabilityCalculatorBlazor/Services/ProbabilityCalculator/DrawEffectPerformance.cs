@@ -11,7 +11,7 @@ public static class DrawEffectPerformance {
         }
 
         // Every hand cost excludes the current exchangeable specialization.
-        if (plan.HandCost > 0) {
+        if (plan.HandCost > 0 || plan.HasActivationRestrictions) {
             return true;
         }
 

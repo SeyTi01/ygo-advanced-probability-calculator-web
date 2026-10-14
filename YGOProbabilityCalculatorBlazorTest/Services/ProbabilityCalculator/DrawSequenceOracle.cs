@@ -12,12 +12,14 @@ internal static class DrawSequenceOracle {
         List<int> pending = hand.Where(index => order[index].DrawCount is not null).ToList();
         HashSet<string> used = new(StringComparer.Ordinal);
         int next = handSize;
+        int activations = 0;
+        bool locked = false;
         string[] categoryKeys = combos.SelectMany(combo => combo.AllCategories).SelectMany(requirement => requirement.CategoryBases.Select(category => category.Identity))
             .Distinct().Order(StringComparer.Ordinal).ToArray();
         string[] cardKeys = combos.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
             .Distinct().Order(StringComparer.Ordinal).ToArray();
         while (true) {
-            pending.RemoveAll(index => !hand.Contains(index)
+            pending.RemoveAll(index => locked || (order[index].FirstActivationOnly && activations > 0) || !hand.Contains(index)
                 || (order[index].DrawOncePerTurn && used.Contains(order[index].Id))
                 || order[index].DrawCount!.Value + order[index].PreDrawDeckRemovalCount + order[index].PostDrawDeckMillCount > order.Count - next);
             // Scan physical candidates in encounter order; retain deferred positions.
@@ -39,6 +41,7 @@ internal static class DrawSequenceOracle {
             next += effect.PreDrawDeckRemovalCount;
             hand.Remove(source);
             used.Add(effect.Id);
+            activations++;
             for (int draw = 0; draw < effect.DrawCount!.Value; draw++) {
                 hand.Add(next);
                 if (order[next].DrawCount is not null) {
@@ -46,6 +49,7 @@ internal static class DrawSequenceOracle {
                 }
                 next++;
             }
+            locked = effect.BlocksLaterDraws;
             // These are the physical positions AFTER the drawn batch, never observed draws.
             next += effect.PostDrawDeckMillCount;
             for (int discard = 0; discard < effect.PostDrawDiscardCount; discard++) {
@@ -69,7 +73,9 @@ internal static class DrawSequenceOracle {
                 : int.MaxValue;
             foreach (int candidate in pending) {
                 Card card = order[candidate];
-                if (!hand.Contains(candidate) || candidate == reserved
+                if (locked || (card.FirstActivationOnly && (activations > 0 || reserved >= 0))
+                    || (reserved >= 0 && order[reserved].BlocksLaterDraws)
+                    || !hand.Contains(candidate) || candidate == reserved
                     || (reserved >= 0 && card.DrawOncePerTurn && card.Id == order[reserved].Id)
                     || (card.DrawOncePerTurn && (used.Contains(card.Id) || !eligibleOnce.Add(card.Id)))
                     || card.DrawCount is not int drawCount || drawCount + card.PreDrawDeckRemovalCount + card.PostDrawDeckMillCount > remaining) {
@@ -80,7 +86,7 @@ internal static class DrawSequenceOracle {
                     usable.Add(candidate);
                     minimumLegalDrawCount = Math.Min(minimumLegalDrawCount, drawCount + card.PreDrawDeckRemovalCount + card.PostDrawDeckMillCount);
                 }
-                else if (card.PreDrawRemovalCount > 0) {
+                else if (card.PreDrawRemovalCount > 0 && !card.FirstActivationOnly) {
                     int copyCount = hand.Count(index => index != reserved && order[index].Id == card.Id);
                     bool redundant = card.DrawOncePerTurn && copyCount > 1;
                     if (!redundant) {

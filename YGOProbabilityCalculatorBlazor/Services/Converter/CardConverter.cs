@@ -145,6 +145,19 @@ public class CardConverter : JsonConverter<Card> {
             : JsonSerializer.Deserialize<EffectProfile>(profileProperties[0].Value.GetRawText(), options)
                 ?? throw new JsonException("Missing effect profile.");
 
+        bool ReadRestriction(string name) {
+            JsonProperty[] properties = root.EnumerateObject()
+                .Where(property => property.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (properties.Length > 1 || (properties.Length == 1
+                && properties[0].Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))) {
+                throw new JsonException($"{name} must be a single boolean.");
+            }
+
+            return properties.Length == 1 && properties[0].Value.GetBoolean();
+        }
+
+        bool firstActivationOnly = ReadRestriction("FirstActivationOnly");
+        bool blocksLaterDraws = ReadRestriction("BlocksLaterDraws");
         try {
             return new Card(
                 categories,
@@ -162,7 +175,9 @@ public class CardConverter : JsonConverter<Card> {
                 preDrawSelector: costSelector,
                 preDrawDeckRemovalCount: deckCost,
                 effectProfile: profile,
-                postDrawDeckMillCount: millCount
+                postDrawDeckMillCount: millCount,
+                firstActivationOnly: firstActivationOnly,
+                blocksLaterDraws: blocksLaterDraws
             );
         }
         catch (ArgumentException exception) {
@@ -218,6 +233,13 @@ public class CardConverter : JsonConverter<Card> {
 
         if (value.PostDrawDeckMillCount > 0) {
             writer.WriteNumber("PostDrawDeckMillCount", value.PostDrawDeckMillCount);
+        }
+
+        if (value.FirstActivationOnly) {
+            writer.WriteBoolean("FirstActivationOnly", true);
+        }
+        if (value.BlocksLaterDraws) {
+            writer.WriteBoolean("BlocksLaterDraws", true);
         }
 
         if (value.EffectProfile != EffectProfile.Legacy) {

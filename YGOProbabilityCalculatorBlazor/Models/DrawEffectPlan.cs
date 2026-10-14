@@ -7,7 +7,7 @@ namespace YGOProbabilityCalculatorBlazor.Models;
 // unsupported execution models still require a new compiler/interpreter.
 public enum EffectExecutionModel { DrawSequenceV1 = 1, Unsupported = 2 }
 [Flags]
-public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32 }
+public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32, FirstActivationOnly = 64, BlocksLaterDraws = 128 }
 public enum EffectSource { LegacySnapshot, BuiltIn, Custom }
 public enum EffectSupport { ModeledWithinRules, Partial, Unmodeled }
 
@@ -34,7 +34,9 @@ public readonly record struct DrawEffectPlan(
     int RemovalCount,
     CardSelector RemovalSelector,
     PostDrawFailureBehavior FailureBehavior = PostDrawFailureBehavior.FailBranch,
-    int HiddenPostDrawMill = 0
+    int HiddenPostDrawMill = 0,
+    bool FirstActivationOnly = false,
+    bool BlocksLaterDraws = false
 ) {
     public static DrawEffectPlan Draw(int count, bool oncePerTurn) => new(count, oncePerTurn, 0, CardSelector.Any, 0, 0, CardSelector.Any);
 
@@ -43,7 +45,11 @@ public readonly record struct DrawEffectPlan(
         | (HandCost > 0 ? EffectCapabilities.HandCost : EffectCapabilities.None)
         | (HiddenDeckCost > 0 ? EffectCapabilities.HiddenDeckCost : EffectCapabilities.None)
         | (HiddenPostDrawMill > 0 ? EffectCapabilities.HiddenPostDrawMill : EffectCapabilities.None)
+        | (FirstActivationOnly ? EffectCapabilities.FirstActivationOnly : EffectCapabilities.None)
+        | (BlocksLaterDraws ? EffectCapabilities.BlocksLaterDraws : EffectCapabilities.None)
         | (RemovalCount > 0 ? EffectCapabilities.MandatoryRemoval : EffectCapabilities.None);
+
+    public bool HasActivationRestrictions => FirstActivationOnly || BlocksLaterDraws;
 
     public bool RequiresHandResolution => HandCost > 0 || RemovalCount > 0;
 
@@ -64,6 +70,13 @@ public readonly record struct DrawEffectPlan(
         }
         if (RemovalCount > 0) {
             summary += $"; remove {RemovalCount} eligible card(s) from hand";
+        }
+
+        if (FirstActivationOnly) {
+            summary += "; first draw activation only";
+        }
+        if (BlocksLaterDraws) {
+            summary += "; no further draws";
         }
 
         return summary + (OncePerTurn ? "; once per turn" : "");

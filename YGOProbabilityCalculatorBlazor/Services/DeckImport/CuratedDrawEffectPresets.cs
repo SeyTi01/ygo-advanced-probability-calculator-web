@@ -14,7 +14,9 @@ public sealed record CuratedDrawEffectPreset(
     CardSelector? PreDrawSelector = null,
     PostDrawFailureBehavior? FailureBehavior = null,
     int PreDrawDeckRemovalCount = 0,
-    int PostDrawDeckMillCount = 0
+    int PostDrawDeckMillCount = 0,
+    bool FirstActivationOnly = false,
+    bool BlocksLaterDraws = false
 );
 
 // Compatibility view for existing callers. Definitions live only in the registry.
@@ -47,5 +49,5 @@ public static class CuratedDrawEffectPresets {
     private static CuratedDrawEffectPreset ToPreset(MaintainedCardEffect effect) => new(
         effect.CanonicalCardId, effect.Name, effect.Plan.DrawCount!.Value, effect.Plan.OncePerTurn,
         effect.Plan.RemovalCount, effect.Plan.RemovalSelector, effect.Plan.HandCost,
-        effect.Plan.HandCostSelector, effect.Plan.FailureBehavior, effect.Plan.HiddenDeckCost, effect.Plan.HiddenPostDrawMill);
+        effect.Plan.HandCostSelector, effect.Plan.FailureBehavior, effect.Plan.HiddenDeckCost, effect.Plan.HiddenPostDrawMill, effect.Plan.FirstActivationOnly, effect.Plan.BlocksLaterDraws);
 }

@@ -34,8 +34,8 @@ internal sealed partial class PostDrawCalculation(
     private enum ResolutionOutcome { Ready, RemovalUnavailable }
 
     // Owned immutable vectors: remaining counts, hand counts, only actual OPT flags,
-    // batch draws left, pending removal source (index + 1), optional hidden-card count,
-    // then FIFO candidate entry indices. Hidden identities remain in the first vector.
+    // batch draws left, pending completion source (index + 1), optional hidden-card count
+    // and activation state, then FIFO candidate entry indices. Hidden identities remain in the first vector.
     private sealed record State(int[] Values) {
         public bool Equals(State? other) => other is not null && Values.AsSpan().SequenceEqual(other.Values);
 
@@ -69,7 +69,10 @@ internal sealed partial class PostDrawCalculation(
         int phase = 2 * n + optCount;
         bool hasDeckRemoval = cards.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0);
         int hiddenSlot = phase + 2;
-        int queueStart = phase + 2 + (hasDeckRemoval ? 1 : 0);
+        bool hasRestrictions = cards.Any(card => card.EffectPlan.HasActivationRestrictions);
+        // 0 = no activation, 1 = activated, 2 = draws locked. Included in State equality.
+        int activationSlot = phase + 2 + (hasDeckRemoval ? 1 : 0);
+        int queueStart = activationSlot + (hasRestrictions ? 1 : 0);
         int copies = 0;
         foreach (Card card in cards) {
             budget.Spend(1);
@@ -169,7 +172,7 @@ internal sealed partial class PostDrawCalculation(
                     if (values[i] == 0) {
                         continue;
                     }
-                    bool candidate = cards[i].DrawCount is not null && !Used(values, i)
+                    bool candidate = cards[i].DrawCount is not null && TimingAllows(values, i) && !Used(values, i)
                         && (!cards[i].DrawOncePerTurn || !values.AsSpan(queueStart).Contains(i));
                     budget.Spend(values.Length + WorkBudget.IntegerCells(weight) + 1L);
                     int[] drawn = new int[values.Length + (candidate ? 1 : 0)];
@@ -242,6 +245,9 @@ internal sealed partial class PostDrawCalculation(
 
         bool Used(int[] values, int entry) => optSlots[entry] >= 0 && values[optSlots[entry]] != 0;
 
+        bool TimingAllows(int[] values, int entry) => !hasRestrictions
+            || (values[activationSlot] != 2 && (!cards[entry].FirstActivationOnly || values[activationSlot] == 0));
+
         ResolutionOutcome Settle(ref int[] values, int remaining) {
             remaining -= hasDeckRemoval ? values[hiddenSlot] : 0;
             while (true) {
@@ -258,6 +264,9 @@ internal sealed partial class PostDrawCalculation(
                     int mill = cards[removalSource].PostDrawDeckMillCount;
                     values[hiddenSlot] += mill;
                     remaining -= mill;
+                }
+                if (removalSource >= 0 && cards[removalSource].BlocksLaterDraws) {
+                    values[activationSlot] = 2;
                 }
                 int removalCount = removalSource < 0 ? 0 : cards[removalSource].PostDrawDiscardCount;
                 bool[]? eligible = removalSource < 0 ? null : removalEligibility[removalSource];
@@ -283,7 +292,7 @@ internal sealed partial class PostDrawCalculation(
                 for (int candidate = queueStart; candidate < values.Length;) {
                     budget.Spend(2L * values.Length + 1);
                     int source = values[candidate];
-                    if (Used(values, source)) {
+                    if (Used(values, source) || !TimingAllows(values, source)) {
                         values = RemoveCandidate(values, candidate);
                         continue;
                     }
@@ -318,6 +327,9 @@ internal sealed partial class PostDrawCalculation(
                         values[hiddenSlot] += cards[source].PreDrawDeckRemovalCount;
                         remaining -= cards[source].PreDrawDeckRemovalCount;
                     }
+                    if (hasRestrictions) {
+                        values[activationSlot] = 1;
+                    }
                     values[n + source]--;
                     if (cards[source].DrawOncePerTurn) {
                         values[optSlots[source]] = 1;
@@ -326,7 +338,7 @@ internal sealed partial class PostDrawCalculation(
                         // already removed its only queue entry.
                     }
                     values[phase] = cards[source].DrawCount!.Value;
-                    values[phase + 1] = cards[source].PostDrawDiscardCount > 0 || cards[source].PostDrawDeckMillCount > 0 ? source + 1 : 0;
+                    values[phase + 1] = cards[source].PostDrawDiscardCount > 0 || cards[source].PostDrawDeckMillCount > 0 || cards[source].BlocksLaterDraws ? source + 1 : 0;
                 }
                 else {
                     if (values.Length > queueStart) {
@@ -374,7 +386,9 @@ internal sealed partial class PostDrawCalculation(
                 minimumLegalDeckConsumption = reservedDrawCount + cards[reservedSource].PreDrawDeckRemovalCount + cards[reservedSource].PostDrawDeckMillCount;
             }
             for (int i = 0; i < n; i++) {
-                if (!pending[i] || values[n + i] - (i == reservedSource ? 1 : 0) == 0 || Used(values, i)
+                if (!TimingAllows(values, i)
+                    || (reservedSource >= 0 && (cards[reservedSource].BlocksLaterDraws || cards[i].FirstActivationOnly))
+                    || !pending[i] || values[n + i] - (i == reservedSource ? 1 : 0) == 0 || Used(values, i)
                     || cards[i].DrawCount is not int drawCount || drawCount + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount > remaining
                     || (i == reservedSource && cards[i].DrawOncePerTurn)) {
                     continue;
@@ -400,7 +414,7 @@ internal sealed partial class PostDrawCalculation(
                 }
                 bool usable = activatable[i];
                 bool redundant = cards[i].DrawOncePerTurn && values[n + i] - (i == reservedSource ? 1 : 0) > 1;
-                bool deferred = costDeferred[i] && !redundant
+                bool deferred = costDeferred[i] && !redundant && !cards[i].FirstActivationOnly
                     && cards[i].DrawCount is int drawCount && drawCount + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount <= remainingAfterAnotherDraw;
                 int tier = (relevant[i], usable && !redundant, deferred) switch {
                     (true, _, _) => 1,
