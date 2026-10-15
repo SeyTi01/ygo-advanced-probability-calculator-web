@@ -14,9 +14,10 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 // Skipped variables use Vandermonde's identity, C(sum copies, taken). The final
 // cardinality restriction makes truncating each domain at handSize exact.
 // All tables belong to one final-hand scenario and obey the request budget.
-internal sealed class SearchDecisionCounter {
+internal sealed partial class SearchDecisionCounter {
     private readonly WorkBudget _budget;
     private readonly int _handSize;
+    private readonly bool _singleSample;
     private readonly int[] _copies;
     private readonly int[] _suffix;
     private readonly List<Node> _nodes = [];
@@ -29,17 +30,21 @@ internal sealed class SearchDecisionCounter {
     private long _countCells;
     private long _binomialCells;
 
-    internal SearchDecisionCounter(List<Card> rows, int handSize, WorkBudget budget) {
+    internal SearchDecisionCounter(List<Card> rows, int handSize, WorkBudget budget)
+        : this(rows.Select(card => card.Copies).ToArray(), handSize, budget, true) { }
+
+    internal SearchDecisionCounter(int[] domains, int domainLimit, WorkBudget budget, bool singleSample) {
         _budget = budget;
-        _handSize = handSize;
-        budget.CheckStorage(rows.Count + 1L, 2L * rows.Count + 1);
-        _copies = rows.Select(card => card.Copies).ToArray();
-        _suffix = new int[rows.Count + 1];
-        for (int row = rows.Count - 1; row >= 0; row--) {
+        _handSize = domainLimit;
+        _singleSample = singleSample;
+        budget.CheckStorage(domains.Length + 1L, 2L * domains.Length + 1);
+        _copies = domains;
+        _suffix = new int[domains.Length + 1];
+        for (int row = domains.Length - 1; row >= 0; row--) {
             _suffix[row] = checked(_suffix[row + 1] + _copies[row]);
         }
-        _nodes.Add(new(rows.Count, []));
-        _nodes.Add(new(rows.Count, []));
+        _nodes.Add(new(domains.Length, []));
+        _nodes.Add(new(domains.Length, []));
     }
 
     internal int Union(IEnumerable<CompiledEvent?> events) {
@@ -73,7 +78,7 @@ internal sealed class SearchDecisionCounter {
         Dictionary<(int Row, int Min, int Max), int> memo = new();
         // A maximum of handSize is tautological on the counted sample space.
         // Dropping it avoids constructing irrelevant overfull-hand branches.
-        int result = Visit(0, bound.MinCount, bound.MaxCount == _handSize ? eligible[0] : bound.MaxCount);
+        int result = Visit(0, bound.MinCount, _singleSample && bound.MaxCount == _handSize ? eligible[0] : bound.MaxCount);
         _budget.CheckStorage(_bounds.Count + 1, (_bounds.Count + 1L) * (4 + _copies.Length / 32));
         _bounds.Add(bound, result);
         _budget.SearchDiagnostics?.Add("unique bounds");
@@ -140,6 +145,10 @@ internal sealed class SearchDecisionCounter {
             );
         }
         int result = Intern(level, children);
+        if (!_singleSample && _apply.Count == 16384) {
+            _budget.Spend(_apply.Count);
+            _apply.Clear();
+        }
         _budget.CheckStorage(_apply.Count + 1, (_apply.Count + 1L) * 4);
         _apply.Add(key, result);
         _budget.SearchDiagnostics?.Add("apply cache entries");

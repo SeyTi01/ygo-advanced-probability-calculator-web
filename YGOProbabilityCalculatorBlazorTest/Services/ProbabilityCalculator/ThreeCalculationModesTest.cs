@@ -56,6 +56,9 @@ public sealed class ThreeCalculationModesTest {
             Assert.That(BigInteger.Parse(fractions[row].Numerator) * physical.Outcomes,
                 Is.EqualTo(physical.Wins[2][row] * BigInteger.Parse(fractions[row].Denominator)), $"upper row {row}");
         }
+        if (kind is "banish" or "mill") {
+            Assert.That(fast.SearchAvailability!.Combos[0].Lower, Is.EqualTo(new ProbabilityFraction("7", "10")));
+        }
         if (accuracy == CalculationAccuracy.Bounded) {
             SearchAvailabilityInterval[] intervals = [fast.SearchAvailability!.Total!, .. fast.SearchAvailability.Combos, .. fast.SearchAvailability.Groups];
             for (int row = 0; row < intervals.Length; row++) {
@@ -63,9 +66,18 @@ public sealed class ThreeCalculationModesTest {
                     Is.LessThanOrEqualTo(physical.Wins[1][row] * BigInteger.Parse(intervals[row].Lower.Denominator)), $"lower row {row}");
             }
         }
-        UnsupportedExactCalculationException exception = Assert.Throws<UnsupportedExactCalculationException>(() => Run(cards, hand, CalculationModel.Exact))!;
-        Assert.That(exception.Contract, Is.EqualTo(exception.Contract with { Completion = CalculationCompletion.Unsupported, Accuracy = null, Fractions = null }));
-        Assert.That(exception.Contract.Reason, Is.Not.Empty);
+        if (kind == "discard") {
+            UnsupportedExactCalculationException exception = Assert.Throws<UnsupportedExactCalculationException>(() => Run(cards, hand, CalculationModel.Exact))!;
+            Assert.That(exception.Contract, Is.EqualTo(exception.Contract with { Completion = CalculationCompletion.Unsupported, Accuracy = null, Fractions = null }));
+            Assert.That(exception.Contract.Reason, Is.Not.Empty);
+        }
+        else {
+            ProbabilityCalculationResult exact = Run(cards, hand, CalculationModel.Exact);
+            Assert.That(exact.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
+            Assert.That(exact.Contract.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction(physicalN, physicalD)));
+            Assert.That(exact.SearchAvailability, Is.Null);
+            PhysicalSearchTest.AssertRows(exact, physical.Wins[1], physical.Outcomes);
+        }
     }
 
     [TestCase("ordinary"), TestCase("count"), TestCase("ordered"), TestCase("exchangeable"), TestCase("deferred")]
@@ -159,7 +171,7 @@ public sealed class ThreeCalculationModesTest {
             CalculationWorkPolicy.Default, new(Mode: (CalculationModel)999)));
         Assert.Throws<ArgumentException>(() => CalculationSnapshot.Capture([], [], 0, [], drawEffectsEnabled: false, options: new(Mode: CalculationModel.Exact)));
         Assert.Throws<ArgumentException>(() => CalculationSnapshot.Capture([], [], 0, [], options: new(CertifySearchAvailability: true, Mode: CalculationModel.Exact)));
-        Assert.Throws<UnsupportedExactCalculationException>(() => engine.CalculateProbabilityForCombos(Counterexample("consumed"), Combos, 1,
+        Assert.Throws<UnsupportedExactCalculationException>(() => engine.CalculateProbabilityForCombos(Counterexample("discard"), Combos, 2,
             CalculationWorkPolicy.Default, new(Mode: CalculationModel.Exact)));
     }
 

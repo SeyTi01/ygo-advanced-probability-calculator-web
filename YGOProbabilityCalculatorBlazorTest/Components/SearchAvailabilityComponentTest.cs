@@ -19,7 +19,8 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
             HandSize = 2, Categories = [target], Combos = [new([new(target, 1, 2)], "Target", groupId: "g")], ComboGroups = [new("g", "Routes")] };
     }
 
-    private static SessionState BoundedSession() => new() {
+    private static SessionState BoundedSession(CalculationModel mode = CalculationModel.Fast) => new() {
+        CalculationModel = mode,
         Cards = Services.ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("consumed"), HandSize = 1,
         Categories = [Services.ProbabilityCalculator.ThreeCalculationModesTest.Target],
         Combos = Services.ProbabilityCalculator.ThreeCalculationModesTest.Combos,
@@ -53,10 +54,9 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(saved, Does.Not.Contain("CertifySearchAvailability").And.Not.Contain("SearchAvailability"));
     }
 
-    [TestCase("edit")]
-    [TestCase("cancel")]
-    [TestCase("opening")]
-    public async Task LateCertifiedResponseCannotReplaceNewerOwnership(string action) {
+    [TestCase("edit", false), TestCase("cancel", false), TestCase("opening", false)]
+    [TestCase("edit", true), TestCase("cancel", true), TestCase("opening", true)]
+    public async Task LateCertifiedResponseCannotReplaceNewerOwnership(string action, bool physical) {
         List<CalculationSnapshot> requests = [];
         List<TaskCompletionSource<ProbabilityCalculationResult>> jobs = [];
         Mock<IBackgroundCalculator> worker = new();
@@ -68,7 +68,8 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
                 return completion.Task;
             });
         context.Services.AddSingleton(worker.Object);
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(SearchSession());
+        SessionState session = physical ? BoundedSession(CalculationModel.Exact) : SearchSession();
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         Task pending = Button(cut, "Calculate").ClickAsync(new());
         if (action == "edit") {
             await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
@@ -87,7 +88,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         await next;
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode,
-            Is.EqualTo(action == "opening" ? CalculationModel.OpeningHand : CalculationModel.Fast));
+            Is.EqualTo(action == "opening" ? CalculationModel.OpeningHand : physical ? CalculationModel.Exact : CalculationModel.Fast));
     }
 
     [Test]
@@ -102,8 +103,9 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task UnsupportedExactPreservesAcceptedBoundAndPinAndRecoveryKeepsExactPreference() {
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(BoundedSession());
+    public async Task UnsupportedExactPreservesAcceptedResultAndPinAndRecoveryKeepsExactPreference() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = ThreeCalculationModesTest.Counterexample("discard"), HandSize = 2,
+            Categories = [ThreeCalculationModesTest.Target], Combos = ThreeCalculationModesTest.Combos, ComboGroups = ThreeCalculationModesTest.Groups });
         await Button(cut, "Calculate").ClickAsync(new());
         await Button(cut, "Pin result").ClickAsync(new());
         ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
@@ -113,7 +115,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(accepted));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(accepted.Contract));
         Assert.That(ProbabilityResultSummaryFormatter.Format(accepted, 1, CultureInfo.InvariantCulture),
-            Does.Contain("Effects — fast").And.Contain("Bounded").And.Contain("[1/3, 1/2]"));
+            Does.Contain("Effects — fast").And.Contain("Uncertified"));
         await Button(cut, "Calculate opening hand only").ClickAsync(new());
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Exact"));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
@@ -122,6 +124,28 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("Unsupported exact calculation"));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
+    }
+
+    [Test]
+    public async Task PhysicalExactReplacesRowsAndKeepsPinnedFastContract() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(BoundedSession());
+        await Button(cut, "Calculate").ClickAsync(new());
+        await Button(cut, "Pin result").ClickAsync(new());
+        ProbabilityCalculationResult fast = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
+        await Button(cut, "Calculate").ClickAsync(new());
+        ProbabilityCalculationResult exact = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
+        Assert.That(exact.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "3")));
+        Assert.That(exact.Contract.SolverRoute, Is.EqualTo("SearchPhysicalCountState"));
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(fast.Contract));
+        Assert.That(cut.FindAll(".probability-results .search-availability"), Is.Empty);
+        Assert.That(cut.FindAll(".pinned-result .search-availability"), Has.Count.EqualTo(1));
+        await cut.Find("button[title='Copy results']").ClickAsync(new());
+        string copied = (string)context.JSInterop.Invocations["copyText"].Last().Arguments[0]!;
+        Assert.That(copied, Does.Contain("Effects — exact").And.Not.Contain("Previous result"));
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "2" });
+        AssertPreviousResult(cut);
+        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract, Is.SameAs(exact.Contract));
     }
 
     [Test]

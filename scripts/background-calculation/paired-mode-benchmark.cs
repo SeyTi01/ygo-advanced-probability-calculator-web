@@ -22,8 +22,9 @@ static class Program {
         JsonElement[] fixtures = JsonSerializer.Deserialize<JsonElement[]>(File.ReadAllText(args[2]))!;
         Random random = new(207208);
         List<object> output = [];
-        foreach (JsonElement fixture in fixtures.Take(6)) {
+        foreach (JsonElement fixture in fixtures[0].TryGetProperty("Unchanged", out _) ? fixtures : fixtures.Take(6)) {
             List<JsonElement>[] samples = [[], []];
+            JsonElement[] firstCalls = new JsonElement[2];
             for (int trial = 0; trial < 25; trial++) {
                 foreach (int side in Enumerable.Range(0, 2).OrderBy(_ => random.Next())) {
                     GC.Collect();
@@ -31,12 +32,18 @@ static class Program {
                     GC.Collect();
                     string input = fixture.GetProperty(side == 0 ? "BaselineInput" : "Input").GetRawText();
                     string measured = (string)probes[side].Invoke(null, [input])!;
+                    if (trial == 0) {
+                        firstCalls[side] = JsonDocument.Parse(measured).RootElement.Clone();
+                    }
                     if (trial >= 5) {
                         samples[side].Add(JsonDocument.Parse(measured).RootElement.Clone());
                     }
                 }
             }
-            foreach (string field in new[] { "Total", "Combos", "Groups", "Entries", "Cells" }) {
+            bool unchanged = !fixture.TryGetProperty("Unchanged", out JsonElement flag) || flag.GetBoolean();
+            foreach (string field in unchanged ? (fixture.TryGetProperty("Unchanged", out _)
+                ? new[] { "Total", "Combos", "Groups", "Entries", "Cells", "Outcome", "Work" }
+                : new[] { "Total", "Combos", "Groups", "Entries", "Cells" }) : Array.Empty<string>()) {
                 string expected = samples[0][0].GetProperty(field).GetRawText();
                 foreach (JsonElement value in samples.SelectMany(side => side)) {
                     if (value.GetProperty(field).GetRawText() != expected) {
@@ -44,7 +51,14 @@ static class Program {
                     }
                 }
             }
-            output.Add(new { Name = fixture.GetProperty("Name").GetString(), Samples = samples });
+            foreach (List<JsonElement> side in samples) {
+                foreach (string field in new[] { "Total", "Combos", "Groups", "Work", "Entries", "Cells", "Outcome" }) {
+                    if (side.Any(sample => sample.GetProperty(field).GetRawText() != side[0].GetProperty(field).GetRawText())) {
+                        throw new InvalidOperationException($"{fixture.GetProperty("Name")}/{field} repeatability");
+                    }
+                }
+            }
+            output.Add(new { Name = fixture.GetProperty("Name").GetString(), Samples = samples, FirstCalls = firstCalls });
             File.WriteAllText(args[3], JsonSerializer.Serialize(output));
             Console.WriteLine(fixture.GetProperty("Name").GetString());
         }

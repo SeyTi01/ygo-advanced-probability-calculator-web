@@ -1,4 +1,5 @@
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
@@ -8,9 +9,11 @@ internal sealed class SearchAccessCalculation(
     List<Card> deck,
     int handSize,
     WorkBudget budget,
-    DrawActivationPriority? priority
+    DrawActivationPriority? priority,
+    bool physicalSearch = false
 ) {
     private CalculationCapability? _capability;
+    private CapabilityReason? _targetLossReason;
     private SolverRoute _route;
     internal List<Card> Cards { get; private set; } = null!;
     internal List<Card> Effects { get; private set; } = null!;
@@ -18,7 +21,7 @@ internal sealed class SearchAccessCalculation(
     internal int HandSize => handSize;
 
     internal CalculationCapability DescribeCapability() => _capability ??=
-        CalculationCapability.Search(_route, Search.TargetLossReason(Effects, handSize));
+        CalculationCapability.Search(_route, _targetLossReason ?? Search.TargetLossReason(Effects, handSize));
 
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         List<Card> cards = deck.Where(card => card.Active && card.Copies > 0).ToList();
@@ -38,8 +41,24 @@ internal sealed class SearchAccessCalculation(
             return new SearchProbabilityCalculation(cards, handSize, [], search, copies - handSize, budget)
                 .Calculate(combos, groups, totalOnly);
         }
-        if (effects.Any(card => card.EffectPlan.RequiresHandResolution)
-            || !DrawEffectResolver.CanUseCountStateFastPath(effects, copies, handSize)) {
+        bool countState = !effects.Any(card => card.EffectPlan.RequiresHandResolution)
+            && DrawEffectResolver.CanUseCountStateFastPath(effects, copies, handSize);
+        if (physicalSearch) {
+            CapabilityReason reason = search.TargetLossReason(effects, handSize);
+            _targetLossReason = reason;
+            if (!CalculationCapability.ProvesSearchSurvival(reason)) {
+                if (!countState) {
+                    throw new UnsupportedExactCalculationException(CalculationResultContract.Failure(
+                        CalculationModel.Exact, CalculationCompletion.Unsupported, CalculationCapability.Explain(reason)));
+                }
+                ExactCalculationResult result = new PhysicalSearchCalculation(cards, effects, handSize, search, budget)
+                    .Calculate(combos, groups, totalOnly);
+                _capability = new(SolverRoute.SearchPhysicalCountState, PhysicalSearchAccuracy.ProvenExact,
+                    CapabilityReason.ConditionalPhysicalSurvivors, CertificationSupport.ReusePrimary);
+                return result;
+            }
+        }
+        if (!countState) {
             PostDrawCalculation calculation = new(cards, handSize, budget, priority);
             ExactCalculationResult result = calculation.CalculateSearch(combos, groups, totalOnly, search);
             _route = calculation.Route;
@@ -87,4 +106,11 @@ internal readonly struct SearchComposition : IDrawTerminal {
 
         return [.. retained, Math.Max(0, remaining - hidden)];
     }
+}
+
+// Keep the full encountered source vector, not only OPT remainders. Consumed
+// copies are visible observations and must be excluded before sampling losses.
+internal readonly struct PhysicalSearchComposition : IDrawTerminal {
+    public static int[] Retained(int[] retained, int[]? encountered, List<Card> effects, int remaining) =>
+        encountered is null ? effects.Select(effect => effect.Copies).ToArray() : (int[])encountered.Clone();
 }
