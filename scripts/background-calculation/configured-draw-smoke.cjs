@@ -88,7 +88,8 @@ async function main() {
         async function idle() {
             await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true', null, { timeout: 90000 });
         }
-        const example = JSON.parse(await fs.readFile(path.join(root, 'sample-data/example_session_state.json'), 'utf8'));
+        // Keep this draw-only regression on its frozen pre-search deck.
+        const example = JSON.parse(await fs.readFile(path.resolve(__dirname, '../../YGOProbabilityCalculatorBlazorTest/Fixtures/example_session_state.json'), 'utf8'));
         const graceful = structuredClone(example);
         Object.assign(graceful.Cards.find(card => card.Name === 'Mulcharmy Fuwalos'), {
             Name: 'Graceful Charity', DrawCount: 3, DrawOncePerTurn: false, PostDrawDiscardCount: 2,
@@ -98,7 +99,7 @@ async function main() {
         assert.equal(await page.locator('.draw-complexity-notice').count(), 0);
         await calculate.click();
         await idle();
-        assert.match(await page.locator('.result-model').innerText(), /Configured draw effects/);
+        assert.match(await page.locator('.result-model').innerText(), /Configured effects/);
         const proxy = structuredClone(graceful);
         const effect = proxy.Cards.find(card => card.Name === 'Graceful Charity');
         Object.assign(effect, { Name: 'Pot of Desires', Copies: 1, DrawCount: 2, DrawOncePerTurn: true, PostDrawDiscardCount: 0 });
@@ -156,7 +157,7 @@ async function main() {
             await page.locator('.calculation-recovery').scrollIntoViewIfNeeded();
             await page.screenshot({ path: path.join(screenshots, engine + '-' + width + '-error.png') });
         }
-        await page.getByRole('button', { name: 'Calculate without draw effects', exact: true }).click();
+        await page.getByRole('button', { name: 'Calculate opening hand only', exact: true }).click();
         await idle();
         assert.match(await page.locator('.result-model').innerText(), /Opening hand only/);
         assert.equal(await page.locator('#calculationModel').inputValue(), 'Configured');
@@ -169,10 +170,10 @@ async function main() {
         await page.evaluate(() => { probe.delayRequest = 4500; probe.peak = 0; });
         await calculate.click();
         assert.equal(await page.locator('.calculation-elapsed').count(), 0);
-        await page.getByRole('button', { name: 'Calculate without draw effects', exact: true }).waitFor();
+        await page.getByRole('button', { name: 'Calculate opening hand only', exact: true }).waitFor();
         assert.equal(await page.getByRole('button', { name: 'Cancel calculation', exact: true }).isEnabled(), true);
         const beats = await page.evaluate(() => probe.beats);
-        await page.getByRole('button', { name: 'Calculate without draw effects', exact: true }).click();
+        await page.getByRole('button', { name: 'Calculate opening hand only', exact: true }).click();
         await idle();
         assert.match(await page.locator('.result-model').innerText(), /Opening hand only/);
         assert.equal(await page.evaluate(() => probe.peak), 1, 'recovery overlaps no workers');
@@ -186,7 +187,7 @@ async function main() {
         await load(graceful);
         await calculate.click();
         await idle();
-        assert.match(await page.locator('.result-model').innerText(), /Configured draw effects/);
+        assert.match(await page.locator('.result-model').innerText(), /Configured effects/);
         assert.match(await page.locator('.comparison-model-difference').innerText(), /different questions/);
         assert.deepEqual(errors, []);
         assert.equal(await page.evaluate(() => probe.live), 1);

@@ -176,7 +176,7 @@ function probability(count, hand = 5) {
     await page.getByRole('button', { name: 'Copy results', exact: true }).click();
     await page.locator('.probability-result-copy-success-icon').waitFor();
     const copied = await page.evaluate(() => policyCopiedText);
-    assert.ok(copied.startsWith('Previous result — current inputs have changed.\nConfigured draw effects\nProbability results\nHand size: 5\n'));
+    assert.ok(copied.startsWith('Previous result — current inputs have changed.\nConfigured effects\nProbability results\nHand size: 5\n'));
     assert.ok(copied.includes(acceptedOdds) && copied.includes('Even') && copied.includes('Odd'));
     assert.ok(!copied.includes('Pinned') && !copied.includes('pp'));
     if (engine === 'chromium') assert.equal((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n'), copied);
@@ -188,7 +188,7 @@ function probability(count, hand = 5) {
     await page.evaluate(() => { window.denyPolicyClipboard = false; });
     const summary = pinned ? await page.locator('.probability-results > p.small').innerText() : null;
     if (pinned) {
-     assert.equal(summary, 'Hand size 5 · 60 active copies · 22 active cards · Configured draw effects');
+     assert.equal(summary, 'Hand size 5 · 60 active copies · 22 active cards · Configured effects');
      assert.equal(await page.locator('.pinned-result > p.small').innerText(), summary);
     }
     comparisonEvidence.push({ width, theme, pinned, copiedCharacters: copied.length, summary });
@@ -228,8 +228,8 @@ function probability(count, hand = 5) {
     beside: delta.left >= odds.right && delta.top < odds.bottom && delta.bottom > odds.top };
   });
   assert.ok(inline.className.includes('result-difference-positive')); assert.ok(['flex', 'inline-flex'].includes(inline.parentDisplay)); assert.equal(inline.beside, true);
-  assert.equal(await page.locator('.probability-results > p.small').innerText(), 'Hand size 6 · 60 active copies · 2 active cards · Configured draw effects');
-  assert.equal(await page.locator('.pinned-result > p.small').innerText(), 'Hand size 5 · 60 active copies · 2 active cards · Configured draw effects');
+  assert.equal(await page.locator('.probability-results > p.small').innerText(), 'Hand size 6 · 60 active copies · 2 active cards · Configured effects');
+  assert.equal(await page.locator('.pinned-result > p.small').innerText(), 'Hand size 5 · 60 active copies · 2 active cards · Configured effects');
   const summaries = await page.evaluate(() => ['.probability-results > p.small', '.pinned-result > p.small'].map(selector => { const e = document.querySelector(selector), s = getComputedStyle(e); return { className: e.className.replace(" result-model", ""), font: s.fontSize, line: s.lineHeight, margin: s.marginBottom, children: e.children.length }; }));
   assert.deepEqual(summaries[0], summaries[1]); assert.equal(summaries[0].children, 0);
   await page.locator('#handSize').fill('4'); await page.locator('#handSize').press('Tab');

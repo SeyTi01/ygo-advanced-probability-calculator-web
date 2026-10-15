@@ -219,7 +219,7 @@ const screenshotDirectory=process.env.SMOKE_SCREENSHOT?process.env.SMOKE_SCREENS
  await page.getByRole('button',{name:'Copy results',exact:true}).click();
  await page.locator('.probability-result-copy-success-icon').waitFor();
  const historicalCopy=await page.evaluate(()=>smokeCopiedText);
- assert.ok(historicalCopy.startsWith('Previous result — current inputs have changed.\nConfigured draw effects\nProbability results\nHand size: 5\n'),'idle stale copy retains the accepted hand size rather than edited hand 4');
+ assert.ok(historicalCopy.startsWith('Previous result — current inputs have changed.\nConfigured effects\nProbability results\nHand size: 5\n'),'idle stale copy retains the accepted hand size rather than edited hand 4');
  assert.ok(historicalCopy.includes(oldResult),'idle stale copy retains the accepted odds');
  if(engine==='chromium')assert.equal((await page.evaluate(()=>navigator.clipboard.readText())).replace(/\r\n/g,'\n'),historicalCopy);
  await page.locator('#handSize').fill('5');await page.locator('#handSize').press('Tab');
