@@ -17,8 +17,7 @@ internal sealed partial class PostDrawCalculation {
         int[] ranks,
         bool[] relevant,
         bool[]?[] removalEligibility,
-        bool[]?[]? costEligibility,
-        bool searching
+        bool[]?[]? costEligibility
     ) {
         private enum ResolutionOutcome { Ready, RemovalUnavailable }
 
@@ -27,7 +26,14 @@ internal sealed partial class PostDrawCalculation {
             int copies,
             BigInteger[] factorial,
             int compactFrontierThreshold
-        ) {
+        ) => Resolve<HandTerminal>(handSize, copies, factorial, compactFrontierThreshold);
+
+        internal Dictionary<State, BigInteger> Resolve<TTerminal>(
+            int handSize,
+            int copies,
+            BigInteger[] factorial,
+            int compactFrontierThreshold
+        ) where TTerminal : struct, ITerminalHand {
             int n = layout.RowCount;
             int[] initial = new int[layout.QueueStart];
             for (int i = 0; i < n; i++) {
@@ -64,7 +70,7 @@ internal sealed partial class PostDrawCalculation {
                         budget.Spend(WorkBudget.IntegerCells(weight) * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
                         Add(
                             terminal,
-                            new(searching ? values.AsSpan(0, 2 * n).ToArray() : values.AsSpan(layout.HandStart, n).ToArray()),
+                            new(TTerminal.Create(values, layout, remaining)),
                             weight * factorial[remaining],
                             ref terminalCells,
                             "terminal hands"

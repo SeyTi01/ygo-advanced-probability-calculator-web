@@ -16,7 +16,7 @@ It can model complex combo conditions while correctly accounting for hands that 
 - **Exact unions of overlapping combo routes** - calculate the probability of opening any valid combo without double-counting hands that satisfy several routes, with optional grouping for related combo families.
 - **Distinct physical requirements within a combo** - if a route needs both a `Starter` and a `Fire` card, one card that belongs to both does not satisfy both requirements by itself.
 
-Results use combinatorial counting and never fall back on Monte Carlo simulation or approximation.
+Results use exact combinatorial counting for the configured model, with no Monte Carlo sampling. Mixed draw/search configurations use the search-access assumption described below.
 
 ## Example: Vanquish Soul / K9
 
@@ -80,9 +80,11 @@ Requirements apply to the final hand. If the full draw amount is unavailable, th
 
 Reinforcement of the Army searches one Level 1–4 Warrior monster using the configured deck’s objective metadata. Manual combo-role/property overrides do not change its eligibility. The expanded card lists current targets; custom searches can use the existing category/property filters, with **Objective card properties only** optional.
 
-All configured draws, costs and discards resolve before searches. Each optional search consumes its source and transfers one physically remaining target to hand. For each combo, the calculator asks whether any legal combination of search choices succeeds. Different result rows may use different choices; groups and the total count each random outcome once. Maxima, exclusions, distinct copies and source consumption still apply. Search chains are supported and terminate as the remaining deck shrinks. A draw card fetched during this phase stays in hand; drawing does not restart.
+All configured draws, costs and discards resolve before searches. Each optional search substitutes one held source with one eligible target. For each combo, the calculator asks whether any legal combination of search choices succeeds. Different result rows may use different choices; groups and the total count each random outcome once. Maxima, exclusions, distinct copies and source consumption still apply. Only originally held searchers act: a fetched effect stays in hand, without restarting draws or searches.
 
-Search and draw operations on the same source are unsupported. Combining searches with hidden deck banishes or mills is explicitly rejected because the model does not know which targets survived. Disable that operation or use **Opening hand only**. Search-bearing mixed draw calculations use a bounded identity-preserving route and may reach existing Work/Storage limits.
+Availability is bounded by original target copies minus copies in the final pre-search hand, shared across all search choices. Every substitution consumes one remaining deck slot. This is exact for search-only hands under the single-pass policy. **After draws, it is an identity-blind search-access approximation:** targets outside that final hand are assumed available even if previously drawn and removed, banished or milled. Hidden quantity and deck capacity still apply. It does not reconstruct physical target survival through draw histories.
+
+Search and draw operations on the same source remain unsupported. Search calculations retain the original reduced count-state and deferred draw distributions. If a final hand contains a pooled count, its labels use the pool’s conditional uniform-subset distribution; no extra identities are retained during draws. Only final search source/target counts are conditioned before the ordinary combinatorial counter. Event preimages preserve exclusions, maxima and distinct requirements, and unions count each hand once. No remaining-identity vector or search-history frontier is added. Work/Storage limits remain unchanged.
 
 Session schema 6 saves search plans explicitly. Older sessions preserve their previous behavior, including manual search proxies, until explicitly edited/restored; loading does not automatically give an old Reinforcement entry a search effect. Earlier calculator versions reject schema 6. Use **Customize simulation → None** to disable a search and **Restore built-in simulation** to restore it.
 

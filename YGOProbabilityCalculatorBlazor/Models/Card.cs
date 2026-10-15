@@ -185,7 +185,27 @@ public class Card {
 
     public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile, PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search);
 
-    public Card WithCopies(int copies) => new(Categories, copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile, PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search);
+    // Counting repeatedly changes multiplicities on already validated snapshots.
+    // Copy mutable categories, but reuse immutable plans and frozen provenance;
+    // revalidating and normalizing those on every scenario only adds allocations.
+    private Card(Card source, int copies) {
+        Id = source.Id;
+        Copies = copies;
+        Categories = [.. source.Categories];
+        Name = source.Name;
+        Active = source.Active;
+        ExternalCardId = source.ExternalCardId;
+        EffectPlan = source.EffectPlan;
+        EffectProfile = source.EffectProfile;
+        ManualMetadataCategoryKeys = source.ManualMetadataCategoryKeys;
+        foreach (string key in ManualMetadataCategoryKeys) {
+            if (!Categories.Any(category => category.Source == CategorySource.Metadata && category.MetadataKey == key)) {
+                throw new ArgumentException("Manual card properties must refer to effective metadata categories.", "keys");
+            }
+        }
+    }
+
+    public Card WithCopies(int copies) => new(this, copies);
 
     public Card WithDrawCount(int? drawCount) => new(
         Categories,

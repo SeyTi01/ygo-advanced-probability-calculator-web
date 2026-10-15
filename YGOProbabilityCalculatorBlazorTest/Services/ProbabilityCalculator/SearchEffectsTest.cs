@@ -51,7 +51,7 @@ public sealed class SearchEffectsTest {
     }
 
     [Test]
-    public void DifferentOverlappingSelectorsAndRecursiveSearchersTerminate() {
+    public void OverlappingSelectorsUseOnlyOriginallyHeldSources() {
         Card first = new Card([B], 2, id: "first").WithSearch(new(CardSelector.For(A), false));
         Card second = new Card([A], 1, id: "second").WithSearch(new(CardSelector.AnyOf([A.Identity, B.Identity]), false));
         List<Card> cards = [first, second, new([A, B], 1, id: "both"), new([B], 1, id: "b"), new([], 1, id: "blank")];
@@ -88,7 +88,7 @@ public sealed class SearchEffectsTest {
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
-    public void DrawThenSearchUsesActualSurvivorsAndRemainingDeck(int removal) {
+    public void DrawThenSearchUsesSurvivingSourcesAndHandBoundedAccess(int removal) {
         Card draw = new([], 1, id: "draw", drawCount: 2, postDrawDiscardCount: removal,
             postDrawSelector: removal > 0 ? CardSelector.For(Spell) : null);
         List<Card> cards = [Rota(), Warrior(), draw, new([], 2, id: "blank")];
@@ -118,7 +118,7 @@ public sealed class SearchEffectsTest {
     }
 
     [Test]
-    public void SeededOverlappingSearchesMatchEveryPhysicalTrajectory() {
+    public void SeededOverlappingSearchesMatchIndependentAssignments() {
         Random random = new(2048);
         for (int trial = 0; trial < 20; trial++) {
             Card source = new Card(random.Next(2) == 0 ? [A] : [B], id: "source")
@@ -135,18 +135,18 @@ public sealed class SearchEffectsTest {
         }
     }
 
-    [Test]
-    public void HiddenOperationsAreExplicitlyRejectedButOpeningHandOnlyStillRuns() {
-        foreach (Card hidden in new[] { new Card([], drawCount: 1, preDrawDeckRemovalCount: 1),
-            new Card([], drawCount: 1, postDrawDeckMillCount: 1) }) {
-            List<Card> deck = [Rota(), Warrior(), hidden, new([], 3)];
-            Assert.Throws<UnsupportedSearchInteractionException>(() => new ProbabilityCalculatorService()
-                .CalculateProbabilityResults(deck, [new([new(A, 1, 3)])], 2));
-            CalculationSnapshot off = CalculationSnapshot.Capture(deck, [new([new(A, 1, 3)])], 2, [], drawEffectsEnabled: false);
-            Assert.DoesNotThrow(() => CalculationWire.ReadResult(CalculationWire.Execute(off.Json)));
-            string response = CalculationWire.Execute(CalculationSnapshot.Capture(deck, [], 2, []).Json);
-            Assert.That(response, Does.Contain("remaining target identities are unknown"));
-        }
+    [TestCase(false)]
+    [TestCase(true)]
+    public void HiddenOperationsUseIdentityBlindAccessAndPhysicalCapacity(bool mill) {
+        Card hidden = new([], 1, id: "draw", drawCount: 1,
+            preDrawDeckRemovalCount: mill ? 0 : 1, postDrawDeckMillCount: mill ? 1 : 0);
+        List<Card> deck = [Rota(), Warrior(), hidden, new([], 2, id: "blank")];
+        List<Combo> combos = [new([new(A, 1, 3)], groupId: "g1"), new([new(Spell, 1, 3)], groupId: "g2")];
+        Compare(deck, combos, 2);
+        Compare(deck, combos, 3);
+        CalculationSnapshot off = CalculationSnapshot.Capture(deck, combos, 2, [], drawEffectsEnabled: false);
+        Assert.DoesNotThrow(() => CalculationWire.ReadResult(CalculationWire.Execute(off.Json)));
+        Assert.DoesNotThrow(() => CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(deck, combos, 2, []).Json)));
         Assert.Throws<ArgumentException>(() => new Card([], drawCount: 1, search: Rota().Search));
     }
 
@@ -228,12 +228,104 @@ public sealed class SearchEffectsTest {
         }
     }
 
+    [TestCase(1, 0.8629362147164005)]
+    [TestCase(3, 0.9089511612294494)]
+    public async Task RepresentativeMixedSearchKeepsCountStateAndStandardCapacity(int copies, double expected) {
+        SessionState session = await LoadExample("search_example_session_state.json");
+        int row = session.Cards.FindIndex(card => card.Name == "Mulcharmy Fuwalos");
+        Card original = session.Cards[row];
+        session.Cards[row] = original.WithCopies(copies).WithDrawCount(2).WithDrawOncePerTurn(false);
+        if (copies < original.Copies) {
+            session.Cards.Add(original.Duplicate().WithCopies(original.Copies - copies));
+        }
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
+        ExactCalculationResult result = new DrawEffectCalculation(session.Cards, 5, budget).Calculate(session.Combos, session.ComboGroups);
+        Assert.That(result.Total.ToDouble(budget), Is.EqualTo(expected));
+        Assert.That(budget.PeakCells, Is.LessThan(10_000));
+        Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(session.Cards,
+            session.Combos, 5, session.ComboGroups).Json)).TotalProbability, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void AccessCapacityIsScalarAndFetchedSearchersDoNotActivate() {
+        List<Card> deck = [Rota(), Warrior(), new([], id: "blank")];
+        List<Combo> combos = [new([], cards: [new("target", 1, 1)])];
+        foreach (int capacity in new[] { 0, 1 }) {
+            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+            ExactCalculationResult result = new SearchProbabilityCalculation([], 0, [deck[0]],
+                new(deck, budget), capacity, budget).Calculate(combos, [], false);
+            AssertRatio(result.Total, capacity, 1);
+        }
+        Card first = new Card([], id: "first").WithSearch(new(CardSelector.For(A), false));
+        Card second = new Card([A], id: "second").WithSearch(new(CardSelector.For(B), false));
+        List<Card> chain = [first, second, new([B], id: "end"), new([], id: "blank")];
+        List<Combo> objectives = [new([], cards: [new("end", 1, 1)])];
+        Compare(chain, objectives, 1);
+        Assert.That(new ProbabilityCalculatorService().CalculateProbabilityResults(chain, objectives, 1).TotalProbability,
+            Is.EqualTo(0.5), "Only the original second searcher or the target itself succeeds; a fetched second searcher stays in hand.");
+    }
+
+    [Test]
+    public void FilteredDrawCostsKeepTheDeferredIdentityPoolWithSearchAccess() {
+        List<Card> deck = [Rota(), Warrior(), new([], id: "draw", drawCount: 1,
+            preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(B)), Warrior(id: "second-target"), new([], 2, id: "blank")];
+        List<Combo> combos = [new([new(A, 1, 2)], groupId: "g1"), new([new(Spell, 1, 2)], groupId: "g2")];
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+        PostDrawCalculation calculation = new(deck, 2, budget);
+        calculation.CalculateSearch(combos, Groups, false, new(deck, budget));
+        Assert.That(calculation.DeferredRows, Is.GreaterThanOrEqualTo(2));
+        PostDrawCalculation legacy = new(deck.Select(card => card.WithSearch(null)).ToList(), 2,
+            new(CalculationWorkPolicy.Interactive));
+        legacy.Calculate(combos, Groups);
+        Assert.Multiple(() => {
+            Assert.That(calculation.ReducedRows, Is.EqualTo(legacy.ReducedRows));
+            Assert.That(calculation.DeferredRows, Is.EqualTo(legacy.DeferredRows));
+            Assert.That(calculation.PeakStates, Is.EqualTo(legacy.PeakStates));
+        });
+        Compare(deck, combos, 2);
+    }
+
+    [Test]
+    public void AbstractFinalPoolUsesItsConditionalSubsetDistribution() {
+        Card source = Rota();
+        Card target = Warrior(2);
+        Card blank = new([], id: "blank");
+        List<Card> deck = [source, target, blank];
+        List<Combo> combos = [new([new(A, 2, 2)], groupId: "g1")];
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+        // One of the two interchangeable pool labels survived the draw phase.
+        // Its two labeled subsets are {source} and {blank}; only the first can
+        // complement the one fixed target. This is the stated abstract model,
+        // not a claim about which label a physical discard actually removed.
+        ExactCalculationResult result = new SearchProbabilityCalculation([source, blank], 1, [target.WithCopies(1)],
+            new(deck, budget), 1, budget, [new([source, blank], 1)]).Calculate(combos, Groups, false);
+        AssertRatio(result.Total, 1, 2);
+        AssertRatio(result.Combos[0], 1, 2);
+        AssertRatio(result.Groups[0], 1, 2);
+        AssertRatio(result.Groups[1], 0, 1);
+    }
+
+    [Test]
+    public void MultiplicityCopiesKeepIndependentCategoriesAndImmutableSearchProvenance() {
+        Card source = Rota();
+        Card copy = source.WithCopies(2);
+        copy.Categories.Add(A);
+        Assert.Multiple(() => {
+            Assert.That(source.Categories, Does.Not.Contain(A));
+            Assert.That(copy.Copies, Is.EqualTo(2));
+            Assert.That(copy.Id, Is.EqualTo(source.Id));
+            Assert.That(copy.EffectPlan, Is.EqualTo(source.EffectPlan));
+            Assert.That(copy.EffectProfile, Is.EqualTo(source.EffectProfile));
+            Assert.That(copy.ManualMetadataCategoryKeys, Is.EqualTo(source.ManualMetadataCategoryKeys));
+        });
+    }
+
     internal static async Task<SessionState> LoadExample(string filename) => await new SessionService(
         Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()).LoadSessionAsync(
             File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", filename)));
 
     private static void Compare(List<Card> cards, List<Combo> combos, int handSize, DrawActivationPriority? priority = null) {
-        (BigInteger denominator, BigInteger[] wins) = SearchPhysicalOracle.Count(cards, combos, handSize, Groups, priority?.CardIds);
+        (BigInteger denominator, BigInteger[] wins) = SearchAccessOracle.Count(cards, combos, handSize, Groups, priority?.CardIds);
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
         ExactCalculationResult result = new DrawEffectCalculation(cards, handSize, budget, priority).Calculate(combos, Groups);
         ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
@@ -249,11 +341,12 @@ public sealed class SearchEffectsTest {
         Assert.That(actual.Numerator * denominator, Is.EqualTo(numerator * actual.Denominator));
 }
 
-// Independent labeled physical-copy oracle. Full permutations retain all visible
-// draw trajectories, while the existing independent draw policy exposes the
-// untouched suffix. Search options use physical list removals, no count vectors,
-// memoization, production eligibility compiler, or Hall/event compiler.
-internal static class SearchPhysicalOracle {
+// Independent labeled-copy reference for the declared access model. The draw
+// oracle supplies its actual final hand and remaining physical QUANTITY. Target
+// identities are deliberately reset to original copies minus that hand, matching
+// the documented mixed-draw approximation. Slot-by-slot substitutions cannot
+// activate a fetched effect. No production event compiler or count shifts are used.
+internal static class SearchAccessOracle {
     internal static (BigInteger Total, BigInteger[] Wins) Count(List<Card> cards, List<Combo> combos, int size,
         IReadOnlyList<ComboGroup> groups, IReadOnlyList<string>? priority) {
         Card[] order = cards.Where(card => card.Active).SelectMany(card => Enumerable.Repeat(card, card.Copies)).ToArray();
@@ -271,7 +364,11 @@ internal static class SearchPhysicalOracle {
                     return;
                 }
                 bool[] matched = new bool[combos.Count];
-                Search(hand, remaining, matched);
+                List<Card> available = cards.Where(card => card.Active).SelectMany(card => Enumerable.Repeat(card, card.Copies)).ToList();
+                foreach (Card held in hand) {
+                    available.Remove(held);
+                }
+                Search(hand, available, matched, 0, remaining.Count);
                 bool[] results = [matched.Any(value => value), .. matched,
                     .. groups.Select(group => combos.Where((combo, i) => matched[i] && combo.GroupId == group.Id).Any())];
                 for (int i = 0; i < results.Length; i++) {
@@ -288,30 +385,31 @@ internal static class SearchPhysicalOracle {
             }
         }
 
-        void Search(List<Card> hand, List<Card> remaining, bool[] matched) {
-            for (int i = 0; i < combos.Count; i++) {
-                matched[i] |= SmallDeckOracle.MatchesHand(hand, combos[i]);
+        void Search(List<Card> hand, List<Card> remaining, bool[] matched, int slot, int capacity) {
+            if (slot == hand.Count) {
+                for (int i = 0; i < combos.Count; i++) {
+                    matched[i] |= SmallDeckOracle.MatchesHand(hand, combos[i]);
+                }
+                return;
             }
-            for (int source = 0; source < hand.Count; source++) {
-                if (hand[source].Search is not { } search) {
+            Search(hand, remaining, matched, slot + 1, capacity);
+            if (capacity == 0 || hand[slot].Search is not { } search) {
+                return;
+            }
+            for (int target = 0; target < remaining.Count; target++) {
+                Card card = remaining[target];
+                Card inspected = search.ObjectiveMetadataOnly
+                    ? new(card.Categories.Where(category => category.Source == CategorySource.Metadata
+                        && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))) : card;
+                if ((search.ObjectiveMetadataOnly && card.ExternalCardId is not > 0)
+                    || !DrawSequenceOracle.MatchesSelector(search.Selector, inspected)) {
                     continue;
                 }
-                for (int target = 0; target < remaining.Count; target++) {
-                    Card card = remaining[target];
-                    Card inspected = search.ObjectiveMetadataOnly
-                        ? new(card.Categories.Where(category => category.Source == CategorySource.Metadata
-                            && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))) : card;
-                    if ((search.ObjectiveMetadataOnly && card.ExternalCardId is not > 0)
-                        || !DrawSequenceOracle.MatchesSelector(search.Selector, inspected)) {
-                        continue;
-                    }
-                    List<Card> nextHand = [.. hand];
-                    nextHand.RemoveAt(source);
-                    nextHand.Add(card);
-                    List<Card> nextDeck = [.. remaining];
-                    nextDeck.RemoveAt(target);
-                    Search(nextHand, nextDeck, matched);
-                }
+                List<Card> nextHand = [.. hand];
+                nextHand[slot] = card;
+                List<Card> nextDeck = [.. remaining];
+                nextDeck.RemoveAt(target);
+                Search(nextHand, nextDeck, matched, slot + 1, capacity - 1);
             }
         }
     }

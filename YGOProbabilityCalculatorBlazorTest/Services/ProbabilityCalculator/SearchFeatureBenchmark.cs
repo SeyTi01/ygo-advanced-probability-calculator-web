@@ -18,6 +18,12 @@ public sealed class SearchFeatureBenchmark {
         int index = draws.Cards.FindIndex(card => card.Name == "Mulcharmy Fuwalos");
         draws.Cards[index] = draws.Cards[index].WithDrawCount(2);
         cases.Add(("count-state", draws, null));
+        SessionState extravagance = await UnionBenchmark.LoadModel();
+        Card extrav = extravagance.Cards[index];
+        extravagance.Cards[index] = extrav.WithEffect(DrawEffectPlan.Draw(2, true) with {
+            FirstActivationOnly = true, BlocksLaterDraws = true
+        }, EffectProfile.Legacy);
+        cases.Add(("poe-timing-lock", extravagance, null));
         cases.Add(("three-graceful", await RealisticGracefulFixture.Load(), null));
         SessionState trade = await TradeInAllureFixture.Load();
         cases.Add(("trade-allure-encounter", trade, null));
@@ -43,28 +49,40 @@ public sealed class SearchFeatureBenchmark {
         List<object> exports = [];
         foreach ((string name, SessionState session, DrawActivationPriority? priority) in cases) {
             List<double> times = [];
+            List<long> allocations = [];
+            ExactCalculationResult? exact = null;
             WorkBudget budget = null!;
             ProbabilityCalculationResult? result = null;
             string outcome = "Success";
-            for (int trial = 0; trial < 4; trial++) {
+            for (int trial = 0; trial < 29; trial++) {
                 budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
+                long allocated = GC.GetAllocatedBytesForCurrentThread();
                 Stopwatch timer = Stopwatch.StartNew();
                 try {
-                    result = new DrawEffectCalculation(session.Cards, session.HandSize, budget, priority)
-                        .Calculate(session.Combos, session.ComboGroups).ToPublic(session.Combos, session.ComboGroups, budget);
+                    exact = new DrawEffectCalculation(session.Cards, session.HandSize, budget, priority)
+                        .Calculate(session.Combos, session.ComboGroups);
+                    result = exact.ToPublic(session.Combos, session.ComboGroups, budget);
                 }
                 catch (ProbabilityCalculationLimitException ex) {
                     outcome = ex.Reason.ToString();
                 }
-                if (trial > 0) {
+                if (trial >= 5) {
                     times.Add(timer.Elapsed.TotalMilliseconds);
+                    allocations.Add(GC.GetAllocatedBytesForCurrentThread() - allocated);
                 }
             }
-            TestContext.Out.WriteLine($"{name}: {outcome}; median={times.Order().ElementAt(1):F2}ms; work={budget.Spent}; cells={budget.PeakCells}; p={result?.TotalProbability:R}");
+            TestContext.Out.WriteLine($"{name}: {outcome}; median={times.Order().ElementAt(times.Count / 2):F2}ms; work={budget.Spent}; cells={budget.PeakCells}; p={result?.TotalProbability:R}");
+            YGOProbabilityCalculatorBlazor.Services.Session.SessionService codec = new(Moq.Mock.Of<Microsoft.JSInterop.IJSRuntime>(),
+                new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+            SessionState browserSession = new() { Cards = session.Cards, Categories = session.Categories, Combos = session.Combos,
+                ComboGroups = session.ComboGroups, HandSize = session.HandSize, DrawActivationPriority = priority ?? DrawActivationPriority.Default };
             exports.Add(new { Name = name, Outcome = outcome, Probability = result?.TotalProbability, Work = budget.Spent,
-                Cells = budget.PeakCells, Milliseconds = times, ReferenceResults = result,
+                Cells = budget.PeakCells, Milliseconds = times, AllocatedBytes = allocations, ReferenceResults = result,
+                ExactResults = exact is null ? null : new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups)
+                    .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),
+                Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(browserSession)),
                 Input = JsonSerializer.Deserialize<JsonElement>(CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize,
-                    session.ComboGroups, CalculationWorkPolicy.Interactive, options: new(priority)).Json) });
+                    session.ComboGroups, CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.Standard, options: new(priority ?? DrawActivationPriority.Default)).Json) });
         }
         string? output = Environment.GetEnvironmentVariable("YGO_SEARCH_BENCHMARK");
         if (output is not null) {
