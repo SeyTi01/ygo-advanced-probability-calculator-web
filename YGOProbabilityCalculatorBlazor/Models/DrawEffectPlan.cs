@@ -3,11 +3,13 @@ namespace YGOProbabilityCalculatorBlazor.Models;
 // Versioned, bounded instruction set. V1 reserves the source, checks the complete
 // batch, pays hand/hidden-deck costs, draws FIFO, mills unseen top cards, then
 // performs mandatory hand removal. Optional zero counts preserve existing V1 plans.
+// Schema 6 adds an optional search-only source, executed in a separate phase
+// after all draws. A source cannot contain both operations.
 // Definitions cannot smuggle callbacks into count-state equivalence or worker JSON;
 // unsupported execution models still require a new compiler/interpreter.
 public enum EffectExecutionModel { DrawSequenceV1 = 1, Unsupported = 2 }
 [Flags]
-public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32, FirstActivationOnly = 64, BlocksLaterDraws = 128 }
+public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32, FirstActivationOnly = 64, BlocksLaterDraws = 128, Search = 256 }
 public enum EffectSource { LegacySnapshot, BuiltIn, Custom }
 public enum EffectSupport { ModeledWithinRules, Partial, Unmodeled }
 
@@ -36,12 +38,14 @@ public readonly record struct DrawEffectPlan(
     PostDrawFailureBehavior FailureBehavior = PostDrawFailureBehavior.FailBranch,
     int HiddenPostDrawMill = 0,
     bool FirstActivationOnly = false,
-    bool BlocksLaterDraws = false
+    bool BlocksLaterDraws = false,
+    SearchEffectPlan? Search = null
 ) {
     public static DrawEffectPlan Draw(int count, bool oncePerTurn) => new(count, oncePerTurn, 0, CardSelector.Any, 0, 0, CardSelector.Any);
 
     public EffectCapabilities Capabilities => (DrawCount is null ? EffectCapabilities.None : EffectCapabilities.Draw)
         | (DrawCount is not null && OncePerTurn ? EffectCapabilities.OncePerTurn : EffectCapabilities.None)
+        | (Search is not null ? EffectCapabilities.Search : EffectCapabilities.None)
         | (HandCost > 0 ? EffectCapabilities.HandCost : EffectCapabilities.None)
         | (HiddenDeckCost > 0 ? EffectCapabilities.HiddenDeckCost : EffectCapabilities.None)
         | (HiddenPostDrawMill > 0 ? EffectCapabilities.HiddenPostDrawMill : EffectCapabilities.None)
@@ -55,7 +59,7 @@ public readonly record struct DrawEffectPlan(
 
     public string Describe() {
         if (DrawCount is null) {
-            return "No draw effect";
+            return Search is null ? "No effect" : "Search 1 from deck; flexible target choice";
         }
 
         string summary = $"Draw {DrawCount}";

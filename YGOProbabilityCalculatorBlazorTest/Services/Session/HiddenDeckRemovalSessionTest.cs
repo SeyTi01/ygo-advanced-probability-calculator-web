@@ -23,7 +23,7 @@ public class HiddenDeckRemovalSessionTest {
         string json = Codec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
         SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Cards[0].PreDrawDeckRemovalCount, Is.EqualTo(10));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 5, [], options: new());

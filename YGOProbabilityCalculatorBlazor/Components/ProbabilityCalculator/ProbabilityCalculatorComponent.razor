@@ -193,7 +193,7 @@
         }
         @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null) {
             <div class="calculation-recovery mt-3 d-flex flex-wrap align-items-center gap-2">
-                <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate without draw effects</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate opening hand only</button>
                 <button type="button" class="btn btn-sm btn-link" @onclick="ReviewCalculationSettings">Review settings</button>
             </div>
         }
@@ -740,9 +740,13 @@
                 }
             }
             if (card.PostDrawSelector.CategoryIdentities.Contains(oldCategory.Identity)
-                || card.PreDrawSelector.CategoryIdentities.Contains(oldCategory.Identity)) {
+                || card.PreDrawSelector.CategoryIdentities.Contains(oldCategory.Identity)
+                || (card.Search?.Selector.CategoryIdentities.Contains(oldCategory.Identity) ?? false)) {
                 Card replacement = card.WithPostDrawSelector(card.PostDrawSelector.RenameCategory(oldCategory.Identity, newCategory.Identity))
                     .WithPreDrawSelector(card.PreDrawSelector.RenameCategory(oldCategory.Identity, newCategory.Identity));
+                if (replacement.Search is { } search) {
+                    replacement = replacement.WithSearch(search with { Selector = search.Selector.RenameCategory(oldCategory.Identity, newCategory.Identity) });
+                }
                 await _cardListEditor!.ReplaceCard((index, replacement));
             }
         }

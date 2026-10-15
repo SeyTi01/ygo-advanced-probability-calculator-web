@@ -20,7 +20,7 @@ public class PreDrawSessionTest {
         string json = Codec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
         SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Cards[0].PreDrawRemovalCount, Is.EqualTo(1));
         Assert.That(loaded.Cards[0].PreDrawSelector, Is.EqualTo(card.PreDrawSelector));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
@@ -39,7 +39,7 @@ public class PreDrawSessionTest {
             string json = $$$"""{"SchemaVersion":{{{schema}}},"Cards":[{"Categories":[],"Copies":1,"Name":"Old","ExternalCardId":{{{id}}},"DrawCount":2,"PreDrawRemovalCount":1,"PreDrawSelector":{"Kind":"Any"}}]}""";
             SessionState loaded = await Codec().LoadSessionAsync(json);
             Card card = loaded.Cards.Single();
-            Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+            Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
             Assert.That(card.PreDrawRemovalCount, Is.Zero);
             Assert.That(card.PreDrawSelector, Is.EqualTo(CardSelector.Any));
             Assert.That(card.DrawCount, Is.EqualTo(schema == 4 ? 2 : (int?)null));

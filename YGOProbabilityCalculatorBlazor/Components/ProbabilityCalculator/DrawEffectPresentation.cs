@@ -8,6 +8,9 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
             return new("Unsupported effect", null);
         }
 
+        if (card.Search is not null) {
+            return new(drawEffectsEnabled ? "Search 1" : "Search configured · Off", null);
+        }
         if (card.DrawCount is not { } drawCount) {
             return default;
         }
@@ -37,7 +40,7 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
 
     public static string DescribePlan(DrawEffectPlan plan, IReadOnlyList<CategoryBase> categories) {
         if (plan.DrawCount is null) {
-            return "No draw effect";
+            return plan.Search is null ? "No draw effect" : $"Search 1 ({DescribeSelector(plan.Search.Selector, categories)})";
         }
 
         List<string> steps = [];

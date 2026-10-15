@@ -25,7 +25,7 @@
             <span class="text-danger" role="status">Unsupported execution model</span>
         }
     </div>
-    @if (!IsUnconfigured && _effect.Source != EffectSource.BuiltIn) {
+    @if (!IsUnconfigured && _effect.Source != EffectSource.BuiltIn && Card.Search is null) {
         <div class="simulation-summary">@DrawEffectPresentation.DescribePlan(Card.EffectPlan, CategoryBases)</div>
     }
     @if (!_effect.CanExecute) {
@@ -33,6 +33,15 @@
     }
     else if (ModeNotice is { } notice) {
         <div id="cardDrawModeHelp@(Index)" class="simulation-mode small" role="note">@notice</div>
+    }
+    @if (Card.Search is { } search) {
+        <div class="simulation-summary">@(_effect.Source == EffectSource.BuiltIn ? _effect.Summary : "Search 1 from deck") · flexible best choice after draws</div>
+        <div class="simulation-targets small" role="status" aria-label="Current search targets">
+            Targets in this deck: @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : "None")
+        </div>
+        @if (Deck.Any(card => card.Active && card.Copies > 0 && (card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0))) {
+            <div class="small text-warning-emphasis" role="note">Search with hidden deck banishes or mills is unsupported.</div>
+        }
     }
     <div class="simulation-actions">
         @if (_effect.CanExecute) {
@@ -80,15 +89,16 @@
             @if (Error is not null) {
                 <div class="alert alert-danger py-2" role="alert">@Error</div>
             }
-            <label for="cardDraw@(Index)" class="form-label">Draw effect</label>
+            <label for="cardDraw@(Index)" class="form-label">Effect</label>
             <div class="d-flex flex-wrap align-items-center gap-3">
                 <select @ref="_drawInput" id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
-                        value="@(_draft.DrawCount?.ToString() ?? string.Empty)"
+                        value="@(_draft.Search is not null ? "search" : _draft.DrawCount?.ToString() ?? string.Empty)"
                          @onchange="e => ChangeDrawCount(e.Value)">
                     <option value="">None</option>
                     <option value="1">Draw 1</option>
                     <option value="2">Draw 2</option>
                     <option value="3">Draw 3</option>
+                    <option value="search">Search 1</option>
                 </select>
                 @if (_draft.DrawCount is not null) {
                     <div class="form-check form-switch mb-0">
@@ -136,6 +146,17 @@
                                         CategoryColorIndices="CategoryColorIndices"
                                         ShowHelp="false" OnChanged='selector => SetDraft(_draft.WithPostDrawSelector(selector), "selector")' />
             }
+            @if (_draft.Search is { } draftSearch) {
+                <PostDrawSelectorEditor Id="@($"cardSearchEligibility{Index}")" Selector="draftSearch.Selector"
+                    CategoryBases="CategoryBases" RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
+                    CategoryColorIndices="CategoryColorIndices" ShowHelp="false"
+                    OnChanged='selector => SetDraft(_draft.WithSearch(draftSearch with { Selector = selector }), "selector")' />
+                <div class="form-check mt-2">
+                    <input id="cardSearchObjective@(Index)" class="form-check-input" type="checkbox" checked="@draftSearch.ObjectiveMetadataOnly"
+                        @onchange='e => SetDraft(_draft.WithSearch(draftSearch with { ObjectiveMetadataOnly = e.Value is true }), "selector")' />
+                    <label for="cardSearchObjective@(Index)" class="form-check-label">Objective card properties only</label>
+                </div>
+            }
             @if (_draft.DrawCount is not null) {
                 <details class="simulation-advanced mt-2">
                     <summary>Advanced@(_draft.PreDrawDeckRemovalCount > 0 ? $" · Banish {_draft.PreDrawDeckRemovalCount} from deck" : "")</summary>
@@ -158,6 +179,7 @@
 
 @code {
     [Parameter, EditorRequired] public Card Card { get; set; } = null!;
+    [Parameter] public IReadOnlyList<Card> Deck { get; set; } = [];
     [Parameter] public int Index { get; set; }
     [Parameter] public bool DrawEffectsEnabled { get; set; } = true;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
@@ -183,7 +205,7 @@
     // New manual entries are empty legacy profiles; unknown catalog entries are
     // empty custom profiles with a canonical identity. Neither has a built-in.
     // Preserve explicit manual custom None and maintained-card overrides.
-    private bool IsUnconfigured => Card.DrawCount is null && _effect.Maintained is null
+    private bool IsUnconfigured => !Card.HasEffect && _effect.Maintained is null
         && _effect.CanExecute && (_effect.Source == EffectSource.LegacySnapshot
             || (_effect.Source == EffectSource.Custom && Card.EffectProfile.CanonicalCardId is not null));
     private bool IsSupportedBuiltIn => _effect.Source == EffectSource.BuiltIn && _effect.CanExecute
@@ -193,16 +215,19 @@
         EffectSource.Custom => "Custom simulation",
         _ => "Saved simulation"
     };
-    private string EditLabel => _draft is not null ? "Close editor" : Card.DrawCount is null && _effect.Source != EffectSource.BuiltIn
+    private string EditLabel => _draft is not null ? "Close editor" : !Card.HasEffect && _effect.Source != EffectSource.BuiltIn
         ? "Configure simulation" : "Customize simulation";
     private bool HasSavedRevisionDetails => _effect.Source == EffectSource.BuiltIn
         && (_effect.Maintained is null || Card.EffectProfile != _effect.Maintained.Profile || Card.EffectPlan != _effect.Maintained.Plan);
     private bool HasDetails => _performanceNote || (_effect.Source == EffectSource.BuiltIn
         && (!string.IsNullOrWhiteSpace(_effect.Limitations) || HasSavedRevisionDetails))
-        || (_effect.Source == EffectSource.LegacySnapshot && Card.DrawCount is not null);
-    private string? ModeNotice => Card.DrawCount is not null && !DrawEffectsEnabled
+        || (_effect.Source == EffectSource.LegacySnapshot && Card.HasEffect);
+    private string? ModeNotice => Card.HasEffect && !DrawEffectsEnabled
         ? "Opening hand only · saved simulation is off."
         : null;
+
+    private string[] SearchTargets(SearchEffectPlan search) => CategoryMembership.Materialize(Deck, CategoryBases)
+        .Where(search.Matches).Select(card => $"{card.Name ?? card.Id} ({card.ExternalCardId?.ToString() ?? card.Id})").ToArray();
 
     private void ToggleEditor() {
         if (_draft is not null) {
@@ -235,6 +260,7 @@
         }
 
         bool missingCategory = plan.HandCostSelector.CategoryIdentities.Concat(plan.RemovalSelector.CategoryIdentities)
+            .Concat(plan.Search?.Selector.CategoryIdentities ?? [])
             .Any(identity => identity.StartsWith("user:", StringComparison.Ordinal) && !CategoryBases.Any(category => category.Identity == identity));
         if (missingCategory) {
             _errors["selector"] = "A selected category was removed. Update the eligibility filter.";
@@ -277,13 +303,17 @@
     private void ChangeDrawCount(object? value) {
         string? text = value?.ToString();
         if (string.IsNullOrEmpty(text)) {
-            SetDraft(_draft!.WithDrawCount(null), "draw");
+            SetDraft(_draft!.WithDrawCount(null).WithSearch(null), "draw");
+        }
+        else if (text == "search") {
+            SearchEffectPlan search = _effect.Maintained?.Plan.Search ?? new(CardSelector.Any, false);
+            SetDraft(_draft!.WithDrawCount(null).WithSearch(search), "draw");
         }
         else if (int.TryParse(text, out int count) && count is >= 1 and <= 3) {
             SetDraft(_draft!.WithDrawCount(count), "draw");
         }
         else {
-            _errors["draw"] = "Choose None, Draw 1, Draw 2, or Draw 3.";
+            _errors["draw"] = "Choose None, Draw 1–3, or Search 1.";
         }
     }
 
@@ -348,7 +378,10 @@
 
     private static Card RenameFilters(Card card, CategoryRenameNotice rename) => card.WithEffect(card.EffectPlan with {
         HandCostSelector = card.PreDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
-        RemovalSelector = card.PostDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}")
+        RemovalSelector = card.PostDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
+        Search = card.Search is { } search ? search with {
+            Selector = search.Selector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}")
+        } : null
     }, card.EffectProfile);
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

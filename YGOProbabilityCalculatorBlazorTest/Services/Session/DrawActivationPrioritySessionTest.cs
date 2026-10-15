@@ -23,7 +23,7 @@ public class DrawActivationPrioritySessionTest {
         string saved = Codec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", saved)).Fragment;
         SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.DrawActivationPriority.Mode, Is.EqualTo(DrawActivationMode.CustomPriority));
         Assert.That(loaded.DrawActivationPriority.CardIds, Is.EqualTo(new[] { "b", "a" }));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(saved));

@@ -7,8 +7,8 @@ public static class CalculationModelPresentation {
         draws ? CalculationModel.Configured : CalculationModel.OpeningHand;
 
     public static string Description(this CalculationModel model) => model switch {
-        CalculationModel.Configured => "Configured draw effects",
-        CalculationModel.OpeningHand => "Opening hand only — draw effects not applied",
+        CalculationModel.Configured => "Configured effects",
+        CalculationModel.OpeningHand => "Opening hand only — effects not applied",
         _ => throw new ArgumentOutOfRangeException(nameof(model))
     };
 }

@@ -228,6 +228,7 @@
         bool isUsedInCombo = Combos.Any(combo => combo.AllCategories.Any(constraint => constraint.Selector.CategoryIdentities.Contains(category.Identity)));
         bool isUsedOnCard = Cards.Any(card => card.Categories.Any(cardCategory => cardCategory.Identity == category.Identity)
             || card.PreDrawSelector.CategoryIdentities.Contains(category.Identity)
+            || (card.Search?.Selector.CategoryIdentities.Contains(category.Identity) ?? false)
             || card.PostDrawSelector.CategoryIdentities.Contains(category.Identity));
 
         if (isUsedInCombo || isUsedOnCard) {

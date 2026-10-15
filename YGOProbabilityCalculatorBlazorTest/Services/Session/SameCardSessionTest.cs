@@ -27,7 +27,7 @@ public class SameCardSessionTest {
         string json = Codec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
         SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
         Assert.That(loaded.Combos[0].Categories[0].Selector, Is.EqualTo(requirement.Selector));
         Assert.That(loaded.Combos[1].AlternativeGroups[0].Alternatives[0].Category!.Selector, Is.EqualTo(requirement.Selector));

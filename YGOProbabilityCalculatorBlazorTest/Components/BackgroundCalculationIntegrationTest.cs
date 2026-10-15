@@ -235,7 +235,7 @@ public class BackgroundCalculationIntegrationTest {
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
         Assert.That(_context.JSInterop.Invocations["copyText"].Last().Arguments[0],
-            Does.StartWith("Previous result — current inputs have changed.\nConfigured draw effects\nProbability results\nHand size: 2"));
+            Does.StartWith("Previous result — current inputs have changed.\nConfigured effects\nProbability results\nHand size: 2"));
         Task latest = Start();
         _calculator.Jobs[2].SetException(new InvalidOperationException("Late edit error"));
         await worker;

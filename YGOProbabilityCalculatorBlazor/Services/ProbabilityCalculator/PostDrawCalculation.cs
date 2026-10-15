@@ -55,8 +55,13 @@ internal sealed partial class PostDrawCalculation(
     }
 
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
+        bool searching = deck.Any(card => card.Active && card.Copies > 0 && card.Search is not null);
+        if (searching && deck.Any(card => card.Active && card.Copies > 0
+            && (card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0))) {
+            throw new UnsupportedSearchInteractionException();
+        }
         List<Card> cards = ReduceDeck(combos);
-        List<Card> deferred = deferIdentities ? DeferUnobservedIdentities(ref cards) : [];
+        List<Card> deferred = deferIdentities && !searching ? DeferUnobservedIdentities(ref cards) : [];
         int n = cards.Count;
         bool customPriority = priority?.Mode == DrawActivationMode.CustomPriority;
         if (customPriority) {
@@ -104,11 +109,15 @@ internal sealed partial class PostDrawCalculation(
         // best handSize copies seen so far. Keep this optimization only when all
         // possible batches fit; exhaustion can change both the final hand size and
         // the effect schedule, which the general resolver handles exactly.
-        if (effects.Length == 1 && filler.Length <= 1) {
+        if (!searching && effects.Length == 1 && filler.Length <= 1) {
             int effect = effects[0];
             if (DrawExecutionAssessment.IsExchangeableEffect(cards[effect], relevant[effect], copies, handSize)) {
                 return CalculateExchangeable(cards, relevant, effect, filler.FirstOrDefault(-1), factorial, combos, groups, totalOnly);
             }
+        }
+
+        if (searching && effects.Length == 0) {
+            return CountSearchOpeningHands(cards, copies, factorial, combos, groups, totalOnly);
         }
 
         CheckStorage(n, n, "removal selector table");
@@ -146,10 +155,15 @@ internal sealed partial class PostDrawCalculation(
             ranks,
             relevant,
             removalEligibility,
-            costEligibility
+            costEligibility,
+            searching
         );
         Dictionary<State, BigInteger> terminal = resolver.Resolve(handSize, copies, factorial, compactFrontierThreshold);
         TerminalStates = terminal.Count;
+
+        if (searching) {
+            return CountSearchTerminalHands(cards, terminal, factorial[copies], combos, groups, totalOnly);
+        }
 
         return deferred.Count > 0
             ? CountDeferredHands(cards, deferred, terminal, factorial[copies], combos, groups, totalOnly)
@@ -191,6 +205,11 @@ internal sealed partial class PostDrawCalculation(
                 filters.Add(CardSelectorCompiler.Compile(source.PreDrawSelector, deck, budget));
             }
         }
+        foreach (Card source in deck.Where(card => card.Active && card.Copies > 0 && card.Search is not null)) {
+            CheckStorage(filters.Count + 1L, (filters.Count + 1L) * deck.Count, "search eligibility");
+            budget.Spend(deck.Sum(card => card.Categories.Count + 1L) * (source.Search!.Selector.CategoryIdentities.Count + 1L));
+            filters.Add(deck.Select(source.Search!.Matches).ToArray());
+        }
         List<(Card Card, string Signature, string Eligibility)> entries = [];
         int row = 0;
         foreach (Card card in deck) {
@@ -213,7 +232,7 @@ internal sealed partial class PostDrawCalculation(
             string? previousEligibility = null;
             foreach ((Card card, string _, string eligibility) in group.Where(entry => entry.Card.DrawCount is null)
                 .OrderBy(entry => entry.Card.Id, StringComparer.Ordinal)) {
-                if (eligibility == previousEligibility) {
+                if (card.Search is null && reduced.Count > 0 && reduced[^1].Search is null && eligibility == previousEligibility) {
                     reduced[^1] = reduced[^1].WithCopies(checked(reduced[^1].Copies + card.Copies));
                 }
                 else {

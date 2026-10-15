@@ -62,7 +62,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(oldValue));
         Assert.That(cut.FindAll(".calculation-recovery p"), Is.Empty);
         string saved = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
-        Task recovery = Button(cut, "Calculate without draw effects").ClickAsync(new());
+        Task recovery = Button(cut, "Calculate opening hand only").ClickAsync(new());
         CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_requests[2].Json)!;
         Assert.That(input.Cards.All(card => card.DrawCount is null && card.PreDrawRemovalCount == 0), Is.True);
         Complete(2);
@@ -82,7 +82,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Task normal = Button(cut, "Calculate").ClickAsync(new());
         Complete(3);
         await normal;
-        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Configured draw effects"));
+        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Configured effects"));
     }
 
     [TestCase("complete")]
@@ -139,7 +139,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".calculation-elapsed"), Is.Empty);
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(2)));
         cut.WaitForState(() => cut.FindAll(".calculation-recovery .btn-outline-primary").Count == 1);
-        Task recovery = Button(cut, "Calculate without draw effects").ClickAsync(new());
+        Task recovery = Button(cut, "Calculate opening hand only").ClickAsync(new());
         Assert.That(_tokens[0].IsCancellationRequested, Is.True);
         Assert.That(_jobs, Has.Count.EqualTo(1), "cleanup must finish before creating the alternate worker");
         if (editWhileWaiting) {

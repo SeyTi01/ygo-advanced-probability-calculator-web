@@ -175,7 +175,7 @@ public class PinnedResultTest {
         Assert.That(_cut.Find(".pinned-heading [aria-label='Unpin result']").GetAttribute("title"), Is.EqualTo("Unpin result"));
         Assert.That(_cut.FindAll(".pinned-heading svg path"), Has.Count.EqualTo(2));
         PinnedResultSnapshot first = Pinned;
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Configured draw effects", "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects");
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
         await Accept(.842);
         Assert.That(Pinned, Is.SameAs(first));
         Assert.That(_cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
@@ -433,7 +433,7 @@ public class PinnedResultTest {
         Assert.That(current.CompareCombo(current.Combos[0], original, true), Is.EqualTo("+2.8%"));
         Assert.That(current.CompareCombo(current.Combos[1], original, true), Is.EqualTo("+2.8%"));
         Assert.That(current.CompareGroup(current.Groups[0], original, true), Is.EqualTo("+2.8%"));
-        AssertContextDescriptions("Hand size 2 · 7 active copies · 2 active cards · Configured draw effects", "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects");
+        AssertContextDescriptions("Hand size 2 · 7 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
         Assert.That(Pinned.Combos.Select(c => c.Label), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
     }
 
@@ -441,21 +441,21 @@ public class PinnedResultTest {
     public async Task CurrentAndPinnedContextSummariesKeepTheSameCapturedFieldsAcrossEditsAndRecalculation() {
         await Accept(.814);
         await Pin();
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Configured draw effects", "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects");
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
 
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         await Accept(.842);
-        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Configured draw effects", "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects");
+        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
 
         await Call("ReplaceCard", (0, Field<List<Card>>("_cards")[0].WithCopies(3)));
         await Call("ReplaceCard", (1, Field<List<Card>>("_cards")[1].WithActive(false)));
         // Pending edits do not leak into the last accepted result or the explicit pin.
-        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Configured draw effects", "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects");
+        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
         await Accept(.786);
-        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Configured draw effects", "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects");
+        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
 
         await Pin();
-        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Configured draw effects", "Hand size 3 · 3 active copies · 1 active cards · Configured draw effects");
+        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Configured effects", "Hand size 3 · 3 active copies · 1 active cards · Configured effects");
         Assert.That(_cut.FindAll(".result-difference-neutral"), Has.Count.EqualTo(5),
             "removing the context note does not alter the inline comparison rows");
     }
@@ -581,9 +581,9 @@ public class PinnedResultTest {
         Assert.That(current.CompareGroup(current.Groups[0], pin, true), Is.EqualTo("Unrelated session"));
         Assert.That(_cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
         string currentContext = load == "ydk"
-            ? "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects"
-            : "Hand size 3 · 8 active copies · 2 active cards · Configured draw effects";
-        AssertContextDescriptions(currentContext, "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects");
+            ? "Hand size 2 · 8 active copies · 2 active cards · Configured effects"
+            : "Hand size 3 · 8 active copies · 2 active cards · Configured effects";
+        AssertContextDescriptions(currentContext, "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
     }
 
     [Test]
@@ -626,7 +626,7 @@ public class PinnedResultTest {
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
         Assert.That(_cut.Find("#pinUnavailableReason").ClassList, Does.Contain("visually-hidden"));
         await copy.ClickAsync(new());
-        const string expected = "Previous result — current inputs have changed.\nConfigured draw effects\nProbability results\nHand size: 5\nAny active combo: 81.40%\n\nGroup probabilities:\n- **Group** — 81.40% (1 active)\n  - **Duplicate** — 81.40%\n\nUngrouped combos:\n- **Duplicate** — 81.40%\n- **Unnamed combo 3** — 81.40%";
+        const string expected = "Previous result — current inputs have changed.\nConfigured effects\nProbability results\nHand size: 5\nAny active combo: 81.40%\n\nGroup probabilities:\n- **Group** — 81.40% (1 active)\n  - **Duplicate** — 81.40%\n\nUngrouped combos:\n- **Duplicate** — 81.40%\n- **Unnamed combo 3** — 81.40%";
         Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Is.EqualTo(expected));
         Assert.That(_sessions.SerializeSession(FieldSession()), Is.EqualTo(session));
         Assert.That(_cut.FindComponent<SessionShareButton>().Instance.Snapshot, Is.EqualTo(session));
@@ -642,7 +642,7 @@ public class PinnedResultTest {
         await Accept(.842);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
         string fresh = (string)_clipboard.Invocations["copyText"].Last().Arguments[0]!;
-        Assert.That(fresh, Does.StartWith("Configured draw effects\nProbability results\nHand size: 6\nAny active combo: 84.20%"));
+        Assert.That(fresh, Does.StartWith("Configured effects\nProbability results\nHand size: 6\nAny active combo: 84.20%"));
         Assert.That(fresh, Does.Contain("Edited route").And.Not.Contain("Previous result"));
     }
 
@@ -679,7 +679,7 @@ public class PinnedResultTest {
         Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
         await Accept(.842);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
-        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.StartWith("Configured draw effects\nProbability results\nHand size: 6\nAny active combo: 84.20%"));
+        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.StartWith("Configured effects\nProbability results\nHand size: 6\nAny active combo: 84.20%"));
         string? shared = _cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         Assert.That(shared, Is.EqualTo(_sessions.SerializeSession(FieldSession())));
         Assert.That(shared, Does.Not.Contain("acceptedComparison").And.Not.Contain("pinnedResult").And.Not.Contain("Previous result").And.Not.Contain("84.20%"));
@@ -745,8 +745,8 @@ public class PinnedResultTest {
         await Pin();
         PinnedResultSnapshot pinnedOn = Pinned;
         Assert.That(pinnedOn.Context.DrawEffectsEnabled, Is.True);
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Configured draw effects",
-            "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects");
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Configured effects",
+            "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
 
         await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(_cut.Find(".probability-result-status-full").TextContent, Is.EqualTo("Previous result · inputs changed"));
@@ -759,8 +759,8 @@ public class PinnedResultTest {
         Assert.That(_cut.FindAll(".result-difference").ToArray(), Has.Length.EqualTo(5));
         Assert.That(_cut.FindAll(".result-row-comparison").Select(row => row.TextContent),
             Does.Not.Contain("Unrelated session"));
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Opening hand only — draw effects not applied",
-            "Hand size 2 · 8 active copies · 2 active cards · Configured draw effects");
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Opening hand only — effects not applied",
+            "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
         Assert.That(Pinned.Context.DeckDefinition, Is.EqualTo(pinnedOn.Context.DeckDefinition));
         Assert.That(Pinned.Context.DrawEffectsEnabled, Is.True);
         Assert.That(Field<PinnedResultSnapshot>("_acceptedComparison").Context.DrawEffectsEnabled, Is.False);

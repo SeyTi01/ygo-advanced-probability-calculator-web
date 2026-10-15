@@ -21,7 +21,7 @@
         @for (int index = 0; index < Cards.Count; index++) {
             <CardEditor @key="_editorKeys[Cards[index]]"
                 Index="index"
-                Card="Cards[index]"
+                Card="Cards[index]" Deck="Cards"
                 DrawEffectsEnabled="DrawEffectsEnabled"
                 CategoryBases="_categoryOptions.All"
                 RelevantMetadataCategoryIdentities="_categoryOptions.RelevantMetadataIdentities"

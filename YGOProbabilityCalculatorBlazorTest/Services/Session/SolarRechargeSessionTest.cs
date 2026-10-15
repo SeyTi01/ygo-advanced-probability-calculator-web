@@ -22,7 +22,7 @@ public class SolarRechargeSessionTest {
         string json = Codec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
         SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Cards[0].EffectPlan, Is.EqualTo(saved.EffectPlan));
         Assert.That(loaded.Cards[0].EffectProfile, Is.EqualTo(saved.EffectProfile));
         Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));

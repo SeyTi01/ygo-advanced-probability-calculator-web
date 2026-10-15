@@ -52,7 +52,7 @@ public sealed class CardEffectRegistry {
         new OneDayOfPeaceEffect(),
         new GracefulCharityEffect(),
         new SekkasLightEffect(),
-        new LinkAppleEffect()
+        new LinkAppleEffect(), new ReinforcementOfTheArmyEffect()
     ]);
 
     public IReadOnlyList<MaintainedCardEffect> All { get; }
