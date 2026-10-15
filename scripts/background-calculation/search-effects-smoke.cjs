@@ -14,8 +14,9 @@ async function main() {
             const url = new URL(request.url, 'http://localhost');
             const file = path.resolve(root, '.' + (url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname)));
             assert(file.startsWith(root + path.sep));
+            const content = await fs.readFile(file);
             response.writeHead(200, { 'Content-Type': mime[path.extname(file)] || 'application/octet-stream' });
-            response.end(await fs.readFile(file));
+            response.end(content);
         } catch { response.writeHead(404).end(); }
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -103,6 +104,38 @@ async function main() {
             for (const name of names) assert(text.includes(name));
             assert.equal((text.match(/\(\d+\)/g) || []).length, names.length);
             assert.match(await presetEditor.locator('.simulation-summary').innerText(), /once per turn/);
+            if (identity === 92221402) {
+                assert.doesNotMatch(await presetEditor.locator('.card-simulation').innerText(), /Partial/);
+                await presetEditor.locator('.simulation-edit').click();
+                assert.equal(await presetEditor.locator('.selector-group').count(), 3);
+                assert.equal(await presetEditor.locator('.draw-selector-chip').count(), 6);
+                const minimum = presetEditor.locator('input[aria-label^="Minimum Level"]');
+                assert.equal(await minimum.inputValue(), '5');
+                for (const width of [1440, 375]) {
+                    await page.setViewportSize({ width, height: 1000 });
+                    await presetEditor.locator('.simulation-editor').scrollIntoViewIfNeeded();
+                    await page.screenshot({ path: path.join(evidence, `chaotic-editor-${width}.png`) });
+                    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+                }
+                await page.setViewportSize({ width: 1440, height: 1000 });
+                await minimum.fill('6');
+                await minimum.press('Tab');
+                assert.match(await presetEditor.locator('.simulation-targets').innerText(), /None/);
+                await presetEditor.locator('.simulation-cancel').click();
+                assert.equal(await presetEditor.locator('.simulation-targets').innerText(), text);
+                await presetEditor.locator('.simulation-edit').click();
+                await presetEditor.locator('[aria-label="Group operator root.0"]').selectOption('AllOf');
+                assert.match(await presetEditor.locator('.simulation-targets').innerText(), /None/);
+                await presetEditor.locator('.simulation-save').click();
+                assert.match(await presetEditor.locator('.simulation-source').innerText(), /Custom/);
+                await presetEditor.locator('.simulation-restore').click();
+                assert.equal(await presetEditor.locator('.simulation-targets').innerText(), text);
+                await presetEditor.locator('.simulation-edit').click();
+                await presetEditor.locator('input[aria-label^="Minimum Level"]').fill('-1');
+                await presetEditor.locator('input[aria-label^="Minimum Level"]').press('Tab');
+                assert(await presetEditor.locator('.simulation-save').isDisabled());
+                await presetEditor.locator('.simulation-cancel').click();
+            }
             if (identity === 80181649) {
                 await presetEditor.locator('.simulation-edit').click();
                 assert(await presetEditor.locator(`#cardSearchOnce${index}`).isChecked());

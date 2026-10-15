@@ -8,11 +8,11 @@ public sealed record SearchEffectPlan(CardSelector Selector, bool ObjectiveMetad
             return false;
         }
         if (!ObjectiveMetadataOnly) {
-            return Selector.Matches(card.Categories);
+            return Selector.Matches(card);
         }
 
         return card.ExternalCardId is > 0 && Selector.Matches(card.Categories
             .Where(category => category.Source == CategorySource.Metadata
-                && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)).ToArray());
+                && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)).ToArray(), card);
     }
 }

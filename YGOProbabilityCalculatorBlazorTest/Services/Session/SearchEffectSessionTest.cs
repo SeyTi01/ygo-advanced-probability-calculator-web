@@ -21,7 +21,7 @@ public sealed class SearchEffectSessionTest {
         Assert.That(loaded.Cards[0].Search, Is.Null);
         Assert.That(loaded.Cards[0].DrawCount, Is.EqualTo(schema < 4 ? null : (int?)1));
         Assert.That(loaded.Cards[0].Categories.Any(category => category.Name == "VS Starter"), Is.True);
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(6));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
     }
 
     [Test]
@@ -46,7 +46,7 @@ public sealed class SearchEffectSessionTest {
             Assert.That(copy.EffectPlan, Is.EqualTo(card.EffectPlan));
             SessionState state = new() { Cards = [card], Categories = [new("Role")] };
             string json = Codec().SerializeSession(state);
-            Assert.That(JsonDocument.Parse(json).RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(6));
+            Assert.That(JsonDocument.Parse(json).RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
             string link = SessionShareCodec.CreateLink("https://example.invalid/", json);
             foreach (string saved in new[] { json, SessionShareCodec.Decode(new Uri(link).Fragment) }) {
                 SessionState loaded = await Codec().LoadSessionAsync(saved);
@@ -81,7 +81,7 @@ public sealed class SearchEffectSessionTest {
 
     [Test]
     public void InvalidAndFutureSnapshotsFailExplicitly() {
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await Codec().LoadSessionAsync("{\"SchemaVersion\":7}"));
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await Codec().LoadSessionAsync("{\"SchemaVersion\":8}"));
         Assert.ThrowsAsync<InvalidOperationException>(async () => await Codec().LoadSessionAsync("""
             {"SchemaVersion":6,"Cards":[{"Name":"bad","Categories":[],"Copies":1,"DrawCount":1,"Search":{"Selector":{"Kind":"Any","Categories":[]}}}]}
             """));

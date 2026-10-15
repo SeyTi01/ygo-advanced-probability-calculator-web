@@ -77,7 +77,7 @@ public class DrawEffectsSessionTest {
         SessionState session = new() { DrawEffectsEnabled = enabled, Cards = [configured] };
 
         Assert.That(new SessionState().DrawEffectsEnabled, Is.True);
-        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(6));
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(7));
         string json = codec.SerializeSession(session);
         using JsonDocument document = JsonDocument.Parse(json);
         Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));

@@ -41,9 +41,10 @@ public class CardSelectorTest {
 
     [Test]
     public void PostDrawSelectorCompilationObeysRequestStorage() {
-        CardSelector selector = CardSelector.AnyOf(Enumerable.Range(0, 262145).Select(index => $"user:{index}"));
+        CardSelector selector = CardSelector.AnyOf(Enumerable.Range(0, CardSelector.MaximumCategoryReferences).Select(index => $"user:{index}"));
+        Card[] cards = Enumerable.Repeat(new Card([]), 32769).ToArray();
         ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            CardSelectorCompiler.Compile(selector, [new([])], new(CalculationWorkPolicy.Interactive)));
+            CardSelectorCompiler.Compile(selector, cards, new(CalculationWorkPolicy.Interactive)));
         Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
         Assert.Throws<ArgumentException>(() => CardSelector.AnyOf([]));
         Assert.Throws<ArgumentOutOfRangeException>(() => new CardSelector((CardSelectorKind)99, []));

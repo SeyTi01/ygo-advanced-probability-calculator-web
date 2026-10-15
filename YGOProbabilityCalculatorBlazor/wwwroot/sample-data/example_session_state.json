@@ -1,5 +1,5 @@
 {
-  "SchemaVersion": 6,
+  "SchemaVersion": 7,
   "Categories": [
     {
       "Name": "VS Monster",
@@ -867,331 +867,31 @@
       "OncePerTurn": true,
       "Search": {
         "Selector": {
-          "Kind": "AnyOf",
+          "Kind": "AllOf",
           "Children": [
             {
-              "Kind": "AllOf",
+              "Kind": "AnyOf",
               "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:5",
+                "metadata:attribute:dark",
+                "metadata:attribute:light"
+              ]
+            },
+            {
+              "Kind": "AnyOf",
+              "Categories": [
+                "metadata:monster-race:aqua",
                 "metadata:monster-race:pyro"
               ]
             },
             {
-              "Kind": "AllOf",
+              "Kind": "Category",
               "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:5",
-                "metadata:monster-race:aqua"
+                "metadata:kind:monster"
               ]
             },
             {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:5",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:5",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:6",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:6",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:6",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:6",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:7",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:7",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:7",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:7",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:8",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:8",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:8",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:8",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:9",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:9",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:9",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:9",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:10",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:10",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:10",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:10",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:11",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:11",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:11",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:11",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:12",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:12",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:12",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:12",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:13",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:light",
-                "metadata:kind:monster",
-                "metadata:level:13",
-                "metadata:monster-race:aqua"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:13",
-                "metadata:monster-race:pyro"
-              ]
-            },
-            {
-              "Kind": "AllOf",
-              "Categories": [
-                "metadata:attribute:dark",
-                "metadata:kind:monster",
-                "metadata:level:13",
-                "metadata:monster-race:aqua"
-              ]
+              "Kind": "LevelAtLeast",
+              "Minimum": 5
             }
           ]
         },
@@ -1200,9 +900,9 @@
       "EffectProfile": {
         "Source": "BuiltIn",
         "CanonicalCardId": 92221402,
-        "Revision": 1,
-        "Summary": "Search 1 Level 5+ LIGHT/DARK Pyro/Aqua monster",
-        "Support": "Partial",
+        "Revision": 2,
+        "Summary": "Search 1 Level 5\u002B LIGHT/DARK Pyro/Aqua monster",
+        "Support": "ModeledWithinRules",
         "Limitations": "Main Deck search only; GY retrieval, optional field destruction and the GY effect are not modeled.",
         "ExecutionModel": "DrawSequenceV1"
       }
@@ -1251,7 +951,7 @@
         }
       ],
       "Copies": 2,
-      "Name": "\"A Case for K9\"",
+      "Name": "\u0022A Case for K9\u0022",
       "Active": true,
       "Id": "db70c79f084e4de2a9ecb78599e4d8fd",
       "ExternalCardId": 80181649,

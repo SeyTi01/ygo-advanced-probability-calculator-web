@@ -84,7 +84,7 @@ internal sealed partial class PostDrawCalculation(
         }
         bool[] relevant = cards.Select(card => combos.Any(combo =>
             combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
-            || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card.Categories)))).ToArray();
+            || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card)))).ToArray();
 
         CheckStorage(copies + 1L, copies + 1L, "factorials");
         BigInteger[] factorial = new BigInteger[copies + 1];

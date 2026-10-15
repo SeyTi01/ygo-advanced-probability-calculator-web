@@ -8,7 +8,9 @@ public static class CategoryMembership {
 
     public static void ValidateRule(CardSelector rule) {
         ArgumentNullException.ThrowIfNull(rule);
-        if (rule.Kind == CardSelectorKind.Any
+        if (rule.Kind == CardSelectorKind.Any || rule.HasLevelPredicate
+            || rule.Children.Any(child => child.Children.Count > 0 || child.Kind is not (CardSelectorKind.Category or CardSelectorKind.AllOf))
+            || (rule.Kind == CardSelectorKind.AllOf && rule.Children.Count > 0)
             || rule.CategoryIdentities.Any(identity => !identity.StartsWith("metadata:", StringComparison.Ordinal))
             || rule.Alternatives.Count() > MaximumAlternatives
             || rule.Alternatives.Any(alternative => alternative.CategoryIdentities.Count > MaximumPropertiesPerAlternative)) {
@@ -16,7 +18,7 @@ public static class CategoryMembership {
         }
     }
 
-    public static bool IsAutomatic(Card card, CategoryBase category) => category.Rule?.Matches(card.Categories) == true;
+    public static bool IsAutomatic(Card card, CategoryBase category) => category.Rule?.Matches(card) == true;
 
     public static IReadOnlyList<CategoryBase> EffectiveCategories(Card card, IEnumerable<CategoryBase> definitions) =>
         card.Categories.Concat(definitions.Where(category => IsAutomatic(card, category)))

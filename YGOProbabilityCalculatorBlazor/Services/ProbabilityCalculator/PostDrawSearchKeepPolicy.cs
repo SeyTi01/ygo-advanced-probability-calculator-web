@@ -10,8 +10,8 @@ internal sealed partial class PostDrawCalculation {
             observed.Add(source.Id);
             budget.Spend(effects.Sum(effect => effect.PreDrawSelector.CategoryIdentities.Count
                 + effect.PostDrawSelector.CategoryIdentities.Count + 1L) * (source.Categories.Count + 1L));
-            bool removable = effects.Any(effect => (effect.PreDrawRemovalCount > 0 && effect.PreDrawSelector.Matches(source.Categories))
-                || (effect.PostDrawDiscardCount > 0 && effect.PostDrawSelector.Matches(source.Categories)));
+            bool removable = effects.Any(effect => (effect.PreDrawRemovalCount > 0 && effect.PreDrawSelector.Matches(source))
+                || (effect.PostDrawDiscardCount > 0 && effect.PostDrawSelector.Matches(source)));
             if (!removable) {
                 continue;
             }

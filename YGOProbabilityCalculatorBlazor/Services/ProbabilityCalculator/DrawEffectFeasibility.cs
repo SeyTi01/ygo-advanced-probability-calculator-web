@@ -42,14 +42,14 @@ internal static class DrawEffectFeasibility {
                 long selectorCells = source.PreDrawSelector.CategoryIdentities.Count
                     + source.PreDrawSelector.Children.Sum(child => (long)child.CategoryIdentities.Count);
                 budget?.Spend(1 + selectorCells * (source.Categories.Count + 1L));
-                int needed = source.PreDrawRemovalCount + (source.PreDrawSelector.Matches(source.Categories) ? 1 : 0);
+                int needed = source.PreDrawRemovalCount + (source.PreDrawSelector.Matches(source) ? 1 : 0);
                 long available = 0;
                 foreach (Card material in deck) {
                     if (!material.Active || material.Copies <= 0) {
                         continue;
                     }
                     budget?.Spend(1 + selectorCells * (material.Categories.Count + 1L));
-                    if (source.PreDrawSelector.Matches(material.Categories)) {
+                    if (source.PreDrawSelector.Matches(material)) {
                         available += material.Copies;
                         if (available >= needed) {
                             break;

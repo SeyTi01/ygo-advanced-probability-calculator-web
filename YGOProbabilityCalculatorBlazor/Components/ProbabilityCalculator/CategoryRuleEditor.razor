@@ -119,7 +119,7 @@
 
     private void UpdatePreview() {
         Draft = _alternatives.Count == 0 ? null : CardSelector.AnyOfSelectors(_alternatives.Select(CardSelector.AllOf));
-        _matches = Draft is null ? [] : Cards.Where(card => Draft.Matches(card.Categories)).ToArray();
+        _matches = Draft is null ? [] : Cards.Where(card => Draft.Matches(card)).ToArray();
     }
 
     private Task KeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;

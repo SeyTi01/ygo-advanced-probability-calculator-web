@@ -9,81 +9,83 @@ public sealed class CardSelectorConverter : JsonConverter<CardSelector> {
 
     public override CardSelector Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) {
         using JsonDocument document = JsonDocument.ParseValue(ref reader);
-        JsonElement root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Object) {
-            throw new JsonException("A card selector must be an object.");
-        }
-        return ReadSelector(root, 0);
-    }
-
-    private static CardSelector ReadSelector(JsonElement root, int depth) {
-        if (root.ValueKind != JsonValueKind.Object || depth > 1) {
-            throw new JsonException("Selectors support only OR of atomic categories or AND groups.");
-        }
-        JsonProperty[] properties = root.EnumerateObject().ToArray();
-        if (properties.Length != 2 || properties.Count(property => property.Name == "Kind") != 1
-            || properties.Count(property => property.Name is "Categories" or "Children") != 1) {
-            throw new JsonException("A card selector requires Kind and either Categories or Children.");
-        }
-        JsonElement kind = root.GetProperty("Kind");
-        if (root.TryGetProperty("Children", out JsonElement children)) {
-            if (depth != 0 || kind.ValueKind != JsonValueKind.String || kind.GetString() != "AnyOf"
-                || children.ValueKind != JsonValueKind.Array || children.GetArrayLength() is 0 or > 2048) {
-                throw new JsonException("Invalid composite selector.");
-            }
-            List<CardSelector> alternatives = [];
-            int leaves = 0;
-            foreach (JsonElement child in children.EnumerateArray()) {
-                if (child.ValueKind != JsonValueKind.Object
-                    || !child.TryGetProperty("Categories", out JsonElement atoms)
-                    || atoms.ValueKind != JsonValueKind.Array || (leaves += atoms.GetArrayLength()) > 2048) {
-                    throw new JsonException("An OR selector requires at most 2048 atomic category references.");
-                }
-                alternatives.Add(ReadSelector(child, depth + 1));
-            }
-            return CardSelector.AnyOfSelectors(alternatives);
-        }
-        JsonElement categories = root.GetProperty("Categories");
-        if (kind.ValueKind != JsonValueKind.String || categories.ValueKind != JsonValueKind.Array
-            || categories.GetArrayLength() > 2048
-            || categories.EnumerateArray().Any(category => category.ValueKind != JsonValueKind.String)) {
-            throw new JsonException("Invalid card selector fields.");
-        }
-        CardSelectorKind operation = kind.GetString() switch {
-            "Any" => CardSelectorKind.Any,
-            "Category" => CardSelectorKind.Category,
-            "AnyOf" => CardSelectorKind.AnyOf,
-            "AllOf" => CardSelectorKind.AllOf,
-            _ => throw new JsonException("Unsupported card selector operator.")
-        };
-        if (depth > 0 && operation is not (CardSelectorKind.Category or CardSelectorKind.AllOf)) {
-            throw new JsonException("An OR child must be an atomic category or an AND group.");
-        }
+        int nodes = 0;
+        int references = 0;
         try {
-            return new(operation, categories.EnumerateArray().Select(category => category.GetString()!));
+            return ReadSelector(document.RootElement, 1, ref nodes, ref references);
         }
         catch (ArgumentException exception) {
             throw new JsonException("Invalid card selector.", exception);
         }
     }
 
+    private static CardSelector ReadSelector(JsonElement root, int depth, ref int nodes, ref int references) {
+        if (root.ValueKind != JsonValueKind.Object || depth > CardSelector.MaximumDepth || ++nodes > CardSelector.MaximumNodes) {
+            throw new JsonException("Selector exceeds its depth or node limit.");
+        }
+        JsonProperty[] properties = root.EnumerateObject().ToArray();
+        if (properties.Length != 2 || properties.Count(property => property.Name == "Kind") != 1
+            || properties.Count(property => property.Name is "Categories" or "Children" or "Minimum") != 1) {
+            throw new JsonException("A selector requires Kind and exactly one operand field.");
+        }
+        JsonElement kind = root.GetProperty("Kind");
+        if (kind.ValueKind != JsonValueKind.String) {
+            throw new JsonException("A selector kind must be a string.");
+        }
+        string operation = kind.GetString()!;
+        if (root.TryGetProperty("Minimum", out JsonElement minimum)) {
+            if (operation != "LevelAtLeast" || minimum.ValueKind != JsonValueKind.Number || !minimum.TryGetInt32(out int threshold)) {
+                throw new JsonException("A Level predicate requires an integer minimum.");
+            }
+            return CardSelector.LevelAtLeast(threshold);
+        }
+        if (root.TryGetProperty("Children", out JsonElement children)) {
+            if (operation is not ("AnyOf" or "AllOf") || children.ValueKind != JsonValueKind.Array
+                || children.GetArrayLength() is 0 or > CardSelector.MaximumNodes) {
+                throw new JsonException("Invalid composite selector.");
+            }
+            List<CardSelector> operands = [];
+            foreach (JsonElement child in children.EnumerateArray()) {
+                operands.Add(ReadSelector(child, depth + 1, ref nodes, ref references));
+            }
+            return operation == "AnyOf" ? CardSelector.AnyOfSelectors(operands) : CardSelector.AllOfSelectors(operands);
+        }
+        JsonElement categories = root.GetProperty("Categories");
+        if (categories.ValueKind != JsonValueKind.Array
+            || (references += categories.GetArrayLength()) > CardSelector.MaximumCategoryReferences
+            || categories.EnumerateArray().Any(category => category.ValueKind != JsonValueKind.String)) {
+            throw new JsonException("Invalid category references.");
+        }
+        CardSelectorKind categoryOperation = operation switch {
+            "Any" when depth == 1 => CardSelectorKind.Any,
+            "Category" => CardSelectorKind.Category,
+            "AnyOf" => CardSelectorKind.AnyOf,
+            "AllOf" => CardSelectorKind.AllOf,
+            _ => throw new JsonException("Unsupported card selector operator.")
+        };
+        return new(categoryOperation, categories.EnumerateArray().Select(category => category.GetString()!));
+    }
+
     public override void Write(Utf8JsonWriter writer, CardSelector value, JsonSerializerOptions options) {
         writer.WriteStartObject();
         writer.WriteString("Kind", value.Kind.ToString());
-        if (value.Children.Count > 0) {
+        if (value.Kind == CardSelectorKind.LevelAtLeast) {
+            writer.WriteNumber("Minimum", value.MinimumLevel!.Value);
+        }
+        else if (value.Children.Count > 0) {
             writer.WriteStartArray("Children");
             foreach (CardSelector child in value.Children) {
                 JsonSerializer.Serialize(writer, child, options);
             }
             writer.WriteEndArray();
-            writer.WriteEndObject();
-            return;
         }
-        writer.WriteStartArray("Categories");
-        foreach (string identity in value.CategoryIdentities) {
-            writer.WriteStringValue(identity);
+        else {
+            writer.WriteStartArray("Categories");
+            foreach (string identity in value.CategoryIdentities) {
+                writer.WriteStringValue(identity);
+            }
+            writer.WriteEndArray();
         }
-        writer.WriteEndArray();
         writer.WriteEndObject();
     }
 }
