@@ -1,0 +1,13 @@
+.requirement-or-group { min-width: 0; }
+.expression-group-nested {
+    display: grid;
+    gap: .5rem;
+    border-inline-start: 2px solid var(--bs-border-color);
+    padding-inline-start: .65rem;
+    margin-inline-start: .2rem;
+}
+@media (max-width: 575.98px) {
+    .expression-group-nested {
+    display: grid;
+    gap: .5rem; padding-inline-start: .4rem; margin-inline-start: 0; }
+}

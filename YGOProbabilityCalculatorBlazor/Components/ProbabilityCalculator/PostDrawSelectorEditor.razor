@@ -2,38 +2,42 @@
 @using YGOProbabilityCalculatorBlazor.Services.DeckImport
 
 <div class="mt-2">
-    <label for="@Id" class="form-label mb-1">Eligible</label>
-    <select id="@Id" class="form-select form-select-sm" value="" @onchange="Change">
-        <option value="">@(Selector.Kind == CardSelectorKind.Any ? "Any card" : "Add OR category/property…")</option>
-        @if (Selector.Kind != CardSelectorKind.Any) {
-            <option value="any">Any card (clear filter)</option>
-        }
-        <option value="level-at-least">Level >=…</option>
-        @if (Available.Any(static category => category.Source == CategorySource.User)) {
-            <optgroup label="User categories">
-                @foreach (CategoryBase category in Available.Where(static category => category.Source == CategorySource.User)) {
-                    <option value="@category.Identity">@category.Name</option>
-                }
-            </optgroup>
-        }
-        @if (RelevantMetadata.Length > 0) {
-            <optgroup label="Relevant properties">
-                @foreach (CategoryBase category in RelevantMetadata) {
-                    <option value="@category.Identity">@category.Name</option>
-                }
-            </optgroup>
-        }
-        @if (RemainingCommonMetadata.Length > 0) {
-            <optgroup label="Common properties">
-                @foreach (CategoryBase category in RemainingCommonMetadata) {
-                    <option value="@category.Identity">@category.Name</option>
-                }
-            </optgroup>
-        }
-    </select>
+    @if (!Grouped || Selector.Kind == CardSelectorKind.Any) {
+        <label for="@Id" class="form-label mb-1">Eligible</label>
+        <select id="@Id" class="form-select form-select-sm" value="" @onchange="Change">
+            <option value="">@(Selector.Kind == CardSelectorKind.Any ? "Any card" : "Add OR category/property…")</option>
+            @if (Selector.Kind != CardSelectorKind.Any) {
+                <option value="any">Any card (clear filter)</option>
+            }
+            <option value="level-at-least">Level >=…</option>
+            @if (Available.Any(static category => category.Source == CategorySource.User)) {
+                <optgroup label="User categories">
+                    @foreach (CategoryBase category in Available.Where(static category => category.Source == CategorySource.User)) {
+                        <option value="@category.Identity">@category.Name</option>
+                    }
+                </optgroup>
+            }
+            @if (RelevantMetadata.Length > 0) {
+                <optgroup label="Relevant properties">
+                    @foreach (CategoryBase category in RelevantMetadata) {
+                        <option value="@category.Identity">@category.Name</option>
+                    }
+                </optgroup>
+            }
+            @if (RemainingCommonMetadata.Length > 0) {
+                <optgroup label="Common properties">
+                    @foreach (CategoryBase category in RemainingCommonMetadata) {
+                        <option value="@category.Identity">@category.Name</option>
+                    }
+                </optgroup>
+            }
+        </select>
+    }
     @if (Selector.Kind != CardSelectorKind.Any && Grouped) {
+        <div class="form-label mb-1">Eligible</div>
         <div class="mt-2" aria-label="Grouped eligibility filter">
             <SelectorExpressionEditor Selector="Selector" Available="Available" CategoryColorIndices="CategoryColorIndices"
+                                      CategoryRename="CategoryRename" OnEditingChanged="OnEditingChanged"
                                       Options="GroupedOptions" OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
         </div>
     }
@@ -85,6 +89,8 @@
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public EventCallback<CardSelector> OnChanged { get; set; }
     [Parameter] public EventCallback<string?> OnError { get; set; }
+    [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
+    [Parameter] public EventCallback<bool> OnEditingChanged { get; set; }
 
     private readonly Dictionary<CardSelector, string> _validationErrors = [];
     private bool _grouped;

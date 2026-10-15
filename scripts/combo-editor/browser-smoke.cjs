@@ -140,7 +140,7 @@ const fixture = {
         const reloaded = await saved();
         assert.deepEqual(reloaded.Combos[0].AlternativeGroups, advanced.Combos[0].AlternativeGroups);
         assert.deepEqual(reloaded.Combos[0].Cards, advanced.Combos[0].Cards);
-        for (const width of [320, 375, 1280, 1440]) {
+        for (const width of [320, 375, 390, 768, 1280, 1440]) {
             for (const theme of ['light', 'dark']) {
                 await page.setViewportSize({ width, height: 1000 });
                 await page.getByLabel('Color theme preference').selectOption(theme);
@@ -153,6 +153,7 @@ const fixture = {
                     return box.width > 0 && (box.left < 0 || box.right > innerWidth + 1);
                 }).map(element => element.outerHTML));
                 assert.deepEqual(clipped, [], `${width}/${theme} clipped controls`);
+                assert(await editor.locator('.requirement-form-heading').evaluate(heading => heading.querySelector('button').getBoundingClientRect().bottom <= heading.getBoundingClientRect().bottom + 1), 'Cancel stays inside the form heading');
                 await click('Cancel');
             }
         }
@@ -261,7 +262,8 @@ const fixture = {
         await editor.locator('.accordion-button').click();
         await capture('after-vs-k9-1440-dark');
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-        await page.waitForFunction(() => document.querySelector('.probability-total-value')?.textContent.match(/83[.,]61/));
+        const examplePercent = (100 * 550033 / 658008).toFixed(2);
+        await page.waitForFunction(expected => document.querySelector('.probability-total-value')?.textContent.replace(',', '.').includes(expected), examplePercent);
         const second = page.locator('.combo-editor').nth(1);
         await second.locator('.accordion-button').click();
         await second.locator('.requirement-edit').first().click();
@@ -281,7 +283,7 @@ const fixture = {
         assert.equal(await page.locator('.combo-editor').count(), comboCount + 1);
         assert.equal(await page.locator('.combo-editor').first().locator('.accordion-button').getAttribute('aria-expanded'), 'false');
         assert.deepEqual(errors, []);
-        console.log(JSON.stringify({ browser: useFirefox ? 'firefox' : 'chromium', scenarios: 'add/edit, contextual OR, same-card, mixed alternatives, + boundaries between whole OR groups, group label below name, 0/0, save/reload, group cleanup, keyboard, touch, exact 50% vs 0%, VS/K9 83.61%', widths: [320, 375, 1280, 1440], headerWidths: [320, 375, 768, 900, 960, 1024, 1280, 1440], themes: ['light', 'dark'], pageErrors: errors }));
+        console.log(JSON.stringify({ browser: useFirefox ? 'firefox' : 'chromium', scenarios: 'add/edit, contextual OR, same-card, mixed alternatives, + boundaries between whole OR groups, group label below name, 0/0, save/reload, group cleanup, keyboard, touch, exact 50% vs 0%, VS/K9 550033/658008', widths: [320, 375, 390, 768, 1280, 1440], headerWidths: [320, 375, 768, 900, 960, 1024, 1280, 1440], themes: ['light', 'dark'], pageErrors: errors }));
     } finally {
         await browser.close();
     }
