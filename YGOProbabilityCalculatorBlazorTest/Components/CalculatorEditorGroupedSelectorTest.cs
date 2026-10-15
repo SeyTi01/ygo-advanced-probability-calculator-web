@@ -20,8 +20,12 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.FindAll(".selector-group").Count, Is.EqualTo(3));
         Assert.That(editor.FindAll(".draw-selector-chip").Count, Is.EqualTo(6));
         Assert.That(editor.FindAll("input[aria-label^='Minimum Level']").Count, Is.EqualTo(1));
+        SelectorExpressionEditor threshold = editor.FindComponents<SelectorExpressionEditor>()
+            .Single(component => component.Instance.Selector.Kind == CardSelectorKind.LevelAtLeast).Instance;
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain(target.Name));
         editor.Find("input[aria-label^='Minimum Level']").Change("6");
+        Assert.That(editor.FindComponents<SelectorExpressionEditor>()
+            .Single(component => component.Instance.Selector.Kind == CardSelectorKind.LevelAtLeast).Instance, Is.SameAs(threshold));
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));
         editor.Find(".simulation-cancel").Click();
         Assert.That(saved, Is.Null);

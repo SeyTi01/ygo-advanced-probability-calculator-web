@@ -111,6 +111,13 @@ async function main() {
                 assert.equal(await presetEditor.locator('.draw-selector-chip').count(), 6);
                 const minimum = presetEditor.locator('input[aria-label^="Minimum Level"]');
                 assert.equal(await minimum.inputValue(), '5');
+                await minimum.focus();
+                await minimum.press('ArrowUp');
+                await presetEditor.locator('.simulation-targets').filter({ hasText: 'None' }).waitFor();
+                assert.equal(await minimum.inputValue(), '6');
+                assert(await minimum.evaluate(input => input === document.activeElement), 'Numeric step must retain focus');
+                await minimum.fill('5');
+                await minimum.press('Tab');
                 for (const width of [1440, 375]) {
                     await page.setViewportSize({ width, height: 1000 });
                     await presetEditor.locator('.simulation-editor').scrollIntoViewIfNeeded();
