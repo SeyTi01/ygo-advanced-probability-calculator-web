@@ -108,13 +108,13 @@
                     int currentGroupIndex = groupIndex;
                     ComboAlternativeGroup group = Combo.AlternativeGroups[currentGroupIndex];
                     @if (Combo.Categories.Count + Combo.Cards.Count + currentGroupIndex > 0) { @RequirementSeparator() }
-                    <div class="requirement-or-group" role="group" aria-label="@($"Alternative group {currentGroupIndex + 1}")">
+                    <ExpressionGroup Label="@($"Alternative group {currentGroupIndex + 1}")">
                         @for (int leafIndex = 0; leafIndex < group.Alternatives.Count; leafIndex++) {
                             int currentLeafIndex = leafIndex;
-                            @if (currentLeafIndex > 0) { <div class="alternative-separator">OR</div> }
+                            @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" /> }
                             @RequirementRow(group.Alternatives[currentLeafIndex], currentLeafIndex, currentGroupIndex)
                         }
-                    </div>
+                    </ExpressionGroup>
                 }
             </div>
             @if (!AuthoringScope && _editingRequirement is null) {
@@ -140,30 +140,22 @@
 </div>
 
 @code {
-    private static RenderFragment RequirementSeparator() => @<div class="requirement-and-separator" role="separator" aria-label="AND: also required">
-        <span aria-hidden="true">+</span>
-    </div>;
+    private static RenderFragment RequirementSeparator() => @<ExpressionSeparator Operator="AND" Symbol="+" />;
 
-    private RenderFragment RequirementRow(ComboAlternative requirement, int index, int? groupIndex) => @<div class="requirement-row">
-        <button type="button" class="requirement-edit" aria-label="@($"Edit {AlternativeTargetLabel(requirement)}")"
-                @ref="_rowButtons[RowKey(requirement, index, groupIndex)]"
-                data-requirement="@RowKey(requirement, index, groupIndex)"
-                aria-expanded="@IsOpenRow(requirement, index, groupIndex).ToString().ToLowerInvariant()"
-                @onclick="() => BeginEdit(requirement, index, groupIndex)">
-            <span class="requirement-description">
-                @if (requirement.Category is { } category) {
-                    @CategoryBadge(category)
-                }
-                else { @CardBadge(requirement.Card!) }
-            </span>
-            <span class="requirement-edit-label">Edit</span>
-        </button>
-        @if (IsOpenRow(requirement, index, groupIndex)) {
-            @RequirementForm()
-        }
-    </div>;
+    private RenderFragment RequirementRow(ComboAlternative requirement, int index, int? groupIndex) => @<ExpressionRow
+        Label="@($"Edit {AlternativeTargetLabel(requirement)}")" Expanded="IsOpenRow(requirement, index, groupIndex)"
+        @ref="_rowButtons[RowKey(requirement, index, groupIndex)]" data-requirement="@RowKey(requirement, index, groupIndex)"
+        OnEdit="() => BeginEdit(requirement, index, groupIndex)">
+        <ChildContent>
+            @if (requirement.Category is { } category) { @CategoryBadge(category) }
+            else { @CardBadge(requirement.Card!) }
+        </ChildContent>
+        <EditorContent>
+            @if (IsOpenRow(requirement, index, groupIndex)) { @RequirementForm() }
+        </EditorContent>
+    </ExpressionRow>;
 
-    private RenderFragment RequirementForm() => @<form class="requirement-form" @onsubmit="AddConstraint" @onsubmit:preventDefault @onkeydown="HandleRequirementKeyDown">
+    private RenderFragment RequirementForm() => @<ExpressionForm OnSubmit="AddConstraint" OnKeyDown="HandleRequirementKeyDown">
         <div class="requirement-form-heading">
             <strong>@(_editingRequirement is not null ? "Edit requirement" : AndScope ? "Another property · same card" : AlternativeScope ? "Add an alternative · OR" : "Add requirement")</strong>
             @if (AuthoringScope || _editingRequirement is not null) {
@@ -252,7 +244,7 @@
                 <button type="button" class="btn btn-sm btn-outline-danger" @onclick="DeleteEditingRequirement">@( _editingGroupIndex is not null ? "Remove alternative" : "Remove requirement")</button>
             </div>
         }
-    </form>;
+    </ExpressionForm>;
 
     [Parameter] public int Index { get; set; }
     [Parameter] public int Count { get; set; }
@@ -932,7 +924,7 @@
 
         if (_focusAlternativeEntry) {
             _focusAlternativeEntry = false;
-            if (_returnRowKey is { } key && _rowButtons.TryGetValue(key, out ElementReference button) && RowExists(key)) {
+            if (_returnRowKey is { } key && _rowButtons.TryGetValue(key, out ExpressionRow? button) && RowExists(key)) {
                 _returnRowKey = null;
                 await button.FocusAsync();
             }

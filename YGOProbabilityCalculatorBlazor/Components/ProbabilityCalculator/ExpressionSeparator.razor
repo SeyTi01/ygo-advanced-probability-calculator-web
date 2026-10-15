@@ -1,0 +1,10 @@
+<div class="@(Operator == "OR" ? "alternative-separator" : "requirement-and-separator")" role="separator" aria-label="@Label">
+    <span aria-hidden="true">@(Symbol ?? Operator)</span>
+</div>
+
+@code {
+    [Parameter] public string Operator { get; set; } = "AND";
+    [Parameter] public string? Symbol { get; set; }
+    [Parameter] public string? AccessibleLabel { get; set; }
+    private string Label => AccessibleLabel ?? (Operator == "OR" ? "OR: any alternative" : "AND: also required");
+}

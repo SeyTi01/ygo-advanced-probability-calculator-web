@@ -1,60 +1,76 @@
 @using YGOProbabilityCalculatorBlazor.Models
 
-<span class="selector-expression d-inline-flex flex-wrap align-items-center gap-1" style="max-width:100%;min-width:0">
-    @if (Selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
-        <span class="selector-group d-inline-flex flex-wrap align-items-center gap-1 border rounded p-1" style="max-width:100%;min-width:0">
-            <span aria-hidden="true">(</span>
-            <select class="form-select form-select-sm" style="width:auto" aria-label="Group operator @Path"
-                    value="@Selector.Kind" @onchange="ChangeOperator">
-                <option value="AllOf">AND</option>
-                <option value="AnyOf">OR</option>
-            </select>
+<div class="selector-expression" data-selector-path="@Path">
+    <ExpressionRow Label="@($"Edit {Label}")" Expanded="IsEditing" OnEdit="BeginEdit" @ref="_row">
+        <ChildContent>
+            @if (IsGroup) {
+                <span class="small fw-semibold">@Label</span>
+            }
+            else {
+                <span class="badge category-tag draw-selector-chip text-wrap @ChipClass">@Label</span>
+            }
+        </ChildContent>
+        <EditorContent>
+            @if (IsEditing) {
+                <ExpressionForm OnSubmit="Save" OnKeyDown="HandleKeyDown" StopKeyPropagation="true">
+                    <div class="requirement-form-heading">
+                        <strong>@FormHeading</strong>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="Cancel">Cancel</button>
+                    </div>
+                    @if (_mode == "edit" && IsGroup) {
+                        <label class="form-label" for="@FieldId">Match</label>
+                        <select id="@FieldId" @ref="_entry" class="form-select" @bind="_operation">
+                            <option value="AllOf">All conditions · same card (AND)</option>
+                            <option value="AnyOf">Any condition (OR)</option>
+                        </select>
+                    }
+                    else {
+                        <label class="form-label" for="@FieldId">Property or category</label>
+                        <select id="@FieldId" @ref="_entry" class="form-select" value="@_identity" @onchange="ChangeIdentity">
+                            <option value="">Choose…</option>
+                            @if (_identity.Length > 0 && _identity != "level-at-least" && !Available.Any(category => category.Identity == _identity)) {
+                                <option value="@_identity">@IdentityLabel(_identity)</option>
+                            }
+                            @Options
+                        </select>
+                        @if (_identity == "level-at-least") {
+                            <label class="form-label mt-2" for="@(FieldId + "-level")">Minimum Level</label>
+                            <input id="@(FieldId + "-level")" @ref="_levelInput" class="form-control" type="number" min="0" max="2147483647"
+                                   aria-label="Minimum Level" value="@_minimum" @oninput="ChangeMinimum" />
+                        }
+                    }
+                    @if (_error is not null) { <div class="small text-danger mt-2" role="alert">@_error</div> }
+                    <button type="submit" class="btn btn-primary mt-2" disabled="@(_error is not null)">Save</button>
+                    <div class="requirement-context-actions">
+                        @if (_mode == "edit") {
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => Add(CardSelectorKind.AllOf)">Add property (AND)</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => Add(CardSelectorKind.AnyOf)">Add alternative (OR)</button>
+                            @if (IsGroup) {
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ReplaceGroup">Replace group</button>
+                            }
+                        }
+                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="RemoveSelf">@(IsGroup ? "Remove group" : "Remove clause")</button>
+                    </div>
+                </ExpressionForm>
+            }
+        </EditorContent>
+    </ExpressionRow>
+    @if (IsGroup) {
+        <ExpressionGroup Label="@Label" Nested="true">
             @for (int index = 0; index < Terms.Length; index++) {
                 int position = index;
-                @if (index > 0) { <span class="small">@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")</span> }
-                <SelectorExpressionEditor @key="_termKeys[Terms[index].Signature]" Selector="Terms[index]" Path="@($"{Path}.{index}")" Available="Available" Options="Options"
-                    CategoryColorIndices="CategoryColorIndices" OnChanged="value => Replace(position, value)"
-                    OnRemove="() => Remove(position)" OnValidation="OnValidation" />
+                @if (index > 0) {
+                    <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")"
+                        AccessibleLabel="@(Selector.Kind == CardSelectorKind.AllOf ? "AND: every condition on the same card" : "OR: any condition")" />
+                }
+                <SelectorExpressionEditor @key="_termKeys[Terms[index].Signature]" Selector="Terms[index]" Path="@($"{Path}.{index}")"
+                    Available="Available" Options="Options" CategoryColorIndices="CategoryColorIndices" CategoryRename="CategoryRename"
+                    Session="EditorSession" ReplaceSelector="value => Replace(position, value)" OnRemove="() => Remove(position)"
+                    OnValidation="OnValidation" OnEditingChanged="OnEditingChanged" />
             }
-            <select class="form-select form-select-sm" style="width:auto;max-width:100%" value="" aria-label="Add clause to group @Path"
-                    @onchange="args => Add(args.Value?.ToString(), Selector.Kind)">
-                <option value="">Add clause…</option>
-                @Options
-            </select>
-            <span aria-hidden="true">)</span>
-        </span>
+        </ExpressionGroup>
     }
-    else {
-        <span class="badge category-tag draw-selector-chip text-wrap d-inline-flex align-items-center @ChipClass">
-            @if (Selector.Kind == CardSelectorKind.LevelAtLeast) {
-                <label class="d-inline-flex align-items-center gap-1 mb-0">
-                    Level >=
-                    <input class="form-control form-control-sm" style="width:5rem" type="number" min="0" max="2147483647"
-                           aria-label="Minimum Level @Path" value="@Selector.MinimumLevel" @onchange="ChangeMinimum" />
-                </label>
-            }
-            else { <span>@Label</span> }
-            <ChipRemoveButton Class="category-remove-button ms-1" aria-label="@($"Remove eligibility {Label}")" title="@($"Remove eligibility {Label}")" OnClick="OnRemove" />
-        </span>
-    }
-    <details class="selector-extend">
-        <summary class="small" aria-label="Extend clause @Path" title="Add an AND/OR group">+</summary>
-        <div class="d-flex flex-wrap gap-1 border rounded p-1">
-            <select class="form-select form-select-sm" style="width:auto" aria-label="New group operator @Path" @bind="_operation">
-                <option value="AllOf">AND</option><option value="AnyOf">OR</option>
-            </select>
-            <select class="form-select form-select-sm" style="width:auto;max-width:100%" value="" aria-label="Add grouped clause @Path"
-                    @onchange="args => Add(args.Value?.ToString(), _operation)">
-                <option value="">Choose clause…</option>
-                @Options
-            </select>
-            @if (Selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
-                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OnRemove">Remove group</button>
-            }
-        </div>
-    </details>
-    @if (_error is not null) { <span class="small text-danger" role="alert">@_error</span> }
-</span>
+</div>
 
 @code {
     [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;
@@ -62,87 +78,225 @@
     [Parameter] public IReadOnlyList<CategoryBase> Available { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>();
     [Parameter] public RenderFragment? Options { get; set; }
+    [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
+    [Parameter] public SelectorEditSession? Session { get; set; }
+    [Parameter] public Func<CardSelector, Task>? ReplaceSelector { get; set; }
     [Parameter] public EventCallback<CardSelector> OnChanged { get; set; }
     [Parameter] public EventCallback OnRemove { get; set; }
+    [Parameter] public EventCallback<bool> OnEditingChanged { get; set; }
     [Parameter] public EventCallback<(CardSelector Selector, string? Message)> OnValidation { get; set; }
 
-    private CardSelectorKind _operation = CardSelectorKind.AllOf;
-    private string? _error;
-    private CardSelector? _previous;
-    private CardSelector[] Terms { get; set; } = [];
+    private readonly SelectorEditSession _session = new();
+    private readonly object _node = new();
+    private readonly string _fieldId = "selector-clause-" + Guid.NewGuid().ToString("N");
     private readonly Dictionary<string, object> _termKeys = new(StringComparer.Ordinal);
-    private string Identity => Selector.CategoryIdentities.FirstOrDefault() ?? "metadata:level:0";
-    private string Label => Selector.Kind == CardSelectorKind.LevelAtLeast ? "Level threshold"
-        : Available.FirstOrDefault(category => category.Identity == Identity)?.Name ?? Uri.UnescapeDataString(Identity[(Identity.IndexOf(':') + 1)..]);
+    private SelectorEditSession EditorSession => Session ?? _session;
+    private bool IsEditing => ReferenceEquals(EditorSession.ActiveNode, _node);
+    private bool IsGroup => Selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf;
+    private string FieldId => _fieldId;
+    private CardSelector[] Terms { get; set; } = [];
+    private CardSelector? _previous;
+    private CardSelector? _seed;
+    private CardSelector? _validationOwner;
+    private CardSelectorKind _operation;
+    private CardSelectorKind _join;
+    private string _mode = "edit";
+    private string _identity = "";
+    private string _minimum = "5";
+    private string? _error;
+    private int _renameVersion;
+    private bool _focusEntry;
+    private bool _focusRow;
+    private ExpressionRow? _row;
+    private ElementReference _entry;
+    private ElementReference _levelInput;
+
+    private string Identity => Selector.CategoryIdentities.FirstOrDefault() ?? "";
+    private string Label => Selector.Kind switch {
+        CardSelectorKind.AllOf => "All conditions · same card",
+        CardSelectorKind.AnyOf => "Any condition",
+        CardSelectorKind.LevelAtLeast => $"Level >= {Selector.MinimumLevel}",
+        _ => IdentityLabel(Identity)
+    };
+    private string IdentityLabel(string identity) => Available.FirstOrDefault(category => category.Identity == identity)?.Name
+        ?? Uri.UnescapeDataString(identity[(identity.IndexOf(':') + 1)..]);
     private string ChipClass => Selector.Kind == CardSelectorKind.LevelAtLeast
         ? "card-property-tag " + CardPropertyColorPalette.GetCssClass("level:0")
         : Available.FirstOrDefault(category => category.Identity == Identity) is { } category
             ? CategoryChipPalette.GetCssClass(category, CategoryColorIndices) : CategoryChipPalette.GetFallbackCssClass(Identity);
-
-    private static CardSelector Combine(CardSelectorKind kind, IEnumerable<CardSelector> terms) => kind == CardSelectorKind.AllOf
-        ? CardSelector.AllOfSelectors(terms) : CardSelector.AnyOfSelectors(terms);
+    private string FormHeading => _mode switch {
+        "add" when _join == CardSelectorKind.AllOf => "Add property · same card",
+        "add" => "Add alternative · OR",
+        "replace" => "Replace group",
+        _ when IsGroup => "Edit group",
+        _ => "Edit condition"
+    };
 
     protected override void OnParametersSet() {
+        if (CategoryRename is { } rename && rename.Version != _renameVersion) {
+            string oldIdentity = $"user:{rename.OldName}";
+            string newIdentity = $"user:{rename.NewName}";
+            foreach (CardSelector term in Terms) {
+                if (_termKeys.TryGetValue(term.Signature, out object? key)) {
+                    _termKeys.TryAdd(term.RenameCategory(oldIdentity, newIdentity).Signature, key);
+                }
+            }
+            if (_identity == oldIdentity) { _identity = newIdentity; }
+            _seed = _seed?.RenameCategory(oldIdentity, newIdentity);
+            _renameVersion = rename.Version;
+        }
         if (!ReferenceEquals(_previous, Selector)) {
-            Terms = Selector.Terms.ToArray();
+            Terms = IsGroup ? Selector.Terms.ToArray() : [];
             _previous = Selector;
         }
         HashSet<string> current = Terms.Select(term => term.Signature).ToHashSet(StringComparer.Ordinal);
         foreach (string removed in _termKeys.Keys.Where(signature => !current.Contains(signature)).ToArray()) {
             _termKeys.Remove(removed);
         }
-        foreach (CardSelector term in Terms) {
-            _termKeys.TryAdd(term.Signature, new object());
+        foreach (CardSelector term in Terms) { _termKeys.TryAdd(term.Signature, new object()); }
+    }
+
+    private async Task BeginEdit() {
+        if (IsEditing) { return; }
+        if (EditorSession.CancelActive is { } cancel) { await cancel(); }
+        _mode = "edit";
+        _seed = null;
+        _identity = Selector.Kind == CardSelectorKind.LevelAtLeast ? "level-at-least" : Identity;
+        _minimum = Selector.MinimumLevel?.ToString() ?? "5";
+        _operation = Selector.Kind;
+        _validationOwner = Selector;
+        EditorSession.ActiveNode = _node;
+        EditorSession.CancelActive = () => InvokeAsync(() => Close(false));
+        _focusEntry = true;
+        await OnEditingChanged.InvokeAsync(true);
+    }
+
+    private async Task Close(bool focus) {
+        await SetError(null);
+        EditorSession.ActiveNode = null;
+        EditorSession.CancelActive = null;
+        _focusRow = focus;
+        await OnEditingChanged.InvokeAsync(false);
+        StateHasChanged();
+    }
+
+    private Task Cancel() => Close(true);
+    private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? Cancel() : Task.CompletedTask;
+
+    private async Task ChangeIdentity(ChangeEventArgs args) {
+        _identity = args.Value?.ToString() ?? "";
+        await ValidateLeaf();
+    }
+
+    private async Task ChangeMinimum(ChangeEventArgs args) {
+        _minimum = args.Value?.ToString() ?? "";
+        await ValidateLeaf();
+    }
+
+    private Task ValidateLeaf() => SetError(_identity == "level-at-least" && (!int.TryParse(_minimum, out int minimum) || minimum < 0)
+        ? "Enter a Level from 0 to 2147483647." : _identity.Length == 0 ? "Choose a property or category." : null);
+
+    private async Task SetError(string? message) {
+        _error = message;
+        await OnValidation.InvokeAsync((_validationOwner ?? Selector, message));
+    }
+
+    private CardSelector Edited() {
+        if (_mode == "edit" && IsGroup) { return Combine(_operation, Terms); }
+        return _identity == "level-at-least" ? CardSelector.LevelAtLeast(int.Parse(_minimum))
+            : new CardSelector(CardSelectorKind.Category, [_identity]);
+    }
+
+    private async Task Add(CardSelectorKind operation) {
+        if (!IsGroup) {
+            await ValidateLeaf();
+            if (_error is not null) { return; }
+        }
+        _seed = Edited();
+        _join = operation;
+        _mode = "add";
+        _identity = "";
+        _minimum = "5";
+        _focusEntry = true;
+        await SetError(null);
+    }
+
+    private async Task ReplaceGroup() {
+        _mode = "replace";
+        _identity = "";
+        _minimum = "5";
+        _focusEntry = true;
+        await SetError(null);
+    }
+
+    private async Task Save() {
+        if (!(_mode == "edit" && IsGroup)) {
+            await ValidateLeaf();
+            if (_error is not null) { return; }
+        }
+        if (await Apply(() => _mode == "add" ? Combine(_join, [_seed!, Edited()]) : Edited())) {
+            await Close(true);
         }
     }
 
-    private async Task Publish(Func<CardSelector> create) {
+    private static CardSelector Combine(CardSelectorKind kind, IEnumerable<CardSelector> terms) => kind == CardSelectorKind.AllOf
+        ? CardSelector.AllOfSelectors(terms) : CardSelector.AnyOfSelectors(terms);
+
+    private async Task Publish(CardSelector value) {
+        if (Selector.Equals(value)) { return; }
+        if (ReplaceSelector is { } replace) { await replace(value); }
+        else { await OnChanged.InvokeAsync(value); }
+    }
+
+    private async Task<bool> Apply(Func<CardSelector> create) {
         try {
-            CardSelector updated = create();
-            await OnChanged.InvokeAsync(updated);
-            _error = null;
-            await OnValidation.InvokeAsync((Selector, null));
+            await Publish(create());
+            await SetError(null);
+            return true;
         }
         catch (ArgumentException) {
-            _error = "Filter is too large or too deeply grouped.";
-            await OnValidation.InvokeAsync((Selector, _error));
+            await SetError("Filter is too large or too deeply grouped.");
+            return false;
         }
     }
 
-    private Task Replace(int position, CardSelector value) => Publish(() => {
+    private async Task Replace(int position, CardSelector value) {
         CardSelector updated = Combine(Selector.Kind, Terms.Select((term, index) => index == position ? value : term));
-        // Transfer the edited node's identity without removing its old key until
-        // the parent accepts the model. A rejected ancestor limit keeps its DOM.
+        // Preserve the edited component across immutable replacement and sorting.
+        // Keep the old key until the complete tree has passed ancestor bounds.
         _termKeys.TryAdd(value.Signature, _termKeys[Terms[position].Signature]);
-        return updated;
-    });
+        await Publish(updated);
+        bool childRetained = updated.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf
+            && !updated.Equals(value) && updated.Terms.Any(term => term.Equals(value));
+        if (!childRetained) {
+            _focusRow = true;
+            StateHasChanged();
+        }
+    }
 
     private async Task Remove(int position) {
         CardSelector[] remaining = Terms.Where((term, index) => index != position).ToArray();
-        if (remaining.Length == 0) {
-            await OnRemove.InvokeAsync();
-        }
-        else {
-            await Publish(() => Combine(Selector.Kind, remaining));
-        }
+        if (remaining.Length == 0) { await OnRemove.InvokeAsync(); }
+        else { await Publish(Combine(Selector.Kind, remaining)); }
+        _focusRow = true;
+        StateHasChanged();
     }
 
-    private Task Add(string? identity, CardSelectorKind operation) {
-        CardSelector? added = identity == "level-at-least" ? CardSelector.LevelAtLeast(5)
-            : Available.FirstOrDefault(category => category.Identity == identity) is { } category ? CardSelector.For(category) : null;
-        return added is null ? Task.CompletedTask : Publish(() => Combine(operation, [Selector, added]));
+    private async Task RemoveSelf() {
+        await Close(false);
+        await OnRemove.InvokeAsync();
     }
 
-    private Task ChangeOperator(ChangeEventArgs args) => Publish(() => Combine(args.Value?.ToString() == "AllOf"
-        ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf, Terms));
-
-    private async Task ChangeMinimum(ChangeEventArgs args) {
-        if (!int.TryParse(args.Value?.ToString(), out int minimum) || minimum < 0) {
-            _error = "Enter a Level from 0 to 2147483647.";
-            await OnValidation.InvokeAsync((Selector, _error));
-            return;
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_focusEntry && IsEditing) {
+            _focusEntry = false;
+            bool editingLevel = _identity == "level-at-least" && (_mode != "edit" || !IsGroup);
+            if (editingLevel) { await _levelInput.FocusAsync(); }
+            else { await _entry.FocusAsync(); }
         }
-        await Publish(() => CardSelector.LevelAtLeast(minimum));
+        if (_focusRow && _row is not null) {
+            _focusRow = false;
+            await _row.FocusAsync();
+        }
     }
-
 }

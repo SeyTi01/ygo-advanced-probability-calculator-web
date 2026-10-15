@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const http = require('node:http');
 const path = require('node:path');
-const { chromium } = require('playwright');
+const { chromium, firefox } = require('playwright');
 
 async function main() {
     const root = path.resolve(process.argv[2]);
@@ -20,7 +20,8 @@ async function main() {
         } catch { response.writeHead(404).end(); }
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    const browser = await chromium.launch({ headless: true,
+    const engine = process.env.YGO_BROWSER_ENGINE || 'chromium';
+    const browser = await ({ chromium, firefox }[engine]).launch({ headless: true,
         ...(process.env.YGO_BROWSER_CHANNEL ? { channel: process.env.YGO_BROWSER_CHANNEL } : {}),
         ...(process.env.YGO_BROWSER_EXECUTABLE ? { executablePath: process.env.YGO_BROWSER_EXECUTABLE } : {}) });
     try {
@@ -107,39 +108,66 @@ async function main() {
             if (identity === 92221402) {
                 assert.doesNotMatch(await presetEditor.locator('.card-simulation').innerText(), /Partial/);
                 await presetEditor.locator('.simulation-edit').click();
-                assert.equal(await presetEditor.locator('.selector-group').count(), 3);
-                assert.equal(await presetEditor.locator('.draw-selector-chip').count(), 6);
-                const minimum = presetEditor.locator('input[aria-label^="Minimum Level"]');
-                assert.equal(await minimum.inputValue(), '5');
-                await minimum.focus();
-                await minimum.press('ArrowUp');
-                await presetEditor.locator('.simulation-targets').filter({ hasText: 'None' }).waitFor();
-                assert.equal(await minimum.inputValue(), '6');
-                assert(await minimum.evaluate(input => input === document.activeElement), 'Numeric step must retain focus');
-                await minimum.fill('5');
-                await minimum.press('Tab');
-                for (const width of [1440, 375]) {
-                    await page.setViewportSize({ width, height: 1000 });
-                    await presetEditor.locator('.simulation-editor').scrollIntoViewIfNeeded();
-                    await page.screenshot({ path: path.join(evidence, `chaotic-editor-${width}.png`) });
-                    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+                const expression = presetEditor.locator('[aria-label="Grouped eligibility filter"]');
+                assert.equal(await expression.locator('.requirement-or-group').count(), 3);
+                assert.equal(await expression.locator('.draw-selector-chip').count(), 6);
+                assert.equal(await expression.locator('select, input, details').count(), 0);
+                const editLevel = () => expression.getByRole('button', { name: /^Edit Level >=/ }).click();
+                const form = expression.locator('form');
+                const minimum = expression.getByRole('spinbutton', { name: 'Minimum Level', exact: true });
+                const rowSave = () => form.getByRole('button', { name: 'Save', exact: true }).click();
+                const rowCancel = () => form.getByRole('button', { name: 'Cancel', exact: true }).click();
+                for (const width of [1440, 768, 390, 320]) {
+                    for (const theme of ['light', 'dark']) {
+                        await page.setViewportSize({ width, height: 1000 });
+                        await page.getByLabel('Color theme preference').selectOption(theme);
+                        await presetEditor.locator('.simulation-editor').screenshot({ path: path.join(evidence, 'chaotic-rows-' + width + '-' + theme + '.png') });
+                        await editLevel();
+                        assert.equal(await minimum.inputValue(), '5');
+                        await presetEditor.locator('.simulation-editor').screenshot({ path: path.join(evidence, 'chaotic-form-' + width + '-' + theme + '.png') });
+                        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+                        const clipped = await expression.locator('button, select, input').evaluateAll(elements => elements.filter(element => {
+                            const box = element.getBoundingClientRect();
+                            return box.width > 0 && (box.left < 0 || box.right > innerWidth + 1);
+                        }).map(element => element.outerHTML));
+                        assert.deepEqual(clipped, [], width + '/' + theme + ' clipped controls');
+                        assert(await minimum.evaluate(input => input === document.activeElement));
+                        await minimum.press('ArrowUp');
+                        assert.equal(await minimum.inputValue(), '6');
+                        assert(await minimum.evaluate(input => input === document.activeElement), 'Numeric step retains focus');
+                        assert.equal(await presetEditor.locator('.simulation-targets').innerText(), text, 'Unsaved row keeps preview');
+                        await rowCancel();
+                        assert(await expression.getByRole('button', { name: 'Edit Level >= 5', exact: true }).evaluate(button => button === document.activeElement));
+                    }
                 }
                 await page.setViewportSize({ width: 1440, height: 1000 });
+                await editLevel();
+                await minimum.fill('');
+                assert(await presetEditor.locator('.simulation-save').isDisabled());
+                await minimum.press('Escape');
+                assert.equal(await form.count(), 0);
+                assert.equal(await presetEditor.locator('.simulation-editor').count(), 1, 'Escape cancels only the local edit');
+                await editLevel();
                 await minimum.fill('6');
-                await minimum.press('Tab');
+                await minimum.press('Enter');
+                await form.waitFor({ state: 'detached' });
                 assert.match(await presetEditor.locator('.simulation-targets').innerText(), /None/);
+                assert(await expression.getByRole('button', { name: 'Edit Level >= 6', exact: true }).evaluate(button => button === document.activeElement));
                 await presetEditor.locator('.simulation-cancel').click();
                 assert.equal(await presetEditor.locator('.simulation-targets').innerText(), text);
                 await presetEditor.locator('.simulation-edit').click();
-                await presetEditor.locator('[aria-label="Group operator root.0"]').selectOption('AllOf');
+                await expression.getByRole('button', { name: 'Edit Any condition', exact: true }).first().click();
+                await form.locator('select').selectOption('AllOf');
+                await rowSave();
+                assert(await expression.getByRole('button', { name: 'Edit All conditions · same card', exact: true }).evaluate(button => button === document.activeElement), 'Flattened group returns focus to its surviving parent row');
                 assert.match(await presetEditor.locator('.simulation-targets').innerText(), /None/);
                 await presetEditor.locator('.simulation-save').click();
                 assert.match(await presetEditor.locator('.simulation-source').innerText(), /Custom/);
                 await presetEditor.locator('.simulation-restore').click();
                 assert.equal(await presetEditor.locator('.simulation-targets').innerText(), text);
                 await presetEditor.locator('.simulation-edit').click();
-                await presetEditor.locator('input[aria-label^="Minimum Level"]').fill('-1');
-                await presetEditor.locator('input[aria-label^="Minimum Level"]').press('Tab');
+                await editLevel();
+                await minimum.fill('-1');
                 assert(await presetEditor.locator('.simulation-save').isDisabled());
                 await presetEditor.locator('.simulation-cancel').click();
             }

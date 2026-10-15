@@ -1,0 +1,10 @@
+<form class="requirement-form" @onsubmit="OnSubmit" @onsubmit:preventDefault @onkeydown="OnKeyDown" @onkeydown:stopPropagation="StopKeyPropagation">
+    @ChildContent
+</form>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+    [Parameter] public bool StopKeyPropagation { get; set; }
+}

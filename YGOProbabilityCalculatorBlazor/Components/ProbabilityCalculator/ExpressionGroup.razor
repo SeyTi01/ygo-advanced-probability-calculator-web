@@ -1,0 +1,9 @@
+<div class="@(Nested ? "requirement-or-group expression-group-nested" : "requirement-or-group")" role="group" aria-label="@Label">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Alternative group";
+    [Parameter] public bool Nested { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

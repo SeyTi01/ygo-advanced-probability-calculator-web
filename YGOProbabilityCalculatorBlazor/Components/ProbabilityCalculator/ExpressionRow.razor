@@ -1,0 +1,21 @@
+<div class="requirement-row">
+    <button type="button" class="requirement-edit" @attributes="AdditionalAttributes" aria-label="@Label"
+            aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @ref="_button">
+        <span class="requirement-description">@ChildContent</span>
+        <span class="requirement-edit-label">Edit</span>
+    </button>
+    @EditorContent
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Edit requirement";
+    [Parameter] public bool Expanded { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? EditorContent { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ElementReference _button;
+
+    public ValueTask FocusAsync() => _button.FocusAsync();
+}
