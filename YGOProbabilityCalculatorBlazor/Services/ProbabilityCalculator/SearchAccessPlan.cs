@@ -4,8 +4,9 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 // Compile preimages of final-hand events under optional one-card substitutions.
-// There is no draw history or remaining-deck vector here. Availability uses the
-// original copies minus the observed hand, with one scalar physical capacity.
+// The Fast projection uses original copies minus the observed hand and scalar
+// Deck capacity. The physical projection substitutes a joint held-plus-hidden
+// variable for each availability bound and subtracts known consumed sources.
 // Only originally held sources act; fetched effects never restart either phase.
 internal sealed class SearchAccessPlan {
     private readonly List<Card> _deck;
@@ -73,7 +74,14 @@ internal sealed class SearchAccessPlan {
         }
     }
 
-    internal List<List<CompiledEvent?>> Compile(List<Combo> combos, int handSize, List<Card> rows, int capacity, int targetLoss = 0) {
+    internal List<List<CompiledEvent?>> Compile(
+        List<Combo> combos,
+        int handSize,
+        List<Card> rows,
+        int capacity,
+        int targetLoss = 0,
+        PhysicalSearchScenario? physical = null
+    ) {
         using IDisposable? phase = _budget.SearchDiagnostics?.Measure("assignment compilation");
         ComboEventCompiler compiler = new(_deck, handSize, _budget);
         List<List<CompiledEvent?>> finalEvents = combos.Select(compiler.CompileCombo).ToList();
@@ -155,7 +163,16 @@ internal sealed class SearchAccessPlan {
                             // For positive fetched counts only: f <= max(0, n-h-D)
                             // iff h <= n-D-f. Empty assignments must remain optional.
                             int loss = fetched[row] > 0 ? targetLoss : 0;
-                            valid &= Add(BigInteger.One << row, used[row], _deck[row].Copies - fetched[row] - loss);
+                            if (physical is null) {
+                                valid &= Add(BigInteger.One << row, used[row], _deck[row].Copies - fetched[row] - loss);
+                            }
+                            else {
+                                valid &= Add(BigInteger.One << row, used[row], handSize);
+                                if (fetched[row] > 0) {
+                                    int consumed = physical.Consumed(_deck[row].Id);
+                                    valid &= Add(BigInteger.One << row, 0, _deck[row].Copies - consumed - fetched[row], unavailable: true);
+                                }
+                            }
                         }
                     }
                     if (!valid) {
@@ -164,21 +181,22 @@ internal sealed class SearchAccessPlan {
                     CompiledEvent result = new(bounds.Values.OrderBy(bound => bound.EligibleRows).ToArray());
                     _budget.Spend(result.Constraints.Length + 1L);
                     if (!projected[combo].Contains(result)) {
-                        cells += (result.Constraints.Length + 1L) * (3 + rows.Count / 32);
+                        cells += (result.Constraints.Length + 1L) * (3 + rows.Count / (physical is null ? 32 : 16));
                         _budget.CheckStorage(projected.Sum(events => (long)events.Count) + 1, cells);
                         projected[combo].Add(result);
                     }
 
-                    bool Add(BigInteger mask, int minimum, int maximum) {
+                    bool Add(BigInteger mask, int minimum, int maximum, bool unavailable = false) {
                         BigInteger mapped = BigInteger.Zero;
                         _budget.Spend(rows.Count * (WorkBudget.IntegerCells(mask) + 1));
                         for (int row = 0; row < rowMap.Length; row++) {
                             if ((rowMap[row] & mask) != 0) {
-                                mapped |= BigInteger.One << row;
+                                int variable = physical is null ? row : 2 * row;
+                                mapped |= BigInteger.One << (unavailable ? variable + 1 : variable);
                             }
                         }
                         minimum = Math.Max(0, minimum);
-                        maximum = Math.Min(handSize, maximum);
+                        maximum = unavailable ? maximum : Math.Min(handSize, maximum);
                         if (bounds.TryGetValue(mapped, out CountBound previous)) {
                             minimum = Math.Max(minimum, previous.MinCount);
                             maximum = Math.Min(maximum, previous.MaxCount);
@@ -186,9 +204,9 @@ internal sealed class SearchAccessPlan {
                         if (minimum > maximum || (mapped.IsZero && minimum > 0)) {
                             return false;
                         }
-                        if (!mapped.IsZero && (minimum != 0 || maximum != handSize)) {
+                        if (!mapped.IsZero && (minimum != 0 || maximum != handSize || unavailable)) {
                             bounds[mapped] = new(mapped, minimum, maximum);
-                            _budget.CheckStorage(bounds.Count, (long)bounds.Count * (3 + rows.Count / 32));
+                            _budget.CheckStorage(bounds.Count, (long)bounds.Count * (3 + rows.Count / (physical is null ? 32 : 16)));
                         }
                         return true;
                     }

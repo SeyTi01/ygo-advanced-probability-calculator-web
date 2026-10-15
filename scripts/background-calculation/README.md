@@ -339,3 +339,23 @@ calculation time. Do not run native and browser benchmarks concurrently.
 Three-mode verification: `three-modes-smoke.cjs <optimized-wwwroot> <modes.json> <evidence-dir>` checks the real worker contract, settings, accepted results, pins/copy, Unsupported, one-shot recovery, repeated loading and light/dark mobile layout. `ThreeModeBenchmark.Export` writes fixtures to `YGO_MODE_FIXTURES`.
 
 For paired engine/acceptance measurements, include `mode-benchmark-probe.cs` with an external MSBuild Compile item in two benchmark-only builds; define `MODE_BASELINE` only for base 7252c7d. No project file or production export is changed. The probe excludes JSON/materialization from timing, records managed allocations (not peak heap), exact internal fractions and Work/Storage counters, and reports Unsupported without exposing a production probability. The baseline bound fixture enables the old certificate; other baseline fixtures measure the old primary. `paired-mode-benchmark.cs` (temporary net10.0 console) and `paired-mode-workers.cjs` each use five warmups and twenty randomized interleaved samples. Run alone. Then publish normally without the external Compile item and run the browser smoke against that normal output.
+
+
+Physical-survivor verification uses `PhysicalSearchBenchmark.Export` with
+`YGO_PHYSICAL_FIXTURES=<output.json>` and the same `three-modes-smoke.cjs` command.
+The fixtures include Default/Standard VS/K9 mill-2 and banish-10 Exact requests,
+Fast certificates, no-search/opening controls, consumed sources and unsupported
+filtered discards. `PhysicalSearchBenchmark.Profile` separately exposes counting
+work, storage and diagnostic phases; it is not part of the regular test suite.
+
+For paired measurements against pre-Milestone-3 `dev`, externally include
+`physical-search-benchmark-probe.cs` instead of `mode-benchmark-probe.cs` in both
+benchmark-only app builds. Define `PHYSICAL_BASELINE` only in the baseline build.
+Use `paired-mode-benchmark.cs` and `paired-mode-workers.cjs` with the exported
+physical fixtures. Their `Unchanged` flag enables exact parity assertions for all
+fractions, outcomes and Work/Storage counters on controls; new Exact cases retain
+both the baseline Unsupported outcome and the completed candidate result.
+First observed calls and twenty interleaved warm samples are saved separately;
+first calls after earlier fixtures share an already-running runtime. Browser
+measurements accept `YGO_BROWSER_EXECUTABLE`. Publish normally without the probe
+before running the production-worker/UI smoke.

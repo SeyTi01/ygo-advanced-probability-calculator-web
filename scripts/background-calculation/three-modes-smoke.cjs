@@ -20,7 +20,7 @@ async function main() {
         } catch { response.writeHead(404).end(); }
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    const browser = await chromium.launch({ headless: true, channel: process.env.YGO_BROWSER_CHANNEL || 'msedge' });
+    const browser = await chromium.launch({ headless: true, ...(process.env.YGO_BROWSER_EXECUTABLE ? { executablePath: process.env.YGO_BROWSER_EXECUTABLE } : { channel: process.env.YGO_BROWSER_CHANNEL || 'msedge' }) });
     try {
         const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
         const errors = [];
@@ -49,13 +49,16 @@ async function main() {
             worker.terminate();
             return values;
         }, fixtures);
-        for (const name of ['opening', 'count-state', 'search-only', 'zero-cost']) {
+        for (const name of ['opening', 'count-state', 'search-only', 'zero-cost', 'exact-mill2', 'exact-banish10', 'physical-consumed']) {
             const result = workerChecks[name].Result;
             assert.equal(result.Contract.Accuracy, 0, name);
             assert.equal(result.SearchAvailability, undefined, name);
             assert.equal(result.Contract.Fractions.Combos.length, result.ComboProbabilities.length);
             assert.equal(result.Contract.Fractions.Groups.length, result.GroupProbabilities.length);
         }
+        assert.deepEqual(workerChecks['physical-consumed'].Result.Contract.Fractions.Combos[0], { Numerator: '1', Denominator: '3' });
+        assert.deepEqual(workerChecks['exact-mill2'].Result.Contract.Fractions.Total, { Numerator: '565436063', Denominator: '656253312' });
+        assert.deepEqual(workerChecks['exact-banish10'].Result.Contract.Fractions.Total, { Numerator: '693395484057631', Denominator: '805311408021120' });
         assert.equal(workerChecks['fast-bound'].Result.Contract.Accuracy, 1);
         assert.equal(workerChecks.consumed.Result.Contract.Accuracy, 1);
         assert.deepEqual(workerChecks.consumed.Result.SearchAvailability.Combos[0].Lower, { Numerator: '1', Denominator: '3' });
@@ -101,9 +104,19 @@ async function main() {
         assert.match(copied, /Mode: Effects — fast/);
         assert.match(copied, /\[1\/3, 1\/2\]/);
         await calculate();
-        assert.match(await page.locator('[role=alert]').innerText(), /Unsupported exact calculation/);
-        assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Bounded/);
+        assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
         assert.match(await page.locator('.pinned-result .result-accuracy').innerText(), /Bounded/);
+        assert.equal(await page.locator('.probability-results .search-availability').count(), 0);
+        await page.locator('.result-comparison').screenshot({ path: path.join(evidence, 'physical-pinned-desktop.png') });
+        await page.getByRole('button', { name: 'Unpin result', exact: true }).click();
+        await load('discard');
+        await calculate();
+        await page.getByRole('button', { name: 'Pin result', exact: true }).click();
+        await mode('Exact');
+        await calculate();
+        assert.match(await page.locator('[role=alert]').innerText(), /Unsupported exact calculation/);
+        assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Uncertified/);
+        assert.match(await page.locator('.pinned-result .result-accuracy').innerText(), /Uncertified/);
         await page.locator('.result-comparison').screenshot({ path: path.join(evidence, 'unsupported-pinned-desktop.png') });
         await page.getByRole('button', { name: 'Calculate opening hand only', exact: true }).click();
         await page.waitForFunction(() => document.querySelector('.probability-results .result-accuracy')?.textContent.includes('Opening hand only'));
@@ -113,7 +126,7 @@ async function main() {
         await calculate();
         assert.match(await page.locator('[role=alert]').innerText(), /Unsupported exact calculation/);
         await page.getByRole('button', { name: 'Unpin result', exact: true }).click();
-        await load('zero-cost');
+        await load('exact-mill2');
         await calculate();
         assert.match(await page.locator('.result-accuracy').innerText(), /Effects — exact.*Exact/);
         await page.locator('.probability-results').screenshot({ path: path.join(evidence, 'exact-desktop.png') });
@@ -132,6 +145,11 @@ async function main() {
                 await page.locator('.calculation-settings-panel').screenshot({ path: path.join(evidence, `settings-${width}-${theme}.png`) });
                 await page.locator('#calculationModel').press('Escape');
                 assert.equal(await page.getByRole('button', { name: 'Calculation settings', exact: true }).evaluate(node => node === document.activeElement), true);
+                await mode('Exact');
+                await calculate();
+                assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
+                assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}/${theme} physical overflow`);
+                await page.locator('.result-comparison').screenshot({ path: path.join(evidence, `physical-pins-${width}-${theme}.png`) });
                 await page.getByRole('button', { name: 'Unpin result', exact: true }).click();
             }
         }

@@ -87,7 +87,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
 
         bool hasEffects = deck.Any(card => card.HasEffect);
         WorkBudget budget = new(workPolicy, storagePolicy);
-        DrawEffectCalculation? execution = hasEffects ? new(deck, handSize, budget, options?.DrawActivationPriority) : null;
+        DrawEffectCalculation? execution = hasEffects ? new(deck, handSize, budget, options?.DrawActivationPriority, mode == CalculationModel.Exact) : null;
         ExactCalculationResult exact = hasEffects
             ? execution!.Calculate(combos, groups)
             : new ProbabilityCalculation(deck, handSize, budget).CalculateExactResults(combos, groups);
@@ -120,8 +120,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
         bool proven = capability?.Accuracy == PhysicalSearchAccuracy.ProvenExact;
         if (mode == CalculationModel.Exact && !proven) {
-            // Milestone 2 has no physical-survivor solver. The completed internal
-            // optimistic count supplies proof ownership, but is never published.
+            // Defensive boundary: an unproven completed execution can never
+            // publish optimistic values under the Exact contract.
             CalculationResultContract unsupported = CalculationResultContract.Failure(mode, CalculationCompletion.Unsupported, capability!.Value.Explanation)
                 with { SolverRoute = capability.Value.Route.ToString() };
             throw new UnsupportedExactCalculationException(unsupported);
