@@ -76,7 +76,7 @@ async function main() {
             if (selector) expected[selector] = request.Cards[0][selector];
             assert.deepEqual(request.Cards[0], expected, 'only the selected operation and custom provenance change');
             assert.equal(request.Cards[0].EffectProfile.Source, 2);
-            assert.match(await page.locator('.result-model').innerText(), /Configured draw effects/);
+            assert.match(await page.locator('.result-model').innerText(), /Configured effects/);
             for (const width of [1280, 375]) {
                 await page.setViewportSize({ width, height: 1000 });
                 await editor.locator('.card-simulation').scrollIntoViewIfNeeded();
