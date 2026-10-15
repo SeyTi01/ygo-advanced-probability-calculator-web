@@ -1,0 +1,26 @@
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+
+@if (Certificate is { } certificate) {
+    <details class="search-availability small mt-2">
+        <summary>@(certificate.Status == SearchAvailabilityStatus.Exact ? "" : "Deck-search availability: ")@SearchAvailabilityPresentation.Summary(certificate)</summary>
+        <p class="mb-1 mt-2">@certificate.Detail</p>
+        <p class="text-body-secondary mb-1">Fixed modeled draw/removal policy only; not overall gameplay accuracy. Bounds rounded outward to six decimals.</p>
+        @if (certificate.Total is not null) {
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <caption class="visually-hidden">Deck-search availability intervals for this result</caption>
+                    <thead><tr><th scope="col">Result</th><th scope="col">Certified probability</th></tr></thead>
+                    <tbody>
+                        @foreach (SearchAvailabilityInterval row in SearchAvailabilityPresentation.Rows(certificate)) {
+                            <tr><th scope="row">@row.Label</th><td>@SearchAvailabilityPresentation.Range(row)</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </details>
+}
+
+@code {
+    [Parameter] public SearchAvailabilityCertificate? Certificate { get; set; }
+}

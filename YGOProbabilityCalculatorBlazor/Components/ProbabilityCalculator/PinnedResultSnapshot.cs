@@ -179,6 +179,8 @@ public sealed record PinnedResultComparison(string? Status, PinnedResultDifferen
 }
 
 public sealed record PinnedResultSnapshot(PinnedCalculationContext Context, double Total, ImmutableArray<PinnedComboRow> Combos, ImmutableArray<PinnedGroupRow> Groups) {
+    public SearchAvailabilityCertificate? SearchAvailability { get; init; }
+
     public static PinnedResultSnapshot Capture(PinnedCalculationContext context, ProbabilityCalculationResult result) {
         ImmutableArray<PinnedComboRow> pinnedComboRows = result.ComboProbabilities
             .Select(combo => {
@@ -206,7 +208,7 @@ public sealed record PinnedResultSnapshot(PinnedCalculationContext Context, doub
             ))
             .ToImmutableArray();
 
-        return new(context, result.TotalProbability, pinnedComboRows, pinnedGroupRows);
+        return new(context, result.TotalProbability, pinnedComboRows, pinnedGroupRows) { SearchAvailability = result.SearchAvailability };
     }
 
     public bool IsValid => Valid(Total) && Combos.All(combo => Valid(combo.Probability)) && Groups.All(group => Valid(group.Probability));

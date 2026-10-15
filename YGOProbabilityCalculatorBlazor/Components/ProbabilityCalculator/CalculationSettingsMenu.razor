@@ -68,6 +68,14 @@
             </div>
         </section>
 
+        <div class="border-top mt-3 pt-3">
+            <label class="form-check-label">
+                <input type="checkbox" class="form-check-input me-1" checked="@CertifySearchAvailability"
+                       @onchange="args => CertifySearchAvailabilityChanged.InvokeAsync(args.Value is true)" />
+                Certify Deck-search availability
+            </label>
+            <p class="form-text mb-0">Optional bounds with the next calculation. Uses remaining Work/Storage allowance.</p>
+        </div>
         <div class="border-top mt-3 pt-3 calculation-settings-option">
             <label class="form-label mb-1" for="storageSafetyTier">Storage safety limit</label>
             <select id="storageSafetyTier"
@@ -87,6 +95,9 @@
 </div>
 
 @code {
+    [Parameter] public bool CertifySearchAvailability { get; set; }
+    [Parameter] public EventCallback<bool> CertifySearchAvailabilityChanged { get; set; }
+
     [Parameter]
     public CalculationModel Model { get; set; } = CalculationModel.Configured;
 

@@ -26,7 +26,7 @@ internal sealed class SearchAccessPlan {
                 .Select(target => target.Row).ToArray())).ToArray();
     }
 
-    internal List<List<CompiledEvent?>> Compile(List<Combo> combos, int handSize, List<Card> rows, int capacity) {
+    internal List<List<CompiledEvent?>> Compile(List<Combo> combos, int handSize, List<Card> rows, int capacity, int targetLoss = 0) {
         using IDisposable? phase = _budget.SearchDiagnostics?.Measure("assignment compilation");
         ComboEventCompiler compiler = new(_deck, handSize, _budget);
         List<List<CompiledEvent?>> finalEvents = combos.Select(compiler.CompileCombo).ToList();
@@ -105,7 +105,10 @@ internal sealed class SearchAccessPlan {
                         _budget.Spend(1);
                         if (used[row] > 0 || fetched[row] > 0) {
                             // A consumed source never replenishes a deck copy.
-                            valid &= Add(BigInteger.One << row, used[row], _deck[row].Copies - fetched[row]);
+                            // For positive fetched counts only: f <= max(0, n-h-D)
+                            // iff h <= n-D-f. Empty assignments must remain optional.
+                            int loss = fetched[row] > 0 ? targetLoss : 0;
+                            valid &= Add(BigInteger.One << row, used[row], _deck[row].Copies - fetched[row] - loss);
                         }
                     }
                     if (!valid) {
@@ -158,7 +161,8 @@ internal sealed class SearchProbabilityCalculation(
     SearchAccessPlan search,
     int capacity,
     WorkBudget budget,
-    List<SearchHandPool>? pools = null
+    List<SearchHandPool>? pools = null,
+    int targetLoss = 0
 ) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         using IDisposable? scenario = budget.SearchDiagnostics?.Measure("search scenarios");
@@ -169,7 +173,7 @@ internal sealed class SearchProbabilityCalculation(
         List<Card> ordered = random.OrderByDescending(card => card.Search is not null).ToList();
         int size = randomCount + retained.Sum(card => card.Copies);
         List<Card> rows = [.. ordered, .. retained];
-        List<List<CompiledEvent?>> events = search.Compile(combos, size, rows, capacity);
+        List<List<CompiledEvent?>> events = search.Compile(combos, size, rows, capacity, targetLoss);
         if (pools is not null) {
             List<CountBound> conditions = [];
             foreach (SearchHandPool pool in pools) {

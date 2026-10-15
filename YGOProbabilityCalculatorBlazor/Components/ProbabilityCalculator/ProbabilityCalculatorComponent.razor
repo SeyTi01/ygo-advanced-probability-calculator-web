@@ -43,6 +43,7 @@
                        min="1"/>
             </div>
             <CalculationSettingsMenu @ref="_settingsMenu" Model="SelectedModel" ModelChanged="OnModelChanged"
+                                      @bind-CertifySearchAvailability="_certifySearchAvailability"
                                       Priority="_drawActivationPriority" PriorityChanged="OnDrawActivationPriorityChanged" Cards="_cards"
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
@@ -233,6 +234,7 @@
                                              IsStale="_calculationResultIsStale"
                                              IsCalculating="_isCalculating" />
                 </div>
+                <SearchAvailabilityResult Certificate="result.SearchAvailability" />
                 @if (_acceptedComparison is { } accepted) {
                     <p class="small text-body-secondary mb-2 result-model">@accepted.Context.Description</p>
                     @if (_pinnedResult is { } priorityPin && priorityPin.Context.DrawPriorityDefinition != accepted.Context.DrawPriorityDefinition) {
@@ -388,6 +390,7 @@
     private CategoryRenameNotice? _categoryRename;
     private int _handSize = 5;
     private bool _drawEffectsEnabled = true;
+    private bool _certifySearchAvailability;
     private DrawActivationPriority _drawActivationPriority = DrawActivationPriority.Default;
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
     private bool _isCalculating;
@@ -893,7 +896,7 @@
                 CalculationWorkPolicy.Interactive,
                 model != CalculationModel.OpeningHand,
                 CalculationStoragePolicy.ForTier(_storageTier),
-                new(_drawActivationPriority),
+                new(_drawActivationPriority, _certifySearchAvailability),
                 _categoryBases
             );
             PinnedCalculationContext comparisonContext = CaptureComparisonContext(model);

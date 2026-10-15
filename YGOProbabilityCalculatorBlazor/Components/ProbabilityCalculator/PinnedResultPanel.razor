@@ -4,6 +4,7 @@
         <button type="button" class="btn btn-sm btn-outline-secondary" title="Unpin result" aria-label="Unpin result" @onclick="OnClear"><PinIcon Slashed="true" /></button>
     </div>
     <p class="small text-body-secondary mb-2">@Snapshot.Context.Description</p>
+    <SearchAvailabilityResult Certificate="Snapshot.SearchAvailability" />
     <div class="pinned-row pinned-total">
         <span>Any active combo</span><strong>@Snapshot.Total.ToString("P2")</strong>
     </div>
