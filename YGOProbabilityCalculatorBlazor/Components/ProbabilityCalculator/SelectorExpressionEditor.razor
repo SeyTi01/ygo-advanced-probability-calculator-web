@@ -12,7 +12,7 @@
             @for (int index = 0; index < Terms.Length; index++) {
                 int position = index;
                 @if (index > 0) { <span class="small">@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")</span> }
-                <SelectorExpressionEditor @key="Terms[index].Signature" Selector="Terms[index]" Path="@($"{Path}.{index}")" Available="Available" Options="Options"
+                <SelectorExpressionEditor @key="_termKeys[Terms[index].Signature]" Selector="Terms[index]" Path="@($"{Path}.{index}")" Available="Available" Options="Options"
                     CategoryColorIndices="CategoryColorIndices" OnChanged="value => Replace(position, value)"
                     OnRemove="() => Remove(position)" OnValidation="OnValidation" />
             }
@@ -68,7 +68,9 @@
 
     private CardSelectorKind _operation = CardSelectorKind.AllOf;
     private string? _error;
-    private CardSelector[] Terms => Selector.Terms.ToArray();
+    private CardSelector? _previous;
+    private CardSelector[] Terms { get; set; } = [];
+    private readonly Dictionary<string, object> _termKeys = new(StringComparer.Ordinal);
     private string Identity => Selector.CategoryIdentities.FirstOrDefault() ?? "metadata:level:0";
     private string Label => Selector.Kind == CardSelectorKind.LevelAtLeast ? "Level threshold"
         : Available.FirstOrDefault(category => category.Identity == Identity)?.Name ?? Uri.UnescapeDataString(Identity[(Identity.IndexOf(':') + 1)..]);
@@ -79,6 +81,20 @@
 
     private static CardSelector Combine(CardSelectorKind kind, IEnumerable<CardSelector> terms) => kind == CardSelectorKind.AllOf
         ? CardSelector.AllOfSelectors(terms) : CardSelector.AnyOfSelectors(terms);
+
+    protected override void OnParametersSet() {
+        if (!ReferenceEquals(_previous, Selector)) {
+            Terms = Selector.Terms.ToArray();
+            _previous = Selector;
+        }
+        HashSet<string> current = Terms.Select(term => term.Signature).ToHashSet(StringComparer.Ordinal);
+        foreach (string removed in _termKeys.Keys.Where(signature => !current.Contains(signature)).ToArray()) {
+            _termKeys.Remove(removed);
+        }
+        foreach (CardSelector term in Terms) {
+            _termKeys.TryAdd(term.Signature, new object());
+        }
+    }
 
     private async Task Publish(Func<CardSelector> create) {
         try {
@@ -93,8 +109,13 @@
         }
     }
 
-    private Task Replace(int position, CardSelector value) => Publish(() => Combine(Selector.Kind,
-        Terms.Select((term, index) => index == position ? value : term)));
+    private Task Replace(int position, CardSelector value) => Publish(() => {
+        CardSelector updated = Combine(Selector.Kind, Terms.Select((term, index) => index == position ? value : term));
+        // Transfer the edited node's identity without removing its old key until
+        // the parent accepts the model. A rejected ancestor limit keeps its DOM.
+        _termKeys.TryAdd(value.Signature, _termKeys[Terms[position].Signature]);
+        return updated;
+    });
 
     private async Task Remove(int position) {
         CardSelector[] remaining = Terms.Where((term, index) => index != position).ToArray();
