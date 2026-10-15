@@ -117,7 +117,17 @@ internal static class DrawSequenceOracle {
                 bool relevant = combos.Any(combo =>
                     combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
                     || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && MatchesSelector(requirement.Selector, card)));
-                return (relevant, usable.Contains(index), deferred.Contains(index)) switch {
+                // Inspect labeled original copies outside the current hand, never the
+                // physical remaining deck. This is the access approximation.
+                int capacity = remaining - (reserved < 0 ? 0 : order[reserved].DrawCount!.Value
+                    + order[reserved].PreDrawDeckRemovalCount + order[reserved].PostDrawDeckMillCount);
+                List<Card> targets = capacity > 0 && card.Search is { } search
+                    ? order.Where((target, label) => target.Id != card.Id && !hand.Contains(label)
+                        && MatchesSearch(search, target)).ToList() : [];
+                bool usefulSearch = targets.Any(target => combos.Any(combo =>
+                    combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == target.Id)
+                    || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && MatchesSelector(requirement.Selector, target))));
+                return (relevant || usefulSearch, usable.Contains(index) || targets.Count > 0, deferred.Contains(index)) switch {
                     (true, _, _) => 1,
                     (_, true, _) => 2,
                     (_, _, true) => 3,
@@ -131,6 +141,17 @@ internal static class DrawSequenceOracle {
 
         string Membership(Card card) => string.Concat(categoryKeys.Select(key => card.Categories.Any(category => category.Identity == key) ? "1" : "0"))
             + string.Concat(cardKeys.Select(key => card.Id == key ? "1" : "0"));
+    }
+
+    internal static bool MatchesSearch(SearchEffectPlan search, Card target) {
+        if (!target.Active || target.Copies <= 0 || (search.ObjectiveMetadataOnly && target.ExternalCardId is not > 0)) {
+            return false;
+        }
+        Card inspected = search.ObjectiveMetadataOnly
+            ? new(target.Categories.Where(category => category.Source == CategorySource.Metadata
+                && !target.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))) : target;
+
+        return MatchesSelector(search.Selector, inspected);
     }
 
     internal static bool MatchesSelector(CardSelector selector, Card card) {

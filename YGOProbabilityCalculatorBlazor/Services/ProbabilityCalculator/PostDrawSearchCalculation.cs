@@ -25,7 +25,10 @@ internal sealed partial class PostDrawCalculation {
 
     internal ExactCalculationResult CalculateSearch(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly, SearchAccessPlan search) {
         List<Card> cards = ReduceSearchDeck(combos, out Dictionary<string, List<Card>> identities);
-        List<Card> deferred = deferIdentities ? DeferUnobservedIdentities(ref cards) : [];
+        // Only removable searchers need policy target counts. Unrelated targets
+        // can still join the deferred pool when no removal can observe them.
+        HashSet<string> observed = SearchPolicyObservedRows(cards);
+        List<Card> deferred = deferIdentities ? DeferUnobservedIdentities(ref cards, observed) : [];
         int n = cards.Count;
         bool customPriority = priority?.Mode == DrawActivationMode.CustomPriority;
         if (customPriority) {
@@ -101,7 +104,8 @@ internal sealed partial class PostDrawCalculation {
             ranks,
             relevant,
             removalEligibility,
-            costEligibility
+            costEligibility,
+            new SearchKeepPolicy(cards, relevant, budget)
         );
         Dictionary<State, BigInteger> terminal = resolver.Resolve<SearchTerminal>(handSize, copies, factorial, compactFrontierThreshold);
         TerminalStates = terminal.Count;
@@ -149,6 +153,13 @@ internal sealed partial class PostDrawCalculation {
                 filters.Add(CardSelectorCompiler.Compile(source.PreDrawSelector, deck, budget));
             }
         }
+        // Equal combo/removal signatures alone do not imply search equivalence.
+        // Keep target membership for every original source in each ordinary run.
+        foreach (Card source in deck.Where(card => card.Copies > 0 && card.Search is not null)) {
+            CheckStorage(filters.Count + 1L, (filters.Count + 1L) * deck.Count, "search reduction selectors");
+            budget.Spend(deck.Sum(card => card.Categories.Count + 1L) * (source.Search!.Selector.CategoryIdentities.Count + 1L));
+            filters.Add(deck.Select(card => card.Id != source.Id && source.Search!.Matches(card)).ToArray());
+        }
         List<(Card Card, string Signature, string Eligibility)> entries = [];
         int row = 0;
         foreach (Card card in deck) {
@@ -172,7 +183,7 @@ internal sealed partial class PostDrawCalculation {
             string? previousEligibility = null;
             foreach ((Card card, string _, string eligibility) in group.Where(entry => entry.Card.DrawCount is null)
                 .OrderBy(entry => entry.Card.Id, StringComparer.Ordinal)) {
-                if (eligibility == previousEligibility) {
+                if (card.Search is null && reduced.Count > 0 && reduced[^1].Search is null && eligibility == previousEligibility) {
                     identities[reduced[^1].Id].Add(card);
                     reduced[^1] = reduced[^1].WithCopies(checked(reduced[^1].Copies + card.Copies));
                 }
@@ -192,8 +203,12 @@ internal sealed partial class PostDrawCalculation {
         return reduced;
     }
 
-    // The legacy reduction and deferred pool are unchanged. Recover only their
-    // conditional final-hand subsets, never the identities of remaining deck cards.
+    // Coalesced ordinary labels share every combo, search and removal mask;
+    // their individual counts cannot change any final access event. Averaging
+    // those labels is harmless even when ID ties bias their physical survival.
+    // Deferred labels have a stronger proof: swapping them leaves the complete
+    // trace unchanged (including search retention), so their subsets are uniform.
+    // Neither case reconstructs the identities of remaining deck cards.
     private ExactCalculationResult CountSearchHands(
         List<Card> cards,
         List<List<Card>> pools,

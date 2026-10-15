@@ -17,7 +17,8 @@ internal sealed partial class PostDrawCalculation {
         int[] ranks,
         bool[] relevant,
         bool[]?[] removalEligibility,
-        bool[]?[]? costEligibility
+        bool[]?[]? costEligibility,
+        SearchKeepPolicy? searchPolicy = null
     ) {
         private enum ResolutionOutcome { Ready, RemovalUnavailable }
 
@@ -319,6 +320,11 @@ internal sealed partial class PostDrawCalculation {
                     (_, _, true) => 3,
                     _ => 4
                 };
+                if (searchPolicy is not null) {
+                    int searchCapacity = remaining - (reservedSource < 0 ? 0 : cards[reservedSource].DrawCount!.Value
+                        + cards[reservedSource].PreDrawDeckRemovalCount + cards[reservedSource].PostDrawDeckMillCount);
+                    tier = Math.Min(tier, searchPolicy.Tier(i, values, layout.HandStart, searchCapacity));
+                }
                 if (tier >= worstTier) {
                     worstTier = tier;
                     selected = i;

@@ -39,7 +39,7 @@ public static class SearchPerformanceProbe {
             allocated = GC.GetAllocatedBytesForCurrentThread() - allocated;
             string Ratio(ExactProbability value) => $"{value.Numerator}/{value.Denominator}";
             return JsonSerializer.Serialize(new { Milliseconds = milliseconds, Allocated = allocated, Outcome = outcome,
-                Work = budget.Spent, Cells = budget.PeakCells, Total = result is null ? null : Ratio(result.Total),
+                Work = budget.Spent, Entries = budget.PeakEntries, Cells = budget.PeakCells, Total = result is null ? null : Ratio(result.Total),
                 Combos = result?.Combos.Select(Ratio).ToArray(), Groups = result?.Groups.Select(Ratio).ToArray() });
         };
     }
