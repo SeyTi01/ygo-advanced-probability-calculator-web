@@ -14,6 +14,8 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
     private long _remaining = policy.WorkUnits;
     private readonly CalculationStoragePolicy _storagePolicy = storagePolicy ?? CalculationStoragePolicy.Standard;
 
+    internal SearchCountingDiagnostics? SearchDiagnostics { get; init; }
+
     internal long PeakEntries { get; private set; }
     internal long PeakCells { get; private set; }
 
