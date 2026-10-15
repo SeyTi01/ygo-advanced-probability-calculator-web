@@ -47,6 +47,11 @@ public static class ProbabilityResultSummaryFormatter {
             }
         }
 
+        if (result.SearchAvailability is { } certificate) {
+            lines.Add(string.Empty);
+            lines.AddRange(SearchAvailabilityPresentation.Export(certificate));
+        }
+
         return string.Join('\n', lines);
     }
 

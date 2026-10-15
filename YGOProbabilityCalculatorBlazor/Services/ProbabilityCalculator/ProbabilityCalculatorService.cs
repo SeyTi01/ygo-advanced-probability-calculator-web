@@ -68,12 +68,23 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             CardEffectCompiler.RequireExecutable(card);
         }
 
-        if (!deck.Any(card => card.HasEffect)) {
+        bool hasEffects = deck.Any(card => card.HasEffect);
+        if (!hasEffects && options?.CertifySearchAvailability != true) {
             return new ProbabilityCalculation(deck, handSize, workPolicy, storagePolicy).CalculateResults(combos, groups);
         }
 
         WorkBudget budget = new(workPolicy, storagePolicy);
-        return new DrawEffectCalculation(deck, handSize, budget, options?.DrawActivationPriority).Calculate(combos, groups).ToPublic(combos, groups, budget);
+        ExactCalculationResult exact = hasEffects
+            ? new DrawEffectCalculation(deck, handSize, budget, options?.DrawActivationPriority).Calculate(combos, groups)
+            : new ProbabilityCalculation(deck, handSize, budget).CalculateExactResults(combos, groups);
+        // Complete and retain every primary row, including conversion, before
+        // optional work spends any of the remaining request allowance.
+        ProbabilityCalculationResult result = exact.ToPublic(combos, groups, budget);
+        if (options?.CertifySearchAvailability == true) {
+            result = result with { SearchAvailability = SearchAvailabilityCertification.TryCalculate(deck, handSize, combos, groups, exact, budget) };
+        }
+
+        return result;
     }
 
     private static void ValidateComboCount(List<Combo> combos) {

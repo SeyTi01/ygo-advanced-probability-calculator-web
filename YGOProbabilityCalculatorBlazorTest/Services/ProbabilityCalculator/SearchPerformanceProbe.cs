@@ -33,9 +33,13 @@ public static class SearchPerformanceProbe {
             long start = Stopwatch.GetTimestamp();
             ExactCalculationResult? result = null;
             string outcome = "Success";
+            SearchAvailabilityCertificate? certificate = null;
             try {
                 result = new DrawEffectCalculation(cards, input.HandSize, budget, input.Options?.DrawActivationPriority)
                     .Calculate(combos, input.Groups);
+                if (input.Options?.CertifySearchAvailability == true) {
+                    certificate = SearchAvailabilityCertification.TryCalculate(cards, input.HandSize, combos, input.Groups, result, budget);
+                }
             }
             catch (ProbabilityCalculationLimitException ex) {
                 outcome = ex.Reason.ToString();
@@ -43,7 +47,7 @@ public static class SearchPerformanceProbe {
             double milliseconds = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
             allocated = GC.GetAllocatedBytesForCurrentThread() - allocated;
             string Ratio(ExactProbability value) => $"{value.Numerator}/{value.Denominator}";
-            return JsonSerializer.Serialize(new { Milliseconds = milliseconds, Allocated = allocated, Outcome = outcome,
+            return JsonSerializer.Serialize(new { Milliseconds = milliseconds, Allocated = allocated, Outcome = outcome, Certificate = certificate,
                 Diagnostics = probe is null ? null : new { probe.Counts, probe.Milliseconds },
                 Work = budget.Spent, Entries = budget.PeakEntries, Cells = budget.PeakCells, Total = result is null ? null : Ratio(result.Total),
                 Combos = result?.Combos.Select(Ratio).ToArray(), Groups = result?.Groups.Select(Ratio).ToArray() });

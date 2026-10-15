@@ -7,7 +7,9 @@ namespace YGOProbabilityCalculatorBlazor.Services.Interface;
 public sealed record ProbabilityCalculationResult(
     double TotalProbability,
     IReadOnlyList<ComboProbabilityResult> ComboProbabilities,
-    IReadOnlyList<GroupProbabilityResult>? GroupProbabilities = null
+    IReadOnlyList<GroupProbabilityResult>? GroupProbabilities = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    SearchAvailabilityCertificate? SearchAvailability = null
 );
 
 /// <summary>The union probability of the active combos assigned to a named group.</summary>
