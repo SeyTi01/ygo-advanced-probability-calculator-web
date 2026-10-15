@@ -26,11 +26,13 @@ entries and including nested requirements, stable identities and group order.
 Native and worker calls always execute each card's saved effective plan, including
 custom zero-valued costs or removals. `CalculationOptions` contains only activation
 priority. Its version-local worker JSON rejects obsolete/unknown options as typed
-input errors; saved sessions use schema v6. Opening-hand-only snapshots clear
+input errors; saved sessions use schema v7 (bounded grouped selectors and objective
+`LevelAtLeast` predicates). Schema-6 plans retain their exact saved operations and
+provenance; loading never restores maintained definitions. Opening-hand-only snapshots clear
 draw and search execution fields on their owned worker cards while preserving the workspace plans.
 
 `search-effects-smoke.cjs <published-wwwroot> <evidence-directory>` checks the
-schema-6 search example, optional configuration, repeated session loads,
+search example, editable grouped eligibility, numeric validation, optional configuration, repeated session loads,
 opening-only transport, cancellation/stale delivery, hidden-removal diagnostics,
 and desktop/mobile target UI. `SearchFeatureBenchmark.Measure` exports frozen
 worker inputs and reference rows to `YGO_SEARCH_BENCHMARK`; set

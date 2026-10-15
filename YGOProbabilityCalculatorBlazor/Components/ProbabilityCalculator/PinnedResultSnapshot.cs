@@ -135,7 +135,7 @@ public sealed record PinnedCalculationContext(
             int maximum = category.MaximumMode == RequirementMaximumMode.Fixed ? category.MaxCount : 0;
 
             string memberCardIds = Pack(cards
-                .Where(card => category.Selector.Matches(card.Categories))
+                .Where(card => category.Selector.Matches(card))
                 .Select(card => card.Id)
                 .Order(StringComparer.Ordinal));
 

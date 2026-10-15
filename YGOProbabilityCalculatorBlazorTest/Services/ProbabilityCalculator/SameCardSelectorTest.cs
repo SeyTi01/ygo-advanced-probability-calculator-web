@@ -39,7 +39,6 @@ public class SameCardSelectorTest {
 
     [TestCase("{\"Kind\":\"AllOf\",\"Categories\":[]}")]
     [TestCase("{\"Kind\":\"AnyOf\",\"Children\":[]}")]
-    [TestCase("{\"Kind\":\"AllOf\",\"Children\":[{\"Kind\":\"Category\",\"Categories\":[\"user:A\"]}]}")]
     [TestCase("{\"Kind\":\"AnyOf\",\"Children\":[{\"Kind\":\"Any\",\"Categories\":[]}]}")]
     [TestCase("{\"Kind\":\"AnyOf\",\"Children\":[{\"Kind\":\"AllOf\",\"Categories\":[\"user:A\"],\"Other\":0}]}")]
     [TestCase("{\"Kind\":\"AnyOf\",\"Children\":[],\"Categories\":[]}")]

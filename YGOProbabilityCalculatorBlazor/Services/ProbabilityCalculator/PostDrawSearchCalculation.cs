@@ -56,7 +56,7 @@ internal sealed partial class PostDrawCalculation {
         }
         bool[] relevant = cards.Select(card => combos.Any(combo =>
             combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
-            || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card.Categories)))).ToArray();
+            || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card)))).ToArray();
 
         CheckStorage(copies + 1L, copies + 1L, "factorials");
         BigInteger[] factorial = new BigInteger[copies + 1];
@@ -157,7 +157,7 @@ internal sealed partial class PostDrawCalculation {
         // Keep target membership for every original source in each ordinary run.
         foreach (Card source in deck.Where(card => card.Copies > 0 && card.Search is not null)) {
             CheckStorage(filters.Count + 1L, (filters.Count + 1L) * deck.Count, "search reduction selectors");
-            budget.Spend(deck.Sum(card => card.Categories.Count + 1L) * (source.Search!.Selector.CategoryIdentities.Count + 1L));
+            budget.Spend(deck.Sum(card => card.Categories.Count + 1L) * (source.Search!.Selector.EvaluationSize + 1L));
             filters.Add(deck.Select(card => card.Id != source.Id && source.Search!.Matches(card)).ToArray());
         }
         List<(Card Card, string Signature, string Eligibility)> entries = [];

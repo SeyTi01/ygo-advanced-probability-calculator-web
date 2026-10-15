@@ -417,7 +417,7 @@ internal static class SearchAccessOracle {
                 }
                 Card inspected = search.ObjectiveMetadataOnly
                     ? new(card.Categories.Where(category => category.Source == CategorySource.Metadata
-                        && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))) : card;
+                        && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)), externalCardId: card.ExternalCardId) : card;
                 if ((search.ObjectiveMetadataOnly && card.ExternalCardId is not > 0)
                     || !DrawSequenceOracle.MatchesSelector(search.Selector, inspected)) {
                     continue;

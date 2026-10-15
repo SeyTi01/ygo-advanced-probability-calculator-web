@@ -8,6 +8,28 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 public sealed partial class SearchEffectsTest {
+    [Test]
+    public void CompactPresetSourceSubsetsAndFilteredDrawsMatchIndependentPhysicalOracle() {
+        Card target = Element();
+        Card warrior = Warrior().WithCategories([.. Warrior().Categories, new("K9", CategorySource.Metadata, "archetype:k9")]);
+        for (int mask = 0; mask < 8; mask++) {
+            List<Card> deck = [Rota(), Preset(80181649), Preset(92221402), target, warrior, new([], id: "blank")];
+            for (int source = 0; source < 3; source++) {
+                if ((mask & (1 << source)) == 0) {
+                    deck[source] = deck[source].WithSearch(null);
+                }
+            }
+            foreach (int drawCopies in new[] { 0, 1, 3 }) {
+                List<Card> mixed = [.. deck];
+                if (drawCopies > 0) {
+                    mixed.Add(new([], drawCopies, id: "draw", drawCount: 2,
+                        postDrawDiscardCount: 1, postDrawSelector: SelectorExpressionTest.Compact));
+                }
+                Compare(mixed, AssignmentObjectives(target.Id), 2);
+            }
+        }
+    }
+
     internal static Card Preset(int identity, int copies = 1, string? id = null) => CardEffectRegistry.Default.RestoreBuiltIn(
         new([Spell], copies, id: id ?? $"source-{identity}", externalCardId: identity));
 
@@ -55,7 +77,7 @@ public sealed partial class SearchEffectsTest {
         Card spellK9 = new([Spell, new("K9", CategorySource.Metadata, "archetype:k9")], externalCardId: 100);
         Assert.That(Preset(80181649).Search!.Matches(spellK9), Is.False);
         EffectiveCardEffect chaotic = CardEffectRegistry.Default.Describe(Preset(92221402));
-        Assert.That(chaotic.Support, Is.EqualTo(EffectSupport.Partial));
+        Assert.That(chaotic.Support, Is.EqualTo(EffectSupport.ModeledWithinRules));
         Assert.That(chaotic.Limitations, Does.Contain("Main Deck").And.Contain("GY retrieval").And.Contain("destruction"));
     }
 

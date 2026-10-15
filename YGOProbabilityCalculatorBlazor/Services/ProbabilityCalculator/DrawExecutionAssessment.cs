@@ -20,8 +20,8 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
     // Every hand operation must exclude the pool. Hidden deck operations depend
     // only on physical capacity, which the ordered resolver already tracks.
     private static bool IsRemovalMaterial(Card effect, Card card) =>
-        (effect.PreDrawRemovalCount > 0 && effect.PreDrawSelector.Matches(card.Categories))
-        || (effect.PostDrawDiscardCount > 0 && effect.PostDrawSelector.Matches(card.Categories));
+        (effect.PreDrawRemovalCount > 0 && effect.PreDrawSelector.Matches(card))
+        || (effect.PostDrawDiscardCount > 0 && effect.PostDrawSelector.Matches(card));
 
     public static DrawExecutionAssessment Assess(
         IReadOnlyList<Card> cards,
@@ -77,7 +77,7 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         string PolicySignature(Card card) => Signature(card) + (directIds.Contains(card.Id) ? ":" + card.Id : "");
         bool Relevant(Card card) => routes.Any(combo =>
             combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
-            || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card.Categories)));
+            || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card)));
 
         // A sufficient pre-reduction proof: identical category membership and no direct
         // references make all irrelevant ordinary entries one filler after ReduceDeck.

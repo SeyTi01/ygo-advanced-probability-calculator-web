@@ -75,14 +75,15 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
             return "any card";
         }
 
-        return string.Join(" OR ", selector.Alternatives.Select(alternative => {
-            string label = string.Join(" AND ", alternative.CategoryIdentities.Select(identity => {
-                CategoryBase? category = categories.FirstOrDefault(candidate => candidate.Identity == identity);
-
-                return category?.Name ?? Uri.UnescapeDataString(identity[(identity.IndexOf(':') + 1)..]);
-            }));
-
-            return alternative.Kind == CardSelectorKind.AllOf ? $"({label})" : label;
-        }));
+        if (selector.Kind == CardSelectorKind.LevelAtLeast) {
+            return $"Level >= {selector.MinimumLevel}";
+        }
+        if (selector.Kind == CardSelectorKind.Category) {
+            string identity = selector.CategoryIdentities[0];
+            return categories.FirstOrDefault(candidate => candidate.Identity == identity)?.Name
+                ?? Uri.UnescapeDataString(identity[(identity.IndexOf(':') + 1)..]);
+        }
+        string operation = selector.Kind == CardSelectorKind.AllOf ? " AND " : " OR ";
+        return "(" + string.Join(operation, selector.Terms.Select(term => DescribeSelector(term, categories))) + ")";
     }
 }

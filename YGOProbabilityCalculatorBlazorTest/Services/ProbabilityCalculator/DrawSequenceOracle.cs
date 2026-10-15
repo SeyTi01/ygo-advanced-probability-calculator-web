@@ -149,7 +149,7 @@ internal static class DrawSequenceOracle {
         }
         Card inspected = search.ObjectiveMetadataOnly
             ? new(target.Categories.Where(category => category.Source == CategorySource.Metadata
-                && !target.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))) : target;
+                && !target.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)), externalCardId: target.ExternalCardId) : target;
 
         return MatchesSelector(search.Selector, inspected);
     }
@@ -160,7 +160,18 @@ internal static class DrawSequenceOracle {
             return true;
         }
         if (selector.Children.Count > 0) {
-            return selector.Children.Any(child => MatchesSelector(child, card));
+            bool[] results = selector.Children.Select(child => MatchesSelector(child, card)).ToArray();
+            return selector.Kind == CardSelectorKind.AllOf ? results.All(result => result) : results.Any(result => result);
+        }
+        if (selector.Kind == CardSelectorKind.LevelAtLeast) {
+            string[] keys = card.Categories.Where(category => category.Source == CategorySource.Metadata
+                && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)).Select(category => category.MetadataKey!).ToArray();
+            string[] levels = keys.Where(key => key.StartsWith("level:", StringComparison.Ordinal)).ToArray();
+            return card.ExternalCardId is > 0 && keys.Contains("kind:monster") && levels.Length == 1
+                && !keys.Any(key => key.StartsWith("rank:", StringComparison.Ordinal) || key.StartsWith("link:", StringComparison.Ordinal)
+                    || key is "monster-type:xyz" or "monster-type:link")
+                && int.TryParse(levels[0][6..], System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out int level) && level >= selector.MinimumLevel;
         }
         int matched = selector.CategoryIdentities.Count(identities.Contains);
         return selector.Kind == CardSelectorKind.AllOf ? matched == selector.CategoryIdentities.Count : matched > 0;

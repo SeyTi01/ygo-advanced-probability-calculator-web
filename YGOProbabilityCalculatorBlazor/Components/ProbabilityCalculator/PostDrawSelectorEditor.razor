@@ -8,6 +8,7 @@
         @if (Selector.Kind != CardSelectorKind.Any) {
             <option value="any">Any card (clear filter)</option>
         }
+        <option value="level-at-least">Level >=…</option>
         @if (Available.Any(static category => category.Source == CategorySource.User)) {
             <optgroup label="User categories">
                 @foreach (CategoryBase category in Available.Where(static category => category.Source == CategorySource.User)) {
@@ -30,7 +31,13 @@
             </optgroup>
         }
     </select>
-    @if (Selector.Kind != CardSelectorKind.Any) {
+    @if (Selector.Kind != CardSelectorKind.Any && Grouped) {
+        <div class="mt-2" aria-label="Grouped eligibility filter">
+            <SelectorExpressionEditor Selector="Selector" Available="Available" CategoryColorIndices="CategoryColorIndices"
+                                      Options="GroupedOptions" OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
+        </div>
+    }
+    else if (Selector.Kind != CardSelectorKind.Any) {
         <div class="d-flex flex-wrap align-items-center gap-1 mt-2" aria-label="Removal filter">
             @for (int index = 0; index < Alternatives.Length; index++) {
                 int branch = index;
@@ -59,6 +66,10 @@
             }
         </div>
     }
+    @if (Selector.Kind != CardSelectorKind.Any && !Grouped) {
+        <button type="button" class="btn btn-link btn-sm p-0 mt-1" @onclick="() => _grouped = true">Edit groups</button>
+    }
+    @if (_error is not null) { <div class="text-danger small" role="alert">@_error</div> }
     @if (ShowHelp) {
         <div class="form-text">@UnavailableMessage Applied only with configured draw effects.</div>
     }
@@ -73,6 +84,42 @@
     [Parameter] public IReadOnlySet<string> RelevantMetadataCategoryIdentities { get; set; } = new HashSet<string>(StringComparer.Ordinal);
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
     [Parameter] public EventCallback<CardSelector> OnChanged { get; set; }
+    [Parameter] public EventCallback<string?> OnError { get; set; }
+
+    private readonly Dictionary<CardSelector, string> _validationErrors = [];
+    private bool _grouped;
+    private string? _error;
+    private bool Grouped => _grouped || Selector.IsGrouped;
+
+    private RenderFragment GroupedOptions => @<text>
+        <option value="level-at-least">Level >=…</option>
+        @foreach (IGrouping<string, CategoryBase> group in Available.GroupBy(category => category.Source == CategorySource.User
+            ? "User categories" : _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity) ? "Relevant properties" : "Common properties")) {
+            <optgroup label="@group.Key">
+                @foreach (CategoryBase category in group) { <option value="@category.Identity">@category.Name</option> }
+            </optgroup>
+        }
+    </text>;
+
+    private Task Clear() => PublishGrouped(CardSelector.Any);
+
+    private async Task PublishGrouped(CardSelector selector) {
+        _error = null;
+        foreach (CardSelector invalid in _validationErrors.Keys.Where(invalid => !Contains(selector, invalid)).ToArray()) {
+            _validationErrors.Remove(invalid);
+        }
+        await OnChanged.InvokeAsync(selector);
+        await OnError.InvokeAsync(_validationErrors.Values.FirstOrDefault());
+    }
+
+    private Task Validate((CardSelector Selector, string? Message) validation) {
+        if (validation.Message is null) { _validationErrors.Remove(validation.Selector); }
+        else { _validationErrors[validation.Selector] = validation.Message; }
+        return OnError.InvokeAsync(_validationErrors.Values.FirstOrDefault());
+    }
+
+    private static bool Contains(CardSelector root, CardSelector value) => root.Equals(value)
+        || root.Children.Any(child => Contains(child, value));
 
     private CardSelector[] Alternatives => Selector.Kind == CardSelectorKind.Any ? [] : Selector.Alternatives.ToArray();
 
@@ -113,21 +160,37 @@
     private Task Change(ChangeEventArgs args) {
         string? identity = args.Value?.ToString();
         if (identity == "any") {
-            return OnChanged.InvokeAsync(CardSelector.Any);
+            return Clear();
+        }
+        if (identity == "level-at-least") {
+            _grouped = true;
+            return Apply(() => Selector.Kind == CardSelectorKind.Any ? CardSelector.LevelAtLeast(5)
+                : CardSelector.AnyOfSelectors([Selector, CardSelector.LevelAtLeast(5)]));
         }
         if (!Available.Any(category => category.Identity == identity)) {
             return Task.CompletedTask;
         }
-        return OnChanged.InvokeAsync(CardSelector.AnyOfSelectors(Alternatives.Append(new CardSelector(CardSelectorKind.Category, [identity!]))));
+        return Apply(() => CardSelector.AnyOfSelectors(Alternatives.Append(new CardSelector(CardSelectorKind.Category, [identity!]))));
+    }
+
+    private async Task Apply(Func<CardSelector> create) {
+        try {
+            await PublishGrouped(create());
+        }
+        catch (ArgumentException) {
+            _error = "Filter is too large or too deeply grouped.";
+        }
     }
 
     private Task AddAnd(int branch, string? identity) {
         if (!Available.Any(category => category.Identity == identity)) {
             return Task.CompletedTask;
         }
-        CardSelector[] alternatives = Alternatives;
-        alternatives[branch] = CardSelector.AllOf(alternatives[branch].CategoryIdentities.Append(identity!));
-        return OnChanged.InvokeAsync(CardSelector.AnyOfSelectors(alternatives));
+        return Apply(() => {
+            CardSelector[] alternatives = Alternatives;
+            alternatives[branch] = CardSelector.AllOf(alternatives[branch].CategoryIdentities.Append(identity!));
+            return CardSelector.AnyOfSelectors(alternatives);
+        });
     }
 
     private Task Remove(int branch, string identity) {
@@ -139,7 +202,7 @@
         else {
             alternatives[branch] = CardSelector.AllOf(remaining);
         }
-        return OnChanged.InvokeAsync(alternatives.Count == 0 ? CardSelector.Any : CardSelector.AnyOfSelectors(alternatives));
+        return PublishGrouped(alternatives.Count == 0 ? CardSelector.Any : CardSelector.AnyOfSelectors(alternatives));
     }
 
     protected override void OnParametersSet() =>

@@ -137,6 +137,7 @@
                                         RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                                         CategoryColorIndices="CategoryColorIndices"
                                         ShowHelp="false"
+                                        OnError='error => SelectorError("cost-filter", error)'
                                         OnChanged='selector => SetDraft(_draft.WithPreDrawSelector(selector), "selector")' />
             }
             @if (_draft.PostDrawDiscardCount > 0) {
@@ -145,13 +146,14 @@
                                         CategoryBases="CategoryBases"
                                         RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                                         CategoryColorIndices="CategoryColorIndices"
-                                        ShowHelp="false" OnChanged='selector => SetDraft(_draft.WithPostDrawSelector(selector), "selector")' />
+                                        ShowHelp="false" OnError='error => SelectorError("removal-filter", error)'
+                                        OnChanged='selector => SetDraft(_draft.WithPostDrawSelector(selector), "selector")' />
             }
             @if (_draft.Search is { } draftSearch) {
                 <PostDrawSelectorEditor Id="@($"cardSearchEligibility{Index}")" Selector="draftSearch.Selector"
                     CategoryBases="CategoryBases" RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                     CategoryColorIndices="CategoryColorIndices" ShowHelp="false"
-                    OnChanged="ChangeSearchSelector" />
+                    OnChanged="ChangeSearchSelector" OnError='error => SelectorError("search-filter", error)' />
             }
             @if (_draft.DrawCount is not null) {
                 <details class="simulation-advanced mt-2">
@@ -188,7 +190,8 @@
     private Card? _previous;
     private Card? _draft;
     private readonly Dictionary<string, string> _errors = [];
-    private string? Error => _errors.Values.FirstOrDefault();
+    private readonly Dictionary<string, string> _filterErrors = [];
+    private string? Error => _errors.Values.Concat(_filterErrors.Values).FirstOrDefault();
     private bool _detailsOpen;
     private bool _performanceNote;
     private bool _focusDraw;
@@ -233,12 +236,14 @@
 
         _draft = Card;
         _errors.Clear();
+        _filterErrors.Clear();
         _focusDraw = true;
     }
 
     private void CloseEditor() {
         _draft = null;
         _errors.Clear();
+        _filterErrors.Clear();
         _focusEdit = true;
     }
 
@@ -291,6 +296,9 @@
         _draft = draft;
         _errors.Remove(field);
         _errors.Remove("selector");
+        if (draft.Search is null) { _filterErrors.Remove("search-filter"); }
+        if (draft.PreDrawRemovalCount == 0) { _filterErrors.Remove("cost-filter"); }
+        if (draft.PostDrawDiscardCount == 0) { _filterErrors.Remove("removal-filter"); }
         if (draft.DrawCount is null) {
             _errors.Clear();
         }
@@ -322,6 +330,15 @@
         // assigned roles/properties. Merely opening/saving an older draft keeps
         // its saved provenance policy, including schema-6 true/false values.
         SetDraft(_draft!.WithSearch(_draft.Search! with { Selector = selector, ObjectiveMetadataOnly = false }), "selector");
+    }
+
+    private void SelectorError(string field, string? error) {
+        if (error is null) {
+            _filterErrors.Remove(field);
+        }
+        else {
+            _filterErrors[field] = error;
+        }
     }
 
     private string OnceInputId => _draft?.Search is null ? $"cardDrawOnce{Index}" : $"cardSearchOnce{Index}";

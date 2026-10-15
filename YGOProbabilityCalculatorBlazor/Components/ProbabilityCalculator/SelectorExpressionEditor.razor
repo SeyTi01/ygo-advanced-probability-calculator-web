@@ -1,0 +1,127 @@
+@using YGOProbabilityCalculatorBlazor.Models
+
+<span class="selector-expression d-inline-flex flex-wrap align-items-center gap-1" style="max-width:100%;min-width:0">
+    @if (Selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
+        <span class="selector-group d-inline-flex flex-wrap align-items-center gap-1 border rounded p-1" style="max-width:100%;min-width:0">
+            <span aria-hidden="true">(</span>
+            <select class="form-select form-select-sm" style="width:auto" aria-label="Group operator @Path"
+                    value="@Selector.Kind" @onchange="ChangeOperator">
+                <option value="AllOf">AND</option>
+                <option value="AnyOf">OR</option>
+            </select>
+            @for (int index = 0; index < Terms.Length; index++) {
+                int position = index;
+                @if (index > 0) { <span class="small">@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")</span> }
+                <SelectorExpressionEditor @key="Terms[index].Signature" Selector="Terms[index]" Path="@($"{Path}.{index}")" Available="Available" Options="Options"
+                    CategoryColorIndices="CategoryColorIndices" OnChanged="value => Replace(position, value)"
+                    OnRemove="() => Remove(position)" OnValidation="OnValidation" />
+            }
+            <select class="form-select form-select-sm" style="width:auto;max-width:100%" value="" aria-label="Add clause to group @Path"
+                    @onchange="args => Add(args.Value?.ToString(), Selector.Kind)">
+                <option value="">Add clause…</option>
+                @Options
+            </select>
+            <span aria-hidden="true">)</span>
+        </span>
+    }
+    else {
+        <span class="badge category-tag draw-selector-chip text-wrap d-inline-flex align-items-center @ChipClass">
+            @if (Selector.Kind == CardSelectorKind.LevelAtLeast) {
+                <label class="d-inline-flex align-items-center gap-1 mb-0">
+                    Level >=
+                    <input class="form-control form-control-sm" style="width:5rem" type="number" min="0" max="2147483647"
+                           aria-label="Minimum Level @Path" value="@Selector.MinimumLevel" @onchange="ChangeMinimum" />
+                </label>
+            }
+            else { <span>@Label</span> }
+            <ChipRemoveButton Class="category-remove-button ms-1" aria-label="@($"Remove eligibility {Label}")" title="@($"Remove eligibility {Label}")" OnClick="OnRemove" />
+        </span>
+    }
+    <details class="selector-extend">
+        <summary class="small" aria-label="Extend clause @Path" title="Add an AND/OR group">+</summary>
+        <div class="d-flex flex-wrap gap-1 border rounded p-1">
+            <select class="form-select form-select-sm" style="width:auto" aria-label="New group operator @Path" @bind="_operation">
+                <option value="AllOf">AND</option><option value="AnyOf">OR</option>
+            </select>
+            <select class="form-select form-select-sm" style="width:auto;max-width:100%" value="" aria-label="Add grouped clause @Path"
+                    @onchange="args => Add(args.Value?.ToString(), _operation)">
+                <option value="">Choose clause…</option>
+                @Options
+            </select>
+            @if (Selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OnRemove">Remove group</button>
+            }
+        </div>
+    </details>
+    @if (_error is not null) { <span class="small text-danger" role="alert">@_error</span> }
+</span>
+
+@code {
+    [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;
+    [Parameter] public string Path { get; set; } = "root";
+    [Parameter] public IReadOnlyList<CategoryBase> Available { get; set; } = [];
+    [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>();
+    [Parameter] public RenderFragment? Options { get; set; }
+    [Parameter] public EventCallback<CardSelector> OnChanged { get; set; }
+    [Parameter] public EventCallback OnRemove { get; set; }
+    [Parameter] public EventCallback<(CardSelector Selector, string? Message)> OnValidation { get; set; }
+
+    private CardSelectorKind _operation = CardSelectorKind.AllOf;
+    private string? _error;
+    private CardSelector[] Terms => Selector.Terms.ToArray();
+    private string Identity => Selector.CategoryIdentities.FirstOrDefault() ?? "metadata:level:0";
+    private string Label => Selector.Kind == CardSelectorKind.LevelAtLeast ? "Level threshold"
+        : Available.FirstOrDefault(category => category.Identity == Identity)?.Name ?? Uri.UnescapeDataString(Identity[(Identity.IndexOf(':') + 1)..]);
+    private string ChipClass => Selector.Kind == CardSelectorKind.LevelAtLeast
+        ? "card-property-tag " + CardPropertyColorPalette.GetCssClass("level:0")
+        : Available.FirstOrDefault(category => category.Identity == Identity) is { } category
+            ? CategoryChipPalette.GetCssClass(category, CategoryColorIndices) : CategoryChipPalette.GetFallbackCssClass(Identity);
+
+    private static CardSelector Combine(CardSelectorKind kind, IEnumerable<CardSelector> terms) => kind == CardSelectorKind.AllOf
+        ? CardSelector.AllOfSelectors(terms) : CardSelector.AnyOfSelectors(terms);
+
+    private async Task Publish(Func<CardSelector> create) {
+        try {
+            CardSelector updated = create();
+            await OnChanged.InvokeAsync(updated);
+            _error = null;
+            await OnValidation.InvokeAsync((Selector, null));
+        }
+        catch (ArgumentException) {
+            _error = "Filter is too large or too deeply grouped.";
+            await OnValidation.InvokeAsync((Selector, _error));
+        }
+    }
+
+    private Task Replace(int position, CardSelector value) => Publish(() => Combine(Selector.Kind,
+        Terms.Select((term, index) => index == position ? value : term)));
+
+    private async Task Remove(int position) {
+        CardSelector[] remaining = Terms.Where((term, index) => index != position).ToArray();
+        if (remaining.Length == 0) {
+            await OnRemove.InvokeAsync();
+        }
+        else {
+            await Publish(() => Combine(Selector.Kind, remaining));
+        }
+    }
+
+    private Task Add(string? identity, CardSelectorKind operation) {
+        CardSelector? added = identity == "level-at-least" ? CardSelector.LevelAtLeast(5)
+            : Available.FirstOrDefault(category => category.Identity == identity) is { } category ? CardSelector.For(category) : null;
+        return added is null ? Task.CompletedTask : Publish(() => Combine(operation, [Selector, added]));
+    }
+
+    private Task ChangeOperator(ChangeEventArgs args) => Publish(() => Combine(args.Value?.ToString() == "AllOf"
+        ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf, Terms));
+
+    private async Task ChangeMinimum(ChangeEventArgs args) {
+        if (!int.TryParse(args.Value?.ToString(), out int minimum) || minimum < 0) {
+            _error = "Enter a Level from 0 to 2147483647.";
+            await OnValidation.InvokeAsync((Selector, _error));
+            return;
+        }
+        await Publish(() => CardSelector.LevelAtLeast(minimum));
+    }
+
+}

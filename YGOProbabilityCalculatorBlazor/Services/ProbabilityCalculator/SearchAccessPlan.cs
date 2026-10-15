@@ -18,7 +18,7 @@ internal sealed class SearchAccessPlan {
         _budget = budget;
         budget.CheckStorage(deck.Count, (long)deck.Count * deck.Count + 3L * deck.Count);
         budget.Spend(deck.Sum(card => card.Categories.Count + 1L)
-            * deck.Sum(card => (card.Search?.Selector.CategoryIdentities.Count ?? 0) + 1L));
+            * deck.Sum(card => (card.Search?.Selector.EvaluationSize ?? 0) + 1L));
         _sources = deck.Select((card, row) => (Card: card, Row: row))
             .Where(entry => entry.Card.Copies > 0 && entry.Card.Search is not null)
             .Select(entry => (entry.Row, deck.Select((card, row) => (Card: card, Row: row))
