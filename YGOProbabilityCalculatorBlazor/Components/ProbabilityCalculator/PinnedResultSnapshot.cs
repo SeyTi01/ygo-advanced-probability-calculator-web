@@ -20,10 +20,9 @@ public sealed record PinnedCalculationContext(
     string DeckDefinition,
     ImmutableArray<PinnedComboDefinition> Combos,
     ImmutableDictionary<string, PinnedGroupDefinition> Groups,
-    bool DrawEffectsEnabled = true,
+    CalculationModel Model = CalculationModel.Fast,
     string DrawPriorityDefinition = ""
 ) {
-    public CalculationModel Model => CalculationModelPresentation.FromDrawEffects(DrawEffectsEnabled);
     public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards · {Model.Description()}{(DrawPriorityDefinition.Length > 0 ? " · Custom draw priority" : "")}";
 
     internal static PinnedCalculationContext Capture(
@@ -34,7 +33,7 @@ public sealed record PinnedCalculationContext(
         IReadOnlyList<ComboGroup> groups,
         Func<Combo, Guid> comboLineage,
         Func<string, Guid> groupLineage,
-        bool drawEffectsEnabled = true,
+        CalculationModel mode = CalculationModel.Fast,
         IEnumerable<CategoryBase>? categoryDefinitions = null,
         DrawActivationPriority? priority = null
     ) {
@@ -85,13 +84,14 @@ public sealed record PinnedCalculationContext(
             deckDefinition = Pack([deckDefinition, Pack(rules)]);
         }
 
-        string priorityDefinition = drawEffectsEnabled && priority?.Mode == DrawActivationMode.CustomPriority
+        string priorityDefinition = mode != CalculationModel.OpeningHand && priority?.Mode == DrawActivationMode.CustomPriority
             ? Pack(["custom", .. priority.CardIds.Where(id => deck.Any(card => card.Id == id && card.Copies > 0 && card.DrawCount is not null))]) : "";
         if (priorityDefinition.Length > 0) {
             deckDefinition = Pack([deckDefinition, priorityDefinition]);
         }
 
-        return new(epoch, handSize, copies, deck.Length, deckDefinition, definitions, groupDefinitions, drawEffectsEnabled, priorityDefinition);
+        return new(epoch, handSize, copies, deck.Length, deckDefinition, definitions, groupDefinitions,
+            mode, priorityDefinition);
 
         string CardRequirementSignature(ComboCard card) {
             int maximum = card.MaximumMode == RequirementMaximumMode.Fixed ? card.MaxCount : 0;
@@ -179,7 +179,33 @@ public sealed record PinnedResultComparison(string? Status, PinnedResultDifferen
 }
 
 public sealed record PinnedResultSnapshot(PinnedCalculationContext Context, double Total, ImmutableArray<PinnedComboRow> Combos, ImmutableArray<PinnedGroupRow> Groups) {
+    private const string DifferentQuestion = "Different calculation models: these results answer different questions.";
+    private const string UncertainAccuracy = "Uncertain search survival: numeric comparison unavailable.";
+    private const string UnknownAccuracy = "Accuracy unavailable: numeric comparison unavailable.";
+
     public SearchAvailabilityCertificate? SearchAvailability { get; init; }
+    public CalculationResultContract? Contract { get; init; }
+
+    public string? ComparisonStatus(PinnedResultSnapshot other) {
+        if ((Context.Model == CalculationModel.OpeningHand) != (other.Context.Model == CalculationModel.OpeningHand)
+            || (Contract is not null && other.Contract is not null && Contract.Reference != other.Contract.Reference)) {
+            return DifferentQuestion;
+        }
+        if (Contract is { Accuracy: not CalculationAccuracy.Exact } || other.Contract is { Accuracy: not CalculationAccuracy.Exact }) {
+            return UncertainAccuracy;
+        }
+        if (Contract is null || other.Contract is null) {
+            return UnknownAccuracy;
+        }
+        return null;
+    }
+
+    private string? RowComparisonStatus(PinnedResultSnapshot other) => ComparisonStatus(other) switch {
+        DifferentQuestion => "Different question",
+        UncertainAccuracy => "Uncertain accuracy",
+        UnknownAccuracy => "Accuracy unavailable",
+        _ => null
+    };
 
     public static PinnedResultSnapshot Capture(PinnedCalculationContext context, ProbabilityCalculationResult result) {
         ImmutableArray<PinnedComboRow> pinnedComboRows = result.ComboProbabilities
@@ -208,7 +234,9 @@ public sealed record PinnedResultSnapshot(PinnedCalculationContext Context, doub
             ))
             .ToImmutableArray();
 
-        return new(context, result.TotalProbability, pinnedComboRows, pinnedGroupRows) { SearchAvailability = result.SearchAvailability };
+        return new(context, result.TotalProbability, pinnedComboRows, pinnedGroupRows) {
+            SearchAvailability = result.SearchAvailability, Contract = result.Contract
+        };
     }
 
     public bool IsValid => Valid(Total) && Combos.All(combo => Valid(combo.Probability)) && Groups.All(group => Valid(group.Probability));
@@ -218,6 +246,9 @@ public sealed record PinnedResultSnapshot(PinnedCalculationContext Context, doub
     // Lineage is explicitly transferred by supported edits. Never infer continuity from names,
     // indices, identical requirements, or group IDs across accepted session/deck replacements.
     public PinnedResultComparison CompareComboPresentation(PinnedComboRow row, PinnedResultSnapshot other, bool currentSide) {
+        if (RowComparisonStatus(other) is { } status) {
+            return PinnedResultComparison.ForStatus(status);
+        }
         if (Context.Epoch != other.Context.Epoch) {
             return PinnedResultComparison.ForStatus("Unrelated session");
         }
@@ -240,6 +271,9 @@ public sealed record PinnedResultSnapshot(PinnedCalculationContext Context, doub
     public string CompareCombo(PinnedComboRow row, PinnedResultSnapshot other, bool currentSide) => CompareComboPresentation(row, other, currentSide).Text;
 
     public PinnedResultComparison CompareGroupPresentation(PinnedGroupRow row, PinnedResultSnapshot other, bool currentSide) {
+        if (RowComparisonStatus(other) is { } status) {
+            return PinnedResultComparison.ForStatus(status);
+        }
         if (Context.Epoch != other.Context.Epoch) {
             return PinnedResultComparison.ForStatus("Unrelated session");
         }

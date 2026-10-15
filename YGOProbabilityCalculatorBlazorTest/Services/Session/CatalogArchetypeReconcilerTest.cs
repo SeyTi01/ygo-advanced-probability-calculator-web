@@ -153,7 +153,7 @@ public class CatalogArchetypeReconcilerTest {
             Cards = [new([Lightsworn], name: "Solar Recharge", externalCardId: 691925),
                 new([Lightsworn], name: "Charge of the Light Brigade", externalCardId: 94886282),
                 new([Lightsworn], name: "Raiden, Hand of the Lightsworn", externalCardId: 77558536)],
-            Combos = [new([new(Lightsworn, 1, 1)], "Lightsworn")], HandSize = 1, DrawEffectsEnabled = false
+            Combos = [new([new(Lightsworn, 1, 1)], "Lightsworn")], HandSize = 1, CalculationModel = CalculationModel.OpeningHand
         };
         ProbabilityCalculatorService engine = new();
         Assert.That(engine.CalculateProbabilityResults(session.Cards, session.Combos, 1).TotalProbability, Is.EqualTo(1));

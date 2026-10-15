@@ -62,7 +62,7 @@
     @if (_detailsOpen && HasDetails) {
         <div id="simulationDetails@(Index)" class="simulation-details small">
             @if (_performanceNote) {
-                <p class="simulation-performance"><strong>Performance:</strong> This effect requires detailed hand-state calculation in Configured mode and can become expensive in complex decks.</p>
+                <p class="simulation-performance"><strong>Performance:</strong> This effect requires detailed hand-state calculation in effect modes and can become expensive in complex decks.</p>
             }
             @if (_effect.Source == EffectSource.BuiltIn) {
                 @if (!string.IsNullOrWhiteSpace(_effect.Limitations)) {

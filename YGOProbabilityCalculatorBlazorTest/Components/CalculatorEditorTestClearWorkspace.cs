@@ -110,22 +110,22 @@ public sealed class CalculatorEditorTestClearWorkspace : CalculatorEditorTestBas
 
         await Button(cut, "Save Session").ClickAsync(new());
         SessionState saved = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
-        Assert.That(saved.DrawEffectsEnabled, Is.False);
+        Assert.That(saved.CalculationModel, Is.EqualTo(CalculationModel.OpeningHand));
         Assert.That(saved.Categories, Is.Empty);
         Assert.That(saved.Cards, Is.Empty);
         Assert.That(saved.Combos, Is.Empty);
         Assert.That(saved.ComboGroups, Is.Empty);
         Assert.That(saved.HandSize, Is.EqualTo(5));
 
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
         await cut.Find("#storageSafetyTier").ChangeAsync(new() { Value = "High" });
         await Button(cut, "Clear workspace").ClickAsync(new());
 
         Assert.That(cut.FindAll(".clear-workspace-confirmation"), Is.Empty,
             "runtime preferences alone must not require confirmation");
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
         Assert.That(cut.Find("#storageSafetyTier").GetAttribute("value"), Is.EqualTo("High"));
     }
 

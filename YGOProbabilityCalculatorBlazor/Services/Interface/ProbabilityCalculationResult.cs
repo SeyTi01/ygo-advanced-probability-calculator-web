@@ -9,7 +9,9 @@ public sealed record ProbabilityCalculationResult(
     IReadOnlyList<ComboProbabilityResult> ComboProbabilities,
     IReadOnlyList<GroupProbabilityResult>? GroupProbabilities = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    SearchAvailabilityCertificate? SearchAvailability = null
+    SearchAvailabilityCertificate? SearchAvailability = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    CalculationResultContract? Contract = null
 );
 
 /// <summary>The union probability of the active combos assigned to a named group.</summary>

@@ -81,7 +81,7 @@ public sealed class SearchEffectSessionTest {
 
     [Test]
     public void InvalidAndFutureSnapshotsFailExplicitly() {
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await Codec().LoadSessionAsync("{\"SchemaVersion\":8}"));
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await Codec().LoadSessionAsync("{\"SchemaVersion\":9}"));
         Assert.ThrowsAsync<InvalidOperationException>(async () => await Codec().LoadSessionAsync("""
             {"SchemaVersion":6,"Cards":[{"Name":"bad","Categories":[],"Copies":1,"DrawCount":1,"Search":{"Selector":{"Kind":"Any","Categories":[]}}}]}
             """));

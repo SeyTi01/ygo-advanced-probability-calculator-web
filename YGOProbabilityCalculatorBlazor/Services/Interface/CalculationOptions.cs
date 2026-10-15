@@ -8,5 +8,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.Interface;
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CalculationOptions(
     DrawActivationPriority? DrawActivationPriority = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool CertifySearchAvailability = false
+    // Native API compatibility only. Worker JSON rejects the old checkbox field;
+    // new requests always derive certification from Mode and execution proof.
+    [property: JsonIgnore] bool CertifySearchAvailability = false,
+    CalculationModel Mode = CalculationModel.Fast
 );

@@ -14,9 +14,9 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 public sealed class CalculatorEditorPerformanceTest : CalculatorEditorTestBase {
     private static Card BuiltIn(int identity) => CardEffectRegistry.Default.RestoreBuiltIn(new([], 1, externalCardId: identity));
 
-    [TestCase("Configured", true, 1)]
+    [TestCase("Fast", true, 1)]
     [TestCase("OpeningHand", true, 1)]
-    [TestCase("Configured", false, 1)]
+    [TestCase("Fast", false, 1)]
     [TestCase("OpeningHand", false, 0)]
     public async Task PerformanceIsPermanentWithoutGlobalRiskAndPreservesDisclosure(string mode, bool active, int copies) {
         Card allure = BuiltIn(1475311).WithActive(active).WithCopies(copies);
@@ -26,7 +26,7 @@ public sealed class CalculatorEditorPerformanceTest : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         Assert.That(editor.FindAll(".simulation-performance"), Is.Empty, "collapsed notes add no paragraph to the default view");
         Assert.That(editor.Find(".simulation-details-toggle").GetAttribute("title"), Does.Contain("performance"));
-        Assert.That(SimulationDetails(editor), Does.Contain("Performance:").And.Contain("in Configured mode").And.Contain("can become expensive"));
+        Assert.That(SimulationDetails(editor), Does.Contain("Performance:").And.Contain("in effect modes").And.Contain("can become expensive"));
         await cut.Find("#cardName0").InputAsync(new() { Value = "Renamed effect" });
         Assert.That(editor.Find(".simulation-details-toggle").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         await editor.Find(".simulation-details-toggle").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });

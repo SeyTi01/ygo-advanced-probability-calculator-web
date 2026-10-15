@@ -19,7 +19,7 @@ public class CustomEffectPlanSessionTest {
         string json = $$"""{"SchemaVersion":{{schema}},"DrawEffectsEnabled":{{enabled.ToString().ToLowerInvariant()}},"Cards":[{"Id":"saved","Name":"Trade-In","ExternalCardId":38120068,"Categories":[],"Copies":1,"DrawCount":2,"PreDrawRemovalCount":0}]}""";
         SessionState loaded = await codec.LoadSessionAsync(json);
         // Draw preferences and effects first existed in v4; retain older migrations.
-        Assert.That(loaded.DrawEffectsEnabled, Is.EqualTo(schema < 4 || enabled));
+        Assert.That(loaded.CalculationModel, Is.EqualTo(enabled ? CalculationModel.Fast : CalculationModel.OpeningHand));
         Assert.That(loaded.Cards[0].DrawCount, Is.EqualTo(schema < 4 ? null : (int?)2));
         Assert.That(loaded.Cards[0].PreDrawRemovalCount, Is.Zero);
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
@@ -36,7 +36,7 @@ public class CustomEffectPlanSessionTest {
         // A zero-valued edited operation must not erase other nonzero operations.
         custom[0] = custom[0].WithPostDrawDiscardCount(1).WithPostDrawDeckMillCount(1);
         SessionState session = new() {
-            Cards = custom, Categories = [role], HandSize = 2, DrawEffectsEnabled = enabled,
+            Cards = custom, Categories = [role], HandSize = 2, CalculationModel = (enabled ? CalculationModel.Fast : CalculationModel.OpeningHand),
             DrawActivationPriority = new(DrawActivationMode.CustomPriority, [custom[1].Id, custom[0].Id, custom[2].Id, custom[3].Id, custom[4].Id]),
             ComboGroups = [new("g", "Routes")], Combos = [new([new(role, 1, 2)], groupId: "g")]
         };
@@ -52,7 +52,7 @@ public class CustomEffectPlanSessionTest {
             foreach (string source in new[] { json, SessionShareCodec.Decode(fragment) }) {
                 SessionState loaded = await codec.LoadSessionAsync(source);
                 Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
-                Assert.That(loaded.DrawEffectsEnabled, Is.EqualTo(enabled));
+                Assert.That(loaded.CalculationModel, Is.EqualTo(enabled ? CalculationModel.Fast : CalculationModel.OpeningHand));
                 Assert.That(loaded.Cards.Select(card => (card.Id, card.EffectPlan, card.EffectProfile)),
                     Is.EqualTo(session.Cards.Select(card => (card.Id, card.EffectPlan, card.EffectProfile))));
                 Assert.That(loaded.DrawActivationPriority.CardIds, Is.EqualTo(session.DrawActivationPriority.CardIds));

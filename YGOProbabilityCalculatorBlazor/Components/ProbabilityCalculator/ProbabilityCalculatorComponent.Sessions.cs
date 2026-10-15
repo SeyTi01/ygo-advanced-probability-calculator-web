@@ -96,7 +96,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         Combos = _combos,
         ComboGroups = _comboGroups,
         HandSize = _handSize,
-        DrawEffectsEnabled = _drawEffectsEnabled,
+        CalculationModel = SelectedModel,
         DrawActivationPriority = _drawActivationPriority,
         CategoryColorIndices = new(_categoryColorIndices, StringComparer.Ordinal)
     };
@@ -235,7 +235,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         RestoreCategoryColorIndices(session);
         _handSize = session.HandSize;
         _drawActivationPriority = (session.DrawActivationPriority ?? DrawActivationPriority.Default).ForWorkspace(_cards);
-        _drawEffectsEnabled = session.DrawEffectsEnabled;
+        _selectedModel = session.CalculationModel;
 
         _activeCardIndex = _activeComboIndex = -1;
         _sessionVersion++;

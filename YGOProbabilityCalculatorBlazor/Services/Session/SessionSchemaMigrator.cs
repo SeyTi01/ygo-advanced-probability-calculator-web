@@ -18,7 +18,8 @@ public sealed class SessionSchemaMigrator {
             [5] = MigrateV5ToV6,
             // Grouped selectors and typed numeric predicates require a new reader.
             // Existing saved operations and their provenance remain authoritative.
-            [6] = root => SetSchemaVersion(root, 7)
+            [6] = root => SetSchemaVersion(root, 7),
+            [7] = MigrateV7ToV8
         };
 
     public string MigrateToCurrent(string json) {
@@ -50,6 +51,22 @@ public sealed class SessionSchemaMigrator {
 
         if (sourceVersion > SessionState.CurrentSchemaVersion) {
             throw UnsupportedVersion(sourceVersion);
+        }
+
+        JsonProperty[] modes = rootElement.EnumerateObject().Where(property =>
+            property.Name.Equals(nameof(SessionState.CalculationModel), StringComparison.OrdinalIgnoreCase)).ToArray();
+        JsonProperty[] legacy = rootElement.EnumerateObject().Where(property =>
+            property.Name.Equals("DrawEffectsEnabled", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (modes.Length > 1 || legacy.Length > 1 || (sourceVersion < 8 && modes.Length > 0)
+            || (sourceVersion >= 8 && legacy.Length > 0)) {
+            throw new JsonException("Session has duplicated, obsolete or contradictory calculation mode fields.");
+        }
+        if (modes.Length == 1 && (modes[0].Value.ValueKind != JsonValueKind.String
+            || !Enum.GetNames<CalculationModel>().Contains(modes[0].Value.GetString(), StringComparer.Ordinal))) {
+            throw new JsonException("Unknown session calculation mode.");
+        }
+        if (legacy.Length == 1 && legacy[0].Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) {
+            throw new JsonException("Legacy draw-effects setting must be a boolean.");
         }
 
         if (sourceVersion == SessionState.CurrentSchemaVersion) {
@@ -103,6 +120,17 @@ public sealed class SessionSchemaMigrator {
 
     private static void MigrateV0ToV1(JsonObject root) => SetSchemaVersion(root, 1);
 
+    private static void MigrateV7ToV8(JsonObject root) {
+        string? field = root.Select(property => property.Key).SingleOrDefault(name =>
+            name.Equals("DrawEffectsEnabled", StringComparison.OrdinalIgnoreCase));
+        bool enabled = field is null || root[field]!.GetValue<bool>();
+        if (field is not null) {
+            root.Remove(field);
+        }
+        root[nameof(SessionState.CalculationModel)] = enabled ? "Fast" : "OpeningHand";
+        SetSchemaVersion(root, 8);
+    }
+
     private static void MigrateV5ToV6(JsonObject root) {
         // Old readers ignored Search extension fields. Preserve their modeled meaning.
         JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
@@ -138,13 +166,6 @@ public sealed class SessionSchemaMigrator {
     private static void MigrateV3ToV4(JsonObject root) {
         // Earlier schemas did not model effects. Preserve their ordinary-card meaning,
         // even if an unrecognized extension field was present in an old file.
-        string[] globalDrawEffectFields = root.Select(property => property.Key)
-            .Where(name => name.Equals(nameof(SessionState.DrawEffectsEnabled), StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-        foreach (string field in globalDrawEffectFields) {
-            root.Remove(field);
-        }
-
         JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
         foreach (JsonObject card in cards?.OfType<JsonObject>() ?? []) {
             string[] fields = card.Select(property => property.Key)

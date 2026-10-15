@@ -21,6 +21,7 @@ public sealed class GroupedSelectorSessionTest {
         Card saved = source.WithEffect(source.EffectPlan with { Search = new(SelectorExpressionTest.Old) }, oldProfile);
         JsonObject raw = JsonNode.Parse(Codec().SerializeSession(new() { Cards = [saved], HandSize = 1 }))!.AsObject();
         raw["SchemaVersion"] = 6;
+        raw.Remove("CalculationModel");
         SessionState loaded = await Codec().LoadSessionAsync(raw.ToJsonString());
         Card retained = loaded.Cards.Single();
         Assert.That(retained.EffectPlan, Is.EqualTo(saved.EffectPlan));
@@ -44,7 +45,7 @@ public sealed class GroupedSelectorSessionTest {
         SessionState state = new() { Cards = [source, target, draw, new([], 3, id: "blank")], HandSize = 2,
             Combos = [new([], cards: [new(target.Id, 1, 2)])] };
         string serialized = Codec().SerializeSession(state);
-        Assert.That(JsonDocument.Parse(serialized).RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(7));
+        Assert.That(JsonDocument.Parse(serialized).RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(8));
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", serialized)).Fragment;
         foreach (string channel in new[] { serialized, SessionShareCodec.Decode(fragment) }) {
             SessionState loaded = await Codec().LoadSessionAsync(channel);

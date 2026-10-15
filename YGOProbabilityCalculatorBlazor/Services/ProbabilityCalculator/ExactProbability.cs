@@ -1,4 +1,6 @@
 using System.Numerics;
+using System.Globalization;
+using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
@@ -10,6 +12,12 @@ internal readonly record struct ExactProbability(BigInteger Numerator, BigIntege
     internal long Cells => WorkBudget.IntegerCells(Numerator) + WorkBudget.IntegerCells(Denominator);
 
     internal double ToDouble(WorkBudget budget) => ProbabilityRatio.ToDouble(Numerator, Denominator, budget);
+
+    internal ProbabilityFraction ToFraction() {
+        BigInteger divisor = BigInteger.GreatestCommonDivisor(Numerator, Denominator);
+        return new((Numerator / divisor).ToString(CultureInfo.InvariantCulture),
+            (Denominator / divisor).ToString(CultureInfo.InvariantCulture));
+    }
 
     internal ExactProbability Add(ExactProbability other, WorkBudget budget) {
         Charge(other, budget);

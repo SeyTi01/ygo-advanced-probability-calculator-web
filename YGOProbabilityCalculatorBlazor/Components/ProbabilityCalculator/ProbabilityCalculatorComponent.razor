@@ -43,7 +43,6 @@
                        min="1"/>
             </div>
             <CalculationSettingsMenu @ref="_settingsMenu" Model="SelectedModel" ModelChanged="OnModelChanged"
-                                      @bind-CertifySearchAvailability="_certifySearchAvailability"
                                       Priority="_drawActivationPriority" PriorityChanged="OnDrawActivationPriorityChanged" Cards="_cards"
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
@@ -101,7 +100,7 @@
         LoadingSessionVersion="_loadingSessionVersion"
         Cards="_cards"
         Combos="_combos"
-        DrawEffectsEnabled="_drawEffectsEnabled"
+        DrawEffectsEnabled="@(SelectedModel != CalculationModel.OpeningHand)"
         CategoryBases="_categoryBases"
         CategoryColorIndices="_categoryColorIndices"
         CategoryRename="_categoryRename"
@@ -192,7 +191,7 @@
                 }
             </p>
         }
-        @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null) {
+        @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null || _unsupportedExact) {
             <div class="calculation-recovery mt-3 d-flex flex-wrap align-items-center gap-2">
                 <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate opening hand only</button>
                 <button type="button" class="btn btn-sm btn-link" @onclick="ReviewCalculationSettings">Review settings</button>
@@ -234,18 +233,20 @@
                                              IsStale="_calculationResultIsStale"
                                              IsCalculating="_isCalculating" />
                 </div>
+                <CalculationAccuracyResult Contract="result.Contract" />
                 <SearchAvailabilityResult Certificate="result.SearchAvailability" />
                 @if (_acceptedComparison is { } accepted) {
                     <p class="small text-body-secondary mb-2 result-model">@accepted.Context.Description</p>
                     @if (_pinnedResult is { } priorityPin && priorityPin.Context.DrawPriorityDefinition != accepted.Context.DrawPriorityDefinition) {
                         <p class="small text-body-secondary mb-2 result-priority-difference">Draw activation priority differs from the pinned result.</p>
                     }
-                    @if (_pinnedResult is { } pin && pin.Context.Model != accepted.Context.Model) {
-                        <p class="small mb-2 comparison-model-difference">Different calculation models: these results answer different questions.</p>
+                    @if (_pinnedResult is { } pin && pin.ComparisonStatus(accepted) is { } comparisonStatus) {
+                        <p class="small mb-2 comparison-model-difference">@comparisonStatus</p>
                     }
                 }
                 @{
                     PinnedResultDifference? totalDifference = _pinnedResult is not null && CanCompareDisplayedResult
+                        && _acceptedComparison!.ComparisonStatus(_pinnedResult) is null
                         ? PinnedResultSnapshot.DifferencePresentation(_acceptedComparison!.Total, _pinnedResult.Total)
                         : null;
                 }
@@ -389,8 +390,7 @@
     private int _categoryRenameVersion;
     private CategoryRenameNotice? _categoryRename;
     private int _handSize = 5;
-    private bool _drawEffectsEnabled = true;
-    private bool _certifySearchAvailability;
+    private CalculationModel _selectedModel = CalculationModel.Fast;
     private DrawActivationPriority _drawActivationPriority = DrawActivationPriority.Default;
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
     private bool _isCalculating;
@@ -886,6 +886,7 @@
             _isCalculating = true;
             _errorMessage = null;
             _limitReason = null;
+            _unsupportedExact = false;
             StateHasChanged();
 
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(
@@ -894,9 +895,9 @@
                 _handSize,
                 _comboGroups,
                 CalculationWorkPolicy.Interactive,
-                model != CalculationModel.OpeningHand,
+                null,
                 CalculationStoragePolicy.ForTier(_storageTier),
-                new(_drawActivationPriority, _certifySearchAvailability),
+                new(_drawActivationPriority, Mode: model),
                 _categoryBases
             );
             PinnedCalculationContext comparisonContext = CaptureComparisonContext(model);
@@ -933,6 +934,12 @@
             if (OwnsRequest()) {
                 _limitReason = ex.Reason;
                 _errorMessage = ex.Message + " No probability was calculated for this request.";
+            }
+        }
+        catch (UnsupportedExactCalculationException ex) {
+            if (OwnsRequest()) {
+                _unsupportedExact = true;
+                _errorMessage = ex.Message + " No probability was returned for this request.";
             }
         }
         catch (Exception ex) {
@@ -977,11 +984,14 @@
     private void OnHandSizeChanged() => InvalidateCalculation();
 
     private void OnModelChanged(CalculationModel model) {
+        if (!Enum.IsDefined(model)) {
+            throw new ArgumentOutOfRangeException(nameof(model));
+        }
         if (SelectedModel == model) {
             return;
         }
 
-        _drawEffectsEnabled = model != CalculationModel.OpeningHand;
+        _selectedModel = model;
         InvalidateCalculation();
     }
 
@@ -1002,6 +1012,7 @@
     private void OnCategoriesChanged() => InvalidateCalculation();
 
     private void InvalidateCalculation(bool clearPreviousResult = false, bool reassess = true) {
+        _unsupportedExact = false;
         _drawActivationPriority = _drawActivationPriority.ForWorkspace(_cards);
         _deferNameEditRendering = false;
         _assessmentDirty |= reassess;

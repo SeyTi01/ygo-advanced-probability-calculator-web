@@ -8,14 +8,23 @@ public static class SearchAvailabilityPresentation {
     public static string Summary(SearchAvailabilityCertificate certificate) => certificate.Status switch {
         SearchAvailabilityStatus.Exact => "Exact with respect to Deck-search availability",
         SearchAvailabilityStatus.NotApplicable => "No active Deck searches",
-        SearchAvailabilityStatus.Bounded => certificate.Total is { } total ? Range(total) : "Not certified",
+        SearchAvailabilityStatus.Bounded => certificate.Total is { } total ? $"{Range(total)} · width {Width(total)}" : "Not certified",
         _ => "Not certified"
     };
 
     public static string Range(SearchAvailabilityInterval interval) => interval.IsExact
         ? $"≈ {Percent(interval.Lower, false)}% (exact)"
-        : $"{Percent(interval.Lower, false)}%–{Percent(interval.Upper, true)}%"
+        : $"[{Percent(interval.Lower, false)}%, {Percent(interval.Upper, true)}%]"
             + (interval.Lower.Numerator == "0" ? " (uninformative lower bound)" : "");
+
+    public static string Width(SearchAvailabilityInterval interval) {
+        BigInteger lowerN = BigInteger.Parse(interval.Lower.Numerator, CultureInfo.InvariantCulture);
+        BigInteger lowerD = BigInteger.Parse(interval.Lower.Denominator, CultureInfo.InvariantCulture);
+        BigInteger upperN = BigInteger.Parse(interval.Upper.Numerator, CultureInfo.InvariantCulture);
+        BigInteger upperD = BigInteger.Parse(interval.Upper.Denominator, CultureInfo.InvariantCulture);
+        return Percent(new((upperN * lowerD - lowerN * upperD).ToString(CultureInfo.InvariantCulture),
+            (upperD * lowerD).ToString(CultureInfo.InvariantCulture)), true) + " pp";
+    }
 
     // Six decimal places, rounded OUTWARD using integers, never a rounded double.
     private static string Percent(ProbabilityFraction fraction, bool roundUp) {
@@ -36,7 +45,7 @@ public static class SearchAvailabilityPresentation {
         yield return certificate.Reference;
         yield return certificate.Detail;
         foreach (SearchAvailabilityInterval row in Rows(certificate)) {
-            yield return $"- {row.Label}: [{row.Lower.Numerator}/{row.Lower.Denominator}, {row.Upper.Numerator}/{row.Upper.Denominator}]";
+            yield return $"- {row.Label}: [{row.Lower.Numerator}/{row.Lower.Denominator}, {row.Upper.Numerator}/{row.Upper.Denominator}]; width {Width(row)}";
         }
     }
 }

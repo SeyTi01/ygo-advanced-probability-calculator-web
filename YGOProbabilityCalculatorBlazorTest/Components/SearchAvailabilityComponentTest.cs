@@ -7,6 +7,7 @@ using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
@@ -18,25 +19,30 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
             HandSize = 2, Categories = [target], Combos = [new([new(target, 1, 2)], "Target", groupId: "g")], ComboGroups = [new("g", "Routes")] };
     }
 
+    private static SessionState BoundedSession() => new() {
+        Cards = Services.ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("consumed"), HandSize = 1,
+        Categories = [Services.ProbabilityCalculator.ThreeCalculationModesTest.Target],
+        Combos = Services.ProbabilityCalculator.ThreeCalculationModesTest.Combos,
+        ComboGroups = Services.ProbabilityCalculator.ThreeCalculationModesTest.Groups
+    };
+
     [Test]
     public async Task OptionalDisplayCopyPinAndReloadOwnTheAcceptedCertificate() {
-        SessionState session = SearchSession();
+        SessionState session = BoundedSession();
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         string saved = context.Services.GetRequiredService<ISessionService>().SerializeSession(session);
         await Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(cut.FindAll(".search-availability"), Is.Empty);
-        await cut.Find(".calculation-settings-menu input[type=checkbox]").ChangeAsync(new() { Value = true });
-        await Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(cut.Find(".search-availability summary").TextContent, Does.Contain("Exact with respect"));
+        Assert.That(cut.FindAll(".calculation-settings-menu input[type=checkbox]"), Is.Empty);
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.Contain("Bounded"));
         ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
         string copied = ProbabilityResultSummaryFormatter.Format(accepted, 2, CultureInfo.InvariantCulture);
-        Assert.That(copied, Does.Contain("fixed modeled draw/removal policy (v1)").And.Contain("Routes:").And.Contain("Target:"));
+        Assert.That(copied, Does.Contain("fixed modeled draw/removal policy (v1)").And.Contain("Routes:").And.Contain("Target:").And.Contain("width"));
         await Button(cut, "Pin result").ClickAsync(new());
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.SearchAvailability, Is.SameAs(accepted.SearchAvailability));
-        await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "2" });
         AssertPreviousResult(cut);
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.SearchAvailability, Is.SameAs(accepted.SearchAvailability));
-        await cut.Find(".calculation-settings-menu input[type=checkbox]").ChangeAsync(new() { Value = false });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results .search-availability"), Is.Empty);
         Assert.That(cut.FindAll(".pinned-result .search-availability"), Has.Count.EqualTo(1));
@@ -63,7 +69,6 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
             });
         context.Services.AddSingleton(worker.Object);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(SearchSession());
-        await cut.Find(".calculation-settings-menu input[type=checkbox]").ChangeAsync(new() { Value = true });
         Task pending = Button(cut, "Calculate").ClickAsync(new());
         if (action == "edit") {
             await cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
@@ -80,8 +85,9 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Task next = Button(cut, "Calculate").ClickAsync(new());
         jobs[1].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(requests[1].Json)));
         await next;
-        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.SearchAvailability!.Status,
-            Is.EqualTo(action == "opening" ? SearchAvailabilityStatus.NotApplicable : SearchAvailabilityStatus.Exact));
+        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
+        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode,
+            Is.EqualTo(action == "opening" ? CalculationModel.OpeningHand : CalculationModel.Fast));
     }
 
     [Test]
@@ -93,5 +99,54 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         IRenderedComponent<SearchAvailabilityResult> cut = context.RenderComponent<SearchAvailabilityResult>(parameters => parameters.Add(value => value.Certificate, unavailable));
         Assert.That(cut.Find("summary").TextContent, Does.Contain("Not certified"));
         Assert.That(cut.FindAll("table"), Is.Empty);
+    }
+
+    [Test]
+    public async Task UnsupportedExactPreservesAcceptedBoundAndPinAndRecoveryKeepsExactPreference() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(BoundedSession());
+        await Button(cut, "Calculate").ClickAsync(new());
+        await Button(cut, "Pin result").ClickAsync(new());
+        ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("Unsupported exact calculation"));
+        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(accepted));
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(accepted.Contract));
+        Assert.That(ProbabilityResultSummaryFormatter.Format(accepted, 1, CultureInfo.InvariantCulture),
+            Does.Contain("Effects — fast").And.Contain("Bounded").And.Contain("[1/3, 1/2]"));
+        await Button(cut, "Calculate opening hand only").ClickAsync(new());
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Exact"));
+        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
+        Assert.That(cut.Find(".comparison-model-difference").TextContent, Does.Contain("different questions"));
+        Assert.That(cut.FindAll(".result-difference"), Is.Empty);
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("Unsupported exact calculation"));
+        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
+    }
+
+    [Test]
+    public async Task BoundedRowsNeverDisplayCertifiedPointImprovementsAndCopiedModeIsAccepted() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(BoundedSession());
+        await Button(cut, "Calculate").ClickAsync(new());
+        await Button(cut, "Pin result").ClickAsync(new());
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".result-difference"), Is.Empty);
+        Assert.That(cut.Find(".comparison-model-difference").TextContent, Does.Contain("numeric comparison unavailable"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
+        await cut.Find("button[title='Copy results']").ClickAsync(new());
+        string copied = (string)context.JSInterop.Invocations["copyText"].Last().Arguments[0]!;
+        Assert.That(copied, Does.Contain("Mode: Effects — fast").And.Contain("Previous result").And.Contain("contract v1"));
+        Assert.That(copied, Does.Not.Contain("Mode: Effects — exact"));
+    }
+
+    [Test]
+    public async Task LegacyRowsWithoutAccuracyMetadataCannotProduceNumericDeltas() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(SearchSession());
+        await Button(cut, "Calculate").ClickAsync(new());
+        await Button(cut, "Pin result").ClickAsync(new());
+        PinnedResultSnapshot accepted = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+        PinnedResultSnapshot legacy = accepted with { Contract = null };
+        Assert.That(legacy.ComparisonStatus(legacy), Does.Contain("Accuracy unavailable"));
+        Assert.That(accepted.CompareComboPresentation(accepted.Combos[0], legacy, true).Difference, Is.Null);
     }
 }

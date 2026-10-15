@@ -22,6 +22,28 @@ public static class ProbabilityResultSummaryFormatter {
             $"Any active combo: {FormatProbability(result.TotalProbability, culture)}"
         ];
 
+        if (result.Contract is { } contract) {
+            lines.InsertRange(1, [
+                $"Mode: {contract.ExecutedMode.Description()} (requested: {contract.RequestedMode})",
+                $"Accuracy: {contract.Accuracy}; completion: {contract.Completion}; contract v{contract.Version}",
+                $"Reference: {contract.Reference}",
+                $"Reason: {contract.Reason}",
+                "Effect scope: " + contract.Scope
+            ]);
+            if (contract.Accuracy != CalculationAccuracy.Exact) {
+                lines.Add("Displayed points are optimistic modeled values; no midpoint estimate.");
+            }
+            if (contract.Fractions is { } fractions) {
+                lines.Add($"Exact modeled fraction, any active combo: {Ratio(fractions.Total)}");
+                for (int index = 0; index < fractions.Combos.Length; index++) {
+                    lines.Add($"Modeled fraction, combo {index + 1}: {Ratio(fractions.Combos[index])}");
+                }
+                for (int index = 0; index < fractions.Groups.Length; index++) {
+                    lines.Add($"Modeled fraction, group {index + 1}: {Ratio(fractions.Groups[index])}");
+                }
+            }
+        }
+
         if (groups.Count == 0) {
             lines.Add(string.Empty);
             lines.Add("Individual combos:");
@@ -65,6 +87,8 @@ public static class ProbabilityResultSummaryFormatter {
 
     private static string FormatProbability(double probability, CultureInfo culture) =>
         probability.ToString("P2", culture);
+
+    private static string Ratio(ProbabilityFraction fraction) => $"{fraction.Numerator}/{fraction.Denominator}";
 
     private static string NormalizeLabel(string? value) {
         if (string.IsNullOrWhiteSpace(value)) {

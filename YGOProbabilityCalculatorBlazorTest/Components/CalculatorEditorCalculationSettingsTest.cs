@@ -17,17 +17,17 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase {
     [Test]
-    public async Task SettingsMenuHasTwoExplicitModesAndRestoresFocusContract() {
+    public async Task SettingsMenuHasThreeExplicitModesAndRestoresFocusContract() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         IElement trigger = cut.Find(".calculation-settings-trigger");
         Assert.That(trigger.GetAttribute("aria-label"), Is.EqualTo("Calculation settings"));
         Assert.That(trigger.GetAttribute("aria-expanded"), Is.EqualTo("false"));
         await trigger.ClickAsync(new());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.False);
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
-        Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(2));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
+        Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(3));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
-        Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain("pre-draw costs").And.Contain("post-draw removals"));
+        Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain("fixed modeled policy").And.Contain("uncertified"));
         context.JSInterop.VerifyInvoke("workspaceMenus.watchOutside", 1);
         await cut.Find("#storageSafetyTier").ChangeAsync(new() { Value = "High" });
         await cut.Find("#calculationModel").KeyDownAsync(new() { Key = "Escape" });
@@ -36,7 +36,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(cut.Find("#storageSafetyTier").GetAttribute("value"), Is.EqualTo("High"));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Does.Contain("Draws and searches are ignored").And.Contain("Card settings are preserved"));
+            Does.Contain("all effects ignored").And.Contain("card settings are preserved"));
         await cut.InvokeAsync(() => cut.FindComponent<CalculationSettingsMenu>().Instance.Dismiss());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
         Assert.That(cut.Find(".calculation-settings-trigger").GetAttribute("aria-expanded"), Is.EqualTo("false"));
@@ -49,24 +49,24 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
     public async Task RestoreHonorsSavedDrawPreferenceAndRestoresConfiguredPlans(bool enabled) {
         SessionState session = ConditionalSession(enabled);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo(enabled ? "Configured" : "OpeningHand"));
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = enabled ? "OpeningHand" : "Configured" });
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo(enabled ? "Fast" : "OpeningHand"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = enabled ? "OpeningHand" : "Fast" });
         string source = context.Services.GetRequiredService<ISessionService>().SerializeSession(session);
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(source, "session.json"));
-        cut.WaitForAssertion(() => Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo(enabled ? "Configured" : "OpeningHand")));
+        cut.WaitForAssertion(() => Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo(enabled ? "Fast" : "OpeningHand")));
         Assert.That(cut.FindComponents<CardEditor>()[0].Instance.Card.PostDrawDiscardCount, Is.EqualTo(1));
     }
 
     [Test]
     public async Task FreshAndLegacyOnSessionsUseConfiguredMode() {
         IRenderedComponent<ProbabilityCalculatorComponent> fresh = Render();
-        Assert.That(fresh.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(fresh.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
         ISessionService codec = context.Services.GetRequiredService<ISessionService>();
         JsonObject legacy = JsonNode.Parse(codec.SerializeSession(ConditionalSession()))!.AsObject();
-        legacy.Remove(nameof(SessionState.DrawEffectsEnabled));
+        legacy.Remove(nameof(SessionState.CalculationModel));
         legacy[nameof(SessionState.SchemaVersion)] = 3;
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(await codec.LoadSessionAsync(legacy.ToJsonString()));
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
     }
 
     [Test]
@@ -82,7 +82,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         SessionState session = ConditionalSession();
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         ISessionService codec = context.Services.GetRequiredService<ISessionService>();
-        foreach (CalculationModel mode in new[] { CalculationModel.Configured, CalculationModel.OpeningHand, CalculationModel.Configured }) {
+        foreach (CalculationModel mode in new[] { CalculationModel.Fast, CalculationModel.OpeningHand, CalculationModel.Exact, CalculationModel.Fast }) {
             await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode.ToString() });
             await Button(cut, "Calculate").ClickAsync(new());
             CalculationInput input = requests[^1];
@@ -103,8 +103,8 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         SessionState stored = await codec.LoadSessionAsync(saved);
         Assert.That(stored.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(stored.Cards[0].PostDrawDiscardCount, Is.EqualTo(1));
-        Assert.That(stored.DrawEffectsEnabled, Is.True);
-        Assert.That(Render(stored).Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(stored.CalculationModel, Is.EqualTo(CalculationModel.Fast));
+        Assert.That(Render(stored).Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
     }
 
     [TestCase(true), TestCase(false)]
@@ -117,7 +117,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         context.Services.AddSingleton(background.Object);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(ConditionalSession(draws));
         Task calculation = Button(cut, "Calculate").ClickAsync(new());
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = draws ? "OpeningHand" : "Configured" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = draws ? "OpeningHand" : "Fast" });
         Assert.That(captured.IsCancellationRequested, Is.True);
         completion.SetResult(new(0.99, [new(0, "Late result", 0.99)]));
         await calculation;
@@ -128,7 +128,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
     private static SessionState ConditionalSession(bool draws = true) {
         CategoryBase role = new("Role");
         return new() {
-            Categories = [role], HandSize = 5, DrawEffectsEnabled = draws,
+            Categories = [role], HandSize = 5, CalculationModel = (draws ? CalculationModel.Fast : CalculationModel.OpeningHand),
             Cards = [new([], name: "Source", id: "source", drawCount: 1, drawOncePerTurn: false, postDrawDiscardCount: 1),
                 new([role], 5, "Ordinary", id: "ordinary")],
             Combos = [new([new(role, 5, 5)], "Five ordinary")]

@@ -83,7 +83,7 @@ public class DrawActivationPrioritySessionTest {
     public void PinnedContextDistinguishesPoliciesAndRanksButIgnoresDisabledPreferences() {
         SessionState session = Session(DrawActivationPriority.Default);
         PinnedCalculationContext Capture(DrawActivationPriority policy, bool draws = true) => PinnedCalculationContext.Capture(
-            0, 2, session.Cards, session.Combos, [], _ => Guid.Empty, _ => Guid.Empty, draws, priority: policy);
+            0, 2, session.Cards, session.Combos, [], _ => Guid.Empty, _ => Guid.Empty, draws ? CalculationModel.Fast : CalculationModel.OpeningHand, priority: policy);
         PinnedCalculationContext fifo = Capture(DrawActivationPriority.Default);
         PinnedCalculationContext first = Capture(new(DrawActivationMode.CustomPriority, ["a", "b"]));
         PinnedCalculationContext reverse = Capture(new(DrawActivationMode.CustomPriority, ["b", "a"]));

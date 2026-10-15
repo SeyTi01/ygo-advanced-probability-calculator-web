@@ -29,6 +29,9 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
 
     // Offline codec shared by file saving and recovery; never opens a picker.
     public string SerializeSession(SessionState session) {
+        if (!Enum.IsDefined(session.CalculationModel)) {
+            throw new ArgumentOutOfRangeException(nameof(session), "Unknown calculation mode.");
+        }
         SessionState sessionToSave = new() {
             SchemaVersion = SessionState.CurrentSchemaVersion,
             Categories = session.Categories,
@@ -36,7 +39,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             Combos = session.Combos,
             ComboGroups = session.ComboGroups,
             HandSize = session.HandSize,
-            DrawEffectsEnabled = session.DrawEffectsEnabled,
+            CalculationModel = session.CalculationModel,
             DrawActivationPriority = (session.DrawActivationPriority ?? DrawActivationPriority.Default).ForWorkspace(session.Cards),
             CategoryColorIndices = session.CategoryColorIndices
         };

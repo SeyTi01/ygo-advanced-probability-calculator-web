@@ -87,7 +87,8 @@ public sealed class SearchAvailabilityCertificateTest {
         ProbabilityCalculationResult plain = CalculationWire.ReadResult(CalculationWire.Execute(off.Json));
         ProbabilityCalculationResult certified = CalculationWire.ReadResult(CalculationWire.Execute(on.Json));
         AssertPrimary(plain, certified);
-        SearchAvailabilityCertificate certificate = certified.SearchAvailability!;
+        SearchAvailabilityCertificate certificate = new ProbabilityCalculatorService().CalculateProbabilityResults(session.Cards, session.Combos,
+            session.HandSize, session.ComboGroups, CalculationWorkPolicy.Default, new(CertifySearchAvailability: true)).SearchAvailability!;
         Assert.That(certificate.Status, Is.EqualTo(status), certificate.Detail);
         Assert.That(certificate.Total!.Upper, Is.EqualTo(new ProbabilityFraction(numerator, denominator)));
         Assert.That(certificate.Combos.Length, Is.EqualTo(8));
@@ -118,7 +119,7 @@ public sealed class SearchAvailabilityCertificateTest {
         Assert.That(actual.SearchAvailability.Detail, Does.Contain("Work"));
         CalculationSnapshot legacy = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups);
         Assert.That(legacy.Json, Does.Not.Contain("CertifySearchAvailability"));
-        Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(legacy.Json)).SearchAvailability, Is.Null);
+        Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(legacy.Json)).Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Bounded));
     }
 
     [Test]
@@ -148,9 +149,10 @@ public sealed class SearchAvailabilityCertificateTest {
         session.Cards.Clear();
         session.Combos.Clear();
         ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
-        Assert.That(result.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.NotApplicable));
-        Assert.That(result.SearchAvailability.Combos.Length, Is.EqualTo(8));
-        Assert.That(result.SearchAvailability.Total!.IsExact, Is.True);
+        Assert.That(result.SearchAvailability, Is.Null);
+        Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
+        Assert.That(result.Contract.Fractions!.Combos.Length, Is.EqualTo(8));
+        Assert.That(result.Contract.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
     }
 
     [Test]

@@ -110,7 +110,7 @@ public partial class ProbabilityCalculatorComponent {
         _comboGroups,
         ComboLineage,
         GroupLineage,
-        model != CalculationModel.OpeningHand,
+        model,
         _categoryBases,
         _drawActivationPriority
     );

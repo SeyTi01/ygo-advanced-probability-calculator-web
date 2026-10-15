@@ -76,13 +76,13 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(CalculationModel.OpeningHand.Description()));
         Assert.That(cut.Find(".comparison-model-difference").TextContent, Does.Contain("different questions"));
         Assert.That(cut.FindComponent<SessionShareButton>().Instance.Snapshot, Is.EqualTo(saved));
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
         await Button(cut, "Replace pin with current result").ClickAsync(new());
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Context.Model, Is.EqualTo(CalculationModel.OpeningHand));
         Task normal = Button(cut, "Calculate").ClickAsync(new());
         Complete(3);
         await normal;
-        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Configured effects"));
+        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Effects — fast"));
     }
 
     [TestCase("complete")]
@@ -158,7 +158,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
             Assert.That(cut.Find(".result-model").TextContent, Does.Contain(CalculationModel.OpeningHand.Description()));
         }
         Assert.That(cut.Markup, Does.Not.Contain("late full"));
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
     }
 
     [Test]
@@ -184,7 +184,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(_jobs, Is.Empty);
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
         Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
         Assert.That(_jobs, Is.Empty);
         await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
