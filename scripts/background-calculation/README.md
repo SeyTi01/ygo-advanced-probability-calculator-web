@@ -302,3 +302,36 @@ browser runtime exposes them; a missing observation is not a zero-byte heap.
 All timing values are observations, never CI thresholds. Existing browser/policy
 smokes still assert zero live workers after cancellation and explicit teardown;
 successful sequential UI requests now assert one retained execution context.
+
+### Paired search counting benchmarks
+
+`SearchFeatureBenchmark` exports frozen inputs, sessions, every exact fraction,
+work/storage counters, and timings. Set `YGO_SEARCH_SAMPLE` to the appropriate
+example session and `YGO_SEARCH_BENCHMARK` to an output JSON path when running
+that explicit Release test. Keep the historical ROTA fixture for the old arm.
+
+Compile `paired-search-benchmark.cs` as a temporary `net10.0` console application
+with implicit usings and no packages. Its arguments are the three Release test
+assembly directories (dev, original PR, candidate), the old/new export JSONs,
+and an output JSON. Default: eight warmups, 24 samples, fixed-seed randomized
+interleaving and GC outside timing. Run with `DOTNET_TieredCompilation=0` and
+without concurrent tests/builds. It compares every result fraction and, for
+no-search controls, every work/storage counter. `YGO_SEARCH_SUBSETS=1` selects
+all eight subsets of the three maintained searches on the new fixture, comparing
+the original PR and candidate without changing the other cards or combos.
+
+`SearchPerformanceProbe.PrepareDiagnostic` is a separate, untimed opt-in probe
+for search phase timings, assignment/predicate counts, diagram nodes, and cache
+hits. Normal worker/service requests never instantiate it. Search counting
+uses no conditional source/target vectors or inclusion-exclusion terms after
+compilation; the weighted decision diagram shares exact union subproblems.
+
+For optimized browser timings, `paired-search-workers.cjs` takes the three
+published `wwwroot` directories, the old/new export JSONs, and an output path.
+It measures a fresh worker's first calculation separately, then four warmups
+and 12 interleaved warm samples; optional final arguments change those counts.
+It asserts complete worker-response parity. `YGO_SEARCH_SUBSETS=1` enables the
+seven proper source subsets; the normal run supplies the all-three comparison
+without repeating that slow baseline. `YGO_BROWSER_EXECUTABLE` selects an installed
+Chromium executable when needed. Worker startup is reported separately from
+calculation time. Do not run native and browser benchmarks concurrently.

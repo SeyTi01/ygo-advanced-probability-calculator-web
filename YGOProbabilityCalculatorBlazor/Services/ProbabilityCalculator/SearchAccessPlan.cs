@@ -13,6 +13,7 @@ internal sealed class SearchAccessPlan {
     private readonly (int Source, int[] Targets)[] _sources;
 
     internal SearchAccessPlan(List<Card> deck, WorkBudget budget) {
+        using IDisposable? phase = budget.SearchDiagnostics?.Measure("eligibility");
         _deck = deck;
         _budget = budget;
         budget.CheckStorage(deck.Count, (long)deck.Count * deck.Count + 3L * deck.Count);
@@ -25,10 +26,8 @@ internal sealed class SearchAccessPlan {
                 .Select(target => target.Row).ToArray())).ToArray();
     }
 
-    internal bool ObservesIdentity(Card card) => _sources.Any(source => _deck[source.Source].Id == card.Id
-        || source.Targets.Any(target => _deck[target].Id == card.Id));
-
     internal List<List<CompiledEvent?>> Compile(List<Combo> combos, int handSize, List<Card> rows, int capacity) {
+        using IDisposable? phase = _budget.SearchDiagnostics?.Measure("assignment compilation");
         ComboEventCompiler compiler = new(_deck, handSize, _budget);
         List<List<CompiledEvent?>> finalEvents = combos.Select(compiler.CompileCombo).ToList();
         List<HashSet<CompiledEvent>> projected = combos.Select(_ => new HashSet<CompiledEvent>()).ToList();
@@ -47,6 +46,7 @@ internal sealed class SearchAccessPlan {
         int limit = Math.Min(handSize, Math.Max(0, capacity));
         VisitSource(0, 0);
 
+        _budget.SearchDiagnostics?.Add("compiled predicates", projected.Sum(routes => routes.Count));
         return projected.Select(events => events.Cast<CompiledEvent?>().ToList()).ToList();
 
         void VisitSource(int sourceIndex, int total) {
@@ -83,6 +83,7 @@ internal sealed class SearchAccessPlan {
         }
 
         void Project() {
+            _budget.SearchDiagnostics?.Add("assignments");
             for (int combo = 0; combo < finalEvents.Count; combo++) {
                 foreach (CompiledEvent? route in finalEvents[combo]) {
                     if (route is null) {
@@ -147,8 +148,7 @@ internal sealed class SearchAccessPlan {
     }
 }
 
-// Uses exactly the ordinary conditional counter and union evaluator. The search
-// compiler only changes the event predicates, not their random sample space.
+// Conditional uniform final-hand pools supplied by the unchanged draw resolver.
 internal sealed record SearchHandPool(List<Card> Cards, int Held);
 
 internal sealed class SearchProbabilityCalculation(
@@ -161,14 +161,14 @@ internal sealed class SearchProbabilityCalculation(
     List<SearchHandPool>? pools = null
 ) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
-        // Condition only the small search source/target partition. All other
-        // identities stay in the existing combinatorial counter. These are
-        // final-hand subsets, not additional draw states or physical histories.
-        List<Card> special = random.Where(search.ObservesIdentity).ToList();
-        List<Card> ordinary = random.Where(card => !search.ObservesIdentity(card)).ToList();
-        int ordinaryCopies = ordinary.Sum(card => card.Copies);
+        using IDisposable? scenario = budget.SearchDiagnostics?.Measure("search scenarios");
+        budget.SearchDiagnostics?.Add("scenarios");
+        // Source variables first let each assignment's activation conditions
+        // collapse before exploring target/role bounds. This reorders only the
+        // final uniform sample; it cannot change draw or removal priorities.
+        List<Card> ordered = random.OrderByDescending(card => card.Search is not null).ToList();
         int size = randomCount + retained.Sum(card => card.Copies);
-        List<Card> rows = [.. ordinary, .. special, .. retained];
+        List<Card> rows = [.. ordered, .. retained];
         List<List<CompiledEvent?>> events = search.Compile(combos, size, rows, capacity);
         if (pools is not null) {
             List<CountBound> conditions = [];
@@ -189,76 +189,29 @@ internal sealed class SearchProbabilityCalculation(
             events = events.Select(routes => routes.Select(route => route is null ? null
                 : new CompiledEvent([.. route.Constraints, .. conditions])).ToList()).ToList();
         }
-        int[] suffix = new int[special.Count + 1];
-        for (int i = special.Count - 1; i >= 0; i--) {
-            suffix[i] = suffix[i + 1] + special[i].Copies;
-        }
-        int[] counts = new int[special.Count];
-        BigInteger denominator = pools is null ? Choose(ordinaryCopies + suffix[0], randomCount)
+        using IDisposable? projection = budget.SearchDiagnostics?.Measure("fixed hand projection");
+        ScenarioConditioner conditioner = new(ordered.Count, randomCount, retained, budget);
+        List<List<CompiledEvent?>> projected = events.Select(routes => routes.Select(conditioner.Project).ToList()).ToList();
+        projection?.Dispose();
+        using IDisposable? construction = budget.SearchDiagnostics?.Measure("decision construction");
+        SearchDecisionCounter counter = new(ordered, randomCount, budget);
+        int[] roots = projected.Select(counter.Union).ToArray();
+        int total = roots.Aggregate(0, counter.Or);
+        int[] groupRoots = totalOnly ? [] : (groups ?? []).Select(group => roots.Where((_, index) => combos[index].GroupId == group.Id)
+            .Aggregate(0, counter.Or)).ToArray();
+        construction?.Dispose();
+        using IDisposable? counting = budget.SearchDiagnostics?.Measure("weighted counting");
+        BigInteger denominator = pools is null ? Choose(ordered.Sum(card => card.Copies), randomCount)
             : pools.Aggregate(BigInteger.One, (mass, pool) => mass * Choose(pool.Cards.Sum(card => card.Copies), pool.Held));
-        BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
-        budget.CheckStorage(wins.Length + special.Count, wins.Length * (WorkBudget.IntegerCells(denominator) + 1) + 3L * special.Count);
-        Visit(0, randomCount, BigInteger.One);
-        ExactProbability[] result = wins.Select(win => new ExactProbability(win, denominator)).ToArray();
+        budget.CheckStorage(roots.Length + groupRoots.Length + 1L,
+            roots.Length + groupRoots.Length + WorkBudget.IntegerCells(denominator));
+        ExactProbability Probability(int root) => new(counter.Count(root), denominator);
+        ExactCalculationResult result = new(Probability(total), totalOnly ? [] : roots.Select(Probability).ToArray(),
+            groupRoots.Select(Probability).ToArray());
+        budget.CheckStorage(1L + result.Combos.Length + result.Groups.Length,
+            result.Total.Cells + result.Combos.Sum(value => value.Cells) + result.Groups.Sum(value => value.Cells));
 
-        return new(result[0], totalOnly ? [] : result.Skip(1).Take(combos.Count).ToArray(),
-            totalOnly ? [] : result.Skip(1 + combos.Count).ToArray());
-
-        void Visit(int row, int left, BigInteger weight) {
-            budget.Spend(WorkBudget.IntegerCells(weight) + 1);
-            if (row == special.Count) {
-                Count(left, weight);
-                return;
-            }
-            int minimum = Math.Max(0, left - ordinaryCopies - suffix[row + 1]);
-            int maximum = Math.Min(left, special[row].Copies);
-            for (int count = minimum; count <= maximum; count++) {
-                counts[row] = count;
-                Visit(row + 1, left - count, weight * Choose(special[row].Copies, count));
-            }
-        }
-
-        void Count(int left, BigInteger weight) {
-            List<Card> fixedCards = [.. special.Select((card, row) => card.WithCopies(counts[row])), .. retained];
-            ScenarioConditioner conditioner = new(ordinary.Count, left, fixedCards, budget);
-            List<List<CompiledEvent?>> conditional = events.Select(routes => Simplify(routes.Select(conditioner.Project))).ToList();
-            ComboEventCompiler compiler = new(ordinary, left, budget);
-            ExactHandCounter counter = new(ordinary, left, budget);
-            EventUnionEvaluator union = new(ordinary.Count, left, budget, compiler, counter);
-            List<ExactProbability> probabilities = [union.UnionExact(Simplify(conditional.SelectMany(routes => routes)))];
-            if (!totalOnly) {
-                probabilities.AddRange(conditional.Select(union.UnionExact));
-                probabilities.AddRange((groups ?? []).Select(group => union.UnionExact(Simplify(conditional
-                    .Where((_, index) => combos[index].GroupId == group.Id).SelectMany(routes => routes)))));
-            }
-            BigInteger mass = weight * Choose(ordinaryCopies, left);
-            for (int i = 0; i < wins.Length; i++) {
-                ExactProbability probability = probabilities[i];
-                budget.Spend((WorkBudget.IntegerCells(mass) + probability.Cells + 1) * (probability.Cells + 1));
-                BigInteger contribution = BigInteger.DivRem(mass * probability.Numerator, probability.Denominator, out BigInteger remainder);
-                if (!remainder.IsZero) {
-                    throw new InvalidOperationException("Conditional search hands must have integral subset mass.");
-                }
-                wins[i] += contribution;
-            }
-        }
-
-        List<CompiledEvent?> Simplify(IEnumerable<CompiledEvent?> input) {
-            List<CompiledEvent> unique = input.OfType<CompiledEvent>().Distinct().OrderBy(route => route.Constraints.Length).ToList();
-            List<CompiledEvent?> kept = [];
-            foreach (CompiledEvent candidate in unique) {
-                bool subsumed = kept.Any(previous => previous!.Constraints.All(bound => {
-                    budget.Spend(candidate.Constraints.Length + 1L);
-                    return candidate.Constraints.Any(other => other.EligibleRows == bound.EligibleRows
-                        && other.MinCount >= bound.MinCount && other.MaxCount <= bound.MaxCount);
-                }));
-                if (!subsumed) {
-                    kept.Add(candidate);
-                }
-                budget.CheckStorage(kept.Count, kept.Sum(route => route!.Constraints.Length + 1L));
-            }
-            return kept;
-        }
+        return result;
 
         BigInteger Choose(int n, int k) {
             k = Math.Min(k, n - k);

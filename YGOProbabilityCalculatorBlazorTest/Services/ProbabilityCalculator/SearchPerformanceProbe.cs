@@ -10,7 +10,11 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 // Untimed preparation; the delegate measures only one exact engine request.
 public static class SearchPerformanceProbe {
-    public static Func<string> Prepare(string json) {
+    public static Func<string> Prepare(string json) => PrepareCore(json, false);
+
+    public static Func<string> PrepareDiagnostic(string json) => PrepareCore(json, true);
+
+    private static Func<string> PrepareCore(string json, bool diagnostics) {
         CalculationInput input = JsonSerializer.Deserialize(json, CalculationJsonContext.Default.CalculationInput)!;
         // Untimed reflection lets this identical probe compile on pre-search dev:
         // materialize whichever immutable card constructor that build exposes.
@@ -23,7 +27,8 @@ public static class SearchPerformanceProbe {
         }).ToArray())).ToList();
         List<Combo> combos = input.Combos.Select(combo => new Combo(combo.Categories, combo.Name, true, combo.GroupId, combo.Cards, combo.AlternativeGroups)).ToList();
         return () => {
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
+            SearchCountingDiagnostics? probe = diagnostics ? new() : null;
+            WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard) { SearchDiagnostics = probe };
             long allocated = GC.GetAllocatedBytesForCurrentThread();
             long start = Stopwatch.GetTimestamp();
             ExactCalculationResult? result = null;
@@ -39,6 +44,7 @@ public static class SearchPerformanceProbe {
             allocated = GC.GetAllocatedBytesForCurrentThread() - allocated;
             string Ratio(ExactProbability value) => $"{value.Numerator}/{value.Denominator}";
             return JsonSerializer.Serialize(new { Milliseconds = milliseconds, Allocated = allocated, Outcome = outcome,
+                Diagnostics = probe is null ? null : new { probe.Counts, probe.Milliseconds },
                 Work = budget.Spent, Entries = budget.PeakEntries, Cells = budget.PeakCells, Total = result is null ? null : Ratio(result.Total),
                 Combos = result?.Combos.Select(Ratio).ToArray(), Groups = result?.Groups.Select(Ratio).ToArray() });
         };
