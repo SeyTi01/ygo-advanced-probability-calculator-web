@@ -63,7 +63,7 @@ public sealed record PinnedCalculationContext(
             card.Id,
             card.Name ?? "",
             Number(card.Copies),
-            card.Search is { } search ? $"search:{search.ObjectiveMetadataOnly}:{search.Selector.Signature}" : "",
+            card.Search is { } search ? $"search:{search.ObjectiveMetadataOnly}:{card.OncePerTurn}:{search.Selector.Signature}" : "",
             deck.Any(entry => entry.Search is not null) ? Pack([card.ExternalCardId?.ToString() ?? "", .. card.ManualMetadataCategoryKeys.Order(StringComparer.Ordinal)]) : "",
             card.DrawCount is { } drawCount ? Number(drawCount) : "",
             card.DrawCount is not null && !card.DrawOncePerTurn ? "every-copy" : "",

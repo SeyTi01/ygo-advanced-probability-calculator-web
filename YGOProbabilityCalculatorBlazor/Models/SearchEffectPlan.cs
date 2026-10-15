@@ -1,7 +1,7 @@
 namespace YGOProbabilityCalculatorBlazor.Models;
 
 // A search transfers exactly one remaining Main Deck copy to hand and consumes
-// its source. No OPT is implied. Selectors never depend on a target display name.
+// its source. Activation limits belong to the enclosing effect plan.
 public sealed record SearchEffectPlan(CardSelector Selector, bool ObjectiveMetadataOnly = true) {
     public bool Matches(Card card) {
         if (!card.Active || card.Copies <= 0) {

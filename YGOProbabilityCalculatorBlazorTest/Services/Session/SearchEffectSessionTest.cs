@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.JSInterop;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
@@ -34,13 +35,13 @@ public sealed class SearchEffectSessionTest {
         Assert.That(restored.Categories, Is.EqualTo(rota.Categories));
     }
 
-    [Test]
-    public async Task MaintainedCustomDisabledSnapshotsCloneShareAndWorkerRoundTrip() {
-        Card maintained = SearchEffectsTest.Rota();
-        Card custom = maintained.WithSearch(new(CardSelector.For(new CategoryBase("Role")), false));
+    [TestCase(32807846), TestCase(80181649), TestCase(92221402)]
+    public async Task MaintainedCustomDisabledSnapshotsCloneShareAndWorkerRoundTrip(int identity) {
+        Card maintained = SearchEffectsTest.Preset(identity);
+        Card custom = maintained.WithSearch(new(CardSelector.For(new CategoryBase("Role")), false)).WithOncePerTurn(true);
         foreach (Card card in new[] { maintained, custom, maintained.WithSearch(null), custom.WithDrawCount(2) }) {
             Card copy = card.Duplicate().WithName("Renamed").WithCopies(2).WithActive(false).WithActive(true)
-                .WithCategories(card.Categories).WithObjectiveMetadata(card.Categories, 32807846);
+                .WithCategories(card.Categories).WithObjectiveMetadata(card.Categories, identity);
             Assert.That(copy.Id, Is.Not.EqualTo(card.Id));
             Assert.That(copy.EffectPlan, Is.EqualTo(card.EffectPlan));
             SessionState state = new() { Cards = [card], Categories = [new("Role")] };
@@ -85,4 +86,73 @@ public sealed class SearchEffectSessionTest {
             {"SchemaVersion":6,"Cards":[{"Name":"bad","Categories":[],"Copies":1,"DrawCount":1,"Search":{"Selector":{"Kind":"Any","Categories":[]}}}]}
             """));
     }
+    [TestCase(false, false), TestCase(false, true), TestCase(true, false), TestCase(true, true)]
+    public async Task OldSchemaSixPlansKeepProvenanceAndDefaultToUnrestricted(bool objective, bool oldDrawFlag) {
+        string json = $$$$"""
+            {"SchemaVersion":6,"Cards":[{"Id":"saved","Name":"Legacy","Copies":2,"Categories":[],"ExternalCardId":80181649,"DrawOncePerTurn":{{{{oldDrawFlag.ToString().ToLowerInvariant()}}}},
+            "Search":{"Selector":{"Kind":"Any","Categories":[]},"ObjectiveMetadataOnly":{{{{objective.ToString().ToLowerInvariant()}}}}}}]}
+            """;
+        Card source = (await Codec().LoadSessionAsync(json)).Cards[0];
+        Assert.That(source.Search!.ObjectiveMetadataOnly, Is.EqualTo(objective));
+        Assert.That(source.OncePerTurn, Is.False, "The old draw-only flag was never applied to searches.");
+        Card restored = CardEffectRegistry.Default.RestoreBuiltIn(source);
+        Assert.That(restored.OncePerTurn, Is.True);
+        Assert.That(restored.Search.ObjectiveMetadataOnly, Is.True);
+        Card roundTrip = (await Codec().LoadSessionAsync(Codec().SerializeSession(new() { Cards = [source] }))).Cards[0];
+        Assert.That(roundTrip.Search, Is.EqualTo(source.Search));
+    }
+
+    [TestCase("example_session_state.json"), TestCase("rota_search_example_session_state.json")]
+    public async Task HistoricalExamplesNeverInjectNewPresetsOrRemoveManualProxies(string fixture) {
+        SessionState state = await SearchEffectsTest.LoadExample(fixture);
+        foreach (int identity in new[] { 80181649, 92221402 }) {
+            Card card = state.Cards.Single(card => card.ExternalCardId == identity);
+            Assert.That(card.Search, Is.Null);
+            Assert.That(card.Categories.Any(category => category.Name == "K9 Starter"), Is.True);
+            Assert.That(card.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { "attribute:dark", "attribute:earth", "level:5" }));
+        }
+    }
+
+    [TestCase(80181649), TestCase(92221402)]
+    public void NewPresetImportUsesCanonicalIdAndKeepsExplicitOverride(int identity) {
+        CardInfo artwork = new() { Id = 99, CanonicalCardId = identity, ArtworkImageIds = [identity, 99], Name = "Localized" };
+        CardEffectRegistry registry = CardEffectRegistry.Default;
+        Card imported = registry.CreateImportedCard(artwork, 2, artwork.Id);
+        Assert.That(imported.ExternalCardId, Is.EqualTo(99));
+        Assert.That(imported.EffectProfile.CanonicalCardId, Is.EqualTo(identity));
+        Assert.That(imported.OncePerTurn, Is.True);
+        Assert.That(imported.Search, Is.EqualTo(SearchEffectsTest.Preset(identity).Search));
+        Card custom = imported.WithOncePerTurn(false);
+        Assert.That(registry.ApplyForExplicitSelection(custom, custom, artwork).OncePerTurn, Is.False);
+        Assert.That(registry.RestoreBuiltIn(custom).OncePerTurn, Is.True);
+    }
+
+    [Test]
+    public void PinnedFingerprintsObserveSharedSearchAllowance() {
+        Card source = SearchEffectsTest.Preset(80181649);
+        string Fingerprint(Card card) => PinnedCalculationContext.Capture(0, 2, [card], [], [], _ => Guid.Empty, _ => Guid.Empty).DeckDefinition;
+        string original = Fingerprint(source);
+        Assert.That(Fingerprint(source.WithOncePerTurn(false)), Is.Not.EqualTo(original));
+        Assert.That(Fingerprint(source.WithEffect(source.EffectPlan, source.EffectProfile with { CanonicalCardId = 92221402 })), Is.EqualTo(original), "Provenance cannot change per-entry activation semantics.");
+        Assert.That(Fingerprint(source.Duplicate()), Is.Not.EqualTo(original));
+    }
+
+    [TestCase("null"), TestCase("1"), TestCase("\"yes\"")]
+    public void InvalidSharedActivationFlagsFailExplicitly(string value) {
+        string json = "{\"SchemaVersion\":6,\"Cards\":[{\"Name\":\"bad\",\"Categories\":[],\"Copies\":1,\"OncePerTurn\":" + value + "}]}";
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await Codec().LoadSessionAsync(json));
+    }
+
+    [Test]
+    public async Task SharedFlagCanConfigureDrawsWithoutChangingLegacyDrawSemantics() {
+        foreach (bool once in new[] { false, true }) {
+            Card draw = new([], 2, drawCount: 1, oncePerTurn: once);
+            string json = Codec().SerializeSession(new() { Cards = [draw] });
+            Card loaded = (await Codec().LoadSessionAsync(json)).Cards[0];
+            Assert.That(loaded.EffectPlan, Is.EqualTo(draw.EffectPlan));
+            Assert.That(loaded.DrawOncePerTurn, Is.EqualTo(once));
+            Assert.That(draw.WithSearch(null).OncePerTurn, Is.EqualTo(once));
+        }
+    }
+
 }

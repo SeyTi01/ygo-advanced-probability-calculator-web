@@ -34,8 +34,8 @@
     else if (ModeNotice is { } notice) {
         <div id="cardDrawModeHelp@(Index)" class="simulation-mode small" role="note">@notice</div>
     }
-    @if (Card.Search is { } search) {
-        <div class="simulation-summary">@(_effect.Source == EffectSource.BuiltIn ? _effect.Summary : "Search 1 from deck") · flexible best choice after draws</div>
+    @if ((_draft is not null ? _draft.Search : Card.Search) is { } search) {
+        <div class="simulation-summary">@((_draft?.EffectProfile.Source ?? _effect.Source) == EffectSource.BuiltIn ? _effect.Summary : "Search 1 from deck") · flexible best choice after draws@((_draft?.OncePerTurn ?? Card.OncePerTurn) ? " · once per turn" : "")</div>
         <div class="simulation-targets small" role="status" aria-label="Current search targets">
             Targets in this deck: @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : "None")
         </div>
@@ -100,13 +100,14 @@
                     <option value="3">Draw 3</option>
                     <option value="search">Search 1</option>
                 </select>
-                @if (_draft.DrawCount is not null) {
+                @if (_draft.HasEffect) {
                     <div class="form-check form-switch mb-0">
-                        <input id="cardDrawOnce@(Index)" class="form-check-input" type="checkbox" role="switch"
-                               checked="@_draft.DrawOncePerTurn"
-                               @onchange="e => ChangeDrawOncePerTurn(e.Value)" />
-                        <label for="cardDrawOnce@(Index)" class="form-check-label">Once per turn</label>
+                        <input id="@OnceInputId" class="form-check-input" type="checkbox" role="switch"
+                               checked="@_draft.OncePerTurn" @onchange="e => ChangeOncePerTurn(e.Value)" />
+                        <label for="@OnceInputId" class="form-check-label">Once per turn</label>
                     </div>
+                }
+                @if (_draft.DrawCount is not null) {
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <label for="cardCost@(Index)" class="form-label mb-0">Before drawing</label>
                         <select id="cardCost@(Index)" class="form-select form-select-sm w-auto"
@@ -150,12 +151,7 @@
                 <PostDrawSelectorEditor Id="@($"cardSearchEligibility{Index}")" Selector="draftSearch.Selector"
                     CategoryBases="CategoryBases" RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                     CategoryColorIndices="CategoryColorIndices" ShowHelp="false"
-                    OnChanged='selector => SetDraft(_draft.WithSearch(draftSearch with { Selector = selector }), "selector")' />
-                <div class="form-check mt-2">
-                    <input id="cardSearchObjective@(Index)" class="form-check-input" type="checkbox" checked="@draftSearch.ObjectiveMetadataOnly"
-                        @onchange='e => SetDraft(_draft.WithSearch(draftSearch with { ObjectiveMetadataOnly = e.Value is true }), "selector")' />
-                    <label for="cardSearchObjective@(Index)" class="form-check-label">Objective card properties only</label>
-                </div>
+                    OnChanged="ChangeSearchSelector" />
             }
             @if (_draft.DrawCount is not null) {
                 <details class="simulation-advanced mt-2">
@@ -227,7 +223,7 @@
         : null;
 
     private string[] SearchTargets(SearchEffectPlan search) => CategoryMembership.Materialize(Deck, CategoryBases)
-        .Where(search.Matches).Select(card => $"{card.Name ?? card.Id} ({card.ExternalCardId?.ToString() ?? card.Id})").ToArray();
+        .Where(card => card.Id != Card.Id && search.Matches(card)).Select(card => $"{card.Name ?? card.Id} ({card.ExternalCardId?.ToString() ?? card.Id})").ToArray();
 
     private void ToggleEditor() {
         if (_draft is not null) {
@@ -307,7 +303,11 @@
         }
         else if (text == "search") {
             SearchEffectPlan search = _effect.Maintained?.Plan.Search ?? new(CardSelector.Any, false);
-            SetDraft(_draft!.WithDrawCount(null).WithSearch(search), "draw");
+            Card draft = _draft!.WithDrawCount(null).WithSearch(search);
+            draft = _effect.Maintained?.Plan.Search is not null
+                ? draft.WithEffect(_effect.Maintained.Plan, draft.EffectProfile.AsCustom())
+                : draft.WithOncePerTurn(false);
+            SetDraft(draft, "draw");
         }
         else if (int.TryParse(text, out int count) && count is >= 1 and <= 3) {
             SetDraft(_draft!.WithDrawCount(count), "draw");
@@ -317,9 +317,18 @@
         }
     }
 
-    private void ChangeDrawOncePerTurn(object? value) {
+    private void ChangeSearchSelector(CardSelector selector) {
+        // A deliberate filter edit creates a hypothetical custom search over all
+        // assigned roles/properties. Merely opening/saving an older draft keeps
+        // its saved provenance policy, including schema-6 true/false values.
+        SetDraft(_draft!.WithSearch(_draft.Search! with { Selector = selector, ObjectiveMetadataOnly = false }), "selector");
+    }
+
+    private string OnceInputId => _draft?.Search is null ? $"cardDrawOnce{Index}" : $"cardSearchOnce{Index}";
+
+    private void ChangeOncePerTurn(object? value) {
         if (value is bool oncePerTurn) {
-            SetDraft(_draft!.WithDrawOncePerTurn(oncePerTurn), "once");
+            SetDraft(_draft!.WithOncePerTurn(oncePerTurn), "once");
         }
     }
 

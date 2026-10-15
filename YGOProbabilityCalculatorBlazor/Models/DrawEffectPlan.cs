@@ -44,7 +44,7 @@ public readonly record struct DrawEffectPlan(
     public static DrawEffectPlan Draw(int count, bool oncePerTurn) => new(count, oncePerTurn, 0, CardSelector.Any, 0, 0, CardSelector.Any);
 
     public EffectCapabilities Capabilities => (DrawCount is null ? EffectCapabilities.None : EffectCapabilities.Draw)
-        | (DrawCount is not null && OncePerTurn ? EffectCapabilities.OncePerTurn : EffectCapabilities.None)
+        | ((DrawCount is not null || Search is not null) && OncePerTurn ? EffectCapabilities.OncePerTurn : EffectCapabilities.None)
         | (Search is not null ? EffectCapabilities.Search : EffectCapabilities.None)
         | (HandCost > 0 ? EffectCapabilities.HandCost : EffectCapabilities.None)
         | (HiddenDeckCost > 0 ? EffectCapabilities.HiddenDeckCost : EffectCapabilities.None)

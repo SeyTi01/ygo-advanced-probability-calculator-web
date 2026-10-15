@@ -41,7 +41,8 @@ public sealed record CalculationSnapshot(string Json) {
                 drawEffectsEnabled ? card.PostDrawDeckMillCount : 0,
                 drawEffectsEnabled && card.FirstActivationOnly,
                 drawEffectsEnabled && card.BlocksLaterDraws,
-                drawEffectsEnabled ? card.Search : null
+                drawEffectsEnabled ? card.Search : null,
+                drawEffectsEnabled && card.Search is not null ? card.OncePerTurn : null
             ))
             .ToArray();
 
@@ -84,7 +85,8 @@ public sealed record WorkerCard(
     int PostDrawDeckMillCount = 0,
     bool FirstActivationOnly = false,
     bool BlocksLaterDraws = false,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SearchEffectPlan? Search = null
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SearchEffectPlan? Search = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? OncePerTurn = null
 );
 
 public sealed record WorkerCombo(
@@ -143,7 +145,8 @@ public static class CalculationWire {
                     card.PostDrawDeckMillCount,
                     card.FirstActivationOnly,
                     card.BlocksLaterDraws,
-                    card.Search
+                    card.Search,
+                    card.OncePerTurn
                 ))
                 .ToList();
 

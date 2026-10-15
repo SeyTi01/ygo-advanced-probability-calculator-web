@@ -105,7 +105,7 @@ public sealed class SessionSchemaMigrator {
         JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
         foreach (JsonObject card in cards?.OfType<JsonObject>() ?? []) {
             foreach (string field in card.Select(property => property.Key)
-                .Where(name => name.Equals("Search", StringComparison.OrdinalIgnoreCase)).ToArray()) {
+                .Where(name => name.Equals("Search", StringComparison.OrdinalIgnoreCase) || name.Equals("OncePerTurn", StringComparison.OrdinalIgnoreCase)).ToArray()) {
                 card.Remove(field);
             }
         }
