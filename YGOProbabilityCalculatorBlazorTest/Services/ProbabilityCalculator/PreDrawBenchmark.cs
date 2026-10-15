@@ -86,7 +86,7 @@ public partial class DrawEffectsBenchmark {
             SessionState modeledSession = new() {
                 Cards = modeled, Categories = session.Categories, Combos = session.Combos,
                 ComboGroups = session.ComboGroups, HandSize = session.HandSize,
-                DrawEffectsEnabled = session.DrawEffectsEnabled, DrawActivationPriority = session.DrawActivationPriority,
+                CalculationModel = session.CalculationModel, DrawActivationPriority = session.DrawActivationPriority,
                 CategoryColorIndices = session.CategoryColorIndices
             };
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, session.Combos, session.HandSize, session.ComboGroups,

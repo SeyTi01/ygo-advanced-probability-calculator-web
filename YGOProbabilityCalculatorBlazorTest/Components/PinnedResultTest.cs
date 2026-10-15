@@ -106,14 +106,14 @@ public class PinnedResultTest {
     private PinnedResultSnapshot Pinned => _cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
 
     private (string Current, string Pinned) ContextDescriptions() => (
-        _cut.Find(".probability-results > p.small").TextContent.Trim(),
+        _cut.Find(".probability-results > p.result-model").TextContent.Trim(),
         _cut.FindComponent<PinnedResultPanel>().Find(".pinned-result > p.small").TextContent.Trim());
 
     private void AssertContextDescriptions(string current, string pinned) {
         (string Current, string Pinned) actual = ContextDescriptions();
         Assert.That(actual.Current, Is.EqualTo(current));
         Assert.That(actual.Pinned, Is.EqualTo(pinned));
-        Assert.That(_cut.Find(".probability-results > p.small").GetAttribute("class"), Is.EqualTo("small text-body-secondary mb-2 result-model"));
+        Assert.That(_cut.Find(".probability-results > p.result-model").GetAttribute("class"), Is.EqualTo("small text-body-secondary mb-2 result-model"));
         Assert.That(_cut.FindComponent<PinnedResultPanel>().Find(".pinned-result > p.small").GetAttribute("class"), Is.EqualTo("small text-body-secondary mb-2"));
         Assert.That(actual.Current, Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition"));
         Assert.That(actual.Pinned, Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition"));
@@ -132,7 +132,8 @@ public class PinnedResultTest {
                 input.Combos.Count(combo => combo.GroupId == group.Id)))
             .ToList();
 
-        return new(total, comboResults, groupResults);
+        CalculationResultContract contract = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[job].Json)).Contract!;
+        return new(total, comboResults, groupResults, Contract: contract);
     }
 
     private async Task Accept(double probability = .814) {
@@ -175,7 +176,7 @@ public class PinnedResultTest {
         Assert.That(_cut.Find(".pinned-heading [aria-label='Unpin result']").GetAttribute("title"), Is.EqualTo("Unpin result"));
         Assert.That(_cut.FindAll(".pinned-heading svg path"), Has.Count.EqualTo(2));
         PinnedResultSnapshot first = Pinned;
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
         await Accept(.842);
         Assert.That(Pinned, Is.SameAs(first));
         Assert.That(_cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
@@ -433,7 +434,7 @@ public class PinnedResultTest {
         Assert.That(current.CompareCombo(current.Combos[0], original, true), Is.EqualTo("+2.8%"));
         Assert.That(current.CompareCombo(current.Combos[1], original, true), Is.EqualTo("+2.8%"));
         Assert.That(current.CompareGroup(current.Groups[0], original, true), Is.EqualTo("+2.8%"));
-        AssertContextDescriptions("Hand size 2 · 7 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
+        AssertContextDescriptions("Hand size 2 · 7 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
         Assert.That(Pinned.Combos.Select(c => c.Label), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
     }
 
@@ -441,21 +442,21 @@ public class PinnedResultTest {
     public async Task CurrentAndPinnedContextSummariesKeepTheSameCapturedFieldsAcrossEditsAndRecalculation() {
         await Accept(.814);
         await Pin();
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
 
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         await Accept(.842);
-        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
+        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
 
         await Call("ReplaceCard", (0, Field<List<Card>>("_cards")[0].WithCopies(3)));
         await Call("ReplaceCard", (1, Field<List<Card>>("_cards")[1].WithActive(false)));
         // Pending edits do not leak into the last accepted result or the explicit pin.
-        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
+        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
         await Accept(.786);
-        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Configured effects", "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
+        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
 
         await Pin();
-        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Configured effects", "Hand size 3 · 3 active copies · 1 active cards · Configured effects");
+        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Effects — fast", "Hand size 3 · 3 active copies · 1 active cards · Effects — fast");
         Assert.That(_cut.FindAll(".result-difference-neutral"), Has.Count.EqualTo(5),
             "removing the context note does not alter the inline comparison rows");
     }
@@ -581,9 +582,9 @@ public class PinnedResultTest {
         Assert.That(current.CompareGroup(current.Groups[0], pin, true), Is.EqualTo("Unrelated session"));
         Assert.That(_cut.Find(".result-difference").TextContent, Is.EqualTo("+2.8%"));
         string currentContext = load == "ydk"
-            ? "Hand size 2 · 8 active copies · 2 active cards · Configured effects"
-            : "Hand size 3 · 8 active copies · 2 active cards · Configured effects";
-        AssertContextDescriptions(currentContext, "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
+            ? "Hand size 2 · 8 active copies · 2 active cards · Effects — fast"
+            : "Hand size 3 · 8 active copies · 2 active cards · Effects — fast";
+        AssertContextDescriptions(currentContext, "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
     }
 
     [Test]
@@ -610,6 +611,8 @@ public class PinnedResultTest {
         if (pin) {
             await Pin();
         }
+        string expected = "Previous result — current inputs have changed.\n" + ProbabilityResultSummaryFormatter.Format(
+            _cut.FindComponent<ProbabilityResultExport>().Instance.Result!, 5, CultureInfo.GetCultureInfo("en-US"));
         // Even mutation of the _worker's returned lists cannot alter accepted display/export rows.
         ((List<ComboProbabilityResult>)original.ComboProbabilities).Clear();
         ((List<GroupProbabilityResult>)original.GroupProbabilities!).Clear();
@@ -626,7 +629,6 @@ public class PinnedResultTest {
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
         Assert.That(_cut.Find("#pinUnavailableReason").ClassList, Does.Contain("visually-hidden"));
         await copy.ClickAsync(new());
-        const string expected = "Previous result — current inputs have changed.\nConfigured effects\nProbability results\nHand size: 5\nAny active combo: 81.40%\n\nGroup probabilities:\n- **Group** — 81.40% (1 active)\n  - **Duplicate** — 81.40%\n\nUngrouped combos:\n- **Duplicate** — 81.40%\n- **Unnamed combo 3** — 81.40%";
         Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Is.EqualTo(expected));
         Assert.That(_sessions.SerializeSession(FieldSession()), Is.EqualTo(session));
         Assert.That(_cut.FindComponent<SessionShareButton>().Instance.Snapshot, Is.EqualTo(session));
@@ -642,7 +644,7 @@ public class PinnedResultTest {
         await Accept(.842);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
         string fresh = (string)_clipboard.Invocations["copyText"].Last().Arguments[0]!;
-        Assert.That(fresh, Does.StartWith("Configured effects\nProbability results\nHand size: 6\nAny active combo: 84.20%"));
+        Assert.That(fresh, Does.StartWith("Probability results\nMode: Effects — fast").And.Contain("Hand size: 6\nAny active combo: 84.20%"));
         Assert.That(fresh, Does.Contain("Edited route").And.Not.Contain("Previous result"));
     }
 
@@ -679,7 +681,7 @@ public class PinnedResultTest {
         Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
         await Accept(.842);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
-        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.StartWith("Configured effects\nProbability results\nHand size: 6\nAny active combo: 84.20%"));
+        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.StartWith("Probability results\nMode: Effects — fast").And.Contain("Hand size: 6\nAny active combo: 84.20%"));
         string? shared = _cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         Assert.That(shared, Is.EqualTo(_sessions.SerializeSession(FieldSession())));
         Assert.That(shared, Does.Not.Contain("acceptedComparison").And.Not.Contain("pinnedResult").And.Not.Contain("Previous result").And.Not.Contain("84.20%"));
@@ -744,9 +746,9 @@ public class PinnedResultTest {
         await Accept(.6);
         await Pin();
         PinnedResultSnapshot pinnedOn = Pinned;
-        Assert.That(pinnedOn.Context.DrawEffectsEnabled, Is.True);
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Configured effects",
-            "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
+        Assert.That((pinnedOn.Context.Model != CalculationModel.OpeningHand), Is.True);
+        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Effects — fast",
+            "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
 
         await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(_cut.Find(".probability-result-status-full").TextContent, Is.EqualTo("Previous result · inputs changed"));
@@ -756,14 +758,14 @@ public class PinnedResultTest {
         CalculationInput offInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs.Last().Json)!;
         Assert.That(offInput.Cards[0].DrawCount, Is.Null);
         Assert.That((cards[0].DrawCount, cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
-        Assert.That(_cut.FindAll(".result-difference").ToArray(), Has.Length.EqualTo(5));
+        Assert.That(_cut.FindAll(".result-difference").ToArray(), Is.Empty);
         Assert.That(_cut.FindAll(".result-row-comparison").Select(row => row.TextContent),
             Does.Not.Contain("Unrelated session"));
         AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Opening hand only — effects not applied",
-            "Hand size 2 · 8 active copies · 2 active cards · Configured effects");
+            "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
         Assert.That(Pinned.Context.DeckDefinition, Is.EqualTo(pinnedOn.Context.DeckDefinition));
-        Assert.That(Pinned.Context.DrawEffectsEnabled, Is.True);
-        Assert.That(Field<PinnedResultSnapshot>("_acceptedComparison").Context.DrawEffectsEnabled, Is.False);
+        Assert.That((Pinned.Context.Model != CalculationModel.OpeningHand), Is.True);
+        Assert.That((Field<PinnedResultSnapshot>("_acceptedComparison").Context.Model != CalculationModel.OpeningHand), Is.False);
     }
 
     private sealed class SessionFile(string json) : IBrowserFile {

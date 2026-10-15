@@ -1,5 +1,6 @@
 {
-  "SchemaVersion": 7,
+  "SchemaVersion": 8,
+  "CalculationModel": "Fast",
   "Categories": [
     {
       "Name": "VS Monster",

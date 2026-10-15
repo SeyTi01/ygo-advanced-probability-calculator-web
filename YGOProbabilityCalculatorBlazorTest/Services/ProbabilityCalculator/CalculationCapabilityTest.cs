@@ -179,8 +179,8 @@ internal sealed class CalculationCapabilityTest {
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(OrderedDeck(), Combos, 2, Groups,
             drawEffectsEnabled: false, options: new(CertifySearchAvailability: true));
         ProbabilityCalculationResult opening = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
-        Assert.That(opening.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.NotApplicable));
-        Assert.That(opening.SearchAvailability.Reference, Is.EqualTo(CalculationCapability.Reference));
+        Assert.That(opening.SearchAvailability, Is.Null);
+        Assert.That(opening.Contract!.Reference, Is.EqualTo(CalculationResultContract.OpeningReference));
     }
 
     [Test]

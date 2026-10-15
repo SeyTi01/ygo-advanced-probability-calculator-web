@@ -59,7 +59,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(ordinaryEditor.FindAll(".accordion-button .badge").ToArray(), Is.Empty);
 
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
 
         Assert.That(allureEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 2 · Remove 1"));
         Assert.That(allureEditor.FindAll("#cardDrawModeHelp0"), Is.Empty);
@@ -79,7 +79,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
             allureEditor.Instance.Card.PostDrawSelector),
             Is.EqualTo(((int?)2, true, 1, CardSelector.For(dark))));
 
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
         Assert.That(allureEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 2 · Remove 1"));
         Assert.That(allureEditor.FindAll("#cardDrawModeHelp0"), Is.Empty);
     }
@@ -194,7 +194,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         IElement toggle = cut.Find("#calculationModel");
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.False);
         Assert.That(toggle.TagName, Is.EqualTo("SELECT"));
-        Assert.That(toggle.GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(toggle.GetAttribute("value"), Is.EqualTo("Fast"));
         Assert.That(cut.Find("label[for='calculationModel']").TextContent, Is.EqualTo("Calculation model"));
         AssertDrawEffectsHelpIsStable(false);
 
@@ -220,10 +220,10 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(ordinaryExpected.ToString("P2")));
         Assert.That((editor.Instance.Card.DrawCount, editor.Instance.Card.DrawOncePerTurn), Is.EqualTo(((int?)1, false)));
 
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
         AssertPreviousResult(cut);
         AssertDrawEffectsHelpIsStable(false);
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
         Assert.That((cut.FindComponent<CardEditor>().Instance.Card.DrawCount, cut.FindComponent<CardEditor>().Instance.Card.DrawOncePerTurn),
             Is.EqualTo(((int?)1, false)));
         await Button(cut, "Calculate").ClickAsync(new());
@@ -231,7 +231,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
 
         void AssertDrawEffectsHelpIsStable(bool ignored) {
             Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
-            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain(ignored ? "Draws and searches are ignored" : "Applies each saved card plan"));
+            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain(ignored ? "all effects ignored" : "Applies all saved rules"));
         }
     }
 
@@ -242,7 +242,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
             Cards = [configured, new([], 3, "Other", id: "other")],
             Combos = [new([], "Route", cards: [new("pot", 1, 3)])],
             HandSize = 1,
-            DrawEffectsEnabled = false
+            CalculationModel = CalculationModel.OpeningHand
         };
         Mock<IDeckImportService> importer = new();
         Card importedPot = new([], 3, "Pot of Greed", id: "imported-pot", externalCardId: 55144522, drawCount: 2, drawOncePerTurn: false);
@@ -254,13 +254,13 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("OpeningHand"));
         string shared = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         SessionState sharedSession = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(shared);
-        Assert.That(sharedSession.DrawEffectsEnabled, Is.False);
+        Assert.That(sharedSession.CalculationModel, Is.EqualTo(CalculationModel.OpeningHand));
         Assert.That((sharedSession.Cards[0].DrawCount, sharedSession.Cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
 
         await Button(cut, "Save Session").ClickAsync(new());
         string saved = SavedSessionJson();
         SessionState savedSession = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(saved);
-        Assert.That(savedSession.DrawEffectsEnabled, Is.False);
+        Assert.That(savedSession.CalculationModel, Is.EqualTo(CalculationModel.OpeningHand));
         Assert.That((savedSession.Cards[0].DrawCount, savedSession.Cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
 
         cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n55144522", "deck.ydk"));
@@ -276,9 +276,9 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         });
 
         System.Text.Json.Nodes.JsonObject missingToggle = (System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse(saved)!;
-        missingToggle.Remove(nameof(SessionState.DrawEffectsEnabled));
+        missingToggle.Remove(nameof(SessionState.CalculationModel));
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(missingToggle.ToJsonString(), "legacy.json"));
-        cut.WaitForAssertion(() => Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured")));
+        cut.WaitForAssertion(() => Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast")));
     }
 
     [Test]

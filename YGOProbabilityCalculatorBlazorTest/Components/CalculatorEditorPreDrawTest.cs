@@ -32,7 +32,7 @@ public class CalculatorEditorPreDrawTest : CalculatorEditorTestBase {
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(editor.Find("#cardDrawModeHelp0").TextContent, Does.Contain("saved simulation is off"));
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Configured" });
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
         await editor.Find("#cardCost0").ChangeAsync(new() { Value = "0" });
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PreDrawSelector, Is.EqualTo(CardSelector.Any));

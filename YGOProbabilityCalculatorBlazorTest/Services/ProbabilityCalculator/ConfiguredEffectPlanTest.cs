@@ -97,9 +97,9 @@ public class ConfiguredEffectPlanTest {
             Assert.That(input.Cards.Select(card => (card.Id, card.PreDrawRemovalCount, card.PostDrawDiscardCount, card.PreDrawDeckRemovalCount)),
                 Is.EqualTo(deck.Select(card => (card.Id, card.PreDrawRemovalCount, card.PostDrawDiscardCount, card.PreDrawDeckRemovalCount))));
             ProbabilityCalculationResult expected = result.ToPublic(combos, groups, budget);
-            Assert.That(JsonSerializer.Serialize(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json))), Is.EqualTo(JsonSerializer.Serialize(expected)));
-            Assert.That(JsonSerializer.Serialize(new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 2, groups,
-                CalculationWorkPolicy.Interactive, options: new(priority))), Is.EqualTo(JsonSerializer.Serialize(expected)));
+            SearchAvailabilityCertificateTest.AssertPrimary(expected, CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
+            SearchAvailabilityCertificateTest.AssertPrimary(expected, new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 2, groups,
+                CalculationWorkPolicy.Interactive, options: new(priority)));
         }
 
         return result;

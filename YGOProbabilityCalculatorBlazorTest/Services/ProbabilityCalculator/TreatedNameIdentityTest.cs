@@ -30,7 +30,7 @@ public class TreatedNameIdentityTest {
             deck.Add(new([], name: "Draw source", id: "draw-source", drawCount: mode,
                 postDrawDiscardCount: mode == 2 ? 1 : 0));
         }
-        SessionState session = new() { Cards = deck, Combos = combos, HandSize = 1, DrawEffectsEnabled = mode > 0 };
+        SessionState session = new() { Cards = deck, Combos = combos, HandSize = 1, CalculationModel = (mode > 0 ? CalculationModel.Fast : CalculationModel.OpeningHand) };
         using Bunit.TestContext context = new();
         SessionService sessions = new(context.JSInterop.JSRuntime, new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
         string saved = sessions.SerializeSession(session);

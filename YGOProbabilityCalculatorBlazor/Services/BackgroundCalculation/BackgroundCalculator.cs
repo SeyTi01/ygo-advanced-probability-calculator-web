@@ -40,7 +40,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IBackgroundCalculator 
                     token.ThrowIfCancellationRequested();
                     string response = await job.InvokeAsync<string>("run", token, snapshot.Json);
                     token.ThrowIfCancellationRequested();
-                    result = CalculationWire.ReadResult(response);
+                    result = CalculationWire.ReadResult(response, snapshot.RequestedMode);
                     token.ThrowIfCancellationRequested();
                     // Errors (including valid Work/Storage/Input responses) never
                     // acknowledge the lease or retain a possibly enlarged heap.

@@ -63,7 +63,7 @@ public class DrawEffectsSessionTest {
         string json = $$"""{"SchemaVersion":{{version}},"DrawEffectsEnabled":false,"Cards":[{"Categories":[],"Copies":2,"Name":"P","DrawCount":2,"DrawOncePerTurn":false,"PostDrawDiscardCount":1}]}""";
         SessionState loaded = await Codec().LoadSessionAsync(json);
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
-        Assert.That(loaded.DrawEffectsEnabled, Is.True);
+        Assert.That(loaded.CalculationModel, Is.EqualTo(CalculationModel.OpeningHand));
         Assert.That(loaded.Cards.Single().DrawCount, Is.Null);
         Assert.That(loaded.Cards.Single().DrawOncePerTurn, Is.True);
         Assert.That(loaded.Cards.Single().PostDrawDiscardCount, Is.Zero);
@@ -74,17 +74,17 @@ public class DrawEffectsSessionTest {
     public async Task GlobalDrawEffectsSettingRoundTripsWithoutChangingCardConfiguration(bool enabled) {
         SessionService codec = Codec();
         Card configured = new([], 2, "Configured", id: "configured", drawCount: 3, drawOncePerTurn: false);
-        SessionState session = new() { DrawEffectsEnabled = enabled, Cards = [configured] };
+        SessionState session = new() { CalculationModel = (enabled ? CalculationModel.Fast : CalculationModel.OpeningHand), Cards = [configured] };
 
-        Assert.That(new SessionState().DrawEffectsEnabled, Is.True);
-        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(7));
+        Assert.That(new SessionState().CalculationModel, Is.EqualTo(CalculationModel.Fast));
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(8));
         string json = codec.SerializeSession(session);
         using JsonDocument document = JsonDocument.Parse(json);
         Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
-        Assert.That(document.RootElement.GetProperty("DrawEffectsEnabled").GetBoolean(), Is.EqualTo(enabled));
+        Assert.That(document.RootElement.GetProperty("CalculationModel").GetString(), Is.EqualTo(enabled ? "Fast" : "OpeningHand"));
 
         SessionState loaded = await codec.LoadSessionAsync(json);
-        Assert.That(loaded.DrawEffectsEnabled, Is.EqualTo(enabled));
+        Assert.That(loaded.CalculationModel, Is.EqualTo(enabled ? CalculationModel.Fast : CalculationModel.OpeningHand));
         Assert.That((loaded.Cards.Single().DrawCount, loaded.Cards.Single().DrawOncePerTurn), Is.EqualTo(((int?)3, false)));
     }
 
@@ -93,7 +93,7 @@ public class DrawEffectsSessionTest {
         SessionState loaded = await Codec().LoadSessionAsync(
             """{"SchemaVersion":4,"Cards":[{"Categories":[],"Copies":2,"Name":"P","DrawCount":2,"DrawOncePerTurn":false}]}""");
 
-        Assert.That(loaded.DrawEffectsEnabled, Is.True);
+        Assert.That(loaded.CalculationModel, Is.EqualTo(CalculationModel.Fast));
         Assert.That((loaded.Cards.Single().DrawCount, loaded.Cards.Single().DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
     }
 

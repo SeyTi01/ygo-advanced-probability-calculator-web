@@ -207,7 +207,7 @@
         long attemptVersion = ++_copyAttemptVersion;
         string summary = ProbabilityResultSummaryFormatter.Format(result, handSize, culture);
 
-        if (ModelDescription is { } model) {
+        if (result.Contract is null && ModelDescription is { } model) {
             summary = model + "\n" + summary;
         }
 

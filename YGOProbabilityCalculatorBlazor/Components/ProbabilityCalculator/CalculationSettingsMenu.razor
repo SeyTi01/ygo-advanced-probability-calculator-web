@@ -29,8 +29,9 @@
             <label class="form-label mb-1" for="calculationModel">Calculation model</label>
             <select @ref="_drawEffectsInput" id="calculationModel" class="form-select"
                     value="@Model" aria-describedby="drawEffectsHelp" @onchange="OnModelChanged">
-                <option value="Configured">Configured effects (default)</option>
                 <option value="OpeningHand">Opening hand only</option>
+                <option value="Fast">Effects — fast (default)</option>
+                <option value="Exact">Effects — exact</option>
             </select>
             <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
             <div class="mt-3">
@@ -68,14 +69,6 @@
             </div>
         </section>
 
-        <div class="border-top mt-3 pt-3">
-            <label class="form-check-label">
-                <input type="checkbox" class="form-check-input me-1" checked="@CertifySearchAvailability"
-                       @onchange="args => CertifySearchAvailabilityChanged.InvokeAsync(args.Value is true)" />
-                Certify Deck-search availability
-            </label>
-            <p class="form-text mb-0">Optional bounds with the next calculation. Uses remaining Work/Storage allowance.</p>
-        </div>
         <div class="border-top mt-3 pt-3 calculation-settings-option">
             <label class="form-label mb-1" for="storageSafetyTier">Storage safety limit</label>
             <select id="storageSafetyTier"
@@ -95,11 +88,8 @@
 </div>
 
 @code {
-    [Parameter] public bool CertifySearchAvailability { get; set; }
-    [Parameter] public EventCallback<bool> CertifySearchAvailabilityChanged { get; set; }
-
     [Parameter]
-    public CalculationModel Model { get; set; } = CalculationModel.Configured;
+    public CalculationModel Model { get; set; } = CalculationModel.Fast;
 
     [Parameter]
     public EventCallback<CalculationModel> ModelChanged { get; set; }
@@ -169,8 +159,9 @@
     private DotNetObjectReference<CalculationSettingsMenu>? _reference;
     private ElementReference _drawEffectsInput;
     private string ModelHelp => Model switch {
-        CalculationModel.Configured => "Applies each saved card plan, including searches, draws, once-per-turn limits, pre-draw costs, post-draw removals and filters.",
-        CalculationModel.OpeningHand => "Draws and searches are ignored; configured cards still occupy hand slots. Card settings are preserved.",
+        CalculationModel.Fast => "Applies all saved rules under the fixed modeled policy. Exact when proven; otherwise optimistic, with a search-survival bound where supported. Some inputs remain uncertified.",
+        CalculationModel.Exact => "Applies the same saved rules and fixed policy. Returns a result only when physical Deck-search survival is proven exact; otherwise Unsupported. Not full gameplay or optimal play.",
+        CalculationModel.OpeningHand => "Exact for the dealt hand with all effects ignored. A different question; card settings are preserved.",
         _ => throw new ArgumentOutOfRangeException(nameof(Model))
     };
 

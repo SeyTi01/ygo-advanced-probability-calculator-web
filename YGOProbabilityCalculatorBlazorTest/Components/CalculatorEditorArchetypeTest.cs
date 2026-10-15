@@ -79,7 +79,7 @@ public class CalculatorEditorArchetypeTest : CalculatorEditorTestBase {
         Card manual = new([lightsworn], name: "Manual Solar", id: "manual", externalCardId: 691925,
             manualMetadataCategoryKeys: [lightsworn.MetadataKey!]);
         SessionState old = new() {
-            Cards = [automatic, manual], HandSize = 1, DrawEffectsEnabled = false,
+            Cards = [automatic, manual], HandSize = 1, CalculationModel = CalculationModel.OpeningHand,
             Combos = [new([new(lightsworn, 1, 1)], "Lightsworn")]
         };
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(old);

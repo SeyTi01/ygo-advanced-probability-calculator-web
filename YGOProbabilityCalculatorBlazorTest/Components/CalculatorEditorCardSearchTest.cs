@@ -174,7 +174,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         Card original = new([a], copies: 3, name: "Original", id: "stable", externalCardId: 123,
             drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1, preDrawRemovalCount: 1);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
-            Categories = [a], Cards = [original, new([], copies: 37)], Combos = [new([new(a, 1, 5)])], HandSize = 5, DrawEffectsEnabled = false
+            Categories = [a], Cards = [original, new([], copies: 37)], Combos = [new([new(a, 1, 5)])], HandSize = 5, CalculationModel = CalculationModel.OpeningHand
         });
         await Button(cut, "Calculate").ClickAsync(new());
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];

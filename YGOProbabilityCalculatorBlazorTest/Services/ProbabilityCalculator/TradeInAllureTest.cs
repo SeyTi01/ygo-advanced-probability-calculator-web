@@ -70,7 +70,7 @@ public class TradeInAllureTest {
         }
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, hand, session.ComboGroups,
             CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(priority));
-        Assert.That(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json))),
+        Assert.That(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)) with { Contract = null }),
             expected.GetProperty("ReferenceResults")), Is.True);
     }
 

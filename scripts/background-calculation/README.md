@@ -19,15 +19,13 @@ the explicit `CalculationWorkPolicy` overload and wire requests omitting
 `WorkUnits` retain the bounded **10,000,000-unit** default. Policies are immutable,
 positive `long` values; invalid input cannot select unlimited work. There is no
 retry, budget UI or persisted preference. Weighted units are not elapsed seconds.
-Results retain their existing public data contract. Each request captures its
+Results retain primary doubles and add a versioned immutable accuracy contract with rational total/combo/group rows. Each request captures its
 own input JSON, excluding inactive
 entries and including nested requirements, stable identities and group order.
 
-Native and worker calls always execute each card's saved effective plan, including
-custom zero-valued costs or removals. `CalculationOptions` contains only activation
-priority. Its version-local worker JSON rejects obsolete/unknown options as typed
-input errors; saved sessions use schema v7 (bounded grouped selectors and objective
-`LevelAtLeast` predicates). Schema-6 plans retain their exact saved operations and
+Both effect modes execute each card's saved effective plan, including
+custom zero-valued costs or removals. `CalculationOptions` carries activation priority and the requested OpeningHand, Fast or Exact mode. The old native certification flag is a compatibility adapter only; Capture strips it and the worker rejects it. Its version-local worker JSON rejects obsolete/unknown options as typed
+input errors; schema v8 persists one explicit mode while retaining schema-7 grouped selectors and objective `LevelAtLeast` predicates. Schema-6 plans retain their exact saved operations and
 provenance; loading never restores maintained definitions. Opening-hand-only snapshots clear
 draw and search execution fields on their owned worker cards while preserving the workspace plans.
 
@@ -337,3 +335,7 @@ seven proper source subsets; the normal run supplies the all-three comparison
 without repeating that slow baseline. `YGO_BROWSER_EXECUTABLE` selects an installed
 Chromium executable when needed. Worker startup is reported separately from
 calculation time. Do not run native and browser benchmarks concurrently.
+
+Three-mode verification: `three-modes-smoke.cjs <optimized-wwwroot> <modes.json> <evidence-dir>` checks the real worker contract, settings, accepted results, pins/copy, Unsupported, one-shot recovery, repeated loading and light/dark mobile layout. `ThreeModeBenchmark.Export` writes fixtures to `YGO_MODE_FIXTURES`.
+
+For paired engine/acceptance measurements, include `mode-benchmark-probe.cs` with an external MSBuild Compile item in two benchmark-only builds; define `MODE_BASELINE` only for base 7252c7d. No project file or production export is changed. The probe excludes JSON/materialization from timing, records managed allocations (not peak heap), exact internal fractions and Work/Storage counters, and reports Unsupported without exposing a production probability. The baseline bound fixture enables the old certificate; other baseline fixtures measure the old primary. `paired-mode-benchmark.cs` (temporary net10.0 console) and `paired-mode-workers.cjs` each use five warmups and twenty randomized interleaved samples. Run alone. Then publish normally without the external Compile item and run the browser smoke against that normal output.

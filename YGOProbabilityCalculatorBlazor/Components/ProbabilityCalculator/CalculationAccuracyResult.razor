@@ -1,0 +1,21 @@
+@using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+
+@if (Contract is { } contract) {
+    <p class="small mb-2 result-accuracy" role="status">
+        @contract.ExecutedMode.Description() · @contract.Accuracy
+        @if (contract.Accuracy == CalculationAccuracy.Exact) {
+            <span> — @(contract.Scope == CalculationRuleScope.OpeningHand ? "dealt hand; effects ignored" : "within saved effects and fixed policy")</span>
+        }
+        else {
+            <span> — optimistic modeled values</span>
+        }
+    </p>
+    @if (contract.Accuracy == CalculationAccuracy.Uncertified) {
+        <p class="small text-body-secondary mb-2">@contract.Reason</p>
+    }
+}
+
+@code {
+    [Parameter] public CalculationResultContract? Contract { get; set; }
+}

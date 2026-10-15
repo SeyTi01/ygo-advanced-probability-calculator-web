@@ -23,7 +23,7 @@ public class PostDrawCalculationSettingsTest {
         }
         ProbabilityCalculatorService service = new();
         ProbabilityCalculationResult expected = result.ToPublic(combos, groups, budget);
-        Assert.That(System.Text.Json.JsonSerializer.Serialize(service.CalculateProbabilityResults(deck, combos, 5, groups)), Is.EqualTo(System.Text.Json.JsonSerializer.Serialize(expected)));
+        SearchAvailabilityCertificateTest.AssertPrimary(expected, service.CalculateProbabilityResults(deck, combos, 5, groups));
         Assert.That(service.CalculateProbabilityForCombos(deck, combos, 5), Is.EqualTo(expected.TotalProbability));
         Assert.That(service.CalculateProbabilityForCombos(deck, combos, 5, CalculationWorkPolicy.Default, options: new()), Is.EqualTo(expected.TotalProbability));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 5, groups);
@@ -33,7 +33,7 @@ public class PostDrawCalculationSettingsTest {
             if (options is not null) {
                 input[nameof(CalculationInput.Options)] = options;
             }
-            Assert.That(System.Text.Json.JsonSerializer.Serialize(CalculationWire.ReadResult(CalculationWire.Execute(input.ToJsonString()))), Is.EqualTo(System.Text.Json.JsonSerializer.Serialize(expected)));
+            SearchAvailabilityCertificateTest.AssertPrimary(expected, CalculationWire.ReadResult(CalculationWire.Execute(input.ToJsonString())));
         }
         List<Card> custom = deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
         Assert.That(service.CalculateProbabilityForCombos(custom, combos, 5), Is.Not.EqualTo(expected.TotalProbability));
