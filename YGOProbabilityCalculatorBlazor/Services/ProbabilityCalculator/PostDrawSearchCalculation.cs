@@ -29,6 +29,7 @@ internal sealed partial class PostDrawCalculation {
         // can still join the deferred pool when no removal can observe them.
         HashSet<string> observed = SearchPolicyObservedRows(cards);
         List<Card> deferred = deferIdentities ? DeferUnobservedIdentities(ref cards, observed) : [];
+        Route = deferred.Count > 0 ? SolverRoute.SearchOrderedDeferred : SolverRoute.SearchOrdered;
         int n = cards.Count;
         bool customPriority = priority?.Mode == DrawActivationMode.CustomPriority;
         if (customPriority) {

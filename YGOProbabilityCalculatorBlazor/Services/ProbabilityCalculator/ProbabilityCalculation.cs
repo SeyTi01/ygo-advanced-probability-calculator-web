@@ -21,6 +21,7 @@ internal sealed record ExactCalculationResult(
 // One fixed sample space. Scenario instances share the request's cumulative budget,
 // but release their compilation/count caches before evaluating the next scenario.
 internal sealed class ProbabilityCalculation {
+    internal static CalculationCapability Capability => CalculationCapability.NoSearch(SolverRoute.Ordinary);
     private readonly ComboEventCompiler _compiler;
     private readonly EventUnionEvaluator _unionEvaluator;
     private readonly ScenarioConditioner? _conditioner;

@@ -74,14 +74,15 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
 
         WorkBudget budget = new(workPolicy, storagePolicy);
+        DrawEffectCalculation? execution = hasEffects ? new(deck, handSize, budget, options?.DrawActivationPriority) : null;
         ExactCalculationResult exact = hasEffects
-            ? new DrawEffectCalculation(deck, handSize, budget, options?.DrawActivationPriority).Calculate(combos, groups)
+            ? execution!.Calculate(combos, groups)
             : new ProbabilityCalculation(deck, handSize, budget).CalculateExactResults(combos, groups);
         // Complete and retain every primary row, including conversion, before
         // optional work spends any of the remaining request allowance.
         ProbabilityCalculationResult result = exact.ToPublic(combos, groups, budget);
         if (options?.CertifySearchAvailability == true) {
-            result = result with { SearchAvailability = SearchAvailabilityCertification.TryCalculate(deck, handSize, combos, groups, exact, budget) };
+            result = result with { SearchAvailability = SearchAvailabilityCertification.TryCalculate(combos, groups, exact, budget, execution) };
         }
 
         return result;

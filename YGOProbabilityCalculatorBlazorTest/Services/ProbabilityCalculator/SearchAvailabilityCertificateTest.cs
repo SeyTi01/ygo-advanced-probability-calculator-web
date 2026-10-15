@@ -18,10 +18,10 @@ public sealed class SearchAvailabilityCertificateTest {
         SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == name);
         DrawActivationPriority? priority = fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority);
         WorkBudget budget = new(CalculationWorkPolicy.Default);
-        ExactCalculationResult upper = new DrawEffectCalculation(fixture.Deck, fixture.Hand, budget, priority)
-            .Calculate(fixture.Combos, fixture.Groups);
+        DrawEffectCalculation execution = new(fixture.Deck, fixture.Hand, budget, priority);
+        ExactCalculationResult upper = execution.Calculate(fixture.Combos, fixture.Groups);
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(
-            fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, upper, budget);
+            fixture.Combos, fixture.Groups, upper, budget, execution);
         // This oracle retains actual physical suffix identities. Its scheduling
         // dependency is the existing TEST-ONLY DrawSequenceOracle; its search,
         // selector and distinct-slot predicate share no production compiler/MDD.
@@ -29,9 +29,13 @@ public sealed class SearchAvailabilityCertificateTest {
             fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority,
             certificate.Total is null ? null : CheckTerminal);
         ExactProbability[] values = [upper.Total, .. upper.Combos, .. upper.Groups];
+        CalculationCapability capability = execution.DescribeCapability();
         for (int row = 0; row < values.Length; row++) {
             Assert.That(values[row].Numerator * physical.Outcomes,
                 Is.EqualTo(physical.Wins[2][row] * values[row].Denominator), $"optimistic row {row}");
+            if (capability.Accuracy == PhysicalSearchAccuracy.ProvenExact) {
+                Assert.That(physical.Wins[1][row], Is.EqualTo(physical.Wins[2][row]), $"proof soundness row {row}");
+            }
         }
         Assert.That(certificate.Status, Is.Not.EqualTo(SearchAvailabilityStatus.Error), certificate.Detail);
         Assert.That(certificate.Status, Is.Not.EqualTo(SearchAvailabilityStatus.Limited), certificate.Detail);

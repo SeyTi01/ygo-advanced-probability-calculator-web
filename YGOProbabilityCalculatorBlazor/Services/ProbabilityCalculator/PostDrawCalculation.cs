@@ -21,6 +21,7 @@ internal sealed partial class PostDrawCalculation(
     // their original representation; this is a trigger, never a raised limit.
     internal const int DefaultCompactFrontierThreshold = 65_536;
     internal int TerminalStates { get; private set; }
+    internal SolverRoute Route { get; private set; }
     internal int PeakStates { get; private set; }
     internal long PeakCells { get; private set; }
     internal string? LargestStructure { get; private set; }
@@ -107,6 +108,7 @@ internal sealed partial class PostDrawCalculation(
         if (effects.Length == 1 && filler.Length <= 1) {
             int effect = effects[0];
             if (DrawExecutionAssessment.IsExchangeableEffect(cards[effect], relevant[effect], copies, handSize)) {
+                Route = SolverRoute.Exchangeable;
                 return CalculateExchangeable(cards, relevant, effect, filler.FirstOrDefault(-1), factorial, combos, groups, totalOnly);
             }
         }
@@ -137,6 +139,7 @@ internal sealed partial class PostDrawCalculation(
             }
         }
 
+        Route = deferred.Count > 0 ? SolverRoute.OrderedDeferred : SolverRoute.Ordered;
         OrderedResolver resolver = new(
             this,
             budget,

@@ -22,7 +22,7 @@ public sealed record SearchAvailabilityCertificate(
     ImmutableArray<SearchAvailabilityInterval> Combos = default,
     ImmutableArray<SearchAvailabilityInterval> Groups = default
 ) {
-    public string Reference => "Deck-search target survival under fixed modeled draw/removal policy (v1)";
+    public string Reference => ProbabilityCalculator.CalculationCapability.Reference;
 
     internal static SearchAvailabilityCertificate Unavailable(SearchAvailabilityStatus status, string detail) =>
         new(status, detail, null, [], []);

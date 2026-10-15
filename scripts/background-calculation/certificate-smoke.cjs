@@ -132,9 +132,21 @@ async function main() {
         await page.locator('.search-availability summary').click();
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
         await page.locator('.probability-results').screenshot({ path: path.join(evidence, 'certificate-mobile.png') });
+        for (const fixture of fixtures.filter(item => ['ordered-no-loss', 'deferred-no-loss'].includes(item.Name))) {
+            await load(fixture.Session);
+            await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+            await page.waitForFunction(() => document.querySelector('.search-availability summary')?.textContent.includes('Exact with respect'));
+            await page.locator('.search-availability summary').click();
+            assert.match(await page.locator('.search-availability').innerText(), /No eligible search target can leave hand or Deck/);
+            assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+            await page.locator('.probability-results').screenshot({ path: path.join(evidence, fixture.Name + '-mobile.png') });
+            await page.setViewportSize({ width: 1440, height: 1000 });
+            await page.locator('.probability-results').screenshot({ path: path.join(evidence, fixture.Name + '-desktop.png') });
+            await page.setViewportSize({ width: 375, height: 900 });
+        }
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
-        await fs.writeFile(path.join(evidence, 'smoke.json'), JSON.stringify({ browser: browser.version(), errors, checks: 'opt-in, all rows, pin, stale, repeated load, opening-only, desktop/mobile overflow' }));
+        await fs.writeFile(path.join(evidence, 'smoke.json'), JSON.stringify({ browser: browser.version(), errors, checks: 'opt-in, all rows, pin, stale, repeated load, opening-only, ordered/deferred exact proof, desktop/mobile overflow' }));
     } finally {
         await browser.close();
         await new Promise(resolve => server.close(resolve));
