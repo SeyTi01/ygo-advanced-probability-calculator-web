@@ -7,7 +7,5 @@
     margin-inline-start: .2rem;
 }
 @media (max-width: 575.98px) {
-    .expression-group-nested {
-    display: grid;
-    gap: .5rem; padding-inline-start: .4rem; margin-inline-start: 0; }
+    .expression-group-nested { padding-inline-start: .4rem; margin-inline-start: 0; }
 }

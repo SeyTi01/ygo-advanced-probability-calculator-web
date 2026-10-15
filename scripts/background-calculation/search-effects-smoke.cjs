@@ -109,10 +109,13 @@ async function main() {
                 assert.doesNotMatch(await presetEditor.locator('.card-simulation').innerText(), /Partial/);
                 await presetEditor.locator('.simulation-edit').click();
                 const expression = presetEditor.locator('[aria-label="Grouped eligibility filter"]');
-                assert.equal(await expression.locator('.requirement-or-group').count(), 3);
+                assert.equal(await expression.locator('.requirement-row').count(), 3);
                 assert.equal(await expression.locator('.draw-selector-chip').count(), 6);
+                assert.deepEqual(await expression.locator('.requirement-edit').evaluateAll(rows => rows.map(row => row.getAttribute('aria-label'))),
+                    ['Edit Monster AND Level >= 5', 'Edit DARK OR LIGHT', 'Edit Aqua OR Pyro']);
+                assert.doesNotMatch(await expression.innerText(), /Any condition/);
                 assert.equal(await expression.locator('select, input, details').count(), 0);
-                const editLevel = () => expression.getByRole('button', { name: /^Edit Level >=/ }).click();
+                const editLevel = () => expression.getByRole('button', { name: /^Edit Monster AND Level >=/ }).click();
                 const form = expression.locator('form');
                 const minimum = expression.getByRole('spinbutton', { name: 'Minimum Level', exact: true });
                 const rowSave = () => form.getByRole('button', { name: 'Save', exact: true }).click();
@@ -124,6 +127,14 @@ async function main() {
                         await presetEditor.locator('.simulation-editor').screenshot({ path: path.join(evidence, 'chaotic-rows-' + width + '-' + theme + '.png') });
                         await editLevel();
                         assert.equal(await minimum.inputValue(), '5');
+                        assert.equal(await form.locator('.selector-operand').count(), 2);
+                        assert.equal(await form.getByLabel('Row operator').count(), 1);
+                        const aligned = await form.locator('.selector-condition-row').evaluate(row => {
+                            const fields = [...row.querySelectorAll('select')].map(field => field.getBoundingClientRect());
+                            return fields.length === 3 && fields[0].right < fields[1].left && fields[1].right < fields[2].left
+                                && fields.every(field => Math.abs(field.top - fields[0].top) < 1 && field.width >= 44);
+                        });
+                        assert(aligned, width + '/' + theme + ': two conditions and one operator occupy one form row');
                         await presetEditor.locator('.simulation-editor').screenshot({ path: path.join(evidence, 'chaotic-form-' + width + '-' + theme + '.png') });
                         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
                         const clipped = await expression.locator('button, select, input').evaluateAll(elements => elements.filter(element => {
@@ -137,7 +148,14 @@ async function main() {
                         assert(await minimum.evaluate(input => input === document.activeElement), 'Numeric step retains focus');
                         assert.equal(await presetEditor.locator('.simulation-targets').innerText(), text, 'Unsaved row keeps preview');
                         await rowCancel();
-                        assert(await expression.getByRole('button', { name: 'Edit Level >= 5', exact: true }).evaluate(button => button === document.activeElement));
+                        assert(await expression.getByRole('button', { name: 'Edit Monster AND Level >= 5', exact: true }).evaluate(button => button === document.activeElement));
+                        for (const [name, prefix] of [['Edit DARK OR LIGHT', 'attribute'], ['Edit Aqua OR Pyro', 'race']]) {
+                            await expression.getByRole('button', { name, exact: true }).click();
+                            assert.equal(await form.locator('.selector-operand').count(), 2);
+                            assert.equal(await form.getByLabel('Row operator').inputValue(), 'AnyOf');
+                            await presetEditor.locator('.simulation-editor').screenshot({ path: path.join(evidence, 'chaotic-' + prefix + '-form-' + width + '-' + theme + '.png') });
+                            await rowCancel();
+                        }
                     }
                 }
                 await page.setViewportSize({ width: 1440, height: 1000 });
@@ -152,14 +170,14 @@ async function main() {
                 await minimum.press('Enter');
                 await form.waitFor({ state: 'detached' });
                 assert.match(await presetEditor.locator('.simulation-targets').innerText(), /None/);
-                assert(await expression.getByRole('button', { name: 'Edit Level >= 6', exact: true }).evaluate(button => button === document.activeElement));
+                assert(await expression.getByRole('button', { name: 'Edit Monster AND Level >= 6', exact: true }).evaluate(button => button === document.activeElement));
                 await presetEditor.locator('.simulation-cancel').click();
                 assert.equal(await presetEditor.locator('.simulation-targets').innerText(), text);
                 await presetEditor.locator('.simulation-edit').click();
-                await expression.getByRole('button', { name: 'Edit Any condition', exact: true }).first().click();
-                await form.locator('select').selectOption('AllOf');
+                await expression.getByRole('button', { name: 'Edit DARK OR LIGHT', exact: true }).first().click();
+                await form.getByLabel('Row operator').selectOption('AllOf');
                 await rowSave();
-                assert(await expression.getByRole('button', { name: 'Edit All conditions · same card', exact: true }).evaluate(button => button === document.activeElement), 'Flattened group returns focus to its surviving parent row');
+                assert(await expression.getByRole('button', { name: 'Edit DARK AND LIGHT', exact: true }).evaluate(button => button === document.activeElement), 'Paired condition edit retains its row focus');
                 assert.match(await presetEditor.locator('.simulation-targets').innerText(), /None/);
                 await presetEditor.locator('.simulation-save').click();
                 assert.match(await presetEditor.locator('.simulation-source').innerText(), /Custom/);
