@@ -10,6 +10,16 @@ internal sealed class SearchAccessCalculation(
     WorkBudget budget,
     DrawActivationPriority? priority
 ) {
+    private CalculationCapability? _capability;
+    private SolverRoute _route;
+    internal List<Card> Cards { get; private set; } = null!;
+    internal List<Card> Effects { get; private set; } = null!;
+    internal SearchAccessPlan Search { get; private set; } = null!;
+    internal int HandSize => handSize;
+
+    internal CalculationCapability DescribeCapability() => _capability ??=
+        CalculationCapability.Search(_route, Search.TargetLossReason(Effects, handSize));
+
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         List<Card> cards = deck.Where(card => card.Active && card.Copies > 0).ToList();
         int copies = cards.Sum(card => card.Copies);
@@ -19,15 +29,23 @@ internal sealed class SearchAccessCalculation(
         SearchAccessPlan search = new(cards, budget);
         HashSet<Card>? inert = DrawEffectFeasibility.FindInert(cards, copies, handSize, budget);
         List<Card> effects = cards.Where(card => card.DrawCount is not null && inert?.Contains(card) != true).ToList();
+        Cards = cards;
+        Effects = effects;
+        Search = search;
         List<Card> ordinary = cards.Where(card => !effects.Contains(card)).ToList();
         if (effects.Count == 0) {
+            _route = SolverRoute.SearchOnly;
             return new SearchProbabilityCalculation(cards, handSize, [], search, copies - handSize, budget)
                 .Calculate(combos, groups, totalOnly);
         }
         if (effects.Any(card => card.EffectPlan.RequiresHandResolution)
             || !DrawEffectResolver.CanUseCountStateFastPath(effects, copies, handSize)) {
-            return new PostDrawCalculation(cards, handSize, budget, priority).CalculateSearch(combos, groups, totalOnly, search);
+            PostDrawCalculation calculation = new(cards, handSize, budget, priority);
+            ExactCalculationResult result = calculation.CalculateSearch(combos, groups, totalOnly, search);
+            _route = calculation.Route;
+            return result;
         }
+        _route = SolverRoute.SearchCountState;
         DrawResolution resolution = DrawEffectResolver.Resolve<SearchComposition>(ordinary.Sum(card => card.Copies), effects, handSize, budget);
         ExactProbability total = ExactProbability.Zero;
         ExactProbability[] individual = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : combos.Count).ToArray();

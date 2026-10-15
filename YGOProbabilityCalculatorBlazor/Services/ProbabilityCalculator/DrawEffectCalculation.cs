@@ -8,9 +8,34 @@ internal sealed class DrawEffectCalculation(
     WorkBudget budget,
     DrawActivationPriority? priority = null
 ) {
+    // Request-local ownership: retain the actual dispatcher and its original
+    // eligibility data until optional certification finishes. No proof scan is
+    // performed by Calculate; disabled certification keeps its counting budget.
+    // Callers must not mutate input lists during this synchronous execution.
+    // Worker inputs are already owned/materialized by CalculationSnapshot.
+    private bool _completed;
+    private SolverRoute _route;
+    internal SearchAccessCalculation? SearchExecution { get; private set; }
+
+    internal CalculationCapability DescribeCapability() {
+        if (!_completed) {
+            throw new InvalidOperationException("Capability requires a completed calculation.");
+        }
+        return SearchExecution?.DescribeCapability() ?? CalculationCapability.NoSearch(_route);
+    }
+
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
+        _completed = false;
+        SearchExecution = null;
+        ExactCalculationResult result = CalculateCore(combos, groups, totalOnly);
+        _completed = true;
+        return result;
+    }
+
+    private ExactCalculationResult CalculateCore(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         if (deck.Any(card => card.Active && card.Copies > 0 && card.Search is not null)) {
-            return new SearchAccessCalculation(deck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
+            SearchExecution = new(deck, handSize, budget, priority);
+            return SearchExecution.Calculate(combos, groups, totalOnly);
         }
 
         List<Card> ordinary = [];
@@ -45,18 +70,21 @@ internal sealed class DrawEffectCalculation(
         }
 
         if (effects.Any(card => card.EffectPlan.RequiresHandResolution)) {
-            return new PostDrawCalculation(deck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
+            return CalculateOrdered();
         }
 
         if (effects.Count == 0) {
+            _route = SolverRoute.Ordinary;
             ProbabilityCalculation calculation = new(ordinary, handSize, budget);
             return totalOnly ? new(calculation.CalculateUnionExact(combos), [], []) : calculation.CalculateExactResults(combos, groups);
         }
 
         budget.Spend(effects.Count + 1L);
         if (!DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize)) {
-            return new PostDrawCalculation(deck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
+            return CalculateOrdered();
         }
+
+        _route = SolverRoute.CountState;
 
         // The count-state proof bounds ALL possible activations collectively. With no
         // hand operations, every encountered source can resolve in any priority order;
@@ -93,5 +121,12 @@ internal sealed class DrawEffectCalculation(
         }
 
         return new(total, individual, grouped);
+
+        ExactCalculationResult CalculateOrdered() {
+            PostDrawCalculation calculation = new(deck, handSize, budget, priority);
+            ExactCalculationResult result = calculation.Calculate(combos, groups, totalOnly);
+            _route = calculation.Route;
+            return result;
+        }
     }
 }

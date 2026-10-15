@@ -14,15 +14,14 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 // This proof says nothing about a different draw/discard policy or full gameplay.
 internal static class SearchAvailabilityCertification {
     internal static SearchAvailabilityCertificate TryCalculate(
-        List<Card> deck,
-        int handSize,
         List<Combo> combos,
         IReadOnlyList<ComboGroup>? groups,
         ExactCalculationResult upper,
-        WorkBudget budget
+        WorkBudget budget,
+        DrawEffectCalculation? execution
     ) {
         try {
-            return Calculate(deck, handSize, combos, groups, upper, budget);
+            return Calculate(combos, groups, upper, budget, execution);
         }
         catch (ProbabilityCalculationLimitException exception) {
             return SearchAvailabilityCertificate.Unavailable(SearchAvailabilityStatus.Limited,
@@ -38,57 +37,33 @@ internal static class SearchAvailabilityCertification {
     }
 
     private static SearchAvailabilityCertificate Calculate(
-        List<Card> deck,
-        int handSize,
         List<Combo> combos,
         IReadOnlyList<ComboGroup>? groups,
         ExactCalculationResult upper,
-        WorkBudget budget
+        WorkBudget budget,
+        DrawEffectCalculation? execution
     ) {
-        budget.Spend(4L * deck.Count + combos.Count + (groups?.Count ?? 0) + 1);
-        budget.CheckStorage(deck.Count, 4L * deck.Count);
-        List<Card> cards = deck.Where(card => card.Active && card.Copies > 0).ToList();
-        List<Card> sources = cards.Where(card => card.Search is not null).ToList();
-        if (sources.Count == 0) {
+        CalculationCapability capability = execution?.DescribeCapability() ?? ProbabilityCalculation.Capability;
+        if (capability.Reason == CapabilityReason.NoActiveSearch) {
             return Complete(upper, SearchAvailabilityStatus.NotApplicable, "No active Deck searches in the executed model.");
         }
-
-        int copies = cards.Sum(card => card.Copies);
-        HashSet<Card>? inert = DrawEffectFeasibility.FindInert(cards, copies, handSize, budget);
-        List<Card> effects = cards.Where(card => card.DrawCount is not null && inert?.Contains(card) != true).ToList();
-        if (effects.Count == 0) {
-            return Complete(upper, SearchAvailabilityStatus.Exact, "No copies can leave hand or Deck before searching.");
-        }
-        budget.Spend(effects.Count + 1L);
-        if (effects.Any(card => card.EffectPlan.RequiresHandResolution)
-            || !DrawEffectResolver.CanUseCountStateFastPath(effects, copies, handSize)) {
-            return SearchAvailabilityCertificate.Unavailable(SearchAvailabilityStatus.NotCertified,
-                "Not certified for ordered draws or hand costs/removals. These require a separate survival proof.");
-        }
-
-        // Count-state gate proves every possible activation fits and timing/locks
-        // are absent or redundant. With no hidden or hand operations, the ONLY
-        // missing copies are consumed sources. Check all searches against all
-        // possibly activated sources, including unrestricted copies and OPT rows.
-        bool noTargetLoss = effects.All(card => card.PreDrawDeckRemovalCount == 0 && card.PostDrawDeckMillCount == 0);
-        foreach (Card source in sources) {
-            long selectorWork = SelectorWork(source.Search!.Selector);
-            foreach (Card effect in effects) {
-                budget.Spend(selectorWork
-                    * (effect.Categories.Count + 1L));
-                if (source.Id != effect.Id && source.Search.Matches(effect)) {
-                    noTargetLoss = false;
-                }
-            }
-        }
-        if (noTargetLoss) {
+        if (capability.Certification == CertificationSupport.ReusePrimary) {
             return Complete(upper, SearchAvailabilityStatus.Exact,
-                "Only consumed draw sources can be lost; none is eligible for any active search.");
+                capability.Explanation);
+        }
+        if (capability.Certification == CertificationSupport.Unsupported) {
+            return SearchAvailabilityCertificate.Unavailable(SearchAvailabilityStatus.NotCertified,
+                "Not certified: " + capability.Explanation + " No survival lower bound is supported for this ordered calculation.");
         }
 
+        SearchAccessCalculation searchExecution = execution!.SearchExecution!;
+        List<Card> cards = searchExecution.Cards;
+        List<Card> effects = searchExecution.Effects;
+        int handSize = searchExecution.HandSize;
+        int copies = cards.Sum(card => card.Copies);
         budget.Spend((long)cards.Count * (effects.Count + 1) + 1);
         List<Card> ordinary = cards.Where(card => !effects.Contains(card)).ToList();
-        SearchAccessPlan search = new(cards, budget);
+        SearchAccessPlan search = searchExecution.Search;
         DrawResolution resolution = DrawEffectResolver.Resolve<SearchComposition>(ordinary.Sum(card => card.Copies), effects, handSize, budget);
         ExactProbability[] sums = Enumerable.Repeat(ExactProbability.Zero, 1 + combos.Count + (groups?.Count ?? 0)).ToArray();
         foreach ((DrawComposition composition, ExactProbability weight) in resolution.Scenarios) {
@@ -153,9 +128,5 @@ internal static class SearchAvailabilityCertification {
                 (value.Denominator / divisor).ToString(CultureInfo.InvariantCulture));
         }
 
-        long SelectorWork(CardSelector selector) {
-            budget.Spend(selector.CategoryIdentities.Count + 1L);
-            return selector.CategoryIdentities.Count + 1L + selector.Children.Sum(SelectorWork);
-        }
     }
 }

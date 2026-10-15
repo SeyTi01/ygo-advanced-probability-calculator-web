@@ -35,10 +35,10 @@ public static class SearchPerformanceProbe {
             string outcome = "Success";
             SearchAvailabilityCertificate? certificate = null;
             try {
-                result = new DrawEffectCalculation(cards, input.HandSize, budget, input.Options?.DrawActivationPriority)
-                    .Calculate(combos, input.Groups);
+                DrawEffectCalculation execution = new(cards, input.HandSize, budget, input.Options?.DrawActivationPriority);
+                result = execution.Calculate(combos, input.Groups);
                 if (input.Options?.CertifySearchAvailability == true) {
-                    certificate = SearchAvailabilityCertification.TryCalculate(cards, input.HandSize, combos, input.Groups, result, budget);
+                    certificate = SearchAvailabilityCertification.TryCalculate(combos, input.Groups, result, budget, execution);
                 }
             }
             catch (ProbabilityCalculationLimitException ex) {

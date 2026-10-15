@@ -22,6 +22,24 @@ internal static class SearchCertificateFixtures {
         new([], "A OR direct filler", groupId: "g2", alternativeGroups: [new([ComboAlternative.For(new ComboCategory(A, 1, 6)), ComboAlternative.For(new ComboCard("f", 1, 6))])])];
 
     internal static IEnumerable<Fixture> Fixtures() {
+        // Structured ordered cross-product: overlapping searches, distinct IDs
+        // with duplicate names, OPT copies, custom order, and removable sources.
+        for (int variant = 0; variant < 24; variant++) {
+            CardSelector filter = variant % 3 == 0 ? CardSelector.For(M)
+                : variant % 3 == 1 ? CardSelector.For(A) : CardSelector.Any;
+            List<Card> ordered = [Source("s", copies: 1 + variant % 2, opt: variant % 4 == 0),
+                new([A, B], 1, "same", id: "t"), new([M], 1, id: "f"),
+                new(variant % 4 == 0 ? [A] : [], 1, "same", id: "d", drawCount: 1,
+                    postDrawDiscardCount: variant < 12 ? 1 : 0, postDrawSelector: variant < 12 ? filter : null,
+                    preDrawRemovalCount: variant >= 12 ? 1 : 0, preDrawSelector: variant >= 12 ? filter : null),
+                new([], 1, "same", id: "e", drawCount: 1, blocksLaterDraws: variant % 2 == 0),
+                Source("z", CardSelector.AnyOf([A.Identity, B.Identity]))];
+            if (variant % 2 == 1) {
+                ordered.Reverse();
+            }
+            yield return new("ordered-proof-cross-product-" + variant, ordered, 1 + variant % 3,
+                Combos(), Groups, variant % 2 == 0 ? ["e", "d"] : ["d", "e"]);
+        }
         CategoryBase monster = new("Monster", CategorySource.Metadata, "kind:monster");
         CategoryBase level = new("Level 14", CategorySource.Metadata, "level:14");
         CardSelector grouped = CardSelector.AllOfSelectors([CardSelector.LevelAtLeast(5),

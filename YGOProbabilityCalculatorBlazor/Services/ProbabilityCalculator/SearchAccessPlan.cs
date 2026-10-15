@@ -26,6 +26,53 @@ internal sealed class SearchAccessPlan {
                 .Select(target => target.Row).ToArray())).ToArray();
     }
 
+    // Reuse the very same ORIGINAL identity eligibility as search execution,
+    // before ordered reduction/deferred pools can hide distinctions. The union
+    // of possible losses is deliberately broader than any reachable trace.
+    // If it misses every target, n_i - h_i equals physical r_i jointly for all
+    // searchable identities. Thus all optional assignments and every row agree,
+    // including maxima/zero requirements; no monotonicity assumption is needed.
+    internal CapabilityReason TargetLossReason(List<Card> effects, int handSize) {
+        _budget.Spend(_deck.Count + _sources.Length + 1L);
+        if (_deck.Sum(card => card.Copies) == handSize) {
+            // No operation replenishes Deck capacity, including a zero draw.
+            return CapabilityReason.ZeroDeckCapacity;
+        }
+        if (!_sources.Any(source => source.Targets.Length > 0)) {
+            return CapabilityReason.NoReachableSearchTarget;
+        }
+        foreach (Card effect in effects) {
+            _budget.Spend(1);
+            if (effect.PreDrawDeckRemovalCount > 0 || effect.PostDrawDeckMillCount > 0) {
+                return CapabilityReason.HiddenDeckLossMayRemoveTarget;
+            }
+            foreach ((int _, int[] targets) in _sources) {
+                _budget.Spend(1);
+                foreach (int row in targets) {
+                    _budget.Spend(1);
+                    Card target = _deck[row];
+                    if (target.Id == effect.Id) {
+                        return CapabilityReason.ConsumedSearchTarget;
+                    }
+                    if (effect.PreDrawRemovalCount > 0 && Matches(effect.PreDrawSelector, target)) {
+                        return CapabilityReason.HandCostMayRemoveTarget;
+                    }
+                    if (effect.PostDrawDiscardCount > 0 && Matches(effect.PostDrawSelector, target)) {
+                        return CapabilityReason.HandRemovalMayRemoveTarget;
+                    }
+                }
+            }
+        }
+        return CapabilityReason.NoReachableSearchTargetLoss;
+
+        bool Matches(CardSelector selector, Card target) {
+            // Cached full-tree counts bound nested/grouped/Level evaluation;
+            // do not add an uncharged recursive proof traversal.
+            _budget.Spend((1L + selector.NodeCount + selector.CategoryReferenceCount) * (target.Categories.Count + 1L));
+            return selector.Matches(target);
+        }
+    }
+
     internal List<List<CompiledEvent?>> Compile(List<Combo> combos, int handSize, List<Card> rows, int capacity, int targetLoss = 0) {
         using IDisposable? phase = _budget.SearchDiagnostics?.Measure("assignment compilation");
         ComboEventCompiler compiler = new(_deck, handSize, _budget);
