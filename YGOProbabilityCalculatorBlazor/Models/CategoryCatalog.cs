@@ -50,7 +50,8 @@ public static class CategoryCatalog {
         );
 
         foreach (string identity in cardArray
-            .SelectMany(static card => SelectorIdentities(card.PreDrawSelector).Concat(SelectorIdentities(card.PostDrawSelector)))
+            .SelectMany(static card => SelectorIdentities(card.PreDrawSelector).Concat(SelectorIdentities(card.PostDrawSelector))
+                .Concat(card.Search?.Selector.CategoryIdentities ?? []))
             .Concat(additionallyRelevantMetadataIdentities ?? [])) {
             relevantIdentities.Add(identity);
         }

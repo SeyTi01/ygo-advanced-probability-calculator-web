@@ -25,11 +25,11 @@
         <h2 id="calculationSettingsHeading" class="h6 fw-bold text-center mb-3">Calculation settings</h2>
 
         <section aria-labelledby="drawSimulationHeading">
-            <h3 id="drawSimulationHeading" class="small fw-semibold mb-2">Draw simulation</h3>
+            <h3 id="drawSimulationHeading" class="small fw-semibold mb-2">Card simulation</h3>
             <label class="form-label mb-1" for="calculationModel">Calculation model</label>
             <select @ref="_drawEffectsInput" id="calculationModel" class="form-select"
                     value="@Model" aria-describedby="drawEffectsHelp" @onchange="OnModelChanged">
-                <option value="Configured">Configured draw effects (default)</option>
+                <option value="Configured">Configured effects (default)</option>
                 <option value="OpeningHand">Opening hand only</option>
             </select>
             <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
@@ -158,8 +158,8 @@
     private DotNetObjectReference<CalculationSettingsMenu>? _reference;
     private ElementReference _drawEffectsInput;
     private string ModelHelp => Model switch {
-        CalculationModel.Configured => "Applies each saved card plan, including draws, once-per-turn limits, pre-draw costs, post-draw removals and filters.",
-        CalculationModel.OpeningHand => "Draws are ignored; configured draw cards still occupy hand slots. Card settings are preserved.",
+        CalculationModel.Configured => "Applies each saved card plan, including searches, draws, once-per-turn limits, pre-draw costs, post-draw removals and filters.",
+        CalculationModel.OpeningHand => "Draws and searches are ignored; configured cards still occupy hand slots. Card settings are preserved.",
         _ => throw new ArgumentOutOfRangeException(nameof(Model))
     };
 

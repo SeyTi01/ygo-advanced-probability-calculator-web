@@ -137,7 +137,7 @@ public class CategoryMembershipTest {
         string json = codec.SerializeSession(session);
         SessionState loaded = await codec.LoadSessionAsync(json);
         Assert.Multiple(() => {
-            Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+            Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
             Assert.That(loaded.Categories.Single().Rule, Is.EqualTo(VsRule));
             Assert.That(loaded.Cards[0].Categories, Does.Not.Contain(Role));
             Assert.That(loaded.Cards[1].Categories, Does.Contain(Role));

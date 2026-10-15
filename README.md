@@ -32,9 +32,9 @@ Objective properties such as FIRE, DARK, and Level 5 come from card metadata rat
 
 Common properties are available in card, combo, and draw-filter selectors before a matching card is present. They use the same metadata identity as imported-card properties; specific values such as archetypes and monster types appear when relevant.
 
-Cards can still satisfy several roles and properties at once. For example, Vanquish Soul Razen is both a `VS Monster` and a `VS Starter` and has the FIRE property, while Reinforcement of the Army is assigned the VS Monster and VS Starter roles with a manual FIRE property.
+Cards can still satisfy several roles and properties at once. For example, Vanquish Soul Razen is both a `VS Monster` and a `VS Starter` and has the FIRE property, while Reinforcement of the Army can search a remaining Razen copy. Reinforcement retains only its actual Spell properties; the fetched Razen contributes its own roles and identity.
 
-With all eight combo definitions active, the example has an **83.61%** probability of opening at least one modeled full-combo hand.
+With all eight combo definitions active, the example has an **83.74%** probability of opening at least one modeled full-combo hand.
 
 ## How to use it
 
@@ -63,8 +63,8 @@ The custom editor offers **None**, **Draw 1**, **Draw 2**, or **Draw 3**. An act
 
 Open the gear **Calculation settings** menu to choose how these settings apply:
 
-- **Configured draw effects (default):** Apply each saved card plan, including draws, once-per-turn limits, pre-draw costs, removals and eligibility filters.
-- **Opening hand only:** Resolve no draws; configured draw cards still occupy initial-hand slots.
+- **Configured effects (default):** Apply each saved card plan, including draws, once-per-turn limits, pre-draw costs, removals and eligibility filters.
+- **Opening hand only:** Resolve no draw or search effects; configured cards still occupy initial-hand slots.
 
 **Draw activation priority** in the same settings menu defaults to **Encounter order**. Choose **Custom priority** to rank workspace entries, highest first, using the up/down buttons. The highest-ranked legal effect activates after the current draw batch, mill and mandatory removal finish. Newly drawn effects can then overtake earlier waiting effects; a blocked effect waits while another legal effect resolves. Copies share their entry's priority and existing once-per-turn allowance.
 
@@ -76,6 +76,16 @@ Solar Recharge discards one card that is both a Lightsworn and a Monster, draws 
 
 Requirements apply to the final hand. If the full draw amount is unavailable, the source stays in hand and the outcome is evaluated normally.
 
+### Search from the Main Deck
+
+Reinforcement of the Army searches one Level 1–4 Warrior monster using the configured deck’s objective metadata. Manual combo-role/property overrides do not change its eligibility. The expanded card lists current targets; custom searches can use the existing category/property filters, with **Objective card properties only** optional.
+
+All configured draws, costs and discards resolve before searches. Each optional search consumes its source and transfers one physically remaining target to hand. For each combo, the calculator asks whether any legal combination of search choices succeeds. Different result rows may use different choices; groups and the total count each random outcome once. Maxima, exclusions, distinct copies and source consumption still apply. Search chains are supported and terminate as the remaining deck shrinks. A draw card fetched during this phase stays in hand; drawing does not restart.
+
+Search and draw operations on the same source are unsupported. Combining searches with hidden deck banishes or mills is explicitly rejected because the model does not know which targets survived. Disable that operation or use **Opening hand only**. Search-bearing mixed draw calculations use a bounded identity-preserving route and may reach existing Work/Storage limits.
+
+Session schema 6 saves search plans explicitly. Older sessions preserve their previous behavior, including manual search proxies, until explicitly edited/restored; loading does not automatically give an old Reinforcement entry a search effect. Earlier calculator versions reject schema 6. Use **Customize simulation → None** to disable a search and **Restore built-in simulation** to restore it.
+
 ### Customize costs and removals
 
 With a draw amount set, **Before drawing** and **After drawing** can each remove one or two cards. **Eligible** accepts any card, a category/property, a same-card AND group, or OR alternatives.
@@ -84,11 +94,11 @@ With a draw amount set, **Before drawing** and **After drawing** can each remove
 - A required post-draw removal can use newly drawn cards. If eligible material is missing after a legal draw, that branch fails and remains in the probability denominator.
 - Removal follows a deterministic policy: keep cards matching positive requirements in active routes first, then usable draw cards, then other cards. Changing active routes can change the resulting hands.
 
-Individual cards can have hypothetical custom plans: set **Before drawing: None**, **After drawing: None**, or **Banish from deck: 0** to remove only that operation. Other cards keep their own costs. **Restore built-in simulation** restores the maintained plan. Results are exact for each saved plan and this policy, **not optimal-play simulation**. A custom plan need not represent the printed card or unsupported interactions such as Maliss banish triggers; its result is not a guaranteed upper bound under maxima or exclusions. Optional activation, searches, discard triggers, and general card effects are unsupported.
+Individual cards can have hypothetical custom plans: set **Before drawing: None**, **After drawing: None**, or **Banish from deck: 0** to remove only that operation. Other cards keep their own costs. **Restore built-in simulation** restores the maintained plan. Results are exact for each saved plan and this policy, **not optimal-play simulation**. A custom plan need not represent the printed card or unsupported interactions such as Maliss banish triggers; its result is not a guaranteed upper bound under maxima or exclusions. Draw activations remain mandatory under this policy. Discard triggers and general card effects are unsupported.
 
 Recognized imports and database selections receive authoritative built-in definitions. Saved cards retain their exact plan, source, revision and limitations until explicitly changed or restored; older snapshots are labeled **Saved simulation**. An unavailable execution model is reported rather than replaced with generic draws. Choosing **Draw None** clears pre- and post-draw configuration. **Storage safety limit** is a runtime preference, not a session field. New workspaces and restored ON sessions use configured effects; saved OFF sessions restore opening-hand-only. Re-enabling effects selects configured behavior.
 
-A small pre-calculation notice flags potentially expensive draw configurations without blocking Calculate. If a request is slow or reaches a Work or Storage limit, **Calculate without draw effects** explicitly runs an exact alternative for that request. It preserves configured settings and the saved preference. This answers a different question and is not a guaranteed lower bound. Results and copied/pinned comparisons identify the model used; the next ordinary Calculate uses the selected setting.
+A small pre-calculation notice flags potentially expensive draw configurations without blocking Calculate. If a request is slow or reaches a Work or Storage limit, **Calculate opening hand only** explicitly runs an exact alternative for that request. It preserves configured settings and the saved preference. This answers a different question and is not a guaranteed lower bound. Results and copied/pinned comparisons identify the model used; the next ordinary Calculate uses the selected setting.
 
 Interactive calculations allow 150 million bounded work units and remain cancelable. Storage limits apply separately: larger mixed draw configurations can require an explicit **High** or **VeryHigh** storage selection. Work units are not seconds, and increasing work does not resolve a Storage limit.
 

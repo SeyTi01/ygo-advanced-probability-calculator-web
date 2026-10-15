@@ -159,7 +159,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "4" });
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawCount, Is.EqualTo(1));
-        Assert.That(editor.Markup, Does.Contain("Choose None, Draw 1, Draw 2, or Draw 3"));
+        Assert.That(editor.Markup, Does.Contain("Choose None, Draw 1–3, or Search 1"));
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "3" });
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.DrawCount, Is.EqualTo(3));
@@ -231,7 +231,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
 
         void AssertDrawEffectsHelpIsStable(bool ignored) {
             Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
-            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain(ignored ? "Draws are ignored" : "Applies each saved card plan"));
+            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain(ignored ? "Draws and searches are ignored" : "Applies each saved card plan"));
         }
     }
 

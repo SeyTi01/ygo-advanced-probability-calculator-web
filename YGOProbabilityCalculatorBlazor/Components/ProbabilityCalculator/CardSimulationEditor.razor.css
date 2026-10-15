@@ -3,6 +3,7 @@
 .simulation-source { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--bs-secondary-color); }
 .simulation-icon { width: 1rem; height: 1rem; flex: 0 0 auto; }
 .simulation-summary { margin-top: 0.2rem; overflow-wrap: anywhere; }
+.simulation-targets { overflow-wrap: anywhere; }
 .simulation-mode { color: var(--bs-secondary-color); margin-top: 0.3rem; }
 .simulation-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0 1rem; }
 .simulation-actions .btn-link { padding: 0.35rem 0; text-align: left; text-decoration: none; }

@@ -23,9 +23,9 @@ public sealed record CuratedDrawEffectPreset(
 public static class CuratedDrawEffectPresets {
     public static IReadOnlyList<CategoryBase> FilterProperties => CardEffectRegistry.Default.FilterProperties;
     public static IReadOnlyList<CuratedDrawEffectPreset> All { get; } = Array.AsReadOnly(
-        CardEffectRegistry.Default.All.Select(ToPreset).ToArray());
+        CardEffectRegistry.Default.All.Where(effect => effect.Plan.DrawCount is not null).Select(ToPreset).ToArray());
 
-    public static CuratedDrawEffectPreset? Find(CardInfo info) => CardEffectRegistry.Default.Find(info) is { } effect
+    public static CuratedDrawEffectPreset? Find(CardInfo info) => CardEffectRegistry.Default.Find(info) is { Plan.DrawCount: not null } effect
         ? ToPreset(effect) : null;
 
     public static Card CreateImportedCard(CardInfo info, int copies, int importedId) =>
@@ -37,7 +37,7 @@ public static class CuratedDrawEffectPresets {
     public static Card ApplyToSelectedCardIfPristine(Card card, CardInfo info) {
         if (card.EffectProfile.Source != EffectSource.LegacySnapshot || card.PreDrawDeckRemovalCount != 0 || card.PostDrawDeckMillCount != 0
             || card.PreDrawRemovalCount != 0 || card.PreDrawSelector.Kind != CardSelectorKind.Any
-            || card.DrawCount is not null || !card.DrawOncePerTurn || card.PostDrawDiscardCount != 0
+            || card.HasEffect || !card.DrawOncePerTurn || card.PostDrawDiscardCount != 0
             || card.PostDrawSelector.Kind != CardSelectorKind.Any
             || card.PostDrawFailureBehavior != PostDrawFailureBehavior.FailBranch) {
             return card;

@@ -14,7 +14,8 @@ public sealed class SessionSchemaMigrator {
             [1] = MigrateV1ToV2,
             [2] = root => SetSchemaVersion(root, 3),
             [3] = MigrateV3ToV4,
-            [4] = MigrateV4ToV5
+            [4] = MigrateV4ToV5,
+            [5] = MigrateV5ToV6
         };
 
     public string MigrateToCurrent(string json) {
@@ -98,6 +99,18 @@ public sealed class SessionSchemaMigrator {
     }
 
     private static void MigrateV0ToV1(JsonObject root) => SetSchemaVersion(root, 1);
+
+    private static void MigrateV5ToV6(JsonObject root) {
+        // Old readers ignored Search extension fields. Preserve their modeled meaning.
+        JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
+        foreach (JsonObject card in cards?.OfType<JsonObject>() ?? []) {
+            foreach (string field in card.Select(property => property.Key)
+                .Where(name => name.Equals("Search", StringComparison.OrdinalIgnoreCase)).ToArray()) {
+                card.Remove(field);
+            }
+        }
+        SetSchemaVersion(root, 6);
+    }
 
     private static void MigrateV4ToV5(JsonObject root) {
         // Schema 4 readers ignored these extension fields. Preserve that meaning;

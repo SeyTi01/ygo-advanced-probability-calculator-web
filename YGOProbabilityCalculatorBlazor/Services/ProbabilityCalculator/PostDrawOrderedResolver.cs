@@ -17,7 +17,8 @@ internal sealed partial class PostDrawCalculation {
         int[] ranks,
         bool[] relevant,
         bool[]?[] removalEligibility,
-        bool[]?[]? costEligibility
+        bool[]?[]? costEligibility,
+        bool searching
     ) {
         private enum ResolutionOutcome { Ready, RemovalUnavailable }
 
@@ -63,7 +64,7 @@ internal sealed partial class PostDrawCalculation {
                         budget.Spend(WorkBudget.IntegerCells(weight) * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
                         Add(
                             terminal,
-                            new(values.AsSpan(layout.HandStart, n).ToArray()),
+                            new(searching ? values.AsSpan(0, 2 * n).ToArray() : values.AsSpan(layout.HandStart, n).ToArray()),
                             weight * factorial[remaining],
                             ref terminalCells,
                             "terminal hands"

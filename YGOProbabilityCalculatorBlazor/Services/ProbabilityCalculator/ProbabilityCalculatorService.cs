@@ -27,7 +27,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             CardEffectCompiler.RequireExecutable(card);
         }
 
-        if (!deck.Any(card => card.DrawCount is not null)) {
+        if (!deck.Any(card => card.HasEffect)) {
             return new ProbabilityCalculation(deck, handSize, workPolicy, storagePolicy).CalculateUnion(combos);
         }
 
@@ -68,7 +68,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             CardEffectCompiler.RequireExecutable(card);
         }
 
-        if (!deck.Any(card => card.DrawCount is not null)) {
+        if (!deck.Any(card => card.HasEffect)) {
             return new ProbabilityCalculation(deck, handSize, workPolicy, storagePolicy).CalculateResults(combos, groups);
         }
 

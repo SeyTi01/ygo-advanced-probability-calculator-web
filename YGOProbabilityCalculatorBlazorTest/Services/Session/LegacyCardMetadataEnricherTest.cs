@@ -175,7 +175,7 @@ public class LegacyCardMetadataEnricherTest {
 
     [Test]
     public async Task CompleteBundledExampleIsCurrentSchemaAndRequiresNoMetadataServiceOrApi() {
-        string source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json"));
+        string source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "search_example_session_state.json"));
         using JsonDocument document = JsonDocument.Parse(source);
         Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         SessionState session = await new SessionService(new CaptureJs(), new Serializer()).LoadSessionAsync(source);
@@ -234,7 +234,7 @@ public class LegacyCardMetadataEnricherTest {
         CaptureJs js = new();
         SessionService sessions = new(js, new Serializer());
         await sessions.SaveSessionAsync(new SessionState { Cards = [original] }, "manual.json");
-        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(5));
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(6));
         using JsonDocument saved = JsonDocument.Parse(js.Json);
         Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         SessionState loaded = await sessions.LoadSessionAsync(js.Json);

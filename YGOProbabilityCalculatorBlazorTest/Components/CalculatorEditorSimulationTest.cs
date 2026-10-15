@@ -58,13 +58,13 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         await Button(cut, "Save Session").ClickAsync(new());
         foreach (string json in new[] { share, recovery, SavedSessionJson() }) {
             SessionState loaded = await codec.LoadSessionAsync(json);
-            Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+            Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
             Assert.That(loaded.Cards[0].EffectPlan, Is.EqualTo(expected));
             Assert.That(loaded.Cards[0].EffectProfile, Is.EqualTo(custom.EffectProfile));
             Assert.That(loaded.Cards[1].EffectPlan, Is.EqualTo(other.EffectPlan));
         }
         await Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Configured draw effects"));
+        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Configured effects"));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Context.DeckDefinition, Is.EqualTo(fingerprint));
         await editor.Find(".simulation-restore").ClickAsync(new());
         Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(original.EffectPlan));

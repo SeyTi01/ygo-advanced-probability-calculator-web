@@ -7,7 +7,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 // effects in batches. No production scenario, mask, Hall or fraction helpers.
 internal static class DrawSequenceOracle {
     // Physical labels distinguish copies; encounter order breaks ties within an ID.
-    internal static List<Card>? Resolve(IReadOnlyList<Card> order, int handSize, IReadOnlyList<Combo> combos, IReadOnlyList<string>? priorityIds = null) {
+    internal static List<Card>? Resolve(IReadOnlyList<Card> order, int handSize, IReadOnlyList<Combo> combos, IReadOnlyList<string>? priorityIds = null, Action<IReadOnlyList<Card>>? remainingDeck = null) {
         List<int> hand = Enumerable.Range(0, handSize).ToList();
         List<int> pending = hand.Where(index => order[index].DrawCount is not null).ToList();
         HashSet<string> used = new(StringComparer.Ordinal);
@@ -126,6 +126,7 @@ internal static class DrawSequenceOracle {
             }
         }
 
+        remainingDeck?.Invoke(order.Skip(next).ToArray());
         return hand.Select(index => order[index]).ToList();
 
         string Membership(Card card) => string.Concat(categoryKeys.Select(key => card.Categories.Any(category => category.Identity == key) ? "1" : "0"))

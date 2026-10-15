@@ -168,6 +168,6 @@ public class CatalogArchetypeReconcilerTest {
         CatalogArchetypeReconciler.Reconcile(recovered.Cards, BundledCatalog());
         Assert.That(sessions.SerializeSession(recovered), Is.EqualTo(corrected));
         Assert.That(engine.CalculateProbabilityResults(recovered.Cards, recovered.Combos, 1).TotalProbability, Is.EqualTo(oracle));
-        Assert.That(recovered.SchemaVersion, Is.EqualTo(5));
+        Assert.That(recovered.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
     }
 }

@@ -70,7 +70,7 @@
                 </div>
 
             </div>
-            <CardSimulationEditor Card="Card" Index="Index" DrawEffectsEnabled="DrawEffectsEnabled" CategoryBases="CategoryBases"
+            <CardSimulationEditor Card="Card" Deck="Deck" Index="Index" DrawEffectsEnabled="DrawEffectsEnabled" CategoryBases="CategoryBases"
                                   RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                                   CategoryColorIndices="CategoryColorIndices" CategoryRename="CategoryRename"
                                   OnChanged="card => OnReplaceCard.InvokeAsync((Index, card))" />
@@ -155,6 +155,7 @@
 </div>
 
 @code {
+    [Parameter] public IReadOnlyList<Card> Deck { get; set; } = [];
     [Parameter] public int Index { get; set; }
     [Parameter] public int Count { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
@@ -342,7 +343,10 @@
         );
         bool colorsUnchanged = CategoryColorIndices.Count == _previousCategoryColors.Count
             && CategoryColorIndices.All(color => _previousCategoryColors.TryGetValue(color.Key, out int previous) && previous == color.Value);
-        _skipParameterRender = parameters == _previousRenderParameters && colorsUnchanged;
+        // An expanded search preview also depends on other deck entries. Keep
+        // ordinary/collapsed rows on the existing render-skip path.
+        _skipParameterRender = parameters == _previousRenderParameters && colorsUnchanged
+            && !(Index == ActiveCardIndex && Card.Search is not null);
         _previousRenderParameters = parameters;
         _previousCategoryColors = new(CategoryColorIndices, StringComparer.Ordinal);
 

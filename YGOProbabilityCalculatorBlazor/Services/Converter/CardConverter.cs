@@ -156,6 +156,15 @@ public class CardConverter : JsonConverter<Card> {
             return properties.Length == 1 && properties[0].Value.GetBoolean();
         }
 
+        JsonProperty[] searches = root.EnumerateObject()
+            .Where(property => property.Name.Equals("Search", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (searches.Length > 1) {
+            throw new JsonException("Search operation is duplicated.");
+        }
+        SearchEffectPlan? search = searches.Length == 0 ? null
+            : JsonSerializer.Deserialize<SearchEffectPlan>(searches[0].Value.GetRawText(), options)
+                ?? throw new JsonException("Missing search operation.");
+
         bool firstActivationOnly = ReadRestriction("FirstActivationOnly");
         bool blocksLaterDraws = ReadRestriction("BlocksLaterDraws");
         try {
@@ -177,7 +186,8 @@ public class CardConverter : JsonConverter<Card> {
                 effectProfile: profile,
                 postDrawDeckMillCount: millCount,
                 firstActivationOnly: firstActivationOnly,
-                blocksLaterDraws: blocksLaterDraws
+                blocksLaterDraws: blocksLaterDraws,
+                search: search
             );
         }
         catch (ArgumentException exception) {
@@ -245,6 +255,11 @@ public class CardConverter : JsonConverter<Card> {
         if (value.EffectProfile != EffectProfile.Legacy) {
             writer.WritePropertyName("EffectProfile");
             JsonSerializer.Serialize(writer, value.EffectProfile, options);
+        }
+
+        if (value.Search is not null) {
+            writer.WritePropertyName("Search");
+            JsonSerializer.Serialize(writer, value.Search, options);
         }
 
         writer.WriteEndObject();

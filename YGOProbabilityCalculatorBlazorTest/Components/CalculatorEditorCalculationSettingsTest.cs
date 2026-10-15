@@ -36,7 +36,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(cut.Find("#storageSafetyTier").GetAttribute("value"), Is.EqualTo("High"));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Does.Contain("Draws are ignored").And.Contain("Card settings are preserved"));
+            Does.Contain("Draws and searches are ignored").And.Contain("Card settings are preserved"));
         await cut.InvokeAsync(() => cut.FindComponent<CalculationSettingsMenu>().Instance.Dismiss());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
         Assert.That(cut.Find(".calculation-settings-trigger").GetAttribute("aria-expanded"), Is.EqualTo("false"));
@@ -101,7 +101,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         string saved = SavedSessionJson();
         Assert.That(saved, Does.Not.Contain("ConditionalEffectsEnabled").And.Not.Contain("StorageTier"));
         SessionState stored = await codec.LoadSessionAsync(saved);
-        Assert.That(stored.SchemaVersion, Is.EqualTo(5));
+        Assert.That(stored.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(stored.Cards[0].PostDrawDiscardCount, Is.EqualTo(1));
         Assert.That(stored.DrawEffectsEnabled, Is.True);
         Assert.That(Render(stored).Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Configured"));

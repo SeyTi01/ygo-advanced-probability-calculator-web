@@ -1,5 +1,5 @@
 {
-  "SchemaVersion": 5,
+  "SchemaVersion": 6,
   "Categories": [
     {
       "Name": "VS Monster",
@@ -729,10 +729,6 @@
     {
       "Categories": [
         {
-          "Name": "VS Monster",
-          "Source": "User"
-        },
-        {
           "Name": "Spell",
           "Source": "Metadata",
           "MetadataKey": "kind:spell"
@@ -741,15 +737,6 @@
           "Name": "Normal Spell",
           "Source": "Metadata",
           "MetadataKey": "spell-type:normal"
-        },
-        {
-          "Name": "Attribute: FIRE",
-          "Source": "Metadata",
-          "MetadataKey": "attribute:fire"
-        },
-        {
-          "Name": "VS Starter",
-          "Source": "User"
         }
       ],
       "Copies": 1,
@@ -757,9 +744,57 @@
       "Active": true,
       "Id": "6d8f37220d024d25b41fb08fc1f188c9",
       "ExternalCardId": 32807846,
-      "ManualMetadataCategoryKeys": [
-        "attribute:fire"
-      ]
+      "ManualMetadataCategoryKeys": [],
+      "Search": {
+        "Selector": {
+          "Kind": "AnyOf",
+          "Children": [
+            {
+              "Kind": "AllOf",
+              "Categories": [
+                "metadata:kind:monster",
+                "metadata:monster-race:warrior",
+                "metadata:level:1"
+              ]
+            },
+            {
+              "Kind": "AllOf",
+              "Categories": [
+                "metadata:kind:monster",
+                "metadata:monster-race:warrior",
+                "metadata:level:2"
+              ]
+            },
+            {
+              "Kind": "AllOf",
+              "Categories": [
+                "metadata:kind:monster",
+                "metadata:monster-race:warrior",
+                "metadata:level:3"
+              ]
+            },
+            {
+              "Kind": "AllOf",
+              "Categories": [
+                "metadata:kind:monster",
+                "metadata:monster-race:warrior",
+                "metadata:level:4"
+              ]
+            }
+          ]
+        },
+        "ObjectiveMetadataOnly": true
+      },
+      "DrawOncePerTurn": false,
+      "EffectProfile": {
+        "Source": "BuiltIn",
+        "CanonicalCardId": 32807846,
+        "Revision": 1,
+        "Summary": "Search 1 Level 1\u20134 Warrior monster",
+        "Support": "ModeledWithinRules",
+        "Limitations": "",
+        "ExecutionModel": "DrawSequenceV1"
+      }
     },
     {
       "Categories": [

@@ -81,6 +81,23 @@ public class DeckImportServiceTest {
             Is.EqualTo(((int?)potOfGreedId, "Pot of Greed", 2, 2, false)));
     }
 
+    [TestCase(false), TestCase(true)]
+    public async Task ImportMaintainedSearchFromYdkAndYdke(bool ydke) {
+        _fileServiceMock.Setup(service => service.ReadAllLinesAsync(It.IsAny<IBrowserFile>()))
+            .ReturnsAsync(["#main", "32807846", "32807846", "#extra", "29302858"]);
+        _cardInfoServiceMock.Setup(service => service.GetCardInfoAsync(32807846))
+            .ReturnsAsync(new CardInfo { Id = 32807846, Name = "Localized name" });
+        List<Card> cards = ydke
+            ? await _service.ImportDeckFromYdkeAsync(BuildYdke([32807846, 32807846], [29302858]))
+            : await _service.ImportDeckFromYdkAsync(Mock.Of<IBrowserFile>());
+        Assert.That(cards, Has.Count.EqualTo(1));
+        Assert.That(cards[0].Copies, Is.EqualTo(2));
+        Assert.That(cards[0].Search, Is.Not.Null);
+        Assert.That(cards[0].EffectProfile.Source, Is.EqualTo(EffectSource.BuiltIn));
+        Assert.That(cards[0].DrawCount, Is.Null);
+        _cardInfoServiceMock.Verify(service => service.GetCardInfoAsync(29302858), Times.Never());
+    }
+
     [Test]
     public async Task ImportUsesCanonicalIdentityAndPreservesImportedPasscode() {
         const int importedPasscode = 12345;

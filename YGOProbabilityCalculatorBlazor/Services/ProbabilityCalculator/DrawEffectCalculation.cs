@@ -9,6 +9,11 @@ internal sealed class DrawEffectCalculation(
     DrawActivationPriority? priority = null
 ) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
+        if (deck.Any(card => card.Active && card.Copies > 0 && card.Search is not null)) {
+            return new PostDrawCalculation(deck.Where(card => card.Active).ToList(), handSize, budget, priority, deferIdentities: false)
+                .Calculate(combos, groups, totalOnly);
+        }
+
         List<Card> ordinary = [];
         List<Card> effects = [];
         int ordinaryCopies = 0;

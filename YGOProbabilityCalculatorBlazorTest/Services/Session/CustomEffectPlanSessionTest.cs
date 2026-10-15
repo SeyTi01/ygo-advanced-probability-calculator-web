@@ -22,7 +22,7 @@ public class CustomEffectPlanSessionTest {
         Assert.That(loaded.DrawEffectsEnabled, Is.EqualTo(schema < 4 || enabled));
         Assert.That(loaded.Cards[0].DrawCount, Is.EqualTo(schema < 4 ? null : (int?)2));
         Assert.That(loaded.Cards[0].PreDrawRemovalCount, Is.Zero);
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
     }
 
     [TestCase(true), TestCase(false)]
@@ -51,7 +51,7 @@ public class CustomEffectPlanSessionTest {
             string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
             foreach (string source in new[] { json, SessionShareCodec.Decode(fragment) }) {
                 SessionState loaded = await codec.LoadSessionAsync(source);
-                Assert.That(loaded.SchemaVersion, Is.EqualTo(5));
+                Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
                 Assert.That(loaded.DrawEffectsEnabled, Is.EqualTo(enabled));
                 Assert.That(loaded.Cards.Select(card => (card.Id, card.EffectPlan, card.EffectProfile)),
                     Is.EqualTo(session.Cards.Select(card => (card.Id, card.EffectPlan, card.EffectProfile))));
