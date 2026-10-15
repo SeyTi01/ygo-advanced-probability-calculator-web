@@ -136,15 +136,24 @@ async function main() {
         const hidden = structuredClone(sample);
         Object.assign(hidden.Cards[0], { DrawCount: 1, PreDrawDeckRemovalCount: 1 });
         await load(hidden);
-        const rejected = await run();
-        assert.equal(rejected.FailureKind, 1);
-        assert.match(rejected.Error, /remaining target identities are unknown/);
-        assert.match(await page.locator('[role="alert"]').innerText(), /hidden deck banishes or mills/);
+        const approximated = await run();
+        assert.equal(approximated.Error, null);
+        const searchEditor = page.locator('.card-editor').filter({ hasText: 'Reinforcement of the Army' });
+        if (await searchEditor.locator('.accordion-button').getAttribute('aria-expanded') !== 'true') {
+            await searchEditor.locator('.accordion-button').click();
+        }
+        assert.match(await searchEditor.innerText(), /targets outside the final hand remain available/);
+        const mixed = structuredClone(sample);
+        Object.assign(mixed.Cards.find(card => card.Name === 'Mulcharmy Fuwalos'), { DrawCount: 2, DrawOncePerTurn: false });
+        await load(mixed);
+        const result = await run();
+        assert.equal(result.Error, null);
+        assert.equal(result.Result.TotalProbability, 0.9089511612294494);
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
         const requests = await page.evaluate(() => searchProbe.requests);
         assert.equal(new Set(requests.map(request => request.id)).size, requests.length);
-        console.log(JSON.stringify({ browser: browser.version(), requests: requests.length, result: 'PASS: exact example, repeated loads, dynamic targets, customize/cancel/disable/restore, opening-only, stale cancellation, hidden-removal diagnostic, desktop/mobile layout' }));
+        console.log(JSON.stringify({ browser: browser.version(), requests: requests.length, result: 'PASS: exact example, repeated loads, dynamic targets, customize/cancel/disable/restore, opening-only, stale cancellation, identity-blind hidden access, mixed draw/search Standard, desktop/mobile layout' }));
     } finally {
         await browser.close();
         await new Promise(resolve => server.close(resolve));

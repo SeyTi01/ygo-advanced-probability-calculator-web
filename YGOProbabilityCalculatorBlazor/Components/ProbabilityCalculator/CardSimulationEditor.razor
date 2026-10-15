@@ -39,8 +39,8 @@
         <div class="simulation-targets small" role="status" aria-label="Current search targets">
             Targets in this deck: @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : "None")
         </div>
-        @if (Deck.Any(card => card.Active && card.Copies > 0 && (card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0))) {
-            <div class="small text-warning-emphasis" role="note">Search with hidden deck banishes or mills is unsupported.</div>
+        @if (Deck.Any(card => card.Active && card.Copies > 0 && card.DrawCount is not null)) {
+            <div class="small text-body-secondary" role="note">Search access assumes targets outside the final hand remain available.</div>
         }
     }
     <div class="simulation-actions">

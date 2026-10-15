@@ -23,7 +23,11 @@ internal sealed record DrawResolution(
 );
 
 internal static class DrawEffectResolver {
-    internal static DrawResolution Resolve(int ordinaryCopies, List<Card> effects, int handSize, WorkBudget budget) {
+    internal static DrawResolution Resolve(int ordinaryCopies, List<Card> effects, int handSize, WorkBudget budget) =>
+        Resolve<VisibleComposition>(ordinaryCopies, effects, handSize, budget);
+
+    internal static DrawResolution Resolve<TTerminal>(int ordinaryCopies, List<Card> effects, int handSize, WorkBudget budget)
+        where TTerminal : struct, IDrawTerminal {
         int totalCopies = ordinaryCopies;
         foreach (Card effect in effects) {
             budget.Spend(1);
@@ -70,7 +74,7 @@ internal static class DrawEffectResolver {
                     int[] retained = state.EffectCounts
                         .Select((count, index) => effects[index].DrawOncePerTurn ? Math.Max(0, count - 1) : 0)
                         .ToArray();
-                    Add(scenarios, new(state.OrdinaryCount, retained), weight, ref scenarioCells);
+                    Add(scenarios, new(state.OrdinaryCount, TTerminal.Retained(retained, state.EffectCounts, effects, remaining)), weight, ref scenarioCells);
                     continue;
                 }
 
@@ -81,7 +85,7 @@ internal static class DrawEffectResolver {
                     int[] retained = effects
                         .Select(effect => effect.DrawOncePerTurn ? Math.Max(0, effect.Copies - 1) : 0)
                         .ToArray();
-                    Add(scenarios, new(ordinaryCopies, retained), weight, ref scenarioCells);
+                    Add(scenarios, new(ordinaryCopies, TTerminal.Retained(retained, null, effects, 0)), weight, ref scenarioCells);
                     continue;
                 }
 
@@ -119,7 +123,7 @@ internal static class DrawEffectResolver {
             budget.Spend(effects.Count + 1L);
             bool exists = map.TryGetValue(key, out ExactProbability previous);
             ExactProbability value = exists ? previous.Add(increment, budget) : increment;
-            cells += value.Cells - (exists ? previous.Cells : 0) + (exists ? 0 : effects.Count + 1L);
+            cells += value.Cells - (exists ? previous.Cells : 0) + (exists ? 0 : key.EffectCounts.Length + 1L);
             budget.CheckStorage(map.Count + (exists ? 0 : 1), cells);
             map[key] = value;
         }

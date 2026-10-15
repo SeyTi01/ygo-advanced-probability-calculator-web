@@ -4,223 +4,237 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 internal sealed partial class PostDrawCalculation {
-    // Search-only hands are unordered compositions weighted by products of
-    // binomials. Stream them instead of retaining a permutation frontier.
-    private ExactCalculationResult CountSearchOpeningHands(
-        List<Card> cards,
-        int copies,
-        BigInteger[] factorial,
-        List<Combo> combos,
-        IReadOnlyList<ComboGroup>? groups,
-        bool totalOnly
-    ) {
-        int n = cards.Count;
-        int[] state = new int[2 * n];
-        int[] suffix = new int[n + 1];
-        for (int i = n - 1; i >= 0; i--) {
-            suffix[i] = suffix[i + 1] + cards[i].Copies;
-        }
-        BigInteger denominator = Choose(copies, handSize);
-        SearchHandEvaluator evaluator = new(cards, handSize, combos, budget);
-        SearchResultAccumulator results = new(combos, groups, totalOnly, denominator, budget);
-        CheckStorage(n + 1L, 4L * n + (n + 1L) * WorkBudget.IntegerCells(denominator), "opening composition stack");
-        Visit(0, handSize, BigInteger.One);
+    private interface ITerminalHand {
+        static abstract int[] Create(int[] state, OrderedDrawStateLayout layout, int remaining);
+    }
 
-        return results.Result();
+    private readonly struct HandTerminal : ITerminalHand {
+        public static int[] Create(int[] state, OrderedDrawStateLayout layout, int remaining) =>
+            state.AsSpan(layout.HandStart, layout.RowCount).ToArray();
+    }
 
-        void Visit(int row, int left, BigInteger weight) {
-            budget.Spend(WorkBudget.IntegerCells(weight) + 1);
-            if (row == n) {
-                TerminalStates++;
-                results.Add(evaluator.Evaluate(state), weight);
-                return;
-            }
-            int minimum = Math.Max(0, left - suffix[row + 1]);
-            int maximum = Math.Min(left, cards[row].Copies);
-            for (int count = minimum; count <= maximum; count++) {
-                state[row] = cards[row].Copies - count;
-                state[n + row] = count;
-                BigInteger combinations = Choose(cards[row].Copies, count);
-                budget.Spend(WorkBudget.IntegerCells(weight) * (WorkBudget.IntegerCells(combinations) + 1));
-                Visit(row + 1, left - count, weight * combinations);
-            }
-        }
+    private readonly struct SearchTerminal : ITerminalHand {
+        public static int[] Create(int[] state, OrderedDrawStateLayout layout, int remaining) {
+            int[] hand = new int[layout.RowCount + 1];
+            state.AsSpan(layout.HandStart, layout.RowCount).CopyTo(hand);
+            hand[^1] = Math.Max(0, remaining - (layout.HasHiddenCount ? state[layout.HiddenCount] : 0));
 
-        BigInteger Choose(int count, int take) {
-            budget.Spend(WorkBudget.IntegerCells(factorial[count]) * 3 + 1);
-            return factorial[count] / (factorial[take] * factorial[count - take]);
+            return hand;
         }
     }
 
-    private ExactCalculationResult CountSearchTerminalHands(
+    internal ExactCalculationResult CalculateSearch(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly, SearchAccessPlan search) {
+        List<Card> cards = ReduceSearchDeck(combos, out Dictionary<string, List<Card>> identities);
+        List<Card> deferred = deferIdentities ? DeferUnobservedIdentities(ref cards) : [];
+        int n = cards.Count;
+        bool customPriority = priority?.Mode == DrawActivationMode.CustomPriority;
+        if (customPriority) {
+            budget.Spend(n + (long)priority!.CardIds.Count);
+            budget.CheckStorage(n, n);
+        }
+        int[] ranks = customPriority ? cards.Select(card => priority!.Rank(card.Id)).ToArray() : [];
+        ReducedRows = n;
+        OrderedDrawStateLayout layout = new(cards);
+        int copies = 0;
+        foreach (Card card in cards) {
+            budget.Spend(1);
+            ArgumentOutOfRangeException.ThrowIfNegative(card.Copies);
+            copies = checked(copies + card.Copies);
+        }
+        if (handSize < 0 || handSize > copies) {
+            throw new ArgumentOutOfRangeException(nameof(handSize));
+        }
+
+        CheckStorage(1, layout.QueueStart + (long)copies + 1, "policy descriptors");
+        foreach (Combo combo in combos) {
+            long categoryAtoms = combo.AllCategories.Sum(requirement => (long)requirement.Selector.CategoryIdentities.Count);
+            long deckMemberships = n + cards.Sum(card => (long)card.Categories.Count);
+            budget.Spend((combo.AllCards.Count() + categoryAtoms + 1L) * deckMemberships);
+        }
+        bool[] relevant = cards.Select(card => combos.Any(combo =>
+            combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
+            || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card.Categories)))).ToArray();
+
+        CheckStorage(copies + 1L, copies + 1L, "factorials");
+        BigInteger[] factorial = new BigInteger[copies + 1];
+        factorial[0] = 1;
+        long factorialCells = 1;
+        for (int i = 1; i <= copies; i++) {
+            budget.Spend(WorkBudget.IntegerCells(factorial[i - 1]) + 1);
+            factorial[i] = factorial[i - 1] * i;
+            factorialCells += WorkBudget.IntegerCells(factorial[i]);
+            CheckStorage(copies + 1L, factorialCells, "factorials");
+        }
+
+        CheckStorage(n, n, "removal selector table");
+        bool[]?[] removalEligibility = new bool[n][];
+        long eligibilityCells = n;
+        for (int i = 0; i < n; i++) {
+            if (cards[i].PostDrawDiscardCount > 0 && cards[i].PostDrawSelector.Kind != CardSelectorKind.Any) {
+                eligibilityCells += n;
+                CheckStorage(n, eligibilityCells, "removal selector table");
+                removalEligibility[i] = CardSelectorCompiler.Compile(cards[i].PostDrawSelector, cards, budget);
+            }
+        }
+
+        // Keep post-draw-only decks free of cost tables.
+        bool[]?[]? costEligibility = null;
+        if (cards.Any(card => card.PreDrawRemovalCount > 0)) {
+            eligibilityCells += n;
+            CheckStorage(n, eligibilityCells, "removal selector table");
+            costEligibility = new bool[n][];
+            for (int i = 0; i < n; i++) {
+                if (cards[i].PreDrawRemovalCount > 0 && cards[i].PreDrawSelector.Kind != CardSelectorKind.Any) {
+                    eligibilityCells += n;
+                    CheckStorage(n, eligibilityCells, "removal selector table");
+                    costEligibility[i] = CardSelectorCompiler.Compile(cards[i].PreDrawSelector, cards, budget);
+                }
+            }
+        }
+
+        OrderedResolver resolver = new(
+            this,
+            budget,
+            cards,
+            layout,
+            customPriority,
+            ranks,
+            relevant,
+            removalEligibility,
+            costEligibility
+        );
+        Dictionary<State, BigInteger> terminal = resolver.Resolve<SearchTerminal>(handSize, copies, factorial, compactFrontierThreshold);
+        TerminalStates = terminal.Count;
+
+        List<List<Card>> pools = cards.Select(card => identities[card.Id]).ToList();
+        if (deferred.Count > 0) {
+            pools[^1] = deferred.SelectMany(card => identities[card.Id]).ToList();
+        }
+
+        return CountSearchHands(cards, pools, terminal, factorial[copies], combos, groups, totalOnly, search);
+    }
+
+    private List<Card> ReduceSearchDeck(List<Combo> combos, out Dictionary<string, List<Card>> identities) {
+        // Canonical tie order: membership bit string for ordinal category identities,
+        // then ordinal direct-card IDs (including maximum-only selectors), ordinary
+        // before effect, then ordinal Card.Id, then earlier encounter within an ID.
+        // Ordinary cards with equal signatures are indistinguishable to every
+        // requirement and to the policy. Their counts can therefore be merged.
+        long selectors = 0;
+        foreach (Combo combo in combos) {
+            selectors += combo.Categories.Sum(requirement => (long)requirement.Selector.CategoryIdentities.Count) + combo.Cards.Count;
+            foreach (ComboAlternativeGroup group in combo.AlternativeGroups) {
+                selectors += group.Alternatives.Sum(alternative => alternative.Category is { } category
+                    ? (long)category.Selector.CategoryIdentities.Count : 1L);
+            }
+            CheckStorage(selectors, selectors, "policy selectors");
+            budget.Spend(combo.RequirementCount + 1L);
+        }
+        CheckStorage(deck.Count, (selectors + 1) * deck.Count, "policy descriptors");
+        budget.Spend(selectors * (selectors + 1) + deck.Count * (long)(deck.Count + 1) * (selectors + 1));
+        CategoryBase[] categories = combos.SelectMany(combo => combo.AllCategories)
+            .SelectMany(requirement => requirement.CategoryBases).Distinct().OrderBy(category => category.Identity, StringComparer.Ordinal).ToArray();
+        string[] direct = combos.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
+            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        List<bool[]> filters = [];
+        foreach (Card source in deck) {
+            if (source.Copies > 0 && source.PostDrawDiscardCount > 0 && source.PostDrawSelector.Kind != CardSelectorKind.Any) {
+                CheckStorage(filters.Count + 1L, (filters.Count + 1L) * deck.Count, "reduction selectors");
+                filters.Add(CardSelectorCompiler.Compile(source.PostDrawSelector, deck, budget));
+            }
+        }
+        foreach (Card source in deck) {
+            if (source.Copies > 0 && source.PreDrawRemovalCount > 0 && source.PreDrawSelector.Kind != CardSelectorKind.Any) {
+                CheckStorage(filters.Count + 1L, (filters.Count + 1L) * deck.Count, "reduction selectors");
+                filters.Add(CardSelectorCompiler.Compile(source.PreDrawSelector, deck, budget));
+            }
+        }
+        List<(Card Card, string Signature, string Eligibility)> entries = [];
+        int row = 0;
+        foreach (Card card in deck) {
+            ArgumentOutOfRangeException.ThrowIfNegative(card.Copies);
+            budget.Spend((categories.Length + 1L) * (card.Categories.Count + 1L) + direct.Length);
+            CheckStorage(deck.Count, (categories.Length + (long)direct.Length + 1) * deck.Count, "policy descriptors");
+            string signature = string.Concat(categories.Select(category => card.Categories.Contains(category) ? '1' : '0'))
+                + string.Concat(direct.Select(id => card.Id == id ? '1' : '0'));
+            budget.Spend(filters.Count);
+            CheckStorage(deck.Count, (categories.Length + (long)direct.Length + filters.Count + 1) * deck.Count, "policy descriptors");
+            entries.Add((card, signature, string.Concat(filters.Select(filter => filter[row] ? '1' : '0'))));
+            row++;
+        }
+        List<Card> reduced = [];
+        identities = new(StringComparer.Ordinal);
+        foreach (IGrouping<string, (Card Card, string Signature, string Eligibility)> group in entries
+            .GroupBy(entry => entry.Signature).OrderBy(group => group.Key, StringComparer.Ordinal)) {
+            // Retain the established membership/ordinary/ID tie order. Only merge
+            // adjacent ordinary runs with equal eligibility for every effect.
+            // Combining interleaved IDs across different filters changes removals.
+            string? previousEligibility = null;
+            foreach ((Card card, string _, string eligibility) in group.Where(entry => entry.Card.DrawCount is null)
+                .OrderBy(entry => entry.Card.Id, StringComparer.Ordinal)) {
+                if (eligibility == previousEligibility) {
+                    identities[reduced[^1].Id].Add(card);
+                    reduced[^1] = reduced[^1].WithCopies(checked(reduced[^1].Copies + card.Copies));
+                }
+                else {
+                    reduced.Add(card);
+                    identities.Add(card.Id, [card]);
+                    previousEligibility = eligibility;
+                }
+            }
+            // Effect entries stay separate, preserving OPT identity AND custom rank.
+            foreach (Card card in group.Where(entry => entry.Card.DrawCount is not null).Select(entry => entry.Card)
+                .OrderBy(card => card.Id, StringComparer.Ordinal)) {
+                reduced.Add(card);
+                identities.Add(card.Id, [card]);
+            }
+        }
+        return reduced;
+    }
+
+    // The legacy reduction and deferred pool are unchanged. Recover only their
+    // conditional final-hand subsets, never the identities of remaining deck cards.
+    private ExactCalculationResult CountSearchHands(
         List<Card> cards,
+        List<List<Card>> pools,
         Dictionary<State, BigInteger> terminal,
         BigInteger denominator,
         List<Combo> combos,
         IReadOnlyList<ComboGroup>? groups,
-        bool totalOnly
+        bool totalOnly,
+        SearchAccessPlan search
     ) {
-        SearchResultAccumulator results = new(combos, groups, totalOnly, denominator, budget);
-        // Search preserves hand size. Compile once for each size produced by draws.
-        budget.Spend(terminal.Count * (cards.Count + 1L));
-        foreach (IGrouping<int, KeyValuePair<State, BigInteger>> size in terminal.GroupBy(pair => pair.Key.Values.Skip(cards.Count).Sum())) {
-            SearchHandEvaluator evaluator = new(cards, size.Key, combos, budget);
-            foreach ((State state, BigInteger weight) in size) {
-                results.Add(evaluator.Evaluate(state.Values), weight);
+        BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
+        CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(denominator) + 1), "result accumulators");
+        foreach ((State hand, BigInteger mass) in terminal) {
+            List<Card> retained = [];
+            List<SearchHandPool> random = [];
+            for (int row = 0; row < cards.Count; row++) {
+                budget.Spend(1);
+                if (pools[row].Count == 1) {
+                    retained.Add(pools[row][0].WithCopies(hand.Values[row]));
+                }
+                else {
+                    random.Add(new(pools[row], hand.Values[row]));
+                }
+            }
+            SearchProbabilityCalculation calculation = new(random.SelectMany(pool => pool.Cards).ToList(),
+                random.Sum(pool => pool.Held), retained, search, hand.Values[^1], budget, random);
+            ExactCalculationResult result = calculation.Calculate(combos, groups, totalOnly);
+            ExactProbability[] values = [result.Total, .. result.Combos, .. result.Groups];
+            for (int i = 0; i < values.Length; i++) {
+                ExactProbability probability = values[i];
+                budget.Spend((WorkBudget.IntegerCells(mass) + probability.Cells + 1) * (probability.Cells + 1));
+                BigInteger contribution = BigInteger.DivRem(mass * probability.Numerator, probability.Denominator, out BigInteger remainder);
+                if (!remainder.IsZero) {
+                    throw new InvalidOperationException("Conditional pool subsets must have equal integer permutation mass.");
+                }
+                wins[i] += contribution;
             }
         }
+        ExactProbability[] results = wins.Select(win => new ExactProbability(win, denominator)).ToArray();
 
-        return results.Result();
-    }
-
-    private sealed class SearchResultAccumulator {
-        private readonly List<Combo> _combos;
-        private readonly IReadOnlyList<ComboGroup> _groups;
-        private readonly bool _totalOnly;
-        private readonly BigInteger _denominator;
-        private readonly WorkBudget _budget;
-        private readonly BigInteger[] _wins;
-
-        internal SearchResultAccumulator(
-            List<Combo> combos,
-            IReadOnlyList<ComboGroup>? groups,
-            bool totalOnly,
-            BigInteger denominator,
-            WorkBudget budget
-        ) {
-            _combos = combos;
-            _groups = groups ?? [];
-            _totalOnly = totalOnly;
-            _denominator = denominator;
-            _budget = budget;
-            int count = 1 + (totalOnly ? 0 : combos.Count + _groups.Count);
-            budget.CheckStorage(count, count * (WorkBudget.IntegerCells(denominator) + 1));
-            _wins = new BigInteger[count];
-        }
-
-        internal void Add(bool[] matches, BigInteger weight) {
-            _budget.Spend((_wins.Length + (long)_combos.Count * _groups.Count + 1) * (WorkBudget.IntegerCells(_denominator) + 1));
-            // Choices are existential within each row. Every realized random
-            // outcome contributes its mass once to the total/group union.
-            if (matches.Any(match => match)) {
-                _wins[0] += weight;
-            }
-            if (_totalOnly) {
-                return;
-            }
-            for (int i = 0; i < matches.Length; i++) {
-                if (matches[i]) {
-                    _wins[1 + i] += weight;
-                }
-            }
-            for (int g = 0; g < _groups.Count; g++) {
-                if (_combos.Where((combo, i) => matches[i] && combo.GroupId == _groups[g].Id).Any()) {
-                    _wins[1 + _combos.Count + g] += weight;
-                }
-            }
-        }
-
-        internal ExactCalculationResult Result() {
-            ExactProbability[] results = _wins.Select(win => new ExactProbability(win, _denominator)).ToArray();
-            return new(
-                results[0],
-                _totalOnly ? [] : results.Skip(1).Take(_combos.Count).ToArray(),
-                _totalOnly ? [] : results.Skip(1 + _combos.Count).ToArray()
-            );
-        }
-    }
-
-    // Complete bounded reachability over (remaining copies, held copies). Every
-    // edge consumes a held source and transfers one eligible remaining copy;
-    // remaining deck size strictly decreases, even for self-search/cyclic chains.
-    // Stopping at EVERY node makes activation optional, including under exclusions.
-    // Hall constraints apply only to each resulting physical hand, never to a
-    // proxy union of all targets. Maxima and source consumption are thus preserved.
-    private sealed class SearchHandEvaluator {
-        private readonly int _n;
-        private readonly WorkBudget _budget;
-        private readonly (int Source, int[] Targets)[] _searches;
-        private readonly Bound[][][] _events;
-        private readonly record struct Bound(int[] Rows, int Min, int Max);
-
-        internal SearchHandEvaluator(List<Card> cards, int size, List<Combo> combos, WorkBudget budget) {
-            _n = cards.Count;
-            _budget = budget;
-            budget.CheckStorage(_n, (long)_n * _n);
-            budget.Spend(cards.Sum(card => card.Categories.Count + 1L)
-                * cards.Sum(card => (long)(card.Search?.Selector.CategoryIdentities.Count ?? 0) + 1));
-            _searches = cards.Select((card, index) => (Card: card, Index: index))
-                .Where(entry => entry.Card.Search is not null)
-                .Select(entry => (entry.Index, cards.Select((card, index) => (Card: card, Index: index))
-                    .Where(target => entry.Card.Search!.Matches(target.Card)).Select(target => target.Index).ToArray())).ToArray();
-            ComboEventCompiler compiler = new(cards, size, budget);
-            long cells = 0;
-            _events = combos.Select(combo => compiler.CompileCombo(combo).Where(route => route is not null)
-                .Select(route => route!.Constraints.Select(bound => {
-                    budget.Spend(_n * (WorkBudget.IntegerCells(bound.EligibleRows) + 1));
-                    int[] rows = Enumerable.Range(0, _n).Where(i => (bound.EligibleRows & (BigInteger.One << i)) != 0).ToArray();
-                    cells += rows.Length + 2;
-                    budget.CheckStorage(cells, cells);
-                    return new Bound(rows, bound.MinCount, bound.MaxCount);
-                }).ToArray()).ToArray()).ToArray();
-        }
-
-        internal bool[] Evaluate(int[] outcome) {
-            bool[] wins = new bool[_events.Length];
-            HashSet<State> visited = [];
-            int[] state = (int[])outcome.Clone();
-            long cells = 0;
-            Visit();
-
-            return wins;
-
-            void Visit() {
-                _budget.Spend(4L * _n + 1);
-                State key = new((int[])state.Clone());
-                if (visited.Contains(key)) {
-                    return;
-                }
-                cells += key.Values.Length;
-                _budget.CheckStorage(visited.Count + 1L, cells);
-                visited.Add(key);
-                for (int i = 0; i < _events.Length; i++) {
-                    _budget.Spend(1);
-                    if (!wins[i]) {
-                        wins[i] = _events[i].Any(route => route.All(Matches));
-                    }
-                }
-                if (wins.All(win => win)) {
-                    return;
-                }
-                foreach ((int source, int[] targets) in _searches) {
-                    _budget.Spend(1);
-                    if (state[_n + source] == 0) {
-                        continue;
-                    }
-                    foreach (int target in targets) {
-                        _budget.Spend(1);
-                        if (state[target] == 0) {
-                            continue;
-                        }
-                        state[_n + source]--;
-                        state[target]--;
-                        state[_n + target]++;
-                        Visit();
-                        state[_n + target]--;
-                        state[target]++;
-                        state[_n + source]++;
-                    }
-                }
-            }
-
-            bool Matches(Bound bound) {
-                _budget.Spend(bound.Rows.Length + 1L);
-                int count = 0;
-                foreach (int row in bound.Rows) {
-                    count += state[_n + row];
-                }
-                return count >= bound.Min && count <= bound.Max;
-            }
-        }
+        return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos.Count).ToArray(),
+            totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
     }
 }
