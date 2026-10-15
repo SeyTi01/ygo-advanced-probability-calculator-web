@@ -178,7 +178,7 @@ public sealed partial class SearchEffectsTest {
 
     [Test]
     public async Task BundledExampleHasOnlyRazenAndCompletesUnderStandard() {
-        SessionState session = await LoadExample("search_example_session_state.json");
+        SessionState session = await LoadExample("rota_search_example_session_state.json");
         Card rota = session.Cards.Single(card => card.ExternalCardId == 32807846);
         Card razen = session.Cards.Single(card => card.ExternalCardId == 29302858);
         Assert.Multiple(() => {
@@ -248,7 +248,7 @@ public sealed partial class SearchEffectsTest {
     [TestCase(1, 0.8629362147164005)]
     [TestCase(3, 0.9089511612294494)]
     public async Task RepresentativeMixedSearchKeepsCountStateAndStandardCapacity(int copies, double expected) {
-        SessionState session = await LoadExample("search_example_session_state.json");
+        SessionState session = await LoadExample("rota_search_example_session_state.json");
         int row = session.Cards.FindIndex(card => card.Name == "Mulcharmy Fuwalos");
         Card original = session.Cards[row];
         session.Cards[row] = original.WithCopies(copies).WithDrawCount(2).WithDrawOncePerTurn(false);
@@ -378,7 +378,7 @@ internal static class SearchAccessOracle {
                 foreach (Card held in hand) {
                     available.Remove(held);
                 }
-                Search(hand, available, matched, 0, remaining.Count);
+                Search(hand, available, matched, 0, remaining.Count, []);
                 bool[] results = [matched.Any(value => value), .. matched,
                     .. groups.Select(group => combos.Where((combo, i) => matched[i] && combo.GroupId == group.Id).Any())];
                 for (int i = 0; i < results.Length; i++) {
@@ -395,19 +395,26 @@ internal static class SearchAccessOracle {
             }
         }
 
-        void Search(List<Card> hand, List<Card> remaining, bool[] matched, int slot, int capacity) {
+        void Search(List<Card> hand, List<Card> remaining, bool[] matched, int slot, int capacity, List<Card> activated) {
             if (slot == hand.Count) {
                 for (int i = 0; i < combos.Count; i++) {
                     matched[i] |= SmallDeckOracle.MatchesHand(hand, combos[i]);
                 }
                 return;
             }
-            Search(hand, remaining, matched, slot + 1, capacity);
+            Search(hand, remaining, matched, slot + 1, capacity, activated);
             if (capacity == 0 || hand[slot].Search is not { } search) {
+                return;
+            }
+            Card source = hand[slot];
+            if (source.OncePerTurn && activated.Any(previous => previous.Id == source.Id)) {
                 return;
             }
             for (int target = 0; target < remaining.Count; target++) {
                 Card card = remaining[target];
+                if (card.Id == source.Id) {
+                    continue;
+                }
                 Card inspected = search.ObjectiveMetadataOnly
                     ? new(card.Categories.Where(category => category.Source == CategorySource.Metadata
                         && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))) : card;
@@ -419,7 +426,7 @@ internal static class SearchAccessOracle {
                 nextHand[slot] = card;
                 List<Card> nextDeck = [.. remaining];
                 nextDeck.RemoveAt(target);
-                Search(nextHand, nextDeck, matched, slot + 1, capacity - 1);
+                Search(nextHand, nextDeck, matched, slot + 1, capacity - 1, [.. activated, source]);
             }
         }
     }

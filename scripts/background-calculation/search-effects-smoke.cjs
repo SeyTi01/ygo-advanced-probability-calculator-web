@@ -20,7 +20,8 @@ async function main() {
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const browser = await chromium.launch({ headless: true,
-        ...(process.env.YGO_BROWSER_CHANNEL ? { channel: process.env.YGO_BROWSER_CHANNEL } : {}) });
+        ...(process.env.YGO_BROWSER_CHANNEL ? { channel: process.env.YGO_BROWSER_CHANNEL } : {}),
+        ...(process.env.YGO_BROWSER_EXECUTABLE ? { executablePath: process.env.YGO_BROWSER_EXECUTABLE } : {}) });
     try {
         await fs.mkdir(evidence, { recursive: true });
         const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -77,7 +78,7 @@ async function main() {
         async function run() {
             const previous = await page.evaluate(() => searchProbe.responses.length);
             await calculate.click();
-            await page.waitForFunction(previous => searchProbe.responses.length > previous, previous, { timeout: 60000 });
+            await page.waitForFunction(previous => searchProbe.responses.length > previous, previous, { timeout: 180000 });
             await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
             return page.evaluate(() => searchProbe.responses.at(-1));
         }
@@ -86,7 +87,36 @@ async function main() {
             await load(sample);
             const response = await run();
             assert.equal(response.Error, null);
-            assert.equal(response.Result.TotalProbability, 550987 / 658008);
+            assert.equal(response.Result.TotalProbability, 550033 / 658008);
+        }
+        const searchRows = await page.evaluate(() => searchProbe.requests.at(-1).input.Cards.filter(card => card.Search));
+        assert.deepEqual(searchRows.map(card => [card.ExternalCardId, card.OncePerTurn]).sort((a, b) => a[0] - b[0]),
+            [[32807846, false], [80181649, true], [92221402, true]]);
+        for (const [identity, names] of [
+            [80181649, ['K9-04 Noroi', 'K9-17 Izuna', 'K9-66a Jokul', 'K9-66b Lantern', 'K9-ØØ Lupis']],
+            [92221402, ['K9-66a Jokul', 'K9-66b Lantern']]
+        ]) {
+            const index = sample.Cards.findIndex(card => card.ExternalCardId === identity);
+            const presetEditor = page.locator('.card-editor').nth(index);
+            await presetEditor.locator('.accordion-button').click();
+            const text = await presetEditor.locator('.simulation-targets').innerText();
+            for (const name of names) assert(text.includes(name));
+            assert.equal((text.match(/\(\d+\)/g) || []).length, names.length);
+            assert.match(await presetEditor.locator('.simulation-summary').innerText(), /once per turn/);
+            if (identity === 80181649) {
+                await presetEditor.locator('.simulation-edit').click();
+                assert(await presetEditor.locator(`#cardSearchOnce${index}`).isChecked());
+                assert.equal(await presetEditor.locator('[id^=cardSearchObjective]').count(), 0);
+                for (const width of [1440, 375]) {
+                    await page.setViewportSize({ width, height: 1000 });
+                    await presetEditor.locator('.card-simulation').scrollIntoViewIfNeeded();
+                    await page.screenshot({ path: path.join(evidence, `case-editor-${width}.png`) });
+                    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+                }
+                await page.setViewportSize({ width: 1440, height: 1000 });
+                await presetEditor.locator('.simulation-cancel').click();
+            }
+            await presetEditor.locator('.accordion-button').click();
         }
         const editor = page.locator('.card-editor').nth(rotaIndex);
         await editor.locator('.accordion-button').click();
@@ -128,11 +158,24 @@ async function main() {
         await load(emptyTargets);
         const changed = await run();
         assert.equal(changed.Error, null);
-        assert.notEqual(changed.Result.TotalProbability, 550987 / 658008);
+        assert.notEqual(changed.Result.TotalProbability, 550033 / 658008);
         await page.waitForTimeout(2100);
         assert.equal(await page.evaluate(() => searchProbe.responses.at(-1).Result.TotalProbability), changed.Result.TotalProbability);
         await load(sample);
-        assert.equal((await run()).Result.TotalProbability, 550987 / 658008);
+        assert.equal((await run()).Result.TotalProbability, 550033 / 658008);
+        await load(sample);
+        const customEditor = page.locator('.card-editor').nth(rotaIndex);
+        if (await customEditor.locator('.accordion-button').getAttribute('aria-expanded') !== 'true') {
+            await customEditor.locator('.accordion-button').click();
+        }
+        await customEditor.locator('.simulation-edit').click();
+        await customEditor.locator(`#cardSearchEligibility${rotaIndex}`).selectOption('any');
+        await customEditor.locator(`#cardSearchEligibility${rotaIndex}`).selectOption('user:K9 Starter');
+        assert.match(await customEditor.locator('.simulation-targets').innerText(), /K9-04 Noroi/);
+        await customEditor.locator('.simulation-save').click();
+        assert.match(await customEditor.locator('.simulation-source').innerText(), /Custom/);
+        await customEditor.locator('.simulation-restore').click();
+        assert.doesNotMatch(await customEditor.locator('.simulation-targets').innerText(), /K9-04 Noroi/);
         const hidden = structuredClone(sample);
         Object.assign(hidden.Cards[0], { DrawCount: 1, PreDrawDeckRemovalCount: 1 });
         await load(hidden);
@@ -148,7 +191,7 @@ async function main() {
         await load(mixed);
         const result = await run();
         assert.equal(result.Error, null);
-        assert.equal(result.Result.TotalProbability, 0.9089511612294494);
+        assert.equal(result.Result.TotalProbability, 0.9079532052729397);
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
         const requests = await page.evaluate(() => searchProbe.requests);

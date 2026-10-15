@@ -2,6 +2,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
@@ -54,14 +55,16 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         editor.Find(".accordion-button").Click();
         editor.Find(".simulation-edit").Click();
-        editor.Find("#cardSearchObjective0").Change(true);
+        editor.Find("#cardSearchOnce0").Change(true);
         await cut.Find("[aria-label='Edit category Role']").ClickAsync(new());
         await cut.Find("[aria-label='New name for category Role']").InputAsync(new() { Value = "Renamed" });
         await cut.Find("[aria-label='New name for category Role']").KeyDownAsync(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
         Assert.That(editor.Instance.Card.Search!.Selector.CategoryIdentities, Is.EqualTo(new[] { "user:Renamed" }));
-        Assert.That(editor.Find("#cardSearchObjective0").HasAttribute("checked"), Is.True);
+        Assert.That(editor.Find("#cardSearchOnce0").HasAttribute("checked"), Is.True);
         editor.Find(".simulation-save").Click();
-        Assert.That(editor.Instance.Card.Search.ObjectiveMetadataOnly, Is.True);
+        Assert.That(editor.Instance.Card.OncePerTurn, Is.True);
+        Assert.That(editor.Instance.Card.Search.ObjectiveMetadataOnly, Is.False);
+        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Not.Contain("None"));
     }
 
     [Test]
@@ -72,10 +75,10 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
             .Add(component => component.Card, rota).Add(component => component.Deck, new[] { rota, target }));
         editor.Find(".simulation-edit").Click();
         editor.Find("#cardDraw0").Change("search");
-        editor.Find("#cardSearchObjective0").Change(false);
+        editor.Find("#cardSearchOnce0").Change(true);
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Deck, new[] { rota, target.WithActive(false) }));
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));
-        Assert.That(editor.Find("#cardSearchObjective0").HasAttribute("checked"), Is.False);
+        Assert.That(editor.Find("#cardSearchOnce0").HasAttribute("checked"), Is.True);
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.DrawEffectsEnabled, false));
         Assert.That(editor.Find(".simulation-mode").TextContent, Does.Contain("Opening hand only"));
     }
@@ -92,6 +95,66 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
         Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Deck, new[] { rota, target, hidden.WithActive(false) }));
         Assert.That(editor.Markup, Does.Not.Contain("targets outside the final hand"));
+    }
+
+    [TestCase(false), TestCase(true)]
+    public void BuiltInToCustomRoleWorksWithoutProvenanceOption(bool automatic) {
+        CategoryBase fire = new("FIRE", CategorySource.Metadata, "attribute:fire");
+        CategoryBase role = new("My targets", rule: automatic ? CardSelector.For(fire) : null);
+        Card rota = SearchEffectsTest.Rota();
+        Card target = new(automatic ? [fire] : [role], name: "Custom target", id: "custom-target");
+        Card? saved = null;
+        IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
+            .Add(component => component.Card, rota).Add(component => component.Deck, new[] { rota, target })
+            .Add(component => component.CategoryBases, new[] { role })
+            .Add(component => component.OnChanged, card => saved = card));
+        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));
+        editor.Find(".simulation-edit").Click();
+        Assert.That(editor.FindAll("[id^=cardSearchObjective]"), Is.Empty);
+        editor.Find("#cardSearchEligibility0").Change("any");
+        editor.Find("#cardSearchEligibility0").Change(role.Identity);
+        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("Custom target"));
+        editor.Find(".simulation-save").Click();
+        Assert.That(saved!.Search!.ObjectiveMetadataOnly, Is.False);
+        Assert.That(saved.Search.Selector, Is.EqualTo(CardSelector.For(role)));
+        Assert.That(saved.EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture([saved, target, new([], 2)],
+            [new([], cards: [new(target.Id, 1, 1)])], 1, [], categoryDefinitions: [role]);
+        Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability, Is.EqualTo(0.5));
+    }
+
+    [TestCase(false), TestCase(true)]
+    public void OpeningAndSavingOldCustomPlanKeepsItsMatchingPolicy(bool objective) {
+        Card source = SearchEffectsTest.Rota().WithSearch(new(CardSelector.Any, objective));
+        Card? saved = null;
+        IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
+            .Add(component => component.Card, source)
+            .Add(component => component.OnChanged, card => saved = card));
+        editor.Find(".simulation-edit").Click();
+        editor.Find(".simulation-save").Click();
+        Assert.That(saved, Is.Null, "An untouched save does not reinterpret persisted settings.");
+        editor.Find(".simulation-edit").Click();
+        editor.Find("#cardSearchOnce0").Change(true);
+        editor.Find(".simulation-save").Click();
+        Assert.That(saved!.Search!.ObjectiveMetadataOnly, Is.EqualTo(objective));
+        Assert.That(saved.OncePerTurn, Is.True);
+    }
+
+    [TestCase(false), TestCase(true)]
+    public void DrawAndSearchEditorsUseTheSameOncePerTurnFlag(bool draw) {
+        Card source = SearchEffectsTest.Preset(80181649);
+        if (draw) {
+            source = source.WithDrawCount(1);
+        }
+        Card? saved = null;
+        IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
+            .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));
+        editor.Find(".simulation-edit").Click();
+        string input = draw ? "#cardDrawOnce0" : "#cardSearchOnce0";
+        Assert.That(editor.Find(input).HasAttribute("checked"), Is.True);
+        editor.Find(input).Change(false);
+        editor.Find(".simulation-save").Click();
+        Assert.That(saved!.EffectPlan.OncePerTurn, Is.False);
     }
 
 }

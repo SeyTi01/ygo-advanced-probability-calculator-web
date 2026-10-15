@@ -72,6 +72,20 @@ public class CardConverter : JsonConverter<Card> {
             drawOncePerTurn = value.GetBoolean();
         }
 
+        JsonProperty[] sharedLimits = root.EnumerateObject()
+            .Where(property => property.Name.Equals("OncePerTurn", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (sharedLimits.Length > 1) {
+            throw new JsonException("Once-per-turn setting is duplicated.");
+        }
+        bool? oncePerTurn = null;
+        if (sharedLimits.Length == 1) {
+            JsonElement value = sharedLimits[0].Value;
+            if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) {
+                throw new JsonException("Once-per-turn setting must be a boolean.");
+            }
+            oncePerTurn = value.GetBoolean();
+        }
+
         JsonProperty[] discardProperties = root.EnumerateObject()
             .Where(property => property.Name.Equals("PostDrawDiscardCount", StringComparison.OrdinalIgnoreCase)).ToArray();
         if (discardProperties.Length > 1) {
@@ -187,7 +201,8 @@ public class CardConverter : JsonConverter<Card> {
                 postDrawDeckMillCount: millCount,
                 firstActivationOnly: firstActivationOnly,
                 blocksLaterDraws: blocksLaterDraws,
-                search: search
+                search: search,
+                oncePerTurn: oncePerTurn
             );
         }
         catch (ArgumentException exception) {
@@ -214,8 +229,12 @@ public class CardConverter : JsonConverter<Card> {
             writer.WriteNumber("DrawCount", drawCount);
         }
 
-        // Omission keeps earlier schema-4 sessions and ordinary cards compatible.
-        if (!value.DrawOncePerTurn) {
+        if (value.Search is not null) {
+            // Explicit shared flag distinguishes new search limits from the old,
+            // ignored DrawOncePerTurn field. Existing draw wire meanings stay intact.
+            writer.WriteBoolean("OncePerTurn", value.OncePerTurn);
+        }
+        else if (!value.DrawOncePerTurn) {
             writer.WriteBoolean("DrawOncePerTurn", false);
         }
 

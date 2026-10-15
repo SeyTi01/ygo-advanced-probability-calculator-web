@@ -28,13 +28,13 @@ The example uses three custom role categories:
 - `VS Starter`
 - `K9 Starter`
 
-Objective properties such as FIRE, DARK, and Level 5 come from card metadata rather than separate user categories. Where a spell functionally represents one of those properties for combo modeling, the example uses a manual metadata assignment.
+Objective properties such as FIRE, DARK, and Level 5 come from card metadata rather than separate user categories. The example’s three search spells use maintained search effects; the fetched monsters contribute their own roles and properties.
 
 Common properties are available in card, combo, and draw-filter selectors before a matching card is present. They use the same metadata identity as imported-card properties; specific values such as archetypes and monster types appear when relevant.
 
 Cards can still satisfy several roles and properties at once. For example, Vanquish Soul Razen is both a `VS Monster` and a `VS Starter` and has the FIRE property, while Reinforcement of the Army can search a remaining Razen copy. Reinforcement retains only its actual Spell properties; the fetched Razen contributes its own roles and identity.
 
-With all eight combo definitions active, the example has an **83.74%** probability of opening at least one modeled full-combo hand.
+With all eight combo definitions active, the example has an **83.59%** probability of opening at least one modeled full-combo hand.
 
 ## How to use it
 
@@ -59,7 +59,7 @@ Use **Remove requirement** or **Remove alternative** inside the editor. Removing
 
 Expand a card to see its saved simulation. Maintained cards have a **Built-in simulation** defined by their own card-effect class. Choose **Customize simulation** (or **Configure simulation** on an ordinary card), edit the generic settings, and **Save**. **Cancel** discards the draft. **Restore built-in simulation** explicitly reapplies the current definition; matching its values manually still leaves a saved override **Custom**. Supported built-in models have a neutral check icon; partially implemented models show **Partial**. Empty cards without a maintained definition show **No built-in simulation**. **Model notes** appears only for card-specific limitations or saved-version information.
 
-The custom editor offers **None**, **Draw 1**, **Draw 2**, or **Draw 3**. An activating copy is consumed. With **Once per turn** on (the default), later copies of that entry stay in hand; turn it off to let every copy activate, including newly drawn copies. Separate entries have independent allowances.
+The custom editor offers **None**, **Draw 1**, **Draw 2**, **Draw 3**, or **Search 1**. An activating copy is consumed. With **Once per turn** on (the default for draws), later copies of that entry stay in hand; turn it off to let every copy activate, including newly drawn copies. Draws and searches share this per-entry activation flag. Separate custom entries have independent allowances, even when they refer to the same printed card.
 
 Open the gear **Calculation settings** menu to choose how these settings apply:
 
@@ -78,7 +78,9 @@ Requirements apply to the final hand. If the full draw amount is unavailable, th
 
 ### Search from the Main Deck
 
-Reinforcement of the Army searches one Level 1–4 Warrior monster using the configured deck’s objective metadata. Manual combo-role/property overrides do not change its eligibility. The expanded card lists current targets; custom searches can use the existing category/property filters, with **Objective card properties only** optional.
+Reinforcement of the Army searches one Level 1–4 Warrior monster using the configured deck’s objective metadata. Manual combo-role/property overrides do not change its eligibility. **"A Case for K9"** searches one K9 monster, once per turn. **Chaotic Elements** searches one Level 5+ monster that is both LIGHT/DARK and Pyro/Aqua, once per turn. Only its Main Deck search is modeled; GY retrieval, optional destruction and the GY effect are excluded. In the example it can fetch only Jokul or Lantern.
+
+The expanded card lists current targets. Editing a search filter creates a hypothetical custom search over assigned categories/properties, including automatic user categories. Merely opening/saving an existing plan preserves its saved matching policy; Restore built-in restores verified eligibility.
 
 All configured draws, costs and discards resolve before searches. Each optional search substitutes one held source with one eligible target. For each combo, the calculator asks whether any legal combination of search choices succeeds. Different result rows may use different choices; groups and the total count each random outcome once. Maxima, exclusions, distinct copies and source consumption still apply. Only originally held searchers act: a fetched effect stays in hand, without restarting draws or searches.
 
@@ -88,7 +90,7 @@ Search and draw operations on the same source remain unsupported. Simple draws r
 
 Search retention assesses each source individually; it does not reserve targets for competing searchers or guarantee that a target survives later draws/removal. Final search counting enforces shared copy and capacity limits.
 
-Session schema 6 saves search plans explicitly. Older sessions preserve their previous behavior, including manual search proxies, until explicitly edited/restored; loading does not automatically give an old Reinforcement entry a search effect. Earlier calculator versions reject schema 6. Use **Customize simulation → None** to disable a search and **Restore built-in simulation** to restore it.
+Session schema 6 saves search plans explicitly. New search snapshots explicitly save the shared once-per-turn flag. Older search snapshots remain unrestricted; the formerly ignored draw-only flag does not acquire a new meaning on load. Older sessions preserve their previous behavior, including manual search proxies, until explicitly edited/restored; loading does not automatically give an old Reinforcement entry a search effect. Earlier calculator versions reject schema 6. Use **Customize simulation → None** to disable a search and **Restore built-in simulation** to restore it.
 
 ### Customize costs and removals
 
