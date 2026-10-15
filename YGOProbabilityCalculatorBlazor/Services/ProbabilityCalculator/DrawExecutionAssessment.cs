@@ -63,6 +63,12 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
                 ? DrawExecutionPath.DrawCountState : DrawExecutionPath.OrderedFrontier, false);
         }
         Combo[] routes = combos.Where(combo => combo.Active).ToArray();
+        if (active.Any(card => card.Search is not null)) {
+            // Search hand operations use the ordered resolver, possibly with a
+            // smaller deferred pool. Do not promise the no-search exchangeable
+            // specialization without proving search-policy equivalence.
+            return new(DrawExecutionPath.OrderedFrontier, active.Length >= 8 && routes.Length >= 4);
+        }
         HashSet<string> trackedCategories = routes.SelectMany(combo => combo.AllCategories)
             .SelectMany(requirement => requirement.Selector.CategoryIdentities).ToHashSet(StringComparer.Ordinal);
         HashSet<string> directIds = routes.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)

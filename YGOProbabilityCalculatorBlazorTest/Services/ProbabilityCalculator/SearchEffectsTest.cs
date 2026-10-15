@@ -12,7 +12,7 @@ using YGOProbabilityCalculatorBlazor.Services.Session;
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture]
-public sealed class SearchEffectsTest {
+public sealed partial class SearchEffectsTest {
     private static readonly CategoryBase A = new("A");
     private static readonly CategoryBase B = new("B");
     private static readonly CategoryBase Spell = new("Spell", CategorySource.Metadata, "kind:spell");
@@ -26,6 +26,23 @@ public sealed class SearchEffectsTest {
 
     internal static Card Rota(int copies = 1) => CardEffectRegistry.Default.RestoreBuiltIn(
         new([Spell], copies, "ROTA", id: "rota", externalCardId: 32807846));
+
+    [TestCase("a-source", "z-blank")]
+    [TestCase("z-source", "a-blank")]
+    public void SearchSourceCannotBeAveragedWithDiscardableFiller(string sourceId, string fillerId) {
+        List<Card> deck = [new Card([], id: sourceId).WithSearch(new(CardSelector.For(A), false)),
+            new([A], id: "target"), new([], 2, id: fillerId), new([], id: "draw", drawCount: 1, postDrawDiscardCount: 1)];
+        List<Combo> combos = [new([new(A, 1, 2)], groupId: "g1")];
+        (BigInteger total, BigInteger[] wins) = SearchAccessOracle.Count(deck, combos, 2, Groups, null);
+        Assert.That(total, Is.EqualTo(new BigInteger(120)));
+        Assert.That(wins[0], Is.EqualTo(new BigInteger(100)));
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+        ExactCalculationResult result = new DrawEffectCalculation(deck, 2, budget).Calculate(combos, Groups);
+        TestContext.Out.WriteLine($"Pooling counterexample {sourceId}: actual {result.Total.Numerator}/{result.Total.Denominator}; oracle {wins[0]}/{total}");
+        Compare(deck, combos, 2);
+        deck.Reverse();
+        Compare(deck, combos, 2);
+    }
 
     [TestCase(1, 1)]
     [TestCase(2, 1)]
@@ -266,22 +283,16 @@ public sealed class SearchEffectsTest {
     }
 
     [Test]
-    public void FilteredDrawCostsKeepTheDeferredIdentityPoolWithSearchAccess() {
+    public void FilteredDrawCostsKeepUnremovableSearchSourcesExplicit() {
         List<Card> deck = [Rota(), Warrior(), new([], id: "draw", drawCount: 1,
             preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(B)), Warrior(id: "second-target"), new([], 2, id: "blank")];
         List<Combo> combos = [new([new(A, 1, 2)], groupId: "g1"), new([new(Spell, 1, 2)], groupId: "g2")];
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
         PostDrawCalculation calculation = new(deck, 2, budget);
         calculation.CalculateSearch(combos, Groups, false, new(deck, budget));
-        Assert.That(calculation.DeferredRows, Is.GreaterThanOrEqualTo(2));
-        PostDrawCalculation legacy = new(deck.Select(card => card.WithSearch(null)).ToList(), 2,
-            new(CalculationWorkPolicy.Interactive));
-        legacy.Calculate(combos, Groups);
-        Assert.Multiple(() => {
-            Assert.That(calculation.ReducedRows, Is.EqualTo(legacy.ReducedRows));
-            Assert.That(calculation.DeferredRows, Is.EqualTo(legacy.DeferredRows));
-            Assert.That(calculation.PeakStates, Is.EqualTo(legacy.PeakStates));
-        });
+        // The old equality with no-search row counts was unsound: ROTA is an
+        // observable source even when a filtered cost cannot remove it.
+        Assert.That(calculation.DeferredRows, Is.EqualTo(0));
         Compare(deck, combos, 2);
     }
 
@@ -293,10 +304,9 @@ public sealed class SearchEffectsTest {
         List<Card> deck = [source, target, blank];
         List<Combo> combos = [new([new(A, 2, 2)], groupId: "g1")];
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        // One of the two interchangeable pool labels survived the draw phase.
-        // Its two labeled subsets are {source} and {blank}; only the first can
-        // complement the one fixed target. This is the stated abstract model,
-        // not a claim about which label a physical discard actually removed.
+        // This counter-level input is valid only for a genuinely uniform pool,
+        // e.g. an opening sample with no identity-sensitive removal. The draw
+        // reducer must never manufacture this pool after discarding its source.
         ExactCalculationResult result = new SearchProbabilityCalculation([source, blank], 1, [target.WithCopies(1)],
             new(deck, budget), 1, budget, [new([source, blank], 1)]).Calculate(combos, Groups, false);
         AssertRatio(result.Total, 1, 2);

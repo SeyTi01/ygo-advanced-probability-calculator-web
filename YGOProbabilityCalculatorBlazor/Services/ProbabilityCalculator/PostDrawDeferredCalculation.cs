@@ -6,7 +6,7 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 internal sealed partial class PostDrawCalculation {
     internal int DeferredRows { get; private set; }
 
-    private List<Card> DeferUnobservedIdentities(ref List<Card> cards) {
+    private List<Card> DeferUnobservedIdentities(ref List<Card> cards, HashSet<string>? observedIdentities = null) {
         budget.Spend(cards.Count);
         Card[] effects = cards.Where(card => card.Copies > 0 && card.DrawCount is not null).ToArray();
         if (effects.Length == 0 || !effects.All(DrawExecutionAssessment.CanDeferIdentities)
@@ -39,7 +39,8 @@ internal sealed partial class PostDrawCalculation {
         List<Card> observed = [];
         for (int i = 0; i < cards.Count; i++) {
             budget.Spend(1);
-            if (cards[i].Copies > 0 && cards[i].DrawCount is null && !material[i]) {
+            if (cards[i].Copies > 0 && cards[i].DrawCount is null && !material[i]
+                && (observedIdentities is null || !observedIdentities.Contains(cards[i].Id))) {
                 deferred.Add(cards[i]);
             }
             else {

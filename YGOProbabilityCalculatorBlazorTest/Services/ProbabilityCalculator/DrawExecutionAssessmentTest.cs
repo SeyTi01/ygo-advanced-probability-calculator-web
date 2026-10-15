@@ -6,6 +6,20 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 [TestFixture]
 public class DrawExecutionAssessmentTest {
     [Test]
+    public void SearchHandOperationsDoNotClaimNoSearchExchangeability() {
+        CategoryBase role = new("Role");
+        List<Card> cards = [new([], id: "draw", drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1),
+            new([role], 3, id: "target"), new([], 5, id: "filler")];
+        List<Combo> combos = [new([new(role, 1, 3)])];
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 2, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
+        cards.Add(new Card([], id: "search").WithSearch(new(CardSelector.For(role), false)));
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 2, true),
+            Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.OrderedFrontier, false)));
+        cards[0] = cards[0].WithPostDrawDiscardCount(0);
+        Assert.That(DrawExecutionAssessment.Assess(cards, combos, 2, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
+    }
+
+    [Test]
     public async Task BundledGracefulIsSpecializedAndSafePotAllureUsesDeferredCounting() {
         SessionState session = await RealisticGracefulFixture.Load();
         Assert.That(Assess(session), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.ExchangeableConditional, false)));

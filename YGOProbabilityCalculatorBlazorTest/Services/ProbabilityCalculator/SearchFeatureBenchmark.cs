@@ -77,7 +77,7 @@ public sealed class SearchFeatureBenchmark {
             SessionState browserSession = new() { Cards = session.Cards, Categories = session.Categories, Combos = session.Combos,
                 ComboGroups = session.ComboGroups, HandSize = session.HandSize, DrawActivationPriority = priority ?? DrawActivationPriority.Default };
             exports.Add(new { Name = name, Outcome = outcome, Probability = result?.TotalProbability, Work = budget.Spent,
-                Cells = budget.PeakCells, Milliseconds = times, AllocatedBytes = allocations, ReferenceResults = result,
+                Entries = budget.PeakEntries, Cells = budget.PeakCells, Milliseconds = times, AllocatedBytes = allocations, ReferenceResults = result,
                 ExactResults = exact is null ? null : new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups)
                     .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray(),
                 Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(browserSession)),
