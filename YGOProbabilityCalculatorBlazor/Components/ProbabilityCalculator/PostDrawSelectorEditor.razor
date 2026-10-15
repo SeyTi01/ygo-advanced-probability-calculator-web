@@ -9,7 +9,7 @@
             @if (Selector.Kind != CardSelectorKind.Any) {
                 <option value="any">Any card (clear filter)</option>
             }
-            <option value="level-at-least">Level >=…</option>
+            <option value="level-at-least">Level >=</option>
             @if (Available.Any(static category => category.Source == CategorySource.User)) {
                 <optgroup label="User categories">
                     @foreach (CategoryBase category in Available.Where(static category => category.Source == CategorySource.User)) {
@@ -36,7 +36,7 @@
     @if (Selector.Kind != CardSelectorKind.Any && Grouped) {
         <div class="form-label mb-1">Eligible</div>
         <div class="mt-2" aria-label="Grouped eligibility filter">
-            <SelectorExpressionEditor Selector="Selector" Available="Available" CategoryColorIndices="CategoryColorIndices"
+            <SelectorExpressionEditor Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
                                       CategoryRename="CategoryRename" OnEditingChanged="OnEditingChanged"
                                       Options="GroupedOptions" OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
         </div>
@@ -98,14 +98,19 @@
     private bool Grouped => _grouped || Selector.IsGrouped;
 
     private RenderFragment GroupedOptions => @<text>
-        <option value="level-at-least">Level >=…</option>
-        @foreach (IGrouping<string, CategoryBase> group in Available.GroupBy(category => category.Source == CategorySource.User
+        <option value="level-at-least">Level >=</option>
+        @foreach (IGrouping<string, CategoryBase> group in GroupedAvailable.GroupBy(category => category.Source == CategorySource.User
             ? "User categories" : _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity) ? "Relevant properties" : "Common properties")) {
             <optgroup label="@group.Key">
-                @foreach (CategoryBase category in group) { <option value="@category.Identity">@category.Name</option> }
+                @foreach (CategoryBase category in group) { <option value="@category.Identity">@GroupOptionLabel(category)</option> }
             </optgroup>
         }
     </text>;
+
+    private static string GroupOptionLabel(CategoryBase category) {
+        int colon = category.Name.IndexOf(':');
+        return category.Source == CategorySource.Metadata && colon > 0 ? category.Name[(colon + 1)..].Trim() : category.Name;
+    }
 
     private Task Clear() => PublishGrouped(CardSelector.Any);
 
@@ -133,6 +138,14 @@
 
     private CategoryBase[] Available => _categoryOptions.All.Concat(CuratedDrawEffectPresets.FilterProperties)
         .DistinctBy(static category => category.Identity).ToArray();
+
+    private CategoryBase[] GroupedAvailable => Available
+        .Concat(Selector.CategoryIdentities.Where(identity => identity.StartsWith("metadata:", StringComparison.Ordinal))
+            .Select(identity => new CategoryBase(MetadataFallbackLabel(identity), CategorySource.Metadata, identity[9..])))
+        .DistinctBy(static category => category.Identity).ToArray();
+
+    private static string MetadataFallbackLabel(string identity) => System.Globalization.CultureInfo.InvariantCulture.TextInfo
+        .ToTitleCase(Uri.UnescapeDataString(identity[(identity.LastIndexOf(':') + 1)..]));
 
     private CategoryBase[] RelevantMetadata => Available
         .Where(category => category.Source == CategorySource.Metadata

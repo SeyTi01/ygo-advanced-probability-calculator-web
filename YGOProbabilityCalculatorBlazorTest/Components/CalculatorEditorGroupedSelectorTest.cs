@@ -10,10 +10,61 @@ using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBase {
-    private static IRenderedComponent<SelectorExpressionEditor> Node(IRenderedFragment editor, CardSelectorKind kind) =>
-        editor.FindComponents<SelectorExpressionEditor>().First(component => component.Instance.Selector.Kind == kind);
+    [Test]
+    public void ThreePairedRowsEachOpenTwoConditionFieldsAndOneOperator() {
+        Card source = SearchEffectsTest.Preset(92221402);
+        Card? saved = null;
+        IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
+            .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));
+        editor.Find(".simulation-edit").Click();
+        Assert.That(editor.FindAll(".requirement-edit").Select(row => row.GetAttribute("aria-label")), Is.EqualTo(new[] {
+            "Edit Monster AND Level >= 5", "Edit DARK OR LIGHT", "Edit Aqua OR Pyro"
+        }));
+        Assert.That(editor.Markup, Does.Not.Contain("Any condition"));
+        foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
+            row.Find(".requirement-edit").Click();
+            Assert.That(editor.FindAll(".selector-condition-row > .selector-operand"), Has.Count.EqualTo(2));
+            Assert.That(editor.FindAll(".selector-condition-row > .selector-operator select"), Has.Count.EqualTo(1));
+            SaveRow(editor);
+        }
+        editor.Find(".simulation-save").Click();
+        Assert.That(saved, Is.Null, "Presentation pairing does not rewrite the saved plan or provenance.");
+    }
 
-    private static void OpenLevel(IRenderedFragment editor) => Node(editor, CardSelectorKind.LevelAtLeast).Find(".requirement-edit").Click();
+    [Test]
+    public void RenameKeepsPairedRowsAndTheActiveConditionDraftWhenCanonicalOrderChanges() {
+        CategoryBase[] categories = new[] { "A", "B", "C", "D", "E" }.Select(name => new CategoryBase(name)).ToArray();
+        CardSelector original = CardSelector.AllOf(categories.Take(4).Select(category => category.Identity));
+        Card source = SearchEffectsTest.Rota().WithSearch(new(original, false));
+        IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
+            .Add(component => component.Card, source).Add(component => component.CategoryBases, categories));
+        editor.Find(".simulation-edit").Click();
+        Button(editor, "Edit groups").Click();
+        IRenderedComponent<SelectorExpressionEditor> first = editor.FindComponents<SelectorExpressionEditor>()
+            .Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains("user:A"));
+        first.Find(".requirement-edit").Click();
+        editor.Find(".selector-operand select").Change("user:E");
+        editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card,
+            source.WithSearch(source.Search! with { Selector = original.RenameCategory("user:A", "user:Z") }))
+            .Add(component => component.CategoryBases, categories.Skip(1).Append(new CategoryBase("Z")).ToArray())
+            .Add(component => component.CategoryRename, new CategoryRenameNotice(1, "A", "Z")));
+        Assert.That(editor.Find(".selector-operand select").GetAttribute("value"), Is.EqualTo("user:E"));
+        Assert.That(editor.FindComponents<SelectorExpressionEditor>().Any(component => ReferenceEquals(component.Instance, first.Instance)), Is.True);
+        SaveRow(editor);
+        Assert.That(editor.Find(".selector-expression").TextContent, Does.Contain("E"));
+        Assert.That(editor.Find(".selector-expression").TextContent, Does.Not.Contain("Z"));
+    }
+
+    private static IRenderedComponent<SelectorExpressionEditor> Node(IRenderedFragment editor, CardSelectorKind kind) =>
+        editor.FindComponents<SelectorExpressionEditor>().Where(component => component.Instance.Selector.Kind == kind || kind == CardSelectorKind.LevelAtLeast && component.Instance.Selector.HasLevelPredicate)
+            .OrderByDescending(component => component.Instance.IsRoot).Last();
+
+    private static void OpenLevel(IRenderedFragment editor) {
+        Node(editor, CardSelectorKind.LevelAtLeast).Find(".requirement-edit").Click();
+        for (int depth = 0; editor.FindAll("input[aria-label='Minimum Level']").Count == 0 && depth < CardSelector.MaximumDepth; depth++) {
+            editor.FindAll(".selector-operand button").Single(button => button.TextContent.Contains("Level")).Click();
+        }
+    }
     private static void SaveRow(IRenderedFragment editor) => editor.Find(".selector-expression .requirement-form").Submit();
     private static void CancelRow(IRenderedFragment editor) => Button(editor.FindComponent<ExpressionForm>(), "Cancel").Click();
 
@@ -27,8 +78,9 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             .Add(component => component.OnChanged, card => saved = card));
         Assert.That(editor.Markup, Does.Not.Contain("Partial"));
         editor.Find(".simulation-edit").Click();
-        Assert.That(editor.FindComponents<ExpressionGroup>(), Has.Count.EqualTo(3));
-        Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(9));
+        Assert.That(editor.FindComponents<ExpressionGroup>(), Has.Count.EqualTo(1));
+        Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(3));
+        Assert.That(editor.Find(".selector-expression").TextContent, Does.Not.Contain("Any condition"));
         Assert.That(editor.FindAll(".draw-selector-chip"), Has.Count.EqualTo(6));
         Assert.That(editor.FindAll(".selector-expression select, .selector-expression input, .selector-extend"), Is.Empty);
         foreach (IElement separator in editor.FindAll(".selector-expression [role='separator']")) {
@@ -43,7 +95,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         editor.Find("input[aria-label='Minimum Level']").Input("6");
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain(target.Name), "Row draft does not commit before Save.");
         CancelRow(editor);
-        Assert.That(Node(editor, CardSelectorKind.LevelAtLeast).Instance.Selector.MinimumLevel, Is.EqualTo(5));
+        Assert.That(Node(editor, CardSelectorKind.LevelAtLeast).Instance.Selector.HasLevelPredicate, Is.True);
         OpenLevel(editor);
         editor.Find("input[aria-label='Minimum Level']").Input("6");
         SaveRow(editor);
@@ -62,7 +114,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card, saved));
         editor.Find(".simulation-edit").Click();
         Node(editor, CardSelectorKind.AnyOf).Find(".requirement-edit").Click();
-        editor.Find(".selector-expression form select").Change("AllOf");
+        editor.Find("[aria-label='Row operator']").Change("AllOf");
         SaveRow(editor);
         editor.Find(".simulation-save").Click();
         Assert.That(saved!.Search!.Selector.Signature, Does.Contain("AllOf"));
@@ -96,7 +148,8 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
         OpenLevel(editor);
         editor.Find("input[aria-label='Minimum Level']").Input("");
-        Button(editor, "Remove clause").Click();
+        Button(editor, "Remove condition 2").Click();
+        SaveRow(editor);
         Assert.That(editor.FindAll("input[aria-label='Minimum Level']"), Is.Empty);
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
     }
@@ -115,15 +168,15 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Button(editor, "Edit groups").Click();
         Node(editor, CardSelectorKind.Category).Find(".requirement-edit").Click();
         Button(editor, "Add alternative (OR)").Click();
-        editor.Find(".selector-expression form select").Change(b.Identity);
+        editor.Find(".selector-expression form .selector-operand select").Change(b.Identity);
         SaveRow(editor);
         Node(editor, CardSelectorKind.AnyOf).Find(".requirement-edit").Click();
         Button(editor, "Add property (AND)").Click();
-        editor.Find(".selector-expression form select").Change("metadata:kind:monster");
+        editor.Find(".selector-expression form .selector-operand select").Change("metadata:kind:monster");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.DrawEffectsEnabled, false));
-        Assert.That(editor.Find(".selector-expression form select").GetAttribute("value"), Is.EqualTo("metadata:kind:monster"));
+        Assert.That(editor.Find(".selector-expression form .selector-operand select").GetAttribute("value"), Is.EqualTo("metadata:kind:monster"));
         SaveRow(editor);
-        Assert.That(editor.FindComponents<ExpressionGroup>(), Has.Count.EqualTo(2));
+        Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(2));
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));
         editor.Find(".simulation-save").Click();
         Assert.That(saved!.Search!.Selector.Matches(new Card([a, new("Monster", CategorySource.Metadata, "kind:monster")])), Is.True);
@@ -173,14 +226,14 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         SaveRow(editor);
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Contain("Z"));
-        Node(editor, CardSelectorKind.Category).Find(".requirement-edit").Click();
-        editor.Find(".selector-expression form select").Change("level-at-least");
-        editor.Find("input[aria-label='Minimum Level']").Input("12");
+        OpenLevel(editor);
+        editor.Find(".selector-expression form .selector-operand select").Change("level-at-least");
+        editor.Find(".selector-operand input").Input("12");
         CategoryBase final = new("Final");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card,
             changed.WithSearch(changed.Search! with { Selector = changed.Search.Selector.RenameCategory(renamed.Identity, final.Identity) }))
             .Add(component => component.CategoryBases, new[] { final }).Add(component => component.CategoryRename, new CategoryRenameNotice(2, "Z", "Final")));
-        Assert.That(editor.Find("input[aria-label='Minimum Level']").GetAttribute("value"), Is.EqualTo("12"));
+        Assert.That(editor.Find(".selector-operand input").GetAttribute("value"), Is.EqualTo("12"));
         CancelRow(editor);
     }
 
@@ -201,28 +254,31 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             }));
         Button(editor, "Edit groups").Click();
         IRenderedComponent<SelectorExpressionEditor> branch = editor.FindComponents<SelectorExpressionEditor>()
-            .Single(component => component.Instance.Selector.Equals(CardSelector.For(a)));
+            .Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity));
         branch.Find(".requirement-edit").Click();
-        Button(editor, "Add alternative (OR)").Click();
-        editor.Find("form select").Change("level-at-least");
+        Button(editor, "Group condition 1").Click();
+        editor.Find("form .selector-operand select").Change("level-at-least");
         editor.Find("input[aria-label='Minimum Level']").Input("6");
         SaveRow(editor);
         Assert.That(current.Children, Does.Contain(untouched));
         Assert.That(current.Matches(new Card([b, .. SelectorExpressionTest.Target(6).Categories], externalCardId: 100)), Is.True);
         Assert.That(current.Matches(new Card([b, .. SelectorExpressionTest.Target(5).Categories], externalCardId: 100)), Is.False);
         AssertRoundTrip(current);
+        IRenderedComponent<SelectorExpressionEditor> changedBranch = editor.FindComponents<SelectorExpressionEditor>()
+            .Single(component => !component.Instance.IsRoot && component.Instance.Selector.HasLevelPredicate);
+        changedBranch.Find(".requirement-edit").Click();
+        editor.Find(".selector-operand button").Click();
         IRenderedComponent<SelectorExpressionEditor> nested = editor.FindComponents<SelectorExpressionEditor>()
-            .Single(component => component.Instance.Selector.Kind == CardSelectorKind.AnyOf && component.Instance.Path != "root");
-        nested.Find(".requirement-edit").Click();
-        editor.Find("form select").Change("AllOf");
+            .Single(component => !component.Instance.IsRoot && component.Instance.Selector.Kind == CardSelectorKind.AnyOf);
+        editor.Find("[aria-label='Row operator']").Change("AllOf");
         CancelRow(editor);
         Assert.That(current.Children, Does.Contain(untouched));
         nested.Find(".requirement-edit").Click();
         Button(editor, "Replace group").Click();
-        editor.Find("form select").Change(a.Identity);
+        editor.Find("form .selector-operand select").Change(a.Identity);
         SaveRow(editor);
         Assert.That(current, Is.EqualTo(initial));
-        Node(editor, CardSelectorKind.AllOf).Find(".requirement-edit").Click();
+        editor.FindComponents<SelectorExpressionEditor>().Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity)).Find(".requirement-edit").Click();
         Button(editor, "Remove group").Click();
         Assert.That(current, Is.EqualTo(untouched), "Removing one OR branch promotes the remaining complete AND branch.");
         AssertRoundTrip(current);
@@ -259,8 +315,8 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
             }));
         OpenLevel(editor);
-        Button(editor, "Add alternative (OR)").Click();
-        editor.Find("form select").Change("metadata:kind:monster");
+        Button(editor, "Group condition 2").Click();
+        editor.Find("form .selector-operand select").Change("metadata:kind:monster");
         SaveRow(editor);
         Assert.That(changes, Is.Zero);
         Assert.That(current, Is.SameAs(original));
