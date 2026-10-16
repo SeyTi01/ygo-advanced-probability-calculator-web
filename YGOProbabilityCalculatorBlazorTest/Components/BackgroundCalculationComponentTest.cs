@@ -79,9 +79,11 @@ public class BackgroundCalculationComponentTest {
         Task current = Start();
         _calculator.Jobs[2].SetResult(Result("current"));
         await current;
-        PinnedResultSnapshot comparison = _cut.FindComponent<PinnedResultPanel>().Instance.Current!;
-        Assert.That(comparison.Context.DeckDefinition, Is.Not.EqualTo(pin.Context.DeckDefinition),
-            "Changing a rule is recorded even when it currently matches no cards.");
+        PinnedResultSnapshot currentSnapshot = (PinnedResultSnapshot)typeof(ProbabilityCalculatorComponent)
+            .GetField("_acceptedResultSnapshot", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(_cut.Instance)!;
+        Assert.That(currentSnapshot, Is.Not.SameAs(pin));
+        Assert.That(_cut.FindAll(".result-priority-difference, .comparison-model-difference, .result-difference, .result-row-comparison, .pinned-match"), Is.Empty);
     }
 
     [TestCase(false)]

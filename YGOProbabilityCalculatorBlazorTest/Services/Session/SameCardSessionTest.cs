@@ -14,7 +14,7 @@ public class SameCardSessionTest {
     private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
 
     [Test]
-    public async Task SameCardSessionShareWorkerAndPinnedSignaturesPreserveCompositeMeaning() {
+    public async Task SameCardSessionShareAndWorkerPreserveCompositeMeaning() {
         CategoryBase a = SameCardSelectorTest.A;
         CategoryBase b = SameCardSelectorTest.B;
         ComboCategory requirement = ComboCategory.SameCard([a, b], 1, 0, RequirementMaximumMode.HandSize);
@@ -34,10 +34,6 @@ public class SameCardSessionTest {
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 2, [], options: new());
         Assert.That(JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!.Combos[0].Categories[0].Selector, Is.EqualTo(requirement.Selector));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability, Is.InRange(0.0, 1.0));
-        PinnedCalculationContext before = PinnedCalculationContext.Capture(0, 2, loaded.Cards, loaded.Combos, [], _ => Guid.Empty, _ => Guid.Empty);
-        loaded.Combos[0] = new([new(a, 1, 0, RequirementMaximumMode.HandSize)]);
-        PinnedCalculationContext after = PinnedCalculationContext.Capture(0, 2, loaded.Cards, loaded.Combos, [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(before.Combos[0], Is.Not.EqualTo(after.Combos[0]));
     }
 
     [TestCase("{\"Kind\":\"AllOf\",\"Categories\":[]}", "[]")]

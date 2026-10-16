@@ -391,10 +391,11 @@ public class SessionSharingTest {
         cut.Find("[aria-label='Category name']").Input("Unsaved draft");
         string before = Snapshot(cut);
         IRenderedComponent<PinnedResultPanel> results = cut.FindComponent<PinnedResultPanel>();
-        PinnedResultSnapshot current = results.Instance.Current!;
+        PinnedResultSnapshot current = AcceptedResultSnapshot(cut);
         double currentTotal = current.Total;
         PinnedCalculationContext currentContext = current.Context;
-        (Guid Lineage, string Signature)[] currentComboDefinitions = current.Context.Combos.Select(row => (row.Lineage, row.Signature)).ToArray();
+        PinnedComboRow[] currentCombos = current.Combos.ToArray();
+        PinnedGroupRow[] currentGroups = current.Groups.ToArray();
         ResultObservation[] currentRows = CurrentRows(cut);
         PinnedResultSnapshot pin = results.Instance.Snapshot;
         PinnedObservation pinnedValues = PinnedValues(pin);
@@ -426,11 +427,11 @@ public class SessionSharingTest {
             Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
             Assert.That(cut.Find("#probabilityResultsHeading").TextContent, Is.EqualTo("Current result"));
             Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
-            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current, Is.Not.Null);
-            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!.Total, Is.EqualTo(currentTotal));
-            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!.Context, Is.EqualTo(currentContext));
-            Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Current!.Context.Combos
-                .Select(row => (row.Lineage, row.Signature)).ToArray(), Is.EqualTo(currentComboDefinitions));
+            PinnedResultSnapshot accepted = AcceptedResultSnapshot(cut);
+            Assert.That(accepted.Total, Is.EqualTo(currentTotal));
+            Assert.That(accepted.Context, Is.EqualTo(currentContext));
+            Assert.That(accepted.Combos, Is.EqualTo(currentCombos));
+            Assert.That(accepted.Groups, Is.EqualTo(currentGroups));
             Assert.That(CurrentRows(cut), Is.EqualTo(currentRows));
             Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pin));
             AssertPinnedValues(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, pinnedValues);
@@ -595,21 +596,25 @@ public class SessionSharingTest {
         }
     }
 
-    private sealed record ResultObservation(string Name, string Value, string? Comparison);
+    private sealed record ResultObservation(string Name, string Value);
     private sealed record PinnedObservation(
         double Total,
         string Description,
-        (int Index, string Label, double Probability, string? GroupId, Guid? Lineage, string? Signature)[] Combos,
+        (int Index, string Label, double Probability, string? GroupId)[] Combos,
         (string Id, string Label, double Probability, int ActiveCount)[] Groups
     );
 
     private static ResultObservation[] CurrentRows(IRenderedFragment cut) => cut.FindAll(".combo-probability-item")
         .Select(row => new ResultObservation(
             row.QuerySelector(".combo-probability-name")!.TextContent.Trim(),
-            row.QuerySelector(".combo-probability-value")!.TextContent.Trim(),
-            row.QuerySelector(".result-row-comparison")?.TextContent.Trim()
+            row.QuerySelector(".combo-probability-value")!.TextContent.Trim()
         ))
         .ToArray();
+
+    private static PinnedResultSnapshot AcceptedResultSnapshot(IRenderedComponent<ProbabilityCalculatorComponent> cut) =>
+        (PinnedResultSnapshot)typeof(ProbabilityCalculatorComponent)
+            .GetField("_acceptedResultSnapshot", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(cut.Instance)!;
 
     private static PinnedObservation PinnedValues(PinnedResultSnapshot pin) => new(
         pin.Total,
@@ -618,9 +623,7 @@ public class SessionSharingTest {
             row.Index,
             row.Label,
             row.Probability,
-            row.GroupId,
-            row.Definition?.Lineage,
-            row.Definition?.Signature
+            row.GroupId
         ))
             .ToArray(),
         pin.Groups.Select(row => (row.Id, row.Label, row.Probability, row.ActiveCount)).ToArray()
@@ -629,14 +632,12 @@ public class SessionSharingTest {
     private static void AssertPinnedValues(PinnedResultSnapshot actual, PinnedObservation expected) {
         Assert.That(actual.Total, Is.EqualTo(expected.Total));
         Assert.That(actual.Context.Description, Is.EqualTo(expected.Description));
-        (int Index, string Label, double Probability, string? GroupId, Guid? Lineage, string? Signature)[] comboValues =
+        (int Index, string Label, double Probability, string? GroupId)[] comboValues =
             actual.Combos.Select(row => (
                 row.Index,
                 row.Label,
                 row.Probability,
-                row.GroupId,
-                row.Definition?.Lineage,
-                row.Definition?.Signature
+                row.GroupId
             ))
                 .ToArray();
         Assert.That(comboValues, Is.EqualTo(expected.Combos));

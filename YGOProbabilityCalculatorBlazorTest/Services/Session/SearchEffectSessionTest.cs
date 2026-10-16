@@ -127,16 +127,6 @@ public sealed class SearchEffectSessionTest {
         Assert.That(registry.RestoreBuiltIn(custom).OncePerTurn, Is.True);
     }
 
-    [Test]
-    public void PinnedFingerprintsObserveSharedSearchAllowance() {
-        Card source = SearchEffectsTest.Preset(80181649);
-        string Fingerprint(Card card) => PinnedCalculationContext.Capture(0, 2, [card], [], [], _ => Guid.Empty, _ => Guid.Empty).DeckDefinition;
-        string original = Fingerprint(source);
-        Assert.That(Fingerprint(source.WithOncePerTurn(false)), Is.Not.EqualTo(original));
-        Assert.That(Fingerprint(source.WithEffect(source.EffectPlan, source.EffectProfile with { CanonicalCardId = 92221402 })), Is.EqualTo(original), "Provenance cannot change per-entry activation semantics.");
-        Assert.That(Fingerprint(source.Duplicate()), Is.Not.EqualTo(original));
-    }
-
     [TestCase("null"), TestCase("1"), TestCase("\"yes\"")]
     public void InvalidSharedActivationFlagsFailExplicitly(string value) {
         string json = "{\"SchemaVersion\":6,\"Cards\":[{\"Name\":\"bad\",\"Categories\":[],\"Copies\":1,\"OncePerTurn\":" + value + "}]}";

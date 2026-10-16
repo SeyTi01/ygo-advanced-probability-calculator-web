@@ -203,7 +203,7 @@
             </div>
         }
 
-        <div class="@(_pinnedResult is null ? null : "result-comparison")">
+        <div class="@(_pinnedResult is null ? null : "result-panels")">
         @if (_calculationResult is { } result) {
             <section class="alert alert-primary mt-3 probability-results"
                      role="region"
@@ -228,35 +228,20 @@
                     </button>
                     <span id="pinUnavailableReason" class="visually-hidden">@PinUnavailableReason</span>
                     <ProbabilityResultExport Result="result"
-                                             ModelDescription="@(_acceptedComparison?.Context.Model.Description())"
-                                             HandSize="@(_acceptedComparison?.Context.HandSize ?? 0)"
+                                             ModelDescription="@(_acceptedResultSnapshot?.Context.Model.Description())"
+                                             HandSize="@(_acceptedResultSnapshot?.Context.HandSize ?? 0)"
                                              IsStale="_calculationResultIsStale"
                                              IsCalculating="_isCalculating" />
                 </div>
                 <CalculationAccuracyResult Contract="result.Contract" />
 
-                @if (_acceptedComparison is { } accepted) {
+                @if (_acceptedResultSnapshot is { } accepted) {
                     <p class="small text-body-secondary mb-2 result-model">@accepted.Context.Description</p>
-                    @if (_pinnedResult is { } priorityPin && priorityPin.Context.DrawPriorityDefinition != accepted.Context.DrawPriorityDefinition) {
-                        <p class="small text-body-secondary mb-2 result-priority-difference">Draw activation priority differs from the pinned result.</p>
-                    }
-                    @if (_pinnedResult is { } pin && pin.ComparisonStatus(accepted) is { } comparisonStatus) {
-                        <p class="small mb-2 comparison-model-difference">@comparisonStatus</p>
-                    }
-                }
-                @{
-                    PinnedResultDifference? totalDifference = _pinnedResult is not null && CanCompareDisplayedResult
-                        && _acceptedComparison!.ComparisonStatus(_pinnedResult) is null
-                        ? PinnedResultSnapshot.DifferencePresentation(_acceptedComparison!.Total, _pinnedResult.Total)
-                        : null;
                 }
                 <div class="combo-probability-row probability-total">
                     <span class="combo-probability-name">Any active combo</span>
-                    <div class="comparison-value result-value-group">
+                    <div class="result-value-group">
                         <ProbabilityValue Probability="result.TotalProbability" Contract="result.Contract" Certificate="result.SearchAvailability" ValueClass="probability-total-value" />
-                        @if (totalDifference is { } difference) {
-                            <small class="result-difference @difference.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {difference.Text}")">@difference.Text</small>
-                        }
                     </div>
                 </div>
                 @{
@@ -274,7 +259,6 @@
                             List<ComboProbabilityResult> groupComboResults = result.ComboProbabilities
                                 .Where(comboResult => comboResult.GroupId == group.GroupId)
                                 .ToList();
-                            PinnedResultComparison? groupComparison = CurrentGroupComparison(group.GroupId);
                             <section class="probability-group-container">
                                 <h6 class="combo-probability-row probability-group probability-group-heading">
                                     <span class="combo-probability-name">
@@ -282,31 +266,18 @@
                                     </span>
                                     <span class="result-value-group">
                                         <ProbabilityValue Probability="group.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Group" Index="@ProbabilityPresentation.GroupIndex(result.GroupProbabilities, group.GroupId)" />
-                                        @if (groupComparison?.Difference is { } groupDelta) {
-                                            <small class="result-difference @groupDelta.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {groupDelta.Text}")">@groupDelta.Text</small>
-                                        }
                                     </span>
                                 </h6>
-                                @if (groupComparison?.Status is { } groupStatus) {
-                                    <small class="result-row-comparison" role="note">@groupStatus</small>
-                                }
                                 @if (groupComboResults.Count > 0) {
                                     <ol class="combo-probability-list probability-group-members">
                                         @foreach (ComboProbabilityResult comboResult in groupComboResults) {
-                                            PinnedResultComparison? comboComparison = CurrentComboComparison(comboResult.ComboIndex);
                                             <li class="combo-probability-item">
                                                 <div class="combo-probability-row">
                                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
                                                     <span class="result-value-group">
                                                         <ProbabilityValue Probability="comboResult.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Combo" Index="comboResult.ComboIndex" />
-                                                        @if (comboComparison?.Difference is { } groupedComboDelta) {
-                                                            <small class="result-difference @groupedComboDelta.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {groupedComboDelta.Text}")">@groupedComboDelta.Text</small>
-                                                        }
                                                     </span>
                                                 </div>
-                                                @if (comboComparison?.Status is { } comboStatus) {
-                                                    <small class="result-row-comparison" role="note">@comboStatus</small>
-                                                }
                                             </li>
                                         }
                                     </ol>
@@ -319,20 +290,13 @@
                     <h6 class="@(groupResults.Count > 0 ? "fw-bold" : null)">@(groupResults.Count > 0 ? "Ungrouped combos" : "Individual combos")</h6>
                     <ol class="combo-probability-list probability-ungrouped-combos">
                         @foreach (ComboProbabilityResult comboResult in ungroupedComboResults) {
-                            PinnedResultComparison? comboComparison = CurrentComboComparison(comboResult.ComboIndex);
                             <li class="combo-probability-item">
                                 <div class="combo-probability-row">
                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
                                     <span class="result-value-group">
                                         <ProbabilityValue Probability="comboResult.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Combo" Index="comboResult.ComboIndex" />
-                                        @if (comboComparison?.Difference is { } ungroupedComboDelta) {
-                                            <small class="result-difference @ungroupedComboDelta.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {ungroupedComboDelta.Text}")">@ungroupedComboDelta.Text</small>
-                                        }
                                     </span>
                                 </div>
-                                @if (comboComparison?.Status is { } comboStatus) {
-                                    <small class="result-row-comparison" role="note">@comboStatus</small>
-                                }
                             </li>
                         }
                     </ol>
@@ -340,7 +304,7 @@
             </section>
         }
         @if (_pinnedResult is { } pinned) {
-            <PinnedResultPanel Snapshot="pinned" Current="@(CanCompareDisplayedResult ? _acceptedComparison : null)" OnClear="ClearPinnedResult" />
+            <PinnedResultPanel Snapshot="pinned" OnClear="ClearPinnedResult" />
         }
         </div>
     </div>
@@ -594,7 +558,6 @@
 
     private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
         (int index, Combo newCombo) = payload;
-        TransferComparisonLineage(_combos[index], newCombo);
         _combos[index] = newCombo;
         InvalidateCalculation();
         StateHasChanged();
@@ -900,7 +863,7 @@
                 new(_drawActivationPriority, Mode: model),
                 _categoryBases
             );
-            PinnedCalculationContext comparisonContext = CaptureComparisonContext(model);
+            PinnedCalculationContext resultContext = CaptureResultContext(model);
             // BackgroundCalculator settles cancellation only after terminating its worker.
             // A replacement may own the UI immediately, but must await that cleanup.
             try {
@@ -922,7 +885,7 @@
                     ComboProbabilities = result.ComboProbabilities.ToArray(),
                     GroupProbabilities = result.GroupProbabilities?.ToArray()
                 };
-                _acceptedComparison = PinnedResultSnapshot.Capture(comparisonContext, acceptedResult);
+                _acceptedResultSnapshot = PinnedResultSnapshot.Capture(resultContext, acceptedResult);
                 _calculationResult = acceptedResult;
                 _calculationResultIsStale = false;
             }
@@ -1017,12 +980,12 @@
         _deferNameEditRendering = false;
         _assessmentDirty |= reassess;
         ObserveWorkspaceEdit();
-        InvalidateComparison(clearPreviousResult);
         StopCalculation();
         _calculationVersion++;
 
         if (clearPreviousResult) {
             _calculationResult = null;
+            _acceptedResultSnapshot = null;
             _calculationResultIsStale = false;
         }
         else if (_calculationResult is not null) {

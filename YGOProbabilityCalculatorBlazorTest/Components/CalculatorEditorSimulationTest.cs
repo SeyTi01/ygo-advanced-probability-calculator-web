@@ -28,7 +28,6 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         await Button(cut, "Pin result").ClickAsync(new());
         PinnedResultSnapshot pinned = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
-        string fingerprint = pinned.Context.DeckDefinition;
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         OpenSimulation(editor);
         await editor.Find($"#{control}0").ChangeAsync(new() { Value = "0" });
@@ -50,7 +49,6 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         Assert.That(cut.FindComponents<CardEditor>()[1].Instance.Card, Is.SameAs(other));
         AssertPreviousResult(cut);
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pinned));
-        Assert.That(pinned.Context.DeckDefinition, Is.EqualTo(fingerprint));
 
         ISessionService codec = context.Services.GetRequiredService<ISessionService>();
         string share = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
@@ -65,7 +63,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         }
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Effects — fast"));
-        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Context.DeckDefinition, Is.EqualTo(fingerprint));
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pinned));
         await editor.Find(".simulation-restore").ClickAsync(new());
         Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(original.EffectPlan));
         Assert.That(editor.Instance.Card.EffectProfile, Is.EqualTo(original.EffectProfile));

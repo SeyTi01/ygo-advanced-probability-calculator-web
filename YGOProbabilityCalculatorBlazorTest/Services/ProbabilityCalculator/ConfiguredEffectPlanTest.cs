@@ -36,10 +36,6 @@ public class ConfiguredEffectPlanTest {
         ExactCalculationResult baseline = Verify(original, combos, groups);
         List<Card> custom = original.ToList();
         custom[0] = shape == "allure" ? custom[0].WithPostDrawDiscardCount(0) : custom[0].WithPreDrawRemovalCount(0);
-        PinnedCalculationContext before = PinnedCalculationContext.Capture(0, 2, original, [], [], _ => Guid.Empty, _ => Guid.Empty);
-        PinnedCalculationContext after = PinnedCalculationContext.Capture(0, 2, custom, [], [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(before.Model, Is.EqualTo(after.Model));
-        Assert.That(before.DeckDefinition, Is.Not.EqualTo(after.DeckDefinition));
         ExactCalculationResult modified = Verify(custom, combos, groups);
         Assert.That(custom[0].DrawCount, Is.EqualTo(2));
         Assert.That(custom[0].EffectProfile.Source, Is.EqualTo(EffectSource.Custom));

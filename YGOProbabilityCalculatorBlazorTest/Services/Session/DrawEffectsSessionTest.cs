@@ -173,19 +173,6 @@ public class DrawEffectsSessionTest {
     }
 
     [Test]
-    public void PinnedDeckSignatureChangesWhenOnlyDrawBehaviorChanges() {
-        Card card = new([], 2, id: "stable");
-        PinnedCalculationContext first = PinnedCalculationContext.Capture(0, 1, [card], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        PinnedCalculationContext second = PinnedCalculationContext.Capture(0, 1, [card.WithDrawCount(2)], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(second.DeckDefinition, Is.Not.EqualTo(first.DeckDefinition));
-        PinnedCalculationContext unlimited = PinnedCalculationContext.Capture(0, 1, [card.WithDrawCount(2).WithDrawOncePerTurn(false)], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(unlimited.DeckDefinition, Is.Not.EqualTo(second.DeckDefinition));
-        PinnedCalculationContext discard = PinnedCalculationContext.Capture(0, 1,
-            [card.WithDrawCount(2).WithPostDrawDiscardCount(1)], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(discard.DeckDefinition, Is.Not.EqualTo(second.DeckDefinition));
-    }
-
-    [Test]
     public async Task OmittedLimitInExistingSchemaFourAndWorkerInputsRemainsEnabled() {
         SessionState loaded = await Codec().LoadSessionAsync("""{"SchemaVersion":4,"Cards":[{"Categories":[],"Copies":2,"Name":"P","DrawCount":2}]}""");
         Assert.That(loaded.Cards.Single().DrawOncePerTurn, Is.True);

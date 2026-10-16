@@ -87,8 +87,8 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         SearchAvailabilityCertificate? certificate = status == SearchAvailabilityStatus.NotApplicable ? null : new(status, "Specific accepted reason");
         IRenderedComponent<ProbabilityValue> current = context.RenderComponent<ProbabilityValue>(parameters => parameters
             .Add(value => value.Probability, .5).Add(value => value.Contract, contract).Add(value => value.Certificate, certificate));
-        PinnedCalculationContext pinContext = new(0, 1, 2, 2, "deck", [], ImmutableDictionary<string, PinnedGroupDefinition>.Empty);
-        PinnedResultSnapshot snapshot = new(pinContext, .5, [new(0, "Combo", .5, "g", null)], [new("g", "Group", .5, 1, null)]) {
+        PinnedCalculationContext pinContext = new(1, 2, 2, CalculationModel.Fast);
+        PinnedResultSnapshot snapshot = new(pinContext, .5, [new(0, "Combo", .5, "g")], [new("g", "Group", .5, 1)]) {
             Contract = contract, SearchAvailability = certificate
         };
         IRenderedComponent<PinnedResultPanel> pin = context.RenderComponent<PinnedResultPanel>(parameters => parameters.Add(value => value.Snapshot, snapshot));

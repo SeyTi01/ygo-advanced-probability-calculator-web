@@ -213,21 +213,15 @@
 
 .calculation-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .pin-result-action { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: .5rem; grid-row: 1; grid-column: 2; }
-.result-comparison { display: grid; gap: 1rem; align-items: start; }
-.result-comparison > * { min-width: 0; }
+.result-panels { display: grid; gap: 1rem; align-items: start; }
+.result-panels > * { min-width: 0; }
 .probability-results-heading h5 { grid-row: 1; grid-column: 1; }
 .probability-result-status { grid-column: 1 / -1; }
 .probability-results-heading ::deep .probability-result-export-toolbar { grid-row: 1; grid-column: 3; }
 .probability-results-heading ::deep .probability-result-copy-fallback { grid-column: 1 / -1; }
-.comparison-value { text-align: right; }
 .result-value-group { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; min-width: 0; max-width: 65%; gap: .35rem; }
-.result-difference { border-inline-start: 1px solid var(--bs-border-color); padding-inline-start: .4rem; display: inline; font-size: .8rem; font-weight: normal; line-height: 1; white-space: nowrap; }
-.result-difference-positive { color: var(--bs-success-text-emphasis); }
-.result-difference-negative { color: var(--bs-danger-text-emphasis); }
-.result-difference-neutral { color: var(--bs-secondary-color); }
-.result-row-comparison { display: block; color: var(--bs-secondary-color); }
 @media (min-width: 900px) {
-    .result-comparison:has(.probability-results) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .result-panels:has(.probability-results) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 
 .calculator-workspace ::deep .editor-add-row {

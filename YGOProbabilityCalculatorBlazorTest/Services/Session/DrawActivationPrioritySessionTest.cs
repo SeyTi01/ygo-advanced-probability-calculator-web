@@ -80,18 +80,16 @@ public class DrawActivationPrioritySessionTest {
     }
 
     [Test]
-    public void PinnedContextDistinguishesPoliciesAndRanksButIgnoresDisabledPreferences() {
+    public void PinnedContextKeepsModelAndCustomPriorityDescription() {
         SessionState session = Session(DrawActivationPriority.Default);
-        PinnedCalculationContext Capture(DrawActivationPriority policy, bool draws = true) => PinnedCalculationContext.Capture(
-            0, 2, session.Cards, session.Combos, [], _ => Guid.Empty, _ => Guid.Empty, draws ? CalculationModel.Fast : CalculationModel.OpeningHand, priority: policy);
-        PinnedCalculationContext fifo = Capture(DrawActivationPriority.Default);
-        PinnedCalculationContext first = Capture(new(DrawActivationMode.CustomPriority, ["a", "b"]));
-        PinnedCalculationContext reverse = Capture(new(DrawActivationMode.CustomPriority, ["b", "a"]));
-        Assert.That(fifo.DeckDefinition, Is.Not.EqualTo(first.DeckDefinition));
-        Assert.That(first.DeckDefinition, Is.Not.EqualTo(reverse.DeckDefinition));
-        Assert.That(first.Description, Does.Contain("Custom draw priority"));
-        Assert.That(Capture(new(DrawActivationMode.EncounterOrder, ["b", "a"])).DeckDefinition, Is.EqualTo(fifo.DeckDefinition));
-        Assert.That(Capture(new(DrawActivationMode.CustomPriority, ["b", "a"]), false).DeckDefinition,
-            Is.EqualTo(Capture(DrawActivationPriority.Default, false).DeckDefinition));
+        PinnedCalculationContext encounter = PinnedCalculationContext.Capture(2, session.Cards, CalculationModel.Fast, DrawActivationPriority.Default);
+        PinnedCalculationContext custom = PinnedCalculationContext.Capture(2, session.Cards,
+            CalculationModel.Fast, new(DrawActivationMode.CustomPriority, ["a", "b"]));
+        PinnedCalculationContext opening = PinnedCalculationContext.Capture(2, session.Cards,
+            CalculationModel.OpeningHand, new(DrawActivationMode.CustomPriority, ["a", "b"]));
+
+        Assert.That(encounter.Description, Does.Contain(CalculationModel.Fast.Description()).And.Not.Contain("Custom draw priority"));
+        Assert.That(custom.Description, Does.Contain("Custom draw priority"));
+        Assert.That(opening.Description, Does.Contain(CalculationModel.OpeningHand.Description()).And.Not.Contain("Custom draw priority"));
     }
 }

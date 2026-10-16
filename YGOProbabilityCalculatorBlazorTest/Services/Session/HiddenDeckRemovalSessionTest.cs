@@ -66,9 +66,6 @@ public class HiddenDeckRemovalSessionTest {
         Assert.Throws<ArgumentOutOfRangeException>(() => card.WithPreDrawDeckRemovalCount(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => card.WithPreDrawDeckRemovalCount(61));
         Assert.Throws<ArgumentOutOfRangeException>(() => new Card([], preDrawDeckRemovalCount: 1));
-        PinnedCalculationContext before = PinnedCalculationContext.Capture(0, 1, [card], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        PinnedCalculationContext after = PinnedCalculationContext.Capture(0, 1, [card.WithPreDrawDeckRemovalCount(0)], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(before.DeckDefinition, Is.Not.EqualTo(after.DeckDefinition));
     }
 
     [TestCase("null"), TestCase("-1"), TestCase("61"), TestCase("1.5"), TestCase("\"1\"")]
