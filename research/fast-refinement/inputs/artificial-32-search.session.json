@@ -1,0 +1,93 @@
+{
+  "SchemaVersion": 9,
+  "Categories": [],
+  "Cards": [
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Pot of Desires",
+      "Active": true,
+      "Id": "desires",
+      "ExternalCardId": 35261759,
+      "ManualMetadataCategoryKeys": [],
+      "DrawCount": 2,
+      "PreDrawDeckRemovalCount": 10,
+      "EffectProfile": {
+        "Source": "BuiltIn",
+        "CanonicalCardId": 35261759,
+        "Revision": 1,
+        "Summary": "Banish 10 unseen deck cards, then draw 2; once per turn. Requires 12 cards left.",
+        "Support": "ModeledWithinRules",
+        "Limitations": null,
+        "ExecutionModel": "DrawSequenceV1"
+      }
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Monster",
+          "Source": "Metadata",
+          "MetadataKey": "kind:monster"
+        }
+      ],
+      "Copies": 5,
+      "Name": "Combo",
+      "Active": true,
+      "Id": "target",
+      "ManualMetadataCategoryKeys": [
+        "kind:monster"
+      ]
+    },
+    {
+      "Categories": [],
+      "Copies": 32,
+      "Name": "Search",
+      "Active": true,
+      "Id": "search",
+      "ManualMetadataCategoryKeys": [],
+      "OncePerTurn": false,
+      "EffectProfile": {
+        "Source": "Custom",
+        "CanonicalCardId": null,
+        "Revision": null,
+        "Summary": null,
+        "Support": "Unmodeled",
+        "Limitations": null,
+        "ExecutionModel": "DrawSequenceV1"
+      },
+      "Search": {
+        "Selector": {
+          "Kind": "Category",
+          "Categories": [
+            "metadata:kind:monster"
+          ]
+        },
+        "ObjectiveMetadataOnly": false,
+        "Modes": null
+      }
+    }
+  ],
+  "Combos": [
+    {
+      "Categories": [],
+      "Cards": [
+        {
+          "CardId": "target",
+          "MinCount": 5,
+          "MaxCount": 5,
+          "MaximumMode": "HandSize"
+        }
+      ],
+      "Name": "Combo",
+      "Active": true
+    }
+  ],
+  "ComboGroups": [],
+  "HandSize": 5,
+  "CalculationModel": "Fast",
+  "DrawActivationPriority": {
+    "Mode": "EncounterOrder",
+    "CardIds": []
+  },
+  "CategoryColorIndices": {}
+}

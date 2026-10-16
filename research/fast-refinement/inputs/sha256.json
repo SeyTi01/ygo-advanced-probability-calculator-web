@@ -1,0 +1,122 @@
+[
+  {
+    "File": "artificial-30-search.input.json",
+    "Hash": "FD7A5D73E9B2096CEB49B9EBEB8D82198DA9D71870BC6EEE73CA8851C3B708A9"
+  },
+  {
+    "File": "artificial-30-search.session.json",
+    "Hash": "6527FAE8395227BFDAFED77ED6D59895C23DE20C110876ED481787D2B5BBB166"
+  },
+  {
+    "File": "artificial-32-search.input.json",
+    "Hash": "7F417FCC53323718255613FEDC16B5BA3346F913E08DC00AADD639A3084E94DF"
+  },
+  {
+    "File": "artificial-32-search.session.json",
+    "Hash": "0E59669FE453EB36694C206C11A3E5467C5976E9156A93963B1DBBD96FB6277F"
+  },
+  {
+    "File": "corpus.json",
+    "Hash": "352AD6060B3370C10697A6FC506DFEAD2F20E2053E78775DF4E0BE79676E09D2"
+  },
+  {
+    "File": "deferred-target-loss-40.input.json",
+    "Hash": "B21846B802C43F059A9E68CA954420BF77709B1D488327EE84558C5FA29EBE2B"
+  },
+  {
+    "File": "deferred-target-loss-40.session.json",
+    "Hash": "644F58835E33AE6267AD7FE2B540AB02D750B6BE5CFDF9B0345147E0BEBC8350"
+  },
+  {
+    "File": "direct-plus-category.input.json",
+    "Hash": "D9AF2E5DDFBCBAACE3246D050F8E9774DEAB84A9EF39F78A33E2F64645B93A8B"
+  },
+  {
+    "File": "direct-plus-category.session.json",
+    "Hash": "E8B6F1F64E8AD8028AD1F5D35EB62C8087A1BB07682EB5131C76500EEA614094"
+  },
+  {
+    "File": "fast-export.json",
+    "Hash": "68B2B5B25225A598760CAFB70DF2F06CCF0FB92C6495B6C4281495DEB711B2FD"
+  },
+  {
+    "File": "maxima-exclusion.input.json",
+    "Hash": "D55CCC0E967D560D3DDB07301EB461FEB54642D1381443735B930BC8A27AA45A"
+  },
+  {
+    "File": "maxima-exclusion.session.json",
+    "Hash": "F3B19C9B1168344BC74E89DAB1619813111CD0E7F85E7E02D3E8F7C7C0791F1F"
+  },
+  {
+    "File": "multiple-draw-sources.input.json",
+    "Hash": "71FA7FF807EE2A5E37B8DB81312A167A8D6173BE6549F6E0FB43014BD28917EF"
+  },
+  {
+    "File": "multiple-draw-sources.session.json",
+    "Hash": "FE20DDA4A07D5B5986480041C983A16C4E8CA1AFAE67A83FB36054A9A2660554"
+  },
+  {
+    "File": "no-search-draw.input.json",
+    "Hash": "4B9CA46049817BEFC9032D8D7A9D869025CA016FF07D0012112B3F911E756D58"
+  },
+  {
+    "File": "no-search-draw.session.json",
+    "Hash": "6C4F7C80C7F73BAF10477343717D7231CC05489E1983FF65E8DB5C19440163CD"
+  },
+  {
+    "File": "opening-control.input.json",
+    "Hash": "F46EAA0D66CE82A73CF12FA1909C1D87E76798BFC8FED2DAA2305BDB294D9A74"
+  },
+  {
+    "File": "opening-control.session.json",
+    "Hash": "487BF9B7390BFCF0919F008FB52B145012B5A42BA4EF5AF87B81429E03415BE5"
+  },
+  {
+    "File": "ordered-target-loss-40.input.json",
+    "Hash": "93B6D2125660C155B969F14F4A82F52D5A1B18C4BE47F3C30F0CF4A53E52D60D"
+  },
+  {
+    "File": "ordered-target-loss-40.session.json",
+    "Hash": "02525BAE12B54972EFE702E41A6CB718EED400A7984E93EBEC08E10064C32A8A"
+  },
+  {
+    "File": "overlap-or.input.json",
+    "Hash": "E62E1C9DC6432D3A1B711916BFC5ADD10AE397FA5AF66A6B4991DE86C3C6CF9E"
+  },
+  {
+    "File": "overlap-or.session.json",
+    "Hash": "3B241E32602381B1AA3BC8136292554BC114602AD42F256D6AA124B882537478"
+  },
+  {
+    "File": "redundant-two.input.json",
+    "Hash": "5783D11A079B28435658A144A967B05FE747B4EB71C27CB41701F841C90609B6"
+  },
+  {
+    "File": "redundant-two.session.json",
+    "Hash": "28043FF9F796DF2D2D3BCCCE9361B38A961516A34AC958955F1539D30A44DF12"
+  },
+  {
+    "File": "vsk9-no-desires.input.json",
+    "Hash": "F4152BDF56F2FFA35DC115C5C68632F3458FE3B6F5C1BB62C55C4E5D514B397E"
+  },
+  {
+    "File": "vsk9-no-desires.session.json",
+    "Hash": "A6689FC81F44C582769C9D0A6F6FC053FCBE8933077DFFD2510A8E7EA2CDBC0B"
+  },
+  {
+    "File": "vsk9-three-desires.input.json",
+    "Hash": "9B3148B46AB47BF2BD97D30791E007A180D60C67F25509DD1F5915CF2EBD4B66"
+  },
+  {
+    "File": "vsk9-three-desires.session.json",
+    "Hash": "487BF9B7390BFCF0919F008FB52B145012B5A42BA4EF5AF87B81429E03415BE5"
+  },
+  {
+    "File": "work-limited.input.json",
+    "Hash": "F67DCEBDF604EEC91490FF032816A321D5ED3DE903A34881418705609C34E0A3"
+  },
+  {
+    "File": "work-limited.session.json",
+    "Hash": "487BF9B7390BFCF0919F008FB52B145012B5A42BA4EF5AF87B81429E03415BE5"
+  }
+]

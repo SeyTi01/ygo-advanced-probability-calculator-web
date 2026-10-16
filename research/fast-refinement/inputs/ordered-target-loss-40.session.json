@@ -1,0 +1,241 @@
+{
+  "SchemaVersion": 9,
+  "Categories": [
+    {
+      "Name": "Target",
+      "Source": "User"
+    },
+    {
+      "Name": "Other",
+      "Source": "User"
+    },
+    {
+      "Name": "Material",
+      "Source": "User"
+    }
+  ],
+  "Cards": [
+    {
+      "Categories": [],
+      "Copies": 2,
+      "Name": null,
+      "Active": true,
+      "Id": "s",
+      "ManualMetadataCategoryKeys": [],
+      "OncePerTurn": false,
+      "Search": {
+        "Selector": {
+          "Kind": "Category",
+          "Categories": [
+            "user:Target"
+          ]
+        },
+        "ObjectiveMetadataOnly": false,
+        "Modes": null
+      }
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Target",
+          "Source": "User"
+        }
+      ],
+      "Copies": 3,
+      "Name": null,
+      "Active": true,
+      "Id": "t",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Other",
+          "Source": "User"
+        }
+      ],
+      "Copies": 3,
+      "Name": null,
+      "Active": true,
+      "Id": "b",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [
+        {
+          "Name": "Material",
+          "Source": "User"
+        }
+      ],
+      "Copies": 2,
+      "Name": null,
+      "Active": true,
+      "Id": "m",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": null,
+      "Active": true,
+      "Id": "d",
+      "ManualMetadataCategoryKeys": [],
+      "DrawCount": 2,
+      "PostDrawDiscardCount": 1,
+      "PostDrawSelector": {
+        "Kind": "Category",
+        "Categories": [
+          "user:Target"
+        ]
+      },
+      "PostDrawFailureBehavior": "FailBranch",
+      "PostDrawDeckMillCount": 2
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": null,
+      "Active": true,
+      "Id": "e",
+      "ManualMetadataCategoryKeys": [],
+      "DrawCount": 1,
+      "FirstActivationOnly": true
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Filler 0",
+      "Active": true,
+      "Id": "f-0",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Filler 1",
+      "Active": true,
+      "Id": "f-1",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Filler 2",
+      "Active": true,
+      "Id": "f-2",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Filler 3",
+      "Active": true,
+      "Id": "f-3",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Filler 4",
+      "Active": true,
+      "Id": "f-4",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Filler 5",
+      "Active": true,
+      "Id": "f-5",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Filler 6",
+      "Active": true,
+      "Id": "f-6",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Filler 7",
+      "Active": true,
+      "Id": "f-7",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 3,
+      "Name": "Filler 8",
+      "Active": true,
+      "Id": "f-8",
+      "ManualMetadataCategoryKeys": []
+    },
+    {
+      "Categories": [],
+      "Copies": 1,
+      "Name": "Filler 9",
+      "Active": true,
+      "Id": "f-9",
+      "ManualMetadataCategoryKeys": []
+    }
+  ],
+  "Combos": [
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "Target",
+            "Source": "User"
+          },
+          "MinCount": 1,
+          "MaxCount": 2,
+          "MaximumMode": "Fixed"
+        }
+      ],
+      "Name": "One or two targets",
+      "Active": true,
+      "GroupId": "g"
+    },
+    {
+      "Categories": [
+        {
+          "BaseCategory": {
+            "Name": "Target",
+            "Source": "User"
+          },
+          "MinCount": 1,
+          "MaxCount": 5,
+          "MaximumMode": "Fixed"
+        },
+        {
+          "BaseCategory": {
+            "Name": "Other",
+            "Source": "User"
+          },
+          "MinCount": 1,
+          "MaxCount": 5,
+          "MaximumMode": "Fixed"
+        }
+      ],
+      "Name": "Distinct target and other",
+      "Active": true,
+      "GroupId": "g"
+    }
+  ],
+  "ComboGroups": [
+    {
+      "Id": "g",
+      "Name": "Routes"
+    }
+  ],
+  "HandSize": 5,
+  "CalculationModel": "Fast",
+  "DrawActivationPriority": {
+    "Mode": "EncounterOrder",
+    "CardIds": []
+  },
+  "CategoryColorIndices": {}
+}

@@ -1,0 +1,16 @@
+{
+  "targetedTests": {"passed":240,"failed":0},
+  "fullReleaseSuite": {"passed":2528,"failed":0,"duration":"1m58s"},
+  "externalResearchInclude":true,
+  "buildWarnings":["CA1416: disposable native oracle test calls browser-annotated JS-export measurement probe"],
+  "restrictedBuild":"exit 1 without diagnostics; approved retry succeeded",
+  "restrictedBrowser":"target closed during launch; approved identical local replay succeeded",
+  "nativeCases":14,
+  "wasmCases":14,
+  "nativeColdCases":14,
+  "wasmColdCases":14,
+  "validationAssertions":42888,
+  "productionSourceChanges":0,
+  "prototypeDesignCorrections":0,
+  "discardedCalibration":"Initial harness failed to change numeric mode; repaired before diagnosis/design, excluded from evidence"
+}

@@ -1,0 +1,5 @@
+output/*.log
+output/invalid-*.json
+output/cold-request.json
+output/cold-response.json
+output/*.trx

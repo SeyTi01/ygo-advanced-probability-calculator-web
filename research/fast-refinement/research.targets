@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup><DefineConstants>$(DefineConstants);ADAPTIVE_FAST</DefineConstants></PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'YGOProbabilityCalculatorBlazor'">
+    <Compile Include="$(MSBuildThisFileDirectory)Probe.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Refinement.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'YGOProbabilityCalculatorBlazorTest'">
+    <Compile Include="$(MSBuildThisFileDirectory)Export.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)OracleTests.cs" />
+  </ItemGroup>
+</Project>
