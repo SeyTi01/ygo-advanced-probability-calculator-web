@@ -19,6 +19,8 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
     internal long PeakEntries { get; private set; }
     internal long PeakCells { get; private set; }
 
+    internal long Allowance => policy.WorkUnits;
+
     internal long Spent => policy.WorkUnits - _remaining;
     internal CalculationStoragePolicy StoragePolicy => _storagePolicy;
 

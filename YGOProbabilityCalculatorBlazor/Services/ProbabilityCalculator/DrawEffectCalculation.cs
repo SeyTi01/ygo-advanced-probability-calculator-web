@@ -7,11 +7,12 @@ internal sealed class DrawEffectCalculation(
     int handSize,
     WorkBudget budget,
     DrawActivationPriority? priority = null,
-    bool physicalSearch = false
+    bool physicalSearch = false,
+    bool adaptiveFast = false
 ) {
     // Request-local ownership: retain the actual dispatcher and its original
-    // eligibility data until optional certification finishes. Fast Calculate
-    // performs no proof scan; Exact checks eligibility before choosing a route.
+    // eligibility data until optional certification finishes. Exact and narrowly
+    // eligible adaptive Fast requests reuse the original pre-execution proof.
     // Only a completed calculation can publish a capability.
     // Callers must not mutate input lists during this synchronous execution.
     // Worker inputs are already owned/materialized by CalculationSnapshot.
@@ -36,7 +37,7 @@ internal sealed class DrawEffectCalculation(
 
     private ExactCalculationResult CalculateCore(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         if (deck.Any(card => card.Active && card.Copies > 0 && card.Search is not null)) {
-            SearchExecution = new(deck, handSize, budget, priority, physicalSearch);
+            SearchExecution = new(deck, handSize, budget, priority, physicalSearch, adaptiveFast);
             return SearchExecution.Calculate(combos, groups, totalOnly);
         }
 

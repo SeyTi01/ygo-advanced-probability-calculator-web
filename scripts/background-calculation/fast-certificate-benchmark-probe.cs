@@ -1,6 +1,7 @@
 // Measurement-only external Compile include for both frozen base and candidate.
 // Never include this probe in a production publish. MeasureCertificate=false
 // isolates primary Fast work; true uses the real public completion path.
+// ADAPTIVE_FAST is measurement-only: define it only for adaptive candidate builds.
 using System.Diagnostics;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
@@ -35,7 +36,11 @@ public static partial class FastCertificateBenchmarkProbe {
         string? route = null;
         try {
             DrawEffectCalculation? execution = cards.Any(card => card.HasEffect)
-                ? new(cards, input.HandSize, budget, input.Options?.DrawActivationPriority, input.Options?.Mode == CalculationModel.Exact) : null;
+                ? new(cards, input.HandSize, budget, input.Options?.DrawActivationPriority, input.Options?.Mode == CalculationModel.Exact
+#if ADAPTIVE_FAST
+                    , adaptiveFast: input.Options?.Mode != CalculationModel.Exact
+#endif
+                ) : null;
             exact = execution is null
                 ? new ProbabilityCalculation(cards, input.HandSize, budget).CalculateExactResults(combos, input.Groups)
                 : execution.Calculate(combos, input.Groups);

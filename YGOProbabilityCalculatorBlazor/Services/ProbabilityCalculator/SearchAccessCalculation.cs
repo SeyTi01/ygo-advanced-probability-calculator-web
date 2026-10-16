@@ -10,7 +10,8 @@ internal sealed class SearchAccessCalculation(
     int handSize,
     WorkBudget budget,
     DrawActivationPriority? priority,
-    bool physicalSearch = false
+    bool physicalSearch = false,
+    bool adaptiveFast = false
 ) {
     private CalculationCapability? _capability;
     private CapabilityReason? _targetLossReason;
@@ -45,7 +46,11 @@ internal sealed class SearchAccessCalculation(
         }
         bool countState = !effects.Any(card => card.EffectPlan.RequiresHandResolution)
             && DrawEffectResolver.CanUseCountStateFastPath(effects, copies, handSize);
-        if (physicalSearch) {
+        // Choose once, after the existing applicability proof and before either
+        // complete solver. Structurally proven requests keep their old route.
+        bool adaptiveCandidate = adaptiveFast && !countState
+            && FastPhysicalRoute.IsCandidate(cards, effects, handSize, combos, groups, budget);
+        if (physicalSearch || adaptiveCandidate) {
             CapabilityReason reason = search.TargetLossReason(effects, handSize);
             _targetLossReason = reason;
             if (!CalculationCapability.ProvesSearchSurvival(reason)) {
