@@ -63,7 +63,7 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(owned));
         await cut.Find("button[title='Copy results']").ClickAsync(new());
         string copied = (string)context.JSInterop.Invocations["copyText"].Last().Arguments[0]!;
-        Assert.That(copied, Does.Contain("53.33% ±3.34%").And.Contain("[1/2, 17/30]").And.Contain("optimistic U").And.Contain("17/30"));
+        Assert.That(copied, Does.Contain("53.33% ±3.34%").And.Contain("[1/2, 17/30]").And.Contain("optimistic primary").And.Contain("17/30"));
         Assert.That(accepted.TotalProbability, Is.EqualTo(17d / 30));
         Assert.That(accepted.Contract!.Fractions!.Total, Is.EqualTo(new ProbabilityFraction("17", "30")));
 

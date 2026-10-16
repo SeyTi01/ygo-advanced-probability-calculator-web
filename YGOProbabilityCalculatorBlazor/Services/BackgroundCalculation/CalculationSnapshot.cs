@@ -345,10 +345,14 @@ public static class CalculationWire {
                     throw new InvalidOperationException("Incomplete worker intervals.");
                 }
                 SearchAvailabilityInterval[] rows = [certificate.Total, .. certificate.Combos, .. certificate.Groups];
-                ProbabilityFraction[] upper = [contract.Fractions.Total, .. contract.Fractions.Combos, .. contract.Fractions.Groups];
+                ProbabilityFraction[] primary = [contract.Fractions.Total, .. contract.Fractions.Combos, .. contract.Fractions.Groups];
                 for (int index = 0; index < rows.Length; index++) {
                     SearchAvailabilityInterval row = rows[index];
-                    if (row is null || !ValidFraction(row.Lower) || !ValidFraction(row.Upper) || row.Upper != upper[index]
+                    // A completed necessary-event proof can reduce U below the
+                    // unchanged optimistic primary. Still require L <= U <= primary.
+                    if (row is null || !ValidFraction(row.Lower) || !ValidFraction(row.Upper)
+                        || BigInteger.Parse(row.Upper.Numerator, CultureInfo.InvariantCulture) * BigInteger.Parse(primary[index].Denominator, CultureInfo.InvariantCulture)
+                            > BigInteger.Parse(primary[index].Numerator, CultureInfo.InvariantCulture) * BigInteger.Parse(row.Upper.Denominator, CultureInfo.InvariantCulture)
                         || BigInteger.Parse(row.Lower.Numerator, CultureInfo.InvariantCulture) * BigInteger.Parse(row.Upper.Denominator, CultureInfo.InvariantCulture)
                             > BigInteger.Parse(row.Upper.Numerator, CultureInfo.InvariantCulture) * BigInteger.Parse(row.Lower.Denominator, CultureInfo.InvariantCulture)
                         || certificate.Status == SearchAvailabilityStatus.Exact && !row.IsExact) {

@@ -11,7 +11,7 @@ public sealed record ProbabilityDisplay(string Value, string Accuracy, string De
     public string Summary => $"{Value} {Accuracy}" + (Uninformative ? " · Uninformative" : "");
 }
 
-// Presentation only. The accepted primary fraction remains the solver's optimistic U.
+// Presentation only. The optimistic primary can exceed the certified upper endpoint.
 public static class ProbabilityPresentation {
     public const string Legend = "± is an absolute change on the 0%–100% probability scale, not a relative percentage. Bounded values show a display midpoint with an outward-rounded radius covering the certified range; no value within that range is claimed more likely. This is not a statistical confidence interval.";
     public const string AccuracyDetails = "Some calculations simplify whether cards remain available as Deck-search targets after draws or removals. For Bounded results, the displayed percentage is the midpoint of a guaranteed range; ± is a conservative upper bound on the absolute error from that midpoint on the 0%–100% scale, and the actual error may be smaller. This is model uncertainty, not statistical uncertainty, and excludes mechanics outside the calculator's assumptions. ±0% is exact within those assumptions; Uncertified means no guaranteed error bound is available.";
@@ -32,7 +32,8 @@ public static class ProbabilityPresentation {
         } : null;
         string value = primary.ToString("P2", culture);
         string modeled = raw is null ? "" : $" Modeled primary fraction: {Ratio(raw)}.";
-        if (contract is { Completion: CalculationCompletion.Success, Accuracy: CalculationAccuracy.Exact }) {
+        if (contract is { Completion: CalculationCompletion.Success, Accuracy: CalculationAccuracy.Exact }
+            && certificate?.Status != SearchAvailabilityStatus.Exact) {
             return new(value, "±0%", "Exact within the accepted calculation scope." + modeled);
         }
 
@@ -41,12 +42,12 @@ public static class ProbabilityPresentation {
             ProbabilityRow.Combo => At(certificate.Combos, index),
             _ => At(certificate.Groups, index)
         };
-        bool hasProof = contract is { Completion: CalculationCompletion.Success, Accuracy: CalculationAccuracy.Bounded }
+        bool hasProof = contract is { Completion: CalculationCompletion.Success, Accuracy: CalculationAccuracy.Bounded or CalculationAccuracy.Exact }
             && certificate?.Status is SearchAvailabilityStatus.Bounded or SearchAvailabilityStatus.Exact or SearchAvailabilityStatus.Limited;
         if (hasProof && interval is not null && Read(interval.Lower, out BigInteger ln, out BigInteger ld)
             && Read(interval.Upper, out BigInteger un, out BigInteger ud) && ln * ud <= un * ld) {
             BigInteger width = un * ld - ln * ud;
-            string evidence = $"rational endpoints [{Ratio(interval.Lower)}, {Ratio(interval.Upper)}]; modeled optimistic U: {Ratio(raw ?? interval.Upper)}";
+            string evidence = $"rational endpoints [{Ratio(interval.Lower)}, {Ratio(interval.Upper)}]; modeled optimistic primary: {Ratio(raw ?? interval.Upper)}";
             string range = $"Certified range: [{Percent(ln, ld, false, culture)}, {Percent(un, ud, true, culture)}]; rational endpoints [{Ratio(interval.Lower)}, {Ratio(interval.Upper)}].";
             if (width.IsZero) {
                 return new(Printed(Round(ln * 10000, ld), culture), "±0%", range + modeled, Evidence: evidence);
@@ -56,7 +57,7 @@ public static class ProbabilityPresentation {
             // endpoint distances from that printed center, in the same units.
             BigInteger center = Round((ln * ud + un * ld) * 10000, 2 * ld * ud);
             BigInteger radius = BigInteger.Max(Ceiling(center * ld - ln * 10000, ld), Ceiling(un * 10000 - center * ud, ud));
-            string detail = range + " Display midpoint ± conservative absolute uncertainty; modeled optimistic U is retained." + modeled;
+            string detail = range + " Display midpoint ± conservative absolute uncertainty; the retained optimistic primary may exceed the certified upper endpoint." + modeled;
             return new(Printed(center, culture), "±" + Printed(radius, culture), detail + (ln.IsZero ? " Uninformative: the true probability could be zero." : ""), ln.IsZero, evidence);
         }
 

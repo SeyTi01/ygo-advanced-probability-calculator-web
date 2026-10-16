@@ -9,7 +9,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 // Fixed-policy coupling: n_i=h_i+r_i+d_i, D=sum d_i=N-H-R, hence
 // max(0,n_i-h_i-D) <= r_i <= n_i-h_i simultaneously for all original rows.
 // Every optional lower-capacity assignment is a legal physical assignment with
-// the identical final hand (including maxima/exclusions), and likewise for U.
+// the identical final hand (including maxima/exclusions), and likewise for the
+// original optimistic U. A separately proved necessary event may then reduce U.
 // Each row/group/total is an existential union over the SAME weighted outcomes.
 // This proof says nothing about a different draw/discard policy or full gameplay.
 internal static class SearchAvailabilityCertification {
@@ -62,6 +63,7 @@ internal static class SearchAvailabilityCertification {
             Enumerable.Repeat(ExactProbability.Zero, groups?.Count ?? 0).ToArray());
         SearchAvailabilityCertificate completed = Complete(zero, SearchAvailabilityStatus.Bounded,
             "Uninformative: only the fixed-policy optimistic upper bound is available.");
+        ExactCalculationResult completedLower = zero;
         if (completed.Status == SearchAvailabilityStatus.Exact) {
             return completed with { Detail = "All optimistic endpoints are zero, so physical success is also zero under the fixed policy." };
         }
@@ -73,6 +75,7 @@ internal static class SearchAvailabilityCertification {
                 ExactCalculationResult witness = searchExecution.CalculateLower(combos, groups, declineSearch: true);
                 completed = Complete(witness, SearchAvailabilityStatus.Bounded,
                     "Guaranteed interval from declining optional searches after the same draw/removal policy.");
+                completedLower = witness;
                 if (completed.Status == SearchAvailabilityStatus.Exact) {
                     return completed;
                 }
@@ -80,27 +83,53 @@ internal static class SearchAvailabilityCertification {
             ExactCalculationResult bound = searchExecution.CalculateLower(combos, groups, declineSearch: false);
             completed = Complete(bound, SearchAvailabilityStatus.Bounded,
                 "Guaranteed interval under the fixed modeled policy; only Deck-search target survival varies.");
+            completedLower = bound;
             if (completed.Status != SearchAvailabilityStatus.Exact && searchExecution.CanRefineKnownSourceLoss()) {
                 ExactCalculationResult refined = searchExecution.CalculateLower(combos, groups, declineSearch: false, improve: bound);
                 completed = Complete(refined, SearchAvailabilityStatus.Bounded,
                     "Guaranteed interval under the fixed modeled policy; consumed draw sources tighten Deck-search target loss bounds.");
+                completedLower = refined;
             }
-
-            return completed;
         }
         catch (ProbabilityCalculationLimitException exception) {
             return completed with { Detail = completed.Detail
                 + $" Limited refinement: optional calculation reached the {exception.Reason} limit; the completed interval is retained." };
         }
 
-        SearchAvailabilityCertificate Complete(ExactCalculationResult lower, SearchAvailabilityStatus status, string detail) {
+        // The optional upper proof has its own transaction. Neither a resource
+        // limit nor a defect may erase any previously completed lower certificate.
+        try {
+            if (completed.Status != SearchAvailabilityStatus.Exact
+                && searchExecution.TightenSurvivalUpper(combos, groups, upper) is { } tightened) {
+                completed = Complete(completedLower, SearchAvailabilityStatus.Bounded,
+                    completed.Detail + " Mandatory original-card survival tightens upper endpoints; the optimistic primary fractions are unchanged.", tightened);
+            }
+        }
+        catch (ProbabilityCalculationLimitException exception) {
+            return completed with { Detail = completed.Detail
+                + $" Limited survival refinement: optional calculation reached the {exception.Reason} limit; the completed interval is retained." };
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException) {
+            Console.Error.WriteLine($"Target-survival refinement failed: {exception}");
+            return completed with { Detail = completed.Detail + $" Survival refinement failed ({exception.GetType().Name}); the completed interval is retained." };
+        }
+
+        return completed;
+
+        SearchAvailabilityCertificate Complete(
+            ExactCalculationResult lower,
+            SearchAvailabilityStatus status,
+            string detail,
+            ExactCalculationResult? tightened = null
+        ) {
+            ExactCalculationResult endpoint = tightened ?? upper;
             budget.Spend(1L + combos.Count + (groups?.Count ?? 0));
-            SearchAvailabilityInterval total = Interval("Any active combo", lower.Total, upper.Total);
+            SearchAvailabilityInterval total = Interval("Any active combo", lower.Total, endpoint.Total);
             ImmutableArray<SearchAvailabilityInterval> individual = combos.Select((combo, index) =>
                 Interval(string.IsNullOrWhiteSpace(combo.Name) ? $"Unnamed combo {index + 1}" : combo.Name,
-                    lower.Combos[index], upper.Combos[index])).ToImmutableArray();
+                    lower.Combos[index], endpoint.Combos[index])).ToImmutableArray();
             ImmutableArray<SearchAvailabilityInterval> grouped = (groups ?? []).Select((group, index) =>
-                Interval(group.Name, lower.Groups[index], upper.Groups[index])).ToImmutableArray();
+                Interval(group.Name, lower.Groups[index], endpoint.Groups[index])).ToImmutableArray();
             if (status == SearchAvailabilityStatus.Bounded && total.IsExact && individual.All(row => row.IsExact) && grouped.All(row => row.IsExact)) {
                 status = SearchAvailabilityStatus.Exact;
             }
