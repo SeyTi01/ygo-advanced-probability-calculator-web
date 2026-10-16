@@ -4,7 +4,7 @@ using YGOProbabilityCalculatorBlazor.Services.Converter;
 
 namespace YGOProbabilityCalculatorBlazor.Models;
 
-public enum CardSelectorKind { Any, Category, AnyOf, AllOf, LevelAtLeast }
+public enum CardSelectorKind { Any, Category, AnyOf, AllOf, LevelAtLeast, Objective, Not }
 
 // Bounded, immutable Boolean predicates over one physical card.
 // Counts and distinct-copy roles belong to combo requirements, not selectors.
@@ -24,13 +24,13 @@ public sealed class CardSelector : IEquatable<CardSelector> {
     public int NodeCount { get; } = 1;
     public int CategoryReferenceCount { get; }
     public bool HasLevelPredicate { get; }
-    public bool IsGrouped => HasLevelPredicate || Kind == CardSelectorKind.AllOf && Children.Count > 0
-        || Children.Any(child => child.Children.Count > 0);
+    public bool IsGrouped => HasLevelPredicate || Kind is CardSelectorKind.Objective or CardSelectorKind.Not
+        || Kind == CardSelectorKind.AllOf && Children.Count > 0 || Children.Any(child => child.Children.Count > 0);
     public int EvaluationSize => IsGrouped ? NodeCount + CategoryReferenceCount : CategoryIdentities.Count;
 
     public CardSelector(CardSelectorKind kind, IEnumerable<string> categoryIdentities) {
         ArgumentNullException.ThrowIfNull(categoryIdentities);
-        if (!Enum.IsDefined(kind) || kind == CardSelectorKind.LevelAtLeast) {
+        if (!Enum.IsDefined(kind) || kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.Objective or CardSelectorKind.Not) {
             throw new ArgumentOutOfRangeException(nameof(kind));
         }
 
@@ -64,6 +64,21 @@ public sealed class CardSelector : IEquatable<CardSelector> {
     public static CardSelector AnyOfSelectors(IEnumerable<CardSelector> selectors) => Combine(CardSelectorKind.AnyOf, selectors);
 
     public static CardSelector AllOfSelectors(IEnumerable<CardSelector> selectors) => Combine(CardSelectorKind.AllOf, selectors);
+
+    public static CardSelector Objective(CardSelector selector) => new(CardSelectorKind.Objective, new[] { selector ?? throw new ArgumentNullException(nameof(selector)) });
+
+    public static CardSelector Not(CardSelector selector) => new(CardSelectorKind.Not, new[] { selector ?? throw new ArgumentNullException(nameof(selector)) });
+
+    // Names here are verified catalog identities, including permanent name clauses.
+    // They never inspect a workspace entry's mutable display name.
+    public static CardSelector CatalogIdentity(int canonicalId) => Objective(new(CardSelectorKind.Category,
+        ["metadata:catalog-id:" + canonicalId.ToString(CultureInfo.InvariantCulture)]));
+
+    public static CardSelector CatalogName(string name) => Objective(new(CardSelectorKind.Category,
+        ["metadata:card-name:" + Uri.EscapeDataString(name.ToLowerInvariant())]));
+
+    public static CardSelector Mentions(string name) => Objective(new(CardSelectorKind.Category,
+        ["metadata:mentions:" + Uri.EscapeDataString(name.ToLowerInvariant())]));
 
     public static CardSelector LevelAtLeast(int minimum) => new(minimum);
 
@@ -137,6 +152,10 @@ public sealed class CardSelector : IEquatable<CardSelector> {
 
     internal bool Matches(IReadOnlyCollection<CategoryBase> categories, Card? card) => Kind switch {
         CardSelectorKind.Any => true,
+        CardSelectorKind.Objective => card?.ExternalCardId is > 0 && Children[0].Matches(categories
+            .Where(category => category.Source == CategorySource.Metadata
+                && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)).ToArray(), card),
+        CardSelectorKind.Not => !Children[0].Matches(categories, card),
         CardSelectorKind.LevelAtLeast => MatchesLevel(categories, card),
         CardSelectorKind.AllOf when Children.Count > 0 => Children.All(child => child.Matches(categories, card)),
         CardSelectorKind.AllOf => CategoryIdentities.All(identity => categories.Any(category => category.Identity == identity)),
@@ -175,7 +194,9 @@ public sealed class CardSelector : IEquatable<CardSelector> {
     }
 
     public CardSelector RenameCategory(string previousIdentity, string newIdentity) => Children.Count > 0
-        ? Combine(Kind, Children.Select(child => child.RenameCategory(previousIdentity, newIdentity)))
+        ? Kind is CardSelectorKind.Objective or CardSelectorKind.Not
+            ? new(Kind, Children.Select(child => child.RenameCategory(previousIdentity, newIdentity)).ToArray())
+            : Combine(Kind, Children.Select(child => child.RenameCategory(previousIdentity, newIdentity)))
         : Kind == CardSelectorKind.LevelAtLeast ? this
             : new(Kind, CategoryIdentities.Select(identity => identity == previousIdentity ? newIdentity : identity));
 

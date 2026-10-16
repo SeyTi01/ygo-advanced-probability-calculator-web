@@ -53,7 +53,15 @@ public sealed class CardEffectRegistry {
         new GracefulCharityEffect(),
         new SekkasLightEffect(),
         new LinkAppleEffect(), new ReinforcementOfTheArmyEffect(),
-        new ACaseForK9Effect(), new ChaoticElementsEffect()
+        new ACaseForK9Effect(), new ChaoticElementsEffect(),
+        new KetuDracotailEffect(), new MitsurugiPrayersEffect(), new SpentaTheMagistusSealerEffect(),
+        new PrimiteLordlyLodeEffect(), new WantedSeekerOfSinfulSpoilsEffect(), new SpellPowerMasteryEffect(),
+        new FiendsmithEngraverEffect(), new EarthboundPrisonerStoneSweeperEffect(), new PreparationOfRitesEffect(),
+        new FireFormationTenkiEffect(), new BonfireEffect(), new SkyStrikerMobilizeEngageEffect(),
+        new DarklordIxchelEffect(), new TraptantalizingTuneEffect(),
+        new BrandedOpeningEffect(), new FiendsmithTractEffect(), new KewlTuneSynchroEffect(), new RadiantTyphoonChantEffect(),
+        new EmpireOfEndymionEffect(), new FairyTailBallEffect(), new FutureSilenceEffect(),
+        new NightTrainBlueTravelerEffect(), new ExceptionalScheduleEffect(), new LunalightBlackSheepEffect()
     ]);
 
     public IReadOnlyList<MaintainedCardEffect> All { get; }

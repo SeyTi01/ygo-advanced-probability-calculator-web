@@ -72,7 +72,10 @@ public class CatalogArchetypeReconcilerTest {
             Assert.That(repaired.ManualMetadataCategoryKeys, Is.EquivalentTo(savedCard.ManualMetadataCategoryKeys));
             Assert.That(repaired.Categories.Select(category => category.Identity), Is.EquivalentTo(
                 savedCard.Categories.Select(category => category.Identity).Concat(imported.Categories
-                    .Where(category => category.MetadataKey?.StartsWith("archetype:", StringComparison.Ordinal) == true)
+                    .Where(category => category.MetadataKey?.StartsWith("archetype:", StringComparison.Ordinal) == true
+                        || category.MetadataKey?.StartsWith("catalog-id:", StringComparison.Ordinal) == true
+                        || category.MetadataKey?.StartsWith("card-name:", StringComparison.Ordinal) == true
+                        || category.MetadataKey?.StartsWith("mentions:", StringComparison.Ordinal) == true)
                     .Select(category => category.Identity))));
             Assert.That(repaired.Categories.All(category => category.MetadataKey?.Contains("treated-as", StringComparison.Ordinal) != true), Is.True);
         }
@@ -94,15 +97,19 @@ public class CatalogArchetypeReconcilerTest {
 
         CatalogArchetypeReconciler.Reconcile(cards, catalog);
 
-        Assert.That(cards[0].Categories.Select(category => category.Identity), Is.EquivalentTo(new[] { Fire.Identity, "user:Custom role" }));
+        Assert.That(cards[0].Categories.Select(category => category.Identity), Is.EquivalentTo(new[] { Fire.Identity, "user:Custom role", "metadata:catalog-id:691925", "metadata:card-name:solar%20recharge" }));
         Assert.That((cards[0].Id, cards[0].Name, cards[0].Copies, cards[0].Active, cards[0].ExternalCardId, cards[0].EffectPlan, cards[0].EffectProfile),
             Is.EqualTo((solar.Id, solar.Name, solar.Copies, solar.Active, solar.ExternalCardId, solar.EffectPlan, solar.EffectProfile)));
-        Assert.That(cards[1], Is.SameAs(manual));
+        Assert.That(cards[1].ManualMetadataCategoryKeys, Is.EquivalentTo(manual.ManualMetadataCategoryKeys));
+        Assert.That(cards[1].Categories, Does.Contain(Lightsworn));
+        Assert.That(CardSelector.CatalogIdentity(691925).Matches(cards[1]), Is.True);
         Assert.That(cards[2].ManualMetadataCategoryKeys, Does.Contain(Lightsworn.MetadataKey));
         Assert.That(cards[3], Is.SameAs(unknown));
         Assert.That(cards[4].Categories, Is.Empty);
         Assert.That(cards[4].ExternalCardId, Is.Null);
-        Assert.That(cards[5].Categories.Select(category => category.MetadataKey), Is.EqualTo(new[] { "archetype:archfiend" }));
+        Assert.That(cards[5].Categories.Where(category => category.MetadataKey!.StartsWith("archetype:")).Select(category => category.MetadataKey),
+            Is.EqualTo(new[] { "archetype:archfiend" }));
+        Assert.That(CardSelector.CatalogIdentity(70781052).Matches(cards[5]), Is.True);
         Card[] once = cards.ToArray();
         CatalogArchetypeReconciler.Reconcile(cards, catalog);
         for (int index = 0; index < cards.Count; index++) {

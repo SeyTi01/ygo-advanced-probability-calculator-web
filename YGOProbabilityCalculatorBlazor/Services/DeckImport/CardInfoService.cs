@@ -259,7 +259,11 @@ public class CardInfoService : ICardInfoService {
 
     private static CardInfo WithCatalogMembership(CardInfo info, IReadOnlyList<CardInfo>? catalog) {
         CardInfo? canonical = FindCatalogCard(catalog, info.CanonicalCardId ?? info.Id);
-        return canonical?.ResolvedArchetypes is null ? info : info with { ResolvedArchetypes = canonical.ResolvedArchetypes };
+        return canonical is null ? info : info with {
+            ResolvedArchetypes = canonical.ResolvedArchetypes,
+            ResolvedNames = canonical.ResolvedNames,
+            MentionedNames = canonical.MentionedNames
+        };
     }
 
     public async Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names) {
@@ -398,6 +402,12 @@ public class CardInfoService : ICardInfoService {
                 || !card.ArtworkMetadataKnown || card.ArtworkImageIds is null || card.ArtworkImageIds.Count > 100
                 || card.ArtworkImageIds.Any(id => id <= 0) || !ids.Add(card.Id)) {
                 throw new InvalidDataException("The local card catalog contains an invalid card record.");
+            }
+            foreach (IReadOnlyList<string>? values in new[] { card.ResolvedNames, card.MentionedNames }) {
+                if (values is not null && (values.Count > 32 || values.Any(value => string.IsNullOrWhiteSpace(value) || value.Length > 512)
+                    || values.Distinct(StringComparer.Ordinal).Count() != values.Count)) {
+                    throw new InvalidDataException("The local card catalog contains invalid name metadata.");
+                }
             }
             if (card.ResolvedArchetypes is { } memberships && (memberships.Count > 32
                 || memberships.Any(name => string.IsNullOrWhiteSpace(name) || name.Length > 100)

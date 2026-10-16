@@ -35,7 +35,7 @@ internal sealed class PhysicalSearchScenario {
             Card card = Cards[row];
             int effect = effects.FindIndex(entry => entry.Id == card.Id);
             int seen = effect < 0 ? -1 : composition.EffectCounts[effect];
-            int activated = seen < 0 ? 0 : card.OncePerTurn ? Math.Min(1, seen) : seen;
+            int activated = seen < 0 ? 0 : Math.Min(card.MaximumActivations, seen);
             Seen[row] = seen;
             Held[row] = seen < 0 ? -1 : seen - activated;
             _consumed.Add(card.Id, activated);

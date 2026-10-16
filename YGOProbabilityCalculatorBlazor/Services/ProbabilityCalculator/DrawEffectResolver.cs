@@ -64,7 +64,7 @@ internal static class DrawEffectResolver {
                     encountered = checked(encountered + count);
                     pending -= count;
                     if (count > 0) {
-                        int activations = effects[i].DrawOncePerTurn ? 1 : count;
+                        int activations = Math.Min(effects[i].MaximumActivations, count);
                         pending += (long)effects[i].DrawCount!.Value * activations;
                     }
                 }
@@ -72,7 +72,7 @@ internal static class DrawEffectResolver {
                 int remaining = totalCopies - encountered;
                 if (pending == 0) {
                     int[] retained = state.EffectCounts
-                        .Select((count, index) => effects[index].DrawOncePerTurn ? Math.Max(0, count - 1) : 0)
+                        .Select((count, index) => Math.Max(0, count - effects[index].MaximumActivations))
                         .ToArray();
                     Add(scenarios, new(state.OrdinaryCount, TTerminal.Retained(retained, state.EffectCounts, effects, remaining)), weight, ref scenarioCells);
                     continue;
@@ -83,7 +83,7 @@ internal static class DrawEffectResolver {
                     // within the initial deck remainder. If all remaining cards are owed,
                     // the terminal composition is the whole remainder.
                     int[] retained = effects
-                        .Select(effect => effect.DrawOncePerTurn ? Math.Max(0, effect.Copies - 1) : 0)
+                        .Select(effect => Math.Max(0, effect.Copies - effect.MaximumActivations))
                         .ToArray();
                     Add(scenarios, new(ordinaryCopies, TTerminal.Retained(retained, null, effects, 0)), weight, ref scenarioCells);
                     continue;
@@ -134,15 +134,22 @@ internal static class DrawEffectResolver {
             return false;
         }
 
+        // With no hand losses, draw >= 1 never shrinks the pre-activation hand.
+        // Otherwise a minimum can change eligibility after a cost/removal.
+        if (effects.Any(effect => effect.MinimumHandSize > 0)
+            && (effects.Any(effect => effect.MinimumHandSize > handSize) || effects.Any(effect => effect.EffectPlan.RequiresHandResolution))) {
+            return false;
+        }
+
         // One OPT entry can only start drawing from the opening hand. Its own
         // first-activation requirement and later-draw lock add no restriction:
         // after that activation, OPT already prevents every remaining copy.
         // Distinct entries have separate OPT allowances, so this proof cannot
         // combine entries merely because their definitions or card IDs match.
-        bool restrictionsAreRedundant = effects.Count == 1 && effects[0].DrawOncePerTurn
+        bool restrictionsAreRedundant = effects.Count == 1 && effects[0].MaximumActivations == 1
             && !effects[0].EffectPlan.RequiresHandResolution;
         if (!restrictionsAreRedundant
-            && effects.Any(effect => effect.EffectPlan.HasActivationRestrictions)) {
+            && effects.Any(effect => effect.FirstActivationOnly || effect.BlocksLaterDraws)) {
             return false;
         }
 
@@ -151,7 +158,7 @@ internal static class DrawEffectResolver {
         // No observed identity or hand operation depends on those positions. Visible draws remain a uniform sample without replacement.
         long maximumDraws = 0;
         foreach (Card effect in effects) {
-            int activations = effect.DrawOncePerTurn ? 1 : effect.Copies;
+            int activations = Math.Min(effect.MaximumActivations, effect.Copies);
             maximumDraws += (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) * (long)activations;
         }
 

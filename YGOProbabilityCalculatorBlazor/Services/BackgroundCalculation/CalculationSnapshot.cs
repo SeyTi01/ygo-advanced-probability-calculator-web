@@ -73,7 +73,9 @@ public sealed record CalculationSnapshot(string Json) {
                 effects && card.FirstActivationOnly,
                 effects && card.BlocksLaterDraws,
                 effects ? card.Search : null,
-                effects && card.Search is not null ? card.OncePerTurn : null
+                effects && card.Search is not null ? card.OncePerTurn : null,
+                effects ? card.EffectPlan.ActivationLimit : null,
+                effects ? card.MinimumHandSize : 0
             ))
             .ToArray();
 
@@ -117,7 +119,9 @@ public sealed record WorkerCard(
     bool FirstActivationOnly = false,
     bool BlocksLaterDraws = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SearchEffectPlan? Search = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? OncePerTurn = null
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? OncePerTurn = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? ActivationLimit = null,
+    int MinimumHandSize = 0
 );
 
 public sealed record WorkerCombo(
@@ -185,7 +189,9 @@ public static class CalculationWire {
                     card.FirstActivationOnly,
                     card.BlocksLaterDraws,
                     card.Search,
-                    card.OncePerTurn
+                    card.OncePerTurn,
+                    card.ActivationLimit,
+                    card.MinimumHandSize
                 ))
                 .ToList();
 

@@ -113,7 +113,7 @@ internal sealed class SearchAccessPlan {
             }
             (int source, int[] targets) = _sources[sourceIndex];
             VisitSource(sourceIndex + 1, total);
-            int allowance = _deck[source].OncePerTurn ? 1 : _deck[source].Copies;
+            int allowance = Math.Min(_deck[source].MaximumActivations, _deck[source].Copies);
             SelectTargets(0, Math.Min(allowance, limit - total), total);
 
             // Nondecreasing target indices enumerate each multiset once. Depth

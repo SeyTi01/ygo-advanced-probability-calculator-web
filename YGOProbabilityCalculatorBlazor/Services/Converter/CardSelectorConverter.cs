@@ -40,7 +40,7 @@ public sealed class CardSelectorConverter : JsonConverter<CardSelector> {
             return CardSelector.LevelAtLeast(threshold);
         }
         if (root.TryGetProperty("Children", out JsonElement children)) {
-            if (operation is not ("AnyOf" or "AllOf") || children.ValueKind != JsonValueKind.Array
+            if (operation is not ("AnyOf" or "AllOf" or "Objective" or "Not") || children.ValueKind != JsonValueKind.Array
                 || children.GetArrayLength() is 0 or > CardSelector.MaximumNodes) {
                 throw new JsonException("Invalid composite selector.");
             }
@@ -48,7 +48,13 @@ public sealed class CardSelectorConverter : JsonConverter<CardSelector> {
             foreach (JsonElement child in children.EnumerateArray()) {
                 operands.Add(ReadSelector(child, depth + 1, ref nodes, ref references));
             }
-            return operation == "AnyOf" ? CardSelector.AnyOfSelectors(operands) : CardSelector.AllOfSelectors(operands);
+            return operation switch {
+                "AnyOf" => CardSelector.AnyOfSelectors(operands),
+                "AllOf" => CardSelector.AllOfSelectors(operands),
+                "Objective" when operands.Count == 1 => CardSelector.Objective(operands[0]),
+                "Not" when operands.Count == 1 => CardSelector.Not(operands[0]),
+                _ => throw new JsonException("Unary selector requires exactly one child.")
+            };
         }
         JsonElement categories = root.GetProperty("Categories");
         if (categories.ValueKind != JsonValueKind.Array
@@ -57,7 +63,7 @@ public sealed class CardSelectorConverter : JsonConverter<CardSelector> {
             throw new JsonException("Invalid category references.");
         }
         CardSelectorKind categoryOperation = operation switch {
-            "Any" when depth == 1 => CardSelectorKind.Any,
+            "Any" => CardSelectorKind.Any,
             "Category" => CardSelectorKind.Category,
             "AnyOf" => CardSelectorKind.AnyOf,
             "AllOf" => CardSelectorKind.AllOf,

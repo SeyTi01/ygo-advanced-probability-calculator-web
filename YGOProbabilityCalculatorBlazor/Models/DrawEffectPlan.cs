@@ -9,7 +9,7 @@ namespace YGOProbabilityCalculatorBlazor.Models;
 // unsupported execution models still require a new compiler/interpreter.
 public enum EffectExecutionModel { DrawSequenceV1 = 1, Unsupported = 2 }
 [Flags]
-public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32, FirstActivationOnly = 64, BlocksLaterDraws = 128, Search = 256 }
+public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32, FirstActivationOnly = 64, BlocksLaterDraws = 128, Search = 256, BoundedActivations = 512, SearchModes = 1024, MinimumHandSize = 2048 }
 public enum EffectSource { LegacySnapshot, BuiltIn, Custom }
 public enum EffectSupport { ModeledWithinRules, Partial, Unmodeled }
 
@@ -39,13 +39,18 @@ public readonly record struct DrawEffectPlan(
     int HiddenPostDrawMill = 0,
     bool FirstActivationOnly = false,
     bool BlocksLaterDraws = false,
-    SearchEffectPlan? Search = null
+    SearchEffectPlan? Search = null,
+    int? ActivationLimit = null,
+    int MinimumHandSize = 0
 ) {
     public static DrawEffectPlan Draw(int count, bool oncePerTurn) => new(count, oncePerTurn, 0, CardSelector.Any, 0, 0, CardSelector.Any);
 
     public EffectCapabilities Capabilities => (DrawCount is null ? EffectCapabilities.None : EffectCapabilities.Draw)
         | ((DrawCount is not null || Search is not null) && OncePerTurn ? EffectCapabilities.OncePerTurn : EffectCapabilities.None)
         | (Search is not null ? EffectCapabilities.Search : EffectCapabilities.None)
+        | (ActivationLimit is not null ? EffectCapabilities.BoundedActivations : EffectCapabilities.None)
+        | (Search?.Modes is not null ? EffectCapabilities.SearchModes : EffectCapabilities.None)
+        | (MinimumHandSize > 0 ? EffectCapabilities.MinimumHandSize : EffectCapabilities.None)
         | (HandCost > 0 ? EffectCapabilities.HandCost : EffectCapabilities.None)
         | (HiddenDeckCost > 0 ? EffectCapabilities.HiddenDeckCost : EffectCapabilities.None)
         | (HiddenPostDrawMill > 0 ? EffectCapabilities.HiddenPostDrawMill : EffectCapabilities.None)
@@ -53,16 +58,20 @@ public readonly record struct DrawEffectPlan(
         | (BlocksLaterDraws ? EffectCapabilities.BlocksLaterDraws : EffectCapabilities.None)
         | (RemovalCount > 0 ? EffectCapabilities.MandatoryRemoval : EffectCapabilities.None);
 
-    public bool HasActivationRestrictions => FirstActivationOnly || BlocksLaterDraws;
+    public int MaximumActivations => ActivationLimit ?? (OncePerTurn ? 1 : int.MaxValue);
+
+    public bool HasActivationRestrictions => FirstActivationOnly || BlocksLaterDraws || MinimumHandSize > 0;
+
+    public bool RequiresSearchResolution => Search is not null && (RequiresHandResolution || Search.Modes is { Count: > 0 });
 
     public bool RequiresHandResolution => HandCost > 0 || RemovalCount > 0;
 
     public string Describe() {
-        if (DrawCount is null) {
-            return Search is null ? "No effect" : "Search 1 from deck; flexible target choice";
+        if (DrawCount is null && Search is null) {
+            return "No effect";
         }
 
-        string summary = $"Draw {DrawCount}";
+        string summary = Search is null ? $"Draw {DrawCount}" : "Search 1 from deck; flexible target choice";
         if (HandCost > 0) {
             summary = $"Remove {HandCost} eligible card(s) from hand; " + summary;
         }
@@ -83,6 +92,14 @@ public readonly record struct DrawEffectPlan(
             summary += "; no further draws";
         }
 
-        return summary + (OncePerTurn ? "; once per turn" : "");
+        if (MinimumHandSize > 0) {
+            summary += $"; at least {MinimumHandSize} cards in hand before activation";
+        }
+        if (Search?.Modes is not null) {
+            summary += "; separate activation allowance for each mode";
+        }
+
+        return summary + (ActivationLimit is int limit ? $"; up to {limit} activations per entry"
+            : OncePerTurn ? "; once per turn" : "");
     }
 }

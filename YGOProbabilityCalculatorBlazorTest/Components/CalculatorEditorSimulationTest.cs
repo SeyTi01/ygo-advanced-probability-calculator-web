@@ -181,7 +181,12 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
             await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode });
             Assert.That(editor.Find(".simulation-heading").TextContent, Is.EqualTo(heading));
             Assert.That(editor.FindAll(".simulation-details-toggle"), Has.Count.EqualTo(1));
-            Assert.That(SimulationDetails(editor).Trim(), Is.EqualTo($"Model limits: {card.EffectProfile.Limitations}"));
+            string details = SimulationDetails(editor).Trim();
+            if (!string.IsNullOrWhiteSpace(card.EffectProfile.Limitations)) {
+                Assert.That(details, Does.Contain($"Model limits: {card.EffectProfile.Limitations}"));
+            }
+            Assert.That(editor.FindAll(".simulation-performance"), Has.Count.EqualTo(
+                DrawEffectPerformance.RequiresDetailedHandState(card.EffectPlan, card.EffectProfile.ExecutionModel) ? 1 : 0));
             await editor.Find(".simulation-details-toggle").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
             Assert.That(editor.Instance.Card, Is.SameAs(card));
         }

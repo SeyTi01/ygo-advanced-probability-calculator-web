@@ -35,11 +35,11 @@
         <div id="cardDrawModeHelp@(Index)" class="simulation-mode small" role="note">@notice</div>
     }
     @if ((_draft is not null ? _draft.Search : Card.Search) is { } search) {
-        <div class="simulation-summary">@((_draft?.EffectProfile.Source ?? _effect.Source) == EffectSource.BuiltIn ? _effect.Summary : "Search 1 from deck") · flexible best choice after draws@((_draft?.OncePerTurn ?? Card.OncePerTurn) ? " · once per turn" : "")</div>
+        <div class="simulation-summary">@((_draft?.EffectProfile.Source ?? _effect.Source) == EffectSource.BuiltIn ? _effect.Summary : DrawEffectPresentation.DescribePlan((_draft ?? Card).EffectPlan, CategoryBases))</div>
         <div class="simulation-targets small" role="status" aria-label="Current search targets">
             Targets in this deck: @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : "None")
         </div>
-        @if (Deck.Any(card => card.Active && card.Copies > 0 && card.DrawCount is not null)) {
+        @if (!Deck.Any(card => card.EffectPlan.RequiresSearchResolution) && Deck.Any(card => card.Active && card.Copies > 0 && card.DrawCount is not null)) {
             <div class="small text-body-secondary" role="note">Search access assumes targets outside the final hand remain available.</div>
         }
     }
@@ -100,16 +100,19 @@
                     <option value="3">Draw 3</option>
                     <option value="search">Search 1</option>
                 </select>
-                @if (_draft.HasEffect) {
+                @if (_draft.EffectPlan.ActivationLimit is int limit) {
+                    <div class="form-text">Up to @limit activations per entry. This allowance is preserved when saving.</div>
+                }
+                else if (_draft.HasEffect && _draft.Search?.Modes is null) {
                     <div class="form-check form-switch mb-0">
                         <input id="@OnceInputId" class="form-check-input" type="checkbox" role="switch"
                                checked="@_draft.OncePerTurn" @onchange="e => ChangeOncePerTurn(e.Value)" />
                         <label for="@OnceInputId" class="form-check-label">Once per turn</label>
                     </div>
                 }
-                @if (_draft.DrawCount is not null) {
+                @if (_draft.HasEffect) {
                     <div class="d-flex flex-wrap align-items-center gap-2">
-                        <label for="cardCost@(Index)" class="form-label mb-0">Before drawing</label>
+                        <label for="cardCost@(Index)" class="form-label mb-0">Before @(_draft.Search is null ? "drawing" : "searching")</label>
                         <select id="cardCost@(Index)" class="form-select form-select-sm w-auto"
                                 value="@_draft.PreDrawRemovalCount"
                                 @onchange="e => ChangePreDrawRemovalCount(e.Value)">
@@ -119,7 +122,7 @@
                         </select>
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-2">
-                        <label for="cardDiscard@(Index)" class="form-label mb-0">After drawing</label>
+                        <label for="cardDiscard@(Index)" class="form-label mb-0">After @(_draft.Search is null ? "drawing" : "searching")</label>
                         <select id="cardDiscard@(Index)" class="form-select form-select-sm w-auto"
                                 value="@_draft.PostDrawDiscardCount"
                                 @onchange="e => ChangePostDrawDiscardCount(e.Value)">
@@ -131,7 +134,7 @@
                 }
             </div>
             @if (_draft.PreDrawRemovalCount > 0) {
-                <div class="mt-2 small">Before drawing: remove from hand</div>
+                <div class="mt-2 small">Before @(_draft.Search is null ? "drawing" : "searching"): remove from hand</div>
                 <PostDrawSelectorEditor Id="@($"cardCostEligibility{Index}")" Selector="_draft.PreDrawSelector"
                                         CategoryBases="CategoryBases"
                                         RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
@@ -142,7 +145,7 @@
                                         OnChanged='selector => SetDraft(_draft.WithPreDrawSelector(selector), "selector")' />
             }
             @if (_draft.PostDrawDiscardCount > 0) {
-                <div class="mt-2 small">After drawing: remove from hand</div>
+                <div class="mt-2 small">After @(_draft.Search is null ? "drawing" : "searching"): remove from hand</div>
                 <PostDrawSelectorEditor Id="@($"cardEligibility{Index}")" Selector="_draft.PostDrawSelector"
                                         CategoryBases="CategoryBases"
                                         RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
@@ -151,7 +154,13 @@
                                         CategoryRename="CategoryRename" OnEditingChanged='editing => SelectorEditing("removal-filter", editing)'
                                         OnChanged='selector => SetDraft(_draft.WithPostDrawSelector(selector), "selector")' />
             }
-            @if (_draft.Search is { } draftSearch) {
+            @if (_draft.MinimumHandSize > 0) {
+                <div class="form-text">Requires at least @_draft.MinimumHandSize cards in hand before activation. This requirement is preserved when saving.</div>
+            }
+            @if (_draft.Search?.Modes is { } modes) {
+                <div class="form-text">@DrawEffectPresentation.DescribePlan(_draft.EffectPlan, CategoryBases)</div>
+            }
+            else if (_draft.Search is { } draftSearch) {
                 <PostDrawSelectorEditor Id="@($"cardSearchEligibility{Index}")" Selector="draftSearch.Selector"
                     CategoryBases="CategoryBases" RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                     CategoryColorIndices="CategoryColorIndices" ShowHelp="false"
@@ -424,9 +433,7 @@
     private static Card RenameFilters(Card card, CategoryRenameNotice rename) => card.WithEffect(card.EffectPlan with {
         HandCostSelector = card.PreDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
         RemovalSelector = card.PostDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
-        Search = card.Search is { } search ? search with {
-            Selector = search.Selector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}")
-        } : null
+        Search = card.Search?.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}")
     }, card.EffectProfile);
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
