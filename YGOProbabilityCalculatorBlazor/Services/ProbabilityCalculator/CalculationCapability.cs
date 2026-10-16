@@ -1,8 +1,8 @@
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-internal enum SolverRoute { Ordinary, CountState, Exchangeable, Ordered, OrderedDeferred, SearchOnly, SearchCountState, SearchOrdered, SearchOrderedDeferred, SearchPhysicalCountState }
+internal enum SolverRoute { Ordinary, CountState, Exchangeable, Ordered, OrderedDeferred, SearchOnly, SearchCountState, SearchOrdered, SearchOrderedDeferred, SearchPhysicalCountState, SearchPhysicalEnumeration, SearchPhysicalFrontier }
 internal enum PhysicalSearchAccuracy { ProvenExact, OptimisticSurvivalUnproven }
-internal enum CapabilityReason { NoActiveSearch, NoReachableSearchTarget, ZeroDeckCapacity, NoReachableSearchTargetLoss, ConsumedSearchTarget, HandCostMayRemoveTarget, HandRemovalMayRemoveTarget, HiddenDeckLossMayRemoveTarget, ConditionalPhysicalSurvivors }
+internal enum CapabilityReason { NoActiveSearch, NoReachableSearchTarget, ZeroDeckCapacity, NoReachableSearchTargetLoss, ConsumedSearchTarget, HandCostMayRemoveTarget, HandRemovalMayRemoveTarget, HiddenDeckLossMayRemoveTarget, ConditionalPhysicalSurvivors, ExplicitPhysicalSurvivors }
 internal enum CertificationSupport { ReusePrimary, ElementaryCountStateLowerPass, Unsupported }
 
 // A value describing one COMPLETED execution, never a preflight risk estimate.
@@ -20,6 +20,7 @@ internal readonly record struct CalculationCapability(
     internal string Explanation => Explain(Reason);
 
     internal static string Explain(CapabilityReason reason) => reason switch {
+        CapabilityReason.ExplicitPhysicalSurvivors => "Explicit ordered identities with joint conditional hidden losses under the fixed policy.",
         CapabilityReason.ConditionalPhysicalSurvivors => "Joint physical Deck-search survival counted conditionally on the proven draw count state.",
         CapabilityReason.NoActiveSearch => "No active Deck searches in the executed model.",
         CapabilityReason.NoReachableSearchTarget => "No active search has an eligible target.",

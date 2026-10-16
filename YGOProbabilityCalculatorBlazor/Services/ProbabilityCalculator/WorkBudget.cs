@@ -32,6 +32,12 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
         _remaining -= units;
     }
 
+    internal void EnsureAvailable(long units) {
+        if (units > _remaining) {
+            throw new ProbabilityCalculationLimitException();
+        }
+    }
+
     public void CheckStorage(long entries, long cells) {
         PeakEntries = Math.Max(PeakEntries, entries);
         PeakCells = Math.Max(PeakCells, cells);

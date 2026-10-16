@@ -8,7 +8,7 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 internal sealed partial class PostDrawCalculation {
     // Request-scoped policy and transition context. No per-state objects beyond the
     // existing owned vectors; selectors are compiled against this final row mapping.
-    private sealed class OrderedResolver(
+    private sealed partial class OrderedResolver(
         PostDrawCalculation owner,
         WorkBudget budget,
         List<Card> cards,

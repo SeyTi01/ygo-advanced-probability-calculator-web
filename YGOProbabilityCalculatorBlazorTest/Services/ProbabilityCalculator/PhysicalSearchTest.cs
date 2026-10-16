@@ -18,25 +18,17 @@ public sealed class PhysicalSearchTest {
     }
 
     [Test]
-    public void ExhaustiveExistingFixturesAgreeOrRemainExplicitlyUnsupported() {
+    public void ExhaustiveExistingFixturesAllAgree() {
         int supportedLoss = 0;
         foreach (SearchCertificateFixtures.Fixture fixture in SearchCertificateFixtures.Fixtures()) {
             SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority);
             CalculationOptions options = new(fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority), Mode: CalculationModel.Exact);
-            try {
-                ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
-                    fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, options);
-                AssertRows(result, oracle.Wins[1], oracle.Outcomes);
-                Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact), fixture.Name);
-                if (result.Contract.SolverRoute == "SearchPhysicalCountState") {
-                    supportedLoss++;
-                }
-            }
-            catch (UnsupportedExactCalculationException) {
-                List<Card> active = fixture.Deck.Where(card => card.Active && card.Copies > 0).ToList();
-                List<Card> effects = active.Where(card => card.DrawCount is not null).ToList();
-                Assert.That(effects.Any(card => card.EffectPlan.RequiresHandResolution)
-                    || !DrawEffectResolver.CanUseCountStateFastPath(effects, active.Sum(card => card.Copies), fixture.Hand), Is.True, fixture.Name);
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, options);
+            AssertRows(result, oracle.Wins[1], oracle.Outcomes);
+            Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact), fixture.Name);
+            if (result.Contract.SolverRoute == "SearchPhysicalCountState") {
+                supportedLoss++;
             }
         }
         Assert.That(supportedLoss, Is.GreaterThan(10));
