@@ -168,6 +168,9 @@ internal sealed class SearchAccessCalculation(
         return new(sums[0], sums.Skip(1).Take(combos.Count).ToArray(), sums.Skip(1 + combos.Count).ToArray());
     }
 
+    internal ExactCalculationResult? TightenSurvivalUpper(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, ExactCalculationResult upper) =>
+        TargetSurvivalUpperBound.TryCalculate(Cards, Effects, _resolution, combos, groups, upper, budget);
+
     internal bool CanRefineKnownSourceLoss() {
         // Ordered/coalesced identities need a different observation proof.
         if (_resolution is null) {

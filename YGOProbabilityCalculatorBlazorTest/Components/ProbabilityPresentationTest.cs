@@ -74,6 +74,19 @@ public sealed class ProbabilityPresentationTest {
         Assert.That(display.Accuracy, Is.EqualTo("±0%"));
     }
 
+    [Test]
+    public void ExactCertificateDisplaysItsEndpointEvenBelowOptimisticPrimary() {
+        CalculationResultContract contract = Contract(CalculationAccuracy.Exact) with {
+            Fractions = new(new("3", "4"), [], [])
+        };
+        ProbabilityDisplay display = ProbabilityPresentation.Create(.75, contract,
+            new(SearchAvailabilityStatus.Exact, "Proof", new("Total", new("1", "2"), new("1", "2"))),
+            culture: CultureInfo.InvariantCulture);
+        Assert.That(display.Summary, Is.EqualTo("50.00% ±0%"));
+        Assert.That(display.Detail, Does.Contain("Modeled primary fraction: 3/4"));
+        Assert.That(display.Evidence, Does.Contain("modeled optimistic primary: 3/4"));
+    }
+
     [TestCase(SearchAvailabilityStatus.NotCertified)]
     [TestCase(SearchAvailabilityStatus.Limited)]
     [TestCase(SearchAvailabilityStatus.Error)]

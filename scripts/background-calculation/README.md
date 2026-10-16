@@ -500,3 +500,18 @@ selects them. Terminal packing uses the existing lossless byte-vector codec only
 when every value fits and its actual retained payload is smaller. Every key has
 one encoding throughout its map lifetime; each counting pass decodes only the
 current key. Certificates reuse the completed checked map, without replay.
+
+### Mandatory-target survival certificate
+
+`TargetSurvivalCertificateTest.Export` writes the motivating 40-card model,
+redundant-target and VS/K9 controls, small multi-source/ordered/deferred cases,
+and no-effect/opening controls to `YGO_SURVIVAL_FIXTURES`. It includes separate
+Default/Interactive Fast and Exact requests with Standard Storage. Use the
+external `fast-certificate-benchmark-probe.cs` with `ADAPTIVE_FAST` for both
+revisions; set `MeasureCertificate=true` to measure the full Fast request.
+Exact requests must retain a null certificate. The existing paired native and
+worker harnesses can replay these inputs, but their historical full-result
+equality assertion must be replaced by unchanged primary fractions/routes plus
+row-wise `old L <= new L <= Exact <= new U <= old U`. Do not suppress resource
+or completion comparisons on unchanged controls. Keep first calls separate
+from warmed p50/p90 samples, and publish without the probe for UI/SEO checks.
