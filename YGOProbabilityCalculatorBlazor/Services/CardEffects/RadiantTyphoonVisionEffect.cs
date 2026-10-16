@@ -16,5 +16,5 @@ public sealed class RadiantTyphoonVisionEffect : ICardEffectDefinition {
     };
     public EffectSupport Support => EffectSupport.Partial;
     public string Summary => "Draw 2, then discard 1 eligible Quick-Play Spell or Radiant Typhoon card; once per turn.";
-    public string Limitations => "The alternative that adds Mystical Space Typhoon from the Deck or GY to the hand is not modeled. If no eligible discard remains after drawing, that outcome is counted as unsuccessful and stays in the original probability denominator (FailBranch); the engine does not explicitly discard the entire remaining hand. This has the same success result for objectives requiring at least one final-hand card, but can differ for absence-only or exclusion objectives that accept an empty hand.";
+    public string Limitations => "The alternative that adds Mystical Space Typhoon from the Deck or GY to the hand is not modeled.";
 }
