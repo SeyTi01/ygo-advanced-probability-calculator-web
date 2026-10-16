@@ -4,6 +4,17 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 internal sealed partial class PostDrawCalculation {
+    // These references keep the already-budgeted terminal map alive only until
+    // this request's optional certificate completes; no second ordered frontier.
+    private SearchCertificateState? _searchCertificate;
+    private sealed record SearchCertificateState(
+        List<Card> Cards,
+        List<Card> Deferred,
+        Dictionary<string, List<Card>> Identities,
+        Dictionary<State, BigInteger> Terminal,
+        BigInteger Denominator
+    );
+
     private interface ITerminalHand {
         static abstract int[] Create(int[] state, OrderedDrawStateLayout layout, int remaining);
     }
@@ -29,9 +40,10 @@ internal sealed partial class PostDrawCalculation {
         bool totalOnly,
         SearchAccessPlan search,
         bool physical = false,
-        PhysicalEnumerationMethod method = PhysicalEnumerationMethod.Auto
+        PhysicalEnumerationMethod method = PhysicalEnumerationMethod.Auto,
+        bool coalesceOrdinary = true
     ) {
-        List<Card> cards = ReduceSearchDeck(combos, out Dictionary<string, List<Card>> identities, merge: !physical);
+        List<Card> cards = ReduceSearchDeck(combos, out Dictionary<string, List<Card>> identities, merge: !physical && coalesceOrdinary);
         // Only removable searchers need policy target counts. Unrelated targets
         // can still join the deferred pool when no removal can observe them.
         HashSet<string> observed = SearchPolicyObservedRows(cards);
@@ -127,7 +139,10 @@ internal sealed partial class PostDrawCalculation {
             pools[^1] = deferred.SelectMany(card => identities[card.Id]).ToList();
         }
 
-        return CountSearchHands(cards, pools, terminal, factorial[copies], combos, groups, totalOnly, search);
+        ExactCalculationResult result = CountSearchHands(cards, pools, terminal, factorial[copies], combos, groups, totalOnly, search);
+        _searchCertificate = new(cards, deferred, identities, terminal, factorial[copies]);
+
+        return result;
     }
 
     private List<Card> ReduceSearchDeck(List<Combo> combos, out Dictionary<string, List<Card>> identities, bool merge = true) {
@@ -229,8 +244,11 @@ internal sealed partial class PostDrawCalculation {
         List<Combo> combos,
         IReadOnlyList<ComboGroup>? groups,
         bool totalOnly,
-        SearchAccessPlan search
+        SearchAccessPlan search,
+        bool lower = false,
+        bool declineSearch = false
     ) {
+        int copies = lower ? pools.Sum(pool => pool.Sum(card => card.Copies)) : 0;
         BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(denominator) + 1), "result accumulators");
         foreach ((State hand, BigInteger mass) in terminal) {
@@ -245,8 +263,17 @@ internal sealed partial class PostDrawCalculation {
                     random.Add(new(pools[row], hand.Values[row]));
                 }
             }
+            int loss = 0;
+            if (lower) {
+                budget.Spend(cards.Count + 1L);
+                int held = retained.Sum(card => card.Copies) + random.Sum(pool => pool.Held);
+                loss = copies - held - hand.Values[^1];
+                if (loss < 0 || held < 0 || hand.Values[^1] < 0) {
+                    throw new InvalidOperationException("Ordered search conservation failed.");
+                }
+            }
             SearchProbabilityCalculation calculation = new(random.SelectMany(pool => pool.Cards).ToList(),
-                random.Sum(pool => pool.Held), retained, search, hand.Values[^1], budget, random);
+                random.Sum(pool => pool.Held), retained, search, declineSearch ? 0 : hand.Values[^1], budget, random, loss);
             ExactCalculationResult result = calculation.Calculate(combos, groups, totalOnly);
             ExactProbability[] values = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < values.Length; i++) {
@@ -257,6 +284,10 @@ internal sealed partial class PostDrawCalculation {
                     throw new InvalidOperationException("Conditional pool subsets must have equal integer permutation mass.");
                 }
                 wins[i] += contribution;
+                if (lower) {
+                    budget.Spend(wins.Length);
+                    CheckStorage(wins.Length, wins.Sum(WorkBudget.IntegerCells), "result accumulators");
+                }
             }
         }
         ExactProbability[] results = wins.Select(win => new ExactProbability(win, denominator)).ToArray();
@@ -264,4 +295,33 @@ internal sealed partial class PostDrawCalculation {
         return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos.Count).ToArray(),
             totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
     }
+
+    internal ExactCalculationResult CalculateSearchLower(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool declineSearch) {
+        SearchCertificateState state = _searchCertificate
+            ?? throw new InvalidOperationException("Missing completed ordered search distribution.");
+        budget.Spend(4L * deck.Count + 3L * state.Cards.Count + 2L * state.Deferred.Count + 1);
+        CheckStorage(deck.Count, 3L * deck.Count + state.Cards.Count, "certificate classes");
+        // Reduction classes agree jointly on every final predicate, removal mask
+        // and ORIGINAL search eligibility. Sources and direct-card distinctions
+        // never merge. Their labels may be biased by ID-based discards: never
+        // sample those original labels or apply the per-identity loss formula.
+        // Instead n_C=h_C+r_C+d_C gives r_C >= max(0,n_C-h_C-D).
+        // Every assignment within these shared class capacities lifts to distinct
+        // physical targets and leaves all final predicates unchanged.
+        Dictionary<string, Card> classes = state.Identities.ToDictionary(pair => pair.Key,
+            pair => pair.Value[0].WithCopies(pair.Value.Sum(card => card.Copies)), StringComparer.Ordinal);
+        List<List<Card>> pools = state.Cards.Select(card => new List<Card> { classes[card.Id] }).ToList();
+        if (state.Deferred.Count > 0) {
+            // Deferred classes may have DIFFERENT roles/search masks. Retain all
+            // of them in the conditional pool. Whole-trace label invariance in
+            // DeferUnobservedIdentities proves its uniform held subset, including
+            // hidden positions, retries, custom priority and failed branches.
+            pools[^1] = state.Deferred.Select(card => classes[card.Id]).ToList();
+        }
+        SearchAccessPlan search = new(pools.SelectMany(pool => pool).ToList(), budget);
+
+        return CountSearchHands(state.Cards, pools, state.Terminal, state.Denominator,
+            combos, groups, false, search, lower: true, declineSearch: declineSearch);
+    }
+
 }

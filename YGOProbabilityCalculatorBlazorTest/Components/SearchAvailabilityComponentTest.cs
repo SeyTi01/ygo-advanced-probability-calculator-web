@@ -103,6 +103,26 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
     }
 
     [Test]
+    public void PerRowInformativenessSurvivesWireAndCopyWithoutPromotingTheTotal() {
+        SearchAvailabilityCertificate certificate = new(SearchAvailabilityStatus.Bounded,
+            "Conservative loss bounds cannot prove a positive lower endpoint for every row.",
+            new("Total", new("0", "1"), new("1", "2")),
+            [new("Impossible", new("0", "1"), new("0", "1")), new("Useful", new("1", "4"), new("1", "2"))], []);
+        string json = System.Text.Json.JsonSerializer.Serialize(certificate,
+            CalculationJsonContext.Default.SearchAvailabilityCertificate);
+        SearchAvailabilityCertificate restored = System.Text.Json.JsonSerializer.Deserialize(json,
+            CalculationJsonContext.Default.SearchAvailabilityCertificate)!;
+        Assert.That(restored.Total!.Informativeness, Is.EqualTo(SearchAvailabilityRowStatus.Uninformative));
+        Assert.That(restored.Combos[0].Informativeness, Is.EqualTo(SearchAvailabilityRowStatus.Exact));
+        Assert.That(restored.Combos[1].Informativeness, Is.EqualTo(SearchAvailabilityRowStatus.Informative));
+        IRenderedComponent<SearchAvailabilityResult> cut = context.RenderComponent<SearchAvailabilityResult>(parameters => parameters.Add(value => value.Certificate, restored));
+        Assert.That(cut.Find("summary").TextContent, Does.Contain("uninformative").And.Not.Contain("(exact)"));
+        Assert.That(cut.FindAll("tbody tr"), Has.Count.EqualTo(3));
+        string exported = string.Join("\n", SearchAvailabilityPresentation.Export(restored));
+        Assert.That(exported, Does.Contain("(uninformative)").And.Contain("(informative)").And.Contain("(exact)"));
+    }
+
+    [Test]
     public async Task LimitedExactPreservesAcceptedResultAndPinAndRecoveryKeepsExactPreference() {
         Mock<IBackgroundCalculator> worker = new();
         int exactCalls = 0;
@@ -125,7 +145,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(accepted));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(accepted.Contract));
         Assert.That(ProbabilityResultSummaryFormatter.Format(accepted, 1, CultureInfo.InvariantCulture),
-            Does.Contain("Effects — fast").And.Contain("Uncertified"));
+            Does.Contain("Effects — fast").And.Contain("Bounded"));
         await Button(cut, "Calculate opening hand only").ClickAsync(new());
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Exact"));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));

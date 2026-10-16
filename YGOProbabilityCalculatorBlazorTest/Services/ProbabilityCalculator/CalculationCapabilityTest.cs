@@ -87,7 +87,7 @@ internal sealed class CalculationCapabilityTest {
     }
 
     [TestCase("consumed", CapabilityReason.ConsumedSearchTarget, CertificationSupport.ElementaryCountStateLowerPass, 1, 2, 1, 3)]
-    [TestCase("discard", CapabilityReason.HandRemovalMayRemoveTarget, CertificationSupport.Unsupported, 17, 30, 1, 2)]
+    [TestCase("discard", CapabilityReason.HandRemovalMayRemoveTarget, CertificationSupport.OrderedTerminalLowerPass, 17, 30, 1, 2)]
     [TestCase("banish", CapabilityReason.HiddenDeckLossMayRemoveTarget, CertificationSupport.ElementaryCountStateLowerPass, 5, 6, 23, 30)]
     [TestCase("mill", CapabilityReason.HiddenDeckLossMayRemoveTarget, CertificationSupport.ElementaryCountStateLowerPass, 5, 6, 23, 30)]
     public void PhysicalCounterexamplesCannotReceiveAProof(
@@ -121,7 +121,7 @@ internal sealed class CalculationCapabilityTest {
         deck[2] = new([], 1, id: "d", drawCount: 1, preDrawRemovalCount: cost ? 1 : 0, postDrawDiscardCount: cost ? 0 : 1);
         (CalculationCapability capability, _) = CheckSearch(deck, 2);
         Assert.That(capability.Reason, Is.EqualTo(cost ? CapabilityReason.HandCostMayRemoveTarget : CapabilityReason.HandRemovalMayRemoveTarget));
-        Assert.That(capability.Certification, Is.EqualTo(CertificationSupport.Unsupported));
+        Assert.That(capability.Certification, Is.EqualTo(CertificationSupport.OrderedTerminalLowerPass));
     }
 
     [Test]

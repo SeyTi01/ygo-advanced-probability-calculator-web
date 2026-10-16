@@ -53,48 +53,38 @@ internal static class SearchAvailabilityCertification {
         }
         if (capability.Certification == CertificationSupport.Unsupported) {
             return SearchAvailabilityCertificate.Unavailable(SearchAvailabilityStatus.NotCertified,
-                "Not certified: " + capability.Explanation + " No survival lower bound is supported for this ordered calculation.");
+                "Not certified: " + capability.Explanation + " The executed route has no established target-survival coupling.");
         }
 
         SearchAccessCalculation searchExecution = execution!.SearchExecution!;
-        List<Card> cards = searchExecution.Cards;
-        List<Card> effects = searchExecution.Effects;
-        int handSize = searchExecution.HandSize;
-        int copies = cards.Sum(card => card.Copies);
-        budget.Spend((long)cards.Count * (effects.Count + 1) + 1);
-        List<Card> ordinary = cards.Where(card => !effects.Contains(card)).ToList();
-        SearchAccessPlan search = searchExecution.Search;
-        DrawResolution resolution = DrawEffectResolver.Resolve<SearchComposition>(ordinary.Sum(card => card.Copies), effects, handSize, budget);
-        ExactProbability[] sums = Enumerable.Repeat(ExactProbability.Zero, 1 + combos.Count + (groups?.Count ?? 0)).ToArray();
-        foreach ((DrawComposition composition, ExactProbability weight) in resolution.Scenarios) {
-            budget.Spend(cards.Count + sums.Length + effects.Count + 1L);
-            List<Card> retained = effects.Select((card, row) => card.WithCopies(composition.EffectCounts[row]))
-                .Where(card => card.Copies > 0).ToList();
-            int held = composition.OrdinaryCount + retained.Sum(card => card.Copies);
-            int remaining = composition.EffectCounts[^1];
-            int lost = copies - held - remaining;
-            if (remaining < 0 || lost < 0 || held < 0) {
-                throw new InvalidOperationException("Count-state conservation failed.");
-            }
-            // Elementary loss bound only: no inferred activation count and no
-            // artificial split of coalesced identities. Ordinary rows are original
-            // identities in a proven uniform pool; retained rows are fixed.
-            ExactCalculationResult lower = new SearchProbabilityCalculation(ordinary, composition.OrdinaryCount,
-                retained, search, remaining, budget, targetLoss: lost).Calculate(combos, groups, false);
-            ExactProbability[] values = [lower.Total, .. lower.Combos, .. lower.Groups];
-            for (int row = 0; row < sums.Length; row++) {
-                sums[row] = sums[row].Add(weight.Multiply(values[row], budget), budget);
-            }
-            budget.CheckStorage(sums.Length, sums.Sum(value => value.Cells));
+        ExactCalculationResult zero = new(ExactProbability.Zero,
+            Enumerable.Repeat(ExactProbability.Zero, combos.Count).ToArray(),
+            Enumerable.Repeat(ExactProbability.Zero, groups?.Count ?? 0).ToArray());
+        SearchAvailabilityCertificate completed = Complete(zero, SearchAvailabilityStatus.Bounded,
+            "Uninformative: only the fixed-policy optimistic upper bound is available.");
+        if (completed.Status == SearchAvailabilityStatus.Exact) {
+            return completed with { Detail = "All optimistic endpoints are zero, so physical success is also zero under the fixed policy." };
         }
-
-        ExactCalculationResult bound = new(sums[0], sums.Skip(1).Take(combos.Count).ToArray(), sums.Skip(1 + combos.Count).ToArray());
-        if (bound.Total.Numerator.IsZero && !upper.Total.Numerator.IsZero) {
-            return SearchAvailabilityCertificate.Unavailable(SearchAvailabilityStatus.NotCertified,
-                "Only a trivial zero lower bound was proved; no informative interval is available.");
+        try {
+            if (capability.Certification == CertificationSupport.OrderedTerminalLowerPass) {
+                // Finish a cheap witness before attempting the stronger family.
+                // A failed stronger pass cannot publish its partial sums or erase
+                // this completed same-policy empty-assignment lower bound.
+                ExactCalculationResult witness = searchExecution.CalculateLower(combos, groups, declineSearch: true);
+                completed = Complete(witness, SearchAvailabilityStatus.Bounded,
+                    "Guaranteed interval from declining optional searches after the same draw/removal policy.");
+                if (completed.Status == SearchAvailabilityStatus.Exact) {
+                    return completed;
+                }
+            }
+            ExactCalculationResult bound = searchExecution.CalculateLower(combos, groups, declineSearch: false);
+            return Complete(bound, SearchAvailabilityStatus.Bounded,
+                "Guaranteed interval under the fixed modeled policy; only Deck-search target survival varies.");
         }
-        return Complete(bound, SearchAvailabilityStatus.Bounded,
-            "Guaranteed interval under the fixed modeled policy; only Deck-search target survival varies.");
+        catch (ProbabilityCalculationLimitException exception) {
+            return completed with { Detail = completed.Detail
+                + $" Limited refinement: optional calculation reached the {exception.Reason} limit; the completed interval is retained." };
+        }
 
         SearchAvailabilityCertificate Complete(ExactCalculationResult lower, SearchAvailabilityStatus status, string detail) {
             budget.Spend(1L + combos.Count + (groups?.Count ?? 0));
@@ -106,6 +96,11 @@ internal static class SearchAvailabilityCertification {
                 Interval(group.Name, lower.Groups[index], upper.Groups[index])).ToImmutableArray();
             if (status == SearchAvailabilityStatus.Bounded && total.IsExact && individual.All(row => row.IsExact) && grouped.All(row => row.IsExact)) {
                 status = SearchAvailabilityStatus.Exact;
+            }
+            if (status == SearchAvailabilityStatus.Bounded && (total.Informativeness == SearchAvailabilityRowStatus.Uninformative
+                || individual.Any(row => row.Informativeness == SearchAvailabilityRowStatus.Uninformative)
+                || grouped.Any(row => row.Informativeness == SearchAvailabilityRowStatus.Uninformative))) {
+                detail += " Rows marked uninformative have no positive lower bound from the completed conservative proof.";
             }
             return new(status, detail, total, individual, grouped);
         }

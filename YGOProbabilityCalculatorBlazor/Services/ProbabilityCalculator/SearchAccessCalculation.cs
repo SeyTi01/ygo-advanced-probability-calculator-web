@@ -15,6 +15,8 @@ internal sealed class SearchAccessCalculation(
     private CalculationCapability? _capability;
     private CapabilityReason? _targetLossReason;
     private SolverRoute _route;
+    private PostDrawCalculation? _ordered;
+    private DrawResolution? _resolution;
     internal List<Card> Cards { get; private set; } = null!;
     internal List<Card> Effects { get; private set; } = null!;
     internal SearchAccessPlan Search { get; private set; } = null!;
@@ -65,10 +67,12 @@ internal sealed class SearchAccessCalculation(
             PostDrawCalculation calculation = new(cards, handSize, budget, priority);
             ExactCalculationResult result = calculation.CalculateSearch(combos, groups, totalOnly, search);
             _route = calculation.Route;
+            _ordered = calculation;
             return result;
         }
         _route = SolverRoute.SearchCountState;
         DrawResolution resolution = DrawEffectResolver.Resolve<SearchComposition>(ordinary.Sum(card => card.Copies), effects, handSize, budget);
+        _resolution = resolution;
         ExactProbability total = ExactProbability.Zero;
         ExactProbability[] individual = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : combos.Count).ToArray();
         ExactProbability[] grouped = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : groups?.Count ?? 0).ToArray();
@@ -90,6 +94,40 @@ internal sealed class SearchAccessCalculation(
 
         return new(total, individual, grouped);
     }
+
+    // Both passes consume the completed primary distribution. In particular,
+    // declining search never dispatches a different draw/retention policy.
+    internal ExactCalculationResult CalculateLower(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool declineSearch) {
+        if (_ordered is not null) {
+            return _ordered.CalculateSearchLower(combos, groups, declineSearch);
+        }
+        DrawResolution resolution = _resolution ?? throw new InvalidOperationException("Missing completed search distribution.");
+        budget.Spend((long)Cards.Count * (Effects.Count + 1) + 1);
+        List<Card> ordinary = Cards.Where(card => !Effects.Contains(card)).ToList();
+        int copies = Cards.Sum(card => card.Copies);
+        ExactProbability[] sums = Enumerable.Repeat(ExactProbability.Zero, 1 + combos.Count + (groups?.Count ?? 0)).ToArray();
+        foreach ((DrawComposition composition, ExactProbability weight) in resolution.Scenarios) {
+            budget.Spend(Cards.Count + sums.Length + Effects.Count + 1L);
+            List<Card> retained = Effects.Select((card, row) => card.WithCopies(composition.EffectCounts[row]))
+                .Where(card => card.Copies > 0).ToList();
+            int held = composition.OrdinaryCount + retained.Sum(card => card.Copies);
+            int remaining = composition.EffectCounts[^1];
+            int lost = copies - held - remaining;
+            if (remaining < 0 || lost < 0 || held < 0) {
+                throw new InvalidOperationException("Count-state conservation failed.");
+            }
+            ExactCalculationResult lower = new SearchProbabilityCalculation(ordinary, composition.OrdinaryCount,
+                retained, Search, declineSearch ? 0 : remaining, budget, targetLoss: lost).Calculate(combos, groups, false);
+            ExactProbability[] values = [lower.Total, .. lower.Combos, .. lower.Groups];
+            for (int row = 0; row < sums.Length; row++) {
+                sums[row] = sums[row].Add(weight.Multiply(values[row], budget), budget);
+            }
+            budget.CheckStorage(sums.Length, sums.Sum(value => value.Cells));
+        }
+
+        return new(sums[0], sums.Skip(1).Take(combos.Count).ToArray(), sums.Skip(1 + combos.Count).ToArray());
+    }
+
 }
 
 internal interface IDrawTerminal {

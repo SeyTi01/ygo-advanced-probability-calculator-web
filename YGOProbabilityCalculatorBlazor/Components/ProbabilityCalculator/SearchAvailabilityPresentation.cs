@@ -15,7 +15,7 @@ public static class SearchAvailabilityPresentation {
     public static string Range(SearchAvailabilityInterval interval) => interval.IsExact
         ? $"≈ {Percent(interval.Lower, false)}% (exact)"
         : $"[{Percent(interval.Lower, false)}%, {Percent(interval.Upper, true)}%]"
-            + (interval.Lower.Numerator == "0" ? " (uninformative lower bound)" : "");
+            + (interval.Informativeness == SearchAvailabilityRowStatus.Uninformative ? " (uninformative lower bound)" : "");
 
     public static string Width(SearchAvailabilityInterval interval) {
         BigInteger lowerN = BigInteger.Parse(interval.Lower.Numerator, CultureInfo.InvariantCulture);
@@ -45,7 +45,7 @@ public static class SearchAvailabilityPresentation {
         yield return certificate.Reference;
         yield return certificate.Detail;
         foreach (SearchAvailabilityInterval row in Rows(certificate)) {
-            yield return $"- {row.Label}: [{row.Lower.Numerator}/{row.Lower.Denominator}, {row.Upper.Numerator}/{row.Upper.Denominator}]; width {Width(row)}";
+            yield return $"- {row.Label}: [{row.Lower.Numerator}/{row.Lower.Denominator}, {row.Upper.Numerator}/{row.Upper.Denominator}]; width {Width(row)} ({row.Informativeness.ToString().ToLowerInvariant()})";
         }
     }
 }
