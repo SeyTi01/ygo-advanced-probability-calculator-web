@@ -11,18 +11,9 @@
 </p>
 <details class="accuracy-details small mb-2">
     <summary>Accuracy details</summary>
-    <p class="mt-2 mb-1">@ProbabilityPresentation.Legend</p>
-    <p class="mb-1">Exactness and bounds apply only to the stated model and physical Main Deck-search survival, not full gameplay or optimal play. Focus a probability for its range and original fraction.</p>
-    @if (Contract is { } accepted) {
-        <p class="mb-1">@accepted.Reference</p>
-        <p class="mb-1">@accepted.Reason</p>
-    }
-    @if (Certificate is { } certificate) {
-        <p class="mb-1">Certification @certificate.Status: @certificate.Detail</p>
-    }
+    <p class="mt-2 mb-1">@ProbabilityPresentation.AccuracyDetails</p>
 </details>
 
 @code {
     [Parameter] public CalculationResultContract? Contract { get; set; }
-    [Parameter] public SearchAvailabilityCertificate? Certificate { get; set; }
 }

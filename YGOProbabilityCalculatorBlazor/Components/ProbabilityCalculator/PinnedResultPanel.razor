@@ -4,7 +4,7 @@
         <button type="button" class="btn btn-sm btn-outline-secondary" title="Unpin result" aria-label="Unpin result" @onclick="OnClear"><PinIcon Slashed="true" /></button>
     </div>
     <p class="small text-body-secondary mb-2">@Snapshot.Context.Description</p>
-    <CalculationAccuracyResult Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" />
+    <CalculationAccuracyResult Contract="Snapshot.Contract" />
 
     <div class="pinned-row pinned-total">
         <span>Any active combo</span><ProbabilityValue Probability="Snapshot.Total" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" ValueClass="probability-total-value" />

@@ -233,7 +233,7 @@
                                              IsStale="_calculationResultIsStale"
                                              IsCalculating="_isCalculating" />
                 </div>
-                <CalculationAccuracyResult Contract="result.Contract" Certificate="result.SearchAvailability" />
+                <CalculationAccuracyResult Contract="result.Contract" />
 
                 @if (_acceptedComparison is { } accepted) {
                     <p class="small text-body-secondary mb-2 result-model">@accepted.Context.Description</p>
