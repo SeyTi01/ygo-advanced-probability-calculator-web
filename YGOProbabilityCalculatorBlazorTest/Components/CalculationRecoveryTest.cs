@@ -74,7 +74,9 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".combo-probability-item"), Has.Count.EqualTo(2));
         Assert.That(cut.Find(".result-model").TextContent, Does.Contain(CalculationModel.OpeningHand.Description()));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(CalculationModel.OpeningHand.Description()));
-        Assert.That(cut.Find(".comparison-model-difference").TextContent, Does.Contain("different questions"));
+        Assert.That(cut.FindAll(".comparison-model-difference, .result-difference, .result-row-comparison, .pinned-match"), Is.Empty);
+        Assert.That(cut.Find(".result-model").TextContent, Does.Contain(CalculationModel.OpeningHand.Description()));
+        Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.Contain(CalculationModel.Fast.Description()));
         Assert.That(cut.FindComponent<SessionShareButton>().Instance.Snapshot, Is.EqualTo(saved));
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
         await Button(cut, "Replace pin with current result").ClickAsync(new());

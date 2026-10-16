@@ -15,12 +15,6 @@
                 <span>@group.Label <small class="text-body-secondary fw-normal">(@group.ActiveCount active)</small></span>
                 <ProbabilityValue Probability="group.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Group" Index="@Snapshot.Groups.IndexOf(group)" />
             </h6>
-            @if (Current is not null) {
-                string groupMatch = Snapshot.CompareGroup(group, Current, false);
-                if (groupMatch != "Comparable") {
-                    <small class="pinned-match">@groupMatch</small>
-                }
-            }
             <ol class="pinned-list pinned-members">
                 @foreach (PinnedComboRow row in Snapshot.Combos.Where(combo => combo.GroupId == group.Id)) {
                     <li>
@@ -28,12 +22,6 @@
                             <span>@row.Label</span>
                             <ProbabilityValue Probability="row.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Combo" Index="row.Index" />
                         </div>
-                        @if (Current is not null) {
-                            string match = Snapshot.CompareCombo(row, Current, false);
-                            if (match != "Comparable") {
-                                <small class="pinned-match">@match</small>
-                            }
-                        }
                     </li>
                 }
             </ol>
@@ -48,12 +36,6 @@
                         <span>@row.Label</span>
                         <ProbabilityValue Probability="row.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Combo" Index="row.Index" />
                     </div>
-                    @if (Current is not null) {
-                        string match = Snapshot.CompareCombo(row, Current, false);
-                        if (match != "Comparable") {
-                            <small class="pinned-match">@match</small>
-                        }
-                    }
                 </li>
             }
         </ol>
@@ -62,6 +44,5 @@
 
 @code {
     [Parameter, EditorRequired] public PinnedResultSnapshot Snapshot { get; set; } = null!;
-    [Parameter] public PinnedResultSnapshot? Current { get; set; }
     [Parameter] public EventCallback OnClear { get; set; }
 }

@@ -40,6 +40,18 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(copied, Does.Contain("fixed modeled draw/removal policy (v1)").And.Contain("Routes").And.Contain("Target").And.Contain("rational endpoints"));
         await Button(cut, "Pin result").ClickAsync(new());
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.SearchAvailability, Is.SameAs(accepted.SearchAvailability));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Does.Contain("Bounded"));
+        Assert.That(cut.FindAll(".probability-group-members .combo-probability-item"), Is.Not.Empty);
+        Assert.That(cut.FindAll(".probability-ungrouped-combos .combo-probability-item"), Is.Not.Empty);
+        string[] currentUncertainty = cut.FindAll(".probability-results .probability-uncertainty")
+            .Select(element => element.TextContent.Trim())
+            .ToArray();
+        string[] pinnedUncertainty = cut.FindAll(".pinned-result .probability-uncertainty")
+            .Select(element => element.TextContent.Trim())
+            .ToArray();
+        Assert.That(pinnedUncertainty, Is.EqualTo(currentUncertainty));
+        Assert.That(currentUncertainty, Does.Contain("±0%").And.Not.All.EqualTo("±0%"));
+        AssertNoComparisonUi(cut);
         await cut.Find("#handSize").ChangeAsync(new() { Value = "2" });
         AssertPreviousResult(cut);
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.SearchAvailability, Is.SameAs(accepted.SearchAvailability));
@@ -150,7 +162,9 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         await Button(cut, "Calculate opening hand only").ClickAsync(new());
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Exact"));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
-        Assert.That(cut.Find(".comparison-model-difference").TextContent, Does.Contain("different questions"));
+        AssertNoComparisonUi(cut);
+        Assert.That(cut.Find(".result-model").TextContent, Does.Contain(CalculationModel.OpeningHand.Description()));
+        Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.Contain(CalculationModel.Fast.Description()));
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.Exact));
@@ -158,7 +172,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task AdaptiveFastPinsAndCopiesExactAccuracyAndComparesWithExactMode() {
+    public async Task AdaptiveFastPinsAndCopiesExactAccuracyWhenCurrentModeChanges() {
         SessionState session = new() {
             Cards = ThreeCalculationModesTest.Counterexample("discard"), HandSize = 2,
             Categories = [ThreeCalculationModesTest.Target], Combos = ThreeCalculationModesTest.Combos,
@@ -175,7 +189,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         PinnedResultSnapshot pinned = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
         Assert.That(pinned.Contract, Is.SameAs(accepted.Contract));
         Assert.That(pinned.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.Fast));
-        Assert.That(cut.FindAll(".comparison-model-difference"), Is.Empty);
+        AssertNoComparisonUi(cut);
         Assert.That(cut.FindAll(".search-availability"), Is.Empty);
         string copied = ProbabilityResultSummaryFormatter.Format(accepted, 2, CultureInfo.InvariantCulture);
         Assert.That(copied, Does.Contain("Effects — fast").And.Contain("Accuracy: Exact").And.Contain("1/2"));
@@ -197,6 +211,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(exact.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "3")));
         Assert.That(exact.Contract.SolverRoute, Is.EqualTo("SearchPhysicalCountState"));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(fast.Contract));
+        AssertNoComparisonUi(cut);
         Assert.That(cut.FindAll(".probability-results .search-availability"), Is.Empty);
         Assert.That(cut.FindAll(".pinned-result .accuracy-details"), Has.Count.EqualTo(1));
         Assert.That(cut.FindAll(".search-availability table"), Is.Empty);
@@ -209,13 +224,22 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task BoundedRowsNeverDisplayCertifiedPointImprovementsAndCopiedModeIsAccepted() {
+    public async Task BoundedRowsAndPinnedIntervalsKeepStandaloneAccuracyWithoutComparisonText() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(BoundedSession());
         await Button(cut, "Calculate").ClickAsync(new());
         await Button(cut, "Pin result").ClickAsync(new());
         await Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(cut.FindAll(".result-difference"), Is.Empty);
-        Assert.That(cut.Find(".comparison-model-difference").TextContent, Does.Contain("numeric comparison unavailable"));
+        AssertNoComparisonUi(cut);
+        string[] currentUncertainty = cut.FindAll(".probability-results .probability-uncertainty")
+            .Select(element => element.TextContent.Trim())
+            .ToArray();
+        string[] pinnedUncertainty = cut.FindAll(".pinned-result .probability-uncertainty")
+            .Select(element => element.TextContent.Trim())
+            .ToArray();
+        Assert.That(pinnedUncertainty, Is.EqualTo(currentUncertainty));
+        Assert.That(currentUncertainty, Does.Contain("±0%").And.Not.All.EqualTo("±0%"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.Contain("Bounded"));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Does.Contain("Bounded"));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
         await cut.Find("button[title='Copy results']").ClickAsync(new());
         string copied = (string)context.JSInterop.Invocations["copyText"].Last().Arguments[0]!;
@@ -223,14 +247,16 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(copied, Does.Not.Contain("Mode: Effects — exact"));
     }
 
-    [Test]
-    public async Task LegacyRowsWithoutAccuracyMetadataCannotProduceNumericDeltas() {
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(SearchSession());
-        await Button(cut, "Calculate").ClickAsync(new());
-        await Button(cut, "Pin result").ClickAsync(new());
-        PinnedResultSnapshot accepted = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
-        PinnedResultSnapshot legacy = accepted with { Contract = null };
-        Assert.That(legacy.ComparisonStatus(legacy), Does.Contain("Accuracy unavailable"));
-        Assert.That(accepted.CompareComboPresentation(accepted.Combos[0], legacy, true).Difference, Is.Null);
+    private static void AssertNoComparisonUi(IRenderedFragment cut) {
+        Assert.That(cut.FindAll(".comparison-model-difference, .result-difference, .result-row-comparison, .pinned-match, .result-priority-difference"), Is.Empty);
+        Assert.That(cut.Markup, Does.Not.Contain("Uncertain accuracy")
+            .And.Not.Contain("Uncertain search survival: numeric comparison unavailable")
+            .And.Not.Contain("Different question")
+            .And.Not.Contain("Accuracy unavailable")
+            .And.Not.Contain("New route")
+            .And.Not.Contain("Removed or inactive")
+            .And.Not.Contain("Definition changed")
+            .And.Not.Contain("Composition changed")
+            .And.Not.Contain("Comparable"));
     }
 }

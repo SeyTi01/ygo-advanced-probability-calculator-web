@@ -37,7 +37,7 @@ public sealed class GroupedSelectorSessionTest {
     }
 
     [Test]
-    public async Task GroupedSearchCostRemovalShareRecoveryWorkerAndPinsKeepExactExpression() {
+    public async Task GroupedSearchCostRemovalShareRecoveryAndWorkerKeepExactExpression() {
         Card source = SearchEffectsTest.Preset(92221402);
         Card target = SelectorExpressionTest.Target();
         Card draw = new([], id: "draw", drawCount: 1, postDrawDiscardCount: 1,
@@ -59,10 +59,7 @@ public sealed class GroupedSelectorSessionTest {
             Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability, Is.InRange(0, 1));
             Assert.That(snapshot.Json, Does.Contain("LevelAtLeast"));
         }
-        PinnedCalculationContext before = PinnedCalculationContext.Capture(0, 2, state.Cards, state.Combos, [], _ => Guid.Empty, _ => Guid.Empty);
         state.Cards[0] = source.WithSearch(new(CardSelector.AllOfSelectors([SelectorExpressionTest.Compact, CardSelector.LevelAtLeast(6)])));
-        PinnedCalculationContext after = PinnedCalculationContext.Capture(0, 2, state.Cards, state.Combos, [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(before.DeckDefinition, Is.Not.EqualTo(after.DeckDefinition));
         CardInfo info = new() { Id = 92221402, Name = "Chaotic Elements" };
         Assert.That(CardEffectRegistry.Default.CreateImportedCard(info, 1, info.Id).Search!.Selector, Is.EqualTo(SelectorExpressionTest.Compact));
         Assert.That(CardEffectRegistry.Default.ApplyForExplicitSelection(new([]), new([]), info).Search!.Selector, Is.EqualTo(SelectorExpressionTest.Compact));

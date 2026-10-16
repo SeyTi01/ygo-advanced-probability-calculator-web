@@ -69,7 +69,9 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
         AssertPreviousResult(cut);
         Assert.That(Button(cut, "Replace pin with current result").HasAttribute("disabled"), Is.True);
         await Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(cut.Find(".result-priority-difference").TextContent, Does.Contain("differs"));
+        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Custom draw priority"));
+        Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.Not.Contain("Custom draw priority"));
+        Assert.That(cut.FindAll(".result-priority-difference, .result-difference, .result-row-comparison, .pinned-match"), Is.Empty);
         Assert.That(JsonSerializer.Deserialize<CalculationInput>(requests[^1].Json)!.Options!.DrawActivationPriority!.CardIds, Is.EqualTo(new[] { "b", "a" }));
         await Button(cut, "Save Session").ClickAsync(new());
         ISessionService codec = context.Services.GetRequiredService<ISessionService>();

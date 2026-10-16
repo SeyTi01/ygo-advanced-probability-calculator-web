@@ -48,7 +48,7 @@ public class PreDrawSessionTest {
     }
 
     [Test]
-    public void PreDrawImmutableCopiesAndPinnedContextPreserveConfiguration() {
+    public void PreDrawImmutableCopiesPreserveConfiguration() {
         CategoryBase property = new("DARK", CategorySource.Metadata, "attribute:dark");
         Card card = new([], id: "stable", drawCount: 2, preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(property));
         Card manual = card.WithManualMetadataCategory(property);
@@ -68,9 +68,6 @@ public class PreDrawSessionTest {
         Assert.Throws<ArgumentOutOfRangeException>(() => new Card([], preDrawRemovalCount: 1));
         Assert.Throws<ArgumentOutOfRangeException>(() => card.WithPreDrawRemovalCount(3));
         Assert.Throws<ArgumentOutOfRangeException>(() => card.WithPreDrawRemovalCount(-1));
-        PinnedCalculationContext filtered = PinnedCalculationContext.Capture(0, 1, [card], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        PinnedCalculationContext any = PinnedCalculationContext.Capture(0, 1, [card.WithPreDrawSelector(CardSelector.Any)], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(filtered.DeckDefinition, Is.Not.EqualTo(any.DeckDefinition));
     }
 
     [TestCase("\"PreDrawRemovalCount\":null")]

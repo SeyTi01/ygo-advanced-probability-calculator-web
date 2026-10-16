@@ -61,9 +61,6 @@ public class FilteredPostDrawSessionTest {
         Assert.That(card.WithPostDrawDiscardCount(0).PostDrawSelector, Is.EqualTo(CardSelector.Any));
         Assert.Throws<ArgumentException>(() => new Card([], postDrawSelector: card.PostDrawSelector));
         Assert.Throws<ArgumentOutOfRangeException>(() => card.WithPostDrawFailureBehavior((PostDrawFailureBehavior)123));
-        PinnedCalculationContext filtered = PinnedCalculationContext.Capture(0, 1, [card], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        PinnedCalculationContext any = PinnedCalculationContext.Capture(0, 1, [card.WithPostDrawSelector(CardSelector.Any)], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(filtered.DeckDefinition, Is.Not.EqualTo(any.DeckDefinition));
     }
 
     [TestCase("\"PostDrawSelector\":null")]

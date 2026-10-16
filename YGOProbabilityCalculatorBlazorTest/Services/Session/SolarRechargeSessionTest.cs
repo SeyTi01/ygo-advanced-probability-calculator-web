@@ -58,9 +58,6 @@ public class SolarRechargeSessionTest {
         Assert.That(registry.ApplyForExplicitSelection(custom, custom, new() { Id = 70368879 }).PostDrawDeckMillCount, Is.Zero);
         Assert.That(registry.RestoreBuiltIn(custom).EffectPlan, Is.EqualTo(card.EffectPlan));
         Assert.That(registry.Describe(card).Capabilities.HasFlag(EffectCapabilities.HiddenPostDrawMill), Is.True);
-        PinnedCalculationContext before = PinnedCalculationContext.Capture(0, 1, [card], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        PinnedCalculationContext after = PinnedCalculationContext.Capture(0, 1, [custom], [], [], _ => Guid.Empty, _ => Guid.Empty);
-        Assert.That(before.DeckDefinition, Is.Not.EqualTo(after.DeckDefinition));
     }
 
     [TestCase(0), TestCase(1), TestCase(2), TestCase(3), TestCase(4), TestCase(5)]
