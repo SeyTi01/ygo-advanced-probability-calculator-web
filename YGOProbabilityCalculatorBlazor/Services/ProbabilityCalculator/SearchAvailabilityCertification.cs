@@ -78,8 +78,15 @@ internal static class SearchAvailabilityCertification {
                 }
             }
             ExactCalculationResult bound = searchExecution.CalculateLower(combos, groups, declineSearch: false);
-            return Complete(bound, SearchAvailabilityStatus.Bounded,
+            completed = Complete(bound, SearchAvailabilityStatus.Bounded,
                 "Guaranteed interval under the fixed modeled policy; only Deck-search target survival varies.");
+            if (completed.Status != SearchAvailabilityStatus.Exact && searchExecution.CanRefineKnownSourceLoss()) {
+                ExactCalculationResult refined = searchExecution.CalculateLower(combos, groups, declineSearch: false, improve: bound);
+                completed = Complete(refined, SearchAvailabilityStatus.Bounded,
+                    "Guaranteed interval under the fixed modeled policy; consumed draw sources tighten Deck-search target loss bounds.");
+            }
+
+            return completed;
         }
         catch (ProbabilityCalculationLimitException exception) {
             return completed with { Detail = completed.Detail

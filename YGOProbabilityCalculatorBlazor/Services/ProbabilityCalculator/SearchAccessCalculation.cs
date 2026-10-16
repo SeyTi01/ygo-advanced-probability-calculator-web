@@ -102,7 +102,12 @@ internal sealed class SearchAccessCalculation(
 
     // Both passes consume the completed primary distribution. In particular,
     // declining search never dispatches a different draw/retention policy.
-    internal ExactCalculationResult CalculateLower(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool declineSearch) {
+    internal ExactCalculationResult CalculateLower(
+        List<Combo> combos,
+        IReadOnlyList<ComboGroup>? groups,
+        bool declineSearch,
+        ExactCalculationResult? improve = null
+    ) {
         if (_ordered is not null) {
             return _ordered.CalculateSearchLower(combos, groups, declineSearch);
         }
@@ -110,7 +115,9 @@ internal sealed class SearchAccessCalculation(
         budget.Spend((long)Cards.Count * (Effects.Count + 1) + 1);
         List<Card> ordinary = Cards.Where(card => !Effects.Contains(card)).ToList();
         int copies = Cards.Sum(card => card.Copies);
-        ExactProbability[] sums = Enumerable.Repeat(ExactProbability.Zero, 1 + combos.Count + (groups?.Count ?? 0)).ToArray();
+        ExactProbability[] sums = improve is null
+            ? Enumerable.Repeat(ExactProbability.Zero, 1 + combos.Count + (groups?.Count ?? 0)).ToArray()
+            : [improve.Total, .. improve.Combos, .. improve.Groups];
         foreach ((DrawComposition composition, ExactProbability weight) in resolution.Scenarios) {
             budget.Spend(Cards.Count + sums.Length + Effects.Count + 1L);
             List<Card> retained = Effects.Select((card, row) => card.WithCopies(composition.EffectCounts[row]))
@@ -121,18 +128,55 @@ internal sealed class SearchAccessCalculation(
             if (remaining < 0 || lost < 0 || held < 0) {
                 throw new InvalidOperationException("Count-state conservation failed.");
             }
-            ExactCalculationResult lower = new SearchProbabilityCalculation(ordinary, composition.OrdinaryCount,
-                retained, Search, declineSearch ? 0 : remaining, budget, targetLoss: lost).Calculate(combos, groups, false);
+            int[]? losses = improve is null ? null : CountStateLossBudget.For(Cards, Effects, composition, lost, budget);
+            if (losses is not null && !Search.CanImproveLoss(lost, losses)) {
+                continue;
+            }
+            ExactCalculationResult lower = Count(losses);
             ExactProbability[] values = [lower.Total, .. lower.Combos, .. lower.Groups];
+            if (improve is not null) {
+                // Replace only affected conditional contributions. Unaffected
+                // scenarios reuse the completed elementary aggregate; no cache
+                // or second draw distribution is retained. Publish only after
+                // every delta completes, so limits retain the old certificate.
+                ExactCalculationResult previous = Count(null);
+                ExactProbability[] old = [previous.Total, .. previous.Combos, .. previous.Groups];
+                for (int row = 0; row < values.Length; row++) {
+                    values[row] = values[row].Add(new(-old[row].Numerator, old[row].Denominator), budget);
+                }
+            }
             for (int row = 0; row < sums.Length; row++) {
                 sums[row] = sums[row].Add(weight.Multiply(values[row], budget), budget);
             }
             budget.CheckStorage(sums.Length, sums.Sum(value => value.Cells));
+
+            ExactCalculationResult Count(int[]? lossBounds) => new SearchProbabilityCalculation(ordinary, composition.OrdinaryCount,
+                retained, Search, declineSearch ? 0 : remaining, budget, targetLoss: lost, targetLosses: lossBounds)
+                .Calculate(combos, groups, false);
         }
 
         return new(sums[0], sums.Skip(1).Take(combos.Count).ToArray(), sums.Skip(1 + combos.Count).ToArray());
     }
 
+    internal bool CanRefineKnownSourceLoss() {
+        // Ordered/coalesced identities need a different observation proof.
+        if (_resolution is null) {
+            return false;
+        }
+        budget.Spend(Cards.Count + 1L);
+        int copies = Cards.Sum(card => card.Copies);
+        foreach (DrawComposition composition in _resolution.Scenarios.Keys) {
+            budget.Spend(Effects.Count + 1L);
+            int held = composition.OrdinaryCount + composition.EffectCounts.Take(Effects.Count).Sum();
+            int lost = copies - held - composition.EffectCounts[^1];
+            int[] losses = CountStateLossBudget.For(Cards, Effects, composition, lost, budget);
+            if (Search.CanImproveLoss(lost, losses)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 internal interface IDrawTerminal {

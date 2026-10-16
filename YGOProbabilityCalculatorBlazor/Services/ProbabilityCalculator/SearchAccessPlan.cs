@@ -80,7 +80,8 @@ internal sealed class SearchAccessPlan {
         List<Card> rows,
         int capacity,
         int targetLoss = 0,
-        PhysicalSearchScenario? physical = null
+        PhysicalSearchScenario? physical = null,
+        int[]? targetLosses = null
     ) {
         using IDisposable? phase = _budget.SearchDiagnostics?.Measure("assignment compilation");
         ComboEventCompiler compiler = new(_deck, handSize, _budget);
@@ -162,7 +163,7 @@ internal sealed class SearchAccessPlan {
                             // A consumed source never replenishes a deck copy.
                             // For positive fetched counts only: f <= max(0, n-h-D)
                             // iff h <= n-D-f. Empty assignments must remain optional.
-                            int loss = fetched[row] > 0 ? targetLoss : 0;
+                            int loss = fetched[row] > 0 ? targetLosses?[row] ?? targetLoss : 0;
                             if (physical is null) {
                                 valid &= Add(BigInteger.One << row, used[row], _deck[row].Copies - fetched[row] - loss);
                             }
@@ -214,6 +215,19 @@ internal sealed class SearchAccessPlan {
             }
         }
     }
+
+    internal bool CanImproveLoss(int elementary, int[] losses) {
+        foreach ((int _, int[] targets) in _sources) {
+            foreach (int target in targets) {
+                _budget.Spend(1);
+                if (losses[target] < elementary && losses[target] < _deck[target].Copies) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }
 
 // Conditional uniform final-hand pools supplied by the unchanged draw resolver.
@@ -227,7 +241,8 @@ internal sealed class SearchProbabilityCalculation(
     int capacity,
     WorkBudget budget,
     List<SearchHandPool>? pools = null,
-    int targetLoss = 0
+    int targetLoss = 0,
+    int[]? targetLosses = null
 ) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         using IDisposable? scenario = budget.SearchDiagnostics?.Measure("search scenarios");
@@ -238,7 +253,7 @@ internal sealed class SearchProbabilityCalculation(
         List<Card> ordered = random.OrderByDescending(card => card.Search is not null).ToList();
         int size = randomCount + retained.Sum(card => card.Copies);
         List<Card> rows = [.. ordered, .. retained];
-        List<List<CompiledEvent?>> events = search.Compile(combos, size, rows, capacity, targetLoss);
+        List<List<CompiledEvent?>> events = search.Compile(combos, size, rows, capacity, targetLoss, targetLosses: targetLosses);
         if (pools is not null) {
             List<CountBound> conditions = [];
             foreach (SearchHandPool pool in pools) {
