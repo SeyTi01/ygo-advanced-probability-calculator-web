@@ -46,6 +46,10 @@ async function main() {
             }
             const obsolete = structuredClone(fixtures[0].Input); obsolete.Options = { CertifySearchAvailability: false };
             values.obsolete = await run(obsolete);
+            const exactInput = structuredClone(fixtures.find(fixture => fixture.Name === 'exact-unsupported').Input);
+            const limitedInput = structuredClone(exactInput); limitedInput.WorkUnits = 500;
+            values.limited = await run(limitedInput);
+            values.recovered = await run(exactInput);
             worker.terminate();
             return values;
         }, fixtures);
@@ -63,9 +67,13 @@ async function main() {
         assert.equal(workerChecks.consumed.Result.Contract.Accuracy, 1);
         assert.deepEqual(workerChecks.consumed.Result.SearchAvailability.Combos[0].Lower, { Numerator: '1', Denominator: '3' });
         assert.equal(workerChecks.discard.Result.Contract.Accuracy, 2);
-        assert.equal(workerChecks['exact-unsupported'].Result, null);
-        assert.equal(workerChecks['exact-unsupported'].FailureKind, 3);
+        assert.deepEqual(workerChecks['exact-unsupported'].Result.Contract.Fractions.Combos[0], { Numerator: '1', Denominator: '2' });
+        assert.equal(workerChecks['exact-unsupported'].Result.Contract.SolverRoute, 'SearchPhysicalFrontier');
         for (const name of ['bad-999', 'bad-Exact', 'bad-null', 'obsolete']) assert.equal(workerChecks[name].FailureKind, 1, name);
+        assert.equal(workerChecks.limited.Result, null);
+        assert.equal(workerChecks.limited.Contract.Completion, 2);
+        assert.equal(workerChecks.limited.Contract.Fractions, undefined);
+        assert.deepEqual(workerChecks.recovered.Result.Contract.Fractions.Combos[0], { Numerator: '1', Denominator: '2' });
         let sequence = 0;
         async function load(name) {
             const session = structuredClone(fixtures.find(value => value.Name === name).Session);
@@ -114,17 +122,16 @@ async function main() {
         await page.getByRole('button', { name: 'Pin result', exact: true }).click();
         await mode('Exact');
         await calculate();
-        assert.match(await page.locator('[role=alert]').innerText(), /Unsupported exact calculation/);
-        assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Uncertified/);
+        assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
         assert.match(await page.locator('.pinned-result .result-accuracy').innerText(), /Uncertified/);
-        await page.locator('.result-comparison').screenshot({ path: path.join(evidence, 'unsupported-pinned-desktop.png') });
-        await page.getByRole('button', { name: 'Calculate opening hand only', exact: true }).click();
-        await page.waitForFunction(() => document.querySelector('.probability-results .result-accuracy')?.textContent.includes('Opening hand only'));
-        assert.equal(await page.locator('#calculationModel').inputValue(), 'Exact');
+        await page.locator('.result-comparison').screenshot({ path: path.join(evidence, 'enumerated-pinned-desktop.png') });
+        await mode('OpeningHand');
+        await calculate();
         assert.equal(await page.locator('.probability-results .search-availability').count(), 0);
         assert.equal(await page.locator('.result-difference').count(), 0);
+        await mode('Exact');
         await calculate();
-        assert.match(await page.locator('[role=alert]').innerText(), /Unsupported exact calculation/);
+        assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
         await page.getByRole('button', { name: 'Unpin result', exact: true }).click();
         await load('exact-mill2');
         await calculate();

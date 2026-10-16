@@ -103,7 +103,17 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task UnsupportedExactPreservesAcceptedResultAndPinAndRecoveryKeepsExactPreference() {
+    public async Task LimitedExactPreservesAcceptedResultAndPinAndRecoveryKeepsExactPreference() {
+        Mock<IBackgroundCalculator> worker = new();
+        int exactCalls = 0;
+        worker.Setup(value => value.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
+            .Returns((CalculationSnapshot snapshot, CancellationToken token) => {
+                if (snapshot.RequestedMode == CalculationModel.Exact && ++exactCalls == 1) {
+                    return Task.FromException<ProbabilityCalculationResult>(new ProbabilityCalculationLimitException());
+                }
+                return Task.FromResult(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
+            });
+        context.Services.AddSingleton(worker.Object);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = ThreeCalculationModesTest.Counterexample("discard"), HandSize = 2,
             Categories = [ThreeCalculationModesTest.Target], Combos = ThreeCalculationModesTest.Combos, ComboGroups = ThreeCalculationModesTest.Groups });
         await Button(cut, "Calculate").ClickAsync(new());
@@ -111,7 +121,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
         await Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("Unsupported exact calculation"));
+        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("work"));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(accepted));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(accepted.Contract));
         Assert.That(ProbabilityResultSummaryFormatter.Format(accepted, 1, CultureInfo.InvariantCulture),
@@ -122,8 +132,8 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".comparison-model-difference").TextContent, Does.Contain("different questions"));
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
         await Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("Unsupported exact calculation"));
-        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
+        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.Exact));
+        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "2")));
     }
 
     [Test]

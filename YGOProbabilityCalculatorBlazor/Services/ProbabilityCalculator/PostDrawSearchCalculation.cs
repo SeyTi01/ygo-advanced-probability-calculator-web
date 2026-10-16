@@ -23,12 +23,19 @@ internal sealed partial class PostDrawCalculation {
         }
     }
 
-    internal ExactCalculationResult CalculateSearch(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly, SearchAccessPlan search) {
-        List<Card> cards = ReduceSearchDeck(combos, out Dictionary<string, List<Card>> identities);
+    internal ExactCalculationResult CalculateSearch(
+        List<Combo> combos,
+        IReadOnlyList<ComboGroup>? groups,
+        bool totalOnly,
+        SearchAccessPlan search,
+        bool physical = false,
+        PhysicalEnumerationMethod method = PhysicalEnumerationMethod.Auto
+    ) {
+        List<Card> cards = ReduceSearchDeck(combos, out Dictionary<string, List<Card>> identities, merge: !physical);
         // Only removable searchers need policy target counts. Unrelated targets
         // can still join the deferred pool when no removal can observe them.
         HashSet<string> observed = SearchPolicyObservedRows(cards);
-        List<Card> deferred = deferIdentities ? DeferUnobservedIdentities(ref cards, observed) : [];
+        List<Card> deferred = !physical && deferIdentities ? DeferUnobservedIdentities(ref cards, observed) : [];
         Route = deferred.Count > 0 ? SolverRoute.SearchOrderedDeferred : SolverRoute.SearchOrdered;
         int n = cards.Count;
         bool customPriority = priority?.Mode == DrawActivationMode.CustomPriority;
@@ -108,6 +115,10 @@ internal sealed partial class PostDrawCalculation {
             costEligibility,
             new SearchKeepPolicy(cards, relevant, budget)
         );
+        if (physical) {
+            return CountPhysicalSearch(cards, layout, resolver, factorial, combos, groups, totalOnly, method);
+        }
+
         Dictionary<State, BigInteger> terminal = resolver.Resolve<SearchTerminal>(handSize, copies, factorial, compactFrontierThreshold);
         TerminalStates = terminal.Count;
 
@@ -119,7 +130,7 @@ internal sealed partial class PostDrawCalculation {
         return CountSearchHands(cards, pools, terminal, factorial[copies], combos, groups, totalOnly, search);
     }
 
-    private List<Card> ReduceSearchDeck(List<Combo> combos, out Dictionary<string, List<Card>> identities) {
+    private List<Card> ReduceSearchDeck(List<Combo> combos, out Dictionary<string, List<Card>> identities, bool merge = true) {
         // Canonical tie order: membership bit string for ordinal category identities,
         // then ordinal direct-card IDs (including maximum-only selectors), ordinary
         // before effect, then ordinal Card.Id, then earlier encounter within an ID.
@@ -184,7 +195,7 @@ internal sealed partial class PostDrawCalculation {
             string? previousEligibility = null;
             foreach ((Card card, string _, string eligibility) in group.Where(entry => entry.Card.DrawCount is null)
                 .OrderBy(entry => entry.Card.Id, StringComparer.Ordinal)) {
-                if (card.Search is null && reduced.Count > 0 && reduced[^1].Search is null && eligibility == previousEligibility) {
+                if (merge && card.Search is null && reduced.Count > 0 && reduced[^1].Search is null && eligibility == previousEligibility) {
                     identities[reduced[^1].Id].Add(card);
                     reduced[^1] = reduced[^1].WithCopies(checked(reduced[^1].Copies + card.Copies));
                 }

@@ -48,8 +48,11 @@ internal sealed class SearchAccessCalculation(
             _targetLossReason = reason;
             if (!CalculationCapability.ProvesSearchSurvival(reason)) {
                 if (!countState) {
-                    throw new UnsupportedExactCalculationException(CalculationResultContract.Failure(
-                        CalculationModel.Exact, CalculationCompletion.Unsupported, CalculationCapability.Explain(reason)));
+                    PostDrawCalculation fallback = new(cards, handSize, budget, priority);
+                    ExactCalculationResult enumerated = fallback.CalculateSearch(combos, groups, totalOnly, search, physical: true);
+                    _capability = new(fallback.Route, PhysicalSearchAccuracy.ProvenExact,
+                        CapabilityReason.ExplicitPhysicalSurvivors, CertificationSupport.ReusePrimary);
+                    return enumerated;
                 }
                 ExactCalculationResult result = new PhysicalSearchCalculation(cards, effects, handSize, search, budget)
                     .Calculate(combos, groups, totalOnly);
