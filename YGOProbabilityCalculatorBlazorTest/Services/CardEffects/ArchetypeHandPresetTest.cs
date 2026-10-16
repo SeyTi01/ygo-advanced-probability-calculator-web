@@ -81,7 +81,7 @@ public sealed class ArchetypeHandPresetTest {
     }
 
     [Test]
-    public void ArchetypePredicatesRequireObjectiveMetadataAndHonorPrintedNameExclusions() {
+    public void ArchetypePredicatesRequireObjectiveMetadataAndHonorCanonicalIdentityExclusions() {
         CardEffectRegistry registry = CreateRegistry();
         SearchEffectPlan Search(int id) => registry.Find(id)!.Plan.Search!;
 
@@ -124,6 +124,26 @@ public sealed class ArchetypeHandPresetTest {
         AssertMatches(Search(38943357), Metadata(39910367, "kind:spell", "archetype:spellcaster"), false);
     }
 
+    [TestCase(63166095, "archetype:sky%20striker", "kind:spell")]
+    [TestCase(56506740, "archetype:primite", "kind:spell")]
+    [TestCase(42544773, "archetype:magistus", "kind:monster")]
+    public void SelfExclusionUsesCanonicalIdentityWithoutResolvedNames(int id, string archetype, string kind) {
+        ICardEffectDefinition[] definitions = [
+            new SkyStrikerMobilizeEngageEffect(),
+            new PrimiteLordlyLodeEffect(),
+            new SpentaTheMagistusSealerEffect()
+        ];
+        ICardEffectDefinition definition = definitions.Single(effect => effect.CanonicalCardId == id);
+        SearchEffectPlan search = definition.Compile().Search!;
+        Card sameIdentity = Metadata(id, archetype, kind).WithName("Edited name");
+        Card differentIdentity = Metadata(99999999, archetype, kind, CardNameKey(definition.Name));
+
+        Assert.Multiple(() => {
+            AssertMatches(search, sameIdentity, false, "Canonical identity excludes the source without resolved-name metadata.");
+            AssertMatches(search, differentIdentity, true, "Shared resolved names do not exclude a different canonical identity.");
+        });
+    }
+
     [Test]
     public void HandSelectorsRejectMissingIdentityManualMetadataAndUserCategoryProxies() {
         CardEffectRegistry registry = CreateRegistry();
@@ -151,7 +171,7 @@ public sealed class ArchetypeHandPresetTest {
     private static Card Metadata(int id, params string[] keys) => Metadata(id, keys, null);
 
     private static Card Metadata(int id, string[] keys, string? name) => new(
-        keys.Select(key => new CategoryBase(key, CategorySource.Metadata, key)),
+        keys.Append("catalog-id:" + id).Select(key => new CategoryBase(key, CategorySource.Metadata, key)),
         name: name,
         externalCardId: id);
 

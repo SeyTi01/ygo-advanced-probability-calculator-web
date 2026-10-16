@@ -13,6 +13,6 @@ public sealed class PrimiteLordlyLodeEffect : ICardEffectDefinition {
     public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(CardSelector.AllOfSelectors([
             new(CardSelectorKind.Category, ["metadata:archetype:primite"]),
-            CardSelector.Not(CardSelector.CatalogName("Primite Lordly Lode"))
+            CardSelector.Not(CardSelector.CatalogIdentity(56506740))
         ])));
 }
