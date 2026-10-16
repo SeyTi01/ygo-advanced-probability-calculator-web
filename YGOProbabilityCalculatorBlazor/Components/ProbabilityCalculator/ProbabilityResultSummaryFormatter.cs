@@ -19,7 +19,7 @@ public static class ProbabilityResultSummaryFormatter {
         List<string> lines = [
             "Probability results",
             $"Hand size: {handSize}",
-            $"Any active combo: {FormatProbability(result.TotalProbability, culture)}"
+            $"Any active combo: {Display(result.TotalProbability, ProbabilityRow.Total)}"
         ];
 
         if (result.Contract is { } contract) {
@@ -31,15 +31,16 @@ public static class ProbabilityResultSummaryFormatter {
                 "Effect scope: " + contract.Scope
             ]);
             if (contract.Accuracy != CalculationAccuracy.Exact) {
-                lines.Add("Displayed points are optimistic modeled values; no midpoint estimate.");
+                lines.Add(ProbabilityPresentation.Legend);
             }
-            if (contract.Fractions is { } fractions) {
-                lines.Add($"Exact modeled fraction, any active combo: {Ratio(fractions.Total)}");
+            if (contract.Accuracy != CalculationAccuracy.Bounded && contract.Fractions is { } fractions) {
+                string fractionLabel = contract.Accuracy == CalculationAccuracy.Exact ? "Exact modeled fraction" : "Modeled primary fraction";
+                lines.Add($"{fractionLabel}, any active combo: {Ratio(fractions.Total)}");
                 for (int index = 0; index < fractions.Combos.Length; index++) {
-                    lines.Add($"Modeled fraction, combo {index + 1}: {Ratio(fractions.Combos[index])}");
+                    lines.Add($"{fractionLabel}, combo {index + 1}: {Ratio(fractions.Combos[index])}");
                 }
                 for (int index = 0; index < fractions.Groups.Length; index++) {
-                    lines.Add($"Modeled fraction, group {index + 1}: {Ratio(fractions.Groups[index])}");
+                    lines.Add($"{fractionLabel}, group {index + 1}: {Ratio(fractions.Groups[index])}");
                 }
             }
         }
@@ -47,46 +48,47 @@ public static class ProbabilityResultSummaryFormatter {
         if (groups.Count == 0) {
             lines.Add(string.Empty);
             lines.Add("Individual combos:");
-            lines.AddRange(result.ComboProbabilities.Select(combo => FormatCombo(combo, culture)));
+            lines.AddRange(result.ComboProbabilities.Select(combo => FormatCombo(combo)));
         }
         else {
             lines.Add(string.Empty);
             lines.Add("Group probabilities:");
 
             foreach (GroupProbabilityResult group in groups) {
-                lines.Add($"- **{NormalizeLabel(group.GroupName)}** — {FormatProbability(group.Probability, culture)} ({group.ActiveComboCount} active)");
+                lines.Add($"- **{NormalizeLabel(group.GroupName)}** — {Display(group.Probability, ProbabilityRow.Group, ProbabilityPresentation.GroupIndex(groups, group.GroupId))} ({group.ActiveComboCount} active)");
                 IEnumerable<ComboProbabilityResult> groupCombos = result.ComboProbabilities.Where(combo => StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId));
 
                 foreach (ComboProbabilityResult combo in groupCombos) {
-                    lines.Add(FormatCombo(combo, culture, indent: "  "));
+                    lines.Add(FormatCombo(combo, "  "));
                 }
             }
 
             if (ungrouped.Count > 0) {
                 lines.Add(string.Empty);
                 lines.Add("Ungrouped combos:");
-                lines.AddRange(ungrouped.Select(combo => FormatCombo(combo, culture)));
+                lines.AddRange(ungrouped.Select(combo => FormatCombo(combo)));
             }
         }
 
         if (result.SearchAvailability is { } certificate) {
             lines.Add(string.Empty);
-            lines.AddRange(SearchAvailabilityPresentation.Export(certificate));
+            lines.Add($"Certification: {certificate.Status}. {certificate.Detail}");
         }
 
         return string.Join('\n', lines);
+
+        string Display(double primary, ProbabilityRow row, int index = 0) {
+            ProbabilityDisplay display = ProbabilityPresentation.Create(primary, result.Contract, result.SearchAvailability, row, index, culture);
+
+            return display.Summary + (display.Evidence is { } evidence ? $" ({evidence})" : "");
+        }
+
+        string FormatCombo(ComboProbabilityResult combo, string indent = "") {
+            string name = string.IsNullOrWhiteSpace(combo.ComboName) ? $"Unnamed combo {combo.ComboIndex + 1}" : combo.ComboName;
+
+            return $"{indent}- **{NormalizeLabel(name)}** — {Display(combo.Probability, ProbabilityRow.Combo, combo.ComboIndex)}";
+        }
     }
-
-    private static string FormatCombo(ComboProbabilityResult combo, CultureInfo culture, string indent = "") {
-        string? name = string.IsNullOrWhiteSpace(combo.ComboName)
-            ? $"Unnamed combo {combo.ComboIndex + 1}"
-            : combo.ComboName;
-
-        return $"{indent}- **{NormalizeLabel(name)}** — {FormatProbability(combo.Probability, culture)}";
-    }
-
-    private static string FormatProbability(double probability, CultureInfo culture) =>
-        probability.ToString("P2", culture);
 
     private static string Ratio(ProbabilityFraction fraction) => $"{fraction.Numerator}/{fraction.Denominator}";
 

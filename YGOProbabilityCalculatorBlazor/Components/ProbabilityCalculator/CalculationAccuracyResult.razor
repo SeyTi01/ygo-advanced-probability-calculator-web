@@ -1,21 +1,28 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 
-@if (Contract is { } contract) {
-    <p class="small mb-2 result-accuracy" role="status">
-        @contract.ExecutedMode.Description() · @contract.Accuracy
-        @if (contract.Accuracy == CalculationAccuracy.Exact) {
-            <span> — @(contract.Scope == CalculationRuleScope.OpeningHand ? "dealt hand; effects ignored" : "within saved effects and fixed policy")</span>
-        }
-        else {
-            <span> — optimistic modeled values</span>
-        }
-    </p>
-    @if (contract.Accuracy == CalculationAccuracy.Uncertified) {
-        <p class="small text-body-secondary mb-2">@contract.Reason</p>
+<p class="small mb-2 result-accuracy" role="status">
+    @if (Contract is { } contract) {
+        @contract.ExecutedMode.Description()<span> · @(contract.Accuracy?.ToString() ?? "Uncertified") — @(contract.Scope == CalculationRuleScope.OpeningHand ? "dealt hand; effects ignored" : "saved effects and fixed policy")</span>
     }
-}
+    else {
+        <span>Uncertified · accuracy unavailable</span>
+    }
+</p>
+<details class="accuracy-details small mb-2">
+    <summary>Accuracy details</summary>
+    <p class="mt-2 mb-1">@ProbabilityPresentation.Legend</p>
+    <p class="mb-1">Exactness and bounds apply only to the stated model and physical Main Deck-search survival, not full gameplay or optimal play. Focus a probability for its range and original fraction.</p>
+    @if (Contract is { } accepted) {
+        <p class="mb-1">@accepted.Reference</p>
+        <p class="mb-1">@accepted.Reason</p>
+    }
+    @if (Certificate is { } certificate) {
+        <p class="mb-1">Certification @certificate.Status: @certificate.Detail</p>
+    }
+</details>
 
 @code {
     [Parameter] public CalculationResultContract? Contract { get; set; }
+    [Parameter] public SearchAvailabilityCertificate? Certificate { get; set; }
 }

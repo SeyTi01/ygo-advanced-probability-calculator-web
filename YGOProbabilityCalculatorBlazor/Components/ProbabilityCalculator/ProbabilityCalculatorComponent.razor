@@ -233,8 +233,8 @@
                                              IsStale="_calculationResultIsStale"
                                              IsCalculating="_isCalculating" />
                 </div>
-                <CalculationAccuracyResult Contract="result.Contract" />
-                <SearchAvailabilityResult Certificate="result.SearchAvailability" />
+                <CalculationAccuracyResult Contract="result.Contract" Certificate="result.SearchAvailability" />
+
                 @if (_acceptedComparison is { } accepted) {
                     <p class="small text-body-secondary mb-2 result-model">@accepted.Context.Description</p>
                     @if (_pinnedResult is { } priorityPin && priorityPin.Context.DrawPriorityDefinition != accepted.Context.DrawPriorityDefinition) {
@@ -253,7 +253,7 @@
                 <div class="combo-probability-row probability-total">
                     <span class="combo-probability-name">Any active combo</span>
                     <div class="comparison-value result-value-group">
-                        <strong class="combo-probability-value probability-total-value">@result.TotalProbability.ToString("P2")</strong>
+                        <ProbabilityValue Probability="result.TotalProbability" Contract="result.Contract" Certificate="result.SearchAvailability" ValueClass="probability-total-value" />
                         @if (totalDifference is { } difference) {
                             <small class="result-difference @difference.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {difference.Text}")">@difference.Text</small>
                         }
@@ -281,7 +281,7 @@
                                         @group.GroupName <small class="text-body-secondary fw-normal">(@group.ActiveComboCount active)</small>
                                     </span>
                                     <span class="result-value-group">
-                                        <strong class="combo-probability-value">@group.Probability.ToString("P2")</strong>
+                                        <ProbabilityValue Probability="group.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Group" Index="@ProbabilityPresentation.GroupIndex(result.GroupProbabilities, group.GroupId)" />
                                         @if (groupComparison?.Difference is { } groupDelta) {
                                             <small class="result-difference @groupDelta.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {groupDelta.Text}")">@groupDelta.Text</small>
                                         }
@@ -298,7 +298,7 @@
                                                 <div class="combo-probability-row">
                                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
                                                     <span class="result-value-group">
-                                                        <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
+                                                        <ProbabilityValue Probability="comboResult.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Combo" Index="comboResult.ComboIndex" />
                                                         @if (comboComparison?.Difference is { } groupedComboDelta) {
                                                             <small class="result-difference @groupedComboDelta.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {groupedComboDelta.Text}")">@groupedComboDelta.Text</small>
                                                         }
@@ -324,7 +324,7 @@
                                 <div class="combo-probability-row">
                                     <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
                                     <span class="result-value-group">
-                                        <strong class="combo-probability-value">@comboResult.Probability.ToString("P2")</strong>
+                                        <ProbabilityValue Probability="comboResult.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Combo" Index="comboResult.ComboIndex" />
                                         @if (comboComparison?.Difference is { } ungroupedComboDelta) {
                                             <small class="result-difference @ungroupedComboDelta.CssClass" title="Absolute change from pinned result" aria-label="@($"Absolute change from pinned result: {ungroupedComboDelta.Text}")">@ungroupedComboDelta.Text</small>
                                         }

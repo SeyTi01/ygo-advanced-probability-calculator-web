@@ -4,16 +4,16 @@
         <button type="button" class="btn btn-sm btn-outline-secondary" title="Unpin result" aria-label="Unpin result" @onclick="OnClear"><PinIcon Slashed="true" /></button>
     </div>
     <p class="small text-body-secondary mb-2">@Snapshot.Context.Description</p>
-    <CalculationAccuracyResult Contract="Snapshot.Contract" />
-    <SearchAvailabilityResult Certificate="Snapshot.SearchAvailability" />
+    <CalculationAccuracyResult Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" />
+
     <div class="pinned-row pinned-total">
-        <span>Any active combo</span><strong>@Snapshot.Total.ToString("P2")</strong>
+        <span>Any active combo</span><ProbabilityValue Probability="Snapshot.Total" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" ValueClass="probability-total-value" />
     </div>
     @foreach (PinnedGroupRow group in Snapshot.Groups) {
         <section class="pinned-group">
             <h6 class="pinned-row">
                 <span>@group.Label <small class="text-body-secondary fw-normal">(@group.ActiveCount active)</small></span>
-                <strong>@group.Probability.ToString("P2")</strong>
+                <ProbabilityValue Probability="group.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Group" Index="@Snapshot.Groups.IndexOf(group)" />
             </h6>
             @if (Current is not null) {
                 string groupMatch = Snapshot.CompareGroup(group, Current, false);
@@ -26,7 +26,7 @@
                     <li>
                         <div class="pinned-row">
                             <span>@row.Label</span>
-                            <strong>@row.Probability.ToString("P2")</strong>
+                            <ProbabilityValue Probability="row.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Combo" Index="row.Index" />
                         </div>
                         @if (Current is not null) {
                             string match = Snapshot.CompareCombo(row, Current, false);
@@ -46,7 +46,7 @@
                 <li>
                     <div class="pinned-row">
                         <span>@row.Label</span>
-                        <strong>@row.Probability.ToString("P2")</strong>
+                        <ProbabilityValue Probability="row.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Combo" Index="row.Index" />
                     </div>
                     @if (Current is not null) {
                         string match = Snapshot.CompareCombo(row, Current, false);

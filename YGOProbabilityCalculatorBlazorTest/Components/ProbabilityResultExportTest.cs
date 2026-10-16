@@ -80,9 +80,9 @@ public class ProbabilityResultExportTest {
         Assert.That(summary, Does.Contain("Hand size: 6"));
         Assert.That(summary, Does.Contain("Any active combo: 87.00%"));
         Assert.That(Occurrences(summary, "**Route group**"), Is.EqualTo(2));
-        Assert.That(summary, Does.Contain("**Route group** — 61.00% (1 active)\n  - **Second group route** — 40.00%"));
-        Assert.That(summary, Does.Contain("**Route group** — 50.00% (2 active)\n  - **Same route** — 75.00%\n  - **Same route** — 50.00%"));
-        Assert.That(summary, Does.Contain("**Empty group** — 0.00% (0 active)"));
+        Assert.That(summary, Does.Contain("**Route group** — 61.00% ⚠ Uncertified (1 active)\n  - **Second group route** — 40.00%"));
+        Assert.That(summary, Does.Contain("**Route group** — 50.00% ⚠ Uncertified (2 active)\n  - **Same route** — 75.00% ⚠ Uncertified\n  - **Same route** — 50.00%"));
+        Assert.That(summary, Does.Contain("**Empty group** — 0.00% ⚠ Uncertified (0 active)"));
         Assert.That(summary, Does.Contain("Ungrouped combos:\n- **Orphan route** — 25.00%"));
         Assert.That(summary.IndexOf("Second group route", StringComparison.Ordinal), Is.LessThan(summary.IndexOf("Same route", StringComparison.Ordinal)));
         Assert.That(summary.IndexOf("Empty group", StringComparison.Ordinal), Is.LessThan(summary.IndexOf("Orphan route", StringComparison.Ordinal)));
@@ -328,7 +328,7 @@ public class ProbabilityResultExportTest {
         _clipboard.Copy = _ => pending.Task;
         IRenderedComponent<ProbabilityResultExport> cut = Render(Result(.42, "Old route"), handSize: 5, isStale: true);
         Task action = cut.Find("button").ClickAsync(new());
-        string probability = .42.ToString("P2", CultureInfo.CurrentCulture);
+        string probability = .42.ToString("P2", CultureInfo.CurrentCulture) + " ⚠ Uncertified";
         string expected = $"Previous result — current inputs have changed.\nProbability results\nHand size: 5\nAny active combo: {probability}\n\nIndividual combos:\n- **Old route** — {probability}";
         Assert.That(_clipboard.LastCopiedText, Is.EqualTo(expected));
         // Re-rendering an unchanged historical snapshot must not invalidate its copy feedback.
@@ -538,14 +538,14 @@ public class ProbabilityResultExportTest {
     private static string ExpectedGermanSummary() => string.Join('\n', new[] {
         "Probability results",
         "Hand size: 5",
-        "Any active combo: 83,61 %",
+        "Any active combo: 83,61 % ⚠ Uncertified",
         "",
         "Group probabilities:",
-        "- **Full VS** — 61,07 % (6 active)",
-        "  - **VS Starter + Fire** — 26,05 %",
-        "- **Full K9** — 48,84 % (3 active)",
-        "  - **K9 Starter + Lv. 5** — 48,02 %",
-        "  - **Izuna + Sue + 2 x Lv. 5** — 2,50 %"
+        "- **Full VS** — 61,07 % ⚠ Uncertified (6 active)",
+        "  - **VS Starter + Fire** — 26,05 % ⚠ Uncertified",
+        "- **Full K9** — 48,84 % ⚠ Uncertified (3 active)",
+        "  - **K9 Starter + Lv. 5** — 48,02 % ⚠ Uncertified",
+        "  - **Izuna + Sue + 2 x Lv. 5** — 2,50 % ⚠ Uncertified"
     });
 
     private static ProbabilityCalculationResult Result(double total, string comboName) =>

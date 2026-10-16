@@ -111,8 +111,15 @@ async function main() {
         await page.locator('#calculationModel').press('Escape');
         await calculate();
         assert.match(await page.locator('.result-accuracy').innerText(), /Effects — fast.*Bounded/);
-        await page.locator('.search-availability summary').click();
-        assert.match(await page.locator('.search-availability').innerText(), /width.*pp/);
+        await page.locator('.probability-results .accuracy-details summary').click();
+        assert.equal(await page.locator('.probability-results table').count(), 0);
+        assert.match(await page.locator('.probability-results .probability-uncertainty').first().innerText(), /±/);
+        const boundedTargetRow = page.locator('.combo-probability-item').first();
+        assert.equal(await boundedTargetRow.locator('.probability-uncertainty').innerText(), '±8.34%');
+        await boundedTargetRow.locator('.probability-with-accuracy').focus();
+        assert.equal(await boundedTargetRow.locator('.probability-proof').isVisible(), true);
+        assert.match(await boundedTargetRow.locator('.probability-proof').innerText(), /\[1\/3, 1\/2\]/);
+        await page.keyboard.press('Tab');
         await page.getByRole('button', { name: 'Pin result', exact: true }).click();
         await mode('Exact');
         await page.locator('button[title="Copy results"]').click();
@@ -140,6 +147,7 @@ async function main() {
         await page.locator('.result-comparison').screenshot({ path: path.join(evidence, 'enumerated-pinned-desktop.png') });
         await mode('OpeningHand');
         await calculate();
+        assert.deepEqual(await page.locator('.probability-results .probability-uncertainty').allTextContents(), Array(await page.locator('.probability-results .probability-uncertainty').count()).fill('±0%'));
         assert.equal(await page.locator('.probability-results .search-availability').count(), 0);
         assert.equal(await page.locator('.result-difference').count(), 0);
         await mode('Exact');
@@ -150,13 +158,12 @@ async function main() {
         await calculate();
         assert.match(await page.locator('.result-accuracy').innerText(), /Effects — exact.*Exact/);
         await page.locator('.probability-results').screenshot({ path: path.join(evidence, 'exact-desktop.png') });
-        for (const width of [375, 320]) {
+        for (const width of [320, 375, 390, 768, 1440]) {
             await page.setViewportSize({ width, height: 900 });
             for (const theme of ['light', 'dark']) {
                 await page.emulateMedia({ colorScheme: theme });
                 await load('consumed');
                 await calculate();
-                await page.locator('.search-availability summary').click();
                 await page.getByRole('button', { name: 'Pin result', exact: true }).click();
                 assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}/${theme} page overflow`);
                 await page.locator('.result-comparison').screenshot({ path: path.join(evidence, `bounded-pins-${width}-${theme}.png`) });
@@ -176,6 +183,14 @@ async function main() {
         await load('discard'); await calculate();
         assert.match(await page.locator('.result-accuracy').innerText(), /Effects — fast.*Exact/);
         assert.equal(await page.locator('.search-availability').count(), 0);
+        const targetRow = page.locator('.combo-probability-item').first();
+        assert.match(await targetRow.locator('.combo-probability-value').innerText(), /50\.00\s*%/);
+        assert.equal(await targetRow.locator('.probability-uncertainty').innerText(), '±0%');
+        await targetRow.locator('.probability-with-accuracy').focus();
+        assert.equal(await targetRow.locator('.probability-proof').isVisible(), true);
+        assert.match(await targetRow.locator('.probability-proof').innerText(), /1\/2/);
+        await page.keyboard.press('Tab');
+
         await load('count-state');
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
@@ -197,6 +212,7 @@ async function main() {
             assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
             await page.locator('.probability-results').screenshot({ path: path.join(evidence, 'enumeration-recovered-mobile.png') });
         }
+        await page.setViewportSize({ width: 320, height: 900 });
         const weak = structuredClone(fixtures.find(fixture => fixture.Name === 'consumed'));
         weak.Name = 'uninformative';
         weak.Session.HandSize = 2;
@@ -214,11 +230,11 @@ async function main() {
         await load('uninformative');
         await calculate();
         assert.match(await page.locator('.result-accuracy').innerText(), /Effects — fast.*Bounded/);
-        await page.locator('.search-availability summary').click();
-        assert.match(await page.locator('.search-availability summary').innerText(), /uninformative/);
-        assert.match(await page.locator('.search-availability tbody tr').filter({ hasText: 'Impossible' }).innerText(), /exact/);
+        await page.locator('.probability-results .accuracy-details summary').click();
+        assert.equal(await page.locator('.probability-results .probability-uninformative').count() > 0, true);
+        assert.equal(await page.locator('.combo-probability-item').filter({ hasText: 'Impossible' }).locator('.probability-uncertainty').innerText(), '±0%');
         await page.locator('button[title="Copy results"]').click();
-        assert.match(await page.evaluate(() => copiedResults.at(-1)), /\(uninformative\)/);
+        assert.match(await page.evaluate(() => copiedResults.at(-1)), /Uninformative/);
         await page.getByRole('button', { name: 'Pin result', exact: true }).click();
         await mode('Exact');
         await calculate();

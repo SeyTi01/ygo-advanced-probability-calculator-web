@@ -23,7 +23,7 @@ public static class SearchAvailabilityPresentation {
         BigInteger upperN = BigInteger.Parse(interval.Upper.Numerator, CultureInfo.InvariantCulture);
         BigInteger upperD = BigInteger.Parse(interval.Upper.Denominator, CultureInfo.InvariantCulture);
         return Percent(new((upperN * lowerD - lowerN * upperD).ToString(CultureInfo.InvariantCulture),
-            (upperD * lowerD).ToString(CultureInfo.InvariantCulture)), true) + " pp";
+            (upperD * lowerD).ToString(CultureInfo.InvariantCulture)), true) + "%";
     }
 
     // Six decimal places, rounded OUTWARD using integers, never a rounded double.
