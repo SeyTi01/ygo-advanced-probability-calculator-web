@@ -18,6 +18,35 @@ public sealed class BoundedHandEffectsOracleTest {
     private sealed record OracleCounts(BigInteger Outcomes, BigInteger[] Wins);
     private sealed record OracleMode(CardSelector Selector, int? ActivationLimit);
 
+    [TestCase(0)]
+    [TestCase(32)]
+    [TestCase(64)]
+    public void DecodedBoundsMatchLabeledHandsAcrossMaskWidthsAndShrinkingHands(int fillerEntries) {
+        CategoryBase a = new("A");
+        CategoryBase b = new("B");
+        CategoryBase absent = new("Absent");
+        CategoryBase removable = new("Removable source");
+        CardSelector aMode = CardSelector.For(a);
+        CardSelector bMode = CardSelector.For(b);
+        // Only one entry is removable, so the labeled oracle's removal choices
+        // coincide with the deterministic policy for every generated hand.
+        Card source = new([removable], 2, id: "source", search: new(CardSelector.AnyOfSelectors([aMode, bMode]), false,
+            [new(aMode, 1), new(bMode, 1)]), activationLimit: 2,
+            postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(removable));
+        List<Card> cards = [source, new([a], id: "a"), new([a, b], id: "ab"), new([b], id: "b")];
+        cards.AddRange(Enumerable.Range(0, fillerEntries).Select(index => new Card([], id: "filler-" + index)));
+        List<OracleCombo> combos = [
+            DefineCombo("Distinct overlapping roles", "positive", [new(a, 1, 2), new(b, 1, 2)]),
+            DefineCombo("Zero maximum", "zero", [new(a, 0, 0)], [new(source.Id, 0, 0)]),
+            DefineCombo("Empty positive mask", "positive", [new(absent, 1, 2)]),
+            DefineCombo("Empty zero mask", "zero", [new(absent, 0, 0)], [new("b", 1, 1)])
+        ];
+        List<ComboGroup> groups = [new("positive", "Positive"), new("zero", "Zero maximum")];
+        OracleCounts oracle = EnumerateLabeledHands(cards, 2, combos, groups);
+        Rational[] expected = oracle.Wins.Select(win => new Rational(win, oracle.Outcomes)).ToArray();
+        AssertMatchesOracle(cards, 2, combos, groups, expected, "Decoded masks with " + fillerEntries + " fillers");
+    }
+
     [Test]
     public void BrandedOpeningConsumesItsSourceThenDiscardsOneOtherCardBeforeSearching() {
         CategoryBase sourceKind = new("Branded Opening");

@@ -12,7 +12,9 @@ internal sealed class BoundedSearchHandCounter {
     private readonly WorkBudget _budget;
     private readonly bool[] _relevant;
     private readonly (int Source, int Limit, int[] Targets)[] _modes;
-    private readonly Dictionary<int, List<List<CompiledEvent?>>> _events = [];
+    private readonly record struct HandBound(int[] Rows, int Minimum, int Maximum);
+    private readonly Dictionary<int, List<List<HandBound[]?>>> _events = [];
+    private long _eventCells;
 
     internal BoundedSearchHandCounter(List<Card> cards, List<Combo> combos, WorkBudget budget) {
         _cards = cards;
@@ -53,15 +55,38 @@ internal sealed class BoundedSearchHandCounter {
             _budget.Spend(hand.Length + _modes.Length + 1L);
             _budget.CheckStorage(depth + 1L, (depth + 1L) * (4L * hand.Length + modeUses.Length + 1));
             int size = hand.Sum();
-            if (!_events.TryGetValue(size, out List<List<CompiledEvent?>>? events)) {
+            if (!_events.TryGetValue(size, out List<List<HandBound[]?>>? events)) {
                 ComboEventCompiler compiler = new(_cards, size, _budget);
-                events = _combos.Select(compiler.CompileCombo).ToList();
+                events = [];
+                _eventCells += 1 + _combos.Count;
+                foreach (Combo combo in _combos) {
+                    List<HandBound[]?> routes = [];
+                    foreach (CompiledEvent? compiled in compiler.CompileCombo(combo)) {
+                        _eventCells++;
+                        if (compiled is null) {
+                            routes.Add(null);
+                            continue;
+                        }
+                        HandBound[] bounds = new HandBound[compiled.Constraints.Length];
+                        for (int index = 0; index < bounds.Length; index++) {
+                            CountBound bound = compiled.Constraints[index];
+                            _budget.Spend(_cards.Count * (WorkBudget.IntegerCells(bound.EligibleRows) + 1));
+                            int[] rows = Enumerable.Range(0, _cards.Count)
+                                .Where(row => (bound.EligibleRows & (BigInteger.One << row)) != 0).ToArray();
+                            _eventCells += rows.Length + 3;
+                            _budget.CheckStorage(_events.Count + 1L, _eventCells);
+                            bounds[index] = new(rows, bound.MinCount, bound.MaxCount);
+                        }
+                        routes.Add(bounds);
+                    }
+                    events.Add(routes);
+                }
                 _events.Add(size, events);
-                _budget.CheckStorage(_events.Count, _events.Values.Sum(rows => rows.Sum(routes => routes.Sum(route => (route?.Constraints.Length ?? 0L) * (3 + _cards.Count / 32)))));
+                _budget.CheckStorage(_events.Count, _eventCells);
             }
             for (int combo = 0; combo < success.Length; combo++) {
                 if (!success[combo]) {
-                    success[combo] = events[combo].Any(route => route is not null && route.Constraints.All(Matches));
+                    success[combo] = events[combo].Any(route => route is not null && route.All(Matches));
                 }
             }
             if (success.All(value => value)) {
@@ -77,7 +102,7 @@ internal sealed class BoundedSearchHandCounter {
                 foreach (int target in targets) {
                     _budget.Spend(hand.Length * 3L + 1);
                     // Legality is established before either resolution removal.
-                    if (deck[target] == 0 || hand.Sum() - 1 < card.PreDrawRemovalCount) {
+                    if (deck[target] == 0 || size - 1 < card.PreDrawRemovalCount) {
                         continue;
                     }
                     int[] savedHand = (int[])hand.Clone();
@@ -147,16 +172,17 @@ internal sealed class BoundedSearchHandCounter {
             return true;
         }
 
-        bool Matches(CountBound bound) {
-            _budget.Spend(_cards.Count * (WorkBudget.IntegerCells(bound.EligibleRows) + 1));
+        bool Matches(HandBound bound) {
+            // The immutable row mask is decoded once per compiled hand size.
+            // This is the same Hall/count predicate, including empty masks and
+            // inclusive zero/max bounds; no physical identities are identified.
+            _budget.Spend(bound.Rows.Length + 1L);
             int count = 0;
-            for (int row = 0; row < hand.Length; row++) {
-                if ((bound.EligibleRows & (BigInteger.One << row)) != 0) {
-                    count += hand[row];
-                }
+            foreach (int row in bound.Rows) {
+                count += hand[row];
             }
 
-            return count >= bound.MinCount && count <= bound.MaxCount;
+            return count >= bound.Minimum && count <= bound.Maximum;
         }
     }
 }
