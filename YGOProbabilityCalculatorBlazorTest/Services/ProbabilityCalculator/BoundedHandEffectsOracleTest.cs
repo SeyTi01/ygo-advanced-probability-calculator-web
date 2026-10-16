@@ -33,8 +33,10 @@ public sealed class BoundedHandEffectsOracleTest {
         Card source = new([removable], 2, id: "source", search: new(CardSelector.AnyOfSelectors([aMode, bMode]), false,
             [new(aMode, 1), new(bMode, 1)]), activationLimit: 2,
             postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(removable));
-        List<Card> cards = [source, new([a], id: "a"), new([a, b], id: "ab"), new([b], id: "b")];
+        List<Card> cards = [source];
+        // Put matching rows beyond the requested word boundary, not just fillers.
         cards.AddRange(Enumerable.Range(0, fillerEntries).Select(index => new Card([], id: "filler-" + index)));
+        cards.AddRange([new([a], id: "a"), new([a, b], id: "ab"), new([b], id: "b")]);
         List<OracleCombo> combos = [
             DefineCombo("Distinct overlapping roles", "positive", [new(a, 1, 2), new(b, 1, 2)]),
             DefineCombo("Zero maximum", "zero", [new(a, 0, 0)], [new(source.Id, 0, 0)]),
