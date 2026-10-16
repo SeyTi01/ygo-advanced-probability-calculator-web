@@ -43,7 +43,7 @@ public sealed class OrderedSearchCertificateTest {
     [Test]
     public void FilteredDiscardIsInformativeForEachPositiveRowAndExactForImpossibleRows() {
         SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == "minimal-filtered-target-discard");
-        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups);
+        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, new(CertifySearchAvailability: true));
         SearchAvailabilityCertificate certificate = result.SearchAvailability!;
         Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Bounded));
         Assert.That(certificate.Total!.Lower, Is.EqualTo(new ProbabilityFraction("1", "2")));

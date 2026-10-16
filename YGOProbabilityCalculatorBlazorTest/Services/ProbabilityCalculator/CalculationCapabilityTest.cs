@@ -225,7 +225,15 @@ internal sealed class CalculationCapabilityTest {
             CalculationWorkPolicy.Default, new(activation));
         ProbabilityCalculationResult on = service.CalculateProbabilityResults(deck, Combos, hand, Groups,
             CalculationWorkPolicy.Default, new(activation, true));
-        SearchAvailabilityCertificateTest.AssertPrimary(off, on);
+        // The native legacy certificate adapter retains the old projection;
+        // the public Fast policy may now select physical counting instead.
+        if (off.Contract!.SolverRoute.StartsWith("SearchPhysical", StringComparison.Ordinal)) {
+            PhysicalSearchTest.AssertRows(off, physical.Wins[1], physical.Outcomes);
+            PhysicalSearchTest.AssertRows(on, physical.Wins[2], physical.Outcomes);
+        }
+        else {
+            SearchAvailabilityCertificateTest.AssertPrimary(off, on);
+        }
         return (capability, result);
     }
 

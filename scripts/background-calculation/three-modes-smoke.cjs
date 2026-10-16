@@ -70,9 +70,12 @@ async function main() {
         assert.equal(workerChecks['fast-bound'].Result.Contract.Accuracy, 1);
         assert.equal(workerChecks.consumed.Result.Contract.Accuracy, 1);
         assert.deepEqual(workerChecks.consumed.Result.SearchAvailability.Combos[0].Lower, { Numerator: '1', Denominator: '3' });
-        assert.equal(workerChecks.discard.Result.Contract.Accuracy, 1);
-        assert.deepEqual(workerChecks.discard.Result.SearchAvailability.Combos[0].Lower, { Numerator: '1', Denominator: '2' });
-        assert.deepEqual(workerChecks.discard.Result.SearchAvailability.Combos[0].Upper, { Numerator: '17', Denominator: '30' });
+        assert.equal(workerChecks.discard.Result.Contract.Accuracy, 0);
+        assert.equal(workerChecks.discard.Result.Contract.RequestedMode, 0);
+        assert.equal(workerChecks.discard.Result.Contract.ExecutedMode, 0);
+        assert.equal(workerChecks.discard.Result.Contract.SolverRoute, 'SearchPhysicalFrontier');
+        assert.equal(workerChecks.discard.Result.SearchAvailability, undefined);
+        assert.deepEqual(workerChecks.discard.Result.Contract.Fractions.Combos[0], { Numerator: '1', Denominator: '2' });
         assert.deepEqual(workerChecks['exact-unsupported'].Result.Contract.Fractions.Combos[0], { Numerator: '1', Denominator: '2' });
         assert.equal(workerChecks['exact-unsupported'].Result.Contract.SolverRoute, 'SearchPhysicalFrontier');
         for (const name of ['bad-999', 'bad-Exact', 'bad-null', 'obsolete']) assert.equal(workerChecks[name].FailureKind, 1, name);
@@ -129,7 +132,11 @@ async function main() {
         await mode('Exact');
         await calculate();
         assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
-        assert.match(await page.locator('.pinned-result .result-accuracy').innerText(), /Bounded/);
+        assert.match(await page.locator('.pinned-result .result-accuracy').innerText(), /Effects — fast.*Exact/);
+        assert.equal(await page.locator('.comparison-model-difference').count(), 0);
+        await page.locator('button[title="Copy results"]').click();
+        assert.match(await page.evaluate(() => copiedResults.at(-1)), /Accuracy: Exact/);
+        assert.match(await page.evaluate(() => copiedResults.at(-1)), /1\/2/);
         await page.locator('.result-comparison').screenshot({ path: path.join(evidence, 'enumerated-pinned-desktop.png') });
         await mode('OpeningHand');
         await calculate();
@@ -167,9 +174,8 @@ async function main() {
             }
         }
         await load('discard'); await calculate();
-        assert.match(await page.locator('.result-accuracy').innerText(), /Bounded/);
-        await page.locator('.search-availability summary').click();
-        assert.match(await page.locator('.probability-results').innerText(), /Guaranteed interval|fixed modeled policy/i);
+        assert.match(await page.locator('.result-accuracy').innerText(), /Effects — fast.*Exact/);
+        assert.equal(await page.locator('.search-availability').count(), 0);
         await load('count-state');
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();

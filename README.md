@@ -63,7 +63,7 @@ The custom editor offers **None**, **Draw 1**, **Draw 2**, **Draw 3**, or **Sear
 
 Open the gear **Calculation settings** menu to choose how these settings apply:
 
-- **Effects — fast (default):** Apply every saved rule and fixed policy. Proven routes are Exact; otherwise show optimistic modeled values with a certified Deck-search survival interval. A zero lower endpoint is marked uninformative; limited refinement preserves any completed bound. If no certificate finishes, the result remains Uncertified with a reason.
+- **Effects — fast (default):** Apply every saved rule and fixed policy. Small ordered requests can select cheaper physical counting directly. Proven routes are Exact; otherwise show optimistic modeled values with a certified Deck-search survival interval. A zero lower endpoint is marked uninformative; limited refinement preserves any completed bound. If no certificate finishes, the result remains Uncertified with a reason.
 - **Effects — exact:** Apply the same rules and policy, returning values only when the completed execution proves physical Deck-search survival for every result row. Supported saved plans use bounded exact algorithms; requests that exceed Work or Storage limits return no values.
 - **Opening hand only:** Resolve no draw or search effects; configured cards still occupy initial-hand slots.
 

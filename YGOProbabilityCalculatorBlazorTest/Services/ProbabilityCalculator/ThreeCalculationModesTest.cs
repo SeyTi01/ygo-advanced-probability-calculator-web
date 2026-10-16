@@ -33,7 +33,7 @@ public sealed class ThreeCalculationModesTest {
             options: new(Mode: mode)).Json), mode);
 
     [TestCase("consumed", 1, "1", "2", "1", "3", CalculationAccuracy.Bounded)]
-    [TestCase("discard", 2, "17", "30", "1", "2", CalculationAccuracy.Bounded)]
+    [TestCase("discard", 2, "1", "2", "1", "2", CalculationAccuracy.Exact)]
     [TestCase("banish", 2, "5", "6", "23", "30", CalculationAccuracy.Bounded)]
     [TestCase("mill", 2, "5", "6", "23", "30", CalculationAccuracy.Bounded)]
     public void FastAndPhysicalExactOwnEveryRationalRow(
@@ -54,7 +54,7 @@ public sealed class ThreeCalculationModesTest {
         ProbabilityFraction[] fractions = [fast.Contract.Fractions.Total, .. fast.Contract.Fractions.Combos, .. fast.Contract.Fractions.Groups];
         for (int row = 0; row < fractions.Length; row++) {
             Assert.That(BigInteger.Parse(fractions[row].Numerator) * physical.Outcomes,
-                Is.EqualTo(physical.Wins[2][row] * BigInteger.Parse(fractions[row].Denominator)), $"upper row {row}");
+                Is.EqualTo(physical.Wins[accuracy == CalculationAccuracy.Exact ? 1 : 2][row] * BigInteger.Parse(fractions[row].Denominator)), $"row {row}");
         }
         if (kind is "banish" or "mill") {
             Assert.That(fast.SearchAvailability!.Combos[0].Lower, Is.EqualTo(new ProbabilityFraction("7", "10")));

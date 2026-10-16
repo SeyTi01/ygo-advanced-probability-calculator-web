@@ -359,3 +359,29 @@ First observed calls and twenty interleaved warm samples are saved separately;
 first calls after earlier fixtures share an already-running runtime. Browser
 measurements accept `YGO_BROWSER_EXECUTABLE`. Publish normally without the probe
 before running the production-worker/UI smoke.
+
+### Adaptive Fast routing
+
+Freeze `FastCertificateBenchmark.Export` on the base revision using
+`YGO_FAST_CERTIFICATE_FIXTURES` and `YGO_FAST_COVERAGE_FIXTURES`. Run
+`prepare-adaptive-fast-cases.py <fixtures.json> <coverage.json> <matrix.json>`
+to add multiplicity, branch-heavy 8/9-entry, alternative/group and reduced-budget
+controls. Keep the base responses, including failures, when replaying the candidate.
+
+Externally include `fast-certificate-benchmark-probe.cs` in both measurement
+builds; define `ADAPTIVE_FAST` only for the candidate. Compile
+`adaptive-fast-benchmark.cs` as a temporary package-free `net10.0` console app.
+Its arguments are base test-bin, candidate test-bin, matrix JSON and output JSON.
+Run alone with `DOTNET_TieredCompilation=0`. `adaptive-fast-workers.cjs` takes
+base optimized `wwwroot`, candidate optimized `wwwroot`, matrix and output JSON.
+Both compare full Fast, direct Exact for `Physical` fixtures, and adaptive Fast
+with five warmups and twenty randomly interleaved recorded samples. `First`
+retains the first observed call separately; later fixtures share a warmed runtime.
+They verify all fractions and resource counters against Exact for selected inputs,
+and complete result parity against base Fast for unselected inputs. Allocations
+are cumulative current-thread managed bytes, not peak live memory. Browser times
+exclude transport; resource/contract checks use the same measured completion.
+`YGO_BROWSER_EXECUTABLE` selects Chromium; `YGO_BROWSER_SINGLE_PROCESS=1` supports
+restricted hosts using headless shell with in-process GPU/no zygote. Report this
+configuration explicitly and compare only matched browser configurations.
+Publish again without the external probe for production-worker/UI smoke checks.

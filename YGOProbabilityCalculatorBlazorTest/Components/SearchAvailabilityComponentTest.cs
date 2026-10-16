@@ -145,7 +145,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(accepted));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(accepted.Contract));
         Assert.That(ProbabilityResultSummaryFormatter.Format(accepted, 1, CultureInfo.InvariantCulture),
-            Does.Contain("Effects — fast").And.Contain("Bounded"));
+            Does.Contain("Effects — fast").And.Contain("Exact"));
         await Button(cut, "Calculate opening hand only").ClickAsync(new());
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Exact"));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
@@ -154,6 +154,31 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.Exact));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "2")));
+    }
+
+    [Test]
+    public async Task AdaptiveFastPinsAndCopiesExactAccuracyAndComparesWithExactMode() {
+        SessionState session = new() {
+            Cards = ThreeCalculationModesTest.Counterexample("discard"), HandSize = 2,
+            Categories = [ThreeCalculationModesTest.Target], Combos = ThreeCalculationModesTest.Combos,
+            ComboGroups = ThreeCalculationModesTest.Groups
+        };
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        await Button(cut, "Calculate").ClickAsync(new());
+        ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.Contain("Effects — fast").And.Contain("Exact"));
+        Assert.That(accepted.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "2")));
+        await Button(cut, "Pin result").ClickAsync(new());
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
+        await Button(cut, "Calculate").ClickAsync(new());
+        PinnedResultSnapshot pinned = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+        Assert.That(pinned.Contract, Is.SameAs(accepted.Contract));
+        Assert.That(pinned.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.Fast));
+        Assert.That(cut.FindAll(".comparison-model-difference"), Is.Empty);
+        Assert.That(cut.FindAll(".search-availability"), Is.Empty);
+        string copied = ProbabilityResultSummaryFormatter.Format(accepted, 2, CultureInfo.InvariantCulture);
+        Assert.That(copied, Does.Contain("Effects — fast").And.Contain("Accuracy: Exact").And.Contain("1/2"));
+        Assert.That(copied, Does.Not.Contain("optimistic").And.Not.Contain("interval"));
     }
 
     [Test]

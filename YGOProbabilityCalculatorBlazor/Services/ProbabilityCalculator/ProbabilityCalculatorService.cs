@@ -35,8 +35,17 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             return new ProbabilityCalculation(deck, handSize, workPolicy, storagePolicy).CalculateUnion(combos);
         }
 
+        // Omitted options retain the historical scalar optimistic projection.
+        // Explicit Fast uses the same adaptive policy as all-row results, without
+        // paying for per-row results or optional certification.
         WorkBudget budget = new(workPolicy, storagePolicy);
-        return new DrawEffectCalculation(deck, handSize, budget, options?.DrawActivationPriority).Calculate(combos, null, totalOnly: true).Total.ToDouble(budget);
+        return new DrawEffectCalculation(
+            deck,
+            handSize,
+            budget,
+            options?.DrawActivationPriority,
+            adaptiveFast: options is { Mode: CalculationModel.Fast, CertifySearchAvailability: false }
+        ).Calculate(combos, null, totalOnly: true).Total.ToDouble(budget);
     }
 
     public ProbabilityCalculationResult CalculateProbabilityResults(
@@ -87,7 +96,14 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
 
         bool hasEffects = deck.Any(card => card.HasEffect);
         WorkBudget budget = new(workPolicy, storagePolicy);
-        DrawEffectCalculation? execution = hasEffects ? new(deck, handSize, budget, options?.DrawActivationPriority, mode == CalculationModel.Exact) : null;
+        DrawEffectCalculation? execution = hasEffects ? new(
+            deck,
+            handSize,
+            budget,
+            options?.DrawActivationPriority,
+            physicalSearch: mode == CalculationModel.Exact,
+            adaptiveFast: mode == CalculationModel.Fast && options?.CertifySearchAvailability != true
+        ) : null;
         ExactCalculationResult exact = hasEffects
             ? execution!.Calculate(combos, groups)
             : new ProbabilityCalculation(deck, handSize, budget).CalculateExactResults(combos, groups);
