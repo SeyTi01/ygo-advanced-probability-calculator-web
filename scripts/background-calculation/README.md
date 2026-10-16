@@ -1,5 +1,47 @@
 # Background calculation runtime
 
+## Bounded-search performance comparison
+
+`BoundedSearchBenchmark.Export` is an explicit test that writes the complete
+catalog-backed 40-card workspace matrix to `YGO_BOUNDED_FIXTURES`. Export once
+and record its SHA-256; use that exact file for both revisions. It includes
+Fast/Exact, 5/6-card hands, grouped/distinct fillers, removal/mode allowances,
+hidden target loss, simple-search/no-search controls, and ordered #219 references.
+The matrix uses Interactive Work and Standard Storage. Keep higher-budget
+reference runs separate and labeled.
+
+Build a frozen baseline in a separate checkout. Both measurement builds must
+externally include `bounded-search-benchmark-probe.cs` in the app project and
+define `ADAPTIVE_FAST`. This probe preserves #221's numeric activation limits
+and minimum hand size; older probes do not. Never include it in a production
+publish. Use the same SDK and Release settings on both sides, and publish with
+SDK-scoped `wasm-tools` (normal optimization, no AOT).
+
+Compile `paired-bounded-search.cs` in a temporary dependency-free `net10.0`
+console project with implicit usings and nullable enabled. Run with
+`DOTNET_TieredCompilation=0`, passing baseline **test output** directory,
+candidate test output directory, fixture JSON, and output JSON. Test output
+avoids loading browser-specific framework assemblies into the native runner.
+An optional fifth argument requests a diagnostic number of samples without
+warmup; omit it for the paired comparison (two warmups, ten samples).
+
+Run `node paired-bounded-search.cjs <baseline-wwwroot> <candidate-wwwroot>
+<fixtures.json> <output.json>` with Playwright available through `NODE_PATH`
+and, optionally, `YGO_BROWSER_EXECUTABLE`. This uses two separate optimized WASM
+module workers, randomized interleaved requests, two warmups and ten samples.
+Run each matrix alone. Both runners preserve first observations and all raw
+samples, exact rows, full accuracy/certificate contracts, typed limits, Work,
+checked entries/cells, and allocated bytes. The WASM runner separately records
+bootstrap time and linear-memory capacity. Managed-heap readings are estimates
+after each request, not peak live bytes; checked storage is a per-structure
+payload bound, not a process-memory bound. Timings cover the complete engine
+and certificate, excluding input decoding and worker transport.
+
+After a separate clean production publish, run `bounded-search-wire-smoke.cjs
+<wwwroot> <fixtures.json> <native-results.json> <output.json>` to compare every
+shipped worker response with the measured candidate, verify typed failures have
+no partial fractions, and check that no measurement probe is exported.
+
 The .NET 10 app boots a separate runtime in a dedicated module Web Worker, using
 the same published `_framework/dotnet.js`, fingerprinted runtime assets, and app
 assembly as the UI. The worker calls the existing C# engine through a trimmed,
