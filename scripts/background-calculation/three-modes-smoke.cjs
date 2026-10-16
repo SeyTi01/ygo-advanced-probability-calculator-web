@@ -1,4 +1,4 @@
-// NODE_PATH=<Playwright modules>; args: optimized wwwroot, modes.json, evidence-dir.
+// NODE_PATH=<Playwright modules>; args: optimized wwwroot, modes.json, evidence-dir, optional enumeration.json.
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const http = require('node:http');
@@ -6,8 +6,12 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 async function main() {
-    const [root, fixturesPath, evidence] = process.argv.slice(2).map(value => path.resolve(value));
+    const [root, fixturesPath, evidence, enumerationPath] = process.argv.slice(2).map(value => path.resolve(value));
     const fixtures = JSON.parse(await fs.readFile(fixturesPath, 'utf8'));
+    if (enumerationPath) {
+        const enumeration = JSON.parse(await fs.readFile(enumerationPath, 'utf8'));
+        fixtures.push({ ...enumeration.find(fixture => fixture.Name === 'vs-k9-ordered-40'), Name: 'exact-heavy' });
+    }
     await fs.mkdir(evidence, { recursive: true });
     const mime = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm', '.css': 'text/css' };
     const server = http.createServer(async (request, response) => {
@@ -72,7 +76,7 @@ async function main() {
         for (const name of ['bad-999', 'bad-Exact', 'bad-null', 'obsolete']) assert.equal(workerChecks[name].FailureKind, 1, name);
         assert.equal(workerChecks.limited.Result, null);
         assert.equal(workerChecks.limited.Contract.Completion, 2);
-        assert.equal(workerChecks.limited.Contract.Fractions, undefined);
+        assert.equal(workerChecks.limited.Contract.Fractions, null);
         assert.deepEqual(workerChecks.recovered.Result.Contract.Fractions.Combos[0], { Numerator: '1', Denominator: '2' });
         let sequence = 0;
         async function load(name) {
@@ -173,6 +177,17 @@ async function main() {
         await mode('Exact');
         await calculate();
         assert.match(await page.locator('.result-accuracy').innerText(), /Effects — exact.*Exact/);
+        if (enumerationPath) {
+            await load('exact-heavy');
+            await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+            await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
+            await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
+            assert.equal(await page.locator('.probability-results').count(), 0);
+            await load('exact-unsupported');
+            await calculate();
+            assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
+            await page.locator('.probability-results').screenshot({ path: path.join(evidence, 'enumeration-recovered-mobile.png') });
+        }
         assert.deepEqual(errors, []);
         await fs.writeFile(path.join(evidence, 'smoke.json'), JSON.stringify({ browser: browser.version(), errors, workerChecks, copied }));
     } finally {
