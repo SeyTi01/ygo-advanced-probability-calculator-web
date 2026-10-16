@@ -37,7 +37,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".result-accuracy").TextContent, Does.Contain("Bounded"));
         ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
         string copied = ProbabilityResultSummaryFormatter.Format(accepted, 2, CultureInfo.InvariantCulture);
-        Assert.That(copied, Does.Contain("fixed modeled draw/removal policy (v1)").And.Contain("Routes:").And.Contain("Target:").And.Contain("width"));
+        Assert.That(copied, Does.Contain("fixed modeled draw/removal policy (v1)").And.Contain("Routes").And.Contain("Target").And.Contain("rational endpoints"));
         await Button(cut, "Pin result").ClickAsync(new());
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.SearchAvailability, Is.SameAs(accepted.SearchAvailability));
         await cut.Find("#handSize").ChangeAsync(new() { Value = "2" });
@@ -46,7 +46,8 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results .search-availability"), Is.Empty);
-        Assert.That(cut.FindAll(".pinned-result .search-availability"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".pinned-result .accuracy-details"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".search-availability table"), Is.Empty);
         for (int load = 0; load < 2; load++) {
             cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(saved, "certificate-session.json"));
             cut.WaitForAssertion(() => Assert.That(cut.FindAll(".probability-results"), Is.Empty));
@@ -117,7 +118,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(restored.Combos[1].Informativeness, Is.EqualTo(SearchAvailabilityRowStatus.Informative));
         IRenderedComponent<SearchAvailabilityResult> cut = context.RenderComponent<SearchAvailabilityResult>(parameters => parameters.Add(value => value.Certificate, restored));
         Assert.That(cut.Find("summary").TextContent, Does.Contain("uninformative").And.Not.Contain("(exact)"));
-        Assert.That(cut.FindAll("tbody tr"), Has.Count.EqualTo(3));
+        Assert.That(cut.FindAll("table"), Is.Empty);
         string exported = string.Join("\n", SearchAvailabilityPresentation.Export(restored));
         Assert.That(exported, Does.Contain("(uninformative)").And.Contain("(informative)").And.Contain("(exact)"));
     }
@@ -179,6 +180,9 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         string copied = ProbabilityResultSummaryFormatter.Format(accepted, 2, CultureInfo.InvariantCulture);
         Assert.That(copied, Does.Contain("Effects — fast").And.Contain("Accuracy: Exact").And.Contain("1/2"));
         Assert.That(copied, Does.Not.Contain("optimistic").And.Not.Contain("interval"));
+        Assert.That(cut.FindAll(".probability-results .probability-uncertainty").Select(element => element.TextContent), Is.All.EqualTo("±0%"));
+        Assert.That(cut.FindAll(".pinned-result .probability-uncertainty").Select(element => element.TextContent), Is.All.EqualTo("±0%"));
+        Assert.That(copied, Does.Contain("±0%"));
     }
 
     [Test]
@@ -194,7 +198,8 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(exact.Contract.SolverRoute, Is.EqualTo("SearchPhysicalCountState"));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(fast.Contract));
         Assert.That(cut.FindAll(".probability-results .search-availability"), Is.Empty);
-        Assert.That(cut.FindAll(".pinned-result .search-availability"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".pinned-result .accuracy-details"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".search-availability table"), Is.Empty);
         await cut.Find("button[title='Copy results']").ClickAsync(new());
         string copied = (string)context.JSInterop.Invocations["copyText"].Last().Arguments[0]!;
         Assert.That(copied, Does.Contain("Effects — exact").And.Not.Contain("Previous result"));

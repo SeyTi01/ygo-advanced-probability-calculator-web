@@ -4,7 +4,7 @@
 .pinned-heading button { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: .5rem; flex-shrink: 0; }
 .pinned-row { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
 .pinned-row span { min-width: 0; overflow-wrap: anywhere; }
-.pinned-row strong { flex-shrink: 0; white-space: nowrap; }
+.pinned-row ::deep .probability-with-accuracy { flex: 0 1 auto; max-width: 65%; }
 .pinned-total { border-bottom: 1px solid var(--bs-border-color); font-size: 1.2rem; padding-bottom: .75rem; margin-bottom: .75rem; }
 .pinned-total strong { font-size: 1.1em; }
 .pinned-group { padding: .35rem 0 .5rem; }

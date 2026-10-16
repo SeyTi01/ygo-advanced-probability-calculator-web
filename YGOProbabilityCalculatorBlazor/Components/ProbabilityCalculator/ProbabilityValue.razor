@@ -1,0 +1,22 @@
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+
+<span class="probability-with-accuracy" tabindex="0" role="note" aria-label="@($"{_display.Summary}. {_display.Detail}")" title="@_display.Detail">
+    <strong class="combo-probability-value @ValueClass">@_display.Value</strong>
+    <small class="probability-uncertainty">@_display.Accuracy</small>
+    <span class="probability-proof" aria-hidden="true">@_display.Detail</span>
+    @if (_display.Uninformative) {
+        <small class="probability-uninformative">Uninformative</small>
+    }
+</span>
+
+@code {
+    [Parameter] public double Probability { get; set; }
+    [Parameter] public CalculationResultContract? Contract { get; set; }
+    [Parameter] public SearchAvailabilityCertificate? Certificate { get; set; }
+    [Parameter] public ProbabilityRow Row { get; set; }
+    [Parameter] public int Index { get; set; }
+    [Parameter] public string? ValueClass { get; set; }
+    private ProbabilityDisplay _display = new("", "", "");
+
+    protected override void OnParametersSet() => _display = ProbabilityPresentation.Create(Probability, Contract, Certificate, Row, Index);
+}
