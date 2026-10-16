@@ -119,10 +119,21 @@ internal static class SearchCertificateOracle {
     }
 
     internal static Counts Enumerate(List<Card> input, int size, List<Combo> combos, List<ComboGroup> groups, string[]? priority = null,
-        Action<List<Card>, int, int, bool[]>? checkTerminal = null) {
+        Action<List<Card>, int, int, bool[]>? checkTerminal = null, bool collapseIdenticalCopies = true) {
         List<Card> deck = input.Where(c => c.Active && c.Copies > 0).ToList();
         Card[] labels = deck.SelectMany(c => Enumerable.Repeat(c, c.Copies)).ToArray();
         int[] order = Enumerable.Range(0, labels.Length).ToArray();
+        // Copies of one object are indistinguishable at EVERY deck position,
+        // including hidden losses and encounter-order ties. Enumerate each such
+        // sequence once with its exact labeled multiplicity. Distinct entries
+        // remain distinct even when their names, selectors or memberships match.
+        BigInteger multiplicity = 1;
+        if (collapseIdenticalCopies) {
+            foreach (IGrouping<Card, Card> copies in labels.GroupBy<Card, Card>(card => card, ReferenceEqualityComparer.Instance)) {
+                for (int copy = 2; copy <= copies.Count(); copy++) { multiplicity *= copy; }
+            }
+        }
+        bool repeatedCopies = multiplicity > BigInteger.One;
         BigInteger total = 0;
         BigInteger failed = 0;
         // lower elementary, physical, optimistic, robust shared-loss lower, no-search
@@ -135,17 +146,21 @@ internal static class SearchCertificateOracle {
 
         void Permute(int position) {
             if (position == order.Length) { Evaluate(); return; }
+            HashSet<Card>? seen = repeatedCopies ? new(ReferenceEqualityComparer.Instance) : null;
             for (int i = position; i < order.Length; i++) {
+                if (seen is not null && !seen.Add(labels[order[i]])) {
+                    continue;
+                }
                 (order[i], order[position]) = (order[position], order[i]);
                 Permute(position + 1);
                 (order[i], order[position]) = (order[position], order[i]);
             }
         }
         void Evaluate() {
-            total++;
+            total += multiplicity;
             IReadOnlyList<Card> rest = [];
             List<Card>? hand = DrawSequenceOracle.Resolve(order.Select(i => labels[i]).ToArray(), size, combos, priority, cards => rest = cards);
-            if (hand is null) { failed++; return; }
+            if (hand is null) { failed += multiplicity; return; }
             int[] held = deck.Select(c => hand.Count(h => h.Id == c.Id)).ToArray();
             int[] physical = deck.Select(c => rest.Count(h => h.Id == c.Id)).ToArray();
             string key = string.Join(',', held) + "|" + string.Join(',', physical);
@@ -185,7 +200,7 @@ internal static class SearchCertificateOracle {
                 }
             }
             for (int mode = 0; mode < wins.Length; mode++) {
-                for (int i = 0; i < wins[mode].Length; i++) { if (results[mode][i]) { wins[mode][i]++; } }
+                for (int i = 0; i < wins[mode].Length; i++) { if (results[mode][i]) { wins[mode][i] += multiplicity; } }
             }
         }
     }

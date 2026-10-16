@@ -358,8 +358,22 @@ public sealed partial class SearchEffectsTest {
 // activate a fetched effect. No production event compiler or count shifts are used.
 internal static class SearchAccessOracle {
     internal static (BigInteger Total, BigInteger[] Wins) Count(List<Card> cards, List<Combo> combos, int size,
-        IReadOnlyList<ComboGroup> groups, IReadOnlyList<string>? priority) {
+        IReadOnlyList<ComboGroup> groups, IReadOnlyList<string>? priority,
+        bool collapseIdenticalCopies = true, bool reuseHandPredicates = true) {
         Card[] order = cards.Where(card => card.Active).SelectMany(card => Enumerable.Repeat(card, card.Copies)).ToArray();
+        // Swapping labels of copies of the SAME object leaves every observed
+        // position unchanged. Keep all labeled mass with the product of copy
+        // factorials; never combine distinct entries by name or matching roles.
+        BigInteger multiplicity = 1;
+        if (collapseIdenticalCopies) {
+            foreach (IGrouping<Card, Card> copies in order.GroupBy<Card, Card>(card => card, ReferenceEqualityComparer.Instance)) {
+                for (int copy = 2; copy <= copies.Count(); copy++) { multiplicity *= copy; }
+            }
+        }
+        bool repeatedCopies = multiplicity > BigInteger.One;
+        // Final hand size can change after draws/removals. Compile the same
+        // independent slot predicate once per size, without caching its answers.
+        Dictionary<int, Func<IReadOnlyList<Card>, bool>[]> predicates = new();
         BigInteger total = 0;
         BigInteger[] wins = new BigInteger[1 + combos.Count + groups.Count];
         Permute(0);
@@ -367,7 +381,7 @@ internal static class SearchAccessOracle {
 
         void Permute(int depth) {
             if (depth == order.Length) {
-                total++;
+                total += multiplicity;
                 List<Card> remaining = [];
                 List<Card>? hand = DrawSequenceOracle.Resolve(order, size, combos, priority, rest => remaining = rest.ToList());
                 if (hand is null) {
@@ -383,12 +397,16 @@ internal static class SearchAccessOracle {
                     .. groups.Select(group => combos.Where((combo, i) => matched[i] && combo.GroupId == group.Id).Any())];
                 for (int i = 0; i < results.Length; i++) {
                     if (results[i]) {
-                        wins[i]++;
+                        wins[i] += multiplicity;
                     }
                 }
                 return;
             }
+            HashSet<Card>? seen = repeatedCopies ? new(ReferenceEqualityComparer.Instance) : null;
             for (int i = depth; i < order.Length; i++) {
+                if (seen is not null && !seen.Add(order[i])) {
+                    continue;
+                }
                 (order[i], order[depth]) = (order[depth], order[i]);
                 Permute(depth + 1);
                 (order[i], order[depth]) = (order[depth], order[i]);
@@ -397,8 +415,13 @@ internal static class SearchAccessOracle {
 
         void Search(List<Card> hand, List<Card> remaining, bool[] matched, int slot, int capacity, List<Card> activated) {
             if (slot == hand.Count) {
+                if (reuseHandPredicates && !predicates.ContainsKey(hand.Count)) {
+                    predicates.Add(hand.Count, combos.Select(combo => SmallDeckOracle.HandPredicate(combo, hand.Count)).ToArray());
+                }
                 for (int i = 0; i < combos.Count; i++) {
-                    matched[i] |= SmallDeckOracle.MatchesHand(hand, combos[i]);
+                    matched[i] |= reuseHandPredicates
+                        ? predicates[hand.Count][i](hand)
+                        : SmallDeckOracle.MatchesHand(hand, combos[i]);
                 }
                 return;
             }

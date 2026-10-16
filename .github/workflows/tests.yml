@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Full test suite
+  unit:
+    name: .NET and JavaScript tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -50,6 +50,35 @@ jobs:
       - name: JavaScript tests
         run: node --test
 
+  published-site:
+    name: Published site verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET 10
+        id: setup-dotnet
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+          dotnet-quality: "ga"
+
+      - name: Pin SDK for this run
+        shell: bash
+        run: |
+          echo '{"sdk":{"version":"${{ steps.setup-dotnet.outputs.dotnet-version }}"}}' > global.json
+
+      - name: Restore
+        run: dotnet restore YGOProbabilityCalculatorBlazor.sln
+
+      # The SEO verifier executes the Debug test assembly against the Release
+      # publish. Build it here so this job can run independently of the suite.
+      - name: Build SEO verifier
+        run: dotnet build YGOProbabilityCalculatorBlazor.sln --no-restore
+
       - name: Install WebAssembly build tools
         run: |
           dotnet workload install wasm-tools
@@ -60,3 +89,18 @@ jobs:
 
       - name: Verify published SEO HTML
         run: sh scripts/verify-published-seo.sh
+
+  test:
+    name: Full test suite
+    needs: [unit, published-site]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Require every verification job to succeed
+        env:
+          UNIT_RESULT: ${{ needs.unit.result }}
+          SITE_RESULT: ${{ needs.published-site.result }}
+        run: |
+          test "$UNIT_RESULT" = success && test "$SITE_RESULT" = success
