@@ -20,9 +20,11 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         return new(17d / 30,
             [new(2, "Duplicate", .5), new(0, "Duplicate", 0, "left"), new(1, "Duplicate", 17d / 30, "right")],
             [new("right", "Duplicate group", 17d / 30, 1), new("left", "Duplicate group", 0, 1)],
-            new(SearchAvailabilityStatus.Bounded, "Accepted certificate", informative,
+            new(SearchAvailabilityStatus.Limited, "Optional refinement stopped at Work limit; accepted bound retained.", informative,
                 [exact, informative, uninformative], [informative, exact]),
             ProbabilityPresentationTest.Contract(CalculationAccuracy.Bounded) with {
+                Reference = "Internal solver reference (v1)",
+                Reason = "Optional refinement stopped at Work limit; Storage diagnostics are available.",
                 Fractions = new(new("17", "30"), [new("0", "1"), new("17", "30"), new("1", "2")], [new("17", "30"), new("0", "1")])
             });
     }
@@ -42,14 +44,21 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         });
         await Button(cut, "Calculate").ClickAsync(new());
         AssertRows(".probability-results");
+        AssertAccuracyDisclosure(cut, ".probability-results");
         ProbabilityCalculationResult owned = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
         await Button(cut, "Pin result").ClickAsync(new());
         AssertRows(".pinned-result");
+        AssertAccuracyDisclosure(cut, ".probability-results");
+        AssertAccuracyDisclosure(cut, ".pinned-result");
         await cut.Find("#handSize").ChangeAsync(new() { Value = "2" });
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
         await Button(cut, "Calculate").ClickAsync(new());
         AssertRows(".probability-results");
         AssertRows(".pinned-result");
+        AssertAccuracyDisclosure(cut, ".probability-results");
+        AssertAccuracyDisclosure(cut, ".pinned-result");
+        Assert.That(cut.Find(".probability-results .probability-result-status").TextContent,
+            Does.Contain("Previous result · inputs changed"));
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(owned));
         await cut.Find("button[title='Copy results']").ClickAsync(new());
@@ -88,5 +97,18 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         Assert.That(pin.FindAll(".probability-uncertainty").Select(element => element.TextContent), Is.All.EqualTo(expected));
         Assert.That(pin.FindAll("table"), Is.Empty);
         Assert.That(pin.Find(".accuracy-details summary").TextContent, Is.EqualTo("Accuracy details"));
+    }
+
+    private static void AssertAccuracyDisclosure(IRenderedFragment cut, string resultSelector) {
+        AngleSharp.Dom.IElement disclosure = cut.Find(resultSelector + " .accuracy-details");
+
+        Assert.That(disclosure.QuerySelectorAll("p"), Has.Count.EqualTo(1));
+        Assert.That(disclosure.QuerySelector("p")!.TextContent, Is.EqualTo(ProbabilityPresentation.AccuracyDetails));
+        Assert.That(disclosure.TextContent, Does.Not.Contain("Internal solver reference")
+            .And.Not.Contain("Certification Limited")
+            .And.Not.Contain("(v1)")
+            .And.Not.Contain("Work limit")
+            .And.Not.Contain("Storage diagnostics")
+            .And.Not.Contain("accepted bound retained"));
     }
 }
