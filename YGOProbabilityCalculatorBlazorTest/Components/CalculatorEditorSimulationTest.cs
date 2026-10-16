@@ -99,6 +99,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
     [TestCase(49238328)]
     [TestCase(24940422)]
     [TestCase(691925)]
+    [TestCase(20508881)]
     public void BuiltInsAreQuietReadOnlyAndExposeSavedDetailsOnRequest(int id) {
         Card card = BuiltIn(id);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [card] });
@@ -132,6 +133,38 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
             Assert.That(editor.FindAll(".simulation-details"), Is.Empty);
         }
         Assert.That(editor.Instance.Card, Is.SameAs(card));
+    }
+
+    [Test]
+    public async Task RadiantTyphoonVisionShowsPartialModelNotesAndRestorePreservesWorkspaceState() {
+        Card original = BuiltIn(20508881).WithName("Saved Vision").WithCopies(2).WithActive(false).WithCategories([a]);
+        SessionState session = new() {
+            Cards = [original, new([], id: "target")],
+            Categories = [a],
+            Combos = [new([], cards: [new(original.Id, 1, 2)], groupId: "g")],
+            HandSize = 2
+        };
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>().Single(item => item.Instance.Card.Id == original.Id);
+
+        Assert.That(editor.Find(".simulation-heading .simulation-status").TextContent, Is.EqualTo("Partial"));
+        Assert.That(SimulationDetails(editor).Trim(), Does.Contain($"Model limits: {original.EffectProfile.Limitations}"));
+        OpenSimulation(editor);
+        await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "1" });
+        await editor.Find(".simulation-save").ClickAsync(new());
+        Assert.That(editor.Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
+        await editor.Find(".simulation-restore").ClickAsync(new());
+
+        Card restored = editor.Instance.Card;
+        Assert.Multiple(() => {
+            Assert.That(restored.EffectPlan, Is.EqualTo(original.EffectPlan));
+            Assert.That(restored.EffectProfile, Is.EqualTo(original.EffectProfile));
+            Assert.That((restored.Id, restored.Copies, restored.Name, restored.Active, restored.ExternalCardId),
+                Is.EqualTo((original.Id, original.Copies, original.Name, original.Active, original.ExternalCardId)));
+            Assert.That(restored.Categories, Is.EqualTo(original.Categories));
+            Assert.That(cut.FindComponents<ComboEditor>().Single().Instance.Combo.Cards, Is.EqualTo(session.Combos[0].Cards));
+            Assert.That(editor.Find(".simulation-heading .simulation-status").TextContent, Is.EqualTo("Partial"));
+        });
     }
 
     [Test]
