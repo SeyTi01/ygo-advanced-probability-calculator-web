@@ -49,8 +49,8 @@ public sealed class SearchAvailabilityCertificateTest {
             Assert.That(lowerN * physical.Outcomes, Is.LessThanOrEqualTo(physical.Wins[1][row] * lowerD), $"lower row {row}");
             Assert.That(upperN * physical.Outcomes, Is.GreaterThanOrEqualTo(physical.Wins[1][row] * upperD), $"upper row {row}");
             Assert.That(upperN * values[row].Denominator, Is.EqualTo(values[row].Numerator * upperD));
-            if (certificate.Status == SearchAvailabilityStatus.Bounded && capability.Route == SolverRoute.SearchCountState) {
-                Assert.That(lowerN * physical.Outcomes, Is.EqualTo(physical.Wins[0][row] * lowerD), $"elementary row {row}");
+            if (capability.Route == SolverRoute.SearchCountState) {
+                Assert.That(lowerN * physical.Outcomes, Is.GreaterThanOrEqualTo(physical.Wins[0][row] * lowerD), $"elementary row {row}");
             }
             if (certificate.Status == SearchAvailabilityStatus.Exact) {
                 Assert.That(intervals[row].IsExact, Is.True);

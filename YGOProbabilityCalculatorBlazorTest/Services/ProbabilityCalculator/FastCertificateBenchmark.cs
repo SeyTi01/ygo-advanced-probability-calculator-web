@@ -11,6 +11,7 @@ public sealed class FastCertificateBenchmark {
     [Test]
     public async Task Export() {
         List<(string Name, SessionState State, bool Physical)> cases = [];
+        cases.Add(("multi-target-mill-40", KnownSourceLossCertificateTest.TwoTargetForty(), true));
         SessionState ordinary = await SearchAvailabilityCertificateTest.Example("plain");
         for (int row = 0; row < ordinary.Cards.Count; row++) { ordinary.Cards[row] = ordinary.Cards[row].WithSearch(null); }
         cases.Add(("ordinary-40", ordinary, false));
@@ -20,7 +21,8 @@ public sealed class FastCertificateBenchmark {
         foreach (string name in new[] { "plain", "one-draw2", "banish10", "mill2" }) {
             cases.Add((name + "-40", await SearchAvailabilityCertificateTest.Example(name), false));
         }
-        foreach (string name in new[] { "minimal-filtered-target-discard", "coalesced-uneven-targets", "mixed-visible-hidden",
+        foreach (string name in new[] { "known-source-two-targets", "draw-target-source-consumed",
+            "known-source-opt-False-searchable-True-hidden-1", "minimal-filtered-target-discard", "coalesced-uneven-targets", "mixed-visible-hidden",
             "deferred-loss-cost-True-first-False", "ordered-pooling-3-reversed-False" }) {
             SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == name);
             cases.Add((name, new() { Cards = fixture.Deck, HandSize = fixture.Hand, Combos = fixture.Combos, ComboGroups = fixture.Groups,

@@ -22,6 +22,28 @@ internal static class SearchCertificateFixtures {
         new([], "A OR direct filler", groupId: "g2", alternativeGroups: [new([ComboAlternative.For(new ComboCategory(A, 1, 6)), ComboAlternative.For(new ComboCard("f", 1, 6))])])];
 
     internal static IEnumerable<Fixture> Fixtures() {
+        yield return new("known-source-two-targets",
+            [Source("s", copies: 2), new([A, B], 3, id: "t"), new([], 1, id: "f"),
+                new([], 1, id: "d", drawCount: 2, postDrawDeckMillCount: 1)],
+            2, [new([new(A, 2, 2)], "Exactly two targets", groupId: "g1"),
+                new([new(A, 1, 3), new(B, 1, 3)], "Distinct A and B", groupId: "g2"),
+                new([new(A, 0, 0)], "Exclude A", groupId: "g1")], Groups);
+        foreach (bool opt in new[] { false, true }) {
+            foreach (bool searchableDraw in new[] { false, true }) {
+                foreach (int hidden in new[] { 0, 1, 2 }) {
+                    // Separate source identities, overlapping searches, duplicate
+                    // effects and combined banish/mill. Hidden copies may include
+                    // either source; only observed consumption can be subtracted.
+                    yield return new($"known-source-opt-{opt}-searchable-{searchableDraw}-hidden-{hidden}",
+                        [Source("s", opt: opt), Source("z", CardSelector.AnyOf([A.Identity, B.Identity])),
+                            new([A, B], 2, id: "t"), new([], 1, id: "f"),
+                            new(searchableDraw ? [A] : [], 2, id: "d", drawCount: 1, drawOncePerTurn: opt,
+                                preDrawDeckRemovalCount: hidden > 0 ? 1 : 0),
+                            new([B], 1, id: "e", drawCount: 1, postDrawDeckMillCount: hidden > 1 ? 1 : 0)],
+                        2, Combos(), Groups, ["e", "d"]);
+                }
+            }
+        }
         foreach (Fixture fixture in OrderedCoverage()) {
             yield return fixture;
         }
