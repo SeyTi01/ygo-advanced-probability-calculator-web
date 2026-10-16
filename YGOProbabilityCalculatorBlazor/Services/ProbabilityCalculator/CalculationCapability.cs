@@ -3,7 +3,7 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 internal enum SolverRoute { Ordinary, CountState, Exchangeable, Ordered, OrderedDeferred, SearchOnly, SearchCountState, SearchOrdered, SearchOrderedDeferred, SearchPhysicalCountState, SearchPhysicalEnumeration, SearchPhysicalFrontier }
 internal enum PhysicalSearchAccuracy { ProvenExact, OptimisticSurvivalUnproven }
 internal enum CapabilityReason { NoActiveSearch, NoReachableSearchTarget, ZeroDeckCapacity, NoReachableSearchTargetLoss, ConsumedSearchTarget, HandCostMayRemoveTarget, HandRemovalMayRemoveTarget, HiddenDeckLossMayRemoveTarget, ConditionalPhysicalSurvivors, ExplicitPhysicalSurvivors }
-internal enum CertificationSupport { ReusePrimary, ElementaryCountStateLowerPass, Unsupported }
+internal enum CertificationSupport { ReusePrimary, ElementaryCountStateLowerPass, OrderedTerminalLowerPass, Unsupported }
 
 // A value describing one COMPLETED execution, never a preflight risk estimate.
 // The reference keeps the saved plans, materialized memberships, activation and
@@ -43,6 +43,7 @@ internal readonly record struct CalculationCapability(
         bool exact = ProvesSearchSurvival(reason);
         CertificationSupport support = exact ? CertificationSupport.ReusePrimary
             : route == SolverRoute.SearchCountState ? CertificationSupport.ElementaryCountStateLowerPass
+            : route is SolverRoute.SearchOrdered or SolverRoute.SearchOrderedDeferred ? CertificationSupport.OrderedTerminalLowerPass
             : CertificationSupport.Unsupported;
         return new(route, exact ? PhysicalSearchAccuracy.ProvenExact : PhysicalSearchAccuracy.OptimisticSurvivalUnproven, reason, support);
     }

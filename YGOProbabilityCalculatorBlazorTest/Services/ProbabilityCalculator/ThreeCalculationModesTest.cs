@@ -33,7 +33,7 @@ public sealed class ThreeCalculationModesTest {
             options: new(Mode: mode)).Json), mode);
 
     [TestCase("consumed", 1, "1", "2", "1", "3", CalculationAccuracy.Bounded)]
-    [TestCase("discard", 2, "17", "30", "1", "2", CalculationAccuracy.Uncertified)]
+    [TestCase("discard", 2, "17", "30", "1", "2", CalculationAccuracy.Bounded)]
     [TestCase("banish", 2, "5", "6", "23", "30", CalculationAccuracy.Bounded)]
     [TestCase("mill", 2, "5", "6", "23", "30", CalculationAccuracy.Bounded)]
     public void FastAndPhysicalExactOwnEveryRationalRow(

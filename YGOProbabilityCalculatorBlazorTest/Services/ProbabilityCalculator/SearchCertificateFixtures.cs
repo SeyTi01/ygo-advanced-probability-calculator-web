@@ -22,6 +22,9 @@ internal static class SearchCertificateFixtures {
         new([], "A OR direct filler", groupId: "g2", alternativeGroups: [new([ComboAlternative.For(new ComboCategory(A, 1, 6)), ComboAlternative.For(new ComboCard("f", 1, 6))])])];
 
     internal static IEnumerable<Fixture> Fixtures() {
+        foreach (Fixture fixture in OrderedCoverage()) {
+            yield return fixture;
+        }
         // Structured ordered cross-product: overlapping searches, distinct IDs
         // with duplicate names, OPT copies, custom order, and removable sources.
         for (int variant = 0; variant < 24; variant++) {
@@ -114,6 +117,35 @@ internal static class SearchCertificateFixtures {
             deck.Add(test % 3 == 0 ? Source("z", CardSelector.AllOf([A.Identity, B.Identity])) : new([B], 1, id: "extra"));
             if (test % 2 == 1) { deck.Reverse(); }
             yield return new("seed-204205-" + test, deck, 1 + test % 4, Combos(), Groups);
+        }
+    }
+
+    internal static IEnumerable<Fixture> OrderedCoverage() {
+        foreach (bool reverse in new[] { false, true }) {
+            foreach (int variant in Enumerable.Range(0, 4)) {
+                List<Card> deck = [Source("s"), new([A], reverse ? 1 : 2, id: "aa"),
+                    new(variant == 2 ? [A, B] : [A], reverse ? 2 : 1, id: "zz"),
+                    new([], 1, id: "d", drawCount: 1, postDrawDiscardCount: 1,
+                        postDrawSelector: CardSelector.For(A), preDrawDeckRemovalCount: variant == 3 ? 1 : 0),
+                    variant == 2 ? Source("z", CardSelector.For(B)) : new([], 1, id: "f")];
+                List<Combo> combos = [new([new(A, 1, 2)], "A", groupId: "g1"), new([new(A, 0, 0)], "No A", groupId: "g2")];
+                if (variant == 1) {
+                    combos.Add(new([], "Direct aa", groupId: "g1", cards: [new("aa", 1, 1)]));
+                }
+                if (reverse) { deck.Reverse(); }
+                yield return new($"ordered-pooling-{variant}-reversed-{reverse}", deck, 2, combos, Groups);
+            }
+        }
+        foreach (bool cost in new[] { false, true }) {
+            foreach (bool first in new[] { false, true }) {
+                List<Card> deck = [Source("s"), new([A], 2, id: "aa"), new([B], 1, id: "b"), new([M], 1, id: "m"),
+                    new([], 1, id: "d", drawCount: 1, preDrawRemovalCount: cost ? 1 : 0,
+                        preDrawSelector: cost ? CardSelector.For(M) : null, postDrawDiscardCount: cost ? 0 : 1,
+                        postDrawSelector: cost ? null : CardSelector.For(M), preDrawDeckRemovalCount: 1,
+                        firstActivationOnly: first),
+                    new([], 1, id: "e", drawCount: 1)];
+                yield return new($"deferred-loss-cost-{cost}-first-{first}", deck, 2, Combos(), Groups, ["d", "e"]);
+            }
         }
     }
 

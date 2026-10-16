@@ -70,7 +70,9 @@ async function main() {
         assert.equal(workerChecks['fast-bound'].Result.Contract.Accuracy, 1);
         assert.equal(workerChecks.consumed.Result.Contract.Accuracy, 1);
         assert.deepEqual(workerChecks.consumed.Result.SearchAvailability.Combos[0].Lower, { Numerator: '1', Denominator: '3' });
-        assert.equal(workerChecks.discard.Result.Contract.Accuracy, 2);
+        assert.equal(workerChecks.discard.Result.Contract.Accuracy, 1);
+        assert.deepEqual(workerChecks.discard.Result.SearchAvailability.Combos[0].Lower, { Numerator: '1', Denominator: '2' });
+        assert.deepEqual(workerChecks.discard.Result.SearchAvailability.Combos[0].Upper, { Numerator: '17', Denominator: '30' });
         assert.deepEqual(workerChecks['exact-unsupported'].Result.Contract.Fractions.Combos[0], { Numerator: '1', Denominator: '2' });
         assert.equal(workerChecks['exact-unsupported'].Result.Contract.SolverRoute, 'SearchPhysicalFrontier');
         for (const name of ['bad-999', 'bad-Exact', 'bad-null', 'obsolete']) assert.equal(workerChecks[name].FailureKind, 1, name);
@@ -127,7 +129,7 @@ async function main() {
         await mode('Exact');
         await calculate();
         assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
-        assert.match(await page.locator('.pinned-result .result-accuracy').innerText(), /Uncertified/);
+        assert.match(await page.locator('.pinned-result .result-accuracy').innerText(), /Bounded/);
         await page.locator('.result-comparison').screenshot({ path: path.join(evidence, 'enumerated-pinned-desktop.png') });
         await mode('OpeningHand');
         await calculate();
@@ -165,8 +167,9 @@ async function main() {
             }
         }
         await load('discard'); await calculate();
-        assert.match(await page.locator('.result-accuracy').innerText(), /Uncertified/);
-        assert.match(await page.locator('.probability-results').innerText(), /hand removal|ordered calculation/i);
+        assert.match(await page.locator('.result-accuracy').innerText(), /Bounded/);
+        await page.locator('.search-availability summary').click();
+        assert.match(await page.locator('.probability-results').innerText(), /Guaranteed interval|fixed modeled policy/i);
         await load('count-state');
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
@@ -188,6 +191,35 @@ async function main() {
             assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
             await page.locator('.probability-results').screenshot({ path: path.join(evidence, 'enumeration-recovered-mobile.png') });
         }
+        const weak = structuredClone(fixtures.find(fixture => fixture.Name === 'consumed'));
+        weak.Name = 'uninformative';
+        weak.Session.HandSize = 2;
+        weak.Session.Cards.find(card => card.Id === 'd').Copies = 2;
+        weak.Session.Cards.find(card => card.Id === 'd').OncePerTurn = true;
+        const targetCombo = structuredClone(weak.Session.Combos[0]);
+        targetCombo.Categories[0].MinCount = 2;
+        targetCombo.Categories[0].MaxCount = 2;
+        const impossible = structuredClone(targetCombo);
+        impossible.Name = 'Impossible';
+        impossible.Categories[0].MinCount = 3;
+        impossible.Categories[0].MaxCount = 3;
+        weak.Session.Combos = [targetCombo, impossible];
+        fixtures.push(weak);
+        await load('uninformative');
+        await calculate();
+        assert.match(await page.locator('.result-accuracy').innerText(), /Effects — fast.*Bounded/);
+        await page.locator('.search-availability summary').click();
+        assert.match(await page.locator('.search-availability summary').innerText(), /uninformative/);
+        assert.match(await page.locator('.search-availability tbody tr').filter({ hasText: 'Impossible' }).innerText(), /exact/);
+        await page.locator('button[title="Copy results"]').click();
+        assert.match(await page.evaluate(() => copiedResults.at(-1)), /\(uninformative\)/);
+        await page.getByRole('button', { name: 'Pin result', exact: true }).click();
+        await mode('Exact');
+        await calculate();
+        assert.match(await page.locator('.probability-results .result-accuracy').innerText(), /Effects — exact.*Exact/);
+        assert.match(await page.locator('.pinned-result .result-accuracy').innerText(), /Bounded/);
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'uninformative row overflow');
+        await page.locator('.result-comparison').screenshot({ path: path.join(evidence, 'uninformative-pinned-mobile.png') });
         assert.deepEqual(errors, []);
         await fs.writeFile(path.join(evidence, 'smoke.json'), JSON.stringify({ browser: browser.version(), errors, workerChecks, copied }));
     } finally {

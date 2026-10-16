@@ -39,10 +39,7 @@ public sealed class SearchAvailabilityCertificateTest {
         }
         Assert.That(certificate.Status, Is.Not.EqualTo(SearchAvailabilityStatus.Error), certificate.Detail);
         Assert.That(certificate.Status, Is.Not.EqualTo(SearchAvailabilityStatus.Limited), certificate.Detail);
-        if (certificate.Status == SearchAvailabilityStatus.NotCertified) {
-            Assert.That(certificate.Total, Is.Null);
-            return;
-        }
+        Assert.That(certificate.Status, Is.Not.EqualTo(SearchAvailabilityStatus.NotCertified), certificate.Detail);
         SearchAvailabilityInterval[] intervals = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
         for (int row = 0; row < intervals.Length; row++) {
             BigInteger lowerN = BigInteger.Parse(intervals[row].Lower.Numerator);
@@ -52,7 +49,7 @@ public sealed class SearchAvailabilityCertificateTest {
             Assert.That(lowerN * physical.Outcomes, Is.LessThanOrEqualTo(physical.Wins[1][row] * lowerD), $"lower row {row}");
             Assert.That(upperN * physical.Outcomes, Is.GreaterThanOrEqualTo(physical.Wins[1][row] * upperD), $"upper row {row}");
             Assert.That(upperN * values[row].Denominator, Is.EqualTo(values[row].Numerator * upperD));
-            if (certificate.Status == SearchAvailabilityStatus.Bounded) {
+            if (certificate.Status == SearchAvailabilityStatus.Bounded && capability.Route == SolverRoute.SearchCountState) {
                 Assert.That(lowerN * physical.Outcomes, Is.EqualTo(physical.Wins[0][row] * lowerD), $"elementary row {row}");
             }
             if (certificate.Status == SearchAvailabilityStatus.Exact) {
@@ -198,7 +195,7 @@ public sealed class SearchAvailabilityCertificateTest {
             "Choosing to discard A changes the policy and invalidates a universal gameplay upper claim.");
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
             [draw, target, filler, search], combos, 2, null, CalculationWorkPolicy.Default, new(CertifySearchAvailability: true));
-        Assert.That(result.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.NotCertified));
+        Assert.That(result.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.Bounded));
     }
 
     internal static void AssertPrimary(ProbabilityCalculationResult expected, ProbabilityCalculationResult actual) {
