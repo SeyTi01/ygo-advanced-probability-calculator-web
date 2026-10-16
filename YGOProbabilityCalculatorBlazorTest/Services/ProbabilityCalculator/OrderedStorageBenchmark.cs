@@ -12,8 +12,8 @@ public sealed class OrderedStorageBenchmark {
     public void Export() {
         SessionService codec = new(null!, new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
         List<object> output = [];
-        foreach (string variant in new[] { "base", "copies", "priority" }) {
-            SessionState state = OrderedTerminalAggregationTest.Pressure(variant);
+        foreach (string variant in new[] { "base", "copies", "priority", "eleven" }) {
+            SessionState state = OrderedTerminalAggregationTest.Pressure(variant, roles: variant == "eleven" ? 11 : 10);
             output.Add(new {
                 Name = "ordered-storage-" + variant,
                 Physical = false,

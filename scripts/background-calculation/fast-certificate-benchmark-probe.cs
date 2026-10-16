@@ -55,12 +55,14 @@ public static partial class FastCertificateBenchmarkProbe {
         double milliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         allocated = GC.GetAllocatedBytesForCurrentThread() - allocated;
         return JsonSerializer.Serialize(new FastCertificateMeasurement(milliseconds, allocated, outcome, route, budget.Spent, budget.PeakEntries, budget.PeakCells,
+            GC.GetTotalMemory(false), OperatingSystem.IsBrowser() ? null : Process.GetCurrentProcess().WorkingSet64,
             exact?.Total.ToFraction(), exact?.Combos.Select(value => value.ToFraction()).ToArray(), exact?.Groups.Select(value => value.ToFraction()).ToArray(), result),
             FastCertificateMeasurementJsonContext.Default.FastCertificateMeasurement);
     }
 }
 
 internal sealed record FastCertificateMeasurement(double Milliseconds, long Allocated, string Outcome, string? Route, long Work, long Entries, long Cells,
+    long ManagedHeapBytes, long? WorkingSetBytes,
     ProbabilityFraction? Total, ProbabilityFraction[]? Combos, ProbabilityFraction[]? Groups, ProbabilityCalculationResult? Result);
 
 [JsonSerializable(typeof(FastCertificateMeasurement))]

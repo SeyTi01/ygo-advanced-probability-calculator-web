@@ -12,6 +12,7 @@ internal sealed partial class PostDrawCalculation {
         List<Card> Deferred,
         Dictionary<string, List<Card>> Identities,
         Dictionary<State, BigInteger> Terminal,
+        bool Packed,
         BigInteger Denominator
     );
 
@@ -131,7 +132,11 @@ internal sealed partial class PostDrawCalculation {
             return CountPhysicalSearch(cards, layout, resolver, factorial, combos, groups, totalOnly, method);
         }
 
-        Dictionary<State, BigInteger> terminal = resolver.Resolve<SearchTerminal>(handSize, copies, factorial, compactFrontierThreshold);
+        // Every held count and scalar capacity is bounded by copies. The length
+        // word preserves every row, including trailing zeros. Use the encoding
+        // only when it actually retains fewer cells; weights remain unchanged.
+        bool packed = compactSearchTerminals && copies <= byte.MaxValue && 1 + (n + 4) / 4 < n + 1;
+        Dictionary<State, BigInteger> terminal = resolver.Resolve<SearchTerminal>(handSize, copies, factorial, compactFrontierThreshold, packed);
         TerminalStates = terminal.Count;
 
         List<List<Card>> pools = cards.Select(card => identities[card.Id]).ToList();
@@ -139,8 +144,10 @@ internal sealed partial class PostDrawCalculation {
             pools[^1] = deferred.SelectMany(card => identities[card.Id]).ToList();
         }
 
-        ExactCalculationResult result = CountSearchHands(cards, pools, terminal, factorial[copies], combos, groups, totalOnly, search);
-        _searchCertificate = new(cards, deferred, identities, terminal, factorial[copies]);
+        SearchEventTemplate? template = CreateSearchTemplate(pools, combos, search);
+        ExactCalculationResult result = CountSearchHands(cards, pools, terminal, factorial[copies], combos, groups, totalOnly, search,
+            template: template, packed: packed);
+        _searchCertificate = new(cards, deferred, identities, terminal, packed, factorial[copies]);
 
         return result;
     }
@@ -246,34 +253,41 @@ internal sealed partial class PostDrawCalculation {
         bool totalOnly,
         SearchAccessPlan search,
         bool lower = false,
-        bool declineSearch = false
+        bool declineSearch = false,
+        SearchEventTemplate? template = null,
+        bool packed = false
     ) {
         int copies = lower ? pools.Sum(pool => pool.Sum(card => card.Copies)) : 0;
         BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(denominator) + 1), "result accumulators");
         foreach ((State hand, BigInteger mass) in terminal) {
+            int[] counts = hand.Values;
+            if (packed) {
+                budget.Spend(counts[0]);
+                counts = DrawFrontierPacking.Unpack(counts);
+            }
             List<Card> retained = [];
             List<SearchHandPool> random = [];
             for (int row = 0; row < cards.Count; row++) {
                 budget.Spend(1);
                 if (pools[row].Count == 1) {
-                    retained.Add(pools[row][0].WithCopies(hand.Values[row]));
+                    retained.Add(pools[row][0].WithCopies(counts[row]));
                 }
                 else {
-                    random.Add(new(pools[row], hand.Values[row]));
+                    random.Add(new(pools[row], counts[row]));
                 }
             }
             int loss = 0;
             if (lower) {
                 budget.Spend(cards.Count + 1L);
                 int held = retained.Sum(card => card.Copies) + random.Sum(pool => pool.Held);
-                loss = copies - held - hand.Values[^1];
-                if (loss < 0 || held < 0 || hand.Values[^1] < 0) {
+                loss = copies - held - counts[^1];
+                if (loss < 0 || held < 0 || counts[^1] < 0) {
                     throw new InvalidOperationException("Ordered search conservation failed.");
                 }
             }
             SearchProbabilityCalculation calculation = new(random.SelectMany(pool => pool.Cards).ToList(),
-                random.Sum(pool => pool.Held), retained, search, declineSearch ? 0 : hand.Values[^1], budget, random, loss);
+                random.Sum(pool => pool.Held), retained, search, declineSearch ? 0 : counts[^1], budget, random, loss, template: template);
             ExactCalculationResult result = calculation.Calculate(combos, groups, totalOnly);
             ExactProbability[] values = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < values.Length; i++) {
@@ -320,8 +334,21 @@ internal sealed partial class PostDrawCalculation {
         }
         SearchAccessPlan search = new(pools.SelectMany(pool => pool).ToList(), budget);
 
+        SearchEventTemplate? template = CreateSearchTemplate(pools, combos, search);
+
         return CountSearchHands(state.Cards, pools, state.Terminal, state.Denominator,
-            combos, groups, false, search, lower: true, declineSearch: declineSearch);
+            combos, groups, false, search, lower: true, declineSearch: declineSearch, template: template, packed: state.Packed);
+    }
+
+    private SearchEventTemplate? CreateSearchTemplate(List<List<Card>> pools, List<Combo> combos, SearchAccessPlan search) {
+        if (!reuseSearchTemplates) {
+            return null;
+        }
+        List<Card> randomRows = pools.Where(pool => pool.Count != 1).SelectMany(pool => pool)
+            .OrderByDescending(card => card.Search is not null).ToList();
+        List<Card> fixedRows = pools.Where(pool => pool.Count == 1).Select(pool => pool[0]).ToList();
+
+        return new(search, combos, [.. randomRows, .. fixedRows], randomRows.Count, budget);
     }
 
 }

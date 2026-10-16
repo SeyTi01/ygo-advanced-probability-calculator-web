@@ -33,7 +33,8 @@ internal sealed partial class PostDrawCalculation {
             int handSize,
             int copies,
             BigInteger[] factorial,
-            int compactFrontierThreshold
+            int compactFrontierThreshold,
+            bool packTerminals = false
         ) where TTerminal : struct, ITerminalHand {
             int n = layout.RowCount;
             int[] initial = new int[layout.QueueStart];
@@ -71,7 +72,7 @@ internal sealed partial class PostDrawCalculation {
                         budget.Spend(WorkBudget.IntegerCells(weight) * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
                         Add(
                             terminal,
-                            new(TTerminal.Create(values, layout, remaining)),
+                            Terminal(values, remaining),
                             weight * factorial[remaining],
                             ref terminalCells,
                             "terminal hands"
@@ -107,7 +108,7 @@ internal sealed partial class PostDrawCalculation {
                                 budget.Spend(WorkBudget.IntegerCells(prefix) * (WorkBudget.IntegerCells(factorial[remaining - 1]) + 1));
                                 Add(
                                     terminal,
-                                    new(TTerminal.Create(drawn, layout, remaining - 1)),
+                                    Terminal(drawn, remaining - 1),
                                     prefix * factorial[remaining - 1],
                                     ref terminalCells,
                                     "terminal hands"
@@ -135,11 +136,21 @@ internal sealed partial class PostDrawCalculation {
 
             if (owner.ObserveTerminal is not null) {
                 foreach ((State hand, BigInteger mass) in terminal) {
-                    owner.ObserveTerminal((int[])hand.Values.Clone(), mass);
+                    owner.ObserveTerminal(packTerminals ? DrawFrontierPacking.Unpack(hand.Values) : (int[])hand.Values.Clone(), mass);
                 }
             }
 
             return terminal;
+
+            State Terminal(int[] values, int remaining) {
+                int[] hand = TTerminal.Create(values, layout, remaining);
+                if (packTerminals) {
+                    budget.Spend(hand.Length);
+                    hand = DrawFrontierPacking.Pack(hand);
+                }
+
+                return new(hand);
+            }
         }
 
         private bool Used(int[] values, int entry) => layout.OptSlot(entry) >= 0 && values[layout.OptSlot(entry)] != 0;

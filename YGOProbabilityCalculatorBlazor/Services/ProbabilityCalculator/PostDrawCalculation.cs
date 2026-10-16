@@ -16,7 +16,9 @@ internal sealed partial class PostDrawCalculation(
     DrawActivationPriority? priority = null,
     bool deferIdentities = true,
     int compactFrontierThreshold = PostDrawCalculation.DefaultCompactFrontierThreshold,
-    bool eagerTerminalAggregation = true
+    bool eagerTerminalAggregation = true,
+    bool reuseSearchTemplates = true,
+    bool compactSearchTerminals = true
 ) {
     // A quarter of Standard's cell allowance. Small conditional frontiers retain
     // their original representation; this is a trigger, never a raised limit.
