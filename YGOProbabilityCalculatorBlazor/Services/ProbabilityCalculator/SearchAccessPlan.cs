@@ -242,7 +242,8 @@ internal sealed class SearchProbabilityCalculation(
     WorkBudget budget,
     List<SearchHandPool>? pools = null,
     int targetLoss = 0,
-    int[]? targetLosses = null
+    int[]? targetLosses = null,
+    SearchEventTemplate? template = null
 ) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         using IDisposable? scenario = budget.SearchDiagnostics?.Measure("search scenarios");
@@ -253,7 +254,9 @@ internal sealed class SearchProbabilityCalculation(
         List<Card> ordered = random.OrderByDescending(card => card.Search is not null).ToList();
         int size = randomCount + retained.Sum(card => card.Copies);
         List<Card> rows = [.. ordered, .. retained];
-        List<List<CompiledEvent?>> events = search.Compile(combos, size, rows, capacity, targetLoss, targetLosses: targetLosses);
+        List<List<CompiledEvent?>> events = template is null
+            ? search.Compile(combos, size, rows, capacity, targetLoss, targetLosses: targetLosses)
+            : template.Compile(size, capacity, targetLoss);
         if (pools is not null) {
             List<CountBound> conditions = [];
             foreach (SearchHandPool pool in pools) {
@@ -274,7 +277,7 @@ internal sealed class SearchProbabilityCalculation(
                 : new CompiledEvent([.. route.Constraints, .. conditions])).ToList()).ToList();
         }
         using IDisposable? projection = budget.SearchDiagnostics?.Measure("fixed hand projection");
-        ScenarioConditioner conditioner = new(ordered.Count, randomCount, retained, budget);
+        ScenarioConditioner conditioner = new(ordered.Count, randomCount, retained, budget, sparseFixedRows: template is not null);
         List<List<CompiledEvent?>> projected = events.Select(routes => routes.Select(conditioner.Project).ToList()).ToList();
         projection?.Dispose();
         using IDisposable? construction = budget.SearchDiagnostics?.Measure("decision construction");

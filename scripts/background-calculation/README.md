@@ -413,3 +413,48 @@ The existing `ObserveFrontier` callback can sample managed heap while current,
 next and terminal maps coexist. `PeakConcurrentCells` sums their checked payloads;
 it excludes object overhead and is not a physical memory limit. Keep forced-GC
 profiling separate from interleaved native/WASM timing runs.
+
+### Ordered terminal throughput
+
+`OrderedStorageBenchmark.Export` also exports `ordered-storage-eleven`, an
+11-role 40-card pressure case. Use `prepare-ordered-throughput.py` with the
+frozen Fast, pressure and physical exporter JSON files to produce one paired
+matrix; record its SHA-256 before running either revision. Fast requests use
+Interactive Work; Exact controls retain the exporter's Default Work. Keep any
+additional Interactive Exact diagnostics separately and label their budget.
+
+Include `fast-certificate-benchmark-probe.cs` externally in both measurement
+builds and define `ADAPTIVE_FAST` for both post-#212 revisions. Compile
+`paired-ordered-throughput.cs` in a temporary package-free `net10.0` console
+project. Arguments: baseline test-bin, candidate test-bin, matrix, output JSON.
+Run with `DOTNET_TieredCompilation=0`. It measures primary and full certificate
+requests separately, retaining the first call, two warmups and ten randomized
+interleaved samples. The script checks all successful baseline fractions and
+contracts, plus exact resource counters on marked unchanged controls. Keep
+failed baseline records; a newly completed result needs an independent reference.
+
+`paired-ordered-throughput.cjs` takes baseline optimized `wwwroot`, candidate
+optimized `wwwroot`, matrix and output JSON. It measures complete requests with
+the same warmup/sample schedule. Bootstrap is separate; engine time excludes
+JSON and transport. Heap readings are WASM linear-memory capacity, not live
+managed memory. `YGO_BROWSER_EXECUTABLE` selects Chromium;
+`YGO_BROWSER_SINGLE_PROCESS=1` enables the documented restricted-host arguments.
+Run native, browser and test jobs serially. Report empirical p50/p90 values and
+allocation bytes; do not add timing assertions to CI.
+
+The explicit `OrderedThroughputProfile.Profile` uses
+`YGO_ORDERED_PROFILE_INPUT` / `YGO_ORDERED_PROFILE_OUTPUT` for a separate untimed
+phase/lifetime run. It samples live managed heap after forced GC and working set
+at completed layer boundaries, alongside per-structure and concurrent-map
+payload counters. These samples are not exact process peaks. An external Compile
+item can include the identical profile test in an unmodified baseline checkout.
+Primary/witness/lower Work snapshots are cumulative. Terminal counts and mass
+are observed once when the completed distribution is emitted. Publish again without the external probe for production
+worker/UI and SEO smoke checks.
+
+The internal template/terminal-packing constructor switches are only for forced
+reference tests. No worker input, session setting or production routing gate
+selects them. Terminal packing uses the existing lossless byte-vector codec only
+when every value fits and its actual retained payload is smaller. Every key has
+one encoding throughout its map lifetime; each counting pass decodes only the
+current key. Certificates reuse the completed checked map, without replay.

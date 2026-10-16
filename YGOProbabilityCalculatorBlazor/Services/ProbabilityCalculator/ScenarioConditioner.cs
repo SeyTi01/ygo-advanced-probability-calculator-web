@@ -3,7 +3,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-internal sealed class ScenarioConditioner(int ordinaryRows, int randomHandSize, List<Card> retained, WorkBudget budget) {
+internal sealed class ScenarioConditioner(int ordinaryRows, int randomHandSize, List<Card> retained, WorkBudget budget, bool sparseFixedRows = false) {
     internal CompiledEvent? Project(CompiledEvent? compiled) {
         if (compiled is null) {
             return null;
@@ -13,11 +13,22 @@ internal sealed class ScenarioConditioner(int ordinaryRows, int randomHandSize, 
         BigInteger ordinaryMask = (BigInteger.One << ordinaryRows) - 1;
         Dictionary<BigInteger, CountBound> projected = new();
         foreach (CountBound bound in compiled.Constraints) {
-            budget.Spend(retained.Count + 1L + bound.EligibleRows.GetBitLength() / 32);
             int fixedCount = 0;
-            for (int i = 0; i < retained.Count; i++) {
-                if ((bound.EligibleRows & (BigInteger.One << (ordinaryRows + i))) != 0) {
-                    fixedCount = checked(fixedCount + retained[i].Copies);
+            if (sparseFixedRows && retained.Count <= 64) {
+                ulong mask = (ulong)(bound.EligibleRows >> ordinaryRows);
+                budget.Spend(BitOperations.PopCount(mask) + 1L + bound.EligibleRows.GetBitLength() / 32);
+                while (mask != 0) {
+                    int index = BitOperations.TrailingZeroCount(mask);
+                    fixedCount = checked(fixedCount + retained[index].Copies);
+                    mask &= mask - 1;
+                }
+            }
+            else {
+                budget.Spend(retained.Count + 1L + bound.EligibleRows.GetBitLength() / 32);
+                for (int i = 0; i < retained.Count; i++) {
+                    if ((bound.EligibleRows & (BigInteger.One << (ordinaryRows + i))) != 0) {
+                        fixedCount = checked(fixedCount + retained[i].Copies);
+                    }
                 }
             }
 

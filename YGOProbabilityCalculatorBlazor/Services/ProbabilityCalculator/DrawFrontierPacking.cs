@@ -2,7 +2,7 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 // A bijection on bounded vectors, not a new state equivalence. Preserve every
 // count, flag, phase and FIFO entry, including trailing zero-valued candidates.
-// Each frontier uses just one encoding. Terminal hands always remain unpacked.
+// Each map uses just one encoding. Search terminal keys can use the same bijection.
 internal static class DrawFrontierPacking {
     internal static int[] Pack(int[] values) {
         int[] packed = new int[1 + (values.Length + 3) / 4];
