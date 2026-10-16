@@ -128,6 +128,16 @@ public static class CardPropertyProvider {
             Text("archetype", "Archetype", archetype);
         }
 
+        if (info.ResolvedNames is not null && (info.CanonicalCardId ?? info.Id) is > 0 and var canonicalId) {
+            Add($"catalog-id:{canonicalId.ToString(CultureInfo.InvariantCulture)}", $"Card identity: {info.Name}");
+        }
+        foreach (string name in info.ResolvedNames ?? []) {
+            Text("card-name", "Card name", name);
+        }
+        foreach (string name in info.MentionedNames ?? []) {
+            Text("mentions", "Mentions", name);
+        }
+
         return result.Values.ToArray();
 
         void Add(string key, string label) => result.TryAdd(key, new(label, CategorySource.Metadata, key));

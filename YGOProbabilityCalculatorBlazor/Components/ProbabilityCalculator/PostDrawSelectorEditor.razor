@@ -2,7 +2,11 @@
 @using YGOProbabilityCalculatorBlazor.Services.DeckImport
 
 <div class="mt-2">
-    @if (!Grouped || Selector.Kind == CardSelectorKind.Any) {
+    @if (HasVerifiedPredicate(Selector)) {
+        <div class="small" role="note">@DrawEffectPresentation.DescribeSelector(Selector, CategoryBases)</div>
+        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">Replace verified filter</button>
+    }
+    else if (!Grouped || Selector.Kind == CardSelectorKind.Any) {
         <label for="@Id" class="form-label mb-1">Eligible</label>
         <select id="@Id" class="form-select form-select-sm" value="" @onchange="Change">
             <option value="">@(Selector.Kind == CardSelectorKind.Any ? "Any card" : "Add OR category/property…")</option>
@@ -33,7 +37,7 @@
             }
         </select>
     }
-    @if (Selector.Kind != CardSelectorKind.Any && Grouped) {
+    @if (Selector.Kind != CardSelectorKind.Any && Grouped && !HasVerifiedPredicate(Selector)) {
         <div class="form-label mb-1">Eligible</div>
         <div class="mt-2" aria-label="Grouped eligibility filter">
             <SelectorExpressionEditor Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
@@ -41,7 +45,7 @@
                                       Options="GroupedOptions" OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
         </div>
     }
-    else if (Selector.Kind != CardSelectorKind.Any) {
+    else if (Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
         <div class="d-flex flex-wrap align-items-center gap-1 mt-2" aria-label="Removal filter">
             @for (int index = 0; index < Alternatives.Length; index++) {
                 int branch = index;
@@ -95,6 +99,9 @@
     private readonly Dictionary<CardSelector, string> _validationErrors = [];
     private bool _grouped;
     private string? _error;
+    private static bool HasVerifiedPredicate(CardSelector selector) => selector.Kind is CardSelectorKind.Objective or CardSelectorKind.Not
+        || selector.Children.Any(HasVerifiedPredicate);
+
     private bool Grouped => _grouped || Selector.IsGrouped;
 
     private RenderFragment GroupedOptions => @<text>

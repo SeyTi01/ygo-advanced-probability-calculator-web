@@ -110,7 +110,7 @@ export function createResolver(policy = membershipPolicy, reviewedClauses = revi
         // Missing text can hide an exclusion or a substituted name. Do not claim
         // objective membership without the complete source identity evidence.
         const archetypes = text.trim() && unresolved.length === 0 ? [...result].sort() : [];
-        return { archetypes, declarations, unresolved, exclusions: [...exclusions].sort(), effectiveNames };
+        return { archetypes, declarations, unresolved, exclusions: [...exclusions].sort(), effectiveNames, allNames: [...effectiveNames, ...extraNames] };
     };
 }
 

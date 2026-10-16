@@ -97,3 +97,22 @@ test("writes compact versioned JSON", () => {
     assert.equal(output.includes(Buffer.from(": ")), false);
     assert.deepEqual(Object.keys(JSON.parse(output)), ["version", "cards"]);
 });
+
+test("objective names preserve permanent equivalents but mentions require exact quoted references", () => {
+    const source = [
+        card(24094653, "Polymerization", "Spell Card", { desc: "Fusion Summon 1 Fusion Monster." }),
+        card(74335036, "Fusion Substitute", "Spell Card", { desc: '(This card\'s name is always treated as "Polymerization".)' }),
+        card(1, "Conditional", "Effect Monster", { desc: 'This card\'s name becomes "Polymerization" while on the field.' }),
+        card(2, "Shining Sarcophagus imposter", "Effect Monster", { desc: 'Shining Sarcophagus without quotes is not evidence.' }),
+        card(3, "Reference", "Effect Monster", { desc: 'If you control “Shining Sarcophagus”: do something.' }),
+        card(4, "Regulus reference", "Spell Card", { desc: 'Add 1 "Regulus, the Prince of Endymion".' }),
+        card(5, "No wording", "Effect Monster")
+    ];
+    const result = new Map(buildCatalog({ data: source }).cards.map(entry => [entry.id, entry]));
+    assert.ok(result.get(74335036).resolvedNames.includes("Polymerization"));
+    assert.equal(result.get(1).resolvedNames?.includes("Polymerization") ?? false, false);
+    assert.deepEqual(result.get(2).mentionedNames, []);
+    assert.deepEqual(result.get(3).mentionedNames, ["Shining Sarcophagus"]);
+    assert.deepEqual(result.get(4).mentionedNames, ["Regulus, the Prince of Endymion"]);
+    assert.equal(result.get(5).mentionedNames, null);
+});

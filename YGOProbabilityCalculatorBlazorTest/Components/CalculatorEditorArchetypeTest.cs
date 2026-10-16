@@ -84,7 +84,8 @@ public class CalculatorEditorArchetypeTest : CalculatorEditorTestBase {
         };
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(old);
         Card[] restored = cut.FindComponents<CardEditor>().Select(editor => editor.Instance.Card).ToArray();
-        Assert.That(restored[0].Categories, Is.Empty);
+        Assert.That(restored[0].Categories.Any(category => category.Identity == lightsworn.Identity), Is.False);
+        Assert.That(CardSelector.CatalogIdentity(691925).Matches(restored[0]), Is.True);
         Assert.That(restored[0].EffectPlan, Is.EqualTo(automatic.EffectPlan));
         Assert.That(restored[0].EffectProfile, Is.EqualTo(automatic.EffectProfile));
         Assert.That(restored[1].ManualMetadataCategoryKeys, Does.Contain(lightsworn.MetadataKey));

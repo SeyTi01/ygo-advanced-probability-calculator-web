@@ -7,7 +7,7 @@ public enum DrawExecutionPath { Ordinary, DrawCountState, ExchangeableConditiona
 // Structural guidance only. Never compiles events, reduces the deck, or enumerates hands.
 public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bool ElevatedRisk) {
     internal static bool IsExchangeableEffect(Card effect, bool relevant, int copies, int handSize) =>
-        !effect.EffectPlan.HasActivationRestrictions && effect.PreDrawRemovalCount == 0 && !relevant && !effect.DrawOncePerTurn
+        !effect.EffectPlan.HasActivationRestrictions && effect.PreDrawRemovalCount == 0 && !relevant && effect.MaximumActivations == int.MaxValue
         && effect.DrawCount == effect.PostDrawDiscardCount + 1
         && effect.PostDrawSelector.Kind == CardSelectorKind.Any
         && (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) * (long)effect.Copies <= copies - handSize;

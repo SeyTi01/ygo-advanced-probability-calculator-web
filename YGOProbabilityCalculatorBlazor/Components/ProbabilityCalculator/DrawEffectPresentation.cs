@@ -39,8 +39,8 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
     }
 
     public static string DescribePlan(DrawEffectPlan plan, IReadOnlyList<CategoryBase> categories) {
-        if (plan.DrawCount is null) {
-            return plan.Search is null ? "No draw effect" : $"Search 1 ({DescribeSelector(plan.Search.Selector, categories)})";
+        if (plan.DrawCount is null && plan.Search is null) {
+            return "No draw effect";
         }
 
         List<string> steps = [];
@@ -50,7 +50,7 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
         if (plan.HiddenDeckCost > 0) {
             steps.Add($"Banish {plan.HiddenDeckCost} unseen deck cards");
         }
-        steps.Add($"Draw {plan.DrawCount}");
+        steps.Add(plan.Search is null ? $"Draw {plan.DrawCount}" : $"Search 1 ({DescribeSelector(plan.Search.Selector, categories)})");
         if (plan.HiddenPostDrawMill > 0) {
             steps.Add($"send {plan.HiddenPostDrawMill} unseen top deck cards to the GY");
         }
@@ -63,18 +63,30 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
         if (plan.BlocksLaterDraws) {
             steps.Add("no further draws");
         }
-        if (plan.OncePerTurn) {
+        if (plan.MinimumHandSize > 0) {
+            steps.Add($"at least {plan.MinimumHandSize} cards in hand before activation");
+        }
+        if (plan.Search?.Modes is { } modes) {
+            steps.Add(string.Join("; ", modes.Select(mode => $"{DescribeSelector(mode.Selector, categories)}: {mode.ActivationLimit?.ToString() ?? "unlimited"} per entry")));
+        }
+        if (plan.ActivationLimit is int limit) {
+            steps.Add($"up to {limit} activations per entry");
+        }
+        else if (plan.OncePerTurn) {
             steps.Add("once per turn");
         }
 
         return string.Join("; ", steps);
     }
 
-    private static string DescribeSelector(CardSelector selector, IReadOnlyList<CategoryBase> categories) {
+    public static string DescribeSelector(CardSelector selector, IReadOnlyList<CategoryBase> categories) {
         if (selector.Kind == CardSelectorKind.Any) {
             return "any card";
         }
 
+        if (selector.Kind is CardSelectorKind.Objective or CardSelectorKind.Not) {
+            return (selector.Kind == CardSelectorKind.Objective ? "verified " : "except ") + DescribeSelector(selector.Children[0], categories);
+        }
         if (selector.Kind == CardSelectorKind.LevelAtLeast) {
             return $"Level >= {selector.MinimumLevel}";
         }

@@ -3,7 +3,7 @@ using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 
 namespace YGOProbabilityCalculatorBlazor.Services.Session;
 
-/// <summary>Repairs only source-owned archetypes using verified bundled identities.</summary>
+/// <summary>Repairs source-owned memberships, names and mentions using verified bundled identities.</summary>
 public static class CatalogArchetypeReconciler {
     public static void Reconcile(List<Card> cards, IReadOnlyList<CardInfo> catalog) {
         if (cards.Count == 0 || catalog.Count == 0) {
@@ -44,9 +44,14 @@ public static class CatalogArchetypeReconciler {
                 continue;
             }
 
+            bool Owned(CategoryBase category) => IsArchetype(category)
+                || (card.ExternalCardId is > 0 && category.Source == CategorySource.Metadata
+                    && ((info.ResolvedNames is not null && category.MetadataKey!.StartsWith("catalog-id:", StringComparison.Ordinal))
+                        || (info.ResolvedNames is not null && category.MetadataKey.StartsWith("card-name:", StringComparison.Ordinal))
+                        || (info.MentionedNames is not null && category.MetadataKey.StartsWith("mentions:", StringComparison.Ordinal))));
             List<CategoryBase> effective = card.Categories
-                .Where(category => !IsArchetype(category) || card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))
-                .Concat(CardPropertyProvider.GetCategories(info).Where(IsArchetype))
+                .Where(category => !Owned(category) || card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))
+                .Concat(CardPropertyProvider.GetCategories(info).Where(Owned))
                 .DistinctBy(category => category.Identity)
                 .ToList();
             if (card.Categories.Select(category => category.Identity).ToHashSet(StringComparer.Ordinal)

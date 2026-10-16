@@ -79,7 +79,7 @@ internal sealed partial class PostDrawCalculation {
                     }
                     Push(values, remaining, weight, i + 1);
                     bool candidate = cards[i].DrawCount is not null && TimingAllows(values, i) && !Used(values, i)
-                        && (!cards[i].DrawOncePerTurn || !values.AsSpan(layout.QueueStart).Contains(i));
+                        && (cards[i].MaximumActivations != 1 || !values.AsSpan(layout.QueueStart).Contains(i));
                     budget.Spend(values.Length + WorkBudget.IntegerCells(weight) + 1L);
                     int[] drawn = new int[values.Length + (candidate ? 1 : 0)];
                     values.CopyTo(drawn, 0);
@@ -118,10 +118,12 @@ internal sealed partial class PostDrawCalculation {
         int copies = cards.Sum(card => card.Copies);
         BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "physical results");
-        PhysicalSearchHandCounter counter = new(cards, combos, budget);
+        BoundedSearchHandCounter? bounded = cards.Any(card => card.EffectPlan.RequiresSearchResolution || (card.Search is not null && card.MinimumHandSize > 0))
+            ? new(cards, combos, budget) : null;
+        PhysicalSearchHandCounter? counter = bounded is null ? new(cards, combos, budget) : null;
         int[] available = new int[n];
-        long activations = cards.Where(card => card.DrawCount is not null).Sum(card => card.DrawOncePerTurn ? 1L : card.Copies);
-        long observations = handSize + cards.Sum(card => (long)(card.DrawCount ?? 0) * (card.DrawOncePerTurn ? 1 : card.Copies));
+        long activations = cards.Where(card => card.DrawCount is not null).Sum(card => Math.Min(card.MaximumActivations, card.Copies));
+        long observations = handSize + cards.Sum(card => (long)(card.DrawCount ?? 0) * (Math.Min(card.MaximumActivations, card.Copies)));
         // Measured small-frontier domain: avoid repeating ordered prefixes when
         // only a few source/identity rows can distinguish them. Outside this
         // conservative structural domain, stream rather than speculate/ retry.
@@ -130,7 +132,32 @@ internal sealed partial class PostDrawCalculation {
         bool frontier = method == PhysicalEnumerationMethod.Frontier || (method == PhysicalEnumerationMethod.Auto
             && n <= 8 && handSize <= 5 && activations <= 4 && observations <= 12);
         Route = frontier ? SolverRoute.SearchPhysicalFrontier : SolverRoute.SearchPhysicalEnumeration;
-        if (frontier) {
+        if (cards.All(card => card.DrawCount is null)) {
+            // With no draw phase the order of the opening hand is unobservable.
+            // Enumerate count vectors with physical binomial mass, not permutations.
+            Route = SolverRoute.SearchOnly;
+            int[] state = new int[layout.QueueStart];
+            VisitOpening(0, handSize, BigInteger.One);
+
+            void VisitOpening(int row, int left, BigInteger mass) {
+                budget.Spend(1 + WorkBudget.IntegerCells(mass));
+                CheckStorage(n + 1L, (n + 1L) * (WorkBudget.IntegerCells(factorial[copies]) + 3), "opening counts");
+                if (row == n) {
+                    if (left == 0) {
+                        CountTerminal(state, copies - handSize, mass * factorial[handSize]);
+                    }
+                    return;
+                }
+                BigInteger choose = BigInteger.One;
+                for (int held = 0; held <= Math.Min(left, cards[row].Copies); held++) {
+                    state[layout.HandStart + row] = held;
+                    state[row] = cards[row].Copies - held;
+                    VisitOpening(row + 1, left - held, mass * choose);
+                    choose = choose * (cards[row].Copies - held) / (held + 1);
+                }
+            }
+        }
+        else if (frontier) {
             resolver.EnumerateFrontier(handSize, copies, factorial, CountTerminal);
         }
         else {
@@ -162,7 +189,8 @@ internal sealed partial class PostDrawCalculation {
             }
 
             void Record(BigInteger mass) {
-                bool[] success = counter.Evaluate(state.AsSpan(layout.HandStart, n), available);
+                bool[] success = bounded is null ? counter!.Evaluate(state.AsSpan(layout.HandStart, n), available)
+                    : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available);
                 if (success.Any(value => value)) {
                     wins[0] += mass;
                 }
@@ -240,7 +268,7 @@ internal sealed class PhysicalSearchHandCounter {
             _events = _combos.Select(compiler.CompileCombo).ToList();
             _compiledSize = size;
         }
-        int[] allowance = _sources.Select(source => Math.Min(hand[source.Source], _cards[source.Source].OncePerTurn ? 1 : int.MaxValue)).ToArray();
+        int[] allowance = _sources.Select(source => Math.Min(hand[source.Source], _cards[source.Source].MaximumActivations)).ToArray();
         bool[] success = new bool[_combos.Count];
         Stack<(int Kind, int Index, int Start, int Left)> stack = new();
         Push(0, 0, 0, 0);

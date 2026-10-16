@@ -41,7 +41,7 @@ internal static class FastPhysicalRoute {
             }
         }
         foreach (Card effect in effects) {
-            int count = effect.DrawOncePerTurn ? 1 : effect.Copies;
+            int count = Math.Min(effect.MaximumActivations, effect.Copies);
             activations += count;
             observations += count * effect.DrawCount!.Value;
             hidden += count * (effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount);

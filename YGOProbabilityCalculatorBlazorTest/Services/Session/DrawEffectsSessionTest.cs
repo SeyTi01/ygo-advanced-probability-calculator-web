@@ -77,7 +77,7 @@ public class DrawEffectsSessionTest {
         SessionState session = new() { CalculationModel = (enabled ? CalculationModel.Fast : CalculationModel.OpeningHand), Cards = [configured] };
 
         Assert.That(new SessionState().CalculationModel, Is.EqualTo(CalculationModel.Fast));
-        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(8));
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(9));
         string json = codec.SerializeSession(session);
         using JsonDocument document = JsonDocument.Parse(json);
         Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));

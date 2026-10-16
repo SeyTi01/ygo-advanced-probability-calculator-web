@@ -39,6 +39,16 @@ internal sealed class SearchAccessCalculation(
         Effects = effects;
         Search = search;
         List<Card> ordinary = cards.Where(card => !effects.Contains(card)).ToList();
+        if (cards.Any(card => card.EffectPlan.RequiresSearchResolution || (card.Search is not null && card.MinimumHandSize > 0))) {
+            // Hand loss and mode allowances invalidate the substitution projection
+            // and its survival certificate. Both modes use physical counting.
+            PostDrawCalculation bounded = new(cards, handSize, budget, priority);
+            ExactCalculationResult result = bounded.CalculateSearch(combos, groups, totalOnly, search, physical: true);
+            _capability = new(bounded.Route, PhysicalSearchAccuracy.ProvenExact,
+                CapabilityReason.ExplicitPhysicalSurvivors, CertificationSupport.ReusePrimary);
+
+            return result;
+        }
         if (effects.Count == 0) {
             _route = SolverRoute.SearchOnly;
             return new SearchProbabilityCalculation(cards, handSize, [], search, copies - handSize, budget)
@@ -190,7 +200,7 @@ internal readonly struct SearchComposition : IDrawTerminal {
         int hidden = 0;
         for (int i = 0; i < effects.Count; i++) {
             int count = encountered?[i] ?? effects[i].Copies;
-            int activations = effects[i].DrawOncePerTurn ? Math.Min(1, count) : count;
+            int activations = Math.Min(effects[i].MaximumActivations, count);
             hidden += activations * (effects[i].PreDrawDeckRemovalCount + effects[i].PostDrawDeckMillCount);
         }
 

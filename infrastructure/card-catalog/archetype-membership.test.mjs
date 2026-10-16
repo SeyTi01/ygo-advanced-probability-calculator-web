@@ -86,7 +86,7 @@ test("Skill identity remains explicitly out of scope and catalog projection pres
         assert.equal(projected.name, card.name);
         assert.deepEqual(projected.artworkImageIds, [card.id, card.id + 1]);
         assert.deepEqual(Object.keys(projected).sort(),
-            ["id", "canonicalCardId", "name", "type", "artworkImageIds", "artworkMetadataKnown", "resolvedArchetypes"].sort());
+            ["id", "canonicalCardId", "name", "type", "artworkImageIds", "artworkMetadataKnown", "resolvedArchetypes", "resolvedNames", "mentionedNames"].sort());
     }
     assert.throws(() => createResolver(undefined, [{ id: 1, operation: "guess" }]), /reviewed name clauses/);
 });

@@ -31,7 +31,7 @@ internal static class CountStateLossBudget {
                 Card source = effects[effect];
                 long contribution = 1L + source.PreDrawDeckRemovalCount + source.PostDrawDeckMillCount;
                 if (source.Id == cards[row].Id) {
-                    int cap = source.DrawOncePerTurn ? 1 : source.Copies;
+                    int cap = Math.Min(source.MaximumActivations, source.Copies);
                     ownContribution = cap * contribution;
                 }
                 else {

@@ -90,6 +90,13 @@ export function projectCard(card) {
     }
     // null is unknown; [] is a verified absence. Only the latter can repair a session.
     projected.resolvedArchetypes = membership.unresolved.length ? null : membership.archetypes;
+    projected.resolvedNames = membership.unresolved.length ? null : membership.allNames;
+    // Only exact quoted card references are relevant to the maintained mention
+    // selectors. Archetype membership and names containing a substring do not qualify.
+    const text = (card.desc ?? "").replace(/[“”]/g, '"');
+    projected.mentionedNames = typeof card.desc === "string"
+        ? ["Regulus, the Prince of Endymion", "Shining Sarcophagus"].filter(name => text.includes(`"${name}"`))
+        : null;
     return projected;
 }
 

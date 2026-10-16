@@ -19,7 +19,8 @@ public sealed class SessionSchemaMigrator {
             // Grouped selectors and typed numeric predicates require a new reader.
             // Existing saved operations and their provenance remain authoritative.
             [6] = root => SetSchemaVersion(root, 7),
-            [7] = MigrateV7ToV8
+            [7] = MigrateV7ToV8,
+            [8] = root => SetSchemaVersion(root, 9)
         };
 
     public string MigrateToCurrent(string json) {

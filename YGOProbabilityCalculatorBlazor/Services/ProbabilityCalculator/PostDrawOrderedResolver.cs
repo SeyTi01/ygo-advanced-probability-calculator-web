@@ -85,7 +85,7 @@ internal sealed partial class PostDrawCalculation {
                             continue;
                         }
                         bool candidate = cards[i].DrawCount is not null && TimingAllows(values, i) && !Used(values, i)
-                            && (!cards[i].DrawOncePerTurn || !values.AsSpan(layout.QueueStart).Contains(i));
+                            && (cards[i].MaximumActivations != 1 || !values.AsSpan(layout.QueueStart).Contains(i));
                         budget.Spend(values.Length + WorkBudget.IntegerCells(weight) + 1L);
                         int[] drawn = new int[values.Length + (candidate ? 1 : 0)];
                         values.CopyTo(drawn, 0);
@@ -153,7 +153,24 @@ internal sealed partial class PostDrawCalculation {
             }
         }
 
-        private bool Used(int[] values, int entry) => layout.OptSlot(entry) >= 0 && values[layout.OptSlot(entry)] != 0;
+        private bool Used(int[] values, int entry) => layout.OptSlot(entry) >= 0 && values[layout.OptSlot(entry)] >= cards[entry].MaximumActivations;
+
+        private int RemainingAllowance(int[] values, int entry) => cards[entry].MaximumActivations
+            - (layout.OptSlot(entry) < 0 ? 0 : values[layout.OptSlot(entry)]);
+
+        private bool HandSizeAllows(int[] values, int entry, int reserved = 0) {
+            int minimum = cards[entry].MinimumHandSize;
+            if (minimum == 0) {
+                return true;
+            }
+            budget.Spend(layout.RowCount);
+            int count = -reserved;
+            for (int row = 0; row < layout.RowCount; row++) {
+                count += values[layout.HandStart + row];
+            }
+
+            return count >= minimum;
+        }
 
         private bool TimingAllows(int[] values, int entry) => !layout.HasActivationState
             || (values[layout.ActivationState] != 2 && (!cards[entry].FirstActivationOnly || values[layout.ActivationState] == 0));
@@ -238,7 +255,8 @@ internal sealed partial class PostDrawCalculation {
                     values = RemoveCandidate(values, candidate);
                     continue;
                 }
-                if (cards[source].PreDrawRemovalCount > 0 && !CanPay(values, source)) {
+                if (!HandSizeAllows(values, source)
+                    || (cards[source].PreDrawRemovalCount > 0 && !CanPay(values, source))) {
                     candidate++;
                     continue;
                 }
@@ -273,11 +291,10 @@ internal sealed partial class PostDrawCalculation {
                 values[layout.ActivationState] = 1;
             }
             values[layout.HandStart + source]--;
-            if (cards[source].DrawOncePerTurn) {
-                values[layout.OptSlot(source)] = 1;
-                // Enqueue admits at most one pending entry per OPT
-                // identity. Removing the activating candidate above
-                // already removed its only queue entry.
+            if (layout.OptSlot(source) >= 0) {
+                values[layout.OptSlot(source)]++;
+                // Single-activation entries enqueue only one pending copy;
+                // higher limits retain later copies until their allowance is spent.
             }
             values[layout.DrawsLeft] = cards[source].DrawCount!.Value;
             bool needsCompletion = cards[source].PostDrawDiscardCount > 0
@@ -324,16 +341,17 @@ internal sealed partial class PostDrawCalculation {
                     || (reservedSource >= 0 && (cards[reservedSource].BlocksLaterDraws || cards[i].FirstActivationOnly))
                     || !pending[i] || values[layout.HandStart + i] - (i == reservedSource ? 1 : 0) == 0 || Used(values, i)
                     || cards[i].DrawCount is not int drawCount || drawCount + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount > remaining
-                    || (i == reservedSource && cards[i].DrawOncePerTurn)) {
+                    || (i == reservedSource && RemainingAllowance(values, i) <= 1)) {
                     continue;
                 }
 
-                bool canPay = cards[i].PreDrawRemovalCount == 0 || CanPay(values, i, reservedSource);
+                bool canPay = HandSizeAllows(values, i, reservedSource < 0 ? 0 : 1)
+                    && (cards[i].PreDrawRemovalCount == 0 || CanPay(values, i, reservedSource));
                 if (canPay) {
                     activatable[i] = true;
                     minimumLegalDeckConsumption = Math.Min(minimumLegalDeckConsumption, drawCount + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount);
                 }
-                else if (cards[i].PreDrawRemovalCount > 0) {
+                else if (cards[i].PreDrawRemovalCount > 0 || cards[i].MinimumHandSize > 0) {
                     costDeferred[i] = true;
                 }
             }
@@ -347,7 +365,7 @@ internal sealed partial class PostDrawCalculation {
                     continue;
                 }
                 bool usable = activatable[i];
-                bool redundant = cards[i].DrawOncePerTurn && values[layout.HandStart + i] - (i == reservedSource ? 1 : 0) > 1;
+                bool redundant = values[layout.HandStart + i] - (i == reservedSource ? 1 : 0) > RemainingAllowance(values, i) - (i == reservedSource ? 1 : 0);
                 bool deferred = costDeferred[i] && !redundant && !cards[i].FirstActivationOnly
                     && cards[i].DrawCount is int drawCount && drawCount + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount <= remainingAfterAnotherDraw;
                 int tier = (relevant[i], usable && !redundant, deferred) switch {
@@ -373,7 +391,7 @@ internal sealed partial class PostDrawCalculation {
             // Remove the latest copy of this identity, retaining FIFO priority.
             for (int q = values.Length - 1; q >= layout.QueueStart; q--) {
                 if (values[q] == selected) {
-                    if (!cards[selected].DrawOncePerTurn || values[layout.HandStart + selected] == 0) {
+                    if (cards[selected].MaximumActivations != 1 || values[layout.HandStart + selected] == 0) {
                         selectedQueue = q;
                     }
                     break;

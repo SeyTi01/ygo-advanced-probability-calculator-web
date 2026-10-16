@@ -96,7 +96,7 @@ public class CardConverter : JsonConverter<Card> {
         if (discardProperties.Length == 1) {
             JsonElement value = discardProperties[0].Value;
             if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out discardCount)
-                || discardCount is < 0 or > 2 || (discardCount > 0 && drawCount is null)) {
+                || discardCount is < 0 or > 2) {
                 throw new JsonException("Post-draw discard requires a draw effect and must be 0, 1, or 2.");
             }
         }
@@ -179,6 +179,18 @@ public class CardConverter : JsonConverter<Card> {
             : JsonSerializer.Deserialize<SearchEffectPlan>(searches[0].Value.GetRawText(), options)
                 ?? throw new JsonException("Missing search operation.");
 
+        int? ReadInteger(string name) {
+            JsonProperty[] values = root.EnumerateObject().Where(property => property.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (values.Length == 0) {
+                return null;
+            }
+            if (values.Length != 1 || values[0].Value.ValueKind != JsonValueKind.Number || !values[0].Value.TryGetInt32(out int value)) {
+                throw new JsonException($"{name} must be a single integer.");
+            }
+
+            return value;
+        }
+
         bool firstActivationOnly = ReadRestriction("FirstActivationOnly");
         bool blocksLaterDraws = ReadRestriction("BlocksLaterDraws");
         try {
@@ -202,7 +214,9 @@ public class CardConverter : JsonConverter<Card> {
                 firstActivationOnly: firstActivationOnly,
                 blocksLaterDraws: blocksLaterDraws,
                 search: search,
-                oncePerTurn: oncePerTurn
+                oncePerTurn: oncePerTurn,
+                activationLimit: ReadInteger("ActivationLimit"),
+                minimumHandSize: ReadInteger("MinimumHandSize") ?? 0
             );
         }
         catch (ArgumentException exception) {
@@ -236,6 +250,13 @@ public class CardConverter : JsonConverter<Card> {
         }
         else if (!value.DrawOncePerTurn) {
             writer.WriteBoolean("DrawOncePerTurn", false);
+        }
+
+        if (value.EffectPlan.ActivationLimit is int limit) {
+            writer.WriteNumber("ActivationLimit", limit);
+        }
+        if (value.MinimumHandSize > 0) {
+            writer.WriteNumber("MinimumHandSize", value.MinimumHandSize);
         }
 
         if (value.PostDrawDiscardCount > 0) {

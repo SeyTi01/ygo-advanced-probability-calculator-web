@@ -72,7 +72,10 @@ public class CardEffectRegistryTest {
             ("Attribute: DARK", "attribute:dark"), ("Quick-Play Spell", "spell-type:quick-play"),
             ("Archetype: Radiant Typhoon", "archetype:radiant%20typhoon"), ("Monster", "kind:monster"),
             ("Level 8", "level:8"), ("Archetype: Orcust", "archetype:orcust"),
-            ("Archetype: World Legacy", "archetype:world%20legacy"), ("Archetype: Lightsworn", "archetype:lightsworn")
+            ("Archetype: World Legacy", "archetype:world%20legacy"), ("Archetype: Lightsworn", "archetype:lightsworn"),
+            ("Archetype: Sky Striker", "archetype:sky%20striker"), ("Archetype: Darklord", "archetype:darklord"),
+            ("Insect", "monster-race:insect"), ("Plant", "monster-race:plant"), ("Level 4", "level:4"),
+            ("Normal Trap", "trap-type:normal"), ("Trap", "kind:trap")
         }));
     }
 
