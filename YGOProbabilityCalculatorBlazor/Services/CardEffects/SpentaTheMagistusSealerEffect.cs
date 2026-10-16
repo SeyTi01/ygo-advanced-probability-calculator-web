@@ -13,6 +13,6 @@ public sealed class SpentaTheMagistusSealerEffect : ICardEffectDefinition {
     public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(CardSelector.AllOfSelectors([
             CardSelector.AllOf(["metadata:kind:monster", "metadata:archetype:magistus"]),
-            CardSelector.Not(CardSelector.CatalogName("Spenta, the Magistus Sealer"))
+            CardSelector.Not(CardSelector.CatalogIdentity(42544773))
         ])));
 }

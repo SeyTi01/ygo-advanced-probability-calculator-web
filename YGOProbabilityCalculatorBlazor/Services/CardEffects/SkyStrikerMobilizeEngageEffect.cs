@@ -16,6 +16,6 @@ public sealed class SkyStrikerMobilizeEngageEffect : ICardEffectDefinition {
     public DrawEffectPlan Compile() => new(null, false, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(CardSelector.AllOfSelectors([
             CardSelector.For(SkyStriker),
-            CardSelector.Not(CardSelector.CatalogName(Name))
+            CardSelector.Not(CardSelector.CatalogIdentity(63166095))
         ])));
 }
