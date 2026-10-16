@@ -385,3 +385,31 @@ exclude transport; resource/contract checks use the same measured completion.
 restricted hosts using headless shell with in-process GPU/no zygote. Report this
 configuration explicitly and compare only matched browser configurations.
 Publish again without the external probe for production-worker/UI smoke checks.
+
+### Ordered frontier storage pressure
+
+`OrderedStorageBenchmark.Export` writes three synthetic 40-card ordered inputs
+and sessions to `YGO_ORDERED_STORAGE_FIXTURES`: ten distinct role classes, an OPT
+draw-two/discard-one entry, an unrestricted draw-one/discard-one entry, and one
+search source. Variants change source multiplicities or activation priority.
+They complement the frozen `vs-k9-ordered-40` in `FastCertificateBenchmark.Export`;
+they are not a replacement for that representative example.
+
+Freeze exports and baseline outcomes before edits. Use the external
+`fast-certificate-benchmark-probe.cs` in both measurement builds, with
+`ADAPTIVE_FAST` defined for both revisions after PR #212. Measure primary and full
+certificate calls separately (`MeasureCertificate`), at Default/Interactive Work
+and Standard/High/VeryHigh Storage. For a rescued Standard result, compare every
+upper fraction against a successful unchanged High reference. Keep failures as
+failures when no reference completes. Unchanged controls must also match their
+resource counters and complete result contracts.
+
+`OrderedTerminalAggregationTest` forces both historical and immediate terminal
+aggregation, compares complete weighted terminal maps, and checks upper/lower
+rows against the independent labeled-copy oracle. The internal constructor flag
+and terminal observer are diagnostic only; no worker or session option selects
+them. Normal execution switches only on layers already using frontier packing.
+The existing `ObserveFrontier` callback can sample managed heap while current,
+next and terminal maps coexist. `PeakConcurrentCells` sums their checked payloads;
+it excludes object overhead and is not a physical memory limit. Keep forced-GC
+profiling separate from interleaved native/WASM timing runs.

@@ -15,11 +15,13 @@ internal sealed partial class PostDrawCalculation(
     WorkBudget budget,
     DrawActivationPriority? priority = null,
     bool deferIdentities = true,
-    int compactFrontierThreshold = PostDrawCalculation.DefaultCompactFrontierThreshold
+    int compactFrontierThreshold = PostDrawCalculation.DefaultCompactFrontierThreshold,
+    bool eagerTerminalAggregation = true
 ) {
     // A quarter of Standard's cell allowance. Small conditional frontiers retain
     // their original representation; this is a trigger, never a raised limit.
     internal const int DefaultCompactFrontierThreshold = 65_536;
+    private bool EagerTerminalAggregation { get; } = eagerTerminalAggregation;
     internal int TerminalStates { get; private set; }
     internal SolverRoute Route { get; private set; }
     internal int PeakStates { get; private set; }
@@ -31,6 +33,8 @@ internal sealed partial class PostDrawCalculation(
     internal long PeakConcurrentCells { get; private set; }
     // Opt-in profiling only: called while old/new layers and terminal hands coexist.
     internal Action? ObserveFrontier { get; init; }
+    // Optional terminal-distribution audit; observers receive copies, never keys.
+    internal Action<int[], BigInteger>? ObserveTerminal { get; init; }
 
     private void CheckStorage(long entries, long cells, string structure) {
         if (cells > PeakCells) {

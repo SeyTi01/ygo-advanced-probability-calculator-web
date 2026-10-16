@@ -99,7 +99,8 @@ public class TradeInAllureTest {
         PostDrawCalculation reference = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.High), priority,
             compactFrontierThreshold: int.MaxValue);
         ExactCalculationResult expected = reference.Calculate(session.Combos, session.ComboGroups);
-        PostDrawCalculation packed = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive), priority);
+        // Isolate byte packing: eager terminal aggregation has its own state-count tests.
+        PostDrawCalculation packed = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive), priority, eagerTerminalAggregation: false);
         ExactCalculationResult actual = packed.Calculate(session.Combos, session.ComboGroups);
         Assert.Multiple(() => {
             Assert.That(actual.Total, Is.EqualTo(expected.Total));

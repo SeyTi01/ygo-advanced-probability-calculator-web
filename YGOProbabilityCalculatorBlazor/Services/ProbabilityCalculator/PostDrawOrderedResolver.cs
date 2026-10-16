@@ -97,6 +97,25 @@ internal sealed partial class PostDrawCalculation {
                         // Normalize immediately so batches differing only in discarded
                         // cards or obsolete candidates merge before the next layer.
                         if (Settle(ref drawn, remaining - 1) != ResolutionOutcome.RemovalUnavailable) {
+                            if (owner.EagerTerminalAggregation && nextPacked && drawn[layout.DrawsLeft] == 0) {
+                                // Settle has completed every pending operation. Nothing can
+                                // observe this history again, so do not retain it in next.
+                                // For any children merged there, sum(w * c) * r! equals
+                                // sum(w * c * r!). Keep the original suffix and terminal
+                                // key, including search capacity, for all counting passes.
+                                BigInteger prefix = weight * values[i];
+                                budget.Spend(WorkBudget.IntegerCells(prefix) * (WorkBudget.IntegerCells(factorial[remaining - 1]) + 1));
+                                Add(
+                                    terminal,
+                                    new(TTerminal.Create(drawn, layout, remaining - 1)),
+                                    prefix * factorial[remaining - 1],
+                                    ref terminalCells,
+                                    "terminal hands"
+                                );
+
+                                continue;
+                            }
+
                             if (nextPacked) {
                                 budget.Spend(drawn.Length);
                                 drawn = DrawFrontierPacking.Pack(drawn);
@@ -112,6 +131,12 @@ internal sealed partial class PostDrawCalculation {
                 current = next;
                 currentCells = nextCells;
                 currentPacked = nextPacked;
+            }
+
+            if (owner.ObserveTerminal is not null) {
+                foreach ((State hand, BigInteger mass) in terminal) {
+                    owner.ObserveTerminal((int[])hand.Values.Clone(), mass);
+                }
             }
 
             return terminal;
