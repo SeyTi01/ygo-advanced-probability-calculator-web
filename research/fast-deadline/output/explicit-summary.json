@@ -1,0 +1,621 @@
+{
+  "checks": 123,
+  "summary": [
+    {
+      "name": "no-search-draw",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [
+        628.7000000001863
+      ],
+      "totalMax": 1354.5999999996275,
+      "maxCapacity": 40304640,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-branded-distinct",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 9152.899999999441,
+      "p90": 9152.899999999441,
+      "coldMs": [],
+      "totalMax": 9152.899999999441,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-branded-six",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 950.9000000003725,
+      "p90": 950.9000000003725,
+      "coldMs": [],
+      "totalMax": 950.9000000003725,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "band-extra-draw-1",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 2857.5,
+      "p90": 2857.5,
+      "coldMs": [],
+      "totalMax": 2857.5,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-mixed-filtered-hidden",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."
+      ],
+      "p50": 14819.399999999441,
+      "p90": 14819.399999999441,
+      "coldMs": [],
+      "totalMax": 14819.399999999441,
+      "maxCapacity": 0,
+      "timeouts": []
+    },
+    {
+      "name": "overlap-or",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [
+        109.90000000037253
+      ],
+      "totalMax": 655.2999999998137,
+      "maxCapacity": 40304640,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-no-search-control",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 212.70000000018626,
+      "p90": 212.70000000018626,
+      "coldMs": [],
+      "totalMax": 212.70000000018626,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "maxima-exclusion",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 90.79999999981374,
+      "p90": 90.79999999981374,
+      "coldMs": [],
+      "totalMax": 90.79999999981374,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "work-limited",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."
+      ],
+      "p50": 44.40000000037253,
+      "p90": 44.40000000037253,
+      "coldMs": [],
+      "totalMax": 44.40000000037253,
+      "maxCapacity": 0,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-60-hand-6",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [
+        111.40000000037253
+      ],
+      "totalMax": 2559.2999999998137,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "deferred-target-loss-40",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."
+      ],
+      "p50": 22406.89999999944,
+      "p90": 22406.89999999944,
+      "coldMs": [],
+      "totalMax": 22406.89999999944,
+      "maxCapacity": 0,
+      "timeouts": []
+    },
+    {
+      "name": "band-hand-7-draw-2",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [
+        118.59999999962747
+      ],
+      "totalMax": 2442.100000000559,
+      "maxCapacity": 58064896,
+      "timeouts": []
+    },
+    {
+      "name": "band-hand-8-draw-3",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 1772.7999999998137,
+      "p90": 1772.7999999998137,
+      "coldMs": [],
+      "totalMax": 1772.7999999998137,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-no-desires",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 138,
+      "p90": 138,
+      "coldMs": [],
+      "totalMax": 138,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-kewl-three",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 15.299999999813735,
+      "p90": 15.299999999813735,
+      "coldMs": [],
+      "totalMax": 15.299999999813735,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "multiple-draw-sources",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 176.09999999962747,
+      "p90": 176.09999999962747,
+      "coldMs": [],
+      "totalMax": 176.09999999962747,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-ordered-219-reference",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."
+      ],
+      "p50": 26135.200000000186,
+      "p90": 26135.200000000186,
+      "coldMs": [],
+      "totalMax": 26135.200000000186,
+      "maxCapacity": 0,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-60-hand-5",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [
+        116.09999999962747
+      ],
+      "totalMax": 2754.2000000001863,
+      "maxCapacity": 58064896,
+      "timeouts": []
+    },
+    {
+      "name": "direct-plus-category",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 158.5,
+      "p90": 158.5,
+      "coldMs": [],
+      "totalMax": 158.5,
+      "maxCapacity": 58064896,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-tract-many",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 667.0999999996275,
+      "p90": 667.0999999996275,
+      "coldMs": [],
+      "totalMax": 667.0999999996275,
+      "maxCapacity": 58064896,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-40-hand-6",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 1947.7999999998137,
+      "p90": 1947.7999999998137,
+      "coldMs": [],
+      "totalMax": 1947.7999999998137,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "artificial-32-search",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 13.5,
+      "p90": 13.5,
+      "coldMs": [],
+      "totalMax": 13.5,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-hidden-4",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 999.4000000003725,
+      "p90": 999.4000000003725,
+      "coldMs": [],
+      "totalMax": 999.4000000003725,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-mixed-grouped-hidden",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 46,
+      "p90": 46,
+      "coldMs": [],
+      "totalMax": 46,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-hidden-3",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 892.6000000005588,
+      "p90": 892.6000000005588,
+      "coldMs": [],
+      "totalMax": 892.6000000005588,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-chant-two",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 312.09999999962747,
+      "p90": 312.09999999962747,
+      "coldMs": [],
+      "totalMax": 312.09999999962747,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-three-desires",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 1512.7999999998137,
+      "p90": 1512.7999999998137,
+      "coldMs": [],
+      "totalMax": 1512.7999999998137,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-ordered-219-eleven",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."
+      ],
+      "p50": 27603.5,
+      "p90": 27603.5,
+      "coldMs": [],
+      "totalMax": 27603.5,
+      "maxCapacity": 0,
+      "timeouts": []
+    },
+    {
+      "name": "ordered-target-loss-40",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [
+        116.5
+      ],
+      "totalMax": 24129.200000000186,
+      "maxCapacity": 0,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-tract-distinct",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [
+        111.80000000074506
+      ],
+      "totalMax": 10331.900000000373,
+      "maxCapacity": 40304640,
+      "timeouts": []
+    },
+    {
+      "name": "redundant-two",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 232.09999999962747,
+      "p90": 232.09999999962747,
+      "coldMs": [],
+      "totalMax": 232.09999999962747,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "artificial-30-search",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 16.800000000745058,
+      "p90": 16.800000000745058,
+      "coldMs": [],
+      "totalMax": 16.800000000745058,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-ordered-219-completed",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 174.6000000005588,
+      "p90": 174.6000000005588,
+      "coldMs": [],
+      "totalMax": 174.6000000005588,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-ketu-control",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 22.300000000745058,
+      "p90": 22.300000000745058,
+      "coldMs": [],
+      "totalMax": 22.300000000745058,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-branded-many",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 318.3999999994412,
+      "p90": 318.3999999994412,
+      "coldMs": [],
+      "totalMax": 318.3999999994412,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "opening-control",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 198,
+      "p90": 198,
+      "coldMs": [],
+      "totalMax": 198,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-chant-one",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 297.70000000018626,
+      "p90": 297.70000000018626,
+      "coldMs": [],
+      "totalMax": 297.70000000018626,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-branded-one",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 173,
+      "p90": 173,
+      "coldMs": [],
+      "totalMax": 173,
+      "maxCapacity": 48365568,
+      "timeouts": []
+    },
+    {
+      "name": "band-extra-draw-2",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 5138.700000000186,
+      "p90": 5138.700000000186,
+      "coldMs": [],
+      "totalMax": 5138.700000000186,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-chant-three",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 303,
+      "p90": 303,
+      "coldMs": [],
+      "totalMax": 303,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "band-hand-7-draw-3",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 1877.7999999998137,
+      "p90": 1877.7999999998137,
+      "coldMs": [],
+      "totalMax": 1877.7999999998137,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-engraver-control",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 11.900000000372529,
+      "p90": 11.900000000372529,
+      "coldMs": [],
+      "totalMax": 11.900000000372529,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    },
+    {
+      "name": "band-hand-8-draw-2",
+      "n": 1,
+      "warmN": 1,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 1864.5,
+      "p90": 1864.5,
+      "coldMs": [],
+      "totalMax": 1864.5,
+      "maxCapacity": 69730304,
+      "timeouts": []
+    }
+  ]
+}

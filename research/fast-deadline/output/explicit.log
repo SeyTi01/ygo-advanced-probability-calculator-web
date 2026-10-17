@@ -1,0 +1,43 @@
+{"name":"no-search-draw","iteration":0,"ms":1355,"outcome":"already-exact"}
+{"name":"catalog-branded-distinct","iteration":0,"ms":9153,"outcome":"already-exact"}
+{"name":"catalog-branded-six","iteration":0,"ms":951,"outcome":"already-exact"}
+{"name":"band-extra-draw-1","iteration":0,"ms":2858,"outcome":"already-exact"}
+{"name":"catalog-mixed-filtered-hidden","iteration":0,"ms":14819,"outcome":"Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."}
+{"name":"overlap-or","iteration":0,"ms":655,"outcome":"already-exact"}
+{"name":"catalog-no-search-control","iteration":0,"ms":213,"outcome":"already-exact"}
+{"name":"maxima-exclusion","iteration":0,"ms":91,"outcome":"already-exact"}
+{"name":"work-limited","iteration":0,"ms":44,"outcome":"Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."}
+{"name":"vsk9-60-hand-6","iteration":0,"ms":2559,"outcome":"already-exact"}
+{"name":"deferred-target-loss-40","iteration":0,"ms":22407,"outcome":"Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."}
+{"name":"band-hand-7-draw-2","iteration":0,"ms":2442,"outcome":"already-exact"}
+{"name":"band-hand-8-draw-3","iteration":0,"ms":1773,"outcome":"already-exact"}
+{"name":"vsk9-no-desires","iteration":0,"ms":138,"outcome":"already-exact"}
+{"name":"catalog-kewl-three","iteration":0,"ms":15,"outcome":"already-exact"}
+{"name":"multiple-draw-sources","iteration":0,"ms":176,"outcome":"already-exact"}
+{"name":"catalog-ordered-219-reference","iteration":0,"ms":26135,"outcome":"Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."}
+{"name":"vsk9-60-hand-5","iteration":0,"ms":2754,"outcome":"already-exact"}
+{"name":"direct-plus-category","iteration":0,"ms":159,"outcome":"already-exact"}
+{"name":"catalog-tract-many","iteration":0,"ms":667,"outcome":"already-exact"}
+{"name":"vsk9-40-hand-6","iteration":0,"ms":1948,"outcome":"already-exact"}
+{"name":"artificial-32-search","iteration":0,"ms":14,"outcome":"already-exact"}
+{"name":"vsk9-hidden-4","iteration":0,"ms":999,"outcome":"already-exact"}
+{"name":"catalog-mixed-grouped-hidden","iteration":0,"ms":46,"outcome":"already-exact"}
+{"name":"vsk9-hidden-3","iteration":0,"ms":893,"outcome":"already-exact"}
+{"name":"catalog-chant-two","iteration":0,"ms":312,"outcome":"already-exact"}
+{"name":"vsk9-three-desires","iteration":0,"ms":1513,"outcome":"already-exact"}
+{"name":"catalog-ordered-219-eleven","iteration":0,"ms":27604,"outcome":"Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."}
+{"name":"ordered-target-loss-40","iteration":0,"ms":24129,"outcome":"Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."}
+{"name":"catalog-tract-distinct","iteration":0,"ms":10332,"outcome":"already-exact"}
+{"name":"redundant-two","iteration":0,"ms":232,"outcome":"already-exact"}
+{"name":"artificial-30-search","iteration":0,"ms":17,"outcome":"already-exact"}
+{"name":"catalog-ordered-219-completed","iteration":0,"ms":175,"outcome":"already-exact"}
+{"name":"catalog-ketu-control","iteration":0,"ms":22,"outcome":"already-exact"}
+{"name":"catalog-branded-many","iteration":0,"ms":318,"outcome":"already-exact"}
+{"name":"opening-control","iteration":0,"ms":198,"outcome":"already-exact"}
+{"name":"catalog-chant-one","iteration":0,"ms":298,"outcome":"already-exact"}
+{"name":"catalog-branded-one","iteration":0,"ms":173,"outcome":"already-exact"}
+{"name":"band-extra-draw-2","iteration":0,"ms":5139,"outcome":"already-exact"}
+{"name":"catalog-chant-three","iteration":0,"ms":303,"outcome":"already-exact"}
+{"name":"band-hand-7-draw-3","iteration":0,"ms":1878,"outcome":"already-exact"}
+{"name":"catalog-engraver-control","iteration":0,"ms":12,"outcome":"already-exact"}
+{"name":"band-hand-8-draw-2","iteration":0,"ms":1865,"outcome":"already-exact"}

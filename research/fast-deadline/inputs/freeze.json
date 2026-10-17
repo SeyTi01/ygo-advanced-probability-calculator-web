@@ -1,0 +1,10 @@
+{
+  "Utc": "2026-10-17T09:48:16.692Z",
+  "Baseline": "63a4780fb3fa937907c1c8be4662550197179f27",
+  "hashes": {
+    "protocol.md": "0af94c87dcb8198fdd94d53a423e459966948bcb059787cde3cb98bcf8a22daf",
+    "freeze.cjs": "fa2bca3face18e47707ef6054d1193c0b2675b368aa426b01c7c3339af4267b9",
+    "inputs/corpus.json": "6f89b924f03bb6b58bdb25651b37ac722e6d031793c450aa361fe0a043443ea8",
+    "inputs/catalog.json": "c06adca7d9ffc9d3eeabe76273f8c2b193202d80ba3d5bd05e7c1f3fcc5d94bf"
+  }
+}

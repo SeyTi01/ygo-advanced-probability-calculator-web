@@ -1,0 +1,9 @@
+C:\Program Files\dotnet\sdk\10.0.401\Roslyn\Microsoft.CSharp.Core.targets(97,5): warning MSB5021: Die ausführbare Datei der Aufgabe "csc" und zugehörige Prozesse werden beendet, weil die Builderstellung abgebrochen wurde. [D:\Codex\workspace\bf59\ygo-advanced-probability-calculator-web\YGOProbabilityCalculatorBlazor\YGOProbabilityCalculatorBlazor.csproj]
+
+Fehler beim Buildvorgang.
+
+C:\Program Files\dotnet\sdk\10.0.401\Roslyn\Microsoft.CSharp.Core.targets(97,5): warning MSB5021: Die ausführbare Datei der Aufgabe "csc" und zugehörige Prozesse werden beendet, weil die Builderstellung abgebrochen wurde. [D:\Codex\workspace\bf59\ygo-advanced-probability-calculator-web\YGOProbabilityCalculatorBlazor\YGOProbabilityCalculatorBlazor.csproj]
+    1 Warnung(en)
+    0 Fehler
+
+Verstrichene Zeit 00:00:01.88

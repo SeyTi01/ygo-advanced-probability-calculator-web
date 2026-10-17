@@ -1,0 +1,67 @@
+{"name":"catalog-branded-six","mode":"fast","iteration":-2,"outcome":"reference","ms":1821,"engine":[1082],"work":[8298840]}
+{"name":"artificial-32-search","mode":"fast","iteration":-2,"outcome":"reference","ms":62,"engine":[36],"work":[11401]}
+{"name":"catalog-mixed-grouped-hidden","mode":"fast","iteration":-2,"outcome":"reference","ms":48,"engine":[39],"work":[233970]}
+{"name":"deferred-target-loss-40","mode":"fast","iteration":-2,"outcome":"reference","ms":188,"engine":[169],"work":[233230]}
+{"name":"catalog-engraver-control","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":21,"engine":[2],"work":[2540]}
+{"name":"catalog-branded-six","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":952,"engine":[937],"work":[8298840]}
+{"name":"vsk9-hidden-3","mode":"exact","iteration":-2,"outcome":"reference","ms":1051,"engine":[1004],"work":[4149348]}
+{"name":"redundant-two","mode":"fast","iteration":-2,"outcome":"reference","ms":72,"engine":[59],"work":[187612]}
+{"name":"opening-control","mode":"automatic","iteration":-2,"outcome":"reference","ms":174,"engine":[151],"work":[640369]}
+{"name":"catalog-ordered-219-reference","mode":"fast","iteration":-2,"outcome":"failure","ms":777,"engine":[748],"work":[19681708]}
+{"name":"catalog-tract-many","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":3870,"engine":[853],"work":[2664521]}
+{"name":"maxima-exclusion","mode":"fast","iteration":-2,"outcome":"reference","ms":153,"engine":[139],"work":[164421]}
+{"name":"ordered-target-loss-40","mode":"fast","iteration":-2,"outcome":"reference","ms":208,"engine":[191],"work":[351050]}
+{"name":"deferred-target-loss-40","mode":"automatic","iteration":-2,"outcome":"fallback-timeout","ms":5135,"engine":[116],"work":[233230]}
+{"name":"overlap-or","mode":"automatic","iteration":-2,"outcome":"upgraded","ms":3312,"engine":[234,172],"work":[327094,525415]}
+{"name":"no-search-draw","mode":"exact","iteration":-2,"outcome":"reference","ms":386,"engine":[338],"work":[2164440]}
+{"name":"catalog-ordered-219-eleven","mode":"fast","iteration":-2,"outcome":"reference","ms":11808,"engine":[11790],"work":[109378841]}
+{"name":"overlap-or","mode":"fast","iteration":-2,"outcome":"reference","ms":105,"engine":[93],"work":[327094]}
+{"name":"catalog-no-search-control","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":123,"engine":[97],"work":[653011]}
+{"name":"multiple-draw-sources","mode":"automatic","iteration":-2,"outcome":"upgraded","ms":334,"engine":[138,177],"work":[521278,799069]}
+{"name":"catalog-no-search-control","mode":"fast","iteration":-2,"outcome":"reference","ms":123,"engine":[99],"work":[653011]}
+{"name":"catalog-kewl-three","mode":"exact","iteration":-2,"outcome":"reference","ms":16,"engine":[3],"work":[8034]}
+{"name":"vsk9-no-desires","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":115,"engine":[92],"work":[382637]}
+{"name":"catalog-branded-six","mode":"exact","iteration":-2,"outcome":"reference","ms":1100,"engine":[1088],"work":[8298840]}
+{"name":"vsk9-three-desires","mode":"automatic","iteration":-2,"outcome":"upgraded","ms":1977,"engine":[485,1451],"work":[2077776,7150686]}
+{"name":"catalog-ordered-219-reference","mode":"exact","iteration":-2,"outcome":"failure","ms":27393,"engine":[27370],"work":[149999991]}
+{"name":"vsk9-40-hand-6","mode":"exact","iteration":-2,"outcome":"reference","ms":4942,"engine":[2002],"work":[8347134]}
+{"name":"redundant-two","mode":"automatic","iteration":-2,"outcome":"upgraded","ms":177,"engine":[68,79],"work":[187612,341332]}
+{"name":"catalog-tract-many","mode":"fast","iteration":-2,"outcome":"reference","ms":463,"engine":[446],"work":[2664521]}
+{"name":"catalog-mixed-grouped-hidden","mode":"exact","iteration":-2,"outcome":"reference","ms":48,"engine":[39],"work":[233970]}
+{"name":"vsk9-60-hand-5","mode":"automatic","iteration":-2,"outcome":"upgraded","ms":2312,"engine":[564,1690],"work":[2448001,7583905]}
+{"name":"catalog-branded-one","mode":"exact","iteration":-2,"outcome":"reference","ms":171,"engine":[162],"work":[1053153]}
+{"name":"catalog-engraver-control","mode":"exact","iteration":-2,"outcome":"reference","ms":15,"engine":[2],"work":[2540]}
+{"name":"catalog-ordered-219-completed","mode":"exact","iteration":-2,"outcome":"reference","ms":143,"engine":[138],"work":[911726]}
+{"name":"vsk9-hidden-4","mode":"exact","iteration":-2,"outcome":"reference","ms":992,"engine":[966],"work":[4586257]}
+{"name":"catalog-chant-two","mode":"exact","iteration":-2,"outcome":"reference","ms":297,"engine":[281],"work":[2845698]}
+{"name":"vsk9-60-hand-5","mode":"fast","iteration":-2,"outcome":"reference","ms":505,"engine":[482],"work":[2448001]}
+{"name":"work-limited","mode":"automatic","iteration":-2,"outcome":"failure","ms":20,"engine":[1],"work":[0]}
+{"name":"opening-control","mode":"fast","iteration":-2,"outcome":"reference","ms":3153,"engine":[211],"work":[640369]}
+{"name":"direct-plus-category","mode":"fast","iteration":-2,"outcome":"reference","ms":173,"engine":[155],"work":[279041]}
+{"name":"catalog-branded-distinct","mode":"automatic","iteration":-2,"outcome":"timeout-no-result","ms":6005,"engine":[],"work":[]}
+{"name":"catalog-tract-distinct","mode":"fast","iteration":-2,"outcome":"reference","ms":12348,"engine":[9469],"work":[98302251]}
+{"name":"catalog-branded-distinct","mode":"exact","iteration":-2,"outcome":"reference","ms":8935,"engine":[8901],"work":[98684187]}
+{"name":"vsk9-60-hand-5","mode":"exact","iteration":-2,"outcome":"reference","ms":1823,"engine":[1777],"work":[7583905]}
+{"name":"maxima-exclusion","mode":"exact","iteration":-2,"outcome":"reference","ms":70,"engine":[61],"work":[277501]}
+{"name":"deferred-target-loss-40","mode":"exact","iteration":-2,"outcome":"failure","ms":22867,"engine":[22858],"work":[149999998]}
+{"name":"no-search-draw","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":3326,"engine":[403],"work":[2164440]}
+{"name":"catalog-branded-distinct","mode":"fast","iteration":-2,"outcome":"reference","ms":9074,"engine":[9042],"work":[98684187]}
+{"name":"catalog-tract-distinct","mode":"automatic","iteration":-2,"outcome":"timeout-no-result","ms":6009,"engine":[],"work":[]}
+{"name":"catalog-engraver-control","mode":"fast","iteration":-2,"outcome":"reference","ms":2964,"engine":[40],"work":[2540]}
+{"name":"vsk9-40-hand-6","mode":"automatic","iteration":-2,"outcome":"upgraded","ms":2601,"engine":[663,1842],"work":[2152930,8347134]}
+{"name":"catalog-chant-three","mode":"exact","iteration":-2,"outcome":"reference","ms":377,"engine":[356],"work":[2837399]}
+{"name":"catalog-chant-three","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":263,"engine":[250],"work":[2837399]}
+{"name":"catalog-kewl-three","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":14,"engine":[3],"work":[8034]}
+{"name":"maxima-exclusion","mode":"automatic","iteration":-2,"outcome":"upgraded","ms":115,"engine":[39,59],"work":[164421,277501]}
+{"name":"catalog-chant-two","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":293,"engine":[280],"work":[2845698]}
+{"name":"multiple-draw-sources","mode":"fast","iteration":-2,"outcome":"reference","ms":147,"engine":[136],"work":[521278]}
+{"name":"catalog-branded-one","mode":"automatic","iteration":-2,"outcome":"already-exact","ms":186,"engine":[176],"work":[1053153]}
+Error: UNKNOWN: unknown error, open 'D:\Codex\workspace\bf59\ygo-advanced-probability-calculator-web\research\fast-deadline\output\wasm.json'
+    at Object.writeFileSync (node:fs:2483:20)
+    at save (D:\Codex\workspace\bf59\ygo-advanced-probability-calculator-web\research\fast-deadline\wasm.cjs:38:26)
+    at main (D:\Codex\workspace\bf59\ygo-advanced-probability-calculator-web\research\fast-deadline\wasm.cjs:66:17) {
+  errno: -4094,
+  code: 'UNKNOWN',
+  syscall: 'open',
+  path: 'D:\\Codex\\workspace\\bf59\\ygo-advanced-probability-calculator-web\\research\\fast-deadline\\output\\wasm.json'
+}

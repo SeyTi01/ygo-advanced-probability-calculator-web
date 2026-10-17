@@ -1,0 +1,777 @@
+{
+  "checks": 2921,
+  "summary": [
+    {
+      "name": "no-search-draw",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 356,
+      "p90": 416.70000000018626,
+      "coldMs": [
+        580.2999999998137
+      ],
+      "totalMax": 1411.8999999994412,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-branded-distinct",
+      "n": 12,
+      "warmN": 7,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 9218.299999999814,
+      "p90": 11614.200000000186,
+      "coldMs": [
+        103,
+        99.5,
+        111.70000000018626
+      ],
+      "totalMax": 12437.799999999814,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-branded-six",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 1042.2000000001863,
+      "p90": 1114.2000000001863,
+      "coldMs": [],
+      "totalMax": 1186.3999999994412,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "band-extra-draw-1",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        0
+      ],
+      "p50": 3835.7999999998137,
+      "p90": 4050.100000000559,
+      "coldMs": [
+        93.30000000074506
+      ],
+      "totalMax": 6595.5999999996275,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-mixed-filtered-hidden",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [],
+      "totalMax": 15078.399999999441,
+      "maxCapacity": 0,
+      "timeouts": []
+    },
+    {
+      "name": "overlap-or",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        0
+      ],
+      "p50": 216.90000000037253,
+      "p90": 345.3999999994412,
+      "coldMs": [
+        135.20000000018626
+      ],
+      "totalMax": 733.6999999992549,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-no-search-control",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 136.59999999962747,
+      "p90": 175,
+      "coldMs": [],
+      "totalMax": 205.70000000018626,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "maxima-exclusion",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        0
+      ],
+      "p50": 125.30000000074506,
+      "p90": 166.19999999925494,
+      "coldMs": [],
+      "totalMax": 177,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "work-limited",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "Calculation stopped because it exceeded the work allowance. Simplify the combos or category constraints and try again."
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [],
+      "totalMax": 35,
+      "maxCapacity": 0,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-60-hand-6",
+      "n": 12,
+      "warmN": 8,
+      "outcomes": [
+        0
+      ],
+      "p50": 2548.4000000003725,
+      "p90": 2929.2999999998137,
+      "coldMs": [
+        112.29999999981374,
+        114.29999999981374,
+        111.29999999981374
+      ],
+      "totalMax": 6045.299999999814,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "deferred-target-loss-40",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        1
+      ],
+      "p50": 5116.199999999255,
+      "p90": 5133.5,
+      "coldMs": [],
+      "totalMax": 5174.700000000186,
+      "maxCapacity": 0,
+      "timeouts": [
+        {
+          "upgradeMs": 5007.399999999441,
+          "latenessMs": 7.3999999994412065
+        },
+        {
+          "upgradeMs": 5005.5,
+          "latenessMs": 5.5
+        },
+        {
+          "upgradeMs": 5008.5,
+          "latenessMs": 8.5
+        },
+        {
+          "upgradeMs": 5011.200000000186,
+          "latenessMs": 11.200000000186265
+        },
+        {
+          "upgradeMs": 5002.5999999996275,
+          "latenessMs": 2.599999999627471
+        },
+        {
+          "upgradeMs": 5011.700000000186,
+          "latenessMs": 11.700000000186265
+        },
+        {
+          "upgradeMs": 5004.799999999814,
+          "latenessMs": 4.7999999998137355
+        },
+        {
+          "upgradeMs": 5012.299999999814,
+          "latenessMs": 12.299999999813735
+        },
+        {
+          "upgradeMs": 5008.799999999814,
+          "latenessMs": 8.799999999813735
+        },
+        {
+          "upgradeMs": 5004.799999999814,
+          "latenessMs": 4.7999999998137355
+        },
+        {
+          "upgradeMs": 5009.4000000003725,
+          "latenessMs": 9.400000000372529
+        },
+        {
+          "upgradeMs": 5003.5,
+          "latenessMs": 3.5
+        }
+      ]
+    },
+    {
+      "name": "band-hand-7-draw-2",
+      "n": 12,
+      "warmN": 7,
+      "outcomes": [
+        0
+      ],
+      "p50": 2443.7000000001863,
+      "p90": 2723.5,
+      "coldMs": [
+        113.40000000037253,
+        91.70000000018626,
+        110.30000000074506,
+        116.5
+      ],
+      "totalMax": 5744.200000000186,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "band-hand-8-draw-3",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        0
+      ],
+      "p50": 2441.7000000001863,
+      "p90": 2872.7000000001863,
+      "coldMs": [],
+      "totalMax": 3141.7999999998137,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-no-desires",
+      "n": 12,
+      "warmN": 7,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 122.20000000018626,
+      "p90": 198.79999999981374,
+      "coldMs": [
+        98.70000000018626,
+        151.5,
+        99.40000000037253
+      ],
+      "totalMax": 668.2000000001863,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-kewl-three",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 13.100000000558794,
+      "p90": 18.59999999962747,
+      "coldMs": [],
+      "totalMax": 45.40000000037253,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "multiple-draw-sources",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        0
+      ],
+      "p50": 301.70000000018626,
+      "p90": 351.20000000018626,
+      "coldMs": [
+        106.1000000005588,
+        111.29999999981374
+      ],
+      "totalMax": 3385.2000000001863,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-ordered-219-reference",
+      "n": 1,
+      "warmN": 0,
+      "outcomes": [
+        "Calculation stopped because it exceeded the storage safety limit. Simplify the combos or category constraints and try again."
+      ],
+      "p50": null,
+      "p90": null,
+      "coldMs": [],
+      "totalMax": 757.0999999996275,
+      "maxCapacity": 0,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-60-hand-5",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        0
+      ],
+      "p50": 2381.5999999996275,
+      "p90": 2687.2000000001863,
+      "coldMs": [
+        117.80000000074506,
+        113.5
+      ],
+      "totalMax": 5464.4000000003725,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "direct-plus-category",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        0
+      ],
+      "p50": 173.80000000074506,
+      "p90": 209.69999999925494,
+      "coldMs": [],
+      "totalMax": 209.79999999981374,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-tract-many",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 357.29999999981374,
+      "p90": 482.29999999981374,
+      "coldMs": [
+        99.70000000018626
+      ],
+      "totalMax": 3203.9000000003725,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-40-hand-6",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        0
+      ],
+      "p50": 2432.7999999998137,
+      "p90": 2531.2000000001863,
+      "coldMs": [],
+      "totalMax": 2738.2000000001863,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "artificial-32-search",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        0
+      ],
+      "p50": 18.600000000558794,
+      "p90": 27.09999999962747,
+      "coldMs": [],
+      "totalMax": 27.700000000186265,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-hidden-4",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        0
+      ],
+      "p50": 1586.5999999996275,
+      "p90": 1781.4000000003725,
+      "coldMs": [
+        106.1000000005588
+      ],
+      "totalMax": 2380.5999999996275,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-mixed-grouped-hidden",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 45.39999999944121,
+      "p90": 76.30000000074506,
+      "coldMs": [],
+      "totalMax": 77,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-hidden-3",
+      "n": 12,
+      "warmN": 7,
+      "outcomes": [
+        0
+      ],
+      "p50": 1369.1000000005588,
+      "p90": 1603.1000000005588,
+      "coldMs": [
+        102.70000000018626,
+        107,
+        107.59999999962747
+      ],
+      "totalMax": 4760.299999999814,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-chant-two",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 325.19999999925494,
+      "p90": 412.8999999994412,
+      "coldMs": [],
+      "totalMax": 425.70000000018626,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "vsk9-three-desires",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        0
+      ],
+      "p50": 2170.2999999998137,
+      "p90": 2265.100000000559,
+      "coldMs": [],
+      "totalMax": 2404.9000000003725,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-ordered-219-eleven",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        6
+      ],
+      "p50": 11921,
+      "p90": 12828.200000000186,
+      "coldMs": [],
+      "totalMax": 12832.799999999814,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "ordered-target-loss-40",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        1
+      ],
+      "p50": 5119.9000000003725,
+      "p90": 5178.399999999441,
+      "coldMs": [],
+      "totalMax": 5312,
+      "maxCapacity": 0,
+      "timeouts": [
+        {
+          "upgradeMs": 5013.5,
+          "latenessMs": 13.5
+        },
+        {
+          "upgradeMs": 5013.399999999441,
+          "latenessMs": 13.399999999441206
+        },
+        {
+          "upgradeMs": 5012.899999999441,
+          "latenessMs": 12.899999999441206
+        },
+        {
+          "upgradeMs": 5004.300000000745,
+          "latenessMs": 4.300000000745058
+        },
+        {
+          "upgradeMs": 5004.800000000745,
+          "latenessMs": 4.800000000745058
+        },
+        {
+          "upgradeMs": 5002.299999999814,
+          "latenessMs": 2.2999999998137355
+        },
+        {
+          "upgradeMs": 5007.5,
+          "latenessMs": 7.5
+        },
+        {
+          "upgradeMs": 5003.5999999996275,
+          "latenessMs": 3.599999999627471
+        },
+        {
+          "upgradeMs": 5011.5999999996275,
+          "latenessMs": 11.599999999627471
+        },
+        {
+          "upgradeMs": 5011.100000000559,
+          "latenessMs": 11.100000000558794
+        },
+        {
+          "upgradeMs": 5006.799999999814,
+          "latenessMs": 6.7999999998137355
+        },
+        {
+          "upgradeMs": 5012.699999999255,
+          "latenessMs": 12.699999999254942
+        }
+      ]
+    },
+    {
+      "name": "catalog-tract-distinct",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 9374.5,
+      "p90": 9979.900000000373,
+      "coldMs": [
+        106.59999999962747
+      ],
+      "totalMax": 11554,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "redundant-two",
+      "n": 12,
+      "warmN": 8,
+      "outcomes": [
+        0
+      ],
+      "p50": 146.19999999925494,
+      "p90": 168.90000000037253,
+      "coldMs": [
+        91.29999999981374,
+        107
+      ],
+      "totalMax": 3118.2000000001863,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "artificial-30-search",
+      "n": 12,
+      "warmN": 8,
+      "outcomes": [
+        0
+      ],
+      "p50": 20,
+      "p90": 74.59999999962747,
+      "coldMs": [
+        104.5,
+        110
+      ],
+      "totalMax": 2855.399999999441,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-ordered-219-completed",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        0
+      ],
+      "p50": 219.5,
+      "p90": 289.79999999981374,
+      "coldMs": [],
+      "totalMax": 310.80000000074506,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-ketu-control",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 8.599999999627471,
+      "p90": 10.099999999627471,
+      "coldMs": [],
+      "totalMax": 23.59999999962747,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-branded-many",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 310.20000000018626,
+      "p90": 458.6000000005588,
+      "coldMs": [
+        103.6000000005588
+      ],
+      "totalMax": 774.5,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "opening-control",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 168.19999999925494,
+      "p90": 246.59999999962747,
+      "coldMs": [
+        97.70000000018626
+      ],
+      "totalMax": 2973.9000000003725,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-chant-one",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 282.20000000018626,
+      "p90": 449.1000000005588,
+      "coldMs": [],
+      "totalMax": 471.59999999962747,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-branded-one",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 156.29999999981374,
+      "p90": 363.59999999962747,
+      "coldMs": [
+        95.20000000018626
+      ],
+      "totalMax": 3001.399999999441,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "band-extra-draw-2",
+      "n": 12,
+      "warmN": 7,
+      "outcomes": [
+        0,
+        1
+      ],
+      "p50": 6442.5999999996275,
+      "p90": 6653.200000000186,
+      "coldMs": [
+        103.40000000037253,
+        109.3999999994412,
+        100.80000000074506
+      ],
+      "totalMax": 9290.099999999627,
+      "maxCapacity": 83689472,
+      "timeouts": [
+        {
+          "upgradeMs": 5005.700000000186,
+          "latenessMs": 5.7000000001862645
+        },
+        {
+          "upgradeMs": 5014.9000000003725,
+          "latenessMs": 14.900000000372529
+        }
+      ]
+    },
+    {
+      "name": "catalog-chant-three",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 303.09999999962747,
+      "p90": 372.5,
+      "coldMs": [],
+      "totalMax": 563.5999999996275,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "band-hand-7-draw-3",
+      "n": 12,
+      "warmN": 10,
+      "outcomes": [
+        0
+      ],
+      "p50": 2437.4000000003725,
+      "p90": 2741.7999999998137,
+      "coldMs": [
+        92.29999999981374
+      ],
+      "totalMax": 5264.5,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "catalog-engraver-control",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        "already-exact"
+      ],
+      "p50": 10.900000000372529,
+      "p90": 17.200000000186265,
+      "coldMs": [
+        94,
+        108.8999999994412
+      ],
+      "totalMax": 2816.7000000001863,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    },
+    {
+      "name": "band-hand-8-draw-2",
+      "n": 12,
+      "warmN": 9,
+      "outcomes": [
+        0
+      ],
+      "p50": 2438.899999999441,
+      "p90": 2530.100000000559,
+      "coldMs": [
+        99.6000000005588
+      ],
+      "totalMax": 5246.5999999996275,
+      "maxCapacity": 83689472,
+      "timeouts": []
+    }
+  ]
+}

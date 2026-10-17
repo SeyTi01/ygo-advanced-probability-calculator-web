@@ -1,0 +1,70 @@
+Testlauf für "D:\Codex\workspace\bf59\ygo-advanced-probability-calculator-web\YGOProbabilityCalculatorBlazorTest\bin\Release\net10.0\YGOProbabilityCalculatorBlazorTest.dll" (.NETCoreApp,Version=v10.0)
+Insgesamt 1 Testdateien stimmten mit dem angegebenen Muster überein.
+  Fehler SettingsMenuHasThreeExplicitModesAndRestoresFocusContract [68 ms]
+  Fehlermeldung:
+     Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain("fixed modeled policy").And.Contain("uncertified"))
+  Expected: String containing "fixed modeled policy" and containing "uncertified"
+  But was:  "Applies all saved rules under the fixed policy. Prefers Exact within a bounded automatic opportunity; otherwise retains the completed Fast bound or Uncertified result. Only the additional Exact attempt has a time cutoff; the initial Fast calculation is allowed to finish."
+
+  Stapelverfolgung:
+     at YGOProbabilityCalculatorBlazorTest.Components.CalculatorEditorCalculationSettingsTest.SettingsMenuHasThreeExplicitModesAndRestoresFocusContract() in D:\Codex\workspace\bf59\ygo-advanced-probability-calculator-web\YGOProbabilityCalculatorBlazorTest\Components\CalculatorEditorCalculationSettingsTest.cs:line 30
+   at NUnit.Framework.Internal.TaskAwaitAdapter.GenericAdapter`1.GetResult()
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await[TResult](Func`1 invoke)
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await(Func`1 invoke)
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.RunTestMethod(TestExecutionContext context)
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.Execute(TestExecutionContext context)
+   at NUnit.Framework.Internal.Commands.BeforeAndAfterTestCommand.<>c__DisplayClass1_0.<Execute>b__0()
+   at NUnit.Framework.Internal.Commands.DelegatingTestCommand.RunTestMethodInThreadAbortSafeZone(TestExecutionContext context, Action action)
+
+1)    at YGOProbabilityCalculatorBlazorTest.Components.CalculatorEditorCalculationSettingsTest.SettingsMenuHasThreeExplicitModesAndRestoresFocusContract() in D:\Codex\workspace\bf59\ygo-advanced-probability-calculator-web\YGOProbabilityCalculatorBlazorTest\Components\CalculatorEditorCalculationSettingsTest.cs:line 30
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at YGOProbabilityCalculatorBlazorTest.Components.CalculatorEditorCalculationSettingsTest.SettingsMenuHasThreeExplicitModesAndRestoresFocusContract()
+
+
+  Übersprungen PublicHttpRouteContainsCompleteInitialHtml("/") [< 1 ms]
+  Übersprungen PublicHttpRouteContainsCompleteInitialHtml("/help") [< 1 ms]
+  Übersprungen PublicHttpRouteContainsCompleteInitialHtml("/help/") [< 1 ms]
+  Übersprungen PublicRouteContainsCompleteInitialHtml("index.html","Yu-Gi-Oh! Advanced Probability Calculator","Calculate exact Yu-Gi-Oh! opening-hand and deck-combo probabilities with overlapping card categories, direct card requirements, and custom constraints.","https://ygo-calculator.pages.dev/") [< 1 ms]
+  Übersprungen PublicRouteContainsCompleteInitialHtml("help.html","Help | Yu-Gi-Oh! Advanced Probability Calculator","Help and usage guide for the Yu-Gi-Oh! Advanced Probability Calculator, including cards, categories, combo requirements, constraints, and probability results.","https://ygo-calculator.pages.dev/help") [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen Measure [< 1 ms]
+  Übersprungen InspectFrozenRouteReduction [< 1 ms]
+  Übersprungen MeasureExplicitOrOverhead [< 1 ms]
+  Übersprungen BenchmarkPriorityPolicies [< 1 ms]
+  Übersprungen WarmedFortyCardRequests [< 1 ms]
+  Übersprungen ExportConditionalCases [< 1 ms]
+  Übersprungen ExportFilteredPostDrawWorkerCases [< 1 ms]
+  Übersprungen ExportHiddenDeckRemovalCases [< 1 ms]
+  Übersprungen ExportPostDrawWorkerCases [< 1 ms]
+  Übersprungen ExportPreDrawConditionalCases [< 1 ms]
+  Übersprungen ExportPreDrawWorkerCases [< 1 ms]
+  Übersprungen ExportRealisticThreeGracefulWorkerCases [< 1 ms]
+  Übersprungen ExportWorkerCases [< 1 ms]
+  Übersprungen ProfileNoRetainedScenarios [< 1 ms]
+  Übersprungen GlobalDrawEffectsOffUsesSubstantiallyLessChargedWork [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen ExportExamples [< 1 ms]
+  Übersprungen Replay [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen Profile [< 1 ms]
+  Übersprungen Replay [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen Profile("mill2") [< 1 ms]
+  Übersprungen Profile("banish10") [< 1 ms]
+  Übersprungen PostDrawFortyCardSpike [< 1 ms]
+  Übersprungen BenchmarkMixedFortyCardDeck [< 1 ms]
+  Übersprungen ExportSameCardWorkerCases [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen Measure [< 1 ms]
+  Übersprungen MeasureSelectorFixtures [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen Export [< 1 ms]
+  Übersprungen MeasureFixedWorkloads [< 1 ms]
+  Übersprungen SuppliedModelMatchesEveryPhysicalHand [< 1 ms]
+  Übersprungen MeasureRestrictiveRoutes [< 1 ms]
+  Übersprungen SuppliedExampleHasParity [< 1 ms]
+
+Fehler!      : Fehler:     1, erfolgreich:  2541, übersprungen:     0, gesamt:  2542, Dauer: 1 m 55 s - YGOProbabilityCalculatorBlazorTest.dll (net10.0)
