@@ -1,0 +1,49 @@
+.category-rule-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.3rem;
+    min-width: 0;
+    margin: 0.25rem 0 0.5rem 0.5rem;
+    color: var(--bs-body-color);
+}
+
+.category-rule-summary-heading,
+.category-rule-operator {
+    color: var(--bs-secondary-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.category-rule-operator {
+    margin-inline: 0.25rem;
+}
+
+.category-rule-expression,
+.category-rule-expression-node {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.category-rule-expression {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem;
+}
+
+.category-rule-expression-node {
+    display: inline;
+}
+
+.category-rule-group {
+    overflow-wrap: anywhere;
+}
+
+.category-rule-summary-property {
+    max-width: 100%;
+    line-height: 1.35;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
