@@ -163,8 +163,10 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Exact"));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
         AssertNoComparisonUi(cut);
-        Assert.That(cut.Find(".result-model").TextContent, Does.Contain(CalculationModel.OpeningHand.Description()));
-        Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.Contain(CalculationModel.Fast.Description()));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith($"{CalculationModel.OpeningHand.Description()} · "));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Does.StartWith($"{CalculationModel.Fast.Description()} · "));
+        Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
+        Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.Exact));
