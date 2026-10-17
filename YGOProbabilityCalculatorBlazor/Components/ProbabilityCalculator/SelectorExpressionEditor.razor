@@ -7,7 +7,7 @@
             @for (int index = 0; index < Rows.Length; index++) {
                 int position = index;
                 SelectorRow currentRow = Rows[index];
-                @if (index > 0) { <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" /> }
+                @if (index > 0) { <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" OnOperatorChanged="ChangeGroupOperator" /> }
                 <SelectorExpressionEditor @key="_termKeys[Rows[index].Value.Signature]" @ref="_childEditors[_termKeys[currentRow.Value.Signature]]"
                     Selector="Rows[index].Value" IsRoot="false" Path="@($"{Path}.{index}")" Available="Available" Options="Options"
                     CategoryColorIndices="CategoryColorIndices" CategoryRename="CategoryRename" Session="EditorSession"
@@ -262,6 +262,23 @@
         foreach (string removed in _termKeys.Keys.Where(signature => !current.Contains(signature)).ToArray()) { _termKeys.Remove(removed); }
         foreach (SelectorRow row in Rows) { _termKeys.TryAdd(row.Value.Signature, new object()); }
         foreach (object removed in _childEditors.Keys.Where(key => !_termKeys.Values.Contains(key)).ToArray()) { _childEditors.Remove(removed); }
+    }
+
+    private async Task ChangeGroupOperator(string operation) {
+        await BeginEdit();
+        _operation = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf;
+    }
+
+    public async Task<bool> EditGroupOperatorAsync(CardSelector target, string operation) {
+        if (Selector.Equals(target)) {
+            await ChangeGroupOperator(operation);
+            StateHasChanged();
+            return true;
+        }
+        foreach (SelectorExpressionEditor child in _childEditors.Values) {
+            if (await child.EditGroupOperatorAsync(target, operation)) { return true; }
+        }
+        return false;
     }
 
     private async Task BeginEdit() {

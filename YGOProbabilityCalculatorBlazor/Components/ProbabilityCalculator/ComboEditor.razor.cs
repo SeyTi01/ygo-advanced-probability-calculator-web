@@ -74,6 +74,7 @@ public partial class ComboEditor {
     }
 
     private void BeginEdit(ComboAlternative requirement, int index, int? groupIndex) {
+        if (_boundedPositions is not null) { CloseBoundedGroup(); }
         if (IsOpenRow(requirement, index, groupIndex)) {
             _returnRowKey = RowKey(requirement, index, groupIndex);
             CancelScopedAuthoring();

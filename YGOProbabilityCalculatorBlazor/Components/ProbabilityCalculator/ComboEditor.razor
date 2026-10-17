@@ -78,7 +78,11 @@
                     <p class="requirement-explanation text-body-secondary">Match every requirement. Required card copies cannot be shared between requirements.</p>
                 }
                 @foreach (ComboRequirementPosition position in Combo.RequirementOrder) {
-                    @if (position != Combo.RequirementOrder[0]) { @RequirementSeparator() }
+                    @if (_boundedPositions?.Contains(position) == true) {
+                        @if (position == _boundedPositions.Last()) { @BoundedGroupForm() }
+                        continue;
+                    }
+                    @if (position != Combo.RequirementOrder[0]) { @RequirementSeparator(position) }
                     @if (position.Kind == ComboRequirementKind.Category) {
                         @RequirementRow(ComboAlternative.For(Combo.Categories[position.Index]), position.Index, null)
                     }
@@ -89,16 +93,17 @@
                         int groupIndex = position.Index;
                         ComboAlternativeGroup group = Combo.AlternativeGroups[groupIndex];
                         <ExpressionGroup Label="@($"Alternative group {groupIndex + 1}")">
+                            <button type="button" class="btn btn-sm btn-link p-0" @onclick="() => BeginBoundedGroup(groupIndex)">Edit group</button>
                             @for (int leafIndex = 0; leafIndex < group.Alternatives.Count; leafIndex++) {
                                 int currentLeafIndex = leafIndex;
-                                @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" /> }
+                                @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" AllowedOperators="ComboOperators" OnOperatorChanged="operation => BeginBoundedGroup(groupIndex, operation)" /> }
                                 @RequirementRow(group.Alternatives[currentLeafIndex], currentLeafIndex, groupIndex)
                             }
                         </ExpressionGroup>
                     }
                 }
             </div>
-            @if (!AuthoringScope && _editingRequirement is null) {
+            @if (!AuthoringScope && _editingRequirement is null && _boundedPositions is null) {
                 @RequirementForm()
             }
 
@@ -121,7 +126,7 @@
 </div>
 
 @code {
-    private static RenderFragment RequirementSeparator() => @<ExpressionSeparator Operator="AND" Symbol="+" />;
+    private RenderFragment RequirementSeparator(ComboRequirementPosition right) => @<ExpressionSeparator Operator="AND" Symbol="+" AllowedOperators="ComboOperators" OnOperatorChanged="operation => BeginPeerConversion(right, operation)" />;
 
     private RenderFragment RequirementRow(ComboAlternative requirement, int index, int? groupIndex) => @<ExpressionRow
         Label="@($"Edit {AlternativeTargetLabel(requirement)}")" Expanded="IsOpenRow(requirement, index, groupIndex)"
@@ -150,6 +155,7 @@
             <div class="property-edit-list" role="group" aria-label="Properties on the same card">
                 @for (int propertyIndex = 0; propertyIndex < _draftProperties.Count; propertyIndex++) {
                     int currentProperty = propertyIndex;
+                    @if (propertyIndex > 0) { <ExpressionSeparator Operator="AND" AllowedOperators="ComboOperators" OnOperatorChanged="BeginSameCardConversion" /> }
                     <div class="property-edit-row">
                         <select class="form-select" aria-label="@($"Same-card property {currentProperty + 1}")"
                                 value="@_draftProperties[currentProperty].Identity"
@@ -327,7 +333,9 @@
         return $"{subject} ({AlternativeRange(alternative)})";
     }
 
-    private RenderFragment CategoryBadge(ComboCategory category) => @<span class="same-card-category">
+    private RenderFragment CategoryBadge(ComboCategory category) => @<span class="@(category.CategoryBases.Count > 1 ? "composite-alternative same-card-group" : null)">
+        @if (category.CategoryBases.Count > 1) { @ExpressionParenthesis(true) }
+        <span class="same-card-category">
         @for (int index = 0; index < category.CategoryBases.Count; index++) {
             CategoryBase conjunct = category.CategoryBases[index];
             <span @key="conjunct.Identity" class="same-card-conjunct">
@@ -340,6 +348,8 @@
                 </span>
             </span>
         }
+        </span>
+        @if (category.CategoryBases.Count > 1) { @ExpressionParenthesis(false) }
     </span>;
 
     private RenderFragment CardBadge(ComboCard card) => @<span class="badge category-tag combo-card-tag @(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")">
@@ -348,14 +358,7 @@
 
     private RenderFragment AlternativeBadge(ComboAlternative alternative) => @<span class="alternative-badge">
         @if (alternative.Category is { } category) {
-            @if (category.CategoryBases.Count > 1) {
-                <span class="composite-alternative">
-                    @ExpressionParenthesis(true)
-                    @CategoryBadge(category)
-                    @ExpressionParenthesis(false)
-                </span>
-            }
-            else { @CategoryBadge(category) }
+            @CategoryBadge(category)
         }
         else { @CardBadge(alternative.Card!) }
     </span>;
@@ -980,6 +983,7 @@
             CancelScopedAuthoring();
         }
         ReconcileEditingRequirement();
+        if (_boundedPositions is not null) { ReconcileBoundedGroup(); }
         _previousCombo = Combo;
 
         // Hand size affects effective bounds only; leave committed values and drafts intact.
