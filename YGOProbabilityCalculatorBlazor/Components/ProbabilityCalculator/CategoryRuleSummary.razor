@@ -1,0 +1,75 @@
+@using YGOProbabilityCalculatorBlazor.Models
+
+@if (Category.Rule is CardSelector rule) {
+    <div class="category-rule-summary" role="group" aria-label="Saved property rule for @Category.Name">
+        <span class="category-rule-summary-heading">Properties:</span>
+        <span class="category-rule-expression">@Expression(rule)</span>
+    </div>
+}
+
+@code {
+    [Parameter] public required CategoryBase Category { get; set; }
+    [Parameter] public IEnumerable<CategoryBase> CategoryBases { get; set; } = [];
+
+    private CategoryBase[] _properties = [];
+
+    protected override void OnParametersSet() {
+        if (Category.Rule is not CardSelector rule) {
+            _properties = [];
+            return;
+        }
+
+        CategoryBase[] available = CategoryCatalog.Build(CategoryBases, [], [])
+            .Where(category => category.Source == CategorySource.Metadata)
+            .ToArray();
+        CategoryBase[] referenced = rule.CategoryIdentities
+            .Select(identity => new CategoryBase(FallbackName(identity), CategorySource.Metadata, identity[9..]))
+            .ToArray();
+        _properties = available.Concat(referenced)
+            .DistinctBy(category => category.Identity)
+            .ToArray();
+    }
+
+    private RenderFragment Expression(CardSelector selector) => @<span class="category-rule-expression-node">
+        @if (selector.Kind is CardSelectorKind.Objective or CardSelectorKind.Not) {
+            <span class="category-rule-group">@(selector.Kind == CardSelectorKind.Objective ? "Objective" : "NOT") (@Expression(selector.Children[0]))</span>
+        }
+        else if (selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
+            CardSelector[] terms = selector.Terms.ToArray();
+            @for (int index = 0; index < terms.Length; index++) {
+                if (index > 0) {
+                    <span class="category-rule-operator">@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")</span>
+                }
+                @if (terms[index].Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
+                    <span class="category-rule-group">(@Expression(terms[index]))</span>
+                }
+                else {
+                    @Property(terms[index])
+                }
+            }
+        }
+        else {
+            @Property(selector)
+        }
+    </span>;
+
+    private RenderFragment Property(CardSelector selector) => @<span class="badge category-tag card-property-tag text-wrap category-rule-summary-property @CardPropertyColorPalette.GetCssClass(selector.CategoryIdentities[0][9..])">
+        @Label(selector)
+    </span>;
+
+    private string Label(CardSelector selector) => _properties
+        .FirstOrDefault(property => property.Identity == selector.CategoryIdentities[0])?.Name
+        ?? FallbackName(selector.CategoryIdentities[0]);
+
+    private static string FallbackName(string identity) {
+        string key = Uri.UnescapeDataString(identity[9..]);
+        int separator = key.IndexOf(':');
+        if (separator < 0) {
+            return key;
+        }
+
+        string prefix = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(key[..separator].Replace('-', ' '));
+        string value = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(key[(separator + 1)..].Replace('-', ' '));
+        return $"{prefix}: {value}";
+    }
+}
