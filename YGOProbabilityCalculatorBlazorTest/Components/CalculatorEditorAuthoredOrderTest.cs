@@ -11,6 +11,37 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase {
     [Test]
+    public async Task CascadingDeletionKeepsRewrittenAndSurvivingAuthoredSlotsAndSelectorTerms() {
+        CategoryBase c = new("C");
+        CategoryBase d = new("D");
+        Combo combo = new([new(a, 1, 2), ComboCategory.SameCard([a, c], 0, 0), new(b, 1, 3)], cards: [new("physical", 0, 0)],
+            alternativeGroups: [new([ComboAlternative.For(new ComboCategory(a, 1, 2))]),
+                new([ComboAlternative.For(new ComboCategory(a, 1, 2)), ComboAlternative.For(new ComboCategory(c, 0, 3, RequirementMaximumMode.HandSize))]),
+                new([ComboAlternative.For(new ComboCategory(b, 1, 2))])],
+            requirementOrder: [new(ComboRequirementKind.Group, 1), new(ComboRequirementKind.Category, 1), new(ComboRequirementKind.Card, 0),
+                new(ComboRequirementKind.Group, 0), new(ComboRequirementKind.Category, 0), new(ComboRequirementKind.Group, 2), new(ComboRequirementKind.Category, 2)]);
+        Card draw = new([a, b], 3, "Draw", drawCount: 1, preDrawRemovalCount: 1,
+            preDrawSelector: CardSelector.AllOf([c.Identity, a.Identity, b.Identity]), postDrawDiscardCount: 1,
+            postDrawSelector: CardSelector.AllOfSelectors([CardSelector.Not(CardSelector.For(a)), CardSelector.AnyOf([c.Identity, b.Identity]), CardSelector.For(d)]));
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
+            Categories = [a, b, c, d], Cards = [draw, new([], 1, "Physical", id: "physical")], Combos = [combo], HandSize = 2
+        });
+        await cut.Find("[aria-label='Remove category A']").ClickAsync(new());
+        await cut.Find("[role=alertdialog] .btn-danger").ClickAsync(new());
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        Assert.That(RowKinds(editor), Is.EqualTo(new[] { "alternative:0:0", "category:0", "card:0", "alternative:1:0", "category:1" }));
+        Assert.That(editor.Instance.Combo.Categories[0].MaxCount, Is.Zero);
+        Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[0].Category!.MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
+        await Button(cut, "Save Session").ClickAsync(new());
+        SessionState loaded = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
+        Assert.That(loaded.Combos.Single().RequirementOrder, Is.EqualTo(editor.Instance.Combo.RequirementOrder));
+        Assert.That(loaded.Cards[0].PreDrawSelector.AuthoredTerms.SelectMany(term => term.CategoryIdentities), Is.EqualTo(new[] { c.Identity, b.Identity }));
+        CardSelector[] outer = loaded.Cards[0].PostDrawSelector.AuthoredTerms.ToArray();
+        Assert.That(outer[0].AuthoredTerms.SelectMany(term => term.CategoryIdentities), Is.EqualTo(new[] { c.Identity, b.Identity }));
+        Assert.That(outer[1], Is.EqualTo(CardSelector.For(d)));
+    }
+
+    [Test]
     public async Task MixedRequirementsAppendAndTypeChangingEditsKeepTheirPosition() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
             Categories = [a, b], Cards = [new([a], 2, "Physical", id: "physical")], Combos = [new([])], HandSize = 2
