@@ -1,0 +1,23 @@
+<div class="alert alert-warning mt-2" role="alertdialog" aria-modal="false" aria-label="@Label" @onkeydown="HandleKeyDown">
+    <p class="mb-2">@Message</p>
+    <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-sm btn-danger" @onclick="OnConfirm">Delete</button>
+        <button @ref="_cancelButton" type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnCancel">Cancel</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public required string Label { get; set; }
+    [Parameter] public required string Message { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    private ElementReference _cancelButton;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            await _cancelButton.FocusAsync();
+        }
+    }
+
+    private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
+}

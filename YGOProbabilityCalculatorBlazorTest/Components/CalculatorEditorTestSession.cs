@@ -189,7 +189,7 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase {
         Assert.That(cut.Find(".alert-primary").TextContent, Does.Contain((1.0 / 6).ToString("P2")));
         await cut.Find("[aria-label='Remove category A']").ClickAsync(new());
         Assert.That(
-            cut.FindComponent<CategoryListEditor>().Find("[role=alert]").TextContent, Does.Contain("still used"));
+            cut.FindComponent<CategoryListEditor>().Find("[role=alertdialog]").TextContent, Does.Contain("remove every membership"));
     }
 
 }

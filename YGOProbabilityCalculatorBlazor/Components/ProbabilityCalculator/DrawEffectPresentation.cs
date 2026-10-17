@@ -80,6 +80,9 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
     }
 
     public static string DescribeSelector(CardSelector selector, IReadOnlyList<CategoryBase> categories) {
+        if (selector.Kind == CardSelectorKind.Not && selector.Children[0].Kind == CardSelectorKind.Any) {
+            return "no eligible cards";
+        }
         if (selector.Kind == CardSelectorKind.Any) {
             return "any card";
         }

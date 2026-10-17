@@ -175,7 +175,7 @@ public class CategoryRenameTest {
 
         cut.Find("[aria-label='Remove category Old']").Click();
         Assert.That(cut.FindAll("[aria-label='New name for category Old']"), Is.Empty);
-        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
+        Assert.That(cut.Find("[role=alertdialog]").TextContent, Does.Contain("remove every membership"));
         Assert.That(cut.Find("[aria-label='Remove category Old']").GetAttribute("title"),
             Is.EqualTo("Delete category Old"));
 
@@ -234,7 +234,7 @@ public class CategoryRenameTest {
         Assert.That(ReferenceEquals(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Single(), loadedCombo.Categories[0].BaseCategory), Is.False);
 
         cut.Find("[aria-label='Remove category Renamed']").Click();
-        Assert.That(cut.FindComponent<CategoryListEditor>().Find("[role=alert]").TextContent, Does.Contain("still used"));
+        Assert.That(cut.FindComponent<CategoryListEditor>().Find("[role=alertdialog]").TextContent, Does.Contain("remove every membership"));
     }
 
     private static void RenameCategory(IRenderedFragment cut, string oldName, string newName) {
