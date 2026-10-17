@@ -51,6 +51,11 @@
                     <DismissibleAlert Message="@_groupError" OnDismiss="@(() => _groupError = null)" />
                 </div>
             }
+            @if (_pendingRemoval is { } pending) {
+                <DeletionConfirmation @key="pending.Id" Label="Confirm group deletion"
+                    Message="@($"Delete {pending.Name}? All member combos, including inactive ones, remain in their current order and become ungrouped.")"
+                    OnConfirm="ConfirmGroupRemoval" OnCancel="CancelGroupRemoval" />
+            }
             <div class="mt-2">
                 @for (int index = 0; index < ComboGroups.Count; index++) {
                     ComboGroup group = ComboGroups[index];
@@ -134,6 +139,7 @@
     private ElementReference _groupRenameInputReference;
     private bool _focusGroupRenameInput;
     private string? _pendingGroupNameFocus;
+    private ComboGroup? _pendingRemoval;
 
     protected override void OnParametersSet() {
         _skipParameterRender = DeferNameEditRendering;
@@ -152,7 +158,7 @@
         return render;
     }
 
-    private Task ReplaceCombo((int Index, Combo NewCombo) payload) {
+    public Task ReplaceCombo((int Index, Combo NewCombo) payload) {
         _editorKeys.Replace(Combos[payload.Index], payload.NewCombo);
         return OnReplaceCombo.InvokeAsync(payload);
     }
@@ -175,6 +181,7 @@
         e.Key == "Enter" ? AddGroup() : Task.CompletedTask;
 
     private void BeginGroupRename(ComboGroup group) {
+        _pendingRemoval = null;
         _editingGroupId = group.Id;
         _editingGroupName = group.Name;
         _groupError = null;
@@ -202,6 +209,7 @@
         }
 
         _groupError = null;
+        _pendingRemoval = null;
 
         if (!string.Equals(name, group.Name, StringComparison.Ordinal)) {
             await OnRenameGroup.InvokeAsync((id, name));
@@ -235,6 +243,30 @@
     }
 
     private async Task RemoveGroup(ComboGroup group) {
+        if (Combos.Any(combo => combo.GroupId == group.Id)) {
+            _pendingRemoval = group;
+            return;
+        }
+        await DeleteGroup(group);
+    }
+
+    private async Task ConfirmGroupRemoval() {
+        if (_pendingRemoval is { } group) {
+            await DeleteGroup(group);
+        }
+    }
+
+    private void CancelGroupRemoval() {
+        _pendingGroupNameFocus = _pendingRemoval?.Id;
+        _pendingRemoval = null;
+        if (_editingGroupId is not null) {
+            _focusGroupRenameInput = true;
+            _pendingGroupNameFocus = null;
+        }
+    }
+
+    private async Task DeleteGroup(ComboGroup group) {
+        _pendingRemoval = null;
         if (_editingGroupId == group.Id) {
             ClearGroupRename();
         }

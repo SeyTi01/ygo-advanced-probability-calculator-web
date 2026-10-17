@@ -318,7 +318,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         await cut.Find("[aria-label='Remove category A']").ClickAsync(new());
-        Assert.That(cut.Markup, Does.Contain("This category is still used"));
+        Assert.That(cut.Markup, Does.Contain("remove every membership"));
         await FirstRowAction(editor, "combo", "Duplicate").ClickAsync(new());
         IRenderedComponent<ComboEditor> copy = cut.FindComponents<ComboEditor>().ToArray()[1];
         await RemoveOrLeaf(copy, 1, 1);

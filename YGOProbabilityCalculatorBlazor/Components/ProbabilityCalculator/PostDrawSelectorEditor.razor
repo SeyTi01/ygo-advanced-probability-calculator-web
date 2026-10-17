@@ -4,7 +4,7 @@
 <div class="mt-2">
     @if (HasVerifiedPredicate(Selector)) {
         <div class="small" role="note">@DrawEffectPresentation.DescribeSelector(Selector, CategoryBases)</div>
-        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">Replace verified filter</button>
+        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">@(Selector.Kind == CardSelectorKind.Not && Selector.Children[0].Kind == CardSelectorKind.Any ? "Replace empty filter" : "Replace verified filter")</button>
     }
     else if (!Grouped || Selector.Kind == CardSelectorKind.Any) {
         <label for="@Id" class="form-label mb-1">Eligible</label>
