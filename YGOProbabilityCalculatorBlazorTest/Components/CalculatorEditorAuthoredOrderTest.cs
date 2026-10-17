@@ -127,4 +127,20 @@ public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase
 
     private static string[] RowKinds(IRenderedComponent<ComboEditor> editor) =>
         editor.FindAll(".requirement-list button[data-requirement]").Select(element => element.GetAttribute("data-requirement")!).ToArray();
+
+    [Test]
+    public async Task CompactEligibilityPeersAppendWithoutCanonicalReordering() {
+        CardSelector selector = CardSelector.Any;
+        IRenderedComponent<PostDrawSelectorEditor>? editor = null;
+        editor = context.RenderComponent<PostDrawSelectorEditor>(parameters => parameters
+            .Add(component => component.Selector, selector).Add(component => component.CategoryBases, new[] { a, b })
+            .Add(component => component.OnChanged, value => {
+                selector = value;
+                editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
+            }));
+        await editor.Find("#removalSelector").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#removalSelector").ChangeAsync(new() { Value = a.Identity });
+        Assert.That(editor.FindAll(".draw-selector-chip > span").Select(element => element.TextContent), Is.EqualTo(new[] { "B", "A" }));
+        Assert.That(selector.Signature, Is.EqualTo(CardSelector.AnyOf([a.Identity, b.Identity]).Signature));
+    }
 }
