@@ -19,6 +19,8 @@ public sealed class CardSelector : IEquatable<CardSelector> {
     public IReadOnlyList<string> CategoryIdentities { get; }
     public string Signature { get; }
     public IReadOnlyList<CardSelector> Children { get; } = [];
+    private readonly IReadOnlyList<CardSelector>? _authoredTerms;
+    public IEnumerable<CardSelector> AuthoredTerms => _authoredTerms ?? Terms;
     public int? MinimumLevel { get; }
     public int Depth { get; } = 1;
     public int NodeCount { get; } = 1;
@@ -47,7 +49,11 @@ public sealed class CardSelector : IEquatable<CardSelector> {
             throw new ArgumentException("Any needs no categories, Category needs one, and AnyOf/AllOf need at least one.", nameof(categoryIdentities));
         }
 
-        identities = identities.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        string[] authored = identities.Distinct(StringComparer.Ordinal).ToArray();
+        if (authored.Length > 1) {
+            _authoredTerms = Array.AsReadOnly(authored.Select(identity => new CardSelector(CardSelectorKind.Category, [identity])).ToArray());
+        }
+        identities = authored.Order(StringComparer.Ordinal).ToArray();
         Kind = identities.Length == 1 ? CardSelectorKind.Category : kind;
         CategoryIdentities = Array.AsReadOnly(identities);
         CategoryReferenceCount = identities.Length;
@@ -102,18 +108,19 @@ public sealed class CardSelector : IEquatable<CardSelector> {
             throw new ArgumentException("Selector exceeds its node or category-reference limit.", nameof(selectors));
         }
 
+        CardSelector[] authored = input.SelectMany(selector => selector.Kind == operation ? selector.AuthoredTerms : [selector]).Distinct().ToArray();
         CardSelector[] children = input.SelectMany(selector => selector.Kind == operation ? selector.Terms : [selector])
             .Distinct().OrderBy(selector => selector.Signature, StringComparer.Ordinal).ToArray();
         if (children.Length == 1) {
             return children[0];
         }
         if (children.All(selector => selector.Kind == CardSelectorKind.Category)) {
-            return new(operation, children.SelectMany(selector => selector.CategoryIdentities));
+            return new(operation, authored.SelectMany(selector => selector.CategoryIdentities));
         }
-        return new CardSelector(operation, children);
+        return new CardSelector(operation, children, authored);
     }
 
-    private CardSelector(CardSelectorKind operation, CardSelector[] children) {
+    private CardSelector(CardSelectorKind operation, CardSelector[] children, CardSelector[]? authored = null) {
         Depth = 1 + children.Max(child => child.Depth);
         NodeCount = 1 + children.Sum(child => child.NodeCount);
         CategoryReferenceCount = children.Sum(child => child.CategoryReferenceCount);
@@ -122,6 +129,7 @@ public sealed class CardSelector : IEquatable<CardSelector> {
         }
         Kind = operation;
         Children = Array.AsReadOnly(children);
+        _authoredTerms = Array.AsReadOnly(authored ?? children);
         HasLevelPredicate = children.Any(child => child.HasLevelPredicate);
         CategoryIdentities = Array.AsReadOnly(children.SelectMany(child => child.CategoryIdentities)
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray());
@@ -196,9 +204,9 @@ public sealed class CardSelector : IEquatable<CardSelector> {
     public CardSelector RenameCategory(string previousIdentity, string newIdentity) => Children.Count > 0
         ? Kind is CardSelectorKind.Objective or CardSelectorKind.Not
             ? new(Kind, Children.Select(child => child.RenameCategory(previousIdentity, newIdentity)).ToArray())
-            : Combine(Kind, Children.Select(child => child.RenameCategory(previousIdentity, newIdentity)))
+            : Combine(Kind, AuthoredTerms.Select(child => child.RenameCategory(previousIdentity, newIdentity)))
         : Kind == CardSelectorKind.LevelAtLeast ? this
-            : new(Kind, CategoryIdentities.Select(identity => identity == previousIdentity ? newIdentity : identity));
+            : new(Kind, AuthoredTerms.SelectMany(term => term.CategoryIdentities).Select(identity => identity == previousIdentity ? newIdentity : identity));
 
     public bool Equals(CardSelector? other) => other is not null && Signature == other.Signature;
 

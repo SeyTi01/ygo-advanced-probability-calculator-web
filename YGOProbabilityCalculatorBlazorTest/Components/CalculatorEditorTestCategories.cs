@@ -280,7 +280,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         card.Find("select[id^='cardCategory']").Change("user:A");
         Button(card, "Add").Click();
         cut.Find("[aria-label='Remove category A']").Click();
-        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
+        Assert.That(cut.Find("[role=alertdialog]").TextContent, Does.Contain("remove every membership"));
         card.Find(".accordion-body .badge button").Click();
         cut.Find("[aria-label='Remove category A']").Click();
         Assert.That(cut.FindAll("select option[value='user:A']"), Is.Empty);
@@ -308,7 +308,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         session.Cards.Clear();
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         cut.Find("[aria-label='Remove category A']").Click();
-        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
+        Assert.That(cut.Find("[role=alertdialog]").TextContent, Does.Contain("remove every membership"));
         IRenderedComponent<ComboEditor> combo = cut.FindComponents<ComboEditor>()[0];
         combo.Find("[data-requirement='category:0']").Click();
         Button(combo, "Remove requirement").Click();

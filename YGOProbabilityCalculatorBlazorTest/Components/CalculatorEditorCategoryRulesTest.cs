@@ -118,13 +118,14 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
         Assert.That(cut.FindComponent<ComboEditor>().Instance.Combo.Categories[0].BaseCategory.Name, Is.EqualTo("VS role"));
         Assert.That(cut.FindComponents<CardEditor>().First().Markup, Does.Contain("VS role"));
         cut.Find("[aria-label='Remove category VS role']").Click();
-        Assert.That(cut.Markup, Does.Contain("This category is still used by a card or combo."));
+        Assert.That(cut.Markup, Does.Contain("remove every membership"));
 
         SessionState unused = new() { Categories = [new("Unused", rule: CardSelector.For(Monster))], Cards = [new([Monster])], HandSize = 1 };
         cut.Dispose();
         cut = Render(unused);
         Assert.That(cut.FindComponent<CardEditor>().Markup, Does.Contain("Unused"));
         cut.Find("[aria-label='Remove category Unused']").Click();
+        cut.Find("[role=alertdialog] .btn-danger").Click();
         Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases, Is.Empty);
         Assert.That(cut.FindComponent<CardEditor>().Markup, Does.Not.Contain("Unused"));
     }

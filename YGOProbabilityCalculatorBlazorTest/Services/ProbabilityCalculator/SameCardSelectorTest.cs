@@ -24,7 +24,10 @@ public class SameCardSelectorTest {
         Assert.That(CardSelector.AllOf([A.Identity, A.Identity]), Is.EqualTo(CardSelector.For(A)));
         Assert.That(CardSelector.AnyOfSelectors([ab, ab]), Is.EqualTo(ab));
         Assert.That(CardSelector.AnyOfSelectors([Composite, ab]), Is.EqualTo(Composite));
-        Assert.That(JsonSerializer.Serialize(CardSelector.AnyOfSelectors(Composite.Children.Reverse())), Is.EqualTo(JsonSerializer.Serialize(Composite)));
+        CardSelector reverseAuthored = CardSelector.AnyOfSelectors(Composite.Children.Reverse());
+        Assert.That(reverseAuthored.Signature, Is.EqualTo(Composite.Signature));
+        Assert.That(reverseAuthored.Terms.Select(term => term.Signature), Is.EqualTo(Composite.Terms.Select(term => term.Signature)));
+        Assert.That(JsonSerializer.Deserialize<CardSelector>(JsonSerializer.Serialize(reverseAuthored)), Is.EqualTo(Composite));
         CardSelector renamed = CardSelector.AnyOfSelectors([ab, CardSelector.AllOf([C.Identity, B.Identity])])
             .RenameCategory(C.Identity, "user:Renamed");
         Assert.That(renamed.Children.All(child => child.Kind == CardSelectorKind.AllOf), Is.True);

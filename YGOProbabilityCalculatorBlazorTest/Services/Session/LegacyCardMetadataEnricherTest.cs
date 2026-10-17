@@ -174,11 +174,12 @@ public class LegacyCardMetadataEnricherTest {
     }
 
     [Test]
-    public async Task CompleteBundledExampleIsCurrentSchemaAndRequiresNoMetadataServiceOrApi() {
+    public async Task CompleteBundledExampleMigratesWithoutMetadataServiceOrApi() {
         string source = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "search_example_session_state.json"));
         using JsonDocument document = JsonDocument.Parse(source);
-        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
+        Assert.That(document.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(9));
         SessionState session = await new SessionService(new CaptureJs(), new Serializer()).LoadSessionAsync(source);
+        Assert.That(session.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(session.Cards, Has.Count.EqualTo(25));
         Assert.That(session.Categories.Select(category => category.Name), Is.EqualTo(new[] { "VS Monster", "VS Starter", "K9 Starter" }));
         Assert.That(session.Cards.All(card => card.ExternalCardId is > 0 && card.Categories.Any(category => category.Source == CategorySource.Metadata)), Is.True);
@@ -234,7 +235,7 @@ public class LegacyCardMetadataEnricherTest {
         CaptureJs js = new();
         SessionService sessions = new(js, new Serializer());
         await sessions.SaveSessionAsync(new SessionState { Cards = [original] }, "manual.json");
-        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(9));
+        Assert.That(SessionState.CurrentSchemaVersion, Is.EqualTo(10));
         using JsonDocument saved = JsonDocument.Parse(js.Json);
         Assert.That(saved.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         SessionState loaded = await sessions.LoadSessionAsync(js.Json);

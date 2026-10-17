@@ -18,7 +18,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));
         editor.Find(".simulation-edit").Click();
         Assert.That(editor.FindAll(".requirement-edit").Select(row => row.GetAttribute("aria-label")), Is.EqualTo(new[] {
-            "Edit Monster AND Level >= 5", "Edit DARK OR LIGHT", "Edit Aqua OR Pyro"
+            "Edit Monster AND Level >= 5", "Edit LIGHT OR DARK", "Edit Pyro OR Aqua"
         }));
         Assert.That(editor.Markup, Does.Not.Contain("Any condition"));
         foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
@@ -82,11 +82,11 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(3));
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Not.Contain("Any condition"));
         Assert.That(editor.FindAll(".draw-selector-chip"), Has.Count.EqualTo(6));
-        Assert.That(editor.FindAll(".selector-expression select, .selector-expression input, .selector-extend"), Is.Empty);
-        foreach (IElement separator in editor.FindAll(".selector-expression [role='separator']")) {
+        Assert.That(editor.FindAll(".selector-expression select:not(.expression-operator), .selector-expression input, .selector-extend"), Is.Empty);
+        foreach (IElement separator in editor.FindAll(".selector-expression .requirement-and-separator, .selector-expression .alternative-separator")) {
             Assert.That(separator.PreviousElementSibling, Is.Not.Null);
             Assert.That(separator.NextElementSibling, Is.Not.Null);
-            Assert.That(separator.TextContent.Trim(), Is.AnyOf("AND", "OR"));
+            Assert.That(separator.QuerySelector("select")!.GetAttribute("value"), Is.AnyOf("AND", "OR"));
         }
         SelectorExpressionEditor threshold = Node(editor, CardSelectorKind.LevelAtLeast).Instance;
         OpenLevel(editor);
@@ -315,7 +315,9 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
             }));
         OpenLevel(editor);
-        Button(editor, "Group condition 2").Click();
+        int levelOperand = editor.FindAll(".selector-condition-row > .selector-operand").ToList()
+            .FindIndex(operand => operand.QuerySelector("input[aria-label='Minimum Level']") is not null);
+        Button(editor, $"Group condition {levelOperand + 1}").Click();
         editor.Find("form .selector-operand select").Change("metadata:kind:monster");
         SaveRow(editor);
         Assert.That(changes, Is.Zero);

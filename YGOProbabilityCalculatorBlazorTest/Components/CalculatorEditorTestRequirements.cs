@@ -448,7 +448,7 @@ public sealed class CalculatorEditorTestRequirements : CalculatorEditorTestBase 
     public void ZeroMaximumSurvivesRenameParentRerenderAndHandSizeChangeAndCanBeUpdated() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         IRenderedComponent<ComboEditor> combo = cut.FindComponents<ComboEditor>()[0];
-        combo.Find("select").Change("user:A");
+        combo.Find("select[id^='comboTarget']").Change("user:A");
         Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("1"));
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("0");
@@ -459,7 +459,7 @@ public sealed class CalculatorEditorTestRequirements : CalculatorEditorTestBase 
         Button(combo, "Update requirement").Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(1));
         Assert.That(combo.Find(".accordion-body .badge").TextContent, Does.Contain("A (None)"));
-        combo.Find("select").Change("user:A");
+        combo.Find("select[id^='comboTarget']").Change("user:A");
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         combo.Find("#maxCount0").Input("2");
         Button(combo, "Update requirement").Click();
@@ -472,7 +472,7 @@ public sealed class CalculatorEditorTestRequirements : CalculatorEditorTestBase 
         IRenderedComponent<ComboEditor> combo = cut.FindComponents<ComboEditor>()[0];
         Button(combo, "Add").Click();
         Assert.That(combo.Find("[role=alert]").TextContent, Does.Contain("select a category"));
-        combo.Find("select").Change("user:B");
+        combo.Find("select[id^='comboTarget']").Change("user:B");
         combo.Find("#minCount0").Input("-1");
         Button(combo, "Add").Click();
         Assert.That(combo.Find("[role=alert]").TextContent, Does.Contain("Minimum"));
@@ -487,10 +487,10 @@ public sealed class CalculatorEditorTestRequirements : CalculatorEditorTestBase 
         Button(combo, "Add").Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
         Assert.That(combo.Find(".accordion-body").TextContent, Does.Contain("B (2 Min)"));
-        combo.Find("select").Change("");
+        combo.Find("select[id^='comboTarget']").Change("");
         cut.Find("#handSize").Change("4");
         AssertAnyMaximumDraft(combo);
-        combo.Find("select").Change("user:B");
+        combo.Find("select[id^='comboTarget']").Change("user:B");
         Button(combo, "Update requirement").Click();
         Assert.That(combo.FindAll(".accordion-body .badge"), Has.Count.EqualTo(2));
     }

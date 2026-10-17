@@ -4,7 +4,7 @@
 <div class="mt-2">
     @if (HasVerifiedPredicate(Selector)) {
         <div class="small" role="note">@DrawEffectPresentation.DescribeSelector(Selector, CategoryBases)</div>
-        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">Replace verified filter</button>
+        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">@(Selector.Kind == CardSelectorKind.Not && Selector.Children[0].Kind == CardSelectorKind.Any ? "Replace empty filter" : "Replace verified filter")</button>
     }
     else if (!Grouped || Selector.Kind == CardSelectorKind.Any) {
         <label for="@Id" class="form-label mb-1">Eligible</label>
@@ -40,7 +40,7 @@
     @if (Selector.Kind != CardSelectorKind.Any && Grouped && !HasVerifiedPredicate(Selector)) {
         <div class="form-label mb-1">Eligible</div>
         <div class="mt-2" aria-label="Grouped eligibility filter">
-            <SelectorExpressionEditor Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
+            <SelectorExpressionEditor @ref="_expressionEditor" Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
                                       CategoryRename="CategoryRename" OnEditingChanged="OnEditingChanged"
                                       Options="GroupedOptions" OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
         </div>
@@ -50,12 +50,13 @@
             @for (int index = 0; index < Alternatives.Length; index++) {
                 int branch = index;
                 CardSelector alternative = Alternatives[index];
-                @if (index > 0) { <span class="small">OR</span> }
-                <span class="d-inline-flex flex-wrap align-items-center gap-1 border rounded p-1" style="max-width:100%">
-                    @for (int conjunct = 0; conjunct < alternative.CategoryIdentities.Count; conjunct++) {
-                        string identity = alternative.CategoryIdentities[conjunct];
+                @if (index > 0) { <ExpressionSeparator Operator="OR" OnOperatorChanged="operation => BeginGroupOperator(Selector, operation)" /> }
+                <div class="d-inline-flex flex-wrap align-items-center gap-1 border rounded p-1" style="max-width:100%">
+                    @{ string[] identities = OrderedIdentities(alternative); }
+                    @for (int conjunct = 0; conjunct < identities.Length; conjunct++) {
+                        string identity = identities[conjunct];
                         string label = Label(identity);
-                        @if (conjunct > 0) { <span class="small">AND</span> }
+                        @if (conjunct > 0) { <ExpressionSeparator Operator="AND" OnOperatorChanged="operation => BeginGroupOperator(alternative, operation)" /> }
                         <span class="badge category-tag draw-selector-chip text-wrap d-inline-flex align-items-center @ChipCssClass(identity)">
                             <span>@label</span>
                             <ChipRemoveButton Class="category-remove-button ms-1"
@@ -70,7 +71,7 @@
                             <option value="@category.Identity">@category.Name</option>
                         }
                     </select>
-                </span>
+                </div>
             }
         </div>
     }
@@ -98,9 +99,23 @@
 
     private readonly Dictionary<CardSelector, string> _validationErrors = [];
     private bool _grouped;
+    private SelectorExpressionEditor? _expressionEditor;
+    private (CardSelector Target, string Operation)? _pendingGroupOperator;
     private string? _error;
     private static bool HasVerifiedPredicate(CardSelector selector) => selector.Kind is CardSelectorKind.Objective or CardSelectorKind.Not
         || selector.Children.Any(HasVerifiedPredicate);
+
+    private void BeginGroupOperator(CardSelector target, string operation) {
+        _grouped = true;
+        _pendingGroupOperator = (target, operation);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_pendingGroupOperator is { } pending && _expressionEditor is not null) {
+            _pendingGroupOperator = null;
+            await _expressionEditor.EditGroupOperatorAsync(pending.Target, pending.Operation);
+        }
+    }
 
     private bool Grouped => _grouped || Selector.IsGrouped;
 
@@ -139,7 +154,7 @@
     private static bool Contains(CardSelector root, CardSelector value) => root.Equals(value)
         || root.Children.Any(child => Contains(child, value));
 
-    private CardSelector[] Alternatives => Selector.Kind == CardSelectorKind.Any ? [] : Selector.Alternatives.ToArray();
+    private CardSelector[] Alternatives => Selector.Kind == CardSelectorKind.Any ? [] : Selector.Kind == CardSelectorKind.AnyOf ? Selector.AuthoredTerms.ToArray() : [Selector];
 
     private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
 
@@ -208,20 +223,22 @@
         }
     }
 
+    private static string[] OrderedIdentities(CardSelector selector) => selector.AuthoredTerms.SelectMany(term => term.CategoryIdentities).ToArray();
+
     private Task AddAnd(int branch, string? identity) {
         if (!Available.Any(category => category.Identity == identity)) {
             return Task.CompletedTask;
         }
         return Apply(() => {
             CardSelector[] alternatives = Alternatives;
-            alternatives[branch] = CardSelector.AllOf(alternatives[branch].CategoryIdentities.Append(identity!));
+            alternatives[branch] = CardSelector.AllOf(OrderedIdentities(alternatives[branch]).Append(identity!));
             return CardSelector.AnyOfSelectors(alternatives);
         });
     }
 
     private Task Remove(int branch, string identity) {
         List<CardSelector> alternatives = Alternatives.ToList();
-        string[] remaining = alternatives[branch].CategoryIdentities.Where(category => category != identity).ToArray();
+        string[] remaining = OrderedIdentities(alternatives[branch]).Where(category => category != identity).ToArray();
         if (remaining.Length == 0) {
             alternatives.RemoveAt(branch);
         }

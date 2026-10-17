@@ -1,0 +1,163 @@
+@using YGOProbabilityCalculatorBlazor.Models
+
+<ExpressionForm OnSubmit="Save" OnKeyDown="HandleKeyDown" StopKeyPropagation="true">
+    <div class="requirement-form-heading">
+        <strong>Edit grouped conditions</strong>
+        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnCancel">Cancel</button>
+    </div>
+    <div class="bounded-condition-group" role="group" aria-label="Grouped combo conditions">
+        @for (int index = 0; index < _operands.Count; index++) {
+            int position = index;
+            OperandDraft operand = _operands[index];
+            @if (index > 0) {
+                <ExpressionSeparator Operator="@_operation" AllowedOperators="Operators" OnOperatorChanged="ChangeOperator" />
+            }
+            <div class="bounded-condition" @key="operand">
+                @if (operand.Properties.Count > 1) {
+                    <div class="bounded-properties">
+                        <span aria-hidden="true">(</span>
+                        @for (int property = 0; property < operand.Properties.Count; property++) {
+                            int propertyIndex = property;
+                            @if (property > 0) { <ExpressionSeparator Operator="AND" OnOperatorChanged="operation => SplitPropertyGroup(operand, operation)" /> }
+                            <select @ref="_entryInputs[position]" class="form-select" aria-label="@($"Condition {index + 1} property {property + 1}")" value="@operand.Properties[property].Identity"
+                                    @onchange="args => ChangeProperty(operand, propertyIndex, args.Value?.ToString())">
+                                @foreach (CategoryBase category in CategoryBases) { <option value="@category.Identity">@category.Name</option> }
+                            </select>
+                        }
+                        <span aria-hidden="true">)</span>
+                    </div>
+                }
+                else {
+                    <select @ref="_entryInputs[position]" class="form-select" aria-label="@($"Condition {index + 1} target")" value="@operand.Target" @onchange="args => ChangeTarget(operand, args.Value?.ToString())">
+                        <option value="">Choose…</option>
+                        @if (operand.Target.StartsWith("card:", StringComparison.Ordinal) && !Cards.Any(card => "card:" + card.Id == operand.Target)) {
+                            <option value="@operand.Target">Missing card</option>
+                        }
+                        <optgroup label="Cards">
+                            @foreach (Card card in Cards) { <option value="@($"card:{card.Id}")">@(card.Name ?? "Unnamed card")</option> }
+                        </optgroup>
+                        <optgroup label="Categories and properties">
+                            @foreach (CategoryBase category in CategoryBases) { <option value="@category.Identity">@category.Name</option> }
+                        </optgroup>
+                    </select>
+                }
+                <div class="bounded-counts">
+                    <label>At least <input class="form-control" type="number" min="0" aria-label="@($"Condition {index + 1} minimum")" @bind="operand.Minimum" @bind:event="oninput" /></label>
+                    <label>At most <input class="form-control" type="number" min="0" placeholder="Any" aria-label="@($"Condition {index + 1} maximum")" @bind="operand.Maximum" @bind:event="oninput" /></label>
+                    <button type="button" class="btn btn-sm btn-outline-danger" aria-label="@($"Remove condition {index + 1}")" disabled="@(_operands.Count == 1)" @onclick="() => _operands.RemoveAt(position)">Remove</button>
+                </div>
+            </div>
+        }
+    </div>
+    @if (_error is not null || Error is not null) { <p class="small text-danger" role="alert">@(_error ?? Error)</p> }
+    <div class="d-flex flex-wrap gap-2 mt-2">
+        <button type="submit" class="btn btn-primary">Save group</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="AddCondition">Add condition</button>
+    </div>
+</ExpressionForm>
+
+@code {
+    [Parameter] public required IReadOnlyList<ComboAlternative> Operands { get; set; }
+    [Parameter] public string Operator { get; set; } = "OR";
+    [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
+    [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
+    [Parameter] public EventCallback<ComboGroupEdit> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    private static readonly string[] Operators = ["+", "AND", "OR"];
+    private readonly List<OperandDraft> _operands = [];
+    private string _operation = "OR";
+    private string? _error;
+    private int _renameVersion;
+    private readonly Dictionary<int, ElementReference> _entryInputs = [];
+
+    private sealed class OperandDraft {
+        public string Target { get; set; } = "";
+        public List<CategoryBase> Properties { get; set; } = [];
+        public string Minimum { get; set; } = "1";
+        public string Maximum { get; set; } = "";
+        public int SavedMaximum { get; set; }
+    }
+
+    protected override void OnInitialized() {
+        _operation = Operator;
+        foreach (ComboAlternative operand in Operands) {
+            RequirementMaximumMode mode = operand.Category?.MaximumMode ?? operand.Card!.MaximumMode;
+            int maximum = operand.Category?.MaxCount ?? operand.Card!.MaxCount;
+            _operands.Add(new() {
+                Target = operand.Category?.BaseCategory.Identity ?? "card:" + operand.Card!.CardId,
+                Properties = operand.Category?.CategoryBases.ToList() ?? [],
+                Minimum = (operand.Category?.MinCount ?? operand.Card!.MinCount).ToString(),
+                Maximum = mode == RequirementMaximumMode.HandSize ? "" : maximum.ToString(),
+                SavedMaximum = maximum
+            });
+        }
+    }
+
+    protected override void OnParametersSet() {
+        if (CategoryRename is { } rename && rename.Version != _renameVersion) {
+            foreach (OperandDraft operand in _operands) {
+                if (operand.Target == $"user:{rename.OldName}") { operand.Target = $"user:{rename.NewName}"; }
+                operand.Properties = operand.Properties.Select(property => property.Identity == $"user:{rename.OldName}"
+                    ? CategoryBases.FirstOrDefault(category => category.Identity == $"user:{rename.NewName}") ?? property : property).ToList();
+            }
+            _renameVersion = rename.Version;
+        }
+    }
+
+    private void ChangeOperator(string value) { _operation = value; _error = null; }
+    private void AddCondition() {
+        OperandDraft? first = _operation == "AND" ? _operands.FirstOrDefault() : null;
+        _operands.Add(first is null ? new() : new() { Minimum = first.Minimum, Maximum = first.Maximum, SavedMaximum = first.SavedMaximum });
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender && _entryInputs.TryGetValue(0, out ElementReference entry)) { await entry.FocusAsync(); }
+    }
+    private void ChangeTarget(OperandDraft operand, string? value) {
+        operand.Target = value ?? "";
+        operand.Properties = CategoryBases.Where(category => category.Identity == value).ToList();
+    }
+    private void ChangeProperty(OperandDraft operand, int index, string? value) {
+        if (CategoryBases.FirstOrDefault(category => category.Identity == value) is { } category) { operand.Properties[index] = category; }
+    }
+    private void SplitPropertyGroup(OperandDraft operand, string operation) {
+        if (operation != "OR") { return; }
+        if (_operation != "OR") {
+            _error = "Set the outer connector to OR before splitting a same-card condition into alternatives.";
+            return;
+        }
+        int index = _operands.IndexOf(operand);
+        _operands.RemoveAt(index);
+        _operands.InsertRange(index, operand.Properties.Select(property => new OperandDraft {
+            Target = property.Identity, Properties = [property], Minimum = operand.Minimum, Maximum = operand.Maximum, SavedMaximum = operand.SavedMaximum
+        }));
+        _error = null;
+    }
+    private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
+    private async Task Save() {
+        List<ComboAlternative> result = [];
+        foreach (OperandDraft operand in _operands) {
+            bool any = string.IsNullOrWhiteSpace(operand.Maximum);
+            int maximum = operand.SavedMaximum;
+            if (!int.TryParse(operand.Minimum, out int minimum) || minimum < 0
+                || !any && (!int.TryParse(operand.Maximum, out maximum) || maximum < minimum)) {
+                _error = "Enter valid minimum and maximum counts for every condition.";
+                return;
+            }
+            RequirementMaximumMode mode = any ? RequirementMaximumMode.HandSize : RequirementMaximumMode.Fixed;
+            if (operand.Target.StartsWith("card:", StringComparison.Ordinal) && operand.Target.Length > 5) {
+                result.Add(ComboAlternative.For(new ComboCard(operand.Target[5..], minimum, maximum, mode)));
+            }
+            else if (operand.Properties.Count > 0) {
+                result.Add(ComboAlternative.For(ComboCategory.SameCard(operand.Properties, minimum, maximum, mode)));
+            }
+            else {
+                _error = "Choose a target for every condition.";
+                return;
+            }
+        }
+        _error = null;
+        await OnSave.InvokeAsync(new(_operation, result));
+    }
+}

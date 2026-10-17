@@ -7,7 +7,7 @@
             @for (int index = 0; index < Rows.Length; index++) {
                 int position = index;
                 SelectorRow currentRow = Rows[index];
-                @if (index > 0) { <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" /> }
+                @if (index > 0) { <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" OnOperatorChanged="ChangeGroupOperator" /> }
                 <SelectorExpressionEditor @key="_termKeys[Rows[index].Value.Signature]" @ref="_childEditors[_termKeys[currentRow.Value.Signature]]"
                     Selector="Rows[index].Value" IsRoot="false" Path="@($"{Path}.{index}")" Available="Available" Options="Options"
                     CategoryColorIndices="CategoryColorIndices" CategoryRename="CategoryRename" Session="EditorSession"
@@ -107,7 +107,7 @@
 
     private RenderFragment Summary(CardSelector selector) => @<span class="selector-summary">
         @if (selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
-            CardSelector[] terms = selector.Terms.ToArray();
+            CardSelector[] terms = selector.AuthoredTerms.ToArray();
             @for (int index = 0; index < terms.Length; index++) {
                 <span class="selector-summary-term">
                     @if (index > 0) { <span class="small fw-semibold">@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")</span> }
@@ -192,8 +192,8 @@
         return category.Source == CategorySource.Metadata && colon > 0 ? category.Name[(colon + 1)..].Trim() : category.Name;
     }
     private string Description(CardSelector selector) => selector.Kind switch {
-        CardSelectorKind.AllOf => string.Join(" AND ", selector.Terms.Select(Description)),
-        CardSelectorKind.AnyOf => string.Join(" OR ", selector.Terms.Select(Description)),
+        CardSelectorKind.AllOf => string.Join(" AND ", selector.AuthoredTerms.Select(Description)),
+        CardSelectorKind.AnyOf => string.Join(" OR ", selector.AuthoredTerms.Select(Description)),
         CardSelectorKind.LevelAtLeast => $"Level >= {selector.MinimumLevel}",
         _ => IdentityLabel(selector.CategoryIdentities.FirstOrDefault() ?? "")
     };
@@ -210,16 +210,21 @@
     // associative operator; no grouping or distributive expansion is persisted.
     private static SelectorRow[] ProjectRows(CardSelectorKind operation, CardSelector[] terms, IEnumerable<SelectorRow>? preferred = null) {
         List<SelectorRow> rows = [];
-        List<CardSelector> leaves = terms.Where(term => term.Kind is not (CardSelectorKind.AllOf or CardSelectorKind.AnyOf)).ToList();
+        List<CardSelector> remaining = terms.ToList();
         foreach (SelectorRow previous in preferred ?? []) {
-            bool reusablePair = previous.Terms.Length <= 2 && previous.Terms.All(leaves.Contains);
+            bool reusablePair = previous.Terms.Length <= 2 && previous.Terms.All(remaining.Contains);
             if (reusablePair) {
                 rows.Add(new(Combine(operation, previous.Terms), previous.Terms));
-                foreach (CardSelector term in previous.Terms) { leaves.Remove(term); }
+                foreach (CardSelector term in previous.Terms) { remaining.Remove(term); }
             }
         }
-        foreach (CardSelector[] pair in leaves.Chunk(2)) { rows.Add(new(Combine(operation, pair), pair)); }
-        rows.AddRange(terms.Where(term => term.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf).Select(term => new SelectorRow(term, [term])));
+        for (int index = 0; index < remaining.Count; index++) {
+            CardSelector first = remaining[index];
+            bool pair = first.Kind is not (CardSelectorKind.AllOf or CardSelectorKind.AnyOf)
+                && index + 1 < remaining.Count && remaining[index + 1].Kind is not (CardSelectorKind.AllOf or CardSelectorKind.AnyOf);
+            CardSelector[] operands = pair ? [first, remaining[++index]] : [first];
+            rows.Add(new(Combine(operation, operands), operands));
+        }
         return rows.ToArray();
     }
 
@@ -244,7 +249,7 @@
             _renameVersion = rename.Version;
         }
         if (!ReferenceEquals(_previous, Selector)) {
-            Terms = IsGroup ? Selector.Terms.ToArray() : [Selector];
+            Terms = IsGroup ? Selector.AuthoredTerms.ToArray() : [Selector];
             Rows = IsGroup ? ProjectRows(Selector.Kind, Terms, _preferredRows ?? Rows) : [];
             _preferredRows = null;
             if (_nestedTarget is not null) {
@@ -257,6 +262,23 @@
         foreach (string removed in _termKeys.Keys.Where(signature => !current.Contains(signature)).ToArray()) { _termKeys.Remove(removed); }
         foreach (SelectorRow row in Rows) { _termKeys.TryAdd(row.Value.Signature, new object()); }
         foreach (object removed in _childEditors.Keys.Where(key => !_termKeys.Values.Contains(key)).ToArray()) { _childEditors.Remove(removed); }
+    }
+
+    private async Task ChangeGroupOperator(string operation) {
+        await BeginEdit();
+        _operation = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf;
+    }
+
+    public async Task<bool> EditGroupOperatorAsync(CardSelector target, string operation) {
+        if (Selector.Equals(target)) {
+            await ChangeGroupOperator(operation);
+            StateHasChanged();
+            return true;
+        }
+        foreach (SelectorExpressionEditor child in _childEditors.Values) {
+            if (await child.EditGroupOperatorAsync(target, operation)) { return true; }
+        }
+        return false;
     }
 
     private async Task BeginEdit() {
@@ -370,9 +392,9 @@
     }
     private async Task ReplaceRow(int position, CardSelector value) {
         SelectorRow row = Rows[position];
-        CardSelector updated = Combine(Selector.Kind, Terms.Where(term => !row.Terms.Contains(term)).Append(value));
+        CardSelector updated = Combine(Selector.Kind, Rows.SelectMany((current, index) => index == position ? [value] : current.Terms));
         _termKeys.TryAdd(value.Signature, _termKeys[row.Value.Signature]);
-        CardSelector[] projectedTerms = value.Kind == Selector.Kind ? value.Terms.ToArray() : [value];
+        CardSelector[] projectedTerms = value.Kind == Selector.Kind ? value.AuthoredTerms.ToArray() : [value];
         _preferredRows = Rows.Select((current, index) => index == position ? new SelectorRow(value, projectedTerms) : current).ToArray();
         bool rowRetained = updated.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf
             && ProjectRows(updated.Kind, updated.Terms.ToArray(), _preferredRows).Any(projected => projected.Value.Equals(value));

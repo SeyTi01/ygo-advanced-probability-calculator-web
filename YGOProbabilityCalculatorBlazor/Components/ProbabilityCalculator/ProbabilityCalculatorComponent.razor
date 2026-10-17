@@ -125,6 +125,7 @@
             OnRuleChanged="ChangeCategoryRule"
             OnCategoryColorChanged="SetCategoryColor"
             OnRenameCategory="RenameCategoryBase"
+            OnRemoveCategory="RemoveCategory"
             CategoryBases="_categoryBases"
             CategoryColorIndices="_categoryColorIndices"
             Combos="_combos"
@@ -133,7 +134,7 @@
         />
     </details>
 
-    <ComboListEditor @key="ComboListKey"
+    <ComboListEditor @ref="_comboListEditor" @key="ComboListKey"
         Combos="_combos"
         Cards="_cards"
         ComboGroups="_comboGroups"
@@ -613,7 +614,8 @@
                     card.MaximumMode
                 )
             ),
-            source.AlternativeGroups
+            source.AlternativeGroups,
+            source.RequirementOrder
         );
 
         int duplicateIndex = index + 1;
@@ -676,6 +678,31 @@
 
         InvalidateCalculation();
         StateHasChanged();
+    }
+
+    private ComboListEditor? _comboListEditor;
+
+    private async Task RemoveCategory(CategoryBase category) {
+        if (category.Source != CategorySource.User || !_categoryBases.Contains(category)) {
+            return;
+        }
+
+        // Build and validate replacements before publishing any workspace mutation.
+        Card[] cards = _cards.Select(card => CategoryRemoval.Remove(card, category.Identity)).ToArray();
+        Combo[] combos = _combos.Select(combo => CategoryRemoval.Remove(combo, category.Identity)).ToArray();
+        for (int index = 0; index < cards.Length; index++) {
+            if (!ReferenceEquals(cards[index], _cards[index])) {
+                await _cardListEditor!.ReplaceCard((index, cards[index]));
+            }
+        }
+        for (int index = 0; index < combos.Length; index++) {
+            if (!ReferenceEquals(combos[index], _combos[index])) {
+                await _comboListEditor!.ReplaceCombo((index, combos[index]));
+            }
+        }
+        _categoryBases.Remove(category);
+        _categoryColorIndices.Remove(category.Name);
+        InvalidateCalculation();
     }
 
     private async Task RenameCategoryBase((CategoryBase OldCategory, CategoryBase NewCategory) payload) {

@@ -168,6 +168,7 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
             Does.Contain("Tier One"));
 
         cut.Find("[aria-label='Remove group Tier One']").Click();
+        cut.Find("[role=alertdialog] .btn-danger").Click();
         Assert.That(cut.FindAll(".combo-group-chip"), Has.Count.EqualTo(1));
         Assert.That(first.Instance.Combo.GroupId, Is.Null);
         Assert.That(first.Find(".combo-header-content").QuerySelector(".combo-group-membership"), Is.Null);

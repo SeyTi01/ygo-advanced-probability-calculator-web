@@ -29,12 +29,12 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
             "requirement-or-group", "requirement-and-separator", "requirement-or-group"
         }));
         foreach (IElement separator in requirements.QuerySelectorAll(".requirement-and-separator")) {
-            Assert.That(separator.TextContent.Trim(), Is.EqualTo("+"));
-            Assert.That(separator.GetAttribute("aria-label"), Is.EqualTo("AND: also required"));
+            Assert.That(separator.QuerySelector("select")!.GetAttribute("value"), Is.EqualTo("+"));
+            Assert.That(separator.GetAttribute("aria-label"), Is.EqualTo("+: separate card requirements"));
         }
         foreach (IElement group in requirements.QuerySelectorAll(".requirement-or-group")) {
             Assert.That(group.QuerySelectorAll(".requirement-row"), Has.Length.EqualTo(2));
-            Assert.That(group.QuerySelector(".alternative-separator")!.TextContent, Is.EqualTo("OR"));
+            Assert.That(group.QuerySelector(".alternative-separator select")!.GetAttribute("value"), Is.EqualTo("OR"));
             Assert.That(group.QuerySelectorAll(".requirement-and-separator"), Is.Empty);
         }
         await EditRequirement(editor, "category:0");
@@ -182,7 +182,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         Assert.That(editor.Find(".requirement-or-group").GetAttribute("aria-label"), Is.EqualTo("Alternative group 1"));
-        Assert.That(editor.Find(".requirement-or-group .alternative-separator").TextContent, Is.EqualTo("OR"));
+        Assert.That(editor.Find(".requirement-or-group .alternative-separator select").GetAttribute("value"), Is.EqualTo("OR"));
         Assert.That(editor.Find(".requirement-or-group .same-card-and").TextContent, Is.EqualTo("AND"));
         Assert.That(editor.FindAll(".combo-header-content .composite-alternative"), Has.Count.EqualTo(1));
         foreach (IElement expression in editor.FindAll(".combo-header-content .alternative-group, .combo-header-content .composite-alternative")) {

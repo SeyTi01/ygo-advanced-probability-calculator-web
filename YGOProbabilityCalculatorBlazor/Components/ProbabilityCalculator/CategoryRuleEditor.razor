@@ -4,11 +4,11 @@
     <h5 class="fs-6" tabindex="-1" @ref="_heading">Properties for @Category.Name</h5>
     @for (int index = 0; index < _alternatives.Count; index++) {
         int branch = index;
-        @if (index > 0) { <div class="small fw-semibold my-2">OR</div> }
+        @if (index > 0) { <ExpressionSeparator Operator="OR" OnOperatorChanged="operation => ChangeAlternativeOperator(branch, operation)" /> }
         <div class="d-flex flex-wrap align-items-center gap-2 border rounded p-2">
             @for (int term = 0; term < _alternatives[index].Count; term++) {
                 string identity = _alternatives[index][term];
-                @if (term > 0) { <span class="small">AND</span> }
+                @if (term > 0) { <ExpressionSeparator Operator="AND" OnOperatorChanged="operation => ChangePropertyOperator(branch, operation)" /> }
                 <span class="badge category-tag card-property-tag text-wrap category-rule-term @CardPropertyColorPalette.GetCssClass(identity[9..])">
                     @Label(identity)
                     <ChipRemoveButton Class="category-remove-button ms-1" aria-label="@($"Remove property {Label(identity)} from alternative {index + 1}")"
@@ -34,6 +34,7 @@
             <option value="@property.Identity">@property.Name</option>
         }
     </select>
+    @if (_operatorError is not null) { <p class="small text-danger" role="alert">@_operatorError</p> }
     <div class="small mt-3" role="status" aria-live="polite">
         @if (Draft is null) {
             <span>0 matching entries</span>
@@ -66,10 +67,12 @@
     private Card[] _matches = [];
     private ElementReference _heading;
     private CardSelector? Draft { get; set; }
+    private string? _operatorError;
 
     protected override void OnInitialized() {
-        foreach (CardSelector alternative in Category.Rule?.Alternatives ?? []) {
-            _alternatives.Add(alternative.CategoryIdentities.ToList());
+        IEnumerable<CardSelector> alternatives = Category.Rule is not { } rule ? [] : rule.Kind == CardSelectorKind.AnyOf ? rule.AuthoredTerms : [rule];
+        foreach (CardSelector alternative in alternatives) {
+            _alternatives.Add(alternative.AuthoredTerms.SelectMany(term => term.CategoryIdentities).ToList());
         }
         UpdatePreview();
     }
@@ -97,6 +100,7 @@
             return;
         }
         _alternatives.Add([identity!]);
+        _operatorError = null;
         UpdatePreview();
     }
 
@@ -106,6 +110,7 @@
             return;
         }
         _alternatives[branch].Add(identity!);
+        _operatorError = null;
         UpdatePreview();
     }
 
@@ -114,12 +119,39 @@
         if (_alternatives[branch].Count == 0) {
             _alternatives.RemoveAt(branch);
         }
+        _operatorError = null;
         UpdatePreview();
     }
 
     private void UpdatePreview() {
         Draft = _alternatives.Count == 0 ? null : CardSelector.AnyOfSelectors(_alternatives.Select(CardSelector.AllOf));
         _matches = Draft is null ? [] : Cards.Where(card => Draft.Matches(card)).ToArray();
+    }
+
+    private void ChangeAlternativeOperator(int right, string operation) {
+        if (operation != "AND") { return; }
+        List<string> combined = _alternatives[right - 1].Concat(_alternatives[right]).Distinct(StringComparer.Ordinal).ToList();
+        if (combined.Count > CategoryMembership.MaximumPropertiesPerAlternative) {
+            _operatorError = "The AND group would exceed 16 properties. Remove a property before combining.";
+            return;
+        }
+        _alternatives[right - 1] = combined;
+        _alternatives.RemoveAt(right);
+        _operatorError = null;
+        UpdatePreview();
+    }
+
+    private void ChangePropertyOperator(int branch, string operation) {
+        if (operation != "OR") { return; }
+        List<string> properties = _alternatives[branch];
+        if (_alternatives.Count - 1 + properties.Count > CategoryMembership.MaximumAlternatives) {
+            _operatorError = "The OR group would exceed 16 alternatives. Remove an alternative before splitting.";
+            return;
+        }
+        _alternatives.RemoveAt(branch);
+        _alternatives.InsertRange(branch, properties.Select(property => new List<string> { property }));
+        _operatorError = null;
+        UpdatePreview();
     }
 
     private Task KeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;

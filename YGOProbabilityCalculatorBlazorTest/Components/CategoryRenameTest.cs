@@ -96,7 +96,7 @@ public class CategoryRenameTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:Old");
-        combo.Find("select").Change("user:Old");
+        combo.Find("select[id^='comboTarget']").Change("user:Old");
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("1");
 
@@ -107,7 +107,7 @@ public class CategoryRenameTest {
         Assert.That(card.Instance.Card, Is.SameAs(originalCards[0]));
         Assert.That(combo.Instance.Combo, Is.SameAs(originalCombos[0]));
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:Renamed"));
-        Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("user:Renamed"));
+        Assert.That(combo.Find("select[id^='comboTarget']").GetAttribute("value"), Is.EqualTo("user:Renamed"));
         Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("1"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
@@ -175,7 +175,7 @@ public class CategoryRenameTest {
 
         cut.Find("[aria-label='Remove category Old']").Click();
         Assert.That(cut.FindAll("[aria-label='New name for category Old']"), Is.Empty);
-        Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("still used"));
+        Assert.That(cut.Find("[role=alertdialog]").TextContent, Does.Contain("remove every membership"));
         Assert.That(cut.Find("[aria-label='Remove category Old']").GetAttribute("title"),
             Is.EqualTo("Delete category Old"));
 
@@ -234,7 +234,7 @@ public class CategoryRenameTest {
         Assert.That(ReferenceEquals(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Single(), loadedCombo.Categories[0].BaseCategory), Is.False);
 
         cut.Find("[aria-label='Remove category Renamed']").Click();
-        Assert.That(cut.FindComponent<CategoryListEditor>().Find("[role=alert]").TextContent, Does.Contain("still used"));
+        Assert.That(cut.FindComponent<CategoryListEditor>().Find("[role=alertdialog]").TextContent, Does.Contain("remove every membership"));
     }
 
     private static void RenameCategory(IRenderedFragment cut, string oldName, string newName) {

@@ -25,7 +25,7 @@ public partial class ComboEditor {
         || _maxCount != ((original.Category?.MaximumMode ?? original.Card!.MaximumMode) == RequirementMaximumMode.HandSize
             ? string.Empty : (original.Category?.MaxCount ?? original.Card!.MaxCount).ToString())
         || (_selectedKind == "Card" ? _selectedCardId != original.Card?.CardId
-            : original.Category is null || !_draftProperties.Select(category => category.Identity).SequenceEqual(original.Category.Selector.CategoryIdentities)));
+            : original.Category is null || !_draftProperties.Select(category => category.Identity).SequenceEqual(original.Category.CategoryBases.Select(category => category.Identity))));
 
     private string SelectedTarget => _selectedKind == "Card" && _selectedCardId.Length > 0
         ? $"card:{_selectedCardId}"
@@ -74,6 +74,7 @@ public partial class ComboEditor {
     }
 
     private void BeginEdit(ComboAlternative requirement, int index, int? groupIndex) {
+        if (_boundedPositions is not null) { CloseBoundedGroup(); }
         if (IsOpenRow(requirement, index, groupIndex)) {
             _returnRowKey = RowKey(requirement, index, groupIndex);
             CancelScopedAuthoring();
@@ -202,7 +203,17 @@ public partial class ComboEditor {
             else { cards.RemoveAt(index); categories.Add(replacement.Category!); }
         }
 
-        return Combo.WithCategories(categories).WithCards(cards);
+        Combo updated = Combo.WithCategories(categories).WithCards(cards);
+        ComboRequirementKind previousKind = _editingRequirement.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
+        ComboRequirementPosition previous = new(previousKind, index);
+        ComboRequirementKind nextKind = replacement.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
+        int nextIndex = previousKind == nextKind ? index : replacement.Category is not null ? categories.Count - 1 : cards.Count - 1;
+        if (previousKind != nextKind) {
+            updated = Combo.WithoutRequirement(previous);
+            updated = replacement.Category is { } nextCategory ? updated.WithCategories(updated.Categories.Append(nextCategory))
+                : updated.WithCards(updated.Cards.Append(replacement.Card!));
+        }
+        return updated.WithRequirementAt(new(nextKind, nextIndex), Combo.RequirementOrder.ToList().IndexOf(previous));
     }
 
     private Task CommitEdit() {

@@ -4,7 +4,7 @@
 <div class="mb-4">
     <div class="editor-add-row">
         <div class="editor-select-field">
-            <input @bind="_newCategoryName"
+            <input @ref="_newCategoryInput" @bind="_newCategoryName"
                    @bind:event="oninput"
                    @onkeyup="@(async e => {
                                  if (e.Key == "Enter") {
@@ -108,6 +108,11 @@
             }
         }
     </div>
+    @if (_pendingRemoval is { } pending) {
+        <DeletionConfirmation @key="pending" Label="Confirm category deletion"
+            Message="@($"Delete {pending.Name} and remove every membership, combo requirement, and effect/search/removal reference, including inactive entries? Unrelated terms and combos remain. Emptied combos become inactive; emptied effect filters match no cards until edited. Property rules use metadata only and remain unchanged.")"
+            OnConfirm="ConfirmRemoval" OnCancel="CancelRemoval" />
+    }
     @if (_ruleCategory is not null) {
         <CategoryRuleEditor @key="_ruleCategory" Category="_ruleCategory" Cards="Cards" CategoryBases="CategoryBases"
                             OnApply="ApplyRule" OnCancel="CloseRule" />
@@ -125,10 +130,12 @@
     [Parameter] public EventCallback<(string CategoryName, int ColorIndex)> OnCategoryColorChanged { get; set; }
     [Parameter] public EventCallback<(int From, int To)> OnMoveCategory { get; set; }
     [Parameter] public EventCallback<(CategoryBase OldCategory, CategoryBase NewCategory)> OnRenameCategory { get; set; }
+    [Parameter] public EventCallback<CategoryBase> OnRemoveCategory { get; set; }
 
     [Parameter] public EventCallback<(CategoryBase Category, CardSelector? Rule)> OnRuleChanged { get; set; }
 
     private CategoryBase? _ruleCategory;
+    private CategoryBase? _pendingRemoval;
     private string? _ruleRenameDraft;
     private string? _ruleCategoryName;
 
@@ -172,6 +179,8 @@
     private CategoryBase? _editingCategory;
     private string? _editingCategoryName;
     private ElementReference _renameInputReference;
+    private ElementReference _newCategoryInput;
+    private bool _focusNewCategoryInput;
     private readonly Dictionary<string, ElementReference> _categoryNameButtonReferences = new(StringComparer.Ordinal);
     private bool _focusRenameInput;
     private string? _pendingCategoryNameFocus;
@@ -225,29 +234,51 @@
     }
 
     private async Task RemoveCategoryBase(CategoryBase category) {
-        bool isUsedInCombo = Combos.Any(combo => combo.AllCategories.Any(constraint => constraint.Selector.CategoryIdentities.Contains(category.Identity)));
-        bool isUsedOnCard = Cards.Any(card => card.Categories.Any(cardCategory => cardCategory.Identity == category.Identity)
-            || card.PreDrawSelector.CategoryIdentities.Contains(category.Identity)
-            || (card.Search?.Selector.CategoryIdentities.Contains(category.Identity) ?? false)
-            || card.PostDrawSelector.CategoryIdentities.Contains(category.Identity));
-
-        if (isUsedInCombo || isUsedOnCard) {
-            _categoryError = "This category is still used by a card or combo.";
-
+        if (category.Source != CategorySource.User || !CategoryBases.Contains(category)) {
             return;
         }
-
-        CategoryBases.Remove(category);
-
-        if (ReferenceEquals(_editingCategory, category)) {
-            CancelCategoryRename();
+        if (CategoryRemoval.IsUsed(category, Cards, Combos)) {
+            _pendingRemoval = category;
+            _categoryError = null;
+            return;
         }
+        await DeleteCategory(category);
+    }
 
+    private async Task ConfirmRemoval() {
+        if (_pendingRemoval is { } category) {
+            await DeleteCategory(category);
+        }
+    }
+
+    private void CancelRemoval() {
+        _pendingCategoryNameFocus = _pendingRemoval?.Name;
+        _pendingRemoval = null;
+        if (_editingCategory is not null) {
+            _focusRenameInput = true;
+            _pendingCategoryNameFocus = null;
+        }
+    }
+
+    private async Task DeleteCategory(CategoryBase category) {
+        _pendingRemoval = null;
+        if (OnRemoveCategory.HasDelegate) {
+            await OnRemoveCategory.InvokeAsync(category);
+        }
+        else {
+            CategoryBases.Remove(category);
+        }
+        if (ReferenceEquals(_editingCategory, category)) {
+            ClearCategoryRename();
+            _pendingCategoryNameFocus = null;
+            _focusNewCategoryInput = true;
+        }
         _categoryError = null;
         await OnCategoriesChanged.InvokeAsync();
     }
 
     private void BeginCategoryRename(CategoryBase category) {
+        _pendingRemoval = null;
         _ruleCategory = null;
         _editingCategory = category;
         _editingCategoryName = category.Name;
@@ -293,6 +324,7 @@
         }
 
         CategoryBase oldCategory = _editingCategory;
+        _pendingRemoval = null;
         CategoryBase newCategory = new(_editingCategoryName, rule: oldCategory.Rule);
         await OnRenameCategory.InvokeAsync((oldCategory, newCategory));
         _pendingCategoryNameFocus = newCategory.Name;
@@ -301,6 +333,11 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_focusNewCategoryInput) {
+            _focusNewCategoryInput = false;
+            await _newCategoryInput.FocusAsync();
+            return;
+        }
         if (_focusRenameInput) {
             _focusRenameInput = false;
             await _renameInputReference.FocusAsync();
