@@ -26,7 +26,9 @@
     flex-wrap: wrap;
     align-items: center;
     gap: .25rem;
+    max-width: 100%;
     min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .combo-group-membership {
@@ -91,7 +93,7 @@
 }
 
 .combo-header-requirements :is(.same-card-category, .same-card-conjunct, .category-tag) {
-    width: max-content;
+    width: fit-content;
 }
 
 .expression-and,
