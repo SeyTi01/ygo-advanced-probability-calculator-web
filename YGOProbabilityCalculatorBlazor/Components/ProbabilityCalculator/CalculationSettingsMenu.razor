@@ -159,7 +159,7 @@
     private DotNetObjectReference<CalculationSettingsMenu>? _reference;
     private ElementReference _drawEffectsInput;
     private string ModelHelp => Model switch {
-        CalculationModel.Fast => "Applies all saved rules under the fixed modeled policy. Exact when proven; otherwise optimistic, with a search-survival bound where supported. Some inputs remain uncertified.",
+        CalculationModel.Fast => "Applies all saved rules under the fixed modeled policy. Prefers Exact within a timed opportunity; otherwise retains the completed Fast bound or uncertified result. Only the additional Exact attempt has a time cutoff; initial Fast is allowed to finish.",
         CalculationModel.Exact => "Applies the same saved rules and fixed policy. Returns a result only when physical Deck-search survival is proven exact; otherwise Unsupported. Not full gameplay or optimal play.",
         CalculationModel.OpeningHand => "Exact for the dealt hand with all effects ignored. A different question; card settings are preserved.",
         _ => throw new ArgumentOutOfRangeException(nameof(Model))

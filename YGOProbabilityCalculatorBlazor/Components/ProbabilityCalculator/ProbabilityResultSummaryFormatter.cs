@@ -30,6 +30,9 @@ public static class ProbabilityResultSummaryFormatter {
                 $"Reason: {contract.Reason}",
                 "Effect scope: " + contract.Scope
             ]);
+            if (ProbabilityPresentation.AutomaticExactDetail(contract.AutomaticExact) is { } automaticDetail) {
+                lines.Add(automaticDetail);
+            }
             if (contract.Accuracy != CalculationAccuracy.Exact) {
                 lines.Add(ProbabilityPresentation.Legend);
             }

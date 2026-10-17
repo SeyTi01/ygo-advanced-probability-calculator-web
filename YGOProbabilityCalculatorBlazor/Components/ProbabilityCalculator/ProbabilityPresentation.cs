@@ -13,6 +13,17 @@ public sealed record ProbabilityDisplay(string Value, string Accuracy, string De
 
 // Presentation only. The optimistic primary can exceed the certified upper endpoint.
 public static class ProbabilityPresentation {
+    public static string? AutomaticExactDetail(AutomaticExactOutcome? outcome) => outcome switch {
+        AutomaticExactOutcome.Completed => "Fast completed a physical Exact calculation within its automatic opportunity.",
+        AutomaticExactOutcome.Deadline => "The automatic Exact opportunity ended; the completed Fast result is retained. Select Effects — exact to allow more time.",
+        AutomaticExactOutcome.WorkLimit => "The automatic Exact attempt reached the remaining Work allowance; the completed Fast result is retained.",
+        AutomaticExactOutcome.StorageLimit => "The automatic Exact attempt reached the Storage limit; the completed Fast result is retained.",
+        AutomaticExactOutcome.Unsupported => "The automatic Exact route was unsupported; the completed Fast result is retained.",
+        AutomaticExactOutcome.Error => "The automatic Exact attempt could not complete; the completed Fast result is retained.",
+        AutomaticExactOutcome.NoTime => "Fast completed after the automatic Exact opportunity; no additional attempt was started. Select Effects — exact to allow more time.",
+        _ => null
+    };
+
     public const string Legend = "± is an absolute change on the 0%–100% probability scale, not a relative percentage. Bounded values show a display midpoint with an outward-rounded radius covering the certified range; no value within that range is claimed more likely. This is not a statistical confidence interval.";
     public const string AccuracyDetails = "Some calculations simplify whether cards remain available as Deck-search targets after draws or removals. For Bounded results, the displayed percentage is the midpoint of a guaranteed range; ± is a conservative upper bound on the absolute error from that midpoint on the 0%–100% scale, and the actual error may be smaller. This is model uncertainty, not statistical uncertainty, and excludes mechanics outside the calculator's assumptions. ±0% is exact within those assumptions; Uncertified means no guaranteed error bound is available.";
 

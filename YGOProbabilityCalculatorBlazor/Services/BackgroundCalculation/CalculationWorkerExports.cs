@@ -7,4 +7,10 @@ namespace YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 public static partial class CalculationWorkerExports {
     [JSExport]
     public static string Calculate(string json) => CalculationWire.Execute(json);
+
+    [JSExport]
+    public static string BeginFast(string json) => CalculationWire.ExecuteFastStage(json);
+
+    [JSExport]
+    public static string UpgradeFast(string json, string remainingWork) => CalculationWire.ExecuteFastStage(json, remainingWork);
 }

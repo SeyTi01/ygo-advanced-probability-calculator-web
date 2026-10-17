@@ -7,6 +7,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.Interface;
 public enum CalculationCompletion { Success, Unsupported, WorkLimit, StorageLimit, InvalidInput, Error, Cancelled }
 public enum CalculationAccuracy { Exact, Bounded, Uncertified }
 public enum CalculationRuleScope { OpeningHand, SavedEffectsFixedPolicy }
+// Numeric values are shared with the version-local browser worker owner.
+public enum AutomaticExactOutcome { Completed = 0, Deadline = 1, WorkLimit = 2, StorageLimit = 3, Unsupported = 4, Error = 5, NoTime = 6 }
 
 // All rows belong to one executed request and sample space. Decimal integer
 // strings retain the engine's rational values through JavaScript and exports.
@@ -29,7 +31,8 @@ public sealed record CalculationResultContract(
     string Reason,
     string? SolverRoute = null,
     string? Proof = null,
-    CalculationFractions? Fractions = null
+    CalculationFractions? Fractions = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AutomaticExactOutcome? AutomaticExact = null
 ) {
     public const int CurrentVersion = 1;
     public const string OpeningReference = "Dealt opening hand satisfying the stated requirements; all effects ignored (v1)";

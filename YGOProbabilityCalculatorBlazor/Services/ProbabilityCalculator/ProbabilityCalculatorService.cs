@@ -75,6 +75,20 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
     ) {
         ArgumentNullException.ThrowIfNull(workPolicy);
         ArgumentNullException.ThrowIfNull(storagePolicy);
+        return CalculateWithBudget(deck, combos, handSize, groups, new WorkBudget(workPolicy, storagePolicy), options);
+    }
+
+    // Worker stages carve their allowance from one request. Native callers keep
+    // the unchanged synchronous policy; only the worker owns a wall-time limit.
+    internal ProbabilityCalculationResult CalculateWithBudget(
+        List<Card> deck,
+        List<Combo> combos,
+        int handSize,
+        IReadOnlyList<ComboGroup>? groups,
+        WorkBudget budget,
+        CalculationOptions? options,
+        bool physicalFast = false
+    ) {
         ValidateMode(options);
         CalculationModel mode = options?.Mode ?? CalculationModel.Fast;
         ValidateComboCount(combos);
@@ -95,13 +109,12 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         }
 
         bool hasEffects = deck.Any(card => card.HasEffect);
-        WorkBudget budget = new(workPolicy, storagePolicy);
         DrawEffectCalculation? execution = hasEffects ? new(
             deck,
             handSize,
             budget,
             options?.DrawActivationPriority,
-            physicalSearch: mode == CalculationModel.Exact,
+            physicalSearch: mode == CalculationModel.Exact || physicalFast,
             adaptiveFast: mode == CalculationModel.Fast && options?.CertifySearchAvailability != true
         ) : null;
         ExactCalculationResult exact = hasEffects

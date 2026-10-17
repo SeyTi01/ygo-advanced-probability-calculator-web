@@ -28,6 +28,8 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(3));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
         Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain("fixed modeled policy").And.Contain("uncertified"));
+        Assert.That(cut.Find("#drawEffectsHelp").TextContent,
+            Does.Contain("Only the additional Exact attempt has a time cutoff").And.Contain("initial Fast is allowed to finish"));
         context.JSInterop.VerifyInvoke("workspaceMenus.watchOutside", 1);
         await cut.Find("#storageSafetyTier").ChangeAsync(new() { Value = "High" });
         await cut.Find("#calculationModel").KeyDownAsync(new() { Key = "Escape" });

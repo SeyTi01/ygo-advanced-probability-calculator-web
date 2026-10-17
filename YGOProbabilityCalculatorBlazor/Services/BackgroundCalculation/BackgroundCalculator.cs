@@ -1,4 +1,5 @@
 using Microsoft.JSInterop;
+using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
@@ -38,7 +39,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IBackgroundCalculator 
             await using (IJSObjectReference job = await owner.InvokeAsync<IJSObjectReference>("createJob")) {
                 try {
                     token.ThrowIfCancellationRequested();
-                    string response = await job.InvokeAsync<string>("run", token, snapshot.Json);
+                    string response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.RequestedMode == CalculationModel.Fast);
                     token.ThrowIfCancellationRequested();
                     result = CalculationWire.ReadResult(response, snapshot.RequestedMode);
                     token.ThrowIfCancellationRequested();

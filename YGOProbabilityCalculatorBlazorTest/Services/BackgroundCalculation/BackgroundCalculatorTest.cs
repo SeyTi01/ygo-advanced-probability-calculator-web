@@ -49,6 +49,19 @@ public class BackgroundCalculatorTest {
         _owner.Verify(j => j.DisposeAsync(), Times.Never);
     }
 
+    [TestCase(CalculationModel.Fast, true)]
+    [TestCase(CalculationModel.Exact, false)]
+    [TestCase(CalculationModel.OpeningHand, false)]
+    public async Task OnlyFastSelectsTheAutomaticDeadline(CalculationModel mode, bool automatic) {
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture([new([], 2, id: "a")],
+            [new([], cards: [new("a", 1, 1)])], 1, [], options: new(Mode: mode));
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(CalculationWire.Execute(snapshot.Json));
+        await _service.CalculateAsync(snapshot, default);
+        _job.Verify(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(),
+            It.Is<object?[]?>(args => args!.Length == 2 && (bool)args[1]! == automatic)), Times.Once);
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void InitializationOrTransportFailurePropagates(bool importing) {

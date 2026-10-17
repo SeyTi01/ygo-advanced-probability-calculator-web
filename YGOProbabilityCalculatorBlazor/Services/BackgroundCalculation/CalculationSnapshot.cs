@@ -154,9 +154,20 @@ public sealed record CalculationResponse(
 );
 
 public static class CalculationWire {
-    public static string Execute(string json) {
+    public static string Execute(string json) => ExecuteCore(json, out _, false, null);
+
+    // Version-local worker protocol, not a session option or a new public mode.
+    internal static string ExecuteFastStage(string json, string? remainingWork = null) {
+        string response = ExecuteCore(json, out long remaining, true, remainingWork);
+        return JsonSerializer.Serialize(new AutomaticFastStage(response, remaining.ToString(CultureInfo.InvariantCulture)),
+            CalculationJsonContext.Default.AutomaticFastStage);
+    }
+
+    private static string ExecuteCore(string json, out long remaining, bool fastStage, string? remainingWork) {
         CalculationResponse response;
         CalculationModel mode = CalculationModel.Fast;
+        WorkBudget? budget = null;
+        remaining = 0;
 
         try {
             ValidateOptions(json);
@@ -165,6 +176,9 @@ public static class CalculationWire {
             mode = input.Options?.Mode ?? CalculationModel.Fast;
             if (!Enum.IsDefined(mode)) {
                 throw new ArgumentException("Unknown calculation mode.");
+            }
+            if (fastStage && mode != CalculationModel.Fast) {
+                throw new ArgumentException("Automatic physical counting requires a Fast request.");
             }
 
             List<Card> cards = input.Cards
@@ -211,15 +225,23 @@ public static class CalculationWire {
                 : CalculationWorkPolicy.Default;
             CalculationStoragePolicy storagePolicy = CalculationStoragePolicy.ForTier(
                 input.StorageTier ?? CalculationStorageTier.Standard);
+            if (remainingWork is not null) {
+                if (!long.TryParse(remainingWork, NumberStyles.None, CultureInfo.InvariantCulture, out long allowance)
+                    || allowance <= 0 || allowance > workPolicy.WorkUnits) {
+                    throw new ArgumentException("Invalid remaining automatic calculation Work.");
+                }
+                workPolicy = new(allowance);
+            }
+            budget = new(workPolicy, storagePolicy);
 
-            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateWithBudget(
                 cards,
                 combos,
                 input.HandSize,
                 input.Groups,
-                workPolicy,
-                storagePolicy,
-                input.Options
+                budget,
+                input.Options,
+                physicalFast: remainingWork is not null
             );
 
             response = new(result, null);
@@ -240,6 +262,9 @@ public static class CalculationWire {
         }
         catch (Exception ex) {
             response = new(null, ex.Message, FailureKind: CalculationFailureKind.Error);
+        }
+        finally {
+            remaining = budget is null ? 0 : budget.Allowance - budget.Spent;
         }
 
         return JsonSerializer.Serialize(response, CalculationJsonContext.Default.CalculationResponse);
@@ -273,7 +298,7 @@ public static class CalculationWire {
                 }
             };
             if (!ValidHeader(failure, requestedMode) || failure.Completion != expected
-                || failure.Accuracy is not null || failure.Fractions is not null) {
+                || failure.Accuracy is not null || failure.Fractions is not null || failure.AutomaticExact is not null) {
                 throw new InvalidOperationException("Invalid worker failure contract.");
             }
         }
@@ -325,6 +350,11 @@ public static class CalculationWire {
             if (!ValidFraction(fraction)) {
                 throw new InvalidOperationException("Invalid worker rational value.");
             }
+        }
+        if (contract.AutomaticExact is { } automatic && (!Enum.IsDefined(automatic)
+            || contract.ExecutedMode != CalculationModel.Fast
+            || automatic == AutomaticExactOutcome.Completed && contract.Accuracy != CalculationAccuracy.Exact)) {
+            throw new InvalidOperationException("Invalid automatic Exact outcome.");
         }
         SearchAvailabilityCertificate? certificate = result.SearchAvailability;
         if (contract.ExecutedMode != CalculationModel.Fast && (contract.Accuracy != CalculationAccuracy.Exact || certificate is not null)
@@ -410,4 +440,7 @@ public static class CalculationWire {
 [JsonSerializable(typeof(IReadOnlyList<CategoryBase>))]
 [JsonSerializable(typeof(CalculationInput))]
 [JsonSerializable(typeof(CalculationResponse))]
+[JsonSerializable(typeof(AutomaticFastStage))]
 internal partial class CalculationJsonContext : JsonSerializerContext;
+
+internal sealed record AutomaticFastStage(string Response, string RemainingWork);
