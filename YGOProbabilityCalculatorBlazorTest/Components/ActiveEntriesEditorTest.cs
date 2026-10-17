@@ -271,7 +271,7 @@ public class ActiveEntriesEditorTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:B");
-        combo.Find("select").Change("user:B");
+        combo.Find("select[id^='comboTarget']").Change("user:B");
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("0");
         SetActiveAsync(card, "#cardActive0", true).GetAwaiter().GetResult();
@@ -280,7 +280,7 @@ public class ActiveEntriesEditorTest {
         SetActiveAsync(combo, "#comboActive0", false).GetAwaiter().GetResult();
 
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:B"));
-        Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("user:B"));
+        Assert.That(combo.Find("select[id^='comboTarget']").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
@@ -348,7 +348,7 @@ public class ActiveEntriesEditorTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:A");
-        combo.Find("select").Change("user:A");
+        combo.Find("select[id^='comboTarget']").Change("user:A");
         combo.Find("#minCount0").Input("0");
         combo.Find("#maxCount0").Input("0");
 
@@ -361,7 +361,7 @@ public class ActiveEntriesEditorTest {
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
         Assert.That(combo.Find("#comboActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
         Assert.That(combo.Find(".accordion-button").TextContent, Does.Contain("Inactive").And.Contain("Renamed A"));
-        Assert.That(combo.Find("select").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
+        Assert.That(combo.Find("select[id^='comboTarget']").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
         Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));

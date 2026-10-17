@@ -413,7 +413,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:A");
-        combo.Find("select").Change("user:A");
+        combo.Find("select[id^='comboTarget']").Change("user:A");
         combo.Find("#minCount1").Input("0");
         combo.Find("#maxCount1").Input("0");
         FirstRowAction(cut.FindComponents<CardEditor>()[0], "card", "Remove").Click();
@@ -447,7 +447,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
                 .Add(component => component.CategoryBases, session.Categories);
         });
         cards.FindComponents<CardEditor>()[0].Find("select[id^='cardCategory']").Change("user:B");
-        combos.FindComponents<ComboEditor>()[0].Find("select").Change("user:B");
+        combos.FindComponents<ComboEditor>()[0].Find("select[id^='comboTarget']").Change("user:B");
         combos.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");
         combos.FindComponents<ComboEditor>()[0].Find("#maxCount0").Input("0");
         session.Cards.Reverse();

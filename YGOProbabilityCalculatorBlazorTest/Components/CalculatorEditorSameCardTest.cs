@@ -132,7 +132,7 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task StandaloneSameCardAndRemainsCompactWithoutOuterGrouping() {
+    public async Task StandaloneSameCardAndHasExplicitGroupingLikeOr() {
         ComboCategory requirement = ComboCategory.SameCard([a, b], 1, 3);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
             Categories = [a, b],
@@ -143,7 +143,7 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         await editor.Find(".accordion-button").ClickAsync(new());
 
         IElement expression = editor.Find(".expanded-expression > .requirement-row");
-        Assert.That(expression.QuerySelector(".composite-alternative"), Is.Null);
+        Assert.That(expression.QuerySelector(".composite-alternative"), Is.Not.Null);
         Assert.That(expression.QuerySelectorAll(".same-card-category .same-card-conjunct"), Has.Length.EqualTo(2));
         Assert.That(expression.QuerySelectorAll(".same-card-and"), Has.Length.EqualTo(1));
         Assert.That(editor.Find(".combo-header-content .same-card-category").QuerySelectorAll(".same-card-conjunct"), Has.Length.EqualTo(2));

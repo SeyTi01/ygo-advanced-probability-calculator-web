@@ -82,11 +82,11 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(3));
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Not.Contain("Any condition"));
         Assert.That(editor.FindAll(".draw-selector-chip"), Has.Count.EqualTo(6));
-        Assert.That(editor.FindAll(".selector-expression select, .selector-expression input, .selector-extend"), Is.Empty);
-        foreach (IElement separator in editor.FindAll(".selector-expression [role='separator']")) {
+        Assert.That(editor.FindAll(".selector-expression select:not(.expression-operator), .selector-expression input, .selector-extend"), Is.Empty);
+        foreach (IElement separator in editor.FindAll(".selector-expression .requirement-and-separator, .selector-expression .alternative-separator")) {
             Assert.That(separator.PreviousElementSibling, Is.Not.Null);
             Assert.That(separator.NextElementSibling, Is.Not.Null);
-            Assert.That(separator.TextContent.Trim(), Is.AnyOf("AND", "OR"));
+            Assert.That(separator.QuerySelector("select")!.GetAttribute("value"), Is.AnyOf("AND", "OR"));
         }
         SelectorExpressionEditor threshold = Node(editor, CardSelectorKind.LevelAtLeast).Instance;
         OpenLevel(editor);

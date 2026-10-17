@@ -173,13 +173,13 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
         IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
-        await combo.Find("select").ChangeAsync(new() { Value = "user:B" });
+        await combo.Find("select[id^='comboTarget']").ChangeAsync(new() { Value = "user:B" });
         await combo.Find("#minCount0").InputAsync(new() { Value = "2" });
         await combo.Find(".accordion-button").ClickAsync(new());
         await cut.Find("[placeholder='Category name']").InputAsync(new() { Value = "Old draft" });
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "session.json"));
         IRenderedComponent<ComboEditor> loaded = cut.FindComponent<ComboEditor>();
-        Assert.That(loaded.Find("select").GetAttribute("value"), Is.Null.Or.Empty);
+        Assert.That(loaded.Find("select[id^='comboTarget']").GetAttribute("value"), Is.Null.Or.Empty);
         Assert.That(loaded.Find("#minCount0").GetAttribute("value"), Is.EqualTo("1"));
         Assert.That(loaded.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         Assert.That(cut.Find("[placeholder='Category name']").GetAttribute("value"), Is.Null.Or.Empty);
