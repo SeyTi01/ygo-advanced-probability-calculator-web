@@ -20,7 +20,10 @@ public sealed class SessionSchemaMigrator {
             // Existing saved operations and their provenance remain authoritative.
             [6] = root => SetSchemaVersion(root, 7),
             [7] = MigrateV7ToV8,
-            [8] = root => SetSchemaVersion(root, 9)
+            [8] = root => SetSchemaVersion(root, 9),
+            // Mixed authored order is optional presentation metadata. Existing
+            // predicates and saved effect plans are unchanged by this migration.
+            [9] = root => SetSchemaVersion(root, 10)
         };
 
     public string MigrateToCurrent(string json) {
