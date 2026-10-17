@@ -45,7 +45,7 @@ public sealed class GroupedSelectorSessionTest {
         SessionState state = new() { Cards = [source, target, draw, new([], 3, id: "blank")], HandSize = 2,
             Combos = [new([], cards: [new(target.Id, 1, 2)])] };
         string serialized = Codec().SerializeSession(state);
-        Assert.That(JsonDocument.Parse(serialized).RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(9));
+        Assert.That(JsonDocument.Parse(serialized).RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", serialized)).Fragment;
         foreach (string channel in new[] { serialized, SessionShareCodec.Decode(fragment) }) {
             SessionState loaded = await Codec().LoadSessionAsync(channel);
