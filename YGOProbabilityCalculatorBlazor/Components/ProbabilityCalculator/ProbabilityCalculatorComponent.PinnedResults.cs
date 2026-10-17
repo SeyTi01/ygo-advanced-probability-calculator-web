@@ -8,7 +8,7 @@ public partial class ProbabilityCalculatorComponent {
 
     private bool CanPin {
         get {
-            if (_disposed || _isCalculating || _calculationResultIsStale || _calculationResult is null) {
+            if (_disposed || _isCalculating || _calculationResult is null) {
                 return false;
             }
 
@@ -24,10 +24,6 @@ public partial class ProbabilityCalculatorComponent {
 
             if (_isCalculating) {
                 return "Calculation is running.";
-            }
-
-            if (_calculationResultIsStale) {
-                return "Inputs changed. Calculate again to pin a current result.";
             }
 
             return "Calculate a valid result before pinning.";

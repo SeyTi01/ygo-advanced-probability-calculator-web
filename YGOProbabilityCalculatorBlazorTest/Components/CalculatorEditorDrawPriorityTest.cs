@@ -67,7 +67,8 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
         await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
         await Button(cut, "Move Duplicate name (entry 2) up").ClickAsync(new());
         AssertPreviousResult(cut);
-        Assert.That(Button(cut, "Replace pin with current result").HasAttribute("disabled"), Is.True);
+        Assert.That(Button(cut, "Replace pin with current result").HasAttribute("disabled"), Is.False);
+        Assert.That(Button(cut, "Replace pin with current result").HasAttribute("aria-describedby"), Is.False);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Custom draw priority"));
         Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.Not.Contain("Custom draw priority"));

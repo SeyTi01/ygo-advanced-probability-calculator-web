@@ -125,6 +125,25 @@ public class PinnedResultTest {
         await action;
     }
 
+    private async Task<PinnedResultSnapshot> AcceptWithAccuracy(CalculationAccuracy accuracy, double probability) {
+        Task action = Start();
+        int job = _worker.Jobs.Count - 1;
+        ProbabilityCalculationResult result = Result(job, probability);
+        AutomaticExactOutcome automaticExact = accuracy == CalculationAccuracy.Exact
+            ? AutomaticExactOutcome.Completed
+            : AutomaticExactOutcome.Deadline;
+        CalculationResultContract contract = result.Contract! with {
+            Accuracy = accuracy,
+            AutomaticExact = automaticExact
+        };
+        SearchAvailabilityCertificate certificate = new(
+            SearchAvailabilityStatus.NotApplicable,
+            "No search effects are modeled in this result.");
+        _worker.Jobs[job].SetResult(result with { Contract = contract, SearchAvailability = certificate });
+        await action;
+        return Accepted;
+    }
+
     private void AssertNoComparisonUi() {
         Assert.That(_cut.FindAll(".comparison-model-difference, .result-difference, .result-row-comparison, .pinned-match, .result-priority-difference"), Is.Empty);
         foreach (string text in new[] {
@@ -263,6 +282,70 @@ public class PinnedResultTest {
         Assert.That(Pinned.Total, Is.EqualTo(.814));
     }
 
+    [TestCase(CalculationAccuracy.Exact, "settings")]
+    [TestCase(CalculationAccuracy.Exact, "card-count")]
+    [TestCase(CalculationAccuracy.Exact, "combo-rename")]
+    [TestCase(CalculationAccuracy.Exact, "combo-removal")]
+    [TestCase(CalculationAccuracy.Bounded, "settings")]
+    [TestCase(CalculationAccuracy.Bounded, "card-count")]
+    [TestCase(CalculationAccuracy.Bounded, "combo-rename")]
+    [TestCase(CalculationAccuracy.Bounded, "combo-removal")]
+    public async Task StaleAcceptedSnapshotCanReplacePinWithoutRecalculation(CalculationAccuracy accuracy, string edit) {
+        PinnedResultSnapshot initial = await AcceptWithAccuracy(accuracy, .814);
+        await Pin();
+        Assert.That(Pinned, Is.SameAs(initial));
+
+        PinnedResultSnapshot accepted = await AcceptWithAccuracy(accuracy, .842);
+        Assert.That(Pinned, Is.SameAs(initial));
+        Assert.That(accepted, Is.Not.SameAs(initial));
+
+        switch (edit) {
+            case "settings":
+                await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+                await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
+                break;
+            case "card-count":
+                await Call("ReplaceCard", (0, Field<List<Card>>("_cards")[0].WithCopies(3)));
+                break;
+            case "combo-rename":
+                await Call("ReplaceCombo", (0, Field<List<Combo>>("_combos")[0].WithName("Edited route")));
+                await Call("RenameGroup", ("g", "Edited group"));
+                break;
+            case "combo-removal":
+                await Call("RemoveCombo", 0);
+                break;
+        }
+
+        Assert.That(_cut.Find(".probability-result-status-full").TextContent, Is.EqualTo("Previous result · inputs changed"));
+        Assert.That(Accepted, Is.SameAs(accepted));
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("aria-describedby"), Is.False);
+        Assert.That(_cut.Markup, Does.Not.Contain("Calculate again to pin"));
+        Assert.That(_worker.Jobs, Has.Count.EqualTo(2), "pinning a stale result must not start another calculation");
+
+        await Pin();
+
+        Assert.That(Pinned, Is.SameAs(accepted), "the existing pin is replaced by the already accepted snapshot");
+        Assert.That(Pinned.Context.HandSize, Is.EqualTo(2));
+        Assert.That(Pinned.Context.Copies, Is.EqualTo(8));
+        Assert.That(Pinned.Context.CardCount, Is.EqualTo(2));
+        Assert.That(Pinned.Context.Model, Is.EqualTo(CalculationModel.Fast));
+        Assert.That(Pinned.Combos.Select(combo => combo.Label), Is.EqualTo(accepted.Combos.Select(combo => combo.Label)));
+        Assert.That(Pinned.Groups.Select(group => group.Label), Is.EqualTo(accepted.Groups.Select(group => group.Label)));
+        Assert.That(Pinned.Contract, Is.SameAs(accepted.Contract));
+        Assert.That(Pinned.Contract!.Accuracy, Is.EqualTo(accuracy));
+        Assert.That(Pinned.Contract.AutomaticExact, Is.EqualTo(accuracy == CalculationAccuracy.Exact
+            ? AutomaticExactOutcome.Completed
+            : AutomaticExactOutcome.Deadline));
+        Assert.That(Pinned.Contract.Fractions, Is.SameAs(accepted.Contract.Fractions));
+        Assert.That(Pinned.SearchAvailability, Is.SameAs(accepted.SearchAvailability));
+        Assert.That(Pinned.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.NotApplicable));
+
+        await Call("RenameGroup", ("g", "Edited after pin"));
+        Assert.That(Pinned, Is.SameAs(accepted), "later workspace edits cannot mutate the pinned snapshot");
+        AssertNoComparisonUi();
+    }
+
     [TestCase(.842)]
     [TestCase(.786)]
     public async Task AcceptedResultAndPinRemainVisibleWhenDisplayedResultBecomesStale(double probability) {
@@ -276,13 +359,20 @@ public class PinnedResultTest {
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
 
         Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
-        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
         Assert.That(Pinned, Is.SameAs(pin));
         Assert.That(Accepted, Is.SameAs(accepted));
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("aria-describedby"), Is.False);
         AssertNoComparisonUi();
+
+        await Pin();
+        Assert.That(Pinned, Is.SameAs(accepted));
+        Assert.That(Pinned.Context.HandSize, Is.EqualTo(2));
+        Assert.That(_worker.Jobs, Has.Count.EqualTo(2));
 
         Task action = Start();
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
         AssertNoComparisonUi();
         _worker.Jobs[^1].SetCanceled();
         await action;
@@ -298,6 +388,9 @@ public class PinnedResultTest {
         await Accept(.842);
         PinnedResultSnapshot previous = Accepted;
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+        await Pin();
+        PinnedResultSnapshot stalePin = Pinned;
+        Assert.That(stalePin, Is.SameAs(previous));
         Task action = Start();
         AssertNoComparisonUi();
 
@@ -306,10 +399,11 @@ public class PinnedResultTest {
 
         PinnedResultSnapshot accepted = Accepted;
         Assert.That(accepted, Is.Not.SameAs(previous));
-        Assert.That(Pinned, Is.SameAs(pin));
+        Assert.That(Pinned, Is.SameAs(stalePin));
         Assert.That(_cut.FindAll(".probability-result-status"), Is.Empty);
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
         Assert.That(accepted.Total, Is.EqualTo(.786));
+        Assert.That(Pinned.Total, Is.EqualTo(.842));
         Assert.That(pin.Total, Is.EqualTo(.814));
         AssertNoComparisonUi();
     }
@@ -323,11 +417,16 @@ public class PinnedResultTest {
     public async Task BusyStaleCancelledFailedAndLateResultsCannotReplacePinOrAcceptedResult(string completion) {
         await Accept();
         await Pin();
-        PinnedResultSnapshot baseline = Pinned;
+        PinnedResultSnapshot initialPin = Pinned;
         await Accept(.842);
         PinnedResultSnapshot accepted = Accepted;
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
-        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("aria-describedby"), Is.False);
+        await Pin();
+        PinnedResultSnapshot baseline = Pinned;
+        Assert.That(baseline, Is.SameAs(accepted));
+        Assert.That(baseline, Is.Not.SameAs(initialPin));
         AssertNoComparisonUi();
         Task action = Start();
         await Call("PinCurrentResult");
@@ -552,7 +651,8 @@ public class PinnedResultTest {
         int writes = _context.JSInterop.Invocations["sessionRecovery.update"].Count;
         AngleSharp.Dom.IElement copy = _cut.Find("button[title='Copy results']");
         Assert.That(copy.HasAttribute("disabled"), Is.False);
-        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("aria-describedby"), Is.False);
         Assert.That(_cut.Find("#pinUnavailableReason").ClassList, Does.Contain("visually-hidden"));
         await copy.ClickAsync(new());
         Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Is.EqualTo(expected));
@@ -678,7 +778,7 @@ public class PinnedResultTest {
 
         await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(_cut.Find(".probability-result-status-full").TextContent, Is.EqualTo("Previous result · inputs changed"));
-        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
         await Accept(.75);
 
         CalculationInput offInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs.Last().Json)!;
