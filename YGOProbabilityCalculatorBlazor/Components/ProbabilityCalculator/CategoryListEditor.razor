@@ -87,6 +87,9 @@
                         title="@($"Delete category {category.Name}")"
                         OnClick="() => RemoveCategoryBase(category)" />
             </span>
+            @if ((ReferenceEquals(_editingCategory, category) || ReferenceEquals(_ruleCategory, category)) && category.Rule is not null) {
+                <CategoryRuleSummary Category="category" CategoryBases="CategoryBases" />
+            }
             @if (ReferenceEquals(_editingCategory, category) && _colorPickerExpanded) {
                 <div id="categoryColorPalette@(index)" class="category-color-palette mt-2" role="group"
                      aria-label="@($"Choose a color for category {category.Name}")">
