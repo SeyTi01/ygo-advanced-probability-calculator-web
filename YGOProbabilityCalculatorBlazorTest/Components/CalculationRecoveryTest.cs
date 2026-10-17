@@ -62,7 +62,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(oldValue));
         Assert.That(cut.FindAll(".calculation-recovery p"), Is.Empty);
         string saved = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
-        Task recovery = Button(cut, "Calculate opening hand only").ClickAsync(new());
+        Task recovery = Button(cut, "Calculate with no effect simulation").ClickAsync(new());
         CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_requests[2].Json)!;
         Assert.That(input.Cards.All(card => card.DrawCount is null && card.PreDrawRemovalCount == 0), Is.True);
         Complete(2);
@@ -97,13 +97,19 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Controlled();
         ManualTimeProvider clock = new();
         cut.SetParametersAndRender(parameters => parameters.Add(component => component.CalculationTimeProvider, clock));
+        Assert.That(cut.FindAll(".calculation-feedback-slot"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".calculation-recovery"), Is.Empty);
+
         Task active = Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(cut.FindAll(".calculation-recovery"), Is.Empty);
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromMilliseconds(999)));
         Assert.That(cut.FindAll(".calculation-elapsed"), Is.Empty);
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromMilliseconds(1)));
         Assert.That(cut.FindAll(".calculation-elapsed"), Is.Empty);
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(2)));
         cut.WaitForState(() => cut.FindAll(".calculation-recovery").Count == 1);
+        Assert.That(cut.FindAll(".calculation-feedback-slot .calculation-recovery"), Has.Count.EqualTo(1));
+        Assert.That(cut.FindAll(".results-section > .calculation-recovery"), Is.Empty);
         if (ending == "cancel") {
             await Button(cut, "Cancel").ClickAsync(new());
         }
@@ -127,7 +133,41 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(clock.ActiveTimerCount, Is.Zero);
         if (ending != "dispose") {
             Assert.That(cut.FindAll(".calculation-elapsed, .calculation-recovery"), Is.Empty);
+            Assert.That(cut.FindAll(".calculation-feedback-slot"), Has.Count.EqualTo(1));
         }
+    }
+
+    [Test]
+    public async Task DelayedRecoveryStaysBesideCalculateWhileCurrentAndPinnedResultsRemainVisible() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Controlled();
+        ManualTimeProvider clock = new();
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.CalculationTimeProvider, clock));
+
+        Task initial = Button(cut, "Calculate").ClickAsync(new());
+        Complete(0);
+        await initial;
+        await Button(cut, "Pin result").ClickAsync(new());
+
+        string currentValue = cut.Find(".probability-total-value").TextContent;
+        string pinnedMarkup = cut.Find(".pinned-result").OuterHtml;
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+
+        Task pending = Button(cut, "Calculate").ClickAsync(new());
+        await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(3)));
+        cut.WaitForState(() => cut.FindAll(".calculation-feedback-slot .calculation-recovery").Count == 1);
+
+        Assert.That(cut.Find(".results-section > .calculation-controls").QuerySelector(".calculate-action + .calculation-feedback-slot"), Is.Not.Null);
+        Assert.That(cut.FindAll(".results-section > .calculation-recovery"), Is.Empty);
+        Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(currentValue));
+        Assert.That(cut.Find(".pinned-result").OuterHtml, Is.EqualTo(pinnedMarkup));
+
+        await Button(cut, "Cancel").ClickAsync(new());
+        Assert.That(cut.FindAll(".calculation-feedback-slot .calculation-recovery"), Is.Empty);
+        Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(currentValue));
+        Assert.That(cut.Find(".pinned-result").OuterHtml, Is.EqualTo(pinnedMarkup));
+        _jobs[1].SetCanceled();
+        await pending;
     }
 
     [TestCase(false)]
@@ -141,7 +181,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".calculation-elapsed"), Is.Empty);
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(2)));
         cut.WaitForState(() => cut.FindAll(".calculation-recovery .btn-outline-primary").Count == 1);
-        Task recovery = Button(cut, "Calculate opening hand only").ClickAsync(new());
+        Task recovery = Button(cut, "Calculate with no effect simulation").ClickAsync(new());
         Assert.That(_tokens[0].IsCancellationRequested, Is.True);
         Assert.That(_jobs, Has.Count.EqualTo(1), "cleanup must finish before creating the alternate worker");
         if (editWhileWaiting) {

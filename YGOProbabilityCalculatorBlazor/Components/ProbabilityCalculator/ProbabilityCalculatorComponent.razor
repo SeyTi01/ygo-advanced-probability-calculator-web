@@ -158,23 +158,31 @@
 
     <div class="results-section">
         <div class="calculation-controls">
-        <div class="calculate-action">
-            <button type="button"
-                    class="btn btn-lg w-100 @(_isCalculating ? "btn-outline-secondary" : "btn-primary")"
-                    aria-label="@(_isCalculating ? "Cancel calculation" : null)"
-                    title="@(_isCalculating ? "Cancel calculation" : null)"
-                    aria-busy="@(_isCalculating ? "true" : "false")"
-                    @onclick="HandleCalculationAction"
-                    disabled="@(!_isCalculating && !CanCalculate)">
-                @if (_isCalculating) {
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    <span class="ms-1">Cancel</span>
+            <div class="calculate-action">
+                <button type="button"
+                        class="btn btn-lg w-100 @(_isCalculating ? "btn-outline-secondary" : "btn-primary")"
+                        aria-label="@(_isCalculating ? "Cancel calculation" : null)"
+                        title="@(_isCalculating ? "Cancel calculation" : null)"
+                        aria-busy="@(_isCalculating ? "true" : "false")"
+                        @onclick="HandleCalculationAction"
+                        disabled="@(!_isCalculating && !CanCalculate)">
+                    @if (_isCalculating) {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span class="ms-1">Cancel</span>
+                    }
+                    else {
+                        <span>Calculate</span>
+                    }
+                </button>
+            </div>
+            <div class="calculation-feedback-slot">
+                @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null || _unsupportedExact) {
+                    <div class="calculation-recovery d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate with no effect simulation</button>
+                        <button type="button" class="btn btn-sm btn-link" @onclick="ReviewCalculationSettings">Review settings</button>
+                    </div>
                 }
-                else {
-                    <span>Calculate</span>
-                }
-            </button>
-        </div>
+            </div>
         </div>
 
         @if (CalculationUnavailableMessage is { } unavailableMessage) {
@@ -191,12 +199,6 @@
                     <span>Cost can depend on effect combinations and deck constraints; no individual effect is identified.</span>
                 }
             </p>
-        }
-        @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null || _unsupportedExact) {
-            <div class="calculation-recovery mt-3 d-flex flex-wrap align-items-center gap-2">
-                <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate opening hand only</button>
-                <button type="button" class="btn btn-sm btn-link" @onclick="ReviewCalculationSettings">Review settings</button>
-            </div>
         }
         @if (_errorMessage is not null) {
             <div class="calculation-error mt-3 mb-3">
