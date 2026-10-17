@@ -50,10 +50,21 @@ public static class CategoryRemoval {
             return combo;
         }
 
-        List<ComboCategory> categories = combo.Categories.Select(category => RemoveRequirement(category, identity))
-            .OfType<ComboCategory>().ToList();
-        List<ComboAlternativeGroup> groups = [];
-        foreach (ComboAlternativeGroup group in combo.AlternativeGroups) {
+        Combo updated = combo;
+        for (int index = combo.Categories.Count - 1; index >= 0; index--) {
+            ComboCategory original = combo.Categories[index];
+            ComboCategory? remaining = RemoveRequirement(original, identity);
+            if (remaining is null) {
+                updated = updated.WithoutRequirement(new(ComboRequirementKind.Category, index));
+            }
+            else if (!ReferenceEquals(original, remaining)) {
+                List<ComboCategory> categories = updated.Categories.ToList();
+                categories[index] = remaining;
+                updated = updated.WithCategories(categories);
+            }
+        }
+        for (int index = combo.AlternativeGroups.Count - 1; index >= 0; index--) {
+            ComboAlternativeGroup group = combo.AlternativeGroups[index];
             List<ComboAlternative> alternatives = [];
             foreach (ComboAlternative alternative in group.Alternatives) {
                 if (alternative.Category is not { } category) {
@@ -63,13 +74,17 @@ public static class CategoryRemoval {
                     alternatives.Add(ReferenceEquals(category, remaining) ? alternative : ComboAlternative.For(remaining));
                 }
             }
-            if (alternatives.Count > 0) {
-                groups.Add(alternatives.SequenceEqual(group.Alternatives) ? group : new(alternatives));
+            if (alternatives.Count == 0) {
+                updated = updated.WithoutRequirement(new(ComboRequirementKind.Group, index));
+            }
+            else if (!alternatives.SequenceEqual(group.Alternatives)) {
+                List<ComboAlternativeGroup> groups = updated.AlternativeGroups.ToList();
+                groups[index] = new(alternatives);
+                updated = updated.WithAlternativeGroups(groups);
             }
         }
 
-        bool hasRequirements = categories.Count + combo.Cards.Count + groups.Count > 0;
-        return combo.WithCategories(categories).WithAlternativeGroups(groups).WithActive(combo.Active && hasRequirements);
+        return updated.WithActive(combo.Active && updated.RequirementCount > 0);
     }
 
     private static ComboCategory? RemoveRequirement(ComboCategory requirement, string identity) {
@@ -90,7 +105,7 @@ public static class CategoryRemoval {
         if (selector.Kind == CardSelectorKind.Category) {
             return null;
         }
-        CardSelector[] children = selector.Terms.Where(child => !ReferenceEquals(child, selector))
+        CardSelector[] children = selector.AuthoredTerms.Where(child => !ReferenceEquals(child, selector))
             .Select(child => RemoveTerm(child, identity)).OfType<CardSelector>().ToArray();
         if (children.Length == 0) {
             return null;
