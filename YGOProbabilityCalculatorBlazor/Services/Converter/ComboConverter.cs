@@ -9,7 +9,7 @@ public class ComboConverter : JsonConverter<Combo> {
         using JsonDocument document = JsonDocument.ParseValue(ref reader);
         JsonElement root = document.RootElement;
 
-        CheckFields(root, "Categories", "Cards", "Name", "Active", "GroupId", "AlternativeGroups");
+        CheckFields(root, "Categories", "Cards", "Name", "Active", "GroupId", "AlternativeGroups", "RequirementOrder");
 
         List<ComboCategory> categories = JsonSerializer.Deserialize<List<ComboCategory>>(
             root.GetProperty("Categories").GetRawText(),
@@ -34,7 +34,7 @@ public class ComboConverter : JsonConverter<Combo> {
         int leafCount = 0;
 
         if (!root.TryGetProperty("AlternativeGroups", out JsonElement groupArray)) {
-            return new Combo(categories, name, active, groupId, cards, groups);
+            return ReadOrderedCombo(root, categories, name, active, groupId, cards, groups);
         }
 
         bool hasInvalidGroupArray = groupArray.ValueKind != JsonValueKind.Array || groupArray.GetArrayLength() > 2048;
@@ -106,7 +106,40 @@ public class ComboConverter : JsonConverter<Combo> {
             groups.Add(new ComboAlternativeGroup(leaves));
         }
 
-        return new Combo(categories, name, active, groupId, cards, groups);
+        return ReadOrderedCombo(root, categories, name, active, groupId, cards, groups);
+    }
+
+    private static Combo ReadOrderedCombo(
+        JsonElement root,
+        List<ComboCategory> categories,
+        string? name,
+        bool active,
+        string? groupId,
+        List<ComboCard> cards,
+        List<ComboAlternativeGroup> groups
+    ) {
+        List<ComboRequirementPosition>? order = null;
+        if (root.TryGetProperty("RequirementOrder", out JsonElement positions)) {
+            if (positions.ValueKind != JsonValueKind.Array || positions.GetArrayLength() != categories.Count + cards.Count + groups.Count) {
+                throw new JsonException("Presentation order must address every requirement.");
+            }
+            order = [];
+            foreach (JsonElement position in positions.EnumerateArray()) {
+                CheckFields(position, "Kind", "Index");
+                if (!position.TryGetProperty("Kind", out JsonElement kind) || kind.ValueKind != JsonValueKind.String
+                    || !Enum.TryParse(kind.GetString(), out ComboRequirementKind parsed) || !Enum.IsDefined(parsed)
+                    || !position.TryGetProperty("Index", out JsonElement index) || !index.TryGetInt32(out int parsedIndex)) {
+                    throw new JsonException("Invalid presentation address.");
+                }
+                order.Add(new(parsed, parsedIndex));
+            }
+        }
+        try {
+            return new(categories, name, active, groupId, cards, groups, order);
+        }
+        catch (ArgumentException exception) {
+            throw new JsonException("Invalid presentation order.", exception);
+        }
     }
 
     private static void CheckFields(JsonElement element, params string[] allowed) {
@@ -159,6 +192,18 @@ public class ComboConverter : JsonConverter<Combo> {
                 writer.WriteEndObject();
             }
 
+            writer.WriteEndArray();
+        }
+
+        Combo legacyOrder = new(value.Categories, value.Name, value.Active, value.GroupId, value.Cards, value.AlternativeGroups);
+        if (!value.RequirementOrder.SequenceEqual(legacyOrder.RequirementOrder)) {
+            writer.WriteStartArray("RequirementOrder");
+            foreach (ComboRequirementPosition position in value.RequirementOrder) {
+                writer.WriteStartObject();
+                writer.WriteString("Kind", position.Kind.ToString());
+                writer.WriteNumber("Index", position.Index);
+                writer.WriteEndObject();
+            }
             writer.WriteEndArray();
         }
 

@@ -24,29 +24,12 @@
 
                     <span class="combo-header-requirements">
                         @if (ConstraintCount > 0) {
-                            @for (int categoryIndex = 0; categoryIndex < Math.Min(Combo.Categories.Count, MaxHeaderBadges); categoryIndex++) {
-                                int currentCategoryIndex = categoryIndex;
-                                ComboCategory category = Combo.Categories[currentCategoryIndex];
+                            @foreach (ComboRequirementPosition position in Combo.RequirementOrder.Take(MaxHeaderBadges)) {
                                 <span class="expression-term">
-                                    @if (currentCategoryIndex > 0) { <span class="expression-and" aria-hidden="true">+</span> }
-                                    @CategoryBadge(category)
-                                </span>
-                            }
-                            @for (int cardIndex = 0; cardIndex < Math.Min(Combo.Cards.Count, Math.Max(0, MaxHeaderBadges - Combo.Categories.Count)); cardIndex++) {
-                                int currentCardIndex = cardIndex;
-                                ComboCard card = Combo.Cards[currentCardIndex];
-                                <span class="expression-term">
-                                    @if (Combo.Categories.Count + currentCardIndex > 0) { <span class="expression-and" aria-hidden="true">+</span> }
-                                    @CardBadge(card)
-                                </span>
-                            }
-
-                            @for (int groupIndex = 0; groupIndex < Math.Min(Combo.AlternativeGroups.Count, Math.Max(0, MaxHeaderBadges - Combo.Categories.Count - Combo.Cards.Count)); groupIndex++) {
-                                int currentGroupIndex = groupIndex;
-                                ComboAlternativeGroup group = Combo.AlternativeGroups[currentGroupIndex];
-                                <span class="expression-term">
-                                    @if (Combo.Categories.Count + Combo.Cards.Count + currentGroupIndex > 0) { <span class="expression-and" aria-hidden="true">+</span> }
-                                    @AlternativeGroupMarkup(group)
+                                    @if (position != Combo.RequirementOrder[0]) { <span class="expression-and" aria-hidden="true">+</span> }
+                                    @if (position.Kind == ComboRequirementKind.Category) { @CategoryBadge(Combo.Categories[position.Index]) }
+                                    else if (position.Kind == ComboRequirementKind.Card) { @CardBadge(Combo.Cards[position.Index]) }
+                                    else { @AlternativeGroupMarkup(Combo.AlternativeGroups[position.Index]) }
                                 </span>
                             }
                             @if (HiddenHeaderCategoriesCount > 0) {
@@ -94,27 +77,25 @@
                 @if (ConstraintCount > 0) {
                     <p class="requirement-explanation text-body-secondary">Match every requirement. Required card copies cannot be shared between requirements.</p>
                 }
-                @for (int categoryIndex = 0; categoryIndex < Combo.Categories.Count; categoryIndex++) {
-                    int currentIndex = categoryIndex;
-                    @if (currentIndex > 0) { @RequirementSeparator() }
-                    @RequirementRow(ComboAlternative.For(Combo.Categories[currentIndex]), currentIndex, null)
-                }
-                @for (int cardIndex = 0; cardIndex < Combo.Cards.Count; cardIndex++) {
-                    int currentIndex = cardIndex;
-                    @if (Combo.Categories.Count + currentIndex > 0) { @RequirementSeparator() }
-                    @RequirementRow(ComboAlternative.For(Combo.Cards[currentIndex]), currentIndex, null)
-                }
-                @for (int groupIndex = 0; groupIndex < Combo.AlternativeGroups.Count; groupIndex++) {
-                    int currentGroupIndex = groupIndex;
-                    ComboAlternativeGroup group = Combo.AlternativeGroups[currentGroupIndex];
-                    @if (Combo.Categories.Count + Combo.Cards.Count + currentGroupIndex > 0) { @RequirementSeparator() }
-                    <ExpressionGroup Label="@($"Alternative group {currentGroupIndex + 1}")">
-                        @for (int leafIndex = 0; leafIndex < group.Alternatives.Count; leafIndex++) {
-                            int currentLeafIndex = leafIndex;
-                            @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" /> }
-                            @RequirementRow(group.Alternatives[currentLeafIndex], currentLeafIndex, currentGroupIndex)
-                        }
-                    </ExpressionGroup>
+                @foreach (ComboRequirementPosition position in Combo.RequirementOrder) {
+                    @if (position != Combo.RequirementOrder[0]) { @RequirementSeparator() }
+                    @if (position.Kind == ComboRequirementKind.Category) {
+                        @RequirementRow(ComboAlternative.For(Combo.Categories[position.Index]), position.Index, null)
+                    }
+                    else if (position.Kind == ComboRequirementKind.Card) {
+                        @RequirementRow(ComboAlternative.For(Combo.Cards[position.Index]), position.Index, null)
+                    }
+                    else {
+                        int groupIndex = position.Index;
+                        ComboAlternativeGroup group = Combo.AlternativeGroups[groupIndex];
+                        <ExpressionGroup Label="@($"Alternative group {groupIndex + 1}")">
+                            @for (int leafIndex = 0; leafIndex < group.Alternatives.Count; leafIndex++) {
+                                int currentLeafIndex = leafIndex;
+                                @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" /> }
+                                @RequirementRow(group.Alternatives[currentLeafIndex], currentLeafIndex, groupIndex)
+                            }
+                        </ExpressionGroup>
+                    }
                 }
             </div>
             @if (!AuthoringScope && _editingRequirement is null) {
@@ -566,18 +547,25 @@
         }
         else if (_alternativeSeed is { } seed) {
             if (seed.Category is not null) {
-                updated = updated.WithCategories(updated.Categories.Where((_, index) => index != _alternativeSeedIndex));
+                updated = updated.WithoutRequirement(new(ComboRequirementKind.Category, _alternativeSeedIndex!.Value));
             }
             else {
-                updated = updated.WithCards(updated.Cards.Where((_, index) => index != _alternativeSeedIndex));
+                updated = updated.WithoutRequirement(new(ComboRequirementKind.Card, _alternativeSeedIndex!.Value));
             }
 
             groups.Add(new ComboAlternativeGroup([seed, leaf]));
         }
 
+        int? authoredPosition = _alternativeSeed is { } originalSeed && _alternativeSeedIndex is int originalIndex
+            ? Combo.RequirementOrder.ToList().IndexOf(new(originalSeed.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card, originalIndex))
+            : null;
+        updated = updated.WithAlternativeGroups(groups);
+        if (authoredPosition is int position) {
+            updated = updated.WithRequirementAt(new(ComboRequirementKind.Group, groups.Count - 1), position);
+        }
         CancelAlternative();
 
-        return OnReplaceCombo.InvokeAsync((Index, updated.WithAlternativeGroups(groups)));
+        return OnReplaceCombo.InvokeAsync((Index, updated));
     }
 
     private bool AlternativeTargetIsCurrent {
@@ -650,9 +638,11 @@
 
         if (remaining.Length == 0) {
             groups.RemoveAt(groupIndex);
+            updated = updated.WithoutRequirement(new(ComboRequirementKind.Group, groupIndex));
         }
         else if (remaining.Length == 1) {
             groups.RemoveAt(groupIndex);
+            updated = updated.WithoutRequirement(new(ComboRequirementKind.Group, groupIndex));
             if (remaining[0].Category is { } category) {
                 updated = updated.WithCategories(updated.Categories.Append(category));
             }
@@ -668,7 +658,13 @@
             CancelAlternative();
         }
 
-        return OnReplaceCombo.InvokeAsync((Index, updated.WithAlternativeGroups(groups)));
+        updated = updated.WithAlternativeGroups(groups);
+        if (remaining.Length == 1) {
+            ComboRequirementKind kind = remaining[0].Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
+            int index = kind == ComboRequirementKind.Category ? updated.Categories.Count - 1 : updated.Cards.Count - 1;
+            updated = updated.WithRequirementAt(new(kind, index), Combo.RequirementOrder.ToList().IndexOf(new(ComboRequirementKind.Group, groupIndex)));
+        }
+        return OnReplaceCombo.InvokeAsync((Index, updated));
     }
 
     private string ComboDisplayName => string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name;
@@ -847,10 +843,7 @@
             CancelAlternative();
         }
 
-        List<ComboCard> cards = Combo.Cards.ToList();
-        cards.RemoveAt(index);
-
-        return OnReplaceCombo.InvokeAsync((Index, Combo.WithCards(cards)));
+        return OnReplaceCombo.InvokeAsync((Index, Combo.WithoutRequirement(new(ComboRequirementKind.Card, index))));
     }
 
     private void OnSelectCard(string? value) {
@@ -877,11 +870,7 @@
             CancelAlternative();
         }
 
-        List<ComboCategory> newCategories = Combo.Categories.ToList();
-        newCategories.RemoveAt(index);
-        Combo newCombo = Combo.WithCategories(newCategories);
-
-        return OnReplaceCombo.InvokeAsync((Index, newCombo));
+        return OnReplaceCombo.InvokeAsync((Index, Combo.WithoutRequirement(new(ComboRequirementKind.Category, index))));
     }
 
     private void OnSelectCategory(string? value) {

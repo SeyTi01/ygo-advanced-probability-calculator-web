@@ -99,6 +99,6 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
                 ?? Uri.UnescapeDataString(identity[(identity.IndexOf(':') + 1)..]);
         }
         string operation = selector.Kind == CardSelectorKind.AllOf ? " AND " : " OR ";
-        return "(" + string.Join(operation, selector.Terms.Select(term => DescribeSelector(term, categories))) + ")";
+        return "(" + string.Join(operation, selector.AuthoredTerms.Select(term => DescribeSelector(term, categories))) + ")";
     }
 }
