@@ -18,7 +18,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));
         editor.Find(".simulation-edit").Click();
         Assert.That(editor.FindAll(".requirement-edit").Select(row => row.GetAttribute("aria-label")), Is.EqualTo(new[] {
-            "Edit Monster AND Level >= 5", "Edit DARK OR LIGHT", "Edit Aqua OR Pyro"
+            "Edit Monster AND Level >= 5", "Edit LIGHT OR DARK", "Edit Pyro OR Aqua"
         }));
         Assert.That(editor.Markup, Does.Not.Contain("Any condition"));
         foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
@@ -315,7 +315,9 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
             }));
         OpenLevel(editor);
-        Button(editor, "Group condition 2").Click();
+        int levelOperand = editor.FindAll(".selector-condition-row > .selector-operand").ToList()
+            .FindIndex(operand => operand.QuerySelector("input[aria-label='Minimum Level']") is not null);
+        Button(editor, $"Group condition {levelOperand + 1}").Click();
         editor.Find("form .selector-operand select").Change("metadata:kind:monster");
         SaveRow(editor);
         Assert.That(changes, Is.Zero);

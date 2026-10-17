@@ -80,14 +80,14 @@ public sealed class CardSelectorConverter : JsonConverter<CardSelector> {
         }
         else if (value.Children.Count > 0) {
             writer.WriteStartArray("Children");
-            foreach (CardSelector child in value.Children) {
+            foreach (CardSelector child in value.AuthoredTerms) {
                 JsonSerializer.Serialize(writer, child, options);
             }
             writer.WriteEndArray();
         }
         else {
             writer.WriteStartArray("Categories");
-            foreach (string identity in value.CategoryIdentities) {
+            foreach (string identity in value.AuthoredTerms.SelectMany(term => term.CategoryIdentities)) {
                 writer.WriteStringValue(identity);
             }
             writer.WriteEndArray();

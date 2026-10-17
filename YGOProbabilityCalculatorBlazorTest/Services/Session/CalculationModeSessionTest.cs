@@ -20,7 +20,7 @@ public sealed class CalculationModeSessionTest {
         SessionState loaded = await Codec().LoadSessionAsync(root.ToJsonString());
         Assert.That(loaded.CalculationModel, Is.EqualTo(enabled == "false" ? CalculationModel.OpeningHand : CalculationModel.Fast));
         JsonObject saved = JsonNode.Parse(Codec().SerializeSession(loaded))!.AsObject();
-        Assert.That(saved["SchemaVersion"]!.GetValue<int>(), Is.EqualTo(9));
+        Assert.That(saved["SchemaVersion"]!.GetValue<int>(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(saved.ContainsKey("DrawEffectsEnabled"), Is.False);
     }
 
@@ -52,7 +52,7 @@ public sealed class CalculationModeSessionTest {
     [TestCase("{\"SchemaVersion\":7,\"CalculationModel\":\"Exact\"}")]
     [TestCase("{\"SchemaVersion\":7,\"DrawEffectsEnabled\":null}")]
     [TestCase("{\"SchemaVersion\":7,\"DrawEffectsEnabled\":false,\"draweffectsenabled\":true}")]
-    [TestCase("{\"SchemaVersion\":10}")]
+    [TestCase("{\"SchemaVersion\":11}")]
     public void UnknownDuplicateAndContradictoryRepresentationsAreRejected(string json) {
         Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(json));
     }
