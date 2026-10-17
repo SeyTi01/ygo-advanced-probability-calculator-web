@@ -11,7 +11,7 @@ public sealed record PinnedCalculationContext(
     CalculationModel Model = CalculationModel.Fast,
     bool UsesCustomDrawPriority = false
 ) {
-    public string Description => $"Hand size {HandSize} · {Copies} active copies · {CardCount} active cards · {Model.Description()}{(UsesCustomDrawPriority ? " · Custom draw priority" : "")}";
+    public string Description => $"Hand size {HandSize} · {Copies} cards";
 
     internal static PinnedCalculationContext Capture(
         int handSize,
