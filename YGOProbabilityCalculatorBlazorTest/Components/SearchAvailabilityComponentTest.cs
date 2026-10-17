@@ -159,7 +159,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(accepted.Contract));
         Assert.That(ProbabilityResultSummaryFormatter.Format(accepted, 1, CultureInfo.InvariantCulture),
             Does.Contain("Effects — fast").And.Contain("Exact"));
-        await Button(cut, "Calculate opening hand only").ClickAsync(new());
+        await Button(cut, "Calculate with no effect simulation").ClickAsync(new());
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Exact"));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
         AssertNoComparisonUi(cut);
