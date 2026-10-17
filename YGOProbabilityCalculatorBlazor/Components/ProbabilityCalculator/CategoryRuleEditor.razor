@@ -68,8 +68,9 @@
     private CardSelector? Draft { get; set; }
 
     protected override void OnInitialized() {
-        foreach (CardSelector alternative in Category.Rule?.Alternatives ?? []) {
-            _alternatives.Add(alternative.CategoryIdentities.ToList());
+        IEnumerable<CardSelector> alternatives = Category.Rule is not { } rule ? [] : rule.Kind == CardSelectorKind.AnyOf ? rule.AuthoredTerms : [rule];
+        foreach (CardSelector alternative in alternatives) {
+            _alternatives.Add(alternative.AuthoredTerms.SelectMany(term => term.CategoryIdentities).ToList());
         }
         UpdatePreview();
     }
