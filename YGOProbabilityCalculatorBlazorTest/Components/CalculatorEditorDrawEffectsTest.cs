@@ -230,8 +230,15 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(configuredExpected.ToString("P2")));
 
         void AssertDrawEffectsHelpIsStable(bool ignored) {
-            Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
-            Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain(ignored ? "all effects ignored" : "Applies all saved rules"));
+            if (ignored) {
+                Assert.That(cut.Find("#calculationModel").HasAttribute("aria-describedby"), Is.False);
+                Assert.That(cut.FindAll("#drawEffectsHelp"), Is.Empty);
+            }
+            else {
+                Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
+                Assert.That(cut.Find("#drawEffectsHelp").TextContent,
+                    Is.EqualTo("Uses Exact when practical; otherwise retains the completed result and its accuracy status."));
+            }
         }
     }
 

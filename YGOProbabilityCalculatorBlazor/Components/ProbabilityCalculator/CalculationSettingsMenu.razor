@@ -28,12 +28,14 @@
             <h3 id="drawSimulationHeading" class="small fw-semibold mb-2">Card simulation</h3>
             <label class="form-label mb-1" for="calculationModel">Calculation model</label>
             <select @ref="_drawEffectsInput" id="calculationModel" class="form-select"
-                    value="@Model" aria-describedby="drawEffectsHelp" @onchange="OnModelChanged">
-                <option value="OpeningHand">Opening hand only</option>
+                    value="@Model" aria-describedby="@(Model == CalculationModel.OpeningHand ? null : "drawEffectsHelp")" @onchange="OnModelChanged">
+                <option value="OpeningHand">No effect simulation</option>
                 <option value="Fast">Effects — fast (default)</option>
                 <option value="Exact">Effects — exact</option>
             </select>
-            <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
+            @if (Model != CalculationModel.OpeningHand) {
+                <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
+            }
             <div class="mt-3">
                 <label class="form-label mb-1" for="drawActivationPriority">Draw activation priority</label>
                 <select id="drawActivationPriority" class="form-select" value="@Priority.Mode" @onchange="OnPriorityModeChanged">
@@ -81,7 +83,7 @@
                 <option value="VeryHigh">Very high (131,072 entries / 1,048,576 cells)</option>
             </select>
             <p id="storageSafetyHelp" class="form-text mb-0">
-                Limits apply per calculation structure, not to total browser memory. Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy.
+                Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy.
             </p>
         </div>
     </section>
@@ -158,10 +160,10 @@
     private ElementReference _panel;
     private DotNetObjectReference<CalculationSettingsMenu>? _reference;
     private ElementReference _drawEffectsInput;
-    private string ModelHelp => Model switch {
-        CalculationModel.Fast => "Applies all saved rules under the fixed modeled policy. Prefers Exact within a timed opportunity; otherwise retains the completed Fast bound or uncertified result. Only the additional Exact attempt has a time cutoff; initial Fast is allowed to finish.",
-        CalculationModel.Exact => "Applies the same saved rules and fixed policy. Returns a result only when physical Deck-search survival is proven exact; otherwise Unsupported. Not full gameplay or optimal play.",
-        CalculationModel.OpeningHand => "Exact for the dealt hand with all effects ignored. A different question; card settings are preserved.",
+    private string? ModelHelp => Model switch {
+        CalculationModel.Fast => "Uses Exact when practical; otherwise retains the completed result and its accuracy status.",
+        CalculationModel.Exact => "Calculates physical Deck-search survival exactly, subject to Work and Storage limits.",
+        CalculationModel.OpeningHand => null,
         _ => throw new ArgumentOutOfRangeException(nameof(Model))
     };
 

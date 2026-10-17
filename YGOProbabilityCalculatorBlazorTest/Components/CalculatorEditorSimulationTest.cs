@@ -62,7 +62,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
             Assert.That(loaded.Cards[1].EffectPlan, Is.EqualTo(other.EffectPlan));
         }
         await Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Effects — fast"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith("Effects — fast · "));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pinned));
         await editor.Find(".simulation-restore").ClickAsync(new());
         Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(original.EffectPlan));

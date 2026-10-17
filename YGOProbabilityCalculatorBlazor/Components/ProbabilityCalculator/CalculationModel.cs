@@ -9,7 +9,7 @@ public static class CalculationModelPresentation {
     public static string Description(this CalculationModel model) => model switch {
         CalculationModel.Fast => "Effects — fast",
         CalculationModel.Exact => "Effects — exact",
-        CalculationModel.OpeningHand => "Opening hand only — effects not applied",
+        CalculationModel.OpeningHand => "No effect simulation",
         _ => throw new ArgumentOutOfRangeException(nameof(model))
     };
 }

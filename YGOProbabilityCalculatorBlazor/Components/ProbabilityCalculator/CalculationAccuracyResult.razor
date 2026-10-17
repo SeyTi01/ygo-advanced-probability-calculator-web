@@ -3,7 +3,7 @@
 
 <p class="small mb-2 result-accuracy" role="status">
     @if (Contract is { } contract) {
-        @contract.ExecutedMode.Description()<span> · @(contract.Accuracy?.ToString() ?? "Uncertified") — @(contract.Scope == CalculationRuleScope.OpeningHand ? "dealt hand; effects ignored" : "saved effects and fixed policy")</span>
+        @contract.ExecutedMode.Description()<span> · @(contract.Accuracy?.ToString() ?? "Uncertified")</span>
     }
     else {
         <span>Uncertified · accuracy unavailable</span>

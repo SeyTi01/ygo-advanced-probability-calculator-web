@@ -80,7 +80,7 @@ public class DrawActivationPrioritySessionTest {
     }
 
     [Test]
-    public void PinnedContextKeepsModelAndCustomPriorityDescription() {
+    public void PinnedContextKeepsConciseCopyCountAndRetainsModelMetadata() {
         SessionState session = Session(DrawActivationPriority.Default);
         PinnedCalculationContext encounter = PinnedCalculationContext.Capture(2, session.Cards, CalculationModel.Fast, DrawActivationPriority.Default);
         PinnedCalculationContext custom = PinnedCalculationContext.Capture(2, session.Cards,
@@ -88,8 +88,14 @@ public class DrawActivationPrioritySessionTest {
         PinnedCalculationContext opening = PinnedCalculationContext.Capture(2, session.Cards,
             CalculationModel.OpeningHand, new(DrawActivationMode.CustomPriority, ["a", "b"]));
 
-        Assert.That(encounter.Description, Does.Contain(CalculationModel.Fast.Description()).And.Not.Contain("Custom draw priority"));
-        Assert.That(custom.Description, Does.Contain("Custom draw priority"));
-        Assert.That(opening.Description, Does.Contain(CalculationModel.OpeningHand.Description()).And.Not.Contain("Custom draw priority"));
+        Assert.That(encounter.Description, Is.EqualTo("Hand size 2 · 4 cards"));
+        Assert.That(custom.Description, Is.EqualTo("Hand size 2 · 4 cards"));
+        Assert.That(opening.Description, Is.EqualTo("Hand size 2 · 4 cards"));
+        Assert.That((encounter.Copies, encounter.CardCount, encounter.Model, encounter.UsesCustomDrawPriority),
+            Is.EqualTo((4, 3, CalculationModel.Fast, false)));
+        Assert.That((custom.Copies, custom.CardCount, custom.Model, custom.UsesCustomDrawPriority),
+            Is.EqualTo((4, 3, CalculationModel.Fast, true)));
+        Assert.That((opening.Copies, opening.CardCount, opening.Model, opening.UsesCustomDrawPriority),
+            Is.EqualTo((4, 3, CalculationModel.OpeningHand, false)));
     }
 }

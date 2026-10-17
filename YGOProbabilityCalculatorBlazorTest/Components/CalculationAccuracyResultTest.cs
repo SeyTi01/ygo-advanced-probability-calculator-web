@@ -34,7 +34,7 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
     [TestCase(CalculationModel.OpeningHand, CalculationModel.OpeningHand, CalculationAccuracy.Exact, CalculationRuleScope.OpeningHand)]
     [TestCase(CalculationModel.Fast, CalculationModel.Exact, CalculationAccuracy.Exact, CalculationRuleScope.SavedEffectsFixedPolicy)]
     [TestCase(CalculationModel.Fast, CalculationModel.Fast, CalculationAccuracy.Uncertified, CalculationRuleScope.SavedEffectsFixedPolicy)]
-    public void KeepsOneConciseDisclosureAcrossAccuracyAndExecutionModes(
+    public void KeepsModeAndAccuracyWithoutRepeatingScopeProse(
         CalculationModel requestedMode,
         CalculationModel executedMode,
         CalculationAccuracy accuracy,
@@ -69,13 +69,11 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
     }
 
     private static void AssertStatus(IRenderedFragment cut, CalculationResultContract contract) {
-        string scope = contract.Scope == CalculationRuleScope.OpeningHand
-            ? "dealt hand; effects ignored"
-            : "saved effects and fixed policy";
-        string expected = $"{contract.ExecutedMode.Description()} · {contract.Accuracy} — {scope}";
+        string expected = $"{contract.ExecutedMode.Description()} · {contract.Accuracy}";
 
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo(expected));
         Assert.That(cut.Find(".result-accuracy").GetAttribute("role"), Is.EqualTo("status"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.Not.Contain("saved effects").And.Not.Contain("fixed policy"));
     }
 
     private static void AssertDisclosure(IRenderedFragment cut) {
