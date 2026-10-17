@@ -9,6 +9,7 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
     private static readonly CategoryBase Monster = new("Monster", CategorySource.Metadata, "kind:monster");
     private static readonly CategoryBase Vs = new("Archetype: Vanquish Soul", CategorySource.Metadata, "archetype:vanquish%20soul");
     private static readonly CategoryBase Spell = new("Spell", CategorySource.Metadata, "kind:spell");
+    private static readonly CategoryBase Trap = new("Trap", CategorySource.Metadata, "kind:trap");
     private static readonly CategoryBase Role = new("VS Monster");
 
     private static SessionState RuleSession() => new() {
@@ -142,5 +143,90 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
         Assert.That(card.Markup, Does.Contain("Automatic"));
         await cut.InvokeAsync(() => card.Instance.OnReplaceCard.InvokeAsync((0, card.Instance.Card.WithoutManualMetadataCategory(Monster.MetadataKey!))));
         Assert.That(card.FindAll(".accordion-button .category-tag"), Is.Empty);
+    }
+
+    [Test]
+    public void ExpandingCategoryShowsSavedAndOrRuleEvenWhenNothingMatches() {
+        CardSelector rule = CardSelector.AnyOfSelectors([
+            CardSelector.AllOf([Vs.Identity, Trap.Identity]),
+            CardSelector.AllOf([Spell.Identity, Trap.Identity])
+        ]);
+        CategoryBase role = new("Property role", rule: rule);
+        SessionState session = new() {
+            Categories = [role],
+            Cards = [new([Vs, Monster], 3, "Razen"), new([Spell], 1, "ROTA"), new([Vs, Spell], 1, "VS Spell")],
+            HandSize = 1
+        };
+
+        Assert.That(session.Cards.All(card => !rule.Matches(card)), Is.True);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        IRenderedComponent<CategoryListEditor> categories = cut.FindComponent<CategoryListEditor>();
+        Assert.That(categories.FindAll(".category-rule-summary"), Is.Empty);
+
+        cut.Find("[aria-label='Edit category Property role']").Click();
+
+        IRenderedComponent<CategoryRuleSummary> summary = categories.FindComponent<CategoryRuleSummary>();
+        Assert.That(summary.Markup, Does.Contain("Archetype: Vanquish Soul"));
+        Assert.That(summary.Markup, Does.Contain("AND"));
+        Assert.That(summary.Markup, Does.Contain("OR"));
+        Assert.That(summary.Markup, Does.Contain("("));
+        Assert.That(summary.Markup, Does.Contain("Trap"));
+        Assert.That(categories.FindAll(".category-rule-editor"), Is.Empty);
+        Assert.That(categories.Instance.CategoryBases.Single().Rule, Is.EqualTo(rule));
+        Assert.That(cut.FindComponents<CardEditor>().SelectMany(card => card.Instance.Card.Categories), Does.Not.Contain(role));
+    }
+
+    [Test]
+    public void SavedRuleSummaryStaysSeparateFromDraftAndRuleActionsPreserveRenameDraft() {
+        CardSelector savedRule = CardSelector.AnyOfSelectors([
+            CardSelector.AllOf([Vs.Identity, Monster.Identity]),
+            CardSelector.For(Spell)
+        ]);
+        CategoryBase role = new("Property role", rule: savedRule);
+        SessionState session = new() {
+            Categories = [role],
+            Cards = [new([Vs, Monster], 3, "Razen"), new([Spell], 1, "ROTA"), new([Trap], 1, "Trap")],
+            HandSize = 1
+        };
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        IRenderedComponent<CategoryListEditor> categories = cut.FindComponent<CategoryListEditor>();
+        cut.Find("[aria-label='Edit category Property role']").Click();
+        cut.Find("[aria-label='New name for category Property role']").Input("Draft role");
+        cut.Find("[aria-label='Choose color for category Property role']").Click();
+        cut.Find("[aria-label='Set Property role color to Green']").Click();
+        string colorClass = categories.Find(".category-chip").ClassName;
+
+        Button(cut, "Edit rule").Click();
+        IRenderedComponent<CategoryRuleSummary> summary = categories.FindComponent<CategoryRuleSummary>();
+        string savedExpression = summary.Markup;
+        IRenderedComponent<CategoryRuleEditor> editor = categories.FindComponent<CategoryRuleEditor>();
+        editor.Find("[aria-label='Add rule alternative']").Change(Trap.Identity);
+
+        Assert.That(editor.FindAll(".category-rule-term").Select(term => term.TextContent), Has.Some.Contains("Trap"));
+        Assert.That(summary.Markup, Is.EqualTo(savedExpression));
+        Assert.That(summary.Markup, Does.Not.Contain("Trap"));
+        Assert.That(categories.Instance.CategoryBases.Single().Rule, Is.EqualTo(savedRule));
+
+        Button(cut, "Cancel").Click();
+        Assert.That(categories.Instance.CategoryBases.Single().Rule, Is.EqualTo(savedRule));
+        Assert.That(cut.Find("[aria-label='New name for category Property role']").GetAttribute("value"), Is.EqualTo("Draft role"));
+        Assert.That(categories.Find(".category-chip").ClassName, Is.EqualTo(colorClass));
+
+        Button(cut, "Edit rule").Click();
+        categories.FindComponent<CategoryRuleEditor>().Find("[aria-label='Add rule alternative']").Change(Trap.Identity);
+        Button(cut, "Apply rule").Click();
+
+        Assert.That(categories.Instance.CategoryBases.Single().Rule!.CategoryIdentities, Does.Contain(Trap.Identity));
+        Assert.That(cut.Find("[aria-label='New name for category Property role']").GetAttribute("value"), Is.EqualTo("Draft role"));
+        Assert.That(categories.FindComponent<CategoryRuleSummary>().Markup, Does.Contain("Trap"));
+        Assert.That(categories.Find(".category-chip").ClassName, Is.EqualTo(colorClass));
+
+        Button(cut, "Edit rule").Click();
+        Button(cut, "Remove rule").Click();
+
+        Assert.That(categories.Instance.CategoryBases.Single().Rule, Is.Null);
+        Assert.That(categories.FindAll(".category-rule-summary"), Is.Empty);
+        Assert.That(cut.Find("[aria-label='New name for category Property role']").GetAttribute("value"), Is.EqualTo("Draft role"));
+        Assert.That(categories.FindAll("button").Select(button => button.TextContent.Trim()), Does.Contain("Define by properties"));
     }
 }
