@@ -11,6 +11,9 @@
 </p>
 <details class="accuracy-details small mb-2">
     <summary>Accuracy details</summary>
+    @if (ProbabilityPresentation.AutomaticExactDetail(Contract?.AutomaticExact) is { } automaticDetail) {
+        <p class="mt-2 mb-1">@automaticDetail</p>
+    }
     <p class="mt-2 mb-1">@ProbabilityPresentation.AccuracyDetails</p>
 </details>
 

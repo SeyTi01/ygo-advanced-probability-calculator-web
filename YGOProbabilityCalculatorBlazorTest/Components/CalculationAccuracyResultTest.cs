@@ -7,6 +7,28 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [SetCulture("en-US")]
 public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
+    [TestCase(AutomaticExactOutcome.Completed, CalculationAccuracy.Exact)]
+    [TestCase(AutomaticExactOutcome.Deadline, CalculationAccuracy.Bounded)]
+    [TestCase(AutomaticExactOutcome.WorkLimit, CalculationAccuracy.Uncertified)]
+    [TestCase(AutomaticExactOutcome.StorageLimit, CalculationAccuracy.Bounded)]
+    [TestCase(AutomaticExactOutcome.Unsupported, CalculationAccuracy.Uncertified)]
+    [TestCase(AutomaticExactOutcome.Error, CalculationAccuracy.Bounded)]
+    [TestCase(AutomaticExactOutcome.NoTime, CalculationAccuracy.Bounded)]
+    public void AutomaticOutcomeStaysWithAcceptedPinAndCopyWithoutRelabelingFast(AutomaticExactOutcome outcome, CalculationAccuracy accuracy) {
+        CalculationResultContract contract = ProbabilityPresentationTest.Contract(accuracy) with { AutomaticExact = outcome };
+        ProbabilityCalculationResult result = new(.5, [new(0, "Route", .5)]) { Contract = contract };
+        PinnedResultSnapshot snapshot = PinnedResultSnapshot.Capture(new(5, 40, 20), result);
+        IRenderedComponent<CalculationAccuracyResult> cut = context.RenderComponent<CalculationAccuracyResult>(parameters =>
+            parameters.Add(component => component.Contract, snapshot.Contract));
+        string expected = ProbabilityPresentation.AutomaticExactDetail(outcome)!;
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith("Effects — fast"));
+        Assert.That(cut.Find("details").GetAttribute("open"), Is.Null);
+        Assert.That(cut.Find("details").TextContent, Does.Contain(expected));
+        string copied = ProbabilityResultSummaryFormatter.Format(result, 5, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.That(copied, Does.Contain("requested: Fast").And.Contain(expected));
+        Assert.That(snapshot.Contract, Is.SameAs(contract));
+    }
+
     [TestCase(CalculationModel.Fast, CalculationModel.Fast, CalculationAccuracy.Bounded, CalculationRuleScope.SavedEffectsFixedPolicy)]
     [TestCase(CalculationModel.Exact, CalculationModel.Exact, CalculationAccuracy.Exact, CalculationRuleScope.SavedEffectsFixedPolicy)]
     [TestCase(CalculationModel.OpeningHand, CalculationModel.OpeningHand, CalculationAccuracy.Exact, CalculationRuleScope.OpeningHand)]

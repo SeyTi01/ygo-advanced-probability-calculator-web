@@ -63,7 +63,7 @@ The custom editor offers **None**, **Draw 1**, **Draw 2**, **Draw 3**, or **Sear
 
 Open the gear **Calculation settings** menu to choose how these settings apply:
 
-- **Effects — fast (default):** Apply every saved rule and fixed policy. Small ordered requests can select cheaper physical counting directly. Proven routes are Exact; otherwise show optimistic modeled values with a certified Deck-search survival interval. A zero lower endpoint is marked uninformative; limited refinement preserves any completed bound. If no certificate finishes, the result remains Uncertified with a reason.
+- **Effects — fast (default):** Apply every saved rule and fixed policy. Retain a completed Fast result, then prefer physical Exact when it finishes within the automatic opportunity. The Exact upgrade gets at most five seconds and must finish within seven seconds of the first pass starting, sharing one Work allowance. Already proven results finish immediately. Otherwise retain the completed certified bound or Uncertified result. Initial Fast is allowed to finish even beyond that window, subject to Work/Storage limits and manual cancellation. Startup is separate, and browser scheduling can delay deadlines.
 - **Effects — exact:** Apply the same rules and policy, returning values only when the completed execution proves physical Deck-search survival for every result row. Supported saved plans use bounded exact algorithms; requests that exceed Work or Storage limits return no values.
 - **Opening hand only:** Resolve no draw or search effects; configured cards still occupy initial-hand slots.
 
@@ -110,6 +110,8 @@ Recognized imports and database selections receive authoritative built-in defini
 A small pre-calculation notice flags potentially expensive draw configurations without blocking Calculate. If a request is slow or reaches a Work or Storage limit, **Calculate opening hand only** explicitly runs an exact alternative for that request. It preserves configured settings and the saved preference. This answers a different question and is not a guaranteed lower bound. Results and copied/pinned comparisons identify the model used; the next ordinary Calculate uses the selected setting.
 
 Interactive calculations allow 150 million bounded work units and remain cancelable. Storage limits apply separately: larger mixed draw configurations can require an explicit **High** or **VeryHigh** storage selection. Work units are not seconds, and increasing work does not resolve a Storage limit.
+
+Fast's automatic opportunity uses one worker sequentially. A slower initial Fast pass leaves less time for Exact; two four-second passes do not become an eight-second wait. Only an Exact upgrade is timed out: termination retains the already completed Fast result. Initial Fast has no automatic time cutoff; if it uses the opportunity window, no upgrade starts. Worker startup can take up to 30 seconds; after interrupting automatic work, restart waits 2.5 seconds for cleanup. Browser suspension or main-thread stalls can delay timers, and worker shutdown can lag termination. These are safety deadlines, not a universal end-to-end latency guarantee. Explicit Effects — exact has no automatic time cutoff and retains the existing Work/Storage limits and manual cancellation.
 
 See the calculator's [Help page](https://dev.ygo-calculator.pages.dev/help) for detailed rules and built-in examples.
 

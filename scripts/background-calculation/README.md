@@ -54,8 +54,8 @@ entire published output together; do not mix runtime assets from different build
 
 The browser must support module workers and the app's .NET WebAssembly runtime.
 Startup/transport failures are shown in the existing calculation alert, with no
-foreground fallback. Worker initialization times out after 30 seconds; this is
-not a running-time deadline. Ordinary Calculate captures a request-local
+foreground fallback. Worker initialization times out after 30 seconds, separately
+from Fast's calculation deadline described below. Ordinary Calculate captures a request-local
 **150,000,000-unit** work allowance immediately. Synchronous engine callers omitting
 the explicit `CalculationWorkPolicy` overload and wire requests omitting
 `WorkUnits` retain the bounded **10,000,000-unit** default. Policies are immutable,
@@ -115,8 +115,40 @@ worker's synchronous computation. Browser termination is asynchronous:
 The UI clears its busy state immediately; a terminated Chromium worker can still
 consume CPU during that grace period. Firefox's observed shutdown was faster.
 Do not treat the button state or an animation as evidence that CPU work stopped.
-Rapid restarts can temporarily overlap workers during that grace period; the
+Explicit-mode rapid restarts can temporarily overlap workers during that grace period; the
 opt-in policy smoke verifies that a finite burst closes every execution context.
+
+### Automatic Exact opportunity in Fast
+
+The UI opts Fast into a staged worker lease. `BeginFast` executes the unchanged
+Fast calculation and returns its complete response and unused Work (an integer
+string, never a rounded JavaScript number). Proven Exact ends immediately.
+Otherwise JS retains that response, and `UpgradeFast` runs physical counting
+with the remaining allowance and original Storage tier. The physical result
+keeps requested/executed Fast, the actual solver route, proof and rational rows.
+Native synchronous Fast and the one-shot `createJob` wire helper retain their
+existing reference behavior; they do not own browser clocks or worker lifetimes.
+
+The Exact opportunity ends seven seconds after dispatch to a ready runtime,
+with at most five seconds for the upgrade. No watchdog runs during initial Fast. An absolute `performance.now()` check
+also resolves response/timer races. It terminates an unfinished Exact upgrade; a completed
+fallback is returned without rerunning or modifying its fractions/certificate.
+Initial Fast is allowed to finish under its existing Work/Storage limits and manual
+cancellation. If it uses the opportunity window, return its completed result
+without starting another pass (NoTime). An Exact upgrade
+that hits Work/Storage/Unsupported or a transport/execution error retains the
+fallback, with an immutable outcome note in accuracy details, pins and exports.
+No provisional result is shown as accepted. A detached terminated lease still
+requires C# validation/acknowledgement, and cancellation cannot accept it late.
+
+After interruption of automatic work, the module shares a 2500-ms restart delay
+across owners. This mitigates Chromium's termination grace and is separately
+included in end-to-end measurements; there is no portable shutdown acknowledgement.
+Startup retains its own 30-second timer. Background tab suspension or a blocked
+main thread can delay timers, so seven seconds is not a universal button-to-result
+SLA. Explicit Exact/OpeningHand have no automatic calculation timeout. A slow
+initial Fast consumes part of the upgrade window: this intentionally avoids
+turning two four-second passes into an eight-second wait.
 
 Work exhaustion and storage/state growth have distinct typed reasons in the
 source-generated worker response (`LimitReason`), preserved by the caller's
