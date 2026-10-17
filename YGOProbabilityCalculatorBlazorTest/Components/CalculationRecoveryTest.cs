@@ -62,7 +62,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(oldValue));
         Assert.That(cut.FindAll(".calculation-recovery p"), Is.Empty);
         string saved = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
-        Task recovery = Button(cut, "Calculate opening hand only").ClickAsync(new());
+        Task recovery = Button(cut, "Calculate with no effect simulation").ClickAsync(new());
         CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_requests[2].Json)!;
         Assert.That(input.Cards.All(card => card.DrawCount is null && card.PreDrawRemovalCount == 0), Is.True);
         Complete(2);
@@ -72,11 +72,12 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(expected.ToString("P2")));
         Assert.That(cut.FindAll(".probability-group"), Has.Count.EqualTo(1));
         Assert.That(cut.FindAll(".combo-probability-item"), Has.Count.EqualTo(2));
-        Assert.That(cut.Find(".result-model").TextContent, Does.Contain(CalculationModel.OpeningHand.Description()));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith($"{CalculationModel.OpeningHand.Description()} · "));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(CalculationModel.OpeningHand.Description()));
         Assert.That(cut.FindAll(".comparison-model-difference, .result-difference, .result-row-comparison, .pinned-match"), Is.Empty);
-        Assert.That(cut.Find(".result-model").TextContent, Does.Contain(CalculationModel.OpeningHand.Description()));
-        Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.Contain(CalculationModel.Fast.Description()));
+        Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Does.StartWith($"{CalculationModel.Fast.Description()} · "));
+        Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
         Assert.That(cut.FindComponent<SessionShareButton>().Instance.Snapshot, Is.EqualTo(saved));
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
         await Button(cut, "Replace pin with current result").ClickAsync(new());
@@ -84,7 +85,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Task normal = Button(cut, "Calculate").ClickAsync(new());
         Complete(3);
         await normal;
-        Assert.That(cut.Find(".result-model").TextContent, Does.Contain("Effects — fast"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith("Effects — fast · "));
     }
 
     [TestCase("complete")]
@@ -141,7 +142,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".calculation-elapsed"), Is.Empty);
         await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(2)));
         cut.WaitForState(() => cut.FindAll(".calculation-recovery .btn-outline-primary").Count == 1);
-        Task recovery = Button(cut, "Calculate opening hand only").ClickAsync(new());
+        Task recovery = Button(cut, "Calculate with no effect simulation").ClickAsync(new());
         Assert.That(_tokens[0].IsCancellationRequested, Is.True);
         Assert.That(_jobs, Has.Count.EqualTo(1), "cleanup must finish before creating the alternate worker");
         if (editWhileWaiting) {
@@ -157,7 +158,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
             cut.WaitForState(() => _jobs.Count == 2);
             Complete(1);
             await recovery;
-            Assert.That(cut.Find(".result-model").TextContent, Does.Contain(CalculationModel.OpeningHand.Description()));
+            Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith($"{CalculationModel.OpeningHand.Description()} · "));
         }
         Assert.That(cut.Markup, Does.Not.Contain("late full"));
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));

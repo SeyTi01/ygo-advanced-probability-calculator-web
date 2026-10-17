@@ -26,10 +26,12 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.False);
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
         Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(3));
+        Assert.That(cut.Find("#calculationModel option[value=OpeningHand]").TextContent, Is.EqualTo("No effect simulation"));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
-        Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Contain("fixed modeled policy").And.Contain("uncertified"));
         Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Does.Contain("Only the additional Exact attempt has a time cutoff").And.Contain("initial Fast is allowed to finish"));
+            Is.EqualTo("Uses Exact when practical; otherwise retains the completed result and its accuracy status."));
+        Assert.That(cut.Find("#storageSafetyHelp").TextContent.Trim(),
+            Is.EqualTo("Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy."));
         context.JSInterop.VerifyInvoke("workspaceMenus.watchOutside", 1);
         await cut.Find("#storageSafetyTier").ChangeAsync(new() { Value = "High" });
         await cut.Find("#calculationModel").KeyDownAsync(new() { Key = "Escape" });
@@ -37,8 +39,14 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         await cut.Find(".calculation-settings-trigger").ClickAsync(new());
         Assert.That(cut.Find("#storageSafetyTier").GetAttribute("value"), Is.EqualTo("High"));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
+        Assert.That(cut.FindAll("#drawEffectsHelp"), Is.Empty);
+        Assert.That(cut.Find("#calculationModel").HasAttribute("aria-describedby"), Is.False);
+        Assert.That(cut.Find("#calculationModel").TextContent, Does.Not.Contain("Opening hand only"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
         Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Does.Contain("all effects ignored").And.Contain("card settings are preserved"));
+            Is.EqualTo("Calculates physical Deck-search survival exactly, subject to Work and Storage limits."));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         await cut.InvokeAsync(() => cut.FindComponent<CalculationSettingsMenu>().Instance.Dismiss());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
         Assert.That(cut.Find(".calculation-settings-trigger").GetAttribute("aria-expanded"), Is.EqualTo("false"));
@@ -95,7 +103,8 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 5, session.Combos, []);
             double expected = new ExactProbability(oracle.Wins[0], oracle.Total).ToDouble(new(CalculationWorkPolicy.Interactive));
             Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(expected.ToString("P2")));
-            Assert.That(cut.Find(".result-model").TextContent, Does.EndWith(mode.Description()));
+            Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size 5 · ").And.Not.Contain(mode.Description()));
+            Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith($"{mode.Description()} · "));
             Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(mode.Description()));
         }
         Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Hypothetical, often optimistic"));

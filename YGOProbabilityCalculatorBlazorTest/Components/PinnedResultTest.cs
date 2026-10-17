@@ -202,7 +202,7 @@ public class PinnedResultTest {
         Assert.That(_cut.Find(".pinned-heading [aria-label='Unpin result']").GetAttribute("title"), Is.EqualTo("Unpin result"));
         Assert.That(_cut.FindAll(".pinned-heading svg path"), Has.Count.EqualTo(2));
         PinnedResultSnapshot first = Pinned;
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
+        AssertContextDescriptions("Hand size 2 · 8 cards", "Hand size 2 · 8 cards");
         await Accept(.842);
         Assert.That(Pinned, Is.SameAs(first));
         Assert.That(Accepted.Total, Is.EqualTo(.842));
@@ -416,7 +416,7 @@ public class PinnedResultTest {
         Assert.That(current.Total, Is.EqualTo(.842));
         Assert.That(Pinned, Is.SameAs(original));
         AssertNoComparisonUi();
-        AssertContextDescriptions("Hand size 2 · 7 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
+        AssertContextDescriptions("Hand size 2 · 7 cards", "Hand size 2 · 8 cards");
         Assert.That(Pinned.Combos.Select(c => c.Label), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
     }
 
@@ -424,21 +424,24 @@ public class PinnedResultTest {
     public async Task CurrentAndPinnedContextSummariesKeepTheSameCapturedFieldsAcrossEditsAndRecalculation() {
         await Accept(.814);
         await Pin();
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
+        AssertContextDescriptions("Hand size 2 · 8 cards", "Hand size 2 · 8 cards");
+        Assert.That(Pinned.Context.Copies, Is.EqualTo(8));
+        Assert.That(Pinned.Context.CardCount, Is.EqualTo(2));
 
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+        AssertContextDescriptions("Hand size 2 · 8 cards", "Hand size 2 · 8 cards");
         await Accept(.842);
-        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
+        AssertContextDescriptions("Hand size 3 · 8 cards", "Hand size 2 · 8 cards");
 
         await Call("ReplaceCard", (0, Field<List<Card>>("_cards")[0].WithCopies(3)));
         await Call("ReplaceCard", (1, Field<List<Card>>("_cards")[1].WithActive(false)));
         // Pending edits do not leak into the last accepted result or the explicit pin.
-        AssertContextDescriptions("Hand size 3 · 8 active copies · 2 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
+        AssertContextDescriptions("Hand size 3 · 8 cards", "Hand size 2 · 8 cards");
         await Accept(.786);
-        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Effects — fast", "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
+        AssertContextDescriptions("Hand size 3 · 3 cards", "Hand size 2 · 8 cards");
 
         await Pin();
-        AssertContextDescriptions("Hand size 3 · 3 active copies · 1 active cards · Effects — fast", "Hand size 3 · 3 active copies · 1 active cards · Effects — fast");
+        AssertContextDescriptions("Hand size 3 · 3 cards", "Hand size 3 · 3 cards");
         AssertNoComparisonUi();
     }
 
@@ -508,9 +511,9 @@ public class PinnedResultTest {
         Assert.That(Pinned, Is.SameAs(pin));
         AssertNoComparisonUi();
         string currentContext = load == "ydk"
-            ? "Hand size 2 · 8 active copies · 2 active cards · Effects — fast"
-            : "Hand size 3 · 8 active copies · 2 active cards · Effects — fast";
-        AssertContextDescriptions(currentContext, "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
+            ? "Hand size 2 · 8 cards"
+            : "Hand size 3 · 8 cards";
+        AssertContextDescriptions(currentContext, "Hand size 2 · 8 cards");
     }
 
     [Test]
@@ -673,8 +676,8 @@ public class PinnedResultTest {
         await Pin();
         PinnedResultSnapshot pinnedOn = Pinned;
         Assert.That((pinnedOn.Context.Model != CalculationModel.OpeningHand), Is.True);
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Effects — fast",
-            "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
+        AssertContextDescriptions("Hand size 2 · 8 cards",
+            "Hand size 2 · 8 cards");
 
         await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(_cut.Find(".probability-result-status-full").TextContent, Is.EqualTo("Previous result · inputs changed"));
@@ -685,8 +688,8 @@ public class PinnedResultTest {
         Assert.That(offInput.Cards[0].DrawCount, Is.Null);
         Assert.That((cards[0].DrawCount, cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
         AssertNoComparisonUi();
-        AssertContextDescriptions("Hand size 2 · 8 active copies · 2 active cards · Opening hand only — effects not applied",
-            "Hand size 2 · 8 active copies · 2 active cards · Effects — fast");
+        AssertContextDescriptions("Hand size 2 · 8 cards",
+            "Hand size 2 · 8 cards");
         Assert.That(Pinned.Context, Is.SameAs(pinnedOn.Context));
         Assert.That((Pinned.Context.Model != CalculationModel.OpeningHand), Is.True);
         Assert.That((Accepted.Context.Model != CalculationModel.OpeningHand), Is.False);

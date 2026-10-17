@@ -193,7 +193,7 @@
         }
         @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null || _unsupportedExact) {
             <div class="calculation-recovery mt-3 d-flex flex-wrap align-items-center gap-2">
-                <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate opening hand only</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate with no effect simulation</button>
                 <button type="button" class="btn btn-sm btn-link" @onclick="ReviewCalculationSettings">Review settings</button>
             </div>
         }
