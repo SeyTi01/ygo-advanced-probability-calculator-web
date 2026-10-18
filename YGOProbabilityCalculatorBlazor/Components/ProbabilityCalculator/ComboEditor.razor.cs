@@ -74,7 +74,6 @@ public partial class ComboEditor {
     }
 
     private void BeginEdit(ComboAlternative requirement, int index, int? groupIndex) {
-        if (_boundedPositions is not null) { CloseBoundedGroup(); }
         if (IsOpenRow(requirement, index, groupIndex)) {
             _returnRowKey = RowKey(requirement, index, groupIndex);
             CancelScopedAuthoring();
@@ -290,13 +289,17 @@ public partial class ComboEditor {
 
     private Task HandleRequirementKeyDown(KeyboardEventArgs args) {
         if (args.Key == "Escape") {
-            if (_editingRequirement is { } requirement && _editingIndex is int index) {
-                _returnRowKey = RowKey(requirement, index, _editingGroupIndex);
-            }
-            CancelScopedAuthoring();
+            CancelRequirement();
         }
 
         return Task.CompletedTask;
+    }
+
+    private void CancelRequirement() {
+        if (_editingRequirement is { } requirement && _editingIndex is int index) {
+            _returnRowKey = RowKey(requirement, index, _editingGroupIndex);
+        }
+        CancelScopedAuthoring();
     }
 
     private Task HandleCountKeyDown(KeyboardEventArgs args) => args.Key == "Enter"

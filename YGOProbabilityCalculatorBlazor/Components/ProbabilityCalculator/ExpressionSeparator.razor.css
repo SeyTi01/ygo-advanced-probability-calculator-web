@@ -28,3 +28,4 @@
     font: inherit;
 }
 .expression-operator:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.expression-operator-error { font-size: .8rem; font-weight: normal; line-height: 1.4; }

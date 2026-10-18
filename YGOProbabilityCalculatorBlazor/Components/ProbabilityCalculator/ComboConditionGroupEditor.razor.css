@@ -1,7 +1,0 @@
-.bounded-condition-group { display: grid; gap: .4rem; min-width: 0; }
-.bounded-condition { min-width: 0; }
-.bounded-properties { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
-.bounded-properties select { flex: 1 1 10rem; min-width: 0; max-width: 100%; }
-.bounded-counts { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; margin-top: .4rem; }
-.bounded-counts label { max-width: 7rem; font-size: .8rem; }
-.bounded-counts input { width: 100%; }
