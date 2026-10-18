@@ -3,11 +3,16 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 internal sealed partial class PostDrawCalculation {
-    private HashSet<string> SearchPolicyObservedRows(List<Card> cards) {
+    private HashSet<string> SearchPolicyObservedRows(List<Card> cards, bool deferUnremovableSearchers = false) {
         HashSet<string> observed = new(StringComparer.Ordinal);
         Card[] effects = cards.Where(card => card.Copies > 0 && card.DrawCount is not null).ToArray();
         foreach (Card source in cards.Where(card => card.Copies > 0 && card.Search is not null)) {
-            observed.Add(source.Id);
+            // An unremovable searcher cannot act during draws. Its label may be
+            // pooled unless another removable searcher's retention tier observes
+            // it as a target; the target loop below retains those observations.
+            if (!deferUnremovableSearchers) {
+                observed.Add(source.Id);
+            }
             budget.Spend(effects.Sum(effect => effect.PreDrawSelector.CategoryIdentities.Count
                 + effect.PostDrawSelector.CategoryIdentities.Count + 1L) * (source.Categories.Count + 1L));
             bool removable = effects.Any(effect => (effect.PreDrawRemovalCount > 0 && effect.PreDrawSelector.Matches(source))

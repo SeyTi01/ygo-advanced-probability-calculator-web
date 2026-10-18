@@ -47,8 +47,11 @@ internal sealed partial class PostDrawCalculation {
         List<Card> cards = ReduceSearchDeck(combos, out Dictionary<string, List<Card>> identities, merge: !physical && coalesceOrdinary);
         // Only removable searchers need policy target counts. Unrelated targets
         // can still join the deferred pool when no removal can observe them.
-        HashSet<string> observed = SearchPolicyObservedRows(cards);
-        List<Card> deferred = !physical && deferIdentities ? DeferUnobservedIdentities(ref cards, observed) : [];
+        bool compactPhysical = physical && method == PhysicalEnumerationMethod.Auto && deferIdentities
+            && cards.All(card => !card.EffectPlan.RequiresSearchResolution && (card.Search is null || card.MinimumHandSize == 0));
+        HashSet<string> observed = SearchPolicyObservedRows(cards, deferUnremovableSearchers: compactPhysical);
+        List<Card> deferred = (!physical || compactPhysical) && deferIdentities ? DeferUnobservedIdentities(ref cards, observed) : [];
+        compactPhysical &= deferred.Count > 0;
         Route = deferred.Count > 0 ? SolverRoute.SearchOrderedDeferred : SolverRoute.SearchOrdered;
         int n = cards.Count;
         bool customPriority = priority?.Mode == DrawActivationMode.CustomPriority;
@@ -129,6 +132,9 @@ internal sealed partial class PostDrawCalculation {
             new SearchKeepPolicy(cards, relevant, budget)
         );
         if (physical) {
+            if (compactPhysical) {
+                return CountSelectiveSurvivors(cards, deferred, resolver, factorial, combos, groups, totalOnly, search);
+            }
             return CountPhysicalSearch(cards, layout, resolver, factorial, combos, groups, totalOnly, method);
         }
 

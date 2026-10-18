@@ -73,7 +73,7 @@ public sealed class AdaptiveFastRouteTest {
         List<Combo> combos = [new([new(target, 1, 2)], groupId: "g"), new([new(target, 0, 0)])];
         List<ComboGroup> groups = [new("g", "Positive")];
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(cards, combos, 2, groups);
-        Assert.That(result.Contract!.SolverRoute, Is.EqualTo("SearchPhysicalFrontier"));
+        Assert.That(result.Contract!.SolverRoute, Is.EqualTo("SearchPhysicalDeferred"));
         SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(cards, 2, combos, groups);
         PhysicalSearchTest.AssertRows(result, oracle.Wins[1], oracle.Outcomes);
         Assert.That(oracle.Failed, Is.GreaterThan(System.Numerics.BigInteger.Zero));

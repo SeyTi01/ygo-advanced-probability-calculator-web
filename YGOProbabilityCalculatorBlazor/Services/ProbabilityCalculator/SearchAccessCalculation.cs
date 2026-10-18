@@ -68,7 +68,8 @@ internal sealed class SearchAccessCalculation(
                     PostDrawCalculation fallback = new(cards, handSize, budget, priority);
                     ExactCalculationResult enumerated = fallback.CalculateSearch(combos, groups, totalOnly, search, physical: true);
                     _capability = new(fallback.Route, PhysicalSearchAccuracy.ProvenExact,
-                        CapabilityReason.ExplicitPhysicalSurvivors, CertificationSupport.ReusePrimary);
+                        fallback.Route == SolverRoute.SearchPhysicalDeferred ? CapabilityReason.ConditionalSelectiveSurvivors
+                            : CapabilityReason.ExplicitPhysicalSurvivors, CertificationSupport.ReusePrimary);
                     return enumerated;
                 }
                 ExactCalculationResult result = new PhysicalSearchCalculation(cards, effects, handSize, search, budget)

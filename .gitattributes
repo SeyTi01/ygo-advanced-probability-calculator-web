@@ -1,0 +1,2 @@
+# Preserve the supplied session's checksum across Windows and Linux checkouts.
+YGOProbabilityCalculatorBlazorTest/Fixtures/desires_trade_in.json -text
