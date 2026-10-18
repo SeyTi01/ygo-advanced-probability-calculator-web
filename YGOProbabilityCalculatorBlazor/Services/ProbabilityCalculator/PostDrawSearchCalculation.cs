@@ -261,7 +261,8 @@ internal sealed partial class PostDrawCalculation {
         bool lower = false,
         bool declineSearch = false,
         SearchEventTemplate? template = null,
-        bool packed = false
+        bool packed = false,
+        int[]? lossBudgets = null
     ) {
         int copies = lower ? pools.Sum(pool => pool.Sum(card => card.Copies)) : 0;
         BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
@@ -291,6 +292,10 @@ internal sealed partial class PostDrawCalculation {
                 if (loss < 0 || held < 0 || counts[^1] < 0) {
                     throw new InvalidOperationException("Ordered search conservation failed.");
                 }
+                if (lossBudgets is not null) {
+                    budget.Spend(1);
+                    loss = lossBudgets[loss];
+                }
             }
             SearchProbabilityCalculation calculation = new(random.SelectMany(pool => pool.Cards).ToList(),
                 random.Sum(pool => pool.Held), retained, search, declineSearch ? 0 : counts[^1], budget, random, loss, template: template);
@@ -316,7 +321,12 @@ internal sealed partial class PostDrawCalculation {
             totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
     }
 
-    internal ExactCalculationResult CalculateSearchLower(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool declineSearch) {
+    internal ExactCalculationResult CalculateSearchLower(
+        List<Combo> combos,
+        IReadOnlyList<ComboGroup>? groups,
+        bool declineSearch,
+        bool useKnownLoss = true
+    ) {
         SearchCertificateState state = _searchCertificate
             ?? throw new InvalidOperationException("Missing completed ordered search distribution.");
         budget.Spend(4L * deck.Count + 3L * state.Cards.Count + 2L * state.Deferred.Count + 1);
@@ -326,6 +336,8 @@ internal sealed partial class PostDrawCalculation {
         // never merge. Their labels may be biased by ID-based discards: never
         // sample those original labels or apply the per-identity loss formula.
         // Instead n_C=h_C+r_C+d_C gives r_C >= max(0,n_C-h_C-D).
+        // OrderedSearchLossBudget may replace D by a simultaneous bound on
+        // searchable-class loss; eligibility agrees across every class member.
         // Every assignment within these shared class capacities lifts to distinct
         // physical targets and leaves all final predicates unchanged.
         Dictionary<string, Card> classes = state.Identities.ToDictionary(pair => pair.Key,
@@ -338,12 +350,18 @@ internal sealed partial class PostDrawCalculation {
             // hidden positions, retries, custom priority and failed branches.
             pools[^1] = state.Deferred.Select(card => classes[card.Id]).ToList();
         }
-        SearchAccessPlan search = new(pools.SelectMany(pool => pool).ToList(), budget);
+        List<Card> searchCards = pools.SelectMany(pool => pool).ToList();
+        SearchAccessPlan search = new(searchCards, budget);
+        // Tighten this existing pass, without a second frontier or recount. The
+        // caller has already completed the decline-search witness; failure or
+        // exhaustion must retain it rather than publish partially counted rows.
+        int[]? lossBudgets = declineSearch || !useKnownLoss ? null : OrderedSearchLossBudget.Create(searchCards, budget);
 
         SearchEventTemplate? template = CreateSearchTemplate(pools, combos, search);
 
         return CountSearchHands(state.Cards, pools, state.Terminal, state.Denominator,
-            combos, groups, false, search, lower: true, declineSearch: declineSearch, template: template, packed: state.Packed);
+            combos, groups, false, search, lower: true, declineSearch: declineSearch, template: template, packed: state.Packed,
+            lossBudgets: lossBudgets);
     }
 
     private SearchEventTemplate? CreateSearchTemplate(List<List<Card>> pools, List<Combo> combos, SearchAccessPlan search) {

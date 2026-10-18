@@ -19,16 +19,18 @@ public sealed class OrderedSearchCertificateTest {
             ExactCalculationResult upper = execution.CalculateSearch(fixture.Combos, fixture.Groups, false,
                 new(fixture.Deck, budget), coalesceOrdinary: merge);
             ExactCalculationResult witness = execution.CalculateSearchLower(fixture.Combos, fixture.Groups, declineSearch: true);
+            ExactCalculationResult elementary = execution.CalculateSearchLower(fixture.Combos, fixture.Groups, declineSearch: false, useKnownLoss: false);
             ExactCalculationResult lower = execution.CalculateSearchLower(fixture.Combos, fixture.Groups, declineSearch: false);
             SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority);
-            ExactProbability[] u = Rows(upper), l = Rows(lower), w = Rows(witness);
+            ExactProbability[] u = Rows(upper), l = Rows(lower), w = Rows(witness), old = Rows(elementary);
             for (int row = 0; row < u.Length; row++) {
                 Assert.That(u[row].Numerator * oracle.Outcomes, Is.EqualTo(oracle.Wins[2][row] * u[row].Denominator), fixture.Name);
                 Assert.That(w[row].Numerator * oracle.Outcomes, Is.EqualTo(oracle.Wins[4][row] * w[row].Denominator), fixture.Name);
                 Assert.That(l[row].Numerator * w[row].Denominator, Is.GreaterThanOrEqualTo(w[row].Numerator * l[row].Denominator), fixture.Name);
                 Assert.That(l[row].Numerator * oracle.Outcomes, Is.LessThanOrEqualTo(oracle.Wins[1][row] * l[row].Denominator), fixture.Name);
-                Assert.That(l[row].Numerator * oracle.Outcomes, Is.LessThanOrEqualTo(oracle.Wins[3][row] * l[row].Denominator),
-                    fixture.Name + ": sufficient lower event, not a claim to the exact robust group/union event");
+                Assert.That(old[row].Numerator * l[row].Denominator, Is.LessThanOrEqualTo(l[row].Numerator * old[row].Denominator), fixture.Name);
+                Assert.That(old[row].Numerator * oracle.Outcomes, Is.LessThanOrEqualTo(oracle.Wins[3][row] * old[row].Denominator),
+                    fixture.Name + ": the elementary bound covers arbitrary losses; known consumption excludes some of those allocations");
                 if (l[row].Numerator * w[row].Denominator > w[row].Numerator * l[row].Denominator) { strictImprovements++; }
             }
             if (execution.Route == SolverRoute.SearchOrderedDeferred) { deferred++; }
