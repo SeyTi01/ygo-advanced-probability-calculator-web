@@ -149,15 +149,17 @@ const session = () => ({
         const summaryBadge = combo.locator('.requirement-interactive-summary .category-tag').first();
         await summaryBadge.click();
         await combo.locator('#minCount0').fill('2');
+        assert.deepEqual(await combo.locator('.requirement-interactive-summary .expression-operator option').allTextContents(), ['AND'],
+            'an unsaved affected row hides unavailable conversions');
         await summaryBadge.click();
         assert.equal(await combo.locator('.requirement-row form').count(), 0, 'repeat clicking the same-card summary discards its row draft');
         assert.deepEqual((await saveSession()).Combos, saved.Combos);
 
-        // Direct-card AND refuses at its connector and keeps every saved bound.
+        // Direct-card AND is absent; the existing expression keeps every bound.
         const directConnector = combo.locator('.requirement-list > .requirement-and-separator select').last();
         await directConnector.focus();
-        await directConnector.selectOption('AND');
-        await combo.locator('.requirement-list > .requirement-and-separator [role="alert"]').waitFor();
+        assert.deepEqual(await directConnector.locator('option').allTextContents(), ['+', 'OR']);
+        assert.equal(await combo.getByRole('alert').count(), 0);
         assert.equal(await directConnector.inputValue(), '+');
         assert.equal(await directConnector.evaluate(element => element === document.activeElement), true);
         const refused = await saveSession();
@@ -172,6 +174,7 @@ const session = () => ({
         const innerChoices = await group.locator('.expression-operator option').allTextContents();
         assert.ok(!innerChoices.includes('+'));
         const insert = combo.getByLabel('Add condition to OR group 1', { exact: true });
+        assert.equal(await insert.locator('option[value=""]').innerText(), 'Add');
         await insert.scrollIntoViewIfNeeded();
         await insert.focus();
         await page.waitForTimeout(250);

@@ -7,7 +7,7 @@ public sealed record ComboGroupEdit(string Operator, IReadOnlyList<ComboAlternat
 // Conversions compose existing bounded requirements; the solver representation
 // and separate-copy matching are unchanged.
 public static class ComboOperatorEditing {
-    public static Combo Apply(Combo combo, IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
+    private static ComboCategory? Validate(Combo combo, IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
         if (positions.Count == 0 || positions.Distinct().Count() != positions.Count || positions.Any(position => !combo.RequirementOrder.Contains(position))) {
             throw new ArgumentException("The edited conditions changed. Reopen the group.");
         }
@@ -31,6 +31,21 @@ public static class ComboOperatorEditing {
             sameCard = ComboCategory.SameCard(categories.SelectMany(category => category.CategoryBases), first.MinCount, first.MaxCount, first.MaximumMode);
         }
 
+        return sameCard;
+    }
+
+    public static bool CanApply(Combo combo, IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
+        try {
+            Validate(combo, positions, edit);
+            return true;
+        }
+        catch (ArgumentException) {
+            return false;
+        }
+    }
+
+    public static Combo Apply(Combo combo, IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
+        ComboCategory? sameCard = Validate(combo, positions, edit);
         int authoredPosition = positions.Min(position => combo.RequirementOrder.ToList().IndexOf(position));
         Combo updated = combo;
         foreach (ComboRequirementPosition position in positions.OrderByDescending(position => position.Index)) {
