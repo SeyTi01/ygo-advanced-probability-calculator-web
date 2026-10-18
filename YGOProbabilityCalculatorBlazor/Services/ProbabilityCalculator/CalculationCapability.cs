@@ -1,8 +1,8 @@
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-internal enum SolverRoute { Ordinary, CountState, Exchangeable, Ordered, OrderedDeferred, SearchOnly, SearchCountState, SearchOrdered, SearchOrderedDeferred, SearchPhysicalCountState, SearchPhysicalEnumeration, SearchPhysicalFrontier }
+internal enum SolverRoute { Ordinary, CountState, Exchangeable, Ordered, OrderedDeferred, SearchOnly, SearchCountState, SearchOrdered, SearchOrderedDeferred, SearchPhysicalCountState, SearchPhysicalEnumeration, SearchPhysicalFrontier, SearchPhysicalDeferred }
 internal enum PhysicalSearchAccuracy { ProvenExact, OptimisticSurvivalUnproven }
-internal enum CapabilityReason { NoActiveSearch, NoReachableSearchTarget, ZeroDeckCapacity, NoReachableSearchTargetLoss, ConsumedSearchTarget, HandCostMayRemoveTarget, HandRemovalMayRemoveTarget, HiddenDeckLossMayRemoveTarget, ConditionalPhysicalSurvivors, ExplicitPhysicalSurvivors }
+internal enum CapabilityReason { NoActiveSearch, NoReachableSearchTarget, ZeroDeckCapacity, NoReachableSearchTargetLoss, ConsumedSearchTarget, HandCostMayRemoveTarget, HandRemovalMayRemoveTarget, HiddenDeckLossMayRemoveTarget, ConditionalPhysicalSurvivors, ExplicitPhysicalSurvivors, ConditionalSelectiveSurvivors }
 internal enum CertificationSupport { ReusePrimary, ElementaryCountStateLowerPass, OrderedTerminalLowerPass, Unsupported }
 
 // A value describing one COMPLETED execution, never a preflight risk estimate.
@@ -22,6 +22,7 @@ internal readonly record struct CalculationCapability(
     internal static string Explain(CapabilityReason reason) => reason switch {
         CapabilityReason.ExplicitPhysicalSurvivors => "Explicit ordered identities with joint conditional hidden losses under the fixed policy.",
         CapabilityReason.ConditionalPhysicalSurvivors => "Joint physical Deck-search survival counted conditionally on the proven draw count state.",
+        CapabilityReason.ConditionalSelectiveSurvivors => "Joint physical Deck-search survival conditioned on observed sources, hand payments and exchangeable unseen copies.",
         CapabilityReason.NoActiveSearch => "No active Deck searches in the executed model.",
         CapabilityReason.NoReachableSearchTarget => "No active search has an eligible target.",
         CapabilityReason.ZeroDeckCapacity => "The Deck has no remaining capacity for searches.",
