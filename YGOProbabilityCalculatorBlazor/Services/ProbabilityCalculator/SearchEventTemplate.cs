@@ -39,6 +39,7 @@ internal sealed class SearchEventTemplate {
         }
         // Release the old template before compiling; never retain a second cache
         // entry. Compile checks the complete predicate payload against Storage.
+        _budget.SearchDiagnostics?.Template(key);
         _events = null;
         _key = key;
         _events = _search.Compile(_combos, handSize, _rows, limit, key.Loss);

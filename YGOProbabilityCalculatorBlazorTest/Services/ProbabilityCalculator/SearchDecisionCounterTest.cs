@@ -8,6 +8,52 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 [TestFixture]
 public sealed class SearchDecisionCounterTest {
     [Test]
+    public void EvictedApplyEntriesAndSharedRootsPreserveWideMaskPhysicalCounts() {
+        Random random = new(71813);
+        List<Card> deck = Enumerable.Range(0, 70).Select(row => new Card([], row % 10 == 0 || row == 69 ? 1 : 0)).ToList();
+        int[] physical = Enumerable.Range(0, deck.Count).Where(row => deck[row].Copies > 0).ToArray();
+        for (int hand = 0; hand <= physical.Length; hand++) {
+            SearchCountingDiagnostics diagnostics = new();
+            WorkBudget budget = new(CalculationWorkPolicy.Interactive) { SearchDiagnostics = diagnostics };
+            SearchDecisionCounter evicting = new(deck, hand, budget, applyCapacity: 1);
+            SearchDecisionCounter reference = new(deck, hand, new(CalculationWorkPolicy.Interactive));
+            List<CompiledEvent?> events = [null, new([new(BigInteger.One << 69, 2, 2)])];
+            for (int index = 0; index < 18; index++) {
+                CountBound[] bounds = Enumerable.Range(0, 3).Select(_ => {
+                    BigInteger mask = physical.Where(_ => random.Next(2) == 0)
+                        .Aggregate(BigInteger.Zero, (value, row) => value | (BigInteger.One << row));
+                    int minimum = random.Next(3);
+                    return new CountBound(mask, minimum, random.Next(minimum, 5));
+                }).ToArray();
+                events.Add(new(bounds));
+            }
+            events.Add(events[2]);
+            foreach (List<CompiledEvent?> subset in new[] { events.Take(8).ToList(), events, events.Skip(8).ToList(), events }) {
+                int root = evicting.Union(subset);
+                BigInteger expected = 0;
+                for (int selection = 0; selection < 1 << physical.Length; selection++) {
+                    if (BitOperations.PopCount((uint)selection) != hand) {
+                        continue;
+                    }
+                    if (subset.OfType<CompiledEvent>().Any(predicate => predicate.Constraints.All(bound => {
+                        int count = physical.Where((row, copy) => (selection & (1 << copy)) != 0
+                            && (bound.EligibleRows & (BigInteger.One << row)) != 0).Count();
+                        return count >= bound.MinCount && count <= bound.MaxCount;
+                    }))) {
+                        expected++;
+                    }
+                }
+                Assert.That(evicting.Count(root), Is.EqualTo(expected));
+                Assert.That(evicting.Count(root), Is.EqualTo(reference.Count(reference.Union(subset))));
+            }
+            Assert.That(evicting.Count(evicting.Union([new([])])), Is.EqualTo(reference.Count(1)));
+            if (hand > 0) {
+                Assert.That(diagnostics.Counts.GetValueOrDefault("primary/apply clears"), Is.GreaterThan(0));
+            }
+        }
+    }
+
+    [Test]
     public void SeededPredicateUnionsMatchLabeledHandsAtEverySize() {
         Random random = new(2042026);
         for (int trial = 0; trial < 80; trial++) {

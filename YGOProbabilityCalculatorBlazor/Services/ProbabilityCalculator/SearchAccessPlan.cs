@@ -248,6 +248,7 @@ internal sealed class SearchProbabilityCalculation(
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         using IDisposable? scenario = budget.SearchDiagnostics?.Measure("search scenarios");
         budget.SearchDiagnostics?.Add("scenarios");
+        budget.SearchDiagnostics?.BeginScenario();
         // Source variables first let each assignment's activation conditions
         // collapse before exploring target/role bounds. This reorders only the
         // final uniform sample; it cannot change draw or removal priorities.
@@ -280,6 +281,7 @@ internal sealed class SearchProbabilityCalculation(
         ScenarioConditioner conditioner = new(ordered.Count, randomCount, retained, budget, sparseFixedRows: template is not null);
         List<List<CompiledEvent?>> projected = events.Select(routes => routes.Select(conditioner.Project).ToList()).ToList();
         projection?.Dispose();
+        budget.SearchDiagnostics?.Predicates(projected.SelectMany(routes => routes));
         using IDisposable? construction = budget.SearchDiagnostics?.Measure("decision construction");
         SearchDecisionCounter counter = new(ordered, randomCount, budget);
         int[] roots = projected.Select(counter.Union).ToArray();

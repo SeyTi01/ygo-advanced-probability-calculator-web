@@ -17,6 +17,7 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 internal sealed partial class SearchDecisionCounter {
     private readonly WorkBudget _budget;
     private readonly int _handSize;
+    private readonly int _applyCapacity;
     private readonly bool _singleSample;
     private readonly int[] _copies;
     private readonly int[] _suffix;
@@ -30,10 +31,12 @@ internal sealed partial class SearchDecisionCounter {
     private long _countCells;
     private long _binomialCells;
 
-    internal SearchDecisionCounter(List<Card> rows, int handSize, WorkBudget budget)
-        : this(rows.Select(card => card.Copies).ToArray(), handSize, budget, true) { }
+    internal SearchDecisionCounter(List<Card> rows, int handSize, WorkBudget budget, int? applyCapacity = null)
+        : this(rows.Select(card => card.Copies).ToArray(), handSize, budget, true, applyCapacity) { }
 
-    internal SearchDecisionCounter(int[] domains, int domainLimit, WorkBudget budget, bool singleSample) {
+    internal SearchDecisionCounter(int[] domains, int domainLimit, WorkBudget budget, bool singleSample, int? applyCapacity = null) {
+        _applyCapacity = applyCapacity ?? (singleSample ? 32768 : 16384);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(_applyCapacity);
         _budget = budget;
         _handSize = domainLimit;
         _singleSample = singleSample;
@@ -132,6 +135,7 @@ internal sealed partial class SearchDecisionCounter {
             _budget.SearchDiagnostics?.Add("apply cache hits");
             return cached;
         }
+        _budget.SearchDiagnostics?.Visit("apply miss", key);
         Node first = _nodes[left];
         Node second = _nodes[right];
         int level = Math.Min(first.Level, second.Level);
@@ -145,9 +149,14 @@ internal sealed partial class SearchDecisionCounter {
             );
         }
         int result = Intern(level, children);
-        if (!_singleSample && _apply.Count == 16384) {
+        // Fast previously retained all Apply entries until Storage failed. A
+        // larger deferred pool can reach that boundary within one scenario.
+        // Keep successful smaller graphs unchanged; eviction affects only
+        // recomputation, never the immutable nodes or Boolean union.
+        if (_apply.Count == _applyCapacity) {
             _budget.Spend(_apply.Count);
             _apply.Clear();
+            _budget.SearchDiagnostics?.Add("apply clears");
         }
         _budget.CheckStorage(_apply.Count + 1, (_apply.Count + 1L) * 4);
         _apply.Add(key, result);
@@ -156,16 +165,19 @@ internal sealed partial class SearchDecisionCounter {
     }
 
     private int Intern(int level, int[] children) {
+        _budget.SearchDiagnostics?.Add("temporary child arrays");
         _budget.Spend(children.Length + 1L);
         bool identical = true;
         foreach (int child in children) {
             identical &= child == children[0];
         }
         if (identical) {
+            _budget.SearchDiagnostics?.Add("identical children");
             return children[0];
         }
         Node node = new(level, children);
         if (_unique.TryGetValue(node, out int existing)) {
+            _budget.SearchDiagnostics?.Add("intern hits");
             return existing;
         }
         _nodeCells += children.Length + 2L;
@@ -191,17 +203,24 @@ internal sealed partial class SearchDecisionCounter {
             return cached;
         }
         _budget.SearchDiagnostics?.Add("weighted count states");
+        _budget.SearchDiagnostics?.Visit("count miss", key);
         Node current = _nodes[node];
         BigInteger result = 0;
         if (level < current.Level) {
             int skipped = _suffix[level] - _suffix[current.Level];
             for (int take = Math.Max(0, left - _suffix[current.Level]); take <= Math.Min(left, skipped); take++) {
-                Add(Choose(skipped, take), Count(node, current.Level, left - take));
+                BigInteger count = Count(node, current.Level, left - take);
+                if (!count.IsZero) {
+                    Add(Choose(skipped, take), count);
+                }
             }
         }
         else {
             for (int take = Math.Max(0, left - _suffix[level + 1]); take <= Math.Min(left, _copies[level]); take++) {
-                Add(Choose(_copies[level], take), Count(current.Children[take], level + 1, left - take));
+                BigInteger count = Count(current.Children[take], level + 1, left - take);
+                if (!count.IsZero) {
+                    Add(Choose(_copies[level], take), count);
+                }
             }
         }
         // A saturated memo stops retaining results, never changes the count.
@@ -209,6 +228,9 @@ internal sealed partial class SearchDecisionCounter {
             _countCells += WorkBudget.IntegerCells(result) + 3;
             _budget.CheckStorage(_counts.Count + 1, _countCells);
             _counts.Add(key, result);
+        }
+        if (_counts.Count == 2048) {
+            _budget.SearchDiagnostics?.Add("count saturated visits");
         }
         return result;
 
@@ -224,6 +246,10 @@ internal sealed partial class SearchDecisionCounter {
         k = Math.Min(k, n - k);
         if (k < 0) {
             return 0;
+        }
+        // Includes C(n,n): no retained cache entry or arithmetic is needed.
+        if (k == 0) {
+            return BigInteger.One;
         }
         if (_binomials.TryGetValue((n, k), out BigInteger cached)) {
             return cached;

@@ -283,16 +283,16 @@ public sealed partial class SearchEffectsTest {
     }
 
     [Test]
-    public void FilteredDrawCostsKeepUnremovableSearchSourcesExplicit() {
+    public void FilteredDrawCostsDeferUnremovableSearchSources() {
         List<Card> deck = [Rota(), Warrior(), new([], id: "draw", drawCount: 1,
             preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(B)), Warrior(id: "second-target"), new([], 2, id: "blank")];
         List<Combo> combos = [new([new(A, 1, 2)], groupId: "g1"), new([new(Spell, 1, 2)], groupId: "g2")];
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
         PostDrawCalculation calculation = new(deck, 2, budget);
         calculation.CalculateSearch(combos, Groups, false, new(deck, budget));
-        // The old equality with no-search row counts was unsound: ROTA is an
-        // observable source even when a filtered cost cannot remove it.
-        Assert.That(calculation.DeferredRows, Is.EqualTo(0));
+        // ROTA cannot affect the draw trace here. Its original source identity
+        // is restored for search assignments in the conditional final pool.
+        Assert.That(calculation.DeferredRows, Is.EqualTo(2));
         Compare(deck, combos, 2);
     }
 

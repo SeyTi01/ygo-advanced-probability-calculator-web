@@ -49,7 +49,14 @@ internal sealed partial class PostDrawCalculation {
         // can still join the deferred pool when no removal can observe them.
         bool compactPhysical = physical && method == PhysicalEnumerationMethod.Auto && deferIdentities
             && cards.All(card => !card.EffectPlan.RequiresSearchResolution && (card.Search is null || card.MinimumHandSize == 0));
-        HashSet<string> observed = SearchPolicyObservedRows(cards, deferUnremovableSearchers: compactPhysical);
+        // The same whole-trace exchangeability proof applies to optimistic and
+        // lower counting: expand original source identities only in the final
+        // conditional pool. Bounded hand operations and activation restrictions
+        // retain their existing partition; removal material and observed targets
+        // remain explicit in DeferUnobservedIdentities.
+        bool compactFast = !physical && deferSearchers && cards.All(card => !card.EffectPlan.RequiresSearchResolution
+            && (card.Search is null || card.MinimumHandSize == 0));
+        HashSet<string> observed = SearchPolicyObservedRows(cards, deferUnremovableSearchers: compactPhysical || compactFast);
         List<Card> deferred = (!physical || compactPhysical) && deferIdentities ? DeferUnobservedIdentities(ref cards, observed) : [];
         compactPhysical &= deferred.Count > 0;
         Route = deferred.Count > 0 ? SolverRoute.SearchOrderedDeferred : SolverRoute.SearchOrdered;
@@ -142,7 +149,13 @@ internal sealed partial class PostDrawCalculation {
         // word preserves every row, including trailing zeros. Use the encoding
         // only when it actually retains fewer cells; weights remain unchanged.
         bool packed = compactSearchTerminals && copies <= byte.MaxValue && 1 + (n + 4) / 4 < n + 1;
-        Dictionary<State, BigInteger> terminal = resolver.Resolve<SearchTerminal>(handSize, copies, factorial, compactFrontierThreshold, packed);
+        Dictionary<State, BigInteger> terminal;
+        using (budget.SearchDiagnostics?.Measure("draw distribution")) {
+            terminal = resolver.Resolve<SearchTerminal>(handSize, copies, factorial, compactFrontierThreshold, packed);
+        }
+        budget.SearchDiagnostics?.Add("terminals", terminal.Count);
+        budget.SearchDiagnostics?.Add("reduced rows", n);
+        budget.SearchDiagnostics?.Add("deferred classes", deferred.Count);
         TerminalStates = terminal.Count;
 
         List<List<Card>> pools = cards.Select(card => identities[card.Id]).ToList();
@@ -327,6 +340,7 @@ internal sealed partial class PostDrawCalculation {
         bool declineSearch,
         bool useKnownLoss = true
     ) {
+        using IDisposable? stage = budget.SearchDiagnostics?.Stage(declineSearch ? "witness" : "lower");
         SearchCertificateState state = _searchCertificate
             ?? throw new InvalidOperationException("Missing completed ordered search distribution.");
         budget.Spend(4L * deck.Count + 3L * state.Cards.Count + 2L * state.Deferred.Count + 1);

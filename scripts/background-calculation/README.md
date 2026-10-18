@@ -1,5 +1,48 @@
 # Background calculation runtime
 
+## Search-counting throughput
+
+`SelectiveSurvivorTest.Export` writes the untouched `desires_trade_in.json`
+session and its eight equal-size controls to `YGO_SELECTIVE_FIXTURES`. Freeze
+that export once, alongside held-out inputs from `FastCertificateBenchmark`
+and `BoundedSearchBenchmark`; preserve each saved mode and effect plan.
+
+For opt-in measurement builds, externally include
+`search-throughput-benchmark-probe.cs` and define `ADAPTIVE_FAST`. Include only
+one benchmark probe at a time. `MeasureCertificate=true` measures initial
+Fast with its complete certificate, or explicit Exact according to the input
+mode; it does not measure the automatic browser opportunity. `Diagnose=true`
+adds per-stage phase/counter maps. Diagnostic maps and timings are deliberately
+outside normal execution and must not be used as latency/allocation evidence.
+Scenario times include their child phases; do not add inclusive times together.
+Both paired runners accept `Primary: true` on a frozen fixture to isolate the
+primary engine without certificate completion or a public accuracy contract.
+
+Compile `paired-search-throughput.cs` as a temporary `net10.0` console with
+implicit usings and nullable enabled. With `DOTNET_TieredCompilation=0`, pass
+baseline test-bin, candidate test-bin, frozen JSON, and output JSON. The default
+is two warmups and ten interleaved samples, retaining the first request separately.
+An optional fifth argument runs that many diagnostic observations without warmup;
+`YGO_DIAG=1` enables attribution. The runner checks all completed rational rows,
+full result contracts, requested modes, explicit Exact accuracy and certificate
+absence, and deterministic Work/Storage. GC collection counts exclude its explicit
+pre-request collections. Repeated roots share the existing scenario-local memo.
+
+`paired-search-throughput.cjs` takes the same four arguments, using optimized
+published `wwwroot` directories instead of test-bin directories. It requires
+Playwright (`NODE_PATH`) and optionally `YGO_BROWSER_EXECUTABLE`. Defaults match
+the native runner; `YGO_WARMUPS` and `YGO_SAMPLES` can set an explicitly reported
+sample count. Requests run sequentially. It records bootstrap, first requests,
+all samples and WASM capacity separately. Checked table payload, cumulative
+allocation, end-request managed heap, and WASM capacity are not peak browser
+memory. Run timing alone, without builds, tests or other active calculations.
+
+Afterward publish again without injected sources. Use
+`bounded-search-wire-smoke.cjs` to verify public-worker parity and export absence,
+and `known-loss-worker-smoke.cjs` for normal source-session import, initial Fast,
+automatic attempt/fallback and explicit Exact rendering. Keep probe and clean
+production evidence separate. Never commit generated benchmark output.
+
 ## Bounded-search performance comparison
 
 `BoundedSearchBenchmark.Export` is an explicit test that writes the complete
