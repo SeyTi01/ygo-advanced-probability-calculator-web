@@ -45,6 +45,7 @@ public sealed class BoundedEffectSessionTest {
             }
             JsonObject root = JsonNode.Parse(Codec().SerializeSession(new() { Cards = [old, old.Duplicate().WithDrawCount(2)], CalculationModel = mode }))!.AsObject();
             root["SchemaVersion"] = 8;
+            root.Remove("FastExecutionStrategy");
             SessionState saved = await Codec().LoadSessionAsync(root.ToJsonString());
             Assert.That(saved.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
             Assert.That(saved.CalculationModel, Is.EqualTo(mode));

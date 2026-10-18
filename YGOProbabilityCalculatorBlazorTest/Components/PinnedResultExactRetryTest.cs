@@ -77,11 +77,11 @@ public partial class PinnedResultTest {
         AssertPinUnchanged(previous);
         Assert.That(Accepted.Contract, Is.SameAs(physical.Contract));
         Assert.That(Accepted.Context.Model, Is.EqualTo(CalculationModel.Exact));
-        Assert.That(_cut.Find(".probability-results .result-accuracy").TextContent, Is.EqualTo("Mode: Effects — exact"));
+        Assert.That(_cut.Find(".probability-results .result-accuracy").TextContent, Is.EqualTo("Mode: Exact only"));
         Assert.That(_cut.FindAll(".exact-retry > button"), Is.Empty);
         Assert.That(_sessions.SerializeSession(FieldSession()), Is.EqualTo(saved));
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
-        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.Contain("Mode: Effects — exact"));
+        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.Contain("Mode: Exact only"));
         Assert.That(fast.Contract!.AutomaticExact, Is.EqualTo(AutomaticExactOutcome.Deadline));
         AssertNoComparisonUi();
         Task normal = Start();
@@ -141,7 +141,7 @@ public partial class PinnedResultTest {
         Assert.That(Accepted, Is.SameAs(fast));
         if (ending != "dispose") {
             AssertPinUnchanged(previous);
-            Assert.That(_cut.Find(".probability-results .result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
+            Assert.That(_cut.Find(".probability-results .result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
             Assert.That(_cut.FindAll(".probability-result-status").Count > 0, Is.EqualTo(ending == "edit"));
             Assert.That(_cut.FindAll(".exact-retry > button").Count, Is.EqualTo(ending == "edit" ? 0 : 1));
         }
@@ -165,7 +165,7 @@ public partial class PinnedResultTest {
         await _cut.Find("#calculationModel").ChangeAsync(new() { Value = mode.ToString() });
         await AcceptWithAccuracy(CalculationAccuracy.Exact, .5);
         Assert.That(_cut.FindAll(".exact-retry > button"), Is.Empty);
-        Assert.That(_cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {mode.Description()}"));
+        Assert.That(_cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {new PinnedCalculationContext(0, 0, 0, mode).ModeDescription}"));
     }
 
     [TestCase("invalid-value")]

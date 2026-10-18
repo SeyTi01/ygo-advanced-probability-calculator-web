@@ -68,5 +68,5 @@ public partial class ProbabilityCalculatorComponent {
         _cards,
         model,
         _drawActivationPriority
-    );
+    ) with { Strategy = model == CalculationModel.Fast ? _fastStrategy : FastExecutionStrategy.Progressive };
 }

@@ -21,6 +21,7 @@ public sealed class GroupedSelectorSessionTest {
         Card saved = source.WithEffect(source.EffectPlan with { Search = new(SelectorExpressionTest.Old) }, oldProfile);
         JsonObject raw = JsonNode.Parse(Codec().SerializeSession(new() { Cards = [saved], HandSize = 1 }))!.AsObject();
         raw["SchemaVersion"] = 6;
+        raw.Remove("FastExecutionStrategy");
         raw.Remove("CalculationModel");
         SessionState loaded = await Codec().LoadSessionAsync(raw.ToJsonString());
         Card retained = loaded.Cards.Single();

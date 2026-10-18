@@ -14,13 +14,13 @@ public sealed record ProbabilityDisplay(string Value, string Accuracy, string De
 // Presentation only. The optimistic primary can exceed the certified upper endpoint.
 public static class ProbabilityPresentation {
     public static string? AutomaticExactDetail(AutomaticExactOutcome? outcome) => outcome switch {
-        AutomaticExactOutcome.Completed => "Fast completed a physical Exact calculation within its automatic opportunity.",
-        AutomaticExactOutcome.Deadline => "The automatic Exact opportunity ended; the completed Fast result is retained. Select Effects — exact to allow more time.",
+        AutomaticExactOutcome.Completed => "Fast completed a physical Exact calculation.",
+        AutomaticExactOutcome.Deadline => "The automatic Exact opportunity ended; the completed Fast result is retained. Select Exact only to allow more time.",
         AutomaticExactOutcome.WorkLimit => "The automatic Exact attempt reached the remaining Work allowance; the completed Fast result is retained.",
         AutomaticExactOutcome.StorageLimit => "The automatic Exact attempt reached the Storage limit; the completed Fast result is retained.",
         AutomaticExactOutcome.Unsupported => "The automatic Exact route was unsupported; the completed Fast result is retained.",
         AutomaticExactOutcome.Error => "The automatic Exact attempt could not complete; the completed Fast result is retained.",
-        AutomaticExactOutcome.NoTime => "Fast completed after the automatic Exact opportunity; no additional attempt was started. Select Effects — exact to allow more time.",
+        AutomaticExactOutcome.NoTime => "Fast completed after the automatic Exact opportunity; no additional attempt was started. Select Exact only to allow more time.",
         _ => null
     };
 

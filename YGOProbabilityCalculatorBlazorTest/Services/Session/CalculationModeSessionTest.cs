@@ -18,6 +18,7 @@ public sealed class CalculationModeSessionTest {
             root["DrawEffectsEnabled"] = JsonNode.Parse(enabled);
         }
         SessionState loaded = await Codec().LoadSessionAsync(root.ToJsonString());
+        Assert.That(loaded.FastExecutionStrategy, Is.EqualTo(FastExecutionStrategy.Progressive));
         Assert.That(loaded.CalculationModel, Is.EqualTo(enabled == "false" ? CalculationModel.OpeningHand : CalculationModel.Fast));
         JsonObject saved = JsonNode.Parse(Codec().SerializeSession(loaded))!.AsObject();
         Assert.That(saved["SchemaVersion"]!.GetValue<int>(), Is.EqualTo(SessionState.CurrentSchemaVersion));

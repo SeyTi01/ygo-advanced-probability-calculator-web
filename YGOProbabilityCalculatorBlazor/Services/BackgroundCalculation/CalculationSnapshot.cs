@@ -11,6 +11,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 // A separate, version-local wire contract. Never use session persistence for worker messages.
 // The serialized value owns every nested input before the first asynchronous operation.
 public sealed record CalculationSnapshot(string Json) {
+    // Presentation policy only; never serialized into the mathematical worker input.
+    public bool AllowAutomaticExact { get; init; } = true;
     internal CalculationModel RequestedMode {
         get {
             using JsonDocument document = JsonDocument.Parse(Json);

@@ -640,7 +640,7 @@ public partial class PinnedResultTest {
             await Pin();
         }
         string expected = "Previous result — current inputs have changed.\n" + ProbabilityResultSummaryFormatter.Format(
-            _cut.FindComponent<ProbabilityResultExport>().Instance.Result!, 5, CultureInfo.GetCultureInfo("en-US"));
+            _cut.FindComponent<ProbabilityResultExport>().Instance.Result!, 5, CultureInfo.GetCultureInfo("en-US"), "Progressive");
         // Even mutation of the _worker's returned lists cannot alter accepted display/export rows.
         ((List<ComboProbabilityResult>)original.ComboProbabilities).Clear();
         ((List<GroupProbabilityResult>)original.GroupProbabilities!).Clear();
@@ -673,7 +673,7 @@ public partial class PinnedResultTest {
         await Accept(.842);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
         string fresh = (string)_clipboard.Invocations["copyText"].Last().Arguments[0]!;
-        Assert.That(fresh, Does.StartWith("Probability results\nMode: Effects — fast").And.Contain("Hand size: 6\nAny active combo: 84.20%"));
+        Assert.That(fresh, Does.StartWith("Probability results\nMode: Progressive").And.Contain("Hand size: 6\nAny active combo: 84.20%"));
         Assert.That(fresh, Does.Contain("Edited route").And.Not.Contain("Previous result"));
     }
 
@@ -710,7 +710,7 @@ public partial class PinnedResultTest {
         Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
         await Accept(.842);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
-        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.StartWith("Probability results\nMode: Effects — fast").And.Contain("Hand size: 6\nAny active combo: 84.20%"));
+        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.StartWith("Probability results\nMode: Progressive").And.Contain("Hand size: 6\nAny active combo: 84.20%"));
         string? shared = _cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         Assert.That(shared, Is.EqualTo(_sessions.SerializeSession(FieldSession())));
         Assert.That(shared, Does.Not.Contain("acceptedResultSnapshot").And.Not.Contain("pinnedResult").And.Not.Contain("Previous result").And.Not.Contain("84.20%"));

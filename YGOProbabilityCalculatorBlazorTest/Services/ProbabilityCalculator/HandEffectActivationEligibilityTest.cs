@@ -98,6 +98,7 @@ public sealed class HandEffectActivationEligibilityTest {
             effectProfile: new(EffectSource.BuiltIn, 93946239, 1, "Draw 1", EffectSupport.Partial, "Minimum hand size is not checked."));
         System.Text.Json.Nodes.JsonObject oldRoot = System.Text.Json.Nodes.JsonNode.Parse(codec.SerializeSession(new() { Cards = [old] }))!.AsObject();
         oldRoot["SchemaVersion"] = 8;
+        oldRoot.Remove("FastExecutionStrategy");
         string oldJson = oldRoot.ToJsonString();
         Card loaded = (await codec.LoadSessionAsync(oldJson)).Cards[0];
         Assert.That(loaded.EffectPlan, Is.EqualTo(old.EffectPlan));

@@ -1,7 +1,7 @@
 namespace YGOProbabilityCalculatorBlazor.Models;
 
 public class SessionState {
-    public const int CurrentSchemaVersion = 10;
+    public const int CurrentSchemaVersion = 11;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public List<CategoryBase> Categories { get; init; } = [];
@@ -10,6 +10,7 @@ public class SessionState {
     public List<ComboGroup> ComboGroups { get; init; } = [];
     public int HandSize { get; init; }
     public CalculationModel CalculationModel { get; init; } = CalculationModel.Fast;
+    public FastExecutionStrategy FastExecutionStrategy { get; init; } = FastExecutionStrategy.Progressive;
     public DrawActivationPriority DrawActivationPriority { get; init; } = DrawActivationPriority.Default;
     public Dictionary<string, int> CategoryColorIndices { get; init; } = new(StringComparer.Ordinal);
 }

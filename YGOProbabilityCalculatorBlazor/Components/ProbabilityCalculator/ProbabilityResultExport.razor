@@ -205,7 +205,7 @@
         CultureInfo culture = CultureInfo.CurrentCulture;
         long version = _validityVersion;
         long attemptVersion = ++_copyAttemptVersion;
-        string summary = ProbabilityResultSummaryFormatter.Format(result, handSize, culture);
+        string summary = ProbabilityResultSummaryFormatter.Format(result, handSize, culture, ModelDescription);
 
         if (result.Contract is null && ModelDescription is { } model) {
             summary = model + "\n" + summary;

@@ -42,7 +42,7 @@
                        @bind:after="OnHandSizeChanged"
                        min="1"/>
             </div>
-            <CalculationSettingsMenu Model="SelectedModel" ModelChanged="OnModelChanged"
+            <CalculationSettingsMenu Model="SelectedModel" ModelChanged="OnModelChanged" Strategy="_fastStrategy" StrategyChanged="OnStrategyChanged"
                                       Priority="_drawActivationPriority" PriorityChanged="OnDrawActivationPriorityChanged" Cards="_cards"
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
@@ -242,12 +242,12 @@
                     </button>
                     <span id="pinUnavailableReason" class="visually-hidden">@PinUnavailableReason</span>
                     <ProbabilityResultExport Result="result"
-                                             ModelDescription="@(_acceptedResultSnapshot?.Context.Model.Description())"
+                                             ModelDescription="@(_acceptedResultSnapshot?.Context.ModeDescription)"
                                              HandSize="@(_acceptedResultSnapshot?.Context.HandSize ?? 0)"
                                              IsStale="_calculationResultIsStale"
                                              IsCalculating="_isCalculating" />
                 </div>
-                <CalculationAccuracyResult Contract="result.Contract" />
+                <CalculationAccuracyResult Contract="result.Contract" ModeDescription="@(_acceptedResultSnapshot?.Context.ModeDescription)" />
 
                 @if (_acceptedResultSnapshot is { } accepted) {
                     <p class="small text-body-secondary mb-2 result-model">@accepted.Context.Description</p>
@@ -370,6 +370,7 @@
     private int _categoryRenameVersion;
     private CategoryRenameNotice? _categoryRename;
     private int _handSize = 5;
+    private FastExecutionStrategy _fastStrategy;
     private CalculationModel _selectedModel = CalculationModel.Fast;
     private DrawActivationPriority _drawActivationPriority = DrawActivationPriority.Default;
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
@@ -907,6 +908,7 @@
                 new(_drawActivationPriority, Mode: model),
                 _categoryBases
             );
+            snapshot = snapshot with { AllowAutomaticExact = _fastStrategy == FastExecutionStrategy.Progressive };
             PinnedCalculationContext resultContext = CaptureResultContext(model);
             void Accept(ProbabilityCalculationResult result) {
                 ProbabilityCalculationResult acceptedResult = result with {
@@ -1002,6 +1004,14 @@
 
     private void OnHandSizeChanged() => InvalidateCalculation();
 
+    private void OnStrategyChanged(FastExecutionStrategy strategy) {
+        if (_fastStrategy == strategy) {
+            return;
+        }
+        _fastStrategy = strategy;
+        InvalidateCalculation();
+    }
+
     private void OnModelChanged(CalculationModel model) {
         if (!Enum.IsDefined(model)) {
             throw new ArgumentOutOfRangeException(nameof(model));
@@ -1011,6 +1021,9 @@
         }
 
         _selectedModel = model;
+        if (model != CalculationModel.Fast) {
+            _fastStrategy = FastExecutionStrategy.Progressive;
+        }
         InvalidateCalculation();
     }
 

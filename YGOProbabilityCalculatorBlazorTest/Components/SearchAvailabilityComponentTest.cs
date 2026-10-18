@@ -34,13 +34,13 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         string saved = context.Services.GetRequiredService<ISessionService>().SerializeSession(session);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".calculation-settings-menu input[type=checkbox]"), Is.Empty);
-        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
         ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
         string copied = ProbabilityResultSummaryFormatter.Format(accepted, 2, CultureInfo.InvariantCulture);
         Assert.That(copied, Does.Contain("fixed modeled draw/removal policy (v1)").And.Contain("Routes").And.Contain("Target").And.Contain("rational endpoints"));
         await Button(cut, "Pin result").ClickAsync(new());
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.SearchAvailability, Is.SameAs(accepted.SearchAvailability));
-        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
         Assert.That(cut.FindAll(".probability-group-members .combo-probability-item"), Is.Not.Empty);
         Assert.That(cut.FindAll(".probability-ungrouped-combos .combo-probability-item"), Is.Not.Empty);
         string[] currentUncertainty = cut.FindAll(".probability-results .probability-uncertainty")
@@ -165,7 +165,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
         AssertNoComparisonUi(cut);
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {CalculationModel.OpeningHand.Description()}"));
-        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo($"Mode: {CalculationModel.Fast.Description()}"));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
         Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
         Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
@@ -185,7 +185,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         await Button(cut, "Calculate").ClickAsync(new());
         ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
-        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
         Assert.That(accepted.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "2")));
         await Button(cut, "Pin result").ClickAsync(new());
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
@@ -221,7 +221,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.FindAll(".search-availability table"), Is.Empty);
         await cut.Find("button[title='Copy results']").ClickAsync(new());
         string copied = (string)context.JSInterop.Invocations["copyText"].Last().Arguments[0]!;
-        Assert.That(copied, Does.Contain("Effects — exact").And.Not.Contain("Previous result"));
+        Assert.That(copied, Does.Contain("Exact only").And.Not.Contain("Previous result"));
         await cut.Find("#handSize").ChangeAsync(new() { Value = "2" });
         AssertPreviousResult(cut);
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract, Is.SameAs(exact.Contract));
@@ -242,13 +242,13 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
             .ToArray();
         Assert.That(pinnedUncertainty, Is.EqualTo(currentUncertainty));
         Assert.That(currentUncertainty, Does.Contain("±0%").And.Not.All.EqualTo("±0%"));
-        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
-        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
         await cut.Find("button[title='Copy results']").ClickAsync(new());
         string copied = (string)context.JSInterop.Invocations["copyText"].Last().Arguments[0]!;
-        Assert.That(copied, Does.Contain("Mode: Effects — fast").And.Contain("Previous result").And.Contain("contract v1"));
-        Assert.That(copied, Does.Not.Contain("Mode: Effects — exact"));
+        Assert.That(copied, Does.Contain("Mode: Progressive").And.Contain("Previous result").And.Contain("contract v1"));
+        Assert.That(copied, Does.Not.Contain("Mode: Exact only"));
     }
 
     private static void AssertNoComparisonUi(IRenderedFragment cut) {
