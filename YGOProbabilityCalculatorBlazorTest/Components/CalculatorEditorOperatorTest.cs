@@ -11,85 +11,89 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
     [Test]
-    public async Task ComboConnectorOpensOneGroupedFormAndCancelEscapeDoNotPublish() {
+    public async Task ConnectorsCommitImmediatelyAndKeepSeparateCopyAndSameCardMeaningDistinct() {
+        List<Card> deck = [new([a, b], 1, "Both"), new([], 1, "Neither")];
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
-            Categories = [a, b], Cards = [new([a, b], 1, "Both"), new([], 1, "Neither")],
-            Combos = [new([new(a, 1, 1), new(b, 1, 1)])], HandSize = 1
+            Categories = [a, b], Cards = deck, Combos = [new([new(a, 1, 1), new(b, 1, 1)])], HandSize = 1
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        Combo original = editor.Instance.Combo;
-        Assert.That(editor.FindAll(".expression-operator option").Select(option => option.TextContent), Is.EqualTo(new[] { "+", "AND", "OR" }));
+        Assert.That(SmallDeckOracle.EnumerateProbability(deck, [editor.Instance.Combo], 1), Is.Zero);
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "AND" });
-        Assert.That(editor.FindAll(".bounded-condition"), Has.Count.EqualTo(2));
-        Assert.That(editor.FindAll("form"), Has.Count.EqualTo(1));
-        await editor.Find("[aria-label='Condition 1 minimum']").InputAsync(new() { Value = "0" });
-        await editor.Find("form").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
-        Assert.That(editor.Instance.Combo, Is.SameAs(original));
-        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "AND" });
-        await Button(editor, "Save group").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories.Single().CategoryBases.Select(category => category.Name), Is.EqualTo(new[] { "A", "B" }));
-        Assert.That(editor.Find(".combo-header-requirements .same-card-group").TextContent, Does.Contain("AND").And.Contain("(").And.Contain(")"));
-        double probability = context.Services.GetRequiredService<IProbabilityCalculatorService>()
-            .CalculateProbabilityForCombos(cut.FindComponents<CardEditor>().Select(component => component.Instance.Card).ToList(), [editor.Instance.Combo], 1);
-        Assert.That(probability, Is.EqualTo(.5));
+        Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
+        Assert.That(SmallDeckOracle.EnumerateProbability(deck, [editor.Instance.Combo], 1), Is.EqualTo(.5));
         await EditRequirement(editor, "category:0");
-        await editor.Find(".property-edit-list .expression-operator").ChangeAsync(new() { Value = "+" });
-        await Button(editor, "Save group").ClickAsync(new());
-        Assert.That(editor.Instance.Combo.Categories, Has.Count.EqualTo(2));
-        Assert.That(context.Services.GetRequiredService<IProbabilityCalculatorService>()
-            .CalculateProbabilityForCombos(cut.FindComponents<CardEditor>().Select(component => component.Instance.Card).ToList(), [editor.Instance.Combo], 1), Is.Zero);
+        Assert.That(editor.FindAll(".property-edit-list option").Select(option => option.TextContent), Does.Not.Contain("+"));
+        await editor.Find(".requirement-interactive-summary .expression-operator").ChangeAsync(new() { Value = "OR" });
+        Assert.That(editor.Instance.Combo.Categories, Is.Empty);
+        Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives, Has.Count.EqualTo(2));
+        Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
+        Assert.That(editor.Markup, Does.Not.Contain("Edit group").And.Not.Contain("Save group"));
     }
 
     [Test]
-    public async Task WholeOrGroupRetainsOperandBoundsAndAllowsRepairingAnUnsupportedAnd() {
+    public async Task UnsupportedAndStaysAtConnectorUntilIndividualBoundsAreRepaired() {
         ComboAlternativeGroup group = new([ComboAlternative.For(new ComboCategory(a, 0, 0)), ComboAlternative.For(new ComboCategory(b, 1, 2))]);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [new([], alternativeGroups: [group])] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         Combo original = editor.Instance.Combo;
-        await Button(editor, "Edit group").ClickAsync(new());
-        Assert.That(editor.FindAll(".bounded-condition"), Has.Count.EqualTo(2));
-        await editor.Find(".bounded-condition-group .expression-operator").ChangeAsync(new() { Value = "AND" });
-        await Button(editor, "Save group").ClickAsync(new());
+        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "AND" });
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
-        Assert.That(editor.Find("[role=alert]").TextContent, Does.Contain("matching bounds"));
-        await editor.Find("[aria-label='Condition 2 minimum']").InputAsync(new() { Value = "0" });
-        await editor.Find("[aria-label='Condition 2 maximum']").InputAsync(new() { Value = "0" });
-        await Button(editor, "Save group").ClickAsync(new());
+        Assert.That(editor.Find(".alternative-separator [role=alert]").TextContent, Does.Contain("matching bounds"));
+        Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
+        await EditRequirement(editor, "alternative:0:1");
+        await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
+        await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
+        await Button(editor, "Save").ClickAsync(new());
+        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "AND" });
         Assert.That(editor.Instance.Combo.Categories.Single().MinCount, Is.Zero);
         Assert.That(editor.Instance.Combo.Categories.Single().MaxCount, Is.Zero);
     }
 
-    [Test]
-    public async Task GroupDraftKeepsBoundsAndPropertiesAcrossCategoryRename() {
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [new([new(a, 1, 2), new(b, 1, 2)])] });
-        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
-        await editor.Find("[aria-label='Condition 1 minimum']").InputAsync(new() { Value = "0" });
-        await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
-        await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Z" });
-        await cut.Find("[aria-label='Save category name']").ClickAsync(new());
-        Assert.That(editor.Find("[aria-label='Condition 1 minimum']").GetAttribute("value"), Is.EqualTo("0"));
-        Assert.That(editor.Find("[aria-label='Condition 1 target']").GetAttribute("value"), Is.EqualTo("user:Z"));
-        await Button(editor, "Save group").ClickAsync(new());
-        ComboCategory first = editor.Instance.Combo.AlternativeGroups.Single().Alternatives[0].Category!;
-        Assert.That(first.BaseCategory.Name, Is.EqualTo("Z"));
-        Assert.That(first.MinCount, Is.Zero);
-    }
-
-    [Test]
-    public async Task OpeningAndCancellingAGroupedFormPreservesTheOrdinaryAddDraft() {
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [new([new(a, 1, 2), new(b, 1, 2)])] });
+    [TestCase("category:0")]
+    [TestCase("alternative:0:0")]
+    public async Task RepeatClickSiblingSwitchCancelAndEscapeNeverCommitHiddenEdits(string key) {
+        Combo original = new([new(a, 1, 2), new(b, 1, 2)], alternativeGroups: [new([
+            ComboAlternative.For(ComboCategory.SameCard([a, b], 1, 2)), ComboAlternative.For(new ComboCategory(b, 0, 0))])]);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [original] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "4" });
-        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
-        await Button(editor, "Cancel").ClickAsync(new());
-        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
+        await EditRequirement(editor, key);
+        await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
+        await EditRequirement(editor, key);
+        Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
-        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
+        await EditRequirement(editor, key);
+        await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
+        await EditRequirement(editor, "category:1");
+        Assert.That(editor.FindAll(".requirement-row form"), Has.Count.EqualTo(1));
+        await Button(editor, "Cancel").ClickAsync(new());
+        await EditRequirement(editor, key);
+        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("1"));
+        await editor.Find("#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
+        Assert.That(editor.Instance.Combo, Is.SameAs(original));
+        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(editor.FindAll(".requirement-edit[aria-expanded=true]"), Is.Empty);
     }
 
+    [Test]
+    public async Task ConversionRetainsOrdinaryAndUnrelatedInvalidRowDrafts() {
+        CategoryBase c = new("C");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b, c], Combos = [new([new(a, 1, 2), new(b, 1, 2), new(c, 1, 3)])] });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
+        await EditRequirement(editor, "category:2");
+        await editor.Find("#minCount0").InputAsync(new() { Value = "" });
+        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
+        Assert.That(editor.Instance.Combo.AlternativeGroups, Has.Count.EqualTo(1));
+        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.Empty);
+        Assert.That(editor.Find(".requirement-edit[aria-expanded=true]").GetAttribute("data-requirement"), Is.EqualTo("category:0"));
+        await Button(editor, "Cancel").ClickAsync(new());
+        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
+    }
     [Test]
     public async Task SelectorAndPropertyRuleConnectorsOfferOnlyAndOrAndRespectCancel() {
         CategoryBase monster = new("Monster", CategorySource.Metadata, "kind:monster");
@@ -169,8 +173,7 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".requirement-list > .requirement-and-separator select").ChangeAsync(new() { Value = "OR" });
-        Assert.That(editor.FindAll(".bounded-condition"), Has.Count.EqualTo(3));
-        await Button(editor, "Save group").ClickAsync(new());
+        Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
         IReadOnlyList<ComboAlternative> saved = editor.Instance.Combo.AlternativeGroups.Single().Alternatives;
         Assert.That(saved[0].Category!.MinCount, Is.Zero);
         Assert.That(saved[0].Category!.MaxCount, Is.Zero);

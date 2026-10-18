@@ -28,18 +28,18 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
             "requirement-row", "requirement-and-separator", "requirement-row", "requirement-and-separator",
             "requirement-or-group", "requirement-and-separator", "requirement-or-group"
         }));
-        foreach (IElement separator in requirements.QuerySelectorAll(".requirement-and-separator")) {
+        foreach (IElement separator in requirements.Children.Where(element => element.ClassList.Contains("requirement-and-separator"))) {
             Assert.That(separator.QuerySelector("select")!.GetAttribute("value"), Is.EqualTo("+"));
             Assert.That(separator.GetAttribute("aria-label"), Is.EqualTo("+: separate card requirements"));
         }
         foreach (IElement group in requirements.QuerySelectorAll(".requirement-or-group")) {
             Assert.That(group.QuerySelectorAll(".requirement-row"), Has.Length.EqualTo(2));
             Assert.That(group.QuerySelector(".alternative-separator select")!.GetAttribute("value"), Is.EqualTo("OR"));
-            Assert.That(group.QuerySelectorAll(".requirement-and-separator"), Is.Empty);
+            Assert.That(group.Children.Where(element => element.ClassList.Contains("requirement-and-separator")), Is.Empty);
         }
         await EditRequirement(editor, "category:0");
         await Button(editor, "Remove requirement").ClickAsync(new());
-        Assert.That(requirements.QuerySelectorAll(".requirement-and-separator"), Has.Length.EqualTo(2));
+        Assert.That(requirements.Children.Count(element => element.ClassList.Contains("requirement-and-separator")), Is.EqualTo(2));
         Assert.That(requirements.Children[1].ClassName, Is.EqualTo("requirement-row"));
         Assert.That(editor.FindAll(".requirement-or-group"), Has.Count.EqualTo(2));
     }
@@ -183,7 +183,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         Assert.That(editor.Find(".requirement-or-group").GetAttribute("aria-label"), Is.EqualTo("Alternative group 1"));
         Assert.That(editor.Find(".requirement-or-group .alternative-separator select").GetAttribute("value"), Is.EqualTo("OR"));
-        Assert.That(editor.Find(".requirement-or-group .same-card-and").TextContent, Is.EqualTo("AND"));
+        Assert.That(editor.Find(".requirement-or-group .same-card-group .expression-operator").GetAttribute("value"), Is.EqualTo("AND"));
         Assert.That(editor.FindAll(".combo-header-content .composite-alternative"), Has.Count.EqualTo(1));
         foreach (IElement expression in editor.FindAll(".combo-header-content .alternative-group, .combo-header-content .composite-alternative")) {
             IElement[] parentheses = expression.Children.Where(element => element.ClassList.Contains("expression-parenthesis")).ToArray();

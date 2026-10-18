@@ -78,10 +78,6 @@
                     <p class="requirement-explanation text-body-secondary">Match every requirement. Required card copies cannot be shared between requirements.</p>
                 }
                 @foreach (ComboRequirementPosition position in Combo.RequirementOrder) {
-                    @if (_boundedPositions?.Contains(position) == true) {
-                        @if (position == _boundedPositions.Last()) { @BoundedGroupForm() }
-                        continue;
-                    }
                     @if (position != Combo.RequirementOrder[0]) { @RequirementSeparator(position) }
                     @if (position.Kind == ComboRequirementKind.Category) {
                         @RequirementRow(ComboAlternative.For(Combo.Categories[position.Index]), position.Index, null)
@@ -91,19 +87,20 @@
                     }
                     else {
                         int groupIndex = position.Index;
+                        string groupKey = $"group:{groupIndex}";
                         ComboAlternativeGroup group = Combo.AlternativeGroups[groupIndex];
                         <ExpressionGroup Label="@($"Alternative group {groupIndex + 1}")">
-                            <button type="button" class="btn btn-sm btn-link p-0" @onclick="() => BeginBoundedGroup(groupIndex)">Edit group</button>
                             @for (int leafIndex = 0; leafIndex < group.Alternatives.Count; leafIndex++) {
                                 int currentLeafIndex = leafIndex;
-                                @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" AllowedOperators="ComboOperators" OnOperatorChanged="operation => BeginBoundedGroup(groupIndex, operation)" /> }
+                                @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" Error="@ConnectorError(groupKey)" @ref="_connectors[groupKey]" OnOperatorChanged="operation => ChangeGroupOperator(groupIndex, operation)" /> }
                                 @RequirementRow(group.Alternatives[currentLeafIndex], currentLeafIndex, groupIndex)
                             }
                         </ExpressionGroup>
                     }
                 }
             </div>
-            @if (!AuthoringScope && _editingRequirement is null && _boundedPositions is null) {
+            <button type="button" class="btn btn-sm btn-outline-secondary add-top-level-group" title="Add a separate-copy requirement" @onclick="BeginTopLevelRequirement">+ Add group</button>
+            @if (!AuthoringScope && _editingRequirement is null) {
                 @RequirementForm()
             }
 
@@ -126,26 +123,49 @@
 </div>
 
 @code {
-    private RenderFragment RequirementSeparator(ComboRequirementPosition right) => @<ExpressionSeparator Operator="AND" Symbol="+" AllowedOperators="ComboOperators" OnOperatorChanged="operation => BeginPeerConversion(right, operation)" />;
+    private RenderFragment RequirementSeparator(ComboRequirementPosition right) => @<ExpressionSeparator Operator="AND" Symbol="+" AllowedOperators="ComboOperators" Error="@(ConnectorError($"peer:{right}"))" OnOperatorChanged="operation => BeginPeerConversion(right, operation)" />;
 
     private RenderFragment RequirementRow(ComboAlternative requirement, int index, int? groupIndex) => @<ExpressionRow
-        Label="@($"Edit {AlternativeTargetLabel(requirement)}")" Expanded="IsOpenRow(requirement, index, groupIndex)"
+        @key="RowIdentity(requirement, index, groupIndex)" Label="@($"Edit {AlternativeTargetLabel(requirement)}")" Expanded="IsOpenRow(requirement, index, groupIndex)"
+        InteractiveSummary="@(requirement.Category?.CategoryBases.Count > 1)"
         @ref="_rowButtons[RowKey(requirement, index, groupIndex)]" data-requirement="@RowKey(requirement, index, groupIndex)"
         OnEdit="() => BeginEdit(requirement, index, groupIndex)">
         <ChildContent>
-            @if (requirement.Category is { } category) { @CategoryBadge(category) }
+            @if (requirement.Category is { } category) { @CategoryBadge(category, operation => ConvertSameCard(requirement, index, groupIndex, operation), ConnectorError($"same:{RowKey(requirement, index, groupIndex)}")) }
             else { @CardBadge(requirement.Card!) }
         </ChildContent>
+        <Controls>
+            @MemberPicker(groupIndex is int group && index == 0 ? $"Add condition to OR group {group + 1}" : $"Add condition to {RowKey(requirement, index, groupIndex)}", requirement.Category is not null,
+                target => InsertRowMember(requirement, index, groupIndex, target))
+            @if (ConnectorError(RowKey(requirement, index, groupIndex)) is { } insertionError) {
+                <small class="text-danger" role="alert">@insertionError</small>
+            }
+        </Controls>
         <EditorContent>
             @if (IsOpenRow(requirement, index, groupIndex)) { @RequirementForm() }
         </EditorContent>
     </ExpressionRow>;
 
+    private RenderFragment MemberPicker(string label, bool allowAnd, Func<string, Task> insert) => @<select
+        class="form-select form-select-sm inline-member-picker" aria-label="@label" title="@label"
+        @bind:get="string.Empty" @bind:set="insert">
+        <option value="">Add…</option>
+        @if (allowAnd) {
+            <optgroup label="AND · same card">
+                @foreach (CategoryBase property in _availableCategories) { <option value="@($"AND|{property.Identity}")">@property.Name</option> }
+            </optgroup>
+        }
+        <optgroup label="OR · alternative">
+            @foreach (Card card in AlphabeticalCards) { <option value="@($"card:{card.Id}")">@CardSelectionLabel(card.Id)</option> }
+            @foreach (CategoryBase category in _availableCategories) { <option value="@category.Identity">@category.Name</option> }
+        </optgroup>
+    </select>;
+
     private RenderFragment RequirementForm() => @<ExpressionForm OnSubmit="AddConstraint" OnKeyDown="HandleRequirementKeyDown">
         <div class="requirement-form-heading">
             <strong>@(_editingRequirement is not null ? "Edit requirement" : AndScope ? "Another property · same card" : AlternativeScope ? "Add an alternative · OR" : "Add requirement")</strong>
             @if (AuthoringScope || _editingRequirement is not null) {
-                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelScopedAuthoring">Cancel</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelRequirement">Cancel</button>
             }
         </div>
         @if (AuthoringScope) {
@@ -155,7 +175,7 @@
             <div class="property-edit-list" role="group" aria-label="Properties on the same card">
                 @for (int propertyIndex = 0; propertyIndex < _draftProperties.Count; propertyIndex++) {
                     int currentProperty = propertyIndex;
-                    @if (propertyIndex > 0) { <ExpressionSeparator Operator="AND" AllowedOperators="ComboOperators" OnOperatorChanged="BeginSameCardConversion" /> }
+                    @if (propertyIndex > 0) { <ExpressionSeparator Operator="AND" /> }
                     <div class="property-edit-row">
                         <select class="form-select" aria-label="@($"Same-card property {currentProperty + 1}")"
                                 value="@_draftProperties[currentProperty].Identity"
@@ -333,13 +353,16 @@
         return $"{subject} ({AlternativeRange(alternative)})";
     }
 
-    private RenderFragment CategoryBadge(ComboCategory category) => @<span class="@(category.CategoryBases.Count > 1 ? "composite-alternative same-card-group" : null)">
+    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, string? operatorError = null) => @<span class="@(category.CategoryBases.Count > 1 ? "composite-alternative same-card-group" : null)">
         @if (category.CategoryBases.Count > 1) { @ExpressionParenthesis(true) }
         <span class="same-card-category">
         @for (int index = 0; index < category.CategoryBases.Count; index++) {
             CategoryBase conjunct = category.CategoryBases[index];
             <span @key="conjunct.Identity" class="same-card-conjunct">
-                @if (index > 0) { <span class="same-card-and">AND</span> }
+                @if (index > 0) {
+                    @if (changeOperator is not null) { <span class="same-card-and" @onclick:stopPropagation><ExpressionSeparator Operator="AND" Error="@operatorError" OnOperatorChanged="changeOperator" /></span> }
+                    else { <span class="same-card-and">AND</span> }
+                }
                 <span class="badge category-tag @CategoryCssClass(conjunct)" title="@(conjunct.Source == CategorySource.Metadata ? "Card property" : null)">
                     @conjunct.Name
                     @if (index == category.CategoryBases.Count - 1) {
@@ -384,6 +407,8 @@
     </span>;
 
     private void CancelScopedAuthoring() {
+        _connectorErrorKey = null;
+        _connectorError = null;
         _focusAlternativeEntry = true;
         _editingRequirement = null;
         _editingIndex = null;
@@ -909,6 +934,12 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_focusConnector is { } connectorKey) {
+            _focusConnector = null;
+            if (_connectors.TryGetValue(connectorKey, out ExpressionSeparator? connector)) {
+                await connector.FocusAsync();
+            }
+        }
         if (_focusMinimum) {
             _focusMinimum = false;
             await _minimumInput.FocusAsync();
@@ -918,7 +949,7 @@
             _focusAlternativeEntry = false;
             if (_returnRowKey is { } key && _rowButtons.TryGetValue(key, out ExpressionRow? button) && RowExists(key)) {
                 _returnRowKey = null;
-                await button.FocusAsync();
+                await button.FocusAsync(preventScroll: true);
             }
             else {
                 await _alternativeEntryTarget.FocusAsync();
@@ -983,7 +1014,6 @@
             CancelScopedAuthoring();
         }
         ReconcileEditingRequirement();
-        if (_boundedPositions is not null) { ReconcileBoundedGroup(); }
         _previousCombo = Combo;
 
         // Hand size affects effective bounds only; leave committed values and drafts intact.

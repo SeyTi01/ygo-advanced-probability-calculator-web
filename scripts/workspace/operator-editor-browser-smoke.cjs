@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { chromium } = require('playwright');
+const { chromium, firefox } = require('playwright');
 
 const base = process.argv[2] || 'http://127.0.0.1:5098';
 const evidence = process.env.OPERATOR_SCREENSHOTS || path.resolve(__dirname, '../../packages/operator-browser-publish/evidence');
@@ -47,19 +47,29 @@ const session = () => ({
 });
 
 (async () => {
-    const browser = await chromium.launch({ channel: 'msedge', headless: true });
+    const useFirefox = process.env.OPERATOR_BROWSER === 'firefox';
+    const browser = await (useFirefox ? firefox.launch({ headless: true }) : chromium.launch({ channel: 'msedge', headless: true }));
     try {
-        const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, hasTouch: true });
+        const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, hasTouch: !useFirefox });
+        const activate = locator => useFirefox ? locator.click() : locator.tap();
         const pageErrors = [];
         page.on('pageerror', error => pageErrors.push(error.message));
         await page.addInitScript(() => { window.showSaveFilePicker = undefined; });
         await page.goto(base);
-        await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
+        await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor({ timeout: 60000 }).catch(async error => {
+            console.error('App startup diagnostics:', pageErrors, await page.locator('body').innerText());
+            throw error;
+        });
         await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
 
         const capture = async name => {
             await fs.mkdir(evidence, { recursive: true });
-            await page.screenshot({ path: path.join(evidence, `${name}.png`), fullPage: true, animations: 'disabled' });
+            if (name.startsWith('inline-combo')) {
+                await page.locator('.combo-editor').first().screenshot({ path: path.join(evidence, `${name}.png`), animations: 'disabled' });
+            }
+            else {
+                await page.screenshot({ path: path.join(evidence, `${name}.png`), fullPage: true, animations: 'disabled' });
+            }
         };
         const load = async value => {
             await page.locator('#sessionFileInput').setInputFiles({
@@ -126,123 +136,112 @@ const session = () => ({
         await missingTarget.press('Escape');
         assert.equal(await missingRow.evaluate(element => element === document.activeElement), true, 'Escape restores focus to the edited missing-card row');
 
-        // Change the first native + selector by keyboard. AND combines only the two category requirements.
+        // Native connector changes commit immediately, with no secondary form.
         const firstConnector = combo.locator('.requirement-list > .requirement-and-separator select').first();
         await firstConnector.focus();
         await firstConnector.press('ArrowDown');
-        const grouped = combo.locator('.bounded-condition-group');
-        const groupedForm = () => grouped.locator('xpath=..');
-        await grouped.waitFor();
-        assert.equal(await grouped.locator('.bounded-condition').count(), 2);
-        const initialFocus = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
-        console.log(`same-card group initial focus: ${initialFocus}`);
-        assert.equal(initialFocus, 'Condition 1 target', 'same-card group opens with focus in its first operand');
-        await setLayout(1280, 'light');
-        await capture('01-same-card-group-1280-light');
-        await setLayout(390, 'dark');
-        await capture('02-same-card-group-390-dark');
-
-        // Cancel and Escape discard the entire bounded edit without changing saved requirements.
-        await grouped.getByLabel('Condition 1 minimum', { exact: true }).fill('2');
-        await groupedForm().getByRole('button', { name: 'Cancel', exact: true }).click();
-        assert.equal(await combo.locator('.bounded-condition-group').count(), 0);
+        await combo.locator('.requirement-interactive-summary').waitFor();
+        assert.equal(await combo.locator('.requirement-row form').count(), 0);
+        assert.equal(await combo.getByRole('button', { name: 'Edit group', exact: true }).count(), 0);
         let saved = await saveSession();
-        assert.equal(saved.Combos[0].Categories.length, 2, 'Cancel leaves saved category requirements untouched');
-        assert.equal(saved.Combos[0].Categories[0].BaseCategory.Name, alpha.Name);
-        const firstConnectorAgain = combo.locator('.requirement-list > .requirement-and-separator select').first();
-        await firstConnectorAgain.selectOption('AND');
-        await grouped.waitFor();
-        await grouped.getByLabel('Condition 1 minimum', { exact: true }).fill('2');
-        await grouped.getByLabel('Condition 1 target', { exact: true }).press('Escape');
-        assert.equal(await combo.locator('.bounded-condition-group').count(), 0, 'Escape closes and cancels the full grouped form');
-        saved = await saveSession();
-        assert.equal(saved.Combos[0].Categories.length, 2, 'Escape leaves saved requirements untouched');
-
-        // Save the same-card conversion and verify header parentheses and bounds.
-        await combo.locator('.requirement-list > .requirement-and-separator select').first().selectOption('AND');
-        await grouped.waitFor();
-        await grouped.getByLabel('Condition 1 minimum', { exact: true }).fill('2');
-        await groupedForm().getByRole('button', { name: 'Save group', exact: true }).click();
-        await combo.getByRole('alert').filter({ hasText: 'Same-card AND requires matching bounds' }).waitFor();
-        assert.equal(await combo.locator('.bounded-condition-group').count(), 1,
-            'mismatched same-card bounds stay in the editor and do not mutate the combo');
-        await grouped.getByLabel('Condition 2 minimum', { exact: true }).fill('2');
-        await groupedForm().getByRole('button', { name: 'Save group', exact: true }).click();
-        await combo.locator('.combo-header-requirements').waitFor();
-        saved = await saveSession();
-        const sameCardBadge = combo.locator('.combo-header-requirements .same-card-group').first();
-        assert.match(await sameCardBadge.innerText(), /Alpha category.*Beta category/s);
-        assert.ok(await combo.locator('.same-card-group .expression-parenthesis').count() >= 2, 'same-card header badge shows its parentheses');
         assert.equal(saved.Combos[0].Categories.length, 1);
-        assert.equal(saved.Combos[0].Categories[0].MinCount, 2);
         assert.deepEqual(saved.Combos[0].Categories[0].CategoryBases.map(category => category.Name), [alpha.Name, beta.Name]);
+        const summaryBadge = combo.locator('.requirement-interactive-summary .category-tag').first();
+        await summaryBadge.click();
+        await combo.locator('#minCount0').fill('2');
+        await summaryBadge.click();
+        assert.equal(await combo.locator('.requirement-row form').count(), 0, 'repeat clicking the same-card summary discards its row draft');
+        assert.deepEqual((await saveSession()).Combos, saved.Combos);
 
-        // A direct-card AND conversion is visible and makes no model change.
-        const directCardConnector = combo.locator('.requirement-list > .requirement-and-separator select').nth(1);
-        await directCardConnector.tap();
-        await directCardConnector.selectOption('AND');
-        await grouped.waitFor();
-        await groupedForm().getByRole('button', { name: 'Save group', exact: true }).click();
-        await combo.getByRole('alert').filter({ hasText: 'Direct-card conditions can use + or OR' }).waitFor();
-        assert.equal(await combo.locator('.bounded-condition-group').count(), 1,
-            'unsupported direct-card conversion stays visible in the editor and does not commit');
-        await groupedForm().getByRole('button', { name: 'Cancel', exact: true }).click();
-        saved = await saveSession();
-        assert.equal(saved.Combos[0].Cards.length, 2, 'unsupported direct-card AND leaves both card requirements unchanged');
-        assert.equal(saved.Combos[0].AlternativeGroups?.length ?? 0, 0);
-        await capture('03-unsupported-card-and-1280-light');
+        // Direct-card AND refuses at its connector and keeps every saved bound.
+        const directConnector = combo.locator('.requirement-list > .requirement-and-separator select').last();
+        await directConnector.focus();
+        await directConnector.selectOption('AND');
+        await combo.locator('.requirement-list > .requirement-and-separator [role="alert"]').waitFor();
+        assert.equal(await directConnector.inputValue(), '+');
+        assert.equal(await directConnector.evaluate(element => element === document.activeElement), true);
+        const refused = await saveSession();
+        assert.deepEqual(refused.Combos, saved.Combos);
 
-        // Convert the composite category plus a card to OR, retain category drafts through rename,
-        // and preserve the missing-reference warning on the remaining direct-card requirement.
-        const categoryCardConnector = combo.locator('.requirement-list > .requirement-and-separator select').first();
-        await categoryCardConnector.press('End');
-        await grouped.waitFor();
-        assert.equal(await grouped.getByLabel('Condition 2 target', { exact: true }).inputValue(), 'card:valid-card');
-        await grouped.getByLabel('Condition 1 minimum', { exact: true }).fill('2');
-        await ensureCategoryManagementOpen();
-        await page.getByRole('button', { name: `Edit category ${alpha.Name}`, exact: true }).click();
-        const rename = page.getByRole('textbox', { name: `New name for category ${alpha.Name}`, exact: true });
-        await rename.fill('Alpha category renamed while editing');
-        await page.locator('details.category-management > summary').click();
-        await page.locator('details.category-management > summary').click();
-        assert.equal(await page.getByRole('textbox', { name: `New name for category ${alpha.Name}`, exact: true }).inputValue(),
-            'Alpha category renamed while editing', 'category rename draft survives closing and reopening its editor');
-        await page.getByRole('button', { name: 'Save category name', exact: true }).click();
-        await groupedForm().getByRole('button', { name: 'Save group', exact: true }).click();
+        // A same-card AND can become OR directly from its visible expression.
+        await combo.locator('.requirement-interactive-summary .expression-operator').selectOption('OR');
         await combo.locator('.requirement-or-group').waitFor();
+        assert.equal(await combo.locator('.requirement-row form').count(), 0);
+        assert.equal(await combo.locator('.requirement-or-group .expression-operator').first().evaluate(element => element === document.activeElement), true);
+        const group = combo.locator('.requirement-or-group').first();
+        const innerChoices = await group.locator('.expression-operator option').allTextContents();
+        assert.ok(!innerChoices.includes('+'));
+        const insert = combo.getByLabel('Add condition to OR group 1', { exact: true });
+        await insert.scrollIntoViewIfNeeded();
+        await insert.focus();
+        await page.waitForTimeout(250);
+        const before = await group.locator('.requirement-row').evaluateAll(rows => rows.map(row => row.getBoundingClientRect().top));
+        const scrollBeforeInsert = await page.evaluate(() => scrollY);
+        await insert.selectOption('metadata:attribute:fire');
+        const after = await group.locator('.requirement-row').evaluateAll(rows => rows.map(row => row.getBoundingClientRect().top));
+        assert.deepEqual(after.slice(0, before.length), before, 'insertion leaves existing member positions unchanged');
+        assert.equal(await page.evaluate(() => scrollY), scrollBeforeInsert, 'insertion does not move the viewport');
+        assert.equal(await insert.evaluate(element => element === document.activeElement), true, 'insertion keeps its picker focused');
+        assert.equal(await insert.inputValue(), '', 'insertion picker resets for another choice');
         saved = await saveSession();
-        const renamedCategory = saved.Categories.find(category => category.Name === 'Alpha category renamed while editing');
-        assert.ok(renamedCategory, 'renamed category is committed');
-        assert.equal(saved.Combos[0].AlternativeGroups[0].Alternatives[0].Category.MinCount, 2,
-            'renaming a category retains the bounded group draft');
-        assert.deepEqual(saved.Combos[0].AlternativeGroups[0].Alternatives[0].Category.CategoryBases.map(category => category.Name),
-            ['Alpha category renamed while editing', beta.Name]);
-        await setLayout(390, 'dark');
-        await capture('06-renamed-long-composite-390-dark');
-        assert.equal(saved.Combos[0].Cards.length, 1);
-        assert.equal(saved.Combos[0].Cards[0].CardId, 'missing-card');
-        assert.match(await combo.getByRole('status').innerText(), /Missing card reference/);
+        assert.equal(saved.Combos[0].AlternativeGroups[0].Alternatives.length, 3);
+        assert.equal(saved.Combos[0].AlternativeGroups[0].Alternatives[2].Category.MaximumMode, 'HandSize');
 
-        // Existing OR group edits are full-form transactions: Cancel and Escape do not leak drafts.
-        const editGroup = combo.getByRole('button', { name: 'Edit group', exact: true });
-        await editGroup.click();
-        await grouped.waitFor();
-        await grouped.getByLabel('Condition 1 minimum', { exact: true }).fill('1');
-        await setLayout(1280, 'dark');
-        await capture('04-existing-or-group-1280-dark');
-        await setLayout(390, 'light');
-        await capture('05-existing-or-group-390-light');
-        await groupedForm().getByRole('button', { name: 'Cancel', exact: true }).click();
-        saved = await saveSession();
-        assert.equal(saved.Combos[0].AlternativeGroups[0].Alternatives[0].Category.MinCount, 2);
-        await combo.getByRole('button', { name: 'Edit group', exact: true }).click();
-        await grouped.waitFor();
-        await grouped.getByLabel('Condition 1 minimum', { exact: true }).press('Escape');
-        assert.equal(await combo.locator('.bounded-condition-group').count(), 0);
-        saved = await saveSession();
-        assert.equal(saved.Combos[0].AlternativeGroups[0].Alternatives[0].Category.MinCount, 2,
-            'Escape leaves the existing OR group unchanged');
+        // Repeat click, Escape and sibling switching discard row drafts.
+        const firstRow = combo.locator('[data-requirement="alternative:0:0"]');
+        await activate(firstRow);
+        await combo.locator('#minCount0').fill('0');
+        await activate(firstRow);
+        assert.equal(await combo.locator('.requirement-row form').count(), 0);
+        assert.equal(await firstRow.evaluate(element => element === document.activeElement), true);
+        await firstRow.focus();
+        await firstRow.press('Enter');
+        await combo.locator('#minCount0').fill('0');
+        await combo.locator('[data-requirement="alternative:0:1"]').click();
+        assert.equal(await combo.locator('.requirement-row form').count(), 1);
+        await combo.locator('#minCount0').press('Escape');
+        assert.equal(await combo.locator('[data-requirement="alternative:0:1"]').evaluate(element => element === document.activeElement), true);
+        assert.deepEqual((await saveSession()).Combos, saved.Combos);
 
+        // Add a same-card property in place, then introduce a top-level exclusion.
+        const propertyInsert = combo.getByLabel('Add condition to OR group 1', { exact: true });
+        await propertyInsert.focus();
+        await propertyInsert.selectOption('AND|metadata:monster-trait:effect');
+        assert.equal(await propertyInsert.evaluate(element => element === document.activeElement), true, 'same-card insertion retains picker focus');
+        assert.equal(await combo.locator('.requirement-row form').count(), 0);
+        const bottomPlus = combo.getByRole('button', { name: '+ Add group', exact: true });
+        await bottomPlus.focus();
+        await bottomPlus.press('Enter');
+        assert.equal(await combo.locator('#comboTarget0').evaluate(element => element === document.activeElement), true);
+        await combo.locator('#comboTarget0').selectOption('metadata:attribute:dark');
+        await combo.locator('#minCount0').fill('0');
+        await combo.locator('.requirement-bounds summary').click();
+        await combo.locator('#maxCount0').fill('0');
+        await combo.getByRole('button', { name: 'Add', exact: true }).click();
+        saved = await saveSession();
+        const exclusion = saved.Combos[0].Categories.at(-1);
+        assert.equal(exclusion.MinCount, 0);
+        assert.equal(exclusion.MaxCount, 0);
+        assert.equal(exclusion.MaximumMode, 'Fixed');
+        assert.equal(saved.Combos[0].RequirementOrder.at(-1).Kind, 'Category');
+
+        // Responsive geometry, both themes, and the borderless collapsed OR header.
+        for (const width of [320, 390, 768, 1280]) {
+            for (const theme of ['light', 'dark']) {
+                await setLayout(width, theme);
+                const border = await combo.locator('.combo-header-requirements .alternative-group').evaluate(element => {
+                    const style = getComputedStyle(element);
+                    return [style.borderTopWidth, style.borderRightWidth, style.backgroundColor];
+                });
+                assert.deepEqual(border, ['0px', '0px', 'rgba(0, 0, 0, 0)']);
+                await capture(`inline-combo-${width}-${theme}`);
+                await combo.locator('.accordion-button').click();
+                await assertNoOverflow(`collapsed combo ${width} ${theme}`);
+                await capture(`inline-combo-collapsed-${width}-${theme}`);
+                await combo.locator('.accordion-button').click();
+            }
+        }
+        await setLayout(1280, 'light');
         // Post-draw selector connector opens the same bounded selector editor on touch.
         const card = page.locator('.card-editor').filter({ hasText: 'Draw and remove card' });
         if (await card.locator('.accordion-button').getAttribute('aria-expanded') !== 'true') {
@@ -251,7 +250,7 @@ const session = () => ({
         await card.locator('.simulation-edit').click();
         const simulation = card.locator('.simulation-editor');
         const postDrawOr = simulation.getByLabel('Change OR operator', { exact: true }).first();
-        await postDrawOr.tap();
+        await activate(postDrawOr);
         await postDrawOr.selectOption('AND');
         const selectorForm = simulation.locator('.selector-condition-row');
         const selectorFormContainer = () => selectorForm.locator('xpath=..');
@@ -297,8 +296,10 @@ const session = () => ({
         saved = await saveSession();
         assert.equal(saved.Categories.find(category => category.Name === 'Rule category').Rule, undefined, 'Remove explicitly clears the saved rule');
 
+        await load(saved);
+        assert.deepEqual((await saveSession()).Combos, saved.Combos, 'save/load retains the inline expression and authored order');
         assert.deepEqual(pageErrors, [], `browser page errors: ${pageErrors.join('; ')}`);
-        console.log(`PASS #230 browser interactions. Screenshots: ${evidence}`);
+        console.log(`PASS #247 browser interactions. Screenshots: ${evidence}`);
     }
     finally {
         await browser.close();

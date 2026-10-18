@@ -1,4 +1,12 @@
 .requirement-row { min-width: 0; }
+.requirement-row:has(> .expression-row-controls) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .4rem; align-items: center; }
+.expression-row-controls { min-width: 0; max-width: 6rem; }
+.requirement-interactive-summary { display: flex; align-items: center; justify-content: space-between; gap: .4rem; min-width: 0; min-height: 44px; padding: .25rem .4rem; background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: .375rem; }
+.requirement-interactive-summary .requirement-edit { width: auto; min-height: 36px; padding: .2rem .4rem; background: transparent; border: 0; font-size: .8rem; color: var(--bs-link-color); }
+.requirement-row ::deep .requirement-form { grid-column: 1 / -1; }
+.requirement-interactive-summary { cursor: pointer; }
+.requirement-interactive-summary:hover,
+.requirement-interactive-summary:has(.requirement-edit[aria-expanded="true"]) { border-color: var(--bs-primary); }
 .requirement-edit {
     display: flex;
     align-items: center;
