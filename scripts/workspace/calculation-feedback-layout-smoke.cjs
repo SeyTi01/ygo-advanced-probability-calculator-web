@@ -93,24 +93,15 @@ const { chromium } = require('playwright');
                 const before = await geometry();
                 baselines.set(`${width}/${theme}`, before);
                 assert(before.overflow <= 0);
-                await retry().click();
-                await page.locator('.exact-retry-confirmation').waitFor();
-                const confirmation = await geometry();
-                assert.equal(confirmation.current.y, before.current.y);
-                assert.equal(confirmation.pinned.y, before.pinned.y);
-                assert(confirmation.overflow <= 0);
-                assert.equal(await page.evaluate(() => __exactRetryProbe.requests.length), 2);
-                await page.locator('.exact-retry-confirmation').getByRole('button', { name: 'Cancel', exact: true }).click();
+                assert.equal(await page.locator('.exact-retry-confirmation, #exactRetryWarning').count(), 0);
                 assert.equal(await page.locator('.pinned-result').innerText(), fastPin);
-                assert.equal(await page.locator('.calculate-action > button').evaluate(element => element === document.activeElement), true);
                 if ((width === 1440 && theme === 'Light') || (width === 390 && theme === 'Dark')) {
                     await page.locator('.results-section').screenshot({ path: path.join(evidence, `${width}-${theme}-fast.png`) });
                 }
-                states.push({ width, theme, before, confirmation });
+                states.push({ width, theme, before });
             }
         }
         await retry().click();
-        await page.getByRole('button', { name: 'Replace pin and start Exact', exact: true }).click();
         await page.getByRole('button', { name: 'Cancel calculation', exact: true }).waitFor();
         await page.waitForFunction(() => !!__exactRetryProbe.pending);
         assert.equal(await retry().count(), 0);
@@ -121,7 +112,7 @@ const { chromium } = require('playwright');
         assert.deepEqual(requests[2], requests[0]);
         assert.equal(await page.locator('.probability-results .probability-total-value').innerText(), fastCurrent);
         const pinnedFast = await page.locator('.pinned-result').innerText();
-        assert(pinnedFast.includes('Mode: Effects — fast'));
+        assert.equal(pinnedFast, fastPin, 'Exact leaves the existing manual pin unchanged');
         assert.equal(await page.locator('.calculate-action > button').evaluate(element => element === document.activeElement), true);
         await page.waitForTimeout(7200);
         assert.equal(await page.getByRole('button', { name: 'Cancel calculation', exact: true }).count(), 1,
@@ -154,9 +145,15 @@ const { chromium } = require('playwright');
             await page.getByLabel('Color theme preference').selectOption({ label: theme });
             await page.locator('.results-section').screenshot({ path: path.join(evidence, `${width}-${theme}-exact.png`) });
         }
+        await page.getByRole('button', { name: 'Unpin result', exact: true }).click();
+        await calculate();
+        await retry().waitFor({ timeout: 30000 });
+        await retry().click();
+        await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
+        assert.equal(await page.locator('.pinned-result').count(), 0, 'Exact does not create a pin');
         assert.deepEqual(errors, []);
         await fs.writeFile(path.join(evidence, 'geometry.json'), JSON.stringify(states, null, 2));
-        console.log(`Exact retry browser smoke passed: real Fast deadline fallback, replacement/cancel, pin-before-Exact, explicit Exact beyond seven seconds, success/copy, 8 viewport/theme combinations, no shifts/overflow. Evidence: ${evidence}`);
+        console.log(`Exact retry browser smoke passed: real Fast deadline fallback, unchanged manual pin and no automatic pin, explicit Exact beyond seven seconds, success/copy, 8 viewport/theme combinations, no shifts/overflow. Evidence: ${evidence}`);
     } finally {
         await browser.close();
     }
