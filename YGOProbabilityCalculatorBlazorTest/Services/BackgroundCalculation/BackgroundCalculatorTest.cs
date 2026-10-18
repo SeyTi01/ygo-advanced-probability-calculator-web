@@ -22,6 +22,22 @@ public class BackgroundCalculatorTest {
         ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish"),
         ProbabilityCalculator.ThreeCalculationModesTest.Combos, 2, ProbabilityCalculator.ThreeCalculationModesTest.Groups);
 
+    [Test]
+    public async Task FastOnlyUsesOneOrdinaryFastRequestAndKeepsItsBounds() {
+        CalculationSnapshot snapshot = BoundedSnapshot() with { AllowAutomaticExact = false };
+        string response = CalculationWire.Execute(snapshot.Json);
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>())).ReturnsAsync(response);
+        ProbabilityCalculationResult result = await _service.CalculateProgressivelyAsync(snapshot,
+            _ => throw new AssertionException("Fast only cannot publish preliminary results."), default);
+        Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Bounded));
+        Assert.That(result.Contract.AutomaticExact, Is.Null);
+        _job.Verify(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(),
+            It.Is<object?[]?>(args => args!.Length == 2 && Equals(args[0], snapshot.Json) && Equals(args[1], false))), Times.Once);
+        _job.Verify(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()), Times.Never);
+        _job.Verify(j => j.InvokeAsync<string>("finish", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()), Times.Never);
+        _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Once);
+    }
+
     [TestCase(CalculationModel.Fast)]
     [TestCase(CalculationModel.Exact)]
     [TestCase(CalculationModel.OpeningHand)]

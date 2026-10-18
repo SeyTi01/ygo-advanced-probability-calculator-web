@@ -126,7 +126,7 @@ entire published output together; do not mix runtime assets from different build
 The browser must support module workers and the app's .NET WebAssembly runtime.
 Startup/transport failures are shown in the existing calculation alert, with no
 foreground fallback. Worker initialization times out after 30 seconds, separately
-from Fast's calculation deadline described below. Ordinary Calculate captures a request-local
+from the legacy automatic API's calculation deadline described below. Ordinary Calculate captures a request-local
 **150,000,000-unit** work allowance immediately. Synchronous engine callers omitting
 the explicit `CalculationWorkPolicy` overload and wire requests omitting
 `WorkUnits` retain the bounded **10,000,000-unit** default. Policies are immutable,
@@ -200,26 +200,18 @@ keeps requested/executed Fast, the actual solver route, proof and rational rows.
 Native synchronous Fast and the one-shot `createJob` wire helper retain their
 existing reference behavior; they do not own browser clocks or worker lifetimes.
 
-The Exact opportunity ends seven seconds after dispatch to a ready runtime,
-with at most five seconds for the upgrade. No watchdog runs during initial Fast. An absolute `performance.now()` check
-also resolves response/timer races. It terminates an unfinished Exact upgrade; a completed
-fallback is returned without rerunning or modifying its fractions/certificate.
-Initial Fast is allowed to finish under its existing Work/Storage limits and manual
-cancellation. If it uses the opportunity window, return its completed result
-without starting another pass (NoTime). An Exact upgrade
-that hits Work/Storage/Unsupported or a transport/execution error retains the
-fallback, with an immutable outcome note in accuracy details, pins and exports.
-No provisional result is shown as accepted. A detached terminated lease still
-requires C# validation/acknowledgement, and cancellation cannot accept it late.
+The Progressive UI uses `runProgressive` / `finish` without a calculation deadline.
+C# validates and presents the first result while the same lease continues physical
+Exact. A slow initial Fast pass does not prevent the upgrade. Work, Storage,
+unsupported cases and execution/transport failures retain the accepted Fast result.
+Only a validated terminal response releases the lease. Fast only uses `run(json, false)`.
+For compatibility, standalone `CalculateAsync` and `run(json, true)` retain their
+legacy seven-second opportunity and five-second upgrade maximum; new Progressive
+requests never produce Deadline or NoTime.
 
-After interruption of automatic work, the module shares a 2500-ms restart delay
-across owners. This mitigates Chromium's termination grace and is separately
-included in end-to-end measurements; there is no portable shutdown acknowledgement.
-Startup retains its own 30-second timer. Background tab suspension or a blocked
-main thread can delay timers, so seven seconds is not a universal button-to-result
-SLA. Explicit Exact/OpeningHand have no automatic calculation timeout. A slow
-initial Fast consumes part of the upgrade window: this intentionally avoids
-turning two four-second passes into an eight-second wait.
+After actual interruption of automatic work, the module shares a 2500-ms restart
+delay across owners. Successful upgrades reuse the worker. Startup retains its
+separate 30-second guard. Explicit Exact and OpeningHand have no calculation timeout.
 
 Work exhaustion and storage/state growth have distinct typed reasons in the
 source-generated worker response (`LimitReason`), preserved by the caller's

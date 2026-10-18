@@ -6,7 +6,7 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 /// <summary>Formats an accepted probability result as a readable, shareable plain-text summary.</summary>
 public static class ProbabilityResultSummaryFormatter {
-    public static string Format(ProbabilityCalculationResult result, int handSize, CultureInfo culture) {
+    public static string Format(ProbabilityCalculationResult result, int handSize, CultureInfo culture, string? modeDescription = null) {
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(culture);
 
@@ -25,7 +25,7 @@ public static class ProbabilityResultSummaryFormatter {
 
         if (result.Contract is { } contract) {
             lines.InsertRange(1, [
-                $"Mode: {contract.RequestedMode.Description()}",
+                $"Mode: {modeDescription ?? contract.RequestedMode.Description()}",
                 $"Accuracy: {contract.Accuracy}; completion: {contract.Completion}; contract v{contract.Version}",
                 $"Reference: {contract.Reference}",
                 $"Reason: {contract.Reason}",

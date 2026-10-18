@@ -9,8 +9,17 @@ public sealed record PinnedCalculationContext(
     int Copies,
     int CardCount,
     CalculationModel Model = CalculationModel.Fast,
-    bool UsesCustomDrawPriority = false
+    bool UsesCustomDrawPriority = false,
+    FastExecutionStrategy Strategy = FastExecutionStrategy.Progressive
 ) {
+    public string ModeDescription => (Model, Strategy) switch {
+        (CalculationModel.Fast, FastExecutionStrategy.FastOnly) => "Fast only",
+        (CalculationModel.Fast, _) => "Progressive",
+        (CalculationModel.Exact, _) => "Exact only",
+        (CalculationModel.OpeningHand, _) => "No effect simulation",
+        _ => throw new ArgumentOutOfRangeException(nameof(Model))
+    };
+
     public string Description => $"Hand size {HandSize} · {Copies} cards";
 
     internal static PinnedCalculationContext Capture(

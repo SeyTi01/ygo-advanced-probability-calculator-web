@@ -261,6 +261,8 @@
 .probability-results-heading ::deep .probability-result-export-toolbar { grid-row: 1; grid-column: 3; }
 .probability-results-heading ::deep .probability-result-copy-fallback { grid-column: 1 / -1; }
 .result-value-group { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; min-width: 0; max-width: 65%; gap: .35rem; }
+/* Keep the total label's wrapping stable when uncertainty becomes Exact. */
+.probability-total .result-value-group { flex: 0 0 45%; }
 @media (min-width: 900px) {
     .result-panels:has(.probability-results) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }

@@ -2,6 +2,7 @@
 // results are cached. Only C# can acknowledge a successfully decoded response.
 const idleMilliseconds = 60000;
 const maximumSuccessfulRequests = 20;
+// Compatibility for non-progressive run(json, true) callers only.
 const opportunityMilliseconds = 7000;
 const upgradeMilliseconds = 5000;
 // A shared cooldown also covers component replacement. Worker.terminate() has
@@ -85,7 +86,7 @@ export function createOwner() {
     }
 
     function automaticResponse(lease, data) {
-        if (lease.fallback && performance.now() >= lease.deadline) return deadline(lease);
+        if (!lease.progressive && lease.fallback && performance.now() >= lease.deadline) return deadline(lease);
         const response = JSON.parse(data.response);
         const contract = response.Result?.Contract;
         const success = response.Error == null && response.LimitReason == null && response.FailureKind == null
@@ -102,14 +103,16 @@ export function createOwner() {
         if (!success || contract.Accuracy === 0) return answer(lease, data.response);
         // Initial Fast is never timed out automatically. Its elapsed time only
         // consumes the opportunity to do additional physical counting.
-        if (performance.now() >= lease.deadline) return answer(lease, annotated(data.response, 6));
-        if (typeof data.remainingWork !== 'string' || !/^[0-9]+$/.test(data.remainingWork)) {
-            return retire(lease.state, 'Invalid automatic calculation Work allowance.');
-        }
+        if (!lease.progressive && performance.now() >= lease.deadline) return answer(lease, annotated(data.response, 6));
         lease.fallback = data.response;
-        if (data.remainingWork === '0') return fallback(lease, 2);
-        lease.deadline = Math.min(lease.deadline, performance.now() + upgradeMilliseconds);
-        arm(lease);
+        if (typeof data.remainingWork !== 'string' || !/^[0-9]+$/.test(data.remainingWork)) {
+            return fallback(lease, 5);
+        }
+        if (/^0+$/.test(data.remainingWork)) return fallback(lease, 2);
+        if (!lease.progressive) {
+            lease.deadline = Math.min(lease.deadline, performance.now() + upgradeMilliseconds);
+            arm(lease);
+        }
         lease.state.worker.postMessage({ id: lease.id, json: lease.json, fastStage: 'upgrade', remainingWork: data.remainingWork });
         lease.json = undefined;
         // Only an actually dispatched upgrade has a presentation stage. The
@@ -126,7 +129,7 @@ export function createOwner() {
         try {
             if (lease.automatic) {
                 lease.json = json;
-                lease.deadline = performance.now() + opportunityMilliseconds;
+                if (!lease.progressive) lease.deadline = performance.now() + opportunityMilliseconds;
                 lease.state.worker.postMessage({ id: lease.id, json, fastStage: 'initial' });
             } else lease.state.worker.postMessage({ id: lease.id, json });
         }
@@ -198,6 +201,7 @@ export function createOwner() {
                 runProgressive(json, automatic = false) {
                     if (lease.phase !== 'created') return Promise.reject(new Error('Calculation is already running or finished.'));
                     const first = new Promise((resolve, reject) => { lease.first = { resolve, reject }; });
+                    lease.progressive = true;
                     lease.final = this.run(json, automatic);
                     // Cancellation/worker failure may precede C# requesting the
                     // final stage. Observe rejection now; finish still receives it.

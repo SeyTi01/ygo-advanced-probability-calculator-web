@@ -17,7 +17,39 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase {
     [Test]
-    public async Task SettingsMenuHasThreeExplicitModesAndRestoresFocusContract() {
+    public async Task FastOnlyPersistsAcrossEditsAndLabelsAcceptedResultsAndPins() {
+        List<CalculationSnapshot> requests = [];
+        Mock<IBackgroundCalculator> background = new();
+        background.Setup(calculator => calculator.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
+            .Returns((CalculationSnapshot snapshot, CancellationToken _) => {
+                requests.Add(snapshot);
+                return Task.FromResult(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
+            });
+        context.Services.AddSingleton(background.Object);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(ConditionalSession());
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "FastOnly" });
+        await cut.Find("#handSize").ChangeAsync(new() { Value = "4" });
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(requests, Has.Count.EqualTo(1));
+        Assert.That(requests[0].AllowAutomaticExact, Is.False);
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Fast only"));
+        Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
+        await cut.Find(".pin-result-action").ClickAsync(new());
+        await Button(cut, "Save Session").ClickAsync(new());
+        ISessionService codec = context.Services.GetRequiredService<ISessionService>();
+        SessionState saved = await codec.LoadSessionAsync(SavedSessionJson());
+        Assert.That(saved.CalculationModel, Is.EqualTo(CalculationModel.Fast));
+        Assert.That(saved.FastExecutionStrategy, Is.EqualTo(FastExecutionStrategy.FastOnly));
+        Assert.That(Render(saved).Find("#calculationModel").GetAttribute("value"), Is.EqualTo("FastOnly"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
+        await Button(cut, "Calculate").ClickAsync(new());
+        Assert.That(requests[^1].AllowAutomaticExact, Is.True);
+        Assert.That(cut.Find(".probability-results .result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Fast only"));
+    }
+
+    [Test]
+    public async Task SettingsMenuHasFourExplicitModesAndRestoresFocusContract() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         IElement trigger = cut.Find(".calculation-settings-trigger");
         Assert.That(trigger.GetAttribute("aria-label"), Is.EqualTo("Calculation settings"));
@@ -25,11 +57,11 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         await trigger.ClickAsync(new());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.False);
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
-        Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(3));
+        Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(4));
         Assert.That(cut.Find("#calculationModel option[value=OpeningHand]").TextContent, Is.EqualTo("No effect simulation"));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
         Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Is.EqualTo("Uses Exact when practical; otherwise retains the completed result and its accuracy status."));
+            Is.EqualTo("Shows Fast first, then attempts Exact until completed, canceled, or stopped by Work, Storage or unsupported conditions."));
         Assert.That(cut.Find("#storageSafetyHelp").TextContent.Trim(),
             Is.EqualTo("Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy."));
         context.JSInterop.VerifyInvoke("workspaceMenus.watchOutside", 1);
@@ -74,6 +106,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         ISessionService codec = context.Services.GetRequiredService<ISessionService>();
         JsonObject legacy = JsonNode.Parse(codec.SerializeSession(ConditionalSession()))!.AsObject();
         legacy.Remove(nameof(SessionState.CalculationModel));
+        legacy.Remove(nameof(SessionState.FastExecutionStrategy));
         legacy[nameof(SessionState.SchemaVersion)] = 3;
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(await codec.LoadSessionAsync(legacy.ToJsonString()));
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
@@ -103,9 +136,9 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 5, session.Combos, []);
             double expected = new ExactProbability(oracle.Wins[0], oracle.Total).ToDouble(new(CalculationWorkPolicy.Interactive));
             Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(expected.ToString("P2")));
-            Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size 5 · ").And.Not.Contain(mode.Description()));
-            Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {mode.Description()}"));
-            Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(mode.Description()));
+            Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size 5 · ").And.Not.Contain(new PinnedCalculationContext(0, 0, 0, mode).ModeDescription));
+            Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {new PinnedCalculationContext(0, 0, 0, mode).ModeDescription}"));
+            Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(new PinnedCalculationContext(0, 0, 0, mode).ModeDescription));
         }
         Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Hypothetical, often optimistic"));
         await Button(cut, "Save Session").ClickAsync(new());

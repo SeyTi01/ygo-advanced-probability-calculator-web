@@ -23,7 +23,11 @@ public sealed class SessionSchemaMigrator {
             [8] = root => SetSchemaVersion(root, 9),
             // Mixed authored order is optional presentation metadata. Existing
             // predicates and saved effect plans are unchanged by this migration.
-            [9] = root => SetSchemaVersion(root, 10)
+            [9] = root => SetSchemaVersion(root, 10),
+            [10] = root => {
+                root[nameof(SessionState.FastExecutionStrategy)] = "Progressive";
+                SetSchemaVersion(root, 11);
+            }
         };
 
     public string MigrateToCurrent(string json) {
@@ -71,6 +75,18 @@ public sealed class SessionSchemaMigrator {
         }
         if (legacy.Length == 1 && legacy[0].Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) {
             throw new JsonException("Legacy draw-effects setting must be a boolean.");
+        }
+
+        JsonProperty[] strategies = rootElement.EnumerateObject().Where(property =>
+            property.Name.Equals(nameof(SessionState.FastExecutionStrategy), StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (strategies.Length > 1 || (sourceVersion < 11 && strategies.Length != 0)
+            || (sourceVersion >= 11 && strategies.Length != 1)) {
+            throw new JsonException("Session execution strategy is missing, duplicated or obsolete.");
+        }
+        if (strategies.Length == 1 && (strategies[0].Value.ValueKind != JsonValueKind.String
+            || !Enum.GetNames<FastExecutionStrategy>().Contains(strategies[0].Value.GetString(), StringComparer.Ordinal)
+            || (strategies[0].Value.GetString() == "FastOnly" && (modes.Length != 1 || modes[0].Value.GetString() != "Fast")))) {
+            throw new JsonException("Unknown or contradictory session execution strategy.");
         }
 
         if (sourceVersion == SessionState.CurrentSchemaVersion) {

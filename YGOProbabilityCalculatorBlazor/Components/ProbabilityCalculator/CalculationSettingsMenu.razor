@@ -28,10 +28,11 @@
             <h3 id="drawSimulationHeading" class="small fw-semibold mb-2">Card simulation</h3>
             <label class="form-label mb-1" for="calculationModel">Calculation model</label>
             <select @ref="_drawEffectsInput" id="calculationModel" class="form-select"
-                    value="@Model" aria-describedby="@(Model == CalculationModel.OpeningHand ? null : "drawEffectsHelp")" @onchange="OnModelChanged">
+                    value="@(Model == CalculationModel.Fast && Strategy == FastExecutionStrategy.FastOnly ? "FastOnly" : Model.ToString())" aria-describedby="@(Model == CalculationModel.OpeningHand ? null : "drawEffectsHelp")" @onchange="OnModelChanged">
                 <option value="OpeningHand">No effect simulation</option>
-                <option value="Fast">Effects — fast (default)</option>
-                <option value="Exact">Effects — exact</option>
+                <option value="Fast">Progressive (default)</option>
+                <option value="FastOnly">Fast only</option>
+                <option value="Exact">Exact only</option>
             </select>
             @if (Model != CalculationModel.OpeningHand) {
                 <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
@@ -111,6 +112,9 @@
     [Parameter]
     public IReadOnlyList<Card> Cards { get; set; } = [];
 
+    [Parameter] public FastExecutionStrategy Strategy { get; set; }
+    [Parameter] public EventCallback<FastExecutionStrategy> StrategyChanged { get; set; }
+
     private Card[] _entries = [];
     private readonly Dictionary<string, ElementReference> _entryElements = new(StringComparer.Ordinal);
     private string? _focusPriorityId;
@@ -161,7 +165,9 @@
     private DotNetObjectReference<CalculationSettingsMenu>? _reference;
     private ElementReference _drawEffectsInput;
     private string? ModelHelp => Model switch {
-        CalculationModel.Fast => "Uses Exact when practical; otherwise retains the completed result and its accuracy status.",
+        CalculationModel.Fast => Strategy == FastExecutionStrategy.FastOnly
+            ? "Runs Fast once, preserving its certified bounds and accuracy status."
+            : "Shows Fast first, then attempts Exact until completed, canceled, or stopped by Work, Storage or unsupported conditions.",
         CalculationModel.Exact => "Calculates physical Deck-search survival exactly, subject to Work and Storage limits.",
         CalculationModel.OpeningHand => null,
         _ => throw new ArgumentOutOfRangeException(nameof(Model))
@@ -226,12 +232,19 @@
         return Task.CompletedTask;
     }
 
-    private Task OnModelChanged(ChangeEventArgs eventArgs) {
+    private async Task OnModelChanged(ChangeEventArgs eventArgs) {
+        string? selection = eventArgs.Value?.ToString();
+        if (selection == "FastOnly") {
+            await ModelChanged.InvokeAsync(CalculationModel.Fast);
+            await StrategyChanged.InvokeAsync(FastExecutionStrategy.FastOnly);
+            return;
+        }
         if (!Enum.TryParse(eventArgs.Value?.ToString(), out CalculationModel model) || !Enum.IsDefined(model)) {
-            return Task.CompletedTask;
+            return;
         }
 
-        return ModelChanged.InvokeAsync(model);
+        await ModelChanged.InvokeAsync(model);
+        await StrategyChanged.InvokeAsync(FastExecutionStrategy.Progressive);
     }
 
     private Task OnStorageTierChanged(ChangeEventArgs eventArgs) {

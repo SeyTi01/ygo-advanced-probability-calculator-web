@@ -71,7 +71,7 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
         Assert.That(Button(cut, "Replace pin with current result").HasAttribute("aria-describedby"), Is.False);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
-        Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith("Mode: Effects — fast"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith("Mode: Progressive"));
         Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
         Assert.That(cut.FindAll(".result-priority-difference, .result-difference, .result-row-comparison, .pinned-match"), Is.Empty);
         Assert.That(JsonSerializer.Deserialize<CalculationInput>(requests[^1].Json)!.Options!.DrawActivationPriority!.CardIds, Is.EqualTo(new[] { "b", "a" }));

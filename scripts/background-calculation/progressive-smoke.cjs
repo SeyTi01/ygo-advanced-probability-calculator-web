@@ -33,7 +33,7 @@ function probe() {
     };
     function snapshot() {
         const selectors = ['.calculation-controls', '.probability-results', '#probabilityResultsHeading',
-            '.probability-total', '.probability-group', '.pinned-result'];
+            '.probability-total', '.probability-group', '.pinned-result', '.probability-results .combo-probability-row'];
         const rects = {};
         for (const selector of selectors) rects[selector] = [...document.querySelectorAll(selector)].map(element => {
             const rect = element.getBoundingClientRect();
@@ -152,6 +152,7 @@ async function main() {
                 requests:progressive.requests.filter(r => r.sent >= progressive.runs[i].started)}),index);
             assert.equal(await page.getByRole('alert').count(),0);
             assert(!run.final.marker.includes('Preliminary'));
+            fs.writeFileSync(output + ".latest.json",JSON.stringify(run,null,2));
             if (run.initial) {
                 stable(run.initial,run.final);
                 assert(run.initial.pinDisabled && run.initial.copyDisabled);
@@ -166,14 +167,36 @@ async function main() {
         // Original source: cold request followed by three requests on this owner.
         await load(source.Session,true); await mode('Fast');
         for (let sample=0;sample<4;sample++) {
-            const run = await settle(await start(),`source-${sample}`);
+            const index = await start();
+            await page.waitForTimeout(7200);
+            assert(await page.locator('.probability-result-status').innerText().then(text => text.includes('Preliminary')));
+            const run = await settle(index,`source-${sample}`);
             assert(run.initial, 'initial Fast must be shown while Exact runs');
             fractions(run.requests[0].response.Result,source.Initial);
-            displayed(run.initial,source.Initial); displayed(run.final,source.Initial);
-            assert.deepEqual(run.initial.values,run.final.values,'deadline retains displayed rational bounds');
+            displayed(run.initial,source.Initial); displayed(run.final,source.Exact);
+            fractions(run.requests[1].response.Result,source.Exact);
+            assert(run.settled-run.started > 7000);
+            assert(run.frames > 100);
+            assert.equal(run.requests[0].worker,run.requests[1].worker);
             assert(run.initial.at < run.settled);
-            assert.match(run.initial.mode,/Effects — fast/);
+            assert.match(run.initial.mode,/Progressive/);
         }
+        assert.equal(await page.evaluate(() => progressive.workers.length),1, 'long upgrades reuse the same worker');
+        await mode('FastOnly');
+        const fastOnly = await settle(await start(),'source-fast-only');
+        assert(!fastOnly.initial); assert.equal(fastOnly.requests.length,1);
+        displayed(fastOnly.final,source.Initial); assert.match(fastOnly.final.mode,/Fast only/);
+        await page.getByRole('button',{name:'Copy results',exact:true}).click();
+        assert.match(await page.evaluate(() => navigator.clipboard.readText()),/Mode: Fast only/);
+        evidence.beforeRecovery = await page.evaluate(() => progressive);
+        await page.reload();
+        await page.getByRole('button',{name:'Restore previous session',exact:true}).click();
+        const replaceRecovery = page.getByRole('button',{name:'Replace current work and restore',exact:true});
+        if (await replaceRecovery.count()) await replaceRecovery.click();
+        await page.waitForFunction(() => document.querySelector('#calculationModel')?.value === 'FastOnly');
+        const recovered = await settle(await start(),'recovered-fast-only');
+        assert(!recovered.initial); assert.equal(recovered.requests.length,1);
+        displayed(recovered.final,source.Initial);
         await page.locator('.pin-result-action').click();
         const pin = await page.locator('.pinned-result').innerText();
         await mode('Exact');
@@ -189,7 +212,7 @@ async function main() {
         fractions(completed.requests[0].response.Result,control.Initial);
         fractions(completed.requests[1].response.Result,control.Exact);
         displayed(completed.final,control.Exact);
-        assert.match(completed.final.mode,/Effects — fast/);
+        assert.match(completed.final.mode,/Progressive/);
         await page.getByRole('button',{name:'Copy results',exact:true}).click();
         assert.match(await page.evaluate(() => navigator.clipboard.readText()),/completed a physical Exact/);
         await mode('Exact');

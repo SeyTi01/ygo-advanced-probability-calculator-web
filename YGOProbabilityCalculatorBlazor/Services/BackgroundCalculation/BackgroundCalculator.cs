@@ -60,7 +60,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
                 try {
                     token.ThrowIfCancellationRequested();
                     string response;
-                    if (onPreliminary is not null && snapshot.RequestedMode == CalculationModel.Fast) {
+                    if (onPreliminary is not null && snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast) {
                         PresentationStage stage = await job.InvokeAsync<PresentationStage>("runProgressive", token, snapshot.Json, true);
                         token.ThrowIfCancellationRequested();
                         ProbabilityCalculationResult initial = CalculationWire.ReadResult(stage.Response, snapshot.RequestedMode);
@@ -77,7 +77,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
                         }
                     }
                     else {
-                        response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.RequestedMode == CalculationModel.Fast);
+                        response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast);
                     }
                     token.ThrowIfCancellationRequested();
                     result = CalculationWire.ReadResult(response, snapshot.RequestedMode);

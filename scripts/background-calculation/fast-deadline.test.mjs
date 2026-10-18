@@ -46,7 +46,7 @@ test('progressive initial response is immediate but never releases the single le
     s.job.release(); assert.equal(s.worker.terminated, 0);
 });
 
-for (const [kind, outcome] of [['deadline',1],['work',2],['storage',3],['unsupported',4],['transport',5],['malformed',5]]) {
+for (const [kind, outcome] of [['work',2],['storage',3],['unsupported',4],['transport',5],['malformed',5]]) {
     test(`progressive ${kind} retains exact initial payload and clears lease`, async t => {
         const s = setup(t, true); s.ready(); const initial = success(2); s.emit(initial);
         assert.equal((await s.promise).isPreliminary, true);
@@ -63,7 +63,7 @@ for (const [kind, outcome] of [['deadline',1],['work',2],['storage',3],['unsuppo
     });
 }
 
-for (const kind of ['exact','no-time','no-work','initial-failure']) {
+for (const kind of ['exact','no-work','initial-failure']) {
     test(`progressive ${kind} has only a final stage`, async t => {
         const s = setup(t, true); s.ready();
         if (kind === 'no-time') s.tick(7000);
@@ -212,3 +212,36 @@ test('cancelling during restart cooldown never creates a worker later', async t 
     next.dispose(); await assert.rejects(pending,/cancelled/); s.tick(10000);
     assert.equal(s.workers.length,1);
 });
+
+for (const initialDelay of [0, 12000]) {
+    test(`Progressive continues beyond both former windows after ${initialDelay}ms initial Fast`, async t => {
+        const s = setup(t, true); s.ready(); s.tick(initialDelay); s.emit(success(), '123');
+        assert.equal((await s.promise).isPreliminary, true);
+        let settled = false; const final = s.job.finish(); final.then(() => settled = true);
+        s.tick(60000); await Promise.resolve();
+        assert.equal(settled, false); assert.equal(s.worker.terminated, 0);
+        assert.equal(s.worker.sent.length, 2);
+        s.emit(success(0));
+        assert.equal(JSON.parse(await final).Result.Contract.AutomaticExact, 0);
+        s.job.release();
+        const next = s.owner.createJob(); const result = next.run('fast-only', false);
+        assert.equal(s.workers.length, 1);
+        assert.deepEqual(s.worker.sent.at(-1), {id:2,json:'fast-only'});
+        s.worker.emit({id:2,response:'single'}); assert.equal(await result,'single'); next.release();
+    });
+}
+
+for (const [remaining, outcome] of [['0',2], ['000',2], ['',5], ['-1',5], [null,5]]) {
+    test(`Progressive invalid/empty Work allowance ${remaining} keeps completed Fast`, async t => {
+        const s=setup(t,true); s.ready(); const initial=success(); s.emit(initial,remaining);
+        const stage=await s.promise;
+        assert.equal(stage.isPreliminary,false);
+        const result=JSON.parse(stage.response);
+        assert.equal(result.Result.Contract.AutomaticExact,outcome);
+        delete result.Result.Contract.AutomaticExact;
+        assert.deepEqual(result,initial);
+        assert.equal(s.worker.sent.length,1);
+        assert.equal(await s.job.finish(),stage.response);
+        s.job.release();
+    });
+}
