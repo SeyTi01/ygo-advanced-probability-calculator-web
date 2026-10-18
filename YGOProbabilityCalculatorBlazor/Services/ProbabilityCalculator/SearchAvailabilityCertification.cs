@@ -95,6 +95,11 @@ internal static class SearchAvailabilityCertification {
             return completed with { Detail = completed.Detail
                 + $" Limited refinement: optional calculation reached the {exception.Reason} limit; the completed interval is retained." };
         }
+        catch (Exception exception) when (exception is not OperationCanceledException) {
+            Console.Error.WriteLine($"Search lower refinement failed: {exception}");
+            return completed with { Detail = completed.Detail
+                + $" Lower refinement failed ({exception.GetType().Name}); the completed interval is retained." };
+        }
 
         // The optional upper proof has its own transaction. Neither a resource
         // limit nor a defect may erase any previously completed lower certificate.

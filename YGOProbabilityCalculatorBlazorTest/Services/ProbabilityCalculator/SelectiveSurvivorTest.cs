@@ -178,8 +178,15 @@ public sealed class SelectiveSurvivorTest {
     [Test, Explicit("Export frozen real-session benchmark inputs")]
     public async Task Export() {
         List<object> output = [];
-        foreach (string variant in new[] { "source", "trade-disabled", "desires-disabled", "both-disabled", "two-payments", "hidden-five", "no-search" }) {
+        SessionService codec = new(null!, new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        foreach (string variant in new[] { "source", "trade-disabled", "desires-disabled", "both-disabled", "two-payments", "hidden-five", "no-search", "searchable-payment", "selective-post-removal" }) {
             SessionState state = await Source();
+            if (variant == "searchable-payment") {
+                Card cost = state.Cards.Single(card => card.PreDrawRemovalCount > 0);
+                int source = state.Cards.FindIndex(card => card.Search is not null);
+                Card search = state.Cards[source];
+                state.Cards[source] = search.WithSearch(new(CardSelector.AnyOfSelectors([search.Search!.Selector, cost.PreDrawSelector]), false));
+            }
             if (variant == "two-payments") {
                 Card cost = state.Cards.Single(card => card.PreDrawRemovalCount > 0);
                 int payment = state.Cards.FindIndex(card => cost.PreDrawSelector.Matches(card));
@@ -199,10 +206,18 @@ public sealed class SelectiveSurvivorTest {
                 if (variant == "no-search" && card.Search is not null) {
                     state.Cards[row] = card.WithSearch(null);
                 }
+                if (variant == "selective-post-removal" && card.PreDrawRemovalCount > 0) {
+                    state.Cards[row] = card.WithEffect(card.EffectPlan with {
+                        HandCost = 0, HandCostSelector = CardSelector.Any,
+                        RemovalCount = card.PreDrawRemovalCount, RemovalSelector = card.PreDrawSelector
+                    }, card.EffectProfile.AsCustom());
+                }
             }
             Assert.That(state.Cards.Sum(card => card.Copies), Is.EqualTo(40));
             foreach (CalculationModel mode in new[] { CalculationModel.Fast, CalculationModel.Exact }) {
-                output.Add(new { Name = variant + "-" + mode, Input = JsonSerializer.Deserialize<JsonElement>(
+                output.Add(new { Name = variant + "-" + mode,
+                    Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(state)),
+                    Input = JsonSerializer.Deserialize<JsonElement>(
                     CalculationSnapshot.Capture(state.Cards, state.Combos, state.HandSize, state.ComboGroups,
                         CalculationWorkPolicy.Interactive, options: new(state.DrawActivationPriority, Mode: mode)).Json) });
             }
