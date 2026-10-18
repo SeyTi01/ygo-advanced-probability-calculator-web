@@ -21,11 +21,12 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
         IRenderedComponent<CalculationAccuracyResult> cut = context.RenderComponent<CalculationAccuracyResult>(parameters =>
             parameters.Add(component => component.Contract, snapshot.Contract));
         string expected = ProbabilityPresentation.AutomaticExactDetail(outcome)!;
-        Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith("Effects — fast"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
         Assert.That(cut.Find("details").GetAttribute("open"), Is.Null);
-        Assert.That(cut.Find("details").TextContent, Does.Contain(expected));
+        AssertDisclosure(cut);
+        Assert.That(cut.Find("details").TextContent, Does.Not.Contain(expected));
         string copied = ProbabilityResultSummaryFormatter.Format(result, 5, System.Globalization.CultureInfo.InvariantCulture);
-        Assert.That(copied, Does.Contain("requested: Fast").And.Contain(expected));
+        Assert.That(copied, Does.Contain("Mode: Effects — fast").And.Contain(expected));
         Assert.That(snapshot.Contract, Is.SameAs(contract));
     }
 
@@ -69,7 +70,7 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
     }
 
     private static void AssertStatus(IRenderedFragment cut, CalculationResultContract contract) {
-        string expected = $"{contract.ExecutedMode.Description()} · {contract.Accuracy}";
+        string expected = $"Mode: {contract.RequestedMode.Description()}";
 
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo(expected));
         Assert.That(cut.Find(".result-accuracy").GetAttribute("role"), Is.EqualTo("status"));
@@ -83,6 +84,7 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
         Assert.That(disclosure.QuerySelector("summary")!.TextContent, Is.EqualTo("Accuracy details"));
         Assert.That(disclosure.QuerySelectorAll("p"), Has.Count.EqualTo(1));
         Assert.That(disclosure.QuerySelector("p")!.TextContent, Is.EqualTo(ProbabilityPresentation.AccuracyDetails));
+        Assert.That(disclosure.QuerySelector("p")!.TextContent.Split('.', StringSplitOptions.RemoveEmptyEntries), Has.Length.EqualTo(3));
         Assert.That(disclosure.TextContent, Does.Not.Contain("Internal solver reference")
             .And.Not.Contain("Reason")
             .And.Not.Contain("Certification Bounded")

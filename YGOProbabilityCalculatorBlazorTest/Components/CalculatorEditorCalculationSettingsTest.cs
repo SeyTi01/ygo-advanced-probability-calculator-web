@@ -104,7 +104,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
             double expected = new ExactProbability(oracle.Wins[0], oracle.Total).ToDouble(new(CalculationWorkPolicy.Interactive));
             Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(expected.ToString("P2")));
             Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size 5 · ").And.Not.Contain(mode.Description()));
-            Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith($"{mode.Description()} · "));
+            Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {mode.Description()}"));
             Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(mode.Description()));
         }
         Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Hypothetical, often optimistic"));

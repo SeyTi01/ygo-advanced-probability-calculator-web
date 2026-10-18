@@ -42,7 +42,7 @@
                        @bind:after="OnHandSizeChanged"
                        min="1"/>
             </div>
-            <CalculationSettingsMenu @ref="_settingsMenu" Model="SelectedModel" ModelChanged="OnModelChanged"
+            <CalculationSettingsMenu Model="SelectedModel" ModelChanged="OnModelChanged"
                                       Priority="_drawActivationPriority" PriorityChanged="OnDrawActivationPriorityChanged" Cards="_cards"
                                       StorageTier="_storageTier"
                                       StorageTierChanged="OnStorageTierChanged" />
@@ -160,6 +160,7 @@
         <div class="calculation-controls">
             <div class="calculate-action">
                 <button type="button"
+                        @ref="_calculationAction"
                         class="btn btn-lg w-100 @(_isCalculating ? "btn-outline-secondary" : "btn-primary")"
                         aria-label="@(_isCalculating ? "Cancel calculation" : null)"
                         title="@(_isCalculating ? "Cancel calculation" : null)"
@@ -176,10 +177,23 @@
                 </button>
             </div>
             <div class="calculation-feedback-slot">
-                @if ((_openingHandAlternativeAvailable && _isCalculating) || _limitReason is not null || _unsupportedExact) {
-                    <div class="calculation-recovery d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(!CanCalculate)" @onclick="CalculateOpeningHandOnly">Calculate with no effect simulation</button>
-                        <button type="button" class="btn btn-sm btn-link" @onclick="ReviewCalculationSettings">Review settings</button>
+                <div class="exact-retry exact-retry-placeholder" aria-hidden="true">
+                    <span class="btn btn-sm btn-outline-primary">Recalculate using Exact</span>
+                    <small>Pins Fast first; may take longer.</small>
+                </div>
+                @if (CanRetryExact) {
+                    <div class="exact-retry">
+                        <button type="button" class="btn btn-sm btn-outline-primary" aria-describedby="exactRetryWarning" @onclick="RequestExactRetry">Recalculate using Exact</button>
+                        <small id="exactRetryWarning" class="text-body-secondary">Pins Fast first; may take longer.</small>
+                        @if (_exactRetryCandidate is not null) {
+                            <div class="exact-retry-confirmation" role="group" aria-label="Replace pinned result before Exact">
+                                <span>Replace the pinned result with this Fast result?</span>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="ConfirmExactRetry">Replace pin and start Exact</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="DismissExactRetry">Cancel</button>
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
             </div>
@@ -248,7 +262,9 @@
                     </div>
                 </div>
                 @{
-                    IReadOnlyList<GroupProbabilityResult> groupResults = result.GroupProbabilities ?? Array.Empty<GroupProbabilityResult>();
+                    List<GroupProbabilityResult> groupResults = (result.GroupProbabilities ?? [])
+                        .Where(group => group.ActiveComboCount > 0)
+                        .ToList();
                     HashSet<string> renderedGroupIds = groupResults
                         .Select(group => group.GroupId)
                         .ToHashSet(StringComparer.Ordinal);
@@ -289,7 +305,7 @@
                         }
                     </div>
                 }
-                @if (ungroupedComboResults.Count > 0 || groupResults.Count == 0) {
+                @if (ungroupedComboResults.Count > 0) {
                     <h6 class="@(groupResults.Count > 0 ? "fw-bold" : null)">@(groupResults.Count > 0 ? "Ungrouped combos" : "Individual combos")</h6>
                     <ol class="combo-probability-list probability-ungrouped-combos">
                         @foreach (ComboProbabilityResult comboResult in ungroupedComboResults) {
@@ -873,12 +889,10 @@
         using CancellationTokenSource cancellation = new();
         _calculationCancellation = cancellation;
         bool OwnsRequest() => !_disposed && requestId == _calculationRequestId && requestVersion == _calculationVersion;
-        Task notices = Task.CompletedTask;
+        CancelExactRetry();
         try {
             _isCalculating = true;
             _errorMessage = null;
-            _limitReason = null;
-            _unsupportedExact = false;
             StateHasChanged();
 
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(
@@ -893,21 +907,8 @@
                 _categoryBases
             );
             PinnedCalculationContext resultContext = CaptureResultContext(model);
-            // BackgroundCalculator settles cancellation only after terminating its worker.
-            // A replacement may own the UI immediately, but must await that cleanup.
-            try {
-                await _recoveryCleanup;
-            }
-            catch (Exception) {
-                // The previous request owns its error; cleanup still completed.
-            }
-            if (!OwnsRequest()) {
-                return;
-            }
-
-            notices = ShowRecoveryAlternative(OwnsRequest, model, cancellation.Token);
+            // The existing background owner handles worker termination and restart cleanup.
             Task<ProbabilityCalculationResult> worker = _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
-            _workerCompletion = worker;
             ProbabilityCalculationResult result = await worker;
             if (OwnsRequest()) {
                 ProbabilityCalculationResult acceptedResult = result with {
@@ -924,13 +925,11 @@
         }
         catch (ProbabilityCalculationLimitException ex) {
             if (OwnsRequest()) {
-                _limitReason = ex.Reason;
                 _errorMessage = ex.Message + " No probability was calculated for this request.";
             }
         }
         catch (UnsupportedExactCalculationException ex) {
             if (OwnsRequest()) {
-                _unsupportedExact = true;
                 _errorMessage = ex.Message + " No probability was returned for this request.";
             }
         }
@@ -941,11 +940,9 @@
         }
         finally {
             cancellation.Cancel();
-            await notices;
             if (OwnsRequest()) {
                 _calculationCancellation = null;
                 _isCalculating = false;
-                _openingHandAlternativeAvailable = false;
             }
         }
     }
@@ -955,7 +952,6 @@
         CancellationTokenSource? cancellation = _calculationCancellation;
         _calculationCancellation = null;
         _isCalculating = false;
-        _openingHandAlternativeAvailable = false;
         cancellation?.Cancel();
     }
 
@@ -1004,7 +1000,6 @@
     private void OnCategoriesChanged() => InvalidateCalculation();
 
     private void InvalidateCalculation(bool clearPreviousResult = false, bool reassess = true) {
-        _unsupportedExact = false;
         _drawActivationPriority = _drawActivationPriority.ForWorkspace(_cards);
         _deferNameEditRendering = false;
         _assessmentDirty |= reassess;
@@ -1022,6 +1017,5 @@
         }
 
         _errorMessage = null;
-        _limitReason = null;
     }
 }

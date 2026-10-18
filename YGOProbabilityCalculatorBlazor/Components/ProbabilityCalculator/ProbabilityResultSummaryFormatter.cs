@@ -10,7 +10,8 @@ public static class ProbabilityResultSummaryFormatter {
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(culture);
 
-        IReadOnlyList<GroupProbabilityResult> groups = result.GroupProbabilities ?? Array.Empty<GroupProbabilityResult>();
+        List<GroupProbabilityResult> groups = (result.GroupProbabilities ?? [])
+            .Where(group => group.ActiveComboCount > 0).ToList();
         HashSet<string> knownGroupIds = groups.Select(group => group.GroupId).ToHashSet(StringComparer.Ordinal);
         List<ComboProbabilityResult> ungrouped = result.ComboProbabilities
             .Where(combo => combo.GroupId is null || !knownGroupIds.Contains(combo.GroupId))
@@ -24,7 +25,7 @@ public static class ProbabilityResultSummaryFormatter {
 
         if (result.Contract is { } contract) {
             lines.InsertRange(1, [
-                $"Mode: {contract.ExecutedMode.Description()} (requested: {contract.RequestedMode})",
+                $"Mode: {contract.RequestedMode.Description()}",
                 $"Accuracy: {contract.Accuracy}; completion: {contract.Completion}; contract v{contract.Version}",
                 $"Reference: {contract.Reference}",
                 $"Reason: {contract.Reason}",
@@ -43,22 +44,24 @@ public static class ProbabilityResultSummaryFormatter {
                     lines.Add($"{fractionLabel}, combo {index + 1}: {Ratio(fractions.Combos[index])}");
                 }
                 for (int index = 0; index < fractions.Groups.Length; index++) {
-                    lines.Add($"{fractionLabel}, group {index + 1}: {Ratio(fractions.Groups[index])}");
+                    if (index < (result.GroupProbabilities?.Count ?? 0) && result.GroupProbabilities![index].ActiveComboCount > 0) {
+                        lines.Add($"{fractionLabel}, group {index + 1}: {Ratio(fractions.Groups[index])}");
+                    }
                 }
             }
         }
 
-        if (groups.Count == 0) {
+        if (groups.Count == 0 && ungrouped.Count > 0) {
             lines.Add(string.Empty);
             lines.Add("Individual combos:");
             lines.AddRange(result.ComboProbabilities.Select(combo => FormatCombo(combo)));
         }
-        else {
+        else if (groups.Count > 0) {
             lines.Add(string.Empty);
             lines.Add("Group probabilities:");
 
             foreach (GroupProbabilityResult group in groups) {
-                lines.Add($"- **{NormalizeLabel(group.GroupName)}** — {Display(group.Probability, ProbabilityRow.Group, ProbabilityPresentation.GroupIndex(groups, group.GroupId))} ({group.ActiveComboCount} active)");
+                lines.Add($"- **{NormalizeLabel(group.GroupName)}** — {Display(group.Probability, ProbabilityRow.Group, ProbabilityPresentation.GroupIndex(result.GroupProbabilities, group.GroupId))} ({group.ActiveComboCount} active)");
                 IEnumerable<ComboProbabilityResult> groupCombos = result.ComboProbabilities.Where(combo => StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId));
 
                 foreach (ComboProbabilityResult combo in groupCombos) {

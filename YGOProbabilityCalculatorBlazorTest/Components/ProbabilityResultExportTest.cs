@@ -60,7 +60,7 @@ public class ProbabilityResultExportTest {
     }
 
     [Test]
-    public void GroupedSummaryPreservesStableMembershipOrderCountsDuplicatesAndEmptyGroups() {
+    public void GroupedSummaryPreservesStableMembershipOrderCountsDuplicatesAndHidesEmptyGroups() {
         ProbabilityCalculationResult result = new(
             0.87,
             [
@@ -82,10 +82,10 @@ public class ProbabilityResultExportTest {
         Assert.That(Occurrences(summary, "**Route group**"), Is.EqualTo(2));
         Assert.That(summary, Does.Contain("**Route group** — 61.00% ⚠ Uncertified (1 active)\n  - **Second group route** — 40.00%"));
         Assert.That(summary, Does.Contain("**Route group** — 50.00% ⚠ Uncertified (2 active)\n  - **Same route** — 75.00% ⚠ Uncertified\n  - **Same route** — 50.00%"));
-        Assert.That(summary, Does.Contain("**Empty group** — 0.00% ⚠ Uncertified (0 active)"));
+        Assert.That(summary, Does.Not.Contain("Empty group"));
         Assert.That(summary, Does.Contain("Ungrouped combos:\n- **Orphan route** — 25.00%"));
         Assert.That(summary.IndexOf("Second group route", StringComparison.Ordinal), Is.LessThan(summary.IndexOf("Same route", StringComparison.Ordinal)));
-        Assert.That(summary.IndexOf("Empty group", StringComparison.Ordinal), Is.LessThan(summary.IndexOf("Orphan route", StringComparison.Ordinal)));
+        Assert.That(result.GroupProbabilities, Has.Count.EqualTo(3));
     }
 
     [Test]

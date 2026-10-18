@@ -18,7 +18,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
 [SetCulture("en-US")]
-public class PinnedResultTest {
+public partial class PinnedResultTest {
     private TestContext _context = null!;
     private ControlledCalculator _worker = null!;
     private IRenderedComponent<ProbabilityCalculatorComponent> _cut = null!;

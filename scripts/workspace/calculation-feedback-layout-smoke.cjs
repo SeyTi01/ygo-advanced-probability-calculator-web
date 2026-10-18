@@ -1,5 +1,5 @@
-// Check recovery feedback placement and lifecycle against a running local calculator app.
-// Run: NODE_PATH=<Playwright node_modules> node scripts/workspace/calculation-feedback-layout-smoke.cjs [base-url]
+// Run against the local app: NODE_PATH=<Playwright modules> node scripts/workspace/calculation-feedback-layout-smoke.cjs [url]
+// Test-only response holds exercise production Fast deadlines and explicit Exact without changing solver output.
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
@@ -7,247 +7,157 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 (async () => {
-    const baseUrl = process.argv[2] || 'http://127.0.0.1:5080';
-    const samplePath = path.resolve(__dirname, '../../YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json');
-    const sampleBytes = await fs.readFile(samplePath);
     const browser = await chromium.launch({ channel: 'msedge', headless: true });
-    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-    const page = await context.newPage();
-    const screenshotDirectory = path.join(os.tmpdir(), 'calculation-feedback-layout-smoke');
+    const page = await browser.newPage({ locale: 'en-US', viewport: { width: 1440, height: 1000 } });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-
+    const evidence = path.join(os.tmpdir(), 'issue248-exact-retry');
+    await fs.mkdir(evidence, { recursive: true });
     try {
-        await fs.mkdir(screenshotDirectory, { recursive: true });
         await page.addInitScript(() => {
-            window.showSaveFilePicker = undefined;
             const NativeWorker = window.Worker;
-            const probe = window.__calculationLayoutProbe = {
-                calculationRequests: 0,
-                delayedRequestId: null,
-                delayedResponseHeld: false
-            };
-
+            const probe = window.__exactRetryProbe = { requests: [], holdExact: true, pending: null, copied: [] };
+            Object.defineProperty(navigator, 'clipboard', { value: { writeText: async text => probe.copied.push(text) } });
             window.Worker = class extends NativeWorker {
-                constructor(...args) {
-                    super(...args);
-                    this._layoutOnMessage = null;
-                    this._layoutTimers = new Set();
-                    this._layoutTerminated = false;
-                }
-
                 set onmessage(handler) {
-                    this._layoutOnMessage = handler;
+                    this._handler = handler;
                     super.onmessage = handler ? event => {
-                        const data = event?.data;
-                        if (data?.id === probe.delayedRequestId && typeof data.response === 'string') {
-                            probe.delayedResponseHeld = true;
-                            const timer = window.setTimeout(() => {
-                                this._layoutTimers.delete(timer);
-                                if (!this._layoutTerminated && this._layoutOnMessage) {
-                                    this._layoutOnMessage.call(this, event);
-                                }
-                            }, 20000);
-                            this._layoutTimers.add(timer);
-                            return;
+                        if (typeof event.data?.response === 'string') {
+                            if (this._upgrade) return; // Production five-second watchdog retains real initial Fast.
+                            if (this._explicitExact && probe.holdExact) {
+                                probe.pending = () => { if (this._handler) handler.call(this, event); };
+                                return;
+                            }
                         }
                         handler.call(this, event);
                     } : null;
                 }
-
-                get onmessage() {
-                    return this._layoutOnMessage;
-                }
-
+                get onmessage() { return this._handler; }
                 postMessage(message, transfer) {
-                    if (message && typeof message.id === 'number' && typeof message.json === 'string'
-                        && message.fastStage !== 'upgrade') {
-                        probe.calculationRequests++;
-                        if (probe.calculationRequests === 2) {
-                            probe.delayedRequestId = message.id;
-                        }
+                    if (typeof message?.json === 'string') {
+                        this._upgrade = message.fastStage === 'upgrade';
+                        this._explicitExact = !message.fastStage && JSON.parse(message.json).Options.Mode === 2;
+                        if (!this._upgrade) probe.requests.push(JSON.parse(message.json));
                     }
-
-                    if (transfer === undefined) {
-                        super.postMessage(message);
-                    }
-                    else {
-                        super.postMessage(message, transfer);
-                    }
-                }
-
-                terminate() {
-                    this._layoutTerminated = true;
-                    for (const timer of this._layoutTimers) {
-                        window.clearTimeout(timer);
-                    }
-                    this._layoutTimers.clear();
-                    super.terminate();
+                    if (transfer === undefined) super.postMessage(message);
+                    else super.postMessage(message, transfer);
                 }
             };
         });
-        await page.goto(baseUrl);
-        await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
+        await page.goto(process.argv[2] || 'http://127.0.0.1:5080');
         await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
-        await page.locator('#sessionFileInput').setInputFiles({
-            name: 'workspace.json',
-            mimeType: 'application/json',
-            buffer: sampleBytes
-        });
-        await page.waitForFunction(() => document.querySelectorAll('.card-editor').length > 0);
-        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-        await page.locator('.probability-results').waitFor();
-        await page.waitForFunction(() => !document.querySelector('.calculate-action button[aria-label="Cancel calculation"]'));
-        await page.getByRole('button', { name: 'Pin result', exact: true }).click();
-        await page.locator('.pinned-result').waitFor();
-        const originalCurrentResult = await page.locator('.probability-results .probability-total-value').textContent();
-        const originalPinnedResult = await page.locator('.pinned-result').evaluate(element => element.outerHTML);
-
-        const geometry = async () => page.evaluate(() => {
-            const bounds = selector => {
-                const element = document.querySelector(selector);
-                if (!element) throw new Error(`Missing ${selector}`);
-                const rect = element.getBoundingClientRect();
-                return { x: rect.x, y: rect.y + scrollY, width: rect.width, height: rect.height };
-            };
-            return {
-                calculate: bounds('.calculate-action button'),
-                slot: bounds('.calculation-feedback-slot'),
-                toolbar: bounds('.session-controls .calculation-controls'),
-                current: bounds('.probability-results'),
-                pinned: bounds('.pinned-result'),
-                overflow: document.documentElement.scrollWidth - innerWidth
-            };
-        });
-        const addRecovery = async (targetSelector, insertBefore = false, legacy = false) => page.evaluate(({ selector, before, isLegacy }) => {
-            const recovery = document.createElement('div');
-            recovery.className = 'calculation-recovery mt-3 d-flex align-items-center gap-2';
-            recovery.innerHTML = '<button class="btn btn-sm btn-outline-primary">Calculate with no effect simulation</button><button class="btn btn-sm btn-link">Review settings</button>';
-            if (isLegacy) {
-                recovery.style.flexWrap = 'wrap';
-                recovery.style.setProperty('margin-top', '1rem', 'important');
-            }
-            const target = document.querySelector(selector);
-            if (before) target.before(recovery);
-            else target.append(recovery);
-        }, { selector: targetSelector, before: insertBefore, isLegacy: legacy });
-        const removeRecovery = async () => page.locator('.calculation-recovery').evaluate(element => element.remove());
-        const baselines = new Map();
-        const checkLegacyPlacement = async (width, theme) => {
-            await page.getByLabel('Color theme preference').selectOption({ label: theme });
-            await page.setViewportSize({ width, height: 1000 });
-            const baseline = await geometry();
-            assert.ok(baseline.overflow <= 0, `${width}px ${theme} has no baseline overflow`);
-            baselines.set(`${width}/${theme}`, baseline);
-
-            await addRecovery('.result-panels', true, true);
-            const oldPlacement = await geometry();
-            assert.ok(oldPlacement.current.y > baseline.current.y, `${width}px ${theme}: below-button feedback reproduces the result jump`);
-            assert.ok(oldPlacement.pinned.y > baseline.pinned.y, `${width}px ${theme}: below-button feedback reproduces the pinned-result jump`);
-            await removeRecovery();
-
-            await addRecovery('.calculation-feedback-slot');
-            const actionPlacement = await geometry();
-            assert.equal(actionPlacement.current.y, baseline.current.y, `${width}px ${theme}: current result stays fixed beside Calculate`);
-            assert.equal(actionPlacement.pinned.y, baseline.pinned.y, `${width}px ${theme}: pinned result stays fixed beside Calculate`);
-            assert.ok(actionPlacement.overflow <= 0, `${width}px ${theme} has no horizontal overflow`);
-            assert.ok(actionPlacement.slot.height >= 40, `${width}px ${theme}: the feedback slot is reserved before reveal`);
-            assert.ok(actionPlacement.calculate.y + actionPlacement.calculate.height <= actionPlacement.slot.y || width > 767,
-                `${width}px ${theme}: mobile feedback is stacked below Calculate`);
-            const feedbackBounds = await page.locator('.calculation-feedback-slot .calculation-recovery').evaluate(element => {
-                const slot = element.parentElement.getBoundingClientRect();
-                const recovery = element.getBoundingClientRect();
-                return { slotLeft: slot.left, slotRight: slot.right, slotBottom: slot.bottom,
-                    left: recovery.left, right: recovery.right, bottom: recovery.bottom };
-            });
-            assert.ok(feedbackBounds.left >= feedbackBounds.slotLeft - 1 && feedbackBounds.right <= feedbackBounds.slotRight + 1,
-                `${width}px ${theme}: feedback fits within the reserved slot width`);
-            assert.ok(feedbackBounds.bottom <= feedbackBounds.slotBottom + 1,
-                `${width}px ${theme}: feedback fits within the reserved slot height`);
-            console.log(JSON.stringify({
-                width,
-                theme,
-                simulatedLegacyShift: {
-                    current: oldPlacement.current.y - baseline.current.y,
-                    pinned: oldPlacement.pinned.y - baseline.pinned.y
-                },
-                baseline,
-                simulatedActionPlacement: actionPlacement
-            }));
-            await removeRecovery();
+        const target = { Name: 'Target', Source: 'User' };
+        const card = (id, name, copies, extra = {}) => ({ Id: id, Name: name, Copies: copies, Categories: [], Active: true, ...extra });
+        const session = {
+            SchemaVersion: 10, CalculationModel: 'Fast', HandSize: 2, Categories: [target],
+            Cards: [card('s', 'Search target', 1, { Search: { Selector: { Kind: 'Category', Categories: ['user:Target'] }, ObjectiveMetadataOnly: false } }),
+                card('a', 'Target', 1, { Categories: [target] }), card('f', 'Filler', 2),
+                card('d', 'Draw and banish', 1, { DrawCount: 1, PreDrawDeckRemovalCount: 1 })],
+            ComboGroups: [{ Id: 'empty-first', Name: 'Empty first' }, { Id: 'g', Name: 'Target routes' },
+                { Id: 'empty-middle', Name: 'Empty middle' }, { Id: 'zero', Name: 'Active zero' }, { Id: 'empty-last', Name: 'Empty last' }],
+            Combos: [{ Name: 'Target route', Active: true, GroupId: 'g', Categories: [{ BaseCategory: target, MinCount: 1, MaxCount: 6 }] },
+                { Name: 'Impossible route', Active: true, GroupId: 'zero', Categories: [], Cards: [{ CardId: 'd', MinCount: 3, MaxCount: 6 }] }]
         };
-
-        for (const theme of ['Light', 'Dark']) {
-            for (const width of [1440, 768, 390, 320]) {
-                await checkLegacyPlacement(width, theme);
-            }
+        await page.locator('#sessionFileInput').setInputFiles({ name: 'result-layout.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(session)) });
+        await page.waitForFunction(() => document.querySelectorAll('.card-editor').length === 4);
+        const calculate = () => page.getByRole('button', { name: 'Calculate', exact: true }).click();
+        const retry = () => page.getByRole('button', { name: 'Recalculate using Exact', exact: true });
+        await calculate();
+        await retry().waitFor({ timeout: 30000 });
+        await page.getByRole('button', { name: 'Pin result', exact: true }).click();
+        await calculate();
+        await retry().waitFor({ timeout: 30000 });
+        const fastPin = await page.locator('.pinned-result').innerText();
+        const fastCurrent = await page.locator('.probability-results .probability-total-value').innerText();
+        for (const selector of ['.probability-results', '.pinned-result']) {
+            const text = await page.locator(selector).innerText();
+            assert(!text.includes('Empty first') && !text.includes('Empty middle') && !text.includes('Empty last'));
+            assert(text.includes('Active zero') && text.includes('0.00%'));
+            assert(text.includes('Mode: Effects — fast'));
         }
-
-        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-        await page.getByRole('button', { name: 'Cancel calculation', exact: true }).waitFor();
-        await page.waitForFunction(() => window.__calculationLayoutProbe.delayedResponseHeld);
-        await page.locator('.calculation-feedback-slot .calculation-recovery').waitFor({ state: 'visible' });
-        assert.equal(await page.evaluate(() => window.__calculationLayoutProbe.calculationRequests), 2,
-            'The delayed result belongs to the second real worker calculation');
-        assert.equal((await page.locator('.calculation-recovery .btn-outline-primary').textContent()).trim(),
-            'Calculate with no effect simulation', 'The browser uses the longer recovery label');
-
+        const geometry = () => page.evaluate(() => {
+            const bounds = selector => {
+                const r = document.querySelector(selector).getBoundingClientRect();
+                return { x: r.x, y: r.y + scrollY, width: r.width, height: r.height };
+            };
+            return { current: bounds('.probability-results'), pinned: bounds('.pinned-result'),
+                toolbar: bounds('.session-controls .calculation-controls'), slot: bounds('.calculation-feedback-slot'),
+                overflow: document.documentElement.scrollWidth - innerWidth };
+        });
+        const baselines = new Map();
+        const states = [];
         for (const theme of ['Light', 'Dark']) {
             for (const width of [1440, 768, 390, 320]) {
                 await page.getByLabel('Color theme preference').selectOption({ label: theme });
                 await page.setViewportSize({ width, height: 1000 });
-                const actualPlacement = await geometry();
-                const baseline = baselines.get(`${width}/${theme}`);
-                assert.ok(baseline, `A baseline exists for ${width}px ${theme}`);
-                assert.equal(actualPlacement.current.y, baseline.current.y,
-                    `${width}px ${theme}: actual delayed feedback keeps the current result in place`);
-                assert.equal(actualPlacement.pinned.y, baseline.pinned.y,
-                    `${width}px ${theme}: actual delayed feedback keeps the pinned result in place`);
-                assert.deepEqual(actualPlacement.toolbar, baseline.toolbar,
-                    `${width}px ${theme}: the session toolbar keeps its geometry`);
-                assert.ok(actualPlacement.overflow <= 0, `${width}px ${theme} has no horizontal overflow`);
-                const recoveryBounds = await page.locator('.calculation-feedback-slot .calculation-recovery').evaluate(element => {
-                    const slot = element.parentElement.getBoundingClientRect();
-                    const recovery = element.getBoundingClientRect();
-                    return {
-                        slotLeft: slot.left,
-                        slotRight: slot.right,
-                        slotBottom: slot.bottom,
-                        left: recovery.left,
-                        right: recovery.right,
-                        bottom: recovery.bottom
-                    };
-                });
-                assert.ok(recoveryBounds.left >= recoveryBounds.slotLeft - 1
-                    && recoveryBounds.right <= recoveryBounds.slotRight + 1,
-                `${width}px ${theme}: actual recovery fits within the slot width`);
-                assert.ok(recoveryBounds.bottom <= recoveryBounds.slotBottom + 1,
-                    `${width}px ${theme}: actual recovery fits within the reserved slot height`);
+                const before = await geometry();
+                baselines.set(`${width}/${theme}`, before);
+                assert(before.overflow <= 0);
+                await retry().click();
+                await page.locator('.exact-retry-confirmation').waitFor();
+                const confirmation = await geometry();
+                assert.equal(confirmation.current.y, before.current.y);
+                assert.equal(confirmation.pinned.y, before.pinned.y);
+                assert(confirmation.overflow <= 0);
+                assert.equal(await page.evaluate(() => __exactRetryProbe.requests.length), 2);
+                await page.locator('.exact-retry-confirmation').getByRole('button', { name: 'Cancel', exact: true }).click();
+                assert.equal(await page.locator('.pinned-result').innerText(), fastPin);
+                assert.equal(await page.locator('.calculate-action > button').evaluate(element => element === document.activeElement), true);
                 if ((width === 1440 && theme === 'Light') || (width === 390 && theme === 'Dark')) {
-                    const screenshotPath = path.join(screenshotDirectory, `${width}px-${theme.toLowerCase()}-recovery.png`);
-                    await page.screenshot({ path: screenshotPath, fullPage: true });
-                    console.log(`Screenshot: ${screenshotPath}`);
+                    await page.locator('.results-section').screenshot({ path: path.join(evidence, `${width}-${theme}-fast.png`) });
                 }
-                console.log(JSON.stringify({ width, theme, actualDelayedPlacement: actualPlacement }));
+                states.push({ width, theme, before, confirmation });
             }
         }
-
-        await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
+        await retry().click();
+        await page.getByRole('button', { name: 'Replace pin and start Exact', exact: true }).click();
+        await page.getByRole('button', { name: 'Cancel calculation', exact: true }).waitFor();
+        await page.waitForFunction(() => !!__exactRetryProbe.pending);
+        assert.equal(await retry().count(), 0);
+        const requests = await page.evaluate(() => __exactRetryProbe.requests);
+        assert.equal(requests.length, 3);
+        assert.equal(requests[2].Options.Mode, 2);
+        requests[0].Options.Mode = 2;
+        assert.deepEqual(requests[2], requests[0]);
+        assert.equal(await page.locator('.probability-results .probability-total-value').innerText(), fastCurrent);
+        const pinnedFast = await page.locator('.pinned-result').innerText();
+        assert(pinnedFast.includes('Mode: Effects — fast'));
+        assert.equal(await page.locator('.calculate-action > button').evaluate(element => element === document.activeElement), true);
+        await page.waitForTimeout(7200);
+        assert.equal(await page.getByRole('button', { name: 'Cancel calculation', exact: true }).count(), 1,
+            'Explicit Exact stays running beyond the automatic opportunity');
+        assert.equal(await page.getByRole('button', { name: 'Calculate with no effect simulation', exact: true }).count(), 0);
+        for (const theme of ['Light', 'Dark']) {
+            for (const width of [1440, 768, 390, 320]) {
+                await page.getByLabel('Color theme preference').selectOption({ label: theme });
+                await page.setViewportSize({ width, height: 1000 });
+                const running = await geometry();
+                const before = baselines.get(`${width}/${theme}`);
+                assert.equal(running.current.y, before.current.y, `${width}/${theme}: current stays fixed`);
+                assert.equal(running.pinned.y, before.pinned.y, `${width}/${theme}: pin stays fixed`);
+                assert.deepEqual(running.toolbar, before.toolbar);
+                assert(running.overflow <= 0);
+                states.push({ width, theme, running });
+            }
+        }
+        await page.evaluate(() => { __exactRetryProbe.holdExact = false; __exactRetryProbe.pending(); });
         await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
-        await page.locator('.calculation-feedback-slot .calculation-recovery').waitFor({ state: 'detached' });
-        assert.equal(await page.locator('.probability-results .probability-total-value').textContent(),
-            originalCurrentResult,
-            'Cancel keeps the displayed current result available');
-        assert.equal(await page.locator('.pinned-result').evaluate(element => element.outerHTML), originalPinnedResult,
-            'Cancel keeps the pinned result available');
-
-        assert.deepEqual(errors, [], `No browser errors: ${errors.join('; ')}`);
-        console.log(`Calculation feedback layout smoke passed. Screenshot directory: ${screenshotDirectory}`);
+        assert.equal((await page.locator('.probability-results .result-accuracy').innerText()).trim(), 'Mode: Effects — exact');
+        assert.equal(await page.locator('.pinned-result').innerText(), pinnedFast);
+        assert.equal(await retry().count(), 0);
+        assert.equal(await page.locator('#calculationModel').inputValue(), 'Fast');
+        await page.getByRole('button', { name: 'Copy results', exact: true }).click();
+        const copied = await page.evaluate(() => __exactRetryProbe.copied.at(-1));
+        assert(copied.includes('Mode: Effects — exact') && !copied.includes('Empty first') && copied.includes('Active zero'));
+        for (const [width, theme] of [[1440, 'Light'], [390, 'Dark']]) {
+            await page.setViewportSize({ width, height: 1000 });
+            await page.getByLabel('Color theme preference').selectOption({ label: theme });
+            await page.locator('.results-section').screenshot({ path: path.join(evidence, `${width}-${theme}-exact.png`) });
+        }
+        assert.deepEqual(errors, []);
+        await fs.writeFile(path.join(evidence, 'geometry.json'), JSON.stringify(states, null, 2));
+        console.log(`Exact retry browser smoke passed: real Fast deadline fallback, replacement/cancel, pin-before-Exact, explicit Exact beyond seven seconds, success/copy, 8 viewport/theme combinations, no shifts/overflow. Evidence: ${evidence}`);
     } finally {
-        await context.close();
         await browser.close();
     }
-})().catch(error => {
-    console.error(error);
-    process.exitCode = 1;
-});
+})().catch(error => { console.error(error); process.exitCode = 1; });
