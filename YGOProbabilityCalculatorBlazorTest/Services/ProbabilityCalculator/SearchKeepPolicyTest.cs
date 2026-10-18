@@ -135,7 +135,7 @@ public sealed partial class SearchEffectsTest {
     }
 
     [Test]
-    public void UnobservedOrdinaryLabelsStillDeferBesideExplicitSearchSources() {
+    public void UnobservedOrdinaryLabelsDeferTogetherWithUnremovableSearchSources() {
         List<Card> deck = [new Card([Spell], id: "source").WithSearch(new(CardSelector.For(A), false)),
             new([A], id: "target"), new([B], id: "material"),
             new([], id: "draw", drawCount: 1, preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(B)),
@@ -145,7 +145,7 @@ public sealed partial class SearchEffectsTest {
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
         PostDrawCalculation calculation = new(deck, 2, budget);
         calculation.CalculateSearch(combos, Groups, false, new(deck, budget));
-        Assert.That(calculation.DeferredRows, Is.EqualTo(3));
+        Assert.That(calculation.DeferredRows, Is.EqualTo(4));
         Compare(deck, combos, 2);
     }
 }

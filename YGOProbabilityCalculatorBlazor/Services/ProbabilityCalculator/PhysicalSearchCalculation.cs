@@ -124,9 +124,12 @@ internal sealed class PhysicalSearchCalculation(
         WorkBudget budget,
         bool conditionObserved = false
     ) {
+        using IDisposable? stage = budget.SearchDiagnostics?.Stage("physical");
+        budget.SearchDiagnostics?.BeginScenario();
         budget.SearchDiagnostics?.Add("physical scenarios");
         List<List<CompiledEvent?>> events = search.Compile(combos, scenario.HandSize, scenario.Cards,
             scenario.Capacity, physical: scenario);
+        using IDisposable? conditioning = budget.SearchDiagnostics?.Measure("fixed hand projection");
         if (conditionObserved) {
             foreach (List<CompiledEvent?> routes in events) {
                 for (int route = 0; route < routes.Count; route++) {
@@ -134,11 +137,16 @@ internal sealed class PhysicalSearchCalculation(
                 }
             }
         }
+        conditioning?.Dispose();
+        budget.SearchDiagnostics?.Predicates(events.SelectMany(routes => routes));
+        using IDisposable? construction = budget.SearchDiagnostics?.Measure("decision construction");
         SearchDecisionCounter diagram = new(scenario.Domains, scenario.Domains.DefaultIfEmpty(0).Max(), budget, singleSample: false);
         int[] roots = events.Select(diagram.Union).ToArray();
         int union = roots.Aggregate(0, diagram.Or);
         int[] groupRoots = totalOnly ? [] : (groups ?? []).Select(group => roots.Where((_, index) => combos[index].GroupId == group.Id)
             .Aggregate(0, diagram.Or)).ToArray();
+        construction?.Dispose();
+        using IDisposable? counting = budget.SearchDiagnostics?.Measure("weighted counting");
         SearchDecisionCounter.SurvivorCounter counter = new(diagram, scenario);
         BigInteger denominator = counter.Count(1);
         int[] resultRoots = totalOnly ? [union] : [union, .. roots, .. groupRoots];

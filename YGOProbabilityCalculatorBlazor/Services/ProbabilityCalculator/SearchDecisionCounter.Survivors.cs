@@ -55,8 +55,10 @@ internal sealed partial class SearchDecisionCounter {
             }
             (int, int, int, int) key = (node, row, hand, loss);
             if (_memo.TryGetValue(key, out BigInteger cached)) {
+                _budget.SearchDiagnostics?.Add("survivor hits");
                 return cached;
             }
+            _budget.SearchDiagnostics?.Visit("survivor miss", key);
             bool ordinary = _scenario.Seen[row] < 0;
             int copies = _scenario.Cards[row].Copies;
             int minimum = ordinary ? Math.Max(0, hand - _ordinarySuffix[row + 1]) : _scenario.Held[row];
@@ -68,8 +70,10 @@ internal sealed partial class SearchDecisionCounter {
                 int unseenSkipped = _unseenSuffix[row] - _unseenSuffix[nextRelevant];
                 for (int take = Math.Max(0, hand - _ordinarySuffix[nextRelevant]); take <= Math.Min(hand, ordinarySkipped); take++) {
                     for (int lost = Math.Max(0, loss - (_unseenSuffix[nextRelevant] - hand + take)); lost <= Math.Min(loss, unseenSkipped - take); lost++) {
-                        Add(Multiply(_diagram.Choose(ordinarySkipped, take), _diagram.Choose(unseenSkipped - take, lost)),
-                            Visit(node, nextRelevant, hand - take, loss - lost));
+                        BigInteger count = Visit(node, nextRelevant, hand - take, loss - lost);
+                        if (!count.IsZero) {
+                            Add(Multiply(_diagram.Choose(ordinarySkipped, take), _diagram.Choose(unseenSkipped - take, lost)), count);
+                        }
                     }
                 }
             }
@@ -86,7 +90,9 @@ internal sealed partial class SearchDecisionCounter {
                     for (int lost = leastLoss; lost <= Math.Min(loss, unseen); lost++) {
                         int next = Advance(afterHand, 2 * row + 1, held + lost);
                         BigInteger count = Visit(next, row + 1, nextHand, loss - lost);
-                        Add(Multiply(handWeight, _diagram.Choose(unseen, lost)), count);
+                        if (!count.IsZero) {
+                            Add(Multiply(handWeight, _diagram.Choose(unseen, lost)), count);
+                        }
                     }
                 }
             }
@@ -111,8 +117,10 @@ internal sealed partial class SearchDecisionCounter {
             }
             (int, int, int, int) key = (node, row, hand, -1);
             if (_memo.TryGetValue(key, out BigInteger cached)) {
+                _budget.SearchDiagnostics?.Add("survivor hits");
                 return cached;
             }
+            _budget.SearchDiagnostics?.Visit("survivor miss", key);
             bool ordinary = _scenario.Seen[row] < 0;
             int copies = _scenario.Cards[row].Copies;
             int minimum = ordinary ? Math.Max(0, hand - _ordinarySuffix[row + 1]) : _scenario.Held[row];
@@ -120,6 +128,9 @@ internal sealed partial class SearchDecisionCounter {
             BigInteger result = 0;
             for (int held = minimum; held <= maximum; held++) {
                 BigInteger count = CountHand(Advance(node, 2 * row, held), row + 1, hand - (ordinary ? held : 0));
+                if (count.IsZero) {
+                    continue;
+                }
                 BigInteger increment = Multiply(ordinary ? _diagram.Choose(copies, held) : BigInteger.One, count);
                 _budget.Spend(WorkBudget.IntegerCells(result) + WorkBudget.IntegerCells(increment) + 1);
                 result += increment;
@@ -135,6 +146,7 @@ internal sealed partial class SearchDecisionCounter {
             if (_memo.Count == 32768) {
                 _budget.Spend(_memo.Count);
                 _memo.Clear();
+                _budget.SearchDiagnostics?.Add("survivor clears");
                 _cells = 0;
             }
             _cells += 4 + WorkBudget.IntegerCells(result);
@@ -149,6 +161,14 @@ internal sealed partial class SearchDecisionCounter {
         }
 
         private BigInteger Multiply(BigInteger first, BigInteger second) {
+            if (first.IsZero || second.IsZero) {
+                _budget.Spend(1);
+                return BigInteger.Zero;
+            }
+            if (first.IsOne || second.IsOne) {
+                _budget.Spend(1);
+                return first.IsOne ? second : first;
+            }
             _budget.Spend((WorkBudget.IntegerCells(first) + 1) * (WorkBudget.IntegerCells(second) + 1));
             BigInteger result = first * second;
             _budget.CheckStorage(1, WorkBudget.IntegerCells(result));
