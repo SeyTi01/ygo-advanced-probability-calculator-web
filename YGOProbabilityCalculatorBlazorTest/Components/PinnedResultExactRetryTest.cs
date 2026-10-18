@@ -33,33 +33,51 @@ public partial class PinnedResultTest {
         return Accepted;
     }
 
-    [TestCase(CalculationAccuracy.Bounded)]
-    [TestCase(CalculationAccuracy.Uncertified)]
-    public async Task ExactRetryPinsAcceptedFastBeforeDispatchAndPreservesPreferenceAndEveryInput(CalculationAccuracy accuracy) {
+    private async Task<PinnedResultSnapshot?> CreatePreviousPin(bool hasPin) {
+        if (!hasPin) {
+            return null;
+        }
+
+        await Accept();
+        await Pin();
+        return Pinned;
+    }
+
+    private void AssertPinUnchanged(PinnedResultSnapshot? previous) {
+        Assert.That(Field<PinnedResultSnapshot?>("_pinnedResult"), Is.SameAs(previous));
+        Assert.That(_cut.FindAll(".pinned-result"), Has.Count.EqualTo(previous is null ? 0 : 1));
+    }
+
+    [TestCase(CalculationAccuracy.Bounded, false)]
+    [TestCase(CalculationAccuracy.Uncertified, false)]
+    [TestCase(CalculationAccuracy.Bounded, true)]
+    [TestCase(CalculationAccuracy.Uncertified, true)]
+    public async Task ExactRetryPreservesManualPinPreferenceAndEveryInput(CalculationAccuracy accuracy, bool hasPin) {
+        PinnedResultSnapshot? previous = await CreatePreviousPin(hasPin);
         PinnedResultSnapshot fast = await AcceptUncertainFast(accuracy);
+        int fastJob = _worker.Jobs.Count - 1;
         string saved = _sessions.SerializeSession(FieldSession());
         Assert.That(_cut.FindAll(".calculation-feedback-slot .exact-retry > button"), Has.Count.EqualTo(1));
-        Assert.That(_cut.Find("#exactRetryWarning").TextContent, Does.Contain("may take longer"));
+        Assert.That(_cut.FindAll("#exactRetryWarning, .exact-retry-confirmation"), Is.Empty);
         Task exact = RetryExact();
-        Assert.That(Pinned, Is.SameAs(fast));
+        int exactJob = fastJob + 1;
+        AssertPinUnchanged(previous);
         Assert.That(Accepted, Is.SameAs(fast));
-        Assert.That(_worker.Inputs[1].RequestedMode, Is.EqualTo(CalculationModel.Exact));
-        JsonNode original = JsonNode.Parse(_worker.Inputs[0].Json)!;
+        Assert.That(_worker.Inputs[exactJob].RequestedMode, Is.EqualTo(CalculationModel.Exact));
+        JsonNode original = JsonNode.Parse(_worker.Inputs[fastJob].Json)!;
         original["Options"]!["Mode"] = (int)CalculationModel.Exact;
-        Assert.That(JsonNode.DeepEquals(original, JsonNode.Parse(_worker.Inputs[1].Json)), Is.True,
+        Assert.That(JsonNode.DeepEquals(original, JsonNode.Parse(_worker.Inputs[exactJob].Json)), Is.True,
             "Only the request-local mode changes; Work, Storage, policy and workspace stay intact.");
         Assert.That(_cut.FindAll(".exact-retry > button"), Is.Empty);
         await Call("RequestExactRetry");
-        await Call("ConfirmExactRetry");
-        Assert.That(_worker.Jobs, Has.Count.EqualTo(2));
-        ProbabilityCalculationResult physical = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[1].Json), CalculationModel.Exact);
-        _worker.Jobs[1].SetResult(physical);
+        Assert.That(_worker.Jobs, Has.Count.EqualTo(exactJob + 1));
+        ProbabilityCalculationResult physical = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[exactJob].Json), CalculationModel.Exact);
+        _worker.Jobs[exactJob].SetResult(physical);
         await exact;
-        Assert.That(Pinned, Is.SameAs(fast));
+        AssertPinUnchanged(previous);
         Assert.That(Accepted.Contract, Is.SameAs(physical.Contract));
         Assert.That(Accepted.Context.Model, Is.EqualTo(CalculationModel.Exact));
         Assert.That(_cut.Find(".probability-results .result-accuracy").TextContent, Is.EqualTo("Mode: Effects — exact"));
-        Assert.That(_cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
         Assert.That(_cut.FindAll(".exact-retry > button"), Is.Empty);
         Assert.That(_sessions.SerializeSession(FieldSession()), Is.EqualTo(saved));
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
@@ -67,23 +85,23 @@ public partial class PinnedResultTest {
         Assert.That(fast.Contract!.AutomaticExact, Is.EqualTo(AutomaticExactOutcome.Deadline));
         AssertNoComparisonUi();
         Task normal = Start();
-        Assert.That(_worker.Inputs[2].RequestedMode, Is.EqualTo(CalculationModel.Fast));
-        _worker.Jobs[2].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[2].Json)));
+        int normalJob = exactJob + 1;
+        Assert.That(_worker.Inputs[normalJob].RequestedMode, Is.EqualTo(CalculationModel.Fast));
+        _worker.Jobs[normalJob].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[normalJob].Json)));
         await normal;
+        AssertPinUnchanged(previous);
     }
 
-    [TestCase("work")]
-    [TestCase("storage")]
-    [TestCase("unsupported")]
-    [TestCase("error")]
-    [TestCase("cancel")]
-    [TestCase("edit")]
-    [TestCase("late")]
-    [TestCase("dispose")]
-    public async Task ExactRetryFailureCancellationAndLateResponsesKeepTheOriginalFastPin(string ending) {
+    [Test, Combinatorial]
+    public async Task ExactRetryFailureCancellationAndLateResponsesNeverCreateOrReplaceAPin(
+        [Values("work", "storage", "unsupported", "error", "cancel", "edit", "late", "dispose")] string ending,
+        [Values(false, true)] bool hasPin
+    ) {
+        PinnedResultSnapshot? previous = await CreatePreviousPin(hasPin);
         PinnedResultSnapshot fast = await AcceptUncertainFast();
         Task retry = RetryExact();
-        Assert.That(Pinned, Is.SameAs(fast));
+        int exactJob = _worker.Jobs.Count - 1;
+        AssertPinUnchanged(previous);
         if (ending is "cancel" or "late") {
             await _cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
         }
@@ -97,93 +115,46 @@ public partial class PinnedResultTest {
         switch (ending) {
             case "work":
             case "storage":
-                _worker.Jobs[1].SetException(new ProbabilityCalculationLimitException(ending == "work"
+                _worker.Jobs[exactJob].SetException(new ProbabilityCalculationLimitException(ending == "work"
                     ? ProbabilityCalculationLimitReason.Work : ProbabilityCalculationLimitReason.Storage));
                 break;
             case "unsupported":
-                _worker.Jobs[1].SetException(new UnsupportedExactCalculationException(fast.Contract! with {
+                _worker.Jobs[exactJob].SetException(new UnsupportedExactCalculationException(fast.Contract! with {
                     RequestedMode = CalculationModel.Exact, ExecutedMode = CalculationModel.Exact,
                     Completion = CalculationCompletion.Unsupported, Accuracy = null
                 }));
                 break;
             case "error":
-                _worker.Jobs[1].SetException(new InvalidOperationException("Exact worker failed"));
+                _worker.Jobs[exactJob].SetException(new InvalidOperationException("Exact worker failed"));
                 break;
             case "late":
             case "edit":
             case "dispose":
-                _worker.Jobs[1].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[1].Json)));
+                _worker.Jobs[exactJob].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[exactJob].Json)));
                 break;
             default:
-                _worker.Jobs[1].SetCanceled();
+                _worker.Jobs[exactJob].SetCanceled();
                 break;
         }
         await retry;
-        Assert.That(Field<PinnedResultSnapshot>("_pinnedResult"), Is.SameAs(fast));
+        Assert.That(Field<PinnedResultSnapshot?>("_pinnedResult"), Is.SameAs(previous));
         Assert.That(Accepted, Is.SameAs(fast));
         if (ending != "dispose") {
+            AssertPinUnchanged(previous);
             Assert.That(_cut.Find(".probability-results .result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
             Assert.That(_cut.FindAll(".probability-result-status").Count > 0, Is.EqualTo(ending == "edit"));
             Assert.That(_cut.FindAll(".exact-retry > button").Count, Is.EqualTo(ending == "edit" ? 0 : 1));
         }
     }
 
-    [TestCase("confirm")]
-    [TestCase("cancel")]
-    [TestCase("edit")]
-    [TestCase("draft")]
-    [TestCase("calculate")]
-    public async Task UnrelatedPinRequiresAValidExplicitReplacementDecision(string decision) {
-        await Accept();
-        await Pin();
-        PinnedResultSnapshot previous = Pinned;
-        PinnedResultSnapshot fast = await AcceptUncertainFast();
-        await RetryExact();
-        Assert.That(Pinned, Is.SameAs(previous));
-        Assert.That(_worker.Jobs, Has.Count.EqualTo(2));
-        Assert.That(_cut.FindAll(".exact-retry-confirmation"), Has.Count.EqualTo(1));
-        if (decision == "confirm") {
-            Task retry = _cut.Find(".exact-retry-confirmation .btn-outline-primary").ClickAsync(new());
-            Assert.That(Pinned, Is.SameAs(fast));
-            Assert.That(_worker.Jobs, Has.Count.EqualTo(3));
-            await Call("ConfirmExactRetry");
-            Assert.That(_worker.Jobs, Has.Count.EqualTo(3));
-            _worker.Jobs[2].SetCanceled();
-            await retry;
-            return;
-        }
-        if (decision == "edit") {
-            await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
-        }
-        else if (decision == "draft") {
-            await _cut.Find("#handSize").InputAsync(new() { Value = "3" });
-        }
-        else if (decision == "calculate") {
-            Task calculation = Start();
-            _worker.Jobs[2].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[2].Json)));
-            await calculation;
-        }
-        else {
-            await _cut.Find(".exact-retry-confirmation .btn-outline-secondary").ClickAsync(new());
-        }
-        await Call("ConfirmExactRetry");
-        Assert.That(_worker.Jobs, Has.Count.EqualTo(decision == "calculate" ? 3 : 2));
-        Assert.That(Pinned, Is.SameAs(previous));
-        Assert.That(_cut.FindAll(".exact-retry-confirmation"), Is.Empty);
-    }
-
     [Test]
-    public async Task AlreadyPinnedFastRetriesWithoutReplacementAndEditedResultsCannotRetry() {
+    public async Task EditedResultsCannotRetryOrCreateAPin() {
         await AcceptUncertainFast();
-        await Pin();
-        Task exact = RetryExact();
-        Assert.That(_cut.FindAll(".exact-retry-confirmation"), Is.Empty);
-        _worker.Jobs[1].SetCanceled();
-        await exact;
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         await Call("RequestExactRetry");
-        Assert.That(_worker.Jobs, Has.Count.EqualTo(2));
+        Assert.That(_worker.Jobs, Has.Count.EqualTo(1));
         Assert.That(_cut.FindAll(".exact-retry > button"), Is.Empty);
+        AssertPinUnchanged(null);
     }
 
     [TestCase(CalculationModel.Fast)]

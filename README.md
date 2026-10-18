@@ -107,7 +107,7 @@ Individual cards can have hypothetical custom plans: set **Before drawing: None*
 
 Recognized imports and database selections receive authoritative built-in definitions. Saved cards retain their exact plan, source, revision and limitations until explicitly changed or restored; older snapshots are labeled **Saved simulation**. An unavailable execution model is reported rather than replaced with generic draws. Choosing **Draw None** clears pre- and post-draw configuration. **Storage safety limit** is a runtime preference, not a session field. Schema 8 saves one explicit calculation mode. Old ON or omitted settings migrate to Fast; old OFF settings migrate to **No effect simulation**. Card plans remain unchanged.
 
-A small pre-calculation notice flags potentially expensive draw configurations without blocking Calculate. An uncertain current Fast result offers **Recalculate using Exact**, pinning the accepted Fast result first and asking before replacing an existing pin. This one-off request preserves the saved mode preference and uses the normal Work/Storage limits and manual cancellation.
+A small pre-calculation notice flags potentially expensive draw configurations without blocking Calculate. An uncertain current Fast result offers **Recalculate using Exact**. This one-off request preserves the saved mode preference and uses the normal Work/Storage limits and manual cancellation.
 
 Interactive calculations allow 150 million bounded work units and remain cancelable. Storage limits apply separately: larger mixed draw configurations can require an explicit **High** or **VeryHigh** storage selection. Work units are not seconds, and increasing work does not resolve a Storage limit.
 

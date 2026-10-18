@@ -14,7 +14,6 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     private long? _loadingSessionVersion;
 
     private void ObserveWorkspaceEdit() {
-        CancelExactRetry();
         _workspaceEditVersion++;
         _loadingSessionVersion = null;
     }

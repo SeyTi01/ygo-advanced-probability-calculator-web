@@ -179,21 +179,10 @@
             <div class="calculation-feedback-slot">
                 <div class="exact-retry exact-retry-placeholder" aria-hidden="true">
                     <span class="btn btn-sm btn-outline-primary">Recalculate using Exact</span>
-                    <small>Pins Fast first; may take longer.</small>
                 </div>
                 @if (CanRetryExact) {
                     <div class="exact-retry">
-                        <button type="button" class="btn btn-sm btn-outline-primary" aria-describedby="exactRetryWarning" @onclick="RequestExactRetry">Recalculate using Exact</button>
-                        <small id="exactRetryWarning" class="text-body-secondary">Pins Fast first; may take longer.</small>
-                        @if (_exactRetryCandidate is not null) {
-                            <div class="exact-retry-confirmation" role="group" aria-label="Replace pinned result before Exact">
-                                <span>Replace the pinned result with this Fast result?</span>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="ConfirmExactRetry">Replace pin and start Exact</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="DismissExactRetry">Cancel</button>
-                                </div>
-                            </div>
-                        }
+                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="RequestExactRetry">Recalculate using Exact</button>
                     </div>
                 }
             </div>
@@ -889,7 +878,6 @@
         using CancellationTokenSource cancellation = new();
         _calculationCancellation = cancellation;
         bool OwnsRequest() => !_disposed && requestId == _calculationRequestId && requestVersion == _calculationVersion;
-        CancelExactRetry();
         try {
             _isCalculating = true;
             _errorMessage = null;
