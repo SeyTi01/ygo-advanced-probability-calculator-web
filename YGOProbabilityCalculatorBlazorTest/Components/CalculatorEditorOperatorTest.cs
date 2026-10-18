@@ -32,14 +32,15 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task UnsupportedAndStaysAtConnectorUntilIndividualBoundsAreRepaired() {
+    public async Task UnavailableAndAppearsOnlyAfterIndividualBoundsAreRepaired() {
         ComboAlternativeGroup group = new([ComboAlternative.For(new ComboCategory(a, 0, 0)), ComboAlternative.For(new ComboCategory(b, 1, 2))]);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [new([], alternativeGroups: [group])] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         Combo original = editor.Instance.Combo;
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "AND" });
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
-        Assert.That(editor.Find(".alternative-separator [role=alert]").TextContent, Does.Contain("matching bounds"));
+        Assert.That(editor.FindAll(".expression-operator option").Select(option => option.TextContent), Is.EqualTo(new[] { "OR" }));
+        Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
         await EditRequirement(editor, "alternative:0:1");
         await editor.Find("#minCount0").InputAsync(new() { Value = "0" });

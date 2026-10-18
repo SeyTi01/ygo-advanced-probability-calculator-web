@@ -11,6 +11,35 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
 public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
+    [TestCase(0, 0, RequirementMaximumMode.Fixed, 0, 0, RequirementMaximumMode.Fixed, true)]
+    [TestCase(1, 2, RequirementMaximumMode.Fixed, 1, 2, RequirementMaximumMode.Fixed, true)]
+    [TestCase(1, 2, RequirementMaximumMode.HandSize, 1, 2, RequirementMaximumMode.HandSize, true)]
+    [TestCase(1, 2, RequirementMaximumMode.Fixed, 1, 3, RequirementMaximumMode.Fixed, false)]
+    [TestCase(1, 2, RequirementMaximumMode.Fixed, 1, 2, RequirementMaximumMode.HandSize, false)]
+    [TestCase(1, 2, RequirementMaximumMode.HandSize, 1, 3, RequirementMaximumMode.HandSize, false)]
+    [TestCase(0, 2, RequirementMaximumMode.Fixed, 1, 2, RequirementMaximumMode.Fixed, false)]
+    public async Task ConnectorMenusOfferAndOnlyWhenEverySavedBoundIsCompatible(
+        int firstMin,
+        int firstMax,
+        RequirementMaximumMode firstMode,
+        int secondMin,
+        int secondMax,
+        RequirementMaximumMode secondMode,
+        bool supportsAnd
+    ) {
+        Combo original = new([new(a, firstMin, firstMax, firstMode), new(b, secondMin, secondMax, secondMode)]);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [original] });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        string[] options = editor.FindAll(".expression-operator option").Select(option => option.TextContent).ToArray();
+        Assert.That(options, Is.EqualTo(supportsAnd ? new[] { "+", "AND", "OR" } : new[] { "+", "OR" }));
+        Assert.That(editor.Instance.Combo, Is.SameAs(original), "Availability checks never rewrite the expression.");
+        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
+        options = editor.FindAll(".expression-operator option").Select(option => option.TextContent).ToArray();
+        Assert.That(options, Is.EqualTo(supportsAnd ? new[] { "AND", "OR" } : new[] { "OR" }));
+        Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
+        Assert.That(editor.FindAll(".inline-member-picker option[value='']").All(option => option.TextContent == "Add"), Is.True);
+    }
+
     [Test]
     public async Task SameCardSummaryTogglesWithoutSavingAndItsOperatorProtectsTheDraft() {
         Combo original = new([ComboCategory.SameCard([a, b], 1, 3)]);
@@ -20,15 +49,17 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
         await editor.Find(".requirement-interactive-summary .expression-operator").ChangeAsync(new() { Value = "OR" });
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
-        Assert.That(editor.Find(".requirement-interactive-summary [role=alert]").TextContent, Does.Contain("pending row"));
+        Assert.That(editor.FindAll(".requirement-interactive-summary .expression-operator option").Select(option => option.TextContent), Is.EqualTo(new[] { "AND" }));
+        Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         await editor.Find(".requirement-interactive-summary").ClickAsync(new());
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
+        Assert.That(editor.FindAll(".requirement-interactive-summary .expression-operator option").Select(option => option.TextContent), Is.EqualTo(new[] { "AND", "OR" }));
     }
 
     [Test]
-    public async Task InlineAndRejectsUnequalSavedAnyMaximaWithoutLosingTheirRawValues() {
+    public async Task InlineAndIsHiddenForUnequalSavedAnyMaximaWithoutLosingTheirRawValues() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
             Categories = [a, b], Combos = [new([
                 new(a, 1, 2, RequirementMaximumMode.HandSize), new(b, 1, 3, RequirementMaximumMode.HandSize)])]
@@ -37,7 +68,8 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         Combo original = editor.Instance.Combo;
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "AND" });
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
-        Assert.That(editor.Find(".requirement-and-separator [role=alert]").TextContent, Does.Contain("saved Any maxima differ"));
+        Assert.That(editor.FindAll(".expression-operator option").Select(option => option.TextContent), Is.EqualTo(new[] { "+", "OR" }));
+        Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives.Select(leaf => leaf.Category!.MaxCount), Is.EqualTo(new[] { 2, 3 }));
     }
@@ -135,7 +167,8 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
-        Assert.That(editor.Find(".requirement-and-separator [role=alert]").TextContent, Does.Contain("pending row"));
+        Assert.That(editor.FindAll(".expression-operator option").Select(option => option.TextContent), Is.EqualTo(new[] { "+" }));
+        Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
         Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         await Button(editor, "Cancel").ClickAsync(new());
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
@@ -145,7 +178,8 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         Combo nested = editor.Instance.Combo;
         await editor.Find(".requirement-list > .requirement-and-separator select").ChangeAsync(new() { Value = "AND" });
         Assert.That(editor.Instance.Combo, Is.SameAs(nested));
-        Assert.That(editor.Find(".requirement-list > .requirement-and-separator [role=alert]").TextContent, Does.Contain("nested OR"));
+        Assert.That(editor.Find(".requirement-list > .requirement-and-separator").QuerySelectorAll("option").Select(option => option.TextContent), Is.EqualTo(new[] { "+", "OR" }));
+        Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
     }
 
     [Test]

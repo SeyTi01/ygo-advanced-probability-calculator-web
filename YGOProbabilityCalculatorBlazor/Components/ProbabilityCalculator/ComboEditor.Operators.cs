@@ -20,8 +20,42 @@ public partial class ComboEditor {
     private ComboAlternative RequirementOperand(ComboRequirementPosition position) => position.Kind == ComboRequirementKind.Category
         ? ComboAlternative.For(Combo.Categories[position.Index]) : ComboAlternative.For(Combo.Cards[position.Index]);
 
+    private ComboRequirementPosition? EditingPosition {
+        get {
+            if (_editingIndex is not int index || _editingRequirement is not { } editing) { return null; }
+            ComboRequirementKind kind = editing.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
+            if (_editingGroupIndex is not null) { kind = ComboRequirementKind.Group; }
+            return new(kind, _editingGroupIndex ?? index);
+        }
+    }
+
+    private bool CanApplyInline(IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
+        bool editsAffected = EditingPosition is { } position && positions.Contains(position);
+        return !AuthoringScope && !(editsAffected && EditingHasChanges) && ComboOperatorEditing.CanApply(Combo, positions, edit);
+    }
+
+    private IReadOnlyList<string> PeerOperators(ComboRequirementPosition right) {
+        int index = Combo.RequirementOrder.ToList().IndexOf(right);
+        if (index <= 0) { return ["+"]; }
+        ComboRequirementPosition[] positions = [Combo.RequirementOrder[index - 1], right];
+        ComboAlternative[] operands = positions.SelectMany(position => position.Kind == ComboRequirementKind.Group
+            ? Combo.AlternativeGroups[position.Index].Alternatives : new[] { RequirementOperand(position) }).ToArray();
+        bool hasGroup = positions.Any(position => position.Kind == ComboRequirementKind.Group);
+        return ComboOperators.Where(operation => operation == "+"
+            || (operation != "AND" || !hasGroup) && CanApplyInline(positions, new(operation, operands))).ToArray();
+    }
+
+    private IReadOnlyList<string> GroupOperators(int index) => CanApplyInline(
+        [new(ComboRequirementKind.Group, index)], new("AND", Combo.AlternativeGroups[index].Alternatives)) ? ["AND", "OR"] : ["OR"];
+
+    private IReadOnlyList<string> SameCardOperators(ComboAlternative requirement, int index, int? group) {
+        ComboRequirementPosition position = group is int groupIndex
+            ? new(ComboRequirementKind.Group, groupIndex) : new(ComboRequirementKind.Category, index);
+        return CanApplyInline([position], new("OR", [requirement])) ? ["AND", "OR"] : ["AND"];
+    }
+
     private Task BeginPeerConversion(ComboRequirementPosition right, string operation) {
-        if (operation == "+") { return Task.CompletedTask; }
+        if (operation == "+" || !PeerOperators(right).Contains(operation)) { return Task.CompletedTask; }
         int index = Combo.RequirementOrder.ToList().IndexOf(right);
         if (index <= 0) { return Task.CompletedTask; }
         ComboRequirementPosition left = Combo.RequirementOrder[index - 1];
@@ -35,11 +69,11 @@ public partial class ComboEditor {
         return ApplyInline([left, right], new(operation, operands), key);
     }
 
-    private Task ChangeGroupOperator(int index, string operation) => operation == "OR" ? Task.CompletedTask
+    private Task ChangeGroupOperator(int index, string operation) => operation == "OR" || !GroupOperators(index).Contains(operation) ? Task.CompletedTask
         : ApplyInline([new(ComboRequirementKind.Group, index)], new(operation, Combo.AlternativeGroups[index].Alternatives), $"group:{index}");
 
     private Task ConvertSameCard(ComboAlternative requirement, int index, int? group, string operation) {
-        if (operation == "AND" || requirement.Category is not { } category) { return Task.CompletedTask; }
+        if (operation == "AND" || requirement.Category is not { } category || !SameCardOperators(requirement, index, group).Contains(operation)) { return Task.CompletedTask; }
         ComboAlternative[] operands = category.CategoryBases.Select(property => ComboAlternative.For(
             new ComboCategory(property, category.MinCount, category.MaxCount, category.MaximumMode))).ToArray();
         if (group is int groupIndex) {
@@ -54,13 +88,7 @@ public partial class ComboEditor {
     private async Task ApplyInline(ComboRequirementPosition[] positions, ComboGroupEdit edit, string key) {
         _connectorErrorKey = null;
         _connectorError = null;
-        ComboRequirementPosition? editingPosition = null;
-        if (_editingIndex is int editingIndex && _editingRequirement is { } editing) {
-            ComboRequirementKind kind = editing.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
-            if (_editingGroupIndex is not null) { kind = ComboRequirementKind.Group; }
-            editingPosition = new(kind, _editingGroupIndex ?? editingIndex);
-        }
-        bool editsAffected = editingPosition is { } position && positions.Contains(position);
+        bool editsAffected = EditingPosition is { } position && positions.Contains(position);
         if (AuthoringScope || editsAffected && EditingHasChanges) {
             RefuseInline(key, "Save or cancel the pending row before changing its grouping.");
             return;

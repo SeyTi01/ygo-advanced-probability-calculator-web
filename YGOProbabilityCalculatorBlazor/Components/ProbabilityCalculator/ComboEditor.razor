@@ -92,7 +92,7 @@
                         <ExpressionGroup Label="@($"Alternative group {groupIndex + 1}")">
                             @for (int leafIndex = 0; leafIndex < group.Alternatives.Count; leafIndex++) {
                                 int currentLeafIndex = leafIndex;
-                                @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" Error="@ConnectorError(groupKey)" @ref="_connectors[groupKey]" OnOperatorChanged="operation => ChangeGroupOperator(groupIndex, operation)" /> }
+                                @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" AllowedOperators="GroupOperators(groupIndex)" Error="@ConnectorError(groupKey)" @ref="_connectors[groupKey]" OnOperatorChanged="operation => ChangeGroupOperator(groupIndex, operation)" /> }
                                 @RequirementRow(group.Alternatives[currentLeafIndex], currentLeafIndex, groupIndex)
                             }
                         </ExpressionGroup>
@@ -123,7 +123,7 @@
 </div>
 
 @code {
-    private RenderFragment RequirementSeparator(ComboRequirementPosition right) => @<ExpressionSeparator Operator="AND" Symbol="+" AllowedOperators="ComboOperators" Error="@(ConnectorError($"peer:{right}"))" OnOperatorChanged="operation => BeginPeerConversion(right, operation)" />;
+    private RenderFragment RequirementSeparator(ComboRequirementPosition right) => @<ExpressionSeparator Operator="AND" Symbol="+" AllowedOperators="PeerOperators(right)" Error="@(ConnectorError($"peer:{right}"))" OnOperatorChanged="operation => BeginPeerConversion(right, operation)" />;
 
     private RenderFragment RequirementRow(ComboAlternative requirement, int index, int? groupIndex) => @<ExpressionRow
         @key="RowIdentity(requirement, index, groupIndex)" Label="@($"Edit {AlternativeTargetLabel(requirement)}")" Expanded="IsOpenRow(requirement, index, groupIndex)"
@@ -131,7 +131,7 @@
         @ref="_rowButtons[RowKey(requirement, index, groupIndex)]" data-requirement="@RowKey(requirement, index, groupIndex)"
         OnEdit="() => BeginEdit(requirement, index, groupIndex)">
         <ChildContent>
-            @if (requirement.Category is { } category) { @CategoryBadge(category, operation => ConvertSameCard(requirement, index, groupIndex, operation), ConnectorError($"same:{RowKey(requirement, index, groupIndex)}")) }
+            @if (requirement.Category is { } category) { @CategoryBadge(category, operation => ConvertSameCard(requirement, index, groupIndex, operation), SameCardOperators(requirement, index, groupIndex), ConnectorError($"same:{RowKey(requirement, index, groupIndex)}")) }
             else { @CardBadge(requirement.Card!) }
         </ChildContent>
         <Controls>
@@ -149,7 +149,7 @@
     private RenderFragment MemberPicker(string label, bool allowAnd, Func<string, Task> insert) => @<select
         class="form-select form-select-sm inline-member-picker" aria-label="@label" title="@label"
         @bind:get="string.Empty" @bind:set="insert">
-        <option value="">Add…</option>
+        <option value="">Add</option>
         @if (allowAnd) {
             <optgroup label="AND · same card">
                 @foreach (CategoryBase property in _availableCategories) { <option value="@($"AND|{property.Identity}")">@property.Name</option> }
@@ -353,14 +353,14 @@
         return $"{subject} ({AlternativeRange(alternative)})";
     }
 
-    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, string? operatorError = null) => @<span class="@(category.CategoryBases.Count > 1 ? "composite-alternative same-card-group" : null)">
+    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null) => @<span class="@(category.CategoryBases.Count > 1 ? "composite-alternative same-card-group" : null)">
         @if (category.CategoryBases.Count > 1) { @ExpressionParenthesis(true) }
         <span class="same-card-category">
         @for (int index = 0; index < category.CategoryBases.Count; index++) {
             CategoryBase conjunct = category.CategoryBases[index];
             <span @key="conjunct.Identity" class="same-card-conjunct">
                 @if (index > 0) {
-                    @if (changeOperator is not null) { <span class="same-card-and" @onclick:stopPropagation><ExpressionSeparator Operator="AND" Error="@operatorError" OnOperatorChanged="changeOperator" /></span> }
+                    @if (changeOperator is not null) { <span class="same-card-and" @onclick:stopPropagation><ExpressionSeparator Operator="AND" AllowedOperators="allowedOperators!" Error="@operatorError" OnOperatorChanged="changeOperator" /></span> }
                     else { <span class="same-card-and">AND</span> }
                 }
                 <span class="badge category-tag @CategoryCssClass(conjunct)" title="@(conjunct.Source == CategorySource.Metadata ? "Card property" : null)">
