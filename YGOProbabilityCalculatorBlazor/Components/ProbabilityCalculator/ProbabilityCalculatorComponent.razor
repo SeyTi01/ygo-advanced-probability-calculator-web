@@ -162,8 +162,8 @@
                 <button type="button"
                         @ref="_calculationAction"
                         class="btn btn-lg w-100 @(_isCalculating ? "btn-outline-secondary" : "btn-primary")"
-                        aria-label="@(_isCalculating ? "Cancel calculation" : null)"
-                        title="@(_isCalculating ? "Cancel calculation" : null)"
+                        aria-label="@(_isCalculating ? CalculationCancelLabel : null)"
+                        title="@(_isCalculating ? CalculationCancelLabel : null)"
                         aria-busy="@(_isCalculating ? "true" : "false")"
                         @onclick="HandleCalculationAction"
                         disabled="@(!_isCalculating && !CanCalculate)">
@@ -213,19 +213,27 @@
         @if (_calculationResult is { } result) {
             <section class="alert alert-primary mt-3 probability-results"
                      role="region"
-                     aria-labelledby="probabilityResultsHeading"
-                     aria-live="polite">
+                     aria-labelledby="probabilityResultsHeading">
                 <div class="probability-results-heading">
-                    <h5 id="probabilityResultsHeading">@(_pinnedResult is null ? "Results" : "Current result")</h5>
-                    @if (_calculationResultIsStale) {
-                        <small class="probability-result-status text-body-secondary fw-normal"
-                               role="status"
-                               aria-live="polite">
-                            <span class="probability-result-status-full" aria-hidden="true">Previous result · inputs changed</span>
-                            <span class="probability-result-status-compact" aria-hidden="true">Stale</span>
-                            <span class="visually-hidden">Previous result · inputs changed</span>
+                    <div class="probability-result-title">
+                        <h5 id="probabilityResultsHeading">@(_pinnedResult is null ? "Results" : "Current result")</h5>
+                        <small class="probability-result-status-slot text-body-secondary fw-normal" role="status" aria-live="polite">
+                            <span class="probability-result-status-placeholder" aria-hidden="true">
+                                <span class="probability-result-status-space-full">Preliminary · checking Exact</span>
+                                <span class="probability-result-status-space-compact">Preliminary</span>
+                            </span>
+                            @if (_isPreliminary || _calculationResultIsStale) {
+                                <span class="probability-result-status">
+                                    <span class="probability-result-status-full" aria-hidden="true">@(_isPreliminary ? "Preliminary · checking Exact" : "Previous result · inputs changed")</span>
+                                    <span class="probability-result-status-compact" aria-hidden="true">@(_isPreliminary ? "Preliminary" : "Stale")</span>
+                                    <span class="visually-hidden">@(_isPreliminary ? "Preliminary · checking Exact" : "Previous result · inputs changed")</span>
+                                </span>
+                            }
+                            else {
+                                <span class="visually-hidden">Result ready.</span>
+                            }
                         </small>
-                    }
+                    </div>
                     <button type="button" class="btn btn-outline-primary pin-result-action" disabled="@(!CanPin)"
                             aria-label="@(_pinnedResult is null ? "Pin result" : "Replace pin with current result")"
                             title="@(_pinnedResult is null ? "Pin result" : "Replace pin with current result")"
@@ -366,6 +374,7 @@
     private DrawActivationPriority _drawActivationPriority = DrawActivationPriority.Default;
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
     private bool _isCalculating;
+    private bool _isPreliminary;
     private bool _deferNameEditRendering;
     private bool _isClearWorkspaceConfirmationOpen;
     private long _calculationVersion;
@@ -866,6 +875,8 @@
         ReconcileCategoryColorIndices();
     }
 
+    private string CalculationCancelLabel => _isPreliminary ? "Cancel Exact upgrade" : "Cancel calculation";
+
     private Task Calculate() => CalculateModel(SelectedModel);
 
     private async Task CalculateModel(CalculationModel model) {
@@ -878,8 +889,10 @@
         using CancellationTokenSource cancellation = new();
         _calculationCancellation = cancellation;
         bool OwnsRequest() => !_disposed && requestId == _calculationRequestId && requestVersion == _calculationVersion;
+        ProbabilityCalculationResult? preliminary = null;
         try {
             _isCalculating = true;
+            _isPreliminary = false;
             _errorMessage = null;
             StateHasChanged();
 
@@ -895,10 +908,7 @@
                 _categoryBases
             );
             PinnedCalculationContext resultContext = CaptureResultContext(model);
-            // The existing background owner handles worker termination and restart cleanup.
-            Task<ProbabilityCalculationResult> worker = _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
-            ProbabilityCalculationResult result = await worker;
-            if (OwnsRequest()) {
+            void Accept(ProbabilityCalculationResult result) {
                 ProbabilityCalculationResult acceptedResult = result with {
                     ComboProbabilities = result.ComboProbabilities.ToArray(),
                     GroupProbabilities = result.GroupProbabilities?.ToArray()
@@ -907,9 +917,40 @@
                 _calculationResult = acceptedResult;
                 _calculationResultIsStale = false;
             }
+            Task PresentPreliminary(ProbabilityCalculationResult result) => InvokeAsync(() => {
+                if (OwnsRequest() && !cancellation.IsCancellationRequested && preliminary is null && model == CalculationModel.Fast) {
+                    Accept(result);
+                    preliminary = _calculationResult;
+                    _isPreliminary = true;
+                    StateHasChanged();
+                }
+            });
+            ProbabilityCalculationResult result = _backgroundCalculator is IProgressiveBackgroundCalculator progressive
+                ? await progressive.CalculateProgressivelyAsync(snapshot, PresentPreliminary, cancellation.Token)
+                : await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
+            if (OwnsRequest()) {
+                Accept(result);
+            }
         }
         catch (OperationCanceledException) {
             // Cancellation, edits, replacement and disposal are quiet.
+        }
+        catch (Exception ex) when (preliminary is not null) {
+            if (OwnsRequest()) {
+                // A broken final transport/contract cannot invalidate completed
+                // Fast values. Record the failed upgrade in the accuracy detail.
+                AutomaticExactOutcome outcome = ex switch {
+                    ProbabilityCalculationLimitException { Reason: ProbabilityCalculationLimitReason.Work } => AutomaticExactOutcome.WorkLimit,
+                    ProbabilityCalculationLimitException { Reason: ProbabilityCalculationLimitReason.Storage } => AutomaticExactOutcome.StorageLimit,
+                    UnsupportedExactCalculationException => AutomaticExactOutcome.Unsupported,
+                    _ => AutomaticExactOutcome.Error
+                };
+                ProbabilityCalculationResult retained = preliminary with {
+                    Contract = preliminary.Contract! with { AutomaticExact = outcome }
+                };
+                _calculationResult = retained;
+                _acceptedResultSnapshot = PinnedResultSnapshot.Capture(_acceptedResultSnapshot!.Context, retained);
+            }
         }
         catch (ProbabilityCalculationLimitException ex) {
             if (OwnsRequest()) {
@@ -931,6 +972,7 @@
             if (OwnsRequest()) {
                 _calculationCancellation = null;
                 _isCalculating = false;
+                _isPreliminary = false;
             }
         }
     }
@@ -940,6 +982,7 @@
         CancellationTokenSource? cancellation = _calculationCancellation;
         _calculationCancellation = null;
         _isCalculating = false;
+        _isPreliminary = false;
         cancellation?.Cancel();
     }
 

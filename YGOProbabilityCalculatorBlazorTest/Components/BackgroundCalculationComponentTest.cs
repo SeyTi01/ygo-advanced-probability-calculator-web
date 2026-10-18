@@ -54,6 +54,133 @@ public class BackgroundCalculationComponentTest {
 
     private Task Start() => _cut.Find(".calculate-action > button").ClickAsync(new());
 
+    private static ProbabilityCalculationResult PreliminaryResult() {
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(
+            Services.ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish"),
+            Services.ProbabilityCalculator.ThreeCalculationModesTest.Combos, 2,
+            Services.ProbabilityCalculator.ThreeCalculationModesTest.Groups);
+        return CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json), CalculationModel.Fast);
+    }
+
+    private Task Progress(int index, ProbabilityCalculationResult result) => _cut.InvokeAsync(() => _calculator.Progress[index](result));
+
+    [Test]
+    public async Task PreliminaryIsVisibleBeforeFinalAndKeepsPinExportAndRetryDisabled() {
+        Task task = Start();
+        Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
+        ProbabilityCalculationResult initial = PreliminaryResult();
+        await Progress(0, initial);
+        Assert.That(task.IsCompleted, Is.False);
+        Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Preliminary"));
+        Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-label"), Is.EqualTo("Cancel Exact upgrade"));
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
+        Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.IsCalculating, Is.True);
+        Assert.That(_cut.FindAll(".exact-retry:not(.exact-retry-placeholder)"), Is.Empty);
+        Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.Result.Contract, Is.SameAs(initial.Contract));
+        Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.Result.ComboProbabilities, Is.EqualTo(initial.ComboProbabilities));
+        _calculator.Jobs[0].SetResult(initial with { Contract = initial.Contract! with { AutomaticExact = AutomaticExactOutcome.Deadline } });
+        await task;
+        Assert.That(_cut.FindAll(".probability-result-status"), Is.Empty);
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
+        Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.Result.Contract!.AutomaticExact, Is.EqualTo(AutomaticExactOutcome.Deadline));
+        Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.Result.Contract!.Fractions, Is.SameAs(initial.Contract!.Fractions));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CancelOrEditAfterProgressRetainsFastAndRejectsLateEvents(bool edit) {
+        Task first = Start();
+        ProbabilityCalculationResult initial = PreliminaryResult();
+        await Progress(0, initial);
+        if (edit) {
+            await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
+        }
+        else {
+            await _cut.Find(".calculate-action > button").ClickAsync(new());
+        }
+        Assert.That(_calculator.Tokens[0].IsCancellationRequested, Is.True);
+        Assert.That(_cut.FindAll(".probability-result-status").Any(status => status.TextContent.Contains("Preliminary")), Is.False);
+        Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.IsStale, Is.EqualTo(edit));
+        Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.Result.Contract!.Fractions, Is.SameAs(initial.Contract!.Fractions));
+        Task second = Start();
+        await Progress(0, Result("late progress"));
+        _calculator.Jobs[0].SetResult(Result("late final"));
+        await first;
+        Assert.That(_cut.Markup, Does.Not.Contain("late progress").And.Not.Contain("late final"));
+        Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
+        _calculator.Jobs[1].SetResult(Result("new accepted"));
+        await second;
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task FinalTransportOrLimitFailureKeepsFastWithoutFalseFailureAlert(bool limit) {
+        Task task = Start();
+        ProbabilityCalculationResult initial = PreliminaryResult();
+        await Progress(0, initial);
+        _calculator.Jobs[0].SetException(limit ? new ProbabilityCalculationLimitException() : new InvalidOperationException("invalid final contract"));
+        await task;
+        Assert.That(_cut.FindAll("[role='alert'], .probability-result-status"), Is.Empty);
+        ProbabilityCalculationResult retained = _cut.FindComponent<ProbabilityResultExport>().Instance.Result;
+        Assert.That(retained.Contract!.AutomaticExact, Is.EqualTo(limit ? AutomaticExactOutcome.WorkLimit : AutomaticExactOutcome.Error));
+        Assert.That(retained.Contract.Fractions, Is.SameAs(initial.Contract!.Fractions));
+        Assert.That(retained.SearchAvailability, Is.SameAs(initial.SearchAvailability));
+        Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
+    }
+
+    [Test]
+    public async Task ExactUpgradeAtomicallyReplacesRowsContractAndSnapshotWithoutChangingManualPin() {
+        Task previous = Start();
+        _calculator.Jobs[0].SetResult(PreliminaryResult());
+        await previous;
+        await _cut.Find(".pin-result-action").ClickAsync(new());
+        PinnedResultSnapshot pin = _cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+        Task task = Start();
+        await Progress(1, PreliminaryResult());
+        ProbabilityCalculationResult exact = Services.ProbabilityCalculator.ThreeCalculationModesTest.Run(
+            Services.ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish"), 2, CalculationModel.Exact);
+        ProbabilityCalculationResult automatic = exact with { Contract = exact.Contract! with {
+            RequestedMode = CalculationModel.Fast, ExecutedMode = CalculationModel.Fast, AutomaticExact = AutomaticExactOutcome.Completed
+        } };
+        _calculator.Jobs[1].SetResult(automatic);
+        await task;
+        ProbabilityCalculationResult actual = _cut.FindComponent<ProbabilityResultExport>().Instance.Result;
+        Assert.That(actual.Contract, Is.SameAs(automatic.Contract));
+        Assert.That(actual.SearchAvailability, Is.Null);
+        Assert.That(actual.ComboProbabilities, Is.EqualTo(exact.ComboProbabilities));
+        Assert.That(actual.GroupProbabilities, Is.EqualTo(exact.GroupProbabilities));
+        Assert.That(_cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pin));
+        Assert.That(_cut.FindAll(".probability-result-status, .exact-retry:not(.exact-retry-placeholder)"), Is.Empty);
+        await _cut.Find(".pin-result-action").ClickAsync(new());
+        PinnedResultSnapshot replacement = _cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
+        Assert.That(replacement.Contract, Is.SameAs(automatic.Contract));
+        Assert.That(replacement.Context.Model, Is.EqualTo(CalculationModel.Fast));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task SessionReplacementOrDisposalRevokesProgressOwnership(bool dispose) {
+        Task task = Start();
+        await Progress(0, PreliminaryResult());
+        if (dispose) {
+            await _cut.InvokeAsync(() => _cut.Instance.DisposeAsync().AsTask());
+        }
+        else {
+            SessionState replacement = new() {
+                Cards = [new([], 4, id: "new")],
+                Combos = [new([], "New session", cards: [new("new", 1, 2)])], HandSize = 2
+            };
+            _cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(_sessions.Object.SerializeSession(replacement), "session.json"));
+            _cut.WaitForState(() => _calculator.Tokens[0].IsCancellationRequested);
+            Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
+        }
+        await Progress(0, Result("late progress"));
+        _calculator.Jobs[0].SetResult(Result("late completion"));
+        await task;
+        Assert.That(_calculator.Tokens[0].IsCancellationRequested, Is.True);
+        Assert.That(_cut.Markup, Does.Not.Contain("late progress").And.Not.Contain("late completion"));
+    }
+
     [Test]
     public async Task RuleChangeCancelsOwnedRequestAndKeepsPinnedResultProvenance() {
         CategoryBase role = new("Role");
@@ -394,7 +521,16 @@ public class BackgroundCalculationComponentTest {
         Assert.That(_cut.Markup, Does.Contain("last"));
     }
 
-    private sealed class ControlledCalculator : IBackgroundCalculator {
+    private sealed class ControlledCalculator : IProgressiveBackgroundCalculator {
+        public List<Func<ProbabilityCalculationResult, Task>> Progress { get; } = [];
+        public Task<ProbabilityCalculationResult> CalculateProgressivelyAsync(
+            CalculationSnapshot snapshot,
+            Func<ProbabilityCalculationResult, Task> onPreliminary,
+            CancellationToken cancellationToken
+        ) {
+            Progress.Add(onPreliminary);
+            return CalculateAsync(snapshot, cancellationToken);
+        }
         public int Disposals { get; private set; }
         public ValueTask DisposeAsync() {
             Disposals++;

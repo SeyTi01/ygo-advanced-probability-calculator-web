@@ -105,8 +105,9 @@ function probability(count, hand = 5) {
    if (units !== 1) assert.ok(failure.response.FailureKind);
   }
   const malformedInput = await request('not JSON');
+  assert.equal(malformedInput.response.Result, null);
   assert.equal(malformedInput.response.LimitReason, null);
-  assert.equal(malformedInput.response.FailureKind, 2);
+  assert.equal(malformedInput.response.FailureKind, 1, 'malformed JSON is a typed input failure');
   wireEvidence = { old: { ms: old.ms, reason: old.response.LimitReason }, selected: { ms: selected.ms, probability: selected.response.Result.TotalProbability },
    ampleMs: ample.ms, storage: { ms: storage.ms, reason: storage.response.LimitReason } };
   if (phase === 'wire') {

@@ -64,7 +64,7 @@ function installProbe() {
         const button = event.target.closest('.calculate-action > button');
         if (!button) return;
         const run = { started: performance.now() };
-        if (button.getAttribute('aria-label') === 'Cancel calculation') lifecycle.cancellations.push(run);
+        if (button.getAttribute('aria-busy') === 'true') lifecycle.cancellations.push(run);
         else lifecycle.runs.push(run);
         let busySeen = button.getAttribute('aria-busy') === 'true';
         const observer = new MutationObserver(() => {

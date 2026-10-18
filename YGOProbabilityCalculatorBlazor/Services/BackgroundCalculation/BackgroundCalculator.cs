@@ -6,13 +6,29 @@ namespace YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 
 // Transient: the component explicitly disposes its owner, even though a WASM DI
 // scope normally outlives navigation. JS object-handle disposal alone is not teardown.
-public sealed class BackgroundCalculator(IJSRuntime js) : IBackgroundCalculator {
+public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackgroundCalculator {
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly SemaphoreSlim _leaseGate = new(1, 1);
     private Task<IJSObjectReference>? _ownerTask;
     private Task? _disposeTask;
     private bool _disposed;
 
-    public async Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken cancellationToken) {
+    public Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken cancellationToken) =>
+        CalculateCoreAsync(snapshot, null, cancellationToken);
+
+    public Task<ProbabilityCalculationResult> CalculateProgressivelyAsync(
+        CalculationSnapshot snapshot,
+        Func<ProbabilityCalculationResult, Task> onPreliminary,
+        CancellationToken cancellationToken
+    ) => CalculateCoreAsync(snapshot, onPreliminary, cancellationToken);
+
+    public sealed record PresentationStage(string Response, bool IsPreliminary);
+
+    private async Task<ProbabilityCalculationResult> CalculateCoreAsync(
+        CalculationSnapshot snapshot,
+        Func<ProbabilityCalculationResult, Task>? onPreliminary,
+        CancellationToken cancellationToken
+    ) {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         using CancellationTokenSource request = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
@@ -34,12 +50,35 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IBackgroundCalculator 
         long? releasedId = null;
         bool completed = false;
 
+        // A cancelled interop await resumes before its JS lease cleanup finishes.
+        // Serialize acquisition through cleanup, never through abandoned worker work.
+        await _leaseGate.WaitAsync(token);
         try {
+            token.ThrowIfCancellationRequested();
             ProbabilityCalculationResult result;
             await using (IJSObjectReference job = await owner.InvokeAsync<IJSObjectReference>("createJob")) {
                 try {
                     token.ThrowIfCancellationRequested();
-                    string response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.RequestedMode == CalculationModel.Fast);
+                    string response;
+                    if (onPreliminary is not null && snapshot.RequestedMode == CalculationModel.Fast) {
+                        PresentationStage stage = await job.InvokeAsync<PresentationStage>("runProgressive", token, snapshot.Json, true);
+                        token.ThrowIfCancellationRequested();
+                        ProbabilityCalculationResult initial = CalculationWire.ReadResult(stage.Response, snapshot.RequestedMode);
+                        if (stage.IsPreliminary) {
+                            if (initial.Contract is not { Accuracy: not CalculationAccuracy.Exact, AutomaticExact: null }) {
+                                throw new InvalidOperationException("Invalid preliminary Fast result.");
+                            }
+                            await onPreliminary(initial).WaitAsync(token);
+                            token.ThrowIfCancellationRequested();
+                            response = await job.InvokeAsync<string>("finish", token);
+                        }
+                        else {
+                            response = stage.Response;
+                        }
+                    }
+                    else {
+                        response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.RequestedMode == CalculationModel.Fast);
+                    }
                     token.ThrowIfCancellationRequested();
                     result = CalculationWire.ReadResult(response, snapshot.RequestedMode);
                     token.ThrowIfCancellationRequested();
@@ -60,11 +99,16 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IBackgroundCalculator 
             return result;
         }
         finally {
-            if (!completed && releasedId is long id && !_disposed) {
-                // Cancellation or handle-disposal failure after handoff must
-                // still retire this lease, never a later request on that owner.
-                // Owner disposal independently terminates the entire runtime.
-                await owner.InvokeVoidAsync("discard", id);
+            try {
+                if (!completed && releasedId is long id && !_disposed) {
+                    // Cancellation or handle-disposal failure after handoff must
+                    // still retire this lease, never a later request on that owner.
+                    // Owner disposal independently terminates the entire runtime.
+                    await owner.InvokeVoidAsync("discard", id);
+                }
+            }
+            finally {
+                _leaseGate.Release();
             }
         }
     }

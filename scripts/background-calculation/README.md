@@ -1,5 +1,33 @@
 # Background calculation runtime
 
+## Progressive Fast presentation
+
+`IProgressiveBackgroundCalculator` opts the UI into `runProgressive` / `finish`
+on one owner lease. The first response is either terminal or the completed
+initial Fast response after dispatching the existing Exact upgrade. C# validates
+both responses with `CalculationWire.ReadResult`; only the terminal response
+releases the lease. No .NET callback handle, extra worker, input recapture or
+additional engine pass is involved. Cancellation terminates the owned worker;
+the UI keeps any accepted initial Fast result and revokes late request updates.
+
+Export browser reference fixtures with `YGO_PROGRESSIVE_FIXTURES` set to an
+output JSON path and run the explicit test
+`ProgressiveBrowserFixtureTest.Export`. It checks the original frozen session's
+#252 endpoints and exports native Fast/Exact rows plus a small physical control.
+After a normal optimized non-AOT publish, run:
+
+```sh
+node scripts/background-calculation/progressive-smoke.cjs <published-wwwroot> <fixtures.json> <output.json>
+```
+
+This uses Playwright (`NODE_PATH`, optional `YGO_BROWSER_EXECUTABLE`) and actual
+production workers. It records first-visible and settled UI times, rendered
+Preliminary frames, bootstrap, termination and restart separately; compares
+rational rows/certificates; checks cancellation and explicit modes; and captures
+desktop/mobile, light/dark, pinned/unpinned geometry and screenshots. Timing runs
+must run alone, without builds or other calculations. The deterministic JS and
+.NET tests additionally cover malformed replies and adversarial interleavings.
+
 ## Search-counting throughput
 
 `SelectiveSurvivorTest.Export` writes the untouched `desires_trade_in.json`

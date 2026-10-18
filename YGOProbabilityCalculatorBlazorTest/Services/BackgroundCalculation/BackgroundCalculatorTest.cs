@@ -3,6 +3,7 @@ using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.BackgroundCalculation;
 
@@ -16,6 +17,144 @@ public class BackgroundCalculatorTest {
 
     private static CalculationSnapshot Snapshot() => CalculationSnapshot.Capture(
         [new Card([], 2, id: "card")], [new Combo([], cards: [new("card", 1, 1)])], 1, []);
+
+    private static CalculationSnapshot BoundedSnapshot() => CalculationSnapshot.Capture(
+        ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish"),
+        ProbabilityCalculator.ThreeCalculationModesTest.Combos, 2, ProbabilityCalculator.ThreeCalculationModesTest.Groups);
+
+    [TestCase(CalculationModel.Fast)]
+    [TestCase(CalculationModel.Exact)]
+    [TestCase(CalculationModel.OpeningHand)]
+    public async Task ProvenAndExplicitModesNeverPublishProgress(CalculationModel mode) {
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(
+            [new Card([], 2, id: "card")], [new Combo([], cards: [new("card", 1, 1)])], 1, [], options: new(Mode: mode));
+        string response = CalculationWire.Execute(snapshot.Json);
+        _job.Setup(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(new BackgroundCalculator.PresentationStage(response, false));
+        _job.Setup(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>())).ReturnsAsync(response);
+        int calls = 0;
+        ProbabilityCalculationResult result = await _service.CalculateProgressivelyAsync(snapshot, _ => {
+            calls++;
+            return Task.CompletedTask;
+        }, default);
+        Assert.That(calls, Is.Zero);
+        Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
+        _job.Verify(j => j.InvokeAsync<string>("finish", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()), Times.Never);
+        _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Once);
+    }
+
+    [Test]
+    public void ContradictoryProgressCannotPresentAnAlreadyExactResult() {
+        _job.Setup(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(new BackgroundCalculator.PresentationStage(CalculationWire.Execute(Snapshot().Json), true));
+        Assert.ThrowsAsync<InvalidOperationException>(() => _service.CalculateProgressivelyAsync(Snapshot(),
+            _ => throw new AssertionException("Contradictory progress must not be presented"), default));
+        VerifyDisposed();
+    }
+
+    [Test]
+    public async Task DisposalDuringProgressCallbackPreventsFinalInteropAndRetiresLease() {
+        CalculationSnapshot snapshot = BoundedSnapshot();
+        TaskCompletionSource callback = new();
+        _job.Setup(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(new BackgroundCalculator.PresentationStage(CalculationWire.Execute(snapshot.Json), true));
+        Task<ProbabilityCalculationResult> calculation = _service.CalculateProgressivelyAsync(snapshot, _ => callback.Task, default);
+        await _service.DisposeAsync();
+        Assert.That(async () => await calculation, Throws.InstanceOf<OperationCanceledException>());
+        _job.Verify(j => j.InvokeAsync<string>("finish", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()), Times.Never);
+        VerifyDisposed();
+        callback.SetResult();
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ProgressiveDeliveryValidatesBeforeCallbackAndReleasesOnlyAfterFinalValidation(bool uncertified) {
+        CalculationSnapshot snapshot = BoundedSnapshot();
+        string initial = CalculationWire.Execute(snapshot.Json);
+        if (uncertified) {
+            List<Card> cards = ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish");
+            WorkBudget budget = new(CalculationWorkPolicy.Default);
+            ExactCalculationResult rows = new DrawEffectCalculation(cards, 2, budget).Calculate(
+                ProbabilityCalculator.ThreeCalculationModesTest.Combos, ProbabilityCalculator.ThreeCalculationModesTest.Groups);
+            // The real result producer retains a completed primary when its
+            // secondary proof fails, just as in ThreeCalculationModesTest.
+            ProbabilityCalculationResult result = ProbabilityCalculatorService.CompleteResult(
+                ProbabilityCalculator.ThreeCalculationModesTest.Combos, ProbabilityCalculator.ThreeCalculationModesTest.Groups,
+                CalculationModel.Fast, rows, budget, new DrawEffectCalculation(cards, 2, new(CalculationWorkPolicy.Default)));
+            initial = System.Text.Json.JsonSerializer.Serialize(new CalculationResponse(result, null), CalculationJsonContext.Default.CalculationResponse);
+        }
+        TaskCompletionSource<string> final = new();
+        _job.Setup(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(new BackgroundCalculator.PresentationStage(initial, true));
+        _job.Setup(j => j.InvokeAsync<string>("finish", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .Returns(new ValueTask<string>(final.Task));
+        ProbabilityCalculationResult? shown = null;
+        Task<ProbabilityCalculationResult> task = _service.CalculateProgressivelyAsync(snapshot, result => {
+            shown = result;
+            return Task.CompletedTask;
+        }, default);
+        Assert.That(shown!.Contract!.Accuracy, Is.EqualTo(uncertified ? CalculationAccuracy.Uncertified : CalculationAccuracy.Bounded));
+        Assert.That(task.IsCompleted, Is.False);
+        _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Never);
+        System.Text.Json.Nodes.JsonNode fallback = System.Text.Json.Nodes.JsonNode.Parse(initial)!;
+        fallback["Result"]!["Contract"]!["AutomaticExact"] = 1;
+        final.SetResult(fallback.ToJsonString());
+        ProbabilityCalculationResult settled = await task;
+        Assert.That(settled.Contract!.AutomaticExact, Is.EqualTo(AutomaticExactOutcome.Deadline));
+        Assert.That(settled.Contract.Fractions, Is.EqualTo(shown.Contract.Fractions).Using<CalculationFractions>((a, b) =>
+            System.Text.Json.JsonSerializer.Serialize(a) == System.Text.Json.JsonSerializer.Serialize(b)));
+        _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Once);
+    }
+
+    [TestCase("{}")]
+    [TestCase("not json")]
+    public void InvalidProgressNeverReachesTheCallbackOrAcknowledgesLease(string response) {
+        _job.Setup(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(new BackgroundCalculator.PresentationStage(response, true));
+        int calls = 0;
+        Assert.That(async () => await _service.CalculateProgressivelyAsync(BoundedSnapshot(), _ => {
+            calls++;
+            return Task.CompletedTask;
+        }, default), Throws.Exception);
+        Assert.That(calls, Is.Zero);
+        VerifyDisposed();
+        _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Never);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void InvalidFinalOrCancelledProgressRetiresLease(bool cancel) {
+        CalculationSnapshot snapshot = BoundedSnapshot();
+        using CancellationTokenSource cancellation = new();
+        _job.Setup(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ReturnsAsync(new BackgroundCalculator.PresentationStage(CalculationWire.Execute(snapshot.Json), true));
+        _job.Setup(j => j.InvokeAsync<string>("finish", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>())).ReturnsAsync("{}");
+        int calls = 0;
+        Assert.That(async () => await _service.CalculateProgressivelyAsync(snapshot, _ => {
+            calls++;
+            if (cancel) { cancellation.Cancel(); }
+            return Task.CompletedTask;
+        }, cancellation.Token), Throws.Exception);
+        Assert.That(calls, Is.EqualTo(1));
+        VerifyDisposed();
+        _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Never);
+    }
+
+    [Test]
+    public async Task NewRequestWaitsForCancelledLeaseCleanup() {
+        TaskCompletionSource<Microsoft.JSInterop.Infrastructure.IJSVoidResult> cleanup = new();
+        _job.SetupSequence(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
+            .ThrowsAsync(new OperationCanceledException()).ReturnsAsync(CalculationWire.Execute(Snapshot().Json));
+        _job.Setup(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("dispose", It.IsAny<object?[]?>()))
+            .Returns(new ValueTask<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(cleanup.Task));
+        Task<ProbabilityCalculationResult> first = _service.CalculateAsync(Snapshot(), default);
+        Task<ProbabilityCalculationResult> second = _service.CalculateAsync(Snapshot(), default);
+        Assert.That(second.IsCompleted, Is.False);
+        _owner.Verify(j => j.InvokeAsync<IJSObjectReference>("createJob", It.IsAny<object?[]?>()), Times.Once);
+        cleanup.SetResult(default!);
+        Assert.That(async () => await first, Throws.InstanceOf<OperationCanceledException>());
+        Assert.That((await second).TotalProbability, Is.EqualTo(1));
+    }
 
     [SetUp]
     public void Setup() {
