@@ -222,8 +222,8 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         await cut.Find("#comboGroup0").ChangeAsync(new() { Value = "" });
         AssertPreviousResult(cut);
         await Button(cut, "Calculate").ClickAsync(new());
-        Assert.That(
-            cut.Find(".probability-group .combo-probability-value").TextContent, Is.EqualTo(0.0.ToString("P2")));
+        Assert.That(cut.FindAll(".probability-group"), Is.Empty);
+        Assert.That(cut.Find(".probability-ungrouped-combos").TextContent, Does.Contain("First"));
         Assert.That(Button(cut, "Calculate").HasAttribute("disabled"), Is.False);
     }
 

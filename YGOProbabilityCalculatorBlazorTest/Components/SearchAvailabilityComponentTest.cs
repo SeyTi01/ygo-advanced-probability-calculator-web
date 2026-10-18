@@ -34,13 +34,13 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         string saved = context.Services.GetRequiredService<ISessionService>().SerializeSession(session);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".calculation-settings-menu input[type=checkbox]"), Is.Empty);
-        Assert.That(cut.Find(".result-accuracy").TextContent, Does.Contain("Bounded"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
         ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
         string copied = ProbabilityResultSummaryFormatter.Format(accepted, 2, CultureInfo.InvariantCulture);
         Assert.That(copied, Does.Contain("fixed modeled draw/removal policy (v1)").And.Contain("Routes").And.Contain("Target").And.Contain("rational endpoints"));
         await Button(cut, "Pin result").ClickAsync(new());
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.SearchAvailability, Is.SameAs(accepted.SearchAvailability));
-        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Does.Contain("Bounded"));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
         Assert.That(cut.FindAll(".probability-group-members .combo-probability-item"), Is.Not.Empty);
         Assert.That(cut.FindAll(".probability-ungrouped-combos .combo-probability-item"), Is.Not.Empty);
         string[] currentUncertainty = cut.FindAll(".probability-results .probability-uncertainty")
@@ -136,7 +136,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task LimitedExactPreservesAcceptedResultAndPinAndRecoveryKeepsExactPreference() {
+    public async Task LimitedExactPreservesAcceptedResultAndPinAndManualModeSelection() {
         Mock<IBackgroundCalculator> worker = new();
         int exactCalls = 0;
         worker.Setup(value => value.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
@@ -159,15 +159,17 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(accepted.Contract));
         Assert.That(ProbabilityResultSummaryFormatter.Format(accepted, 1, CultureInfo.InvariantCulture),
             Does.Contain("Effects — fast").And.Contain("Exact"));
-        await Button(cut, "Calculate with no effect simulation").ClickAsync(new());
-        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Exact"));
+        Assert.That(cut.FindAll(".calculation-recovery"), Is.Empty);
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
+        await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.OpeningHand));
         AssertNoComparisonUi(cut);
-        Assert.That(cut.Find(".result-accuracy").TextContent, Does.StartWith($"{CalculationModel.OpeningHand.Description()} · "));
-        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Does.StartWith($"{CalculationModel.Fast.Description()} · "));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {CalculationModel.OpeningHand.Description()}"));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo($"Mode: {CalculationModel.Fast.Description()}"));
         Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
         Assert.That(cut.Find(".pinned-result > p.small").TextContent, Does.StartWith("Hand size ").And.EndWith(" cards"));
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.ExecutedMode, Is.EqualTo(CalculationModel.Exact));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "2")));
@@ -183,7 +185,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         await Button(cut, "Calculate").ClickAsync(new());
         ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
-        Assert.That(cut.Find(".result-accuracy").TextContent, Does.Contain("Effects — fast").And.Contain("Exact"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
         Assert.That(accepted.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "2")));
         await Button(cut, "Pin result").ClickAsync(new());
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
@@ -240,8 +242,8 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
             .ToArray();
         Assert.That(pinnedUncertainty, Is.EqualTo(currentUncertainty));
         Assert.That(currentUncertainty, Does.Contain("±0%").And.Not.All.EqualTo("±0%"));
-        Assert.That(cut.Find(".result-accuracy").TextContent, Does.Contain("Bounded"));
-        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Does.Contain("Bounded"));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
+        Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
         await cut.Find("button[title='Copy results']").ClickAsync(new());
         string copied = (string)context.JSInterop.Invocations["copyText"].Last().Arguments[0]!;

@@ -3,7 +3,7 @@
 
 <p class="small mb-2 result-accuracy" role="status">
     @if (Contract is { } contract) {
-        @contract.ExecutedMode.Description()<span> · @(contract.Accuracy?.ToString() ?? "Uncertified")</span>
+        <span>Mode: @contract.RequestedMode.Description()</span>
     }
     else {
         <span>Uncertified · accuracy unavailable</span>
@@ -11,9 +11,6 @@
 </p>
 <details class="accuracy-details small mb-2">
     <summary>Accuracy details</summary>
-    @if (ProbabilityPresentation.AutomaticExactDetail(Contract?.AutomaticExact) is { } automaticDetail) {
-        <p class="mt-2 mb-1">@automaticDetail</p>
-    }
     <p class="mt-2 mb-1">@ProbabilityPresentation.AccuracyDetails</p>
 </details>
 

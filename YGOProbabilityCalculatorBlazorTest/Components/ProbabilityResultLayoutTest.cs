@@ -78,10 +78,10 @@ public class ProbabilityResultLayoutTest {
             Is.EqualTo(0.8361.ToString("P2")));
 
         IHtmlCollection<IElement> groups = results.QuerySelectorAll(".probability-group-container");
-        Assert.That(groups, Has.Length.EqualTo(3));
-        Assert.That(groups.Select(GroupName), Is.EqualTo(new[] { "Repeated name", "Repeated name", "Empty group" }));
+        Assert.That(groups, Has.Length.EqualTo(2));
+        Assert.That(groups.Select(GroupName), Is.EqualTo(new[] { "Repeated name", "Repeated name" }));
         Assert.That(groups.Select(GroupProbability), Is.EqualTo(new[] {
-            0.382.ToString("P2"), 0.7234.ToString("P2"), 0.0.ToString("P2")
+            0.382.ToString("P2"), 0.7234.ToString("P2")
         }));
 
         IHtmlCollection<IElement> secondGroupMembers = groups[0].QuerySelectorAll(".probability-group-members .combo-probability-item");
@@ -89,9 +89,7 @@ public class ProbabilityResultLayoutTest {
         IHtmlCollection<IElement> firstGroupMembers = groups[1].QuerySelectorAll(".probability-group-members .combo-probability-item");
         Assert.That(ComboNames(firstGroupMembers), Is.EqualTo(new[] { "Shared route", "Shared route" }));
         Assert.That(ComboProbabilities(firstGroupMembers), Is.EqualTo(new[] { 0.4.ToString("P2"), 0.51.ToString("P2") }));
-        Assert.That(groups[2].QuerySelectorAll(".combo-probability-item"), Is.Empty,
-            "an empty configured group still renders its aggregate without invented members");
-        Assert.That(groups[2].TextContent, Does.Contain("(0 active)"));
+        Assert.That(results.TextContent, Does.Not.Contain("Empty group").And.Not.Contain("(0 active)"));
 
         Assert.That(results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item"), Has.Length.EqualTo(2));
         Assert.That(results.QuerySelector("h6:not(.probability-group-heading)")!.TextContent.Trim(), Is.EqualTo("Ungrouped combos"));
@@ -165,9 +163,8 @@ public class ProbabilityResultLayoutTest {
 
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
         IElement[] recalculatedGroups = ResultGroups(cut);
-        Assert.That(recalculatedGroups.Select(GroupName), Is.EqualTo(new[] { "Alpha renamed", "Beta" }));
-        Assert.That(recalculatedGroups[0].QuerySelectorAll(".combo-probability-item"), Is.Empty);
-        Assert.That(ComboNames(recalculatedGroups[1].QuerySelectorAll(".probability-group-members .combo-probability-item")),
+        Assert.That(recalculatedGroups.Select(GroupName), Is.EqualTo(new[] { "Beta" }));
+        Assert.That(ComboNames(recalculatedGroups[0].QuerySelectorAll(".probability-group-members .combo-probability-item")),
             Is.EqualTo(new[] { "Move me", "Stay" }));
         Assert.That(cut.Find(".probability-total-value").TextContent, Is.EqualTo(0.95.ToString("P2")));
     }
@@ -175,6 +172,67 @@ public class ProbabilityResultLayoutTest {
     private IRenderedComponent<ProbabilityCalculatorComponent> Render(SessionState? session = null) {
         _context.Services.GetRequiredService<IPendingSessionService>().PendingSession = session ?? Session();
         return _context.RenderComponent<ProbabilityCalculatorComponent>();
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(2)]
+    [SetCulture("en-US")]
+    public async Task EmptyGroupsAreDisplayOnlyAndOriginalBoundIndicesSurviveInCurrentPinAndCopy(int emptyIndex) {
+        List<GroupProbabilityResult> groups = [new("zero", "Active zero", 0, 1), new("bounded", "Bounded group", .9, 1)];
+        groups.Insert(emptyIndex, new("empty", "Hidden empty", 0, 0));
+        SearchAvailabilityInterval zero = new("Zero", new("0", "1"), new("0", "1"));
+        SearchAvailabilityInterval bound = new("Bound", new("1", "4"), new("3", "4"));
+        SearchAvailabilityCertificate certificate = new(SearchAvailabilityStatus.Bounded, "Display proof", bound,
+            [zero, bound], [.. groups.Select(group => group.GroupId == "bounded" ? bound : zero)]);
+        CalculationResultContract contract = ProbabilityPresentationTest.Contract(CalculationAccuracy.Bounded);
+        _resultToReturn = new(.9, [new(0, "Zero route", 0, "zero"), new(1, "Bounded route", .9, "bounded")], groups,
+            SearchAvailability: certificate, Contract: contract);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
+        await Calculate(cut);
+        await cut.Find(".pin-result-action").ClickAsync(new());
+        IElement[] current = ResultGroups(cut);
+        IElement[] pinned = cut.FindAll(".pinned-group").ToArray();
+        Assert.That(current, Has.Length.EqualTo(2));
+        Assert.That(pinned, Has.Length.EqualTo(2));
+        foreach (IElement group in new[] { current[0], pinned[0] }) {
+            Assert.That(group.TextContent, Does.Contain("Active zero").And.Contain("Zero route").And.Contain("0.00").And.Contain("±0%"));
+        }
+        foreach (IElement group in new[] { current[1], pinned[1] }) {
+            Assert.That(group.TextContent, Does.Contain("Bounded group").And.Contain("Bounded route").And.Contain("±25.00%"));
+            Assert.That(group.QuerySelector("[role='note']")!.GetAttribute("aria-label"), Does.Contain("[1/4, 3/4]"));
+        }
+        Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Hidden empty").And.Not.Contain("Ungrouped combos"));
+        Assert.That(cut.Find(".pinned-result").TextContent, Does.Not.Contain("Hidden empty").And.Not.Contain("Ungrouped combos"));
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Groups, Has.Length.EqualTo(3));
+        Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.SearchAvailability, Is.SameAs(certificate));
+        Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.GroupProbabilities, Has.Count.EqualTo(3));
+        string text = ProbabilityResultSummaryFormatter.Format(_resultToReturn, 1, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.That(text, Does.Not.Contain("Hidden empty").And.Not.Contain("Ungrouped combos").And.Contain("**Active zero** — 0.00% ±0%").And.Contain("**Bounded group** — 50.00% ±25.00%"));
+    }
+
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public async Task EmptyOnlyOrNoGroupsDoNotCreatePhantomSections(bool emptyGroup, bool hasCombo) {
+        _resultToReturn = new(.5,
+            hasCombo ? [new(0, "Loose route", .5)] : [],
+            emptyGroup ? [new("empty", "Hidden empty", 0, 0)] : []);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
+        await Calculate(cut);
+        await cut.Find(".pin-result-action").ClickAsync(new());
+        foreach (IElement panel in new[] { cut.Find(".probability-results"), cut.Find(".pinned-result") }) {
+            Assert.That(panel.TextContent, Does.Not.Contain("Hidden empty").And.Not.Contain("Ungrouped combos"));
+            Assert.That(panel.QuerySelectorAll("h6"), Has.Length.EqualTo(hasCombo ? 1 : 0));
+            Assert.That(panel.QuerySelectorAll("ol"), Has.Length.EqualTo(hasCombo ? 1 : 0));
+            if (hasCombo) {
+                Assert.That(panel.TextContent, Does.Contain("Individual combos").And.Contain("Loose route"));
+            }
+        }
+        string copied = ProbabilityResultSummaryFormatter.Format(_resultToReturn, 1, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.That(copied, Does.Not.Contain("Group probabilities").And.Not.Contain("Ungrouped combos").And.Not.Contain("Hidden empty"));
+        Assert.That(copied.Contains("Individual combos:"), Is.EqualTo(hasCombo));
     }
 
     private static async Task Calculate(IRenderedComponent<ProbabilityCalculatorComponent> cut) =>

@@ -9,7 +9,13 @@
     <div class="pinned-row pinned-total">
         <span>Any active combo</span><ProbabilityValue Probability="Snapshot.Total" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" ValueClass="probability-total-value" />
     </div>
-    @foreach (PinnedGroupRow group in Snapshot.Groups) {
+    @{
+        List<PinnedGroupRow> visibleGroups = Snapshot.Groups.Where(group => group.ActiveCount > 0).ToList();
+        HashSet<string> visibleGroupIds = visibleGroups.Select(group => group.Id).ToHashSet(StringComparer.Ordinal);
+        List<PinnedComboRow> ungrouped = Snapshot.Combos
+            .Where(combo => combo.GroupId is null || !visibleGroupIds.Contains(combo.GroupId)).ToList();
+    }
+    @foreach (PinnedGroupRow group in visibleGroups) {
         <section class="pinned-group">
             <h6 class="pinned-row">
                 <span>@group.Label <small class="text-body-secondary fw-normal">(@group.ActiveCount active)</small></span>
@@ -27,10 +33,10 @@
             </ol>
         </section>
     }
-    @if (Snapshot.Groups.IsEmpty || Snapshot.Combos.Any(combo => combo.GroupId is null || !Snapshot.Groups.Any(group => group.Id == combo.GroupId))) {
-        <h6>@(Snapshot.Groups.IsEmpty ? "Individual combos" : "Ungrouped combos")</h6>
+    @if (ungrouped.Count > 0) {
+        <h6>@(visibleGroups.Count == 0 ? "Individual combos" : "Ungrouped combos")</h6>
         <ol class="pinned-list">
-            @foreach (PinnedComboRow row in Snapshot.Combos.Where(combo => combo.GroupId is null || !Snapshot.Groups.Any(group => group.Id == combo.GroupId))) {
+            @foreach (PinnedComboRow row in ungrouped) {
                 <li>
                     <div class="pinned-row">
                         <span>@row.Label</span>
