@@ -82,7 +82,9 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         {
             IElement result = cut.Find(".probability-results");
-            Assert.That(result.GetAttribute("aria-live"), Is.EqualTo("polite"));
+            Assert.That(result.GetAttribute("aria-live"), Is.Null, "Progress must not re-announce the entire results list.");
+            Assert.That(result.QuerySelector(".probability-result-status-slot")!.GetAttribute("aria-live"), Is.EqualTo("polite"));
+            Assert.That(result.QuerySelector(".probability-result-status-slot")!.GetAttribute("role"), Is.EqualTo("status"));
             IElement totalRow = result.QuerySelector(".probability-total")!;
             Assert.That(totalRow.ClassList.Contains("combo-probability-row"), Is.True);
             Assert.That(totalRow.ParentElement!.ClassList.Contains("probability-results"), Is.True,

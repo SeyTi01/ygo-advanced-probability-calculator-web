@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createOwner } from '../../YGOProbabilityCalculatorBlazor/wwwroot/js/background-calculation.js';
 
 let epoch = 0;
-function setup(t) {
+function setup(t, progressive = false) {
     let now = epoch += 1000000;
     const workers = [];
     t.mock.timers.enable({ apis: ['setTimeout'] });
@@ -20,7 +20,7 @@ function setup(t) {
     const owner = createOwner();
     t.after(() => owner.dispose());
     const job = owner.createJob();
-    const promise = job.run('frozen', true);
+    const promise = progressive ? job.runProgressive('frozen', true) : job.run('frozen', true);
     const worker = workers[0];
     return {owner, job, promise, worker, workers,
         tick(ms) { now += ms; t.mock.timers.tick(ms); },
@@ -29,6 +29,67 @@ function setup(t) {
         emit(response, remainingWork = '100') { worker.emit({id:1, response:JSON.stringify(response), remainingWork}); }};
 }
 globalThis.Worker ??= class {};
+
+test('progressive initial response is immediate but never releases the single lease', async t => {
+    const s = setup(t, true); s.ready();
+    let delivered = false; s.promise.then(() => delivered = true);
+    await Promise.resolve(); assert.equal(delivered, false);
+    const initial = success(); s.emit(initial, '1234');
+    const stage = await s.promise;
+    assert.equal(stage.isPreliminary, true);
+    assert.deepEqual(JSON.parse(stage.response), initial);
+    assert.throws(() => s.job.release(), /successful response/);
+    assert.throws(() => s.owner.createJob(), /already running/);
+    assert.deepEqual(s.worker.sent[1], {id:1,json:'frozen',fastStage:'upgrade',remainingWork:'1234'});
+    s.emit(success(0));
+    assert.equal(JSON.parse(await s.job.finish()).Result.Contract.AutomaticExact, 0);
+    s.job.release(); assert.equal(s.worker.terminated, 0);
+});
+
+for (const [kind, outcome] of [['deadline',1],['work',2],['storage',3],['unsupported',4],['transport',5],['malformed',5]]) {
+    test(`progressive ${kind} retains exact initial payload and clears lease`, async t => {
+        const s = setup(t, true); s.ready(); const initial = success(2); s.emit(initial);
+        assert.equal((await s.promise).isPreliminary, true);
+        if (kind === 'deadline') { s.elapse(5000); s.emit(success(0)); }
+        if (kind === 'work') s.emit({Error:'limit',LimitReason:1});
+        if (kind === 'storage') s.emit({Error:'limit',LimitReason:2});
+        if (kind === 'unsupported') s.emit({Error:'unsupported',FailureKind:3});
+        if (kind === 'transport') s.worker.onerror({preventDefault(){}});
+        if (kind === 'malformed') s.worker.emit({id:1,response:'{',remainingWork:'1'});
+        const final = JSON.parse(await s.job.finish());
+        assert.equal(final.Result.Contract.AutomaticExact, outcome);
+        delete final.Result.Contract.AutomaticExact; assert.deepEqual(final, initial);
+        assert.equal(s.worker.terminated,1); s.job.release();
+    });
+}
+
+for (const kind of ['exact','no-time','no-work','initial-failure']) {
+    test(`progressive ${kind} has only a final stage`, async t => {
+        const s = setup(t, true); s.ready();
+        if (kind === 'no-time') s.tick(7000);
+        s.emit(kind === 'initial-failure' ? {Error:'limit',LimitReason:1} : success(kind === 'exact' ? 0 : 1), kind === 'no-work' ? '0' : '10');
+        const stage = await s.promise; assert.equal(stage.isPreliminary,false);
+        assert.equal(await s.job.finish(), stage.response);
+        assert.equal(s.worker.sent.length,1); s.job.release();
+    });
+}
+
+test('cancel after first delivery observes terminal rejection before finish is requested', async t => {
+    const s = setup(t,true); s.ready(); s.emit(success()); await s.promise;
+    const late = s.worker.onmessage; const final = s.job.finish(); s.job.dispose();
+    await assert.rejects(final,/cancelled/);
+    late({data:{id:1,response:JSON.stringify(success(0)),remainingWork:'1'}});
+    const next = s.owner.createJob(); const first = next.runProgressive('next',true);
+    s.tick(2500); s.job.dispose(); s.workers[1].emit({ready:true});
+    s.workers[1].emit({id:2,response:JSON.stringify(success(0)),remainingWork:'1'});
+    assert.equal((await first).isPreliminary,false); next.release();
+    assert.equal(s.workers[1].terminated,0);
+});
+
+test('progressive startup cancellation settles the first and unobserved terminal promises', async t => {
+    const s = setup(t,true); const rejected = assert.rejects(s.promise,/cancelled/);
+    s.owner.dispose(); await rejected; assert.equal(s.worker.terminated,1);
+});
 function success(accuracy = 1) {
     return {Result:{TotalProbability:0.75, Contract:{Version:1, RequestedMode:0, ExecutedMode:0, Completion:0,
         Accuracy:accuracy, Fractions:{Total:{Numerator:'3',Denominator:'4'}}}, SearchAvailability:{untouched:true}}};

@@ -35,6 +35,8 @@ export function createOwner() {
             clearTimeout(lease.deadlineTimer);
             lease.pending?.reject(new Error(message));
             lease.pending = undefined;
+            lease.first?.reject(new Error(message));
+            lease.first = undefined;
         }
     }
 
@@ -46,6 +48,8 @@ export function createOwner() {
         const pending = lease.pending;
         lease.pending = undefined;
         pending.resolve(response);
+        lease.first?.resolve({ response, isPreliminary: false });
+        lease.first = undefined;
     }
 
     function annotated(response, outcome) {
@@ -108,6 +112,10 @@ export function createOwner() {
         arm(lease);
         lease.state.worker.postMessage({ id: lease.id, json: lease.json, fastStage: 'upgrade', remainingWork: data.remainingWork });
         lease.json = undefined;
+        // Only an actually dispatched upgrade has a presentation stage. The
+        // terminal promise still owns the lease until C# validates and releases it.
+        lease.first?.resolve({ response: data.response, isPreliminary: true });
+        lease.first = undefined;
     }
 
     function send(lease) {
@@ -187,6 +195,19 @@ export function createOwner() {
             if (fresh) start(state);
 
             return {
+                runProgressive(json, automatic = false) {
+                    if (lease.phase !== 'created') return Promise.reject(new Error('Calculation is already running or finished.'));
+                    const first = new Promise((resolve, reject) => { lease.first = { resolve, reject }; });
+                    lease.final = this.run(json, automatic);
+                    // Cancellation/worker failure may precede C# requesting the
+                    // final stage. Observe rejection now; finish still receives it.
+                    lease.final.catch(() => {});
+                    return first;
+                },
+                finish() {
+                    if (!lease.final) return Promise.reject(new Error('No progressive calculation was started.'));
+                    return lease.final;
+                },
                 run(json, automatic = false) {
                     if (lease.phase !== 'created') return Promise.reject(new Error(lease.error ||
                         (lease.phase === 'running' ? 'Calculation is already running.' : 'Calculation is already finished.')));
@@ -203,6 +224,7 @@ export function createOwner() {
                         throw new Error(lease.error || 'Calculation has no successful response to release.');
                     }
                     lease.phase = 'released';
+                    lease.final = undefined;
                     active = undefined;
                     if (lease.detached) return lease.id;
                     if (++state.successes >= maximumSuccessfulRequests) {
@@ -223,6 +245,7 @@ export function createOwner() {
                     clearTimeout(lease.deadlineTimer);
                     lease.phase = 'disposed';
                     lease.pending = undefined;
+                    lease.first = lease.final = undefined;
                     lease.json = lease.fallback = undefined;
                 }
             };
