@@ -87,9 +87,9 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
-        Assert.That(editor.FindAll(".requirement-fields select"), Is.Empty);
+        Assert.That(editor.FindAll(".requirement-property-picker > select"), Is.Empty);
         OpenNewRequirement(editor);
-        Assert.That(editor.FindAll(".requirement-fields select"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-property-picker > select"), Has.Count.EqualTo(1));
         Assert.That(editor.FindAll("#comboTarget0 optgroup").First().GetAttribute("label"), Is.EqualTo("Cards"));
         Assert.That(editor.FindAll("[data-action], .add-or-button, .alternative-target-instruction"), Is.Empty);
         Assert.That(editor.Find("details").HasAttribute("open"), Is.False);

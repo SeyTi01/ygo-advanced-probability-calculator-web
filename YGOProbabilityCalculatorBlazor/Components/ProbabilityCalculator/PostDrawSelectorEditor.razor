@@ -13,7 +13,7 @@
             @if (Selector.Kind != CardSelectorKind.Any) {
                 <option value="any">Any card (clear filter)</option>
             }
-            <option value="level-at-least">Level >=</option>
+            <option value="numeric:level">Level</option><option value="numeric:rank">Rank</option><option value="numeric:link">Link</option>
             @if (Available.Any(static category => category.Source == CategorySource.User)) {
                 <optgroup label="User categories">
                     @foreach (CategoryBase category in Available.Where(static category => category.Source == CategorySource.User)) {
@@ -40,7 +40,7 @@
     @if (Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
         <div class="mt-2" aria-label="Grouped eligibility filter">
             <SelectorExpressionEditor Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
-                                      CategoryRename="CategoryRename" OnEditingChanged="OnEditingChanged"
+                                      RelevantMetadataIdentities="_categoryOptions.RelevantMetadataIdentities" CategoryRename="CategoryRename" OnEditingChanged="OnEditingChanged"
                                       Options="GroupedOptions" OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
         </div>
     }
@@ -71,7 +71,7 @@
     private bool Grouped => Selector.IsGrouped;
 
     private RenderFragment GroupedOptions => @<text>
-        <option value="level-at-least">Level >=</option>
+        <option value="numeric:level">Level</option><option value="numeric:rank">Rank</option><option value="numeric:link">Link</option>
         @foreach (IGrouping<string, CategoryBase> group in GroupedAvailable.GroupBy(category => category.Source == CategorySource.User
             ? "User categories" : _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity) ? "Relevant properties" : "Common properties")) {
             <optgroup label="@group.Key">
@@ -121,7 +121,7 @@
         .ToTitleCase(Uri.UnescapeDataString(identity[(identity.LastIndexOf(':') + 1)..]));
 
     private CategoryBase[] RelevantMetadata => Available
-        .Where(category => category.Source == CategorySource.Metadata
+        .Where(category => category.Source == CategorySource.Metadata && !NumericPropertyRange.TryFromIdentity(category.Identity, out _)
             && (!CategoryCatalog.IsCommonMetadata(category) || _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity)))
         .ToArray();
 
@@ -135,9 +135,10 @@
         if (identity == "any") {
             return Clear();
         }
-        if (identity == "level-at-least") {
-            return Apply(() => Selector.Kind == CardSelectorKind.Any ? CardSelector.LevelAtLeast(5)
-                : CardSelector.AnyOfSelectors([Selector, CardSelector.LevelAtLeast(5)]));
+        if (identity?.StartsWith("numeric:", StringComparison.Ordinal) == true && Enum.TryParse(identity[8..], true, out NumericPropertyKind property)) {
+            int number = property == NumericPropertyKind.Link ? 1 : 5;
+            CardSelector numeric = CardSelector.ForNumericRange(new(property, number, number));
+            return Apply(() => Selector.Kind == CardSelectorKind.Any ? numeric : CardSelector.AnyOfSelectors([Selector, numeric]));
         }
         if (!Available.Any(category => category.Identity == identity)) {
             return Task.CompletedTask;

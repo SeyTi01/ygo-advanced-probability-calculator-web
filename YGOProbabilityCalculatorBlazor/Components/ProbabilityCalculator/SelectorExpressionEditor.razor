@@ -11,7 +11,7 @@
                 <div @key="_termKeys[currentRow.Value.Signature]" class="selector-term @(currentRow.Value.Kind != Selector.Kind && currentRow.Value.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf ? "selector-nested-term" : "")">
                 <SelectorExpressionEditor @ref="_childEditors[_termKeys[currentRow.Value.Signature]]"
                     Selector="Rows[index].Value" IsRoot="false" Path="@($"{Path}.{index}")" Available="Available" Options="Options"
-                    CategoryColorIndices="CategoryColorIndices" CategoryRename="CategoryRename" Session="EditorSession"
+                    CategoryColorIndices="CategoryColorIndices" RelevantMetadataIdentities="RelevantMetadataIdentities" CategoryRename="CategoryRename" Session="EditorSession"
                     ReplaceSelector="value => ReplaceRow(position, value)" OnRemove="() => RemoveRow(position)"
                     OnValidation="OnValidation" OnEditingChanged="OnEditingChanged" OnEditContainer="BeginEdit" />
                 </div>
@@ -28,7 +28,7 @@
         <ExpressionGroup Label="Nested conditions" Nested="true">
             <button type="button" class="btn btn-link btn-sm p-0" @onclick="Back">Back to row</button>
             <SelectorExpressionEditor Selector="Terms[nestedIndex]" IsRoot="false" @ref="_nestedEditor" Path="@($"{Path}.nested")"
-                Available="Available" Options="Options" CategoryColorIndices="CategoryColorIndices" CategoryRename="CategoryRename"
+                Available="Available" Options="Options" CategoryColorIndices="CategoryColorIndices" RelevantMetadataIdentities="RelevantMetadataIdentities" CategoryRename="CategoryRename"
                 Session="EditorSession" ReplaceSelector="value => ReplaceTerm(nestedIndex, value)" OnRemove="() => RemoveTerm(nestedIndex)"
                 OnValidation="OnValidation" OnEditingChanged="OnEditingChanged" />
         </ExpressionGroup>
@@ -36,47 +36,23 @@
 </div>
 
 @code {
-    private RenderFragment EditForm() => @<ExpressionForm OnSubmit="Save" OnKeyDown="HandleKeyDown" StopKeyPropagation="true">
-        <div class="requirement-form-heading">
-            <strong>@(_mode == "add" ? "Add condition" : _mode == "replace" ? "Replace group" : "Edit conditions")</strong>
-            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="Cancel">Cancel</button>
-        </div>
-        <div class="selector-condition-row @(_operands.Count > 2 ? "selector-many-conditions" : "")">
-            @if (_mode == "add") {
-                <div class="selector-seed">@Summary(_seed!)</div>
-                @OperatorField()
+    private RenderFragment EditForm() => @<RequirementEditForm @key="_mode" @ref="_editForm"
+        Title="@(_mode == "add" ? "Add requirement" : _mode == "replace" ? "Replace group" : "Edit requirement")"
+        OperandCount="_operands.Count" OperandKey="index => _operands[index]" Operator="@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@_error"
+        OnSubmit="Save" OnCancel="Cancel" OnKeyDown="HandleKeyDown" OnRemoveOperand="RemoveOperand"
+        OnOperatorChanged="@(operation => _operation = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf)">
+        <BeforeContent>@if (_mode == "add") { <div class="mb-2">@Summary(_seed!)</div> }</BeforeContent>
+        <OperandContent Context="position">
+            @{ OperandDraft operand = _operands[position]; }
+            @if (operand.Group is { } group) {
+                <button type="button" class="btn btn-outline-secondary w-100" @onclick="() => EditNested(position)">@Summary(group) <span class="small">Edit</span></button>
             }
-            @for (int index = 0; index < _operands.Count; index++) {
-                int position = index;
-                OperandDraft operand = _operands[index];
-                @if (index == 1 && _mode != "add") { @OperatorField() }
-                else if (index > 1) { <ExpressionSeparator Operator="@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")" /> }
-                <div class="selector-operand" @key="operand">
-                    @if (operand.Group is { } group) {
-                        <label class="form-label small">Condition @(index + 1)</label>
-                        <button type="button" class="btn btn-outline-secondary w-100" @onclick="() => EditNested(position)">@Summary(group) <span class="small">Edit</span></button>
-                    }
-                    else {
-                        <label for="@OperandId(index)" class="form-label small">Condition @(index + 1)</label>
-                        <select id="@OperandId(index)" @ref="_entryInputs[position]" class="form-select form-select-sm" value="@operand.Identity" @onchange="args => ChangeIdentity(position, args)">
-                            <option value="">Choose…</option>
-                            @if (operand.Identity.Length > 0 && operand.Identity != "level-at-least" && !Available.Any(category => category.Identity == operand.Identity)) {
-                                <option value="@operand.Identity">@IdentityLabel(operand.Identity)</option>
-                            }
-                            @Options
-                        </select>
-                        @if (operand.Identity == "level-at-least") {
-                            <label for="@(OperandId(index) + "-level")" class="form-label small mt-2">Minimum Level</label>
-                            <input id="@(OperandId(index) + "-level")" @ref="_levelInputs[position]" class="form-control form-control-sm" type="number" min="0" max="2147483647"
-                                aria-label="Minimum Level" value="@operand.Minimum" @oninput="args => ChangeMinimum(position, args)" />
-                        }
-                    }
-                </div>
+            else {
+                <RequirementPropertyPicker @key="operand" @ref="_entryInputs[position]" Id="@OperandId(position)" Value="@operand.Identity"
+                    Categories="Available" RelevantIdentities="RelevantMetadataIdentities" OnChanged="change => ChangeIdentity(position, change)" />
             }
-        </div>
-        @if (_error is not null) { <div class="small text-danger mt-2" role="alert">@_error</div> }
-        <button type="submit" class="btn btn-primary mt-2" disabled="@(_error is not null)">Save</button>
-        <div class="requirement-context-actions">
+        </OperandContent>
+        <ActionsContent>
             @if (_mode == "edit") {
                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => Add(CardSelectorKind.AllOf)">Add property (AND)</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => Add(CardSelectorKind.AnyOf)">Add alternative (OR)</button>
@@ -98,14 +74,8 @@
                 }
             }
             <button type="button" class="btn btn-sm btn-outline-danger" @onclick="RemoveSelf">@(IsGroup ? "Remove group" : "Remove clause")</button>
-        </div>
-    </ExpressionForm>;
-
-    private RenderFragment OperatorField() => @<div class="selector-operator">
-        <label for="@(_fieldId + "-operator")" class="form-label small">Operator</label>
-        <ExpressionSeparator @ref="_operatorInput" InputId="@(_fieldId + "-operator")" InputLabel="Row operator" Inline="true"
-            Operator="@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")" OnOperatorChanged="@(operation => _operation = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf)" />
-    </div>;
+        </ActionsContent>
+    </RequirementEditForm>;
 
     private RenderFragment Summary(CardSelector selector, bool interactive = false) => @<text>
         @if (selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
@@ -125,6 +95,7 @@
     [Parameter] public string Path { get; set; } = "root";
     [Parameter] public IReadOnlyList<CategoryBase> Available { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>();
+    [Parameter] public IReadOnlySet<string> RelevantMetadataIdentities { get; set; } = new HashSet<string>();
     [Parameter] public RenderFragment? Options { get; set; }
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
     [Parameter] public SelectorEditSession? Session { get; set; }
@@ -137,10 +108,16 @@
 
     private sealed class OperandDraft(CardSelector selector) {
         public CardSelector Original { get; set; } = selector;
-        public string Identity { get; set; } = selector.Kind == CardSelectorKind.LevelAtLeast ? "level-at-least" : selector.CategoryIdentities.FirstOrDefault() ?? "";
-        public string Minimum { get; set; } = selector.MinimumLevel?.ToString() ?? "5";
+        public string Identity { get; set; } = selector.Kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.NumericRange && NumericPropertyRange.TryFromSelector(selector, out NumericPropertyRange? range) ? range.Identity : selector.CategoryIdentities.FirstOrDefault() ?? "";
+        public string? Error { get; set; }
         public CardSelector? Group { get; set; } = selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf ? selector : null;
-        public CardSelector Build() => Group ?? (Identity == "level-at-least" ? CardSelector.LevelAtLeast(int.Parse(Minimum)) : new(CardSelectorKind.Category, [Identity]));
+        public CardSelector Build() {
+            if (Group is not null) { return Group; }
+            if (Original.Kind == CardSelectorKind.Category && Identity == Original.CategoryIdentities[0]
+                || NumericPropertyRange.TryFromSelector(Original, out NumericPropertyRange? originalRange) && Identity == originalRange.Identity) { return Original; }
+            return Identity.StartsWith("metadata:numeric:", StringComparison.Ordinal) && NumericPropertyRange.TryFromIdentity(Identity, out NumericPropertyRange? range)
+                ? range.ToSelector() : new(CardSelectorKind.Category, [Identity]);
+        }
     }
 
     private sealed record SelectorRow(CardSelector Value, CardSelector[] Terms);
@@ -150,9 +127,8 @@
     private readonly Dictionary<string, object> _termKeys = new(StringComparer.Ordinal);
     private readonly Dictionary<object, SelectorExpressionEditor> _childEditors = [];
     private readonly List<OperandDraft> _operands = [];
-    private readonly Dictionary<int, ElementReference> _entryInputs = [];
-    private readonly Dictionary<int, ElementReference> _levelInputs = [];
-    private ExpressionSeparator? _operatorInput;
+    private readonly Dictionary<int, RequirementPropertyPicker> _entryInputs = [];
+    private RequirementEditForm? _editForm;
     private SelectorEditSession EditorSession => Session ?? _session;
     private bool IsEditing => ReferenceEquals(EditorSession.ActiveNode, _node);
     private bool IsGroup => Selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf;
@@ -192,12 +168,13 @@
         CardSelectorKind.AllOf => string.Join(" AND ", selector.AuthoredTerms.Select(Description)),
         CardSelectorKind.AnyOf => string.Join(" OR ", selector.AuthoredTerms.Select(Description)),
         CardSelectorKind.LevelAtLeast => $"Level >= {selector.MinimumLevel}",
+        CardSelectorKind.NumericRange => selector.NumericRange!.Description,
         _ => IdentityLabel(selector.CategoryIdentities.FirstOrDefault() ?? "")
     };
     private string FullLabel(CardSelector selector) => selector.Kind == CardSelectorKind.Category
         ? Available.FirstOrDefault(category => category.Identity == selector.CategoryIdentities[0])?.Name ?? Description(selector) : Description(selector);
-    private string ChipClass(CardSelector selector) => selector.Kind == CardSelectorKind.LevelAtLeast
-        ? "card-property-tag " + CardPropertyColorPalette.GetCssClass("level:0")
+    private string ChipClass(CardSelector selector) => selector.Kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.NumericRange
+        ? "card-property-tag " + CardPropertyColorPalette.GetCssClass((selector.NumericRange?.Key ?? "level") + ":0")
         : Available.FirstOrDefault(category => category.Identity == selector.CategoryIdentities.FirstOrDefault()) is { } category
             ? CategoryChipPalette.GetCssClass(category, CategoryColorIndices) : FallbackChipClass(selector.CategoryIdentities.FirstOrDefault() ?? "");
     private static string FallbackChipClass(string identity) => identity.StartsWith("metadata:", StringComparison.Ordinal)
@@ -344,18 +321,15 @@
     private Task Cancel() => Close(true);
     private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? Cancel() : Task.CompletedTask;
 
-    private async Task ChangeIdentity(int index, ChangeEventArgs args) {
-        _operands[index].Identity = args.Value?.ToString() ?? "";
-        await Validate();
-    }
-    private async Task ChangeMinimum(int index, ChangeEventArgs args) {
-        _operands[index].Minimum = args.Value?.ToString() ?? "";
+    private async Task ChangeIdentity(int index, RequirementPropertyPicker.Change change) {
+        _operands[index].Error = change.Error;
+        if (change.Error is null) { _operands[index].Identity = change.Value; }
         await Validate();
     }
     private Task Validate() {
         string? error = null;
         foreach (OperandDraft operand in _operands.Where(operand => operand.Group is null)) {
-            if (operand.Identity == "level-at-least" && (!int.TryParse(operand.Minimum, out int minimum) || minimum < 0)) { error = "Enter a Level from 0 to 2147483647."; break; }
+            if (operand.Error is not null) { error = operand.Error; break; }
             if (operand.Identity.Length == 0) { error = "Choose a property or category."; break; }
         }
         return SetError(error);
@@ -484,19 +458,19 @@
             _nestedEditor.StateHasChanged();
         }
         if (_focusEntry && IsEditing) {
-            int level = _operands.FindIndex(operand => operand.Identity == "level-at-least" && operand.Group is null);
+            int level = _operands.FindIndex(operand => NumericPropertyRange.TryFromIdentity(operand.Identity, out _) && operand.Group is null);
             int entry = _operands.FindIndex(operand => operand.Group is null);
-            if (level >= 0 && _levelInputs.TryGetValue(level, out ElementReference levelInput)) {
+            if (level >= 0 && _entryInputs.TryGetValue(level, out RequirementPropertyPicker? levelInput)) {
                 _focusEntry = false;
-                await levelInput.FocusAsync();
+                await levelInput.FocusAsync(number: true);
             }
-            else if (entry >= 0 && _entryInputs.TryGetValue(entry, out ElementReference entryInput)) {
+            else if (entry >= 0 && _entryInputs.TryGetValue(entry, out RequirementPropertyPicker? entryInput)) {
                 _focusEntry = false;
                 await entryInput.FocusAsync();
             }
-            else if (_operatorInput is not null) {
+            else if (_editForm is not null) {
                 _focusEntry = false;
-                await _operatorInput.FocusAsync();
+                await _editForm.FocusAsync();
             }
         }
         if (_focusRow) {

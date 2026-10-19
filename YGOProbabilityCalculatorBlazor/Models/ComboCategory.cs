@@ -51,7 +51,7 @@ public class ComboCategory {
             throw new ArgumentException("A category requirement needs at least one category.", nameof(categoryBases));
         }
         CategoryBases = Array.AsReadOnly(categories.DistinctBy(category => category.Identity).ToArray());
-        Selector = CardSelector.AllOf(CategoryBases.Select(category => category.Identity));
+        Selector = CardSelector.AllOfSelectors(CategoryBases.Select(NumericPropertyRange.SelectorFor));
         if (!Enum.IsDefined(maximumMode)) {
             throw new ArgumentOutOfRangeException(nameof(maximumMode));
         }

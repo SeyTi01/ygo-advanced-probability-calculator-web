@@ -42,6 +42,8 @@ public static class CardPropertyColorPalette {
             return GenericMetadataClass;
         }
 
+        if (key.StartsWith("numeric:", StringComparison.Ordinal) && NumericPropertyRange.TryFromIdentity("metadata:" + key, out NumericPropertyRange? range)) { return GetCssClass(range.Key + ":0"); }
+
         string family = key[..separator];
         string value = key[(separator + 1)..];
 

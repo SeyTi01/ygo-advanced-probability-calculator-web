@@ -120,8 +120,6 @@
 }
 
 .expression-and { font-size: .8rem; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
-.requirement-fields { display: grid; align-items: end; }
-.requirement-fields > div { min-width: 0; }
 
 /* Expanded requirements use rows; compact header expressions keep their chips. */
 .requirement-list {
@@ -135,12 +133,6 @@
 }
 summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
 
-.requirement-fields, .alternative-fields { grid-template-columns: minmax(0, 1fr) 5.5rem auto; gap: .65rem; }
-.requirement-fields .form-label { font-size: .8rem; margin-bottom: .25rem; }
-.requirement-fields .requirement-selector .form-label { margin-bottom: .5rem; }
-.requirement-fields.composite-fields { grid-template-columns: 5.5rem auto; justify-content: start; }
-.requirement-selector { grid-column: auto; }
-.requirement-submit .btn { min-height: 38px; }
 .requirement-bounds { font-size: .8rem; margin-top: .5rem; }
 .requirement-bounds summary { cursor: pointer; width: fit-content; padding: .4rem 0; min-height: 32px; }
 .requirement-max { display: grid; grid-template-columns: 5rem minmax(0, 1fr); align-items: center; gap: .4rem .65rem; margin-top: .4rem; }
@@ -149,17 +141,8 @@ summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2p
 .requirement-max small { grid-column: 1 / -1; }
 
 .alternative-scope { font-size: .8rem; margin-bottom: .6rem; }
-.property-edit-list { margin-bottom: .65rem; }
-.property-edit-row { display: flex; gap: .5rem; margin-bottom: .5rem; }
-.property-edit-row select { min-width: 0; }
 .combo-footer { margin-top: 1rem; }
 .combo-footer .combo-group-field { max-width: 20rem; }
 .combo-footer .form-label { font-size: .8rem; }
 .add-top-level-group { margin-bottom: .5rem; min-height: 36px; }
 .expanded-expression ::deep .requirement-or-group { display: grid; gap: .5rem; }
-@media (max-width: 767.98px) {
-    .requirement-fields, .alternative-fields { grid-template-columns: 5.5rem minmax(0, 1fr); }
-    .requirement-selector { grid-column: 1 / -1; }
-    .requirement-submit { justify-self: end; }
-    .requirement-submit .btn { white-space: normal; }
-}

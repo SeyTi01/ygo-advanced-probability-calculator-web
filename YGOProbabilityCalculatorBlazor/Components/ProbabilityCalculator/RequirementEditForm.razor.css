@@ -1,0 +1,18 @@
+.requirement-edit-grid { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem auto; align-items: end; gap: .65rem; }
+.requirement-edit-no-quantity { grid-template-columns: minmax(0, 1fr) auto; }
+.requirement-inputs, .requirement-operand, .requirement-quantity { min-width: 0; }
+.requirement-inputs { display: grid; gap: .5rem; }
+.requirement-operand { display: flex; align-items: end; gap: .5rem; }
+.requirement-operand > ::deep .requirement-property-picker { flex: 1; }
+.requirement-edit-multiple .requirement-inputs { grid-column: 1 / -1; }
+.requirement-edit-multiple .requirement-quantity { grid-column: 2; }
+.requirement-edit-multiple .requirement-submit { justify-self: end; }
+.requirement-edit-grid ::deep .form-label { font-size: .8rem; margin-bottom: .25rem; }
+.requirement-submit .btn { min-height: 38px; }
+@media (max-width: 767.98px) {
+    .requirement-edit-grid { grid-template-columns: 5.5rem minmax(0, 1fr); }
+    .requirement-inputs { grid-column: 1 / -1; }
+    .requirement-edit-no-quantity .requirement-submit { grid-column: 2; }
+    .requirement-edit-multiple .requirement-quantity { grid-column: 1; }
+    .requirement-submit { justify-self: end; }
+}

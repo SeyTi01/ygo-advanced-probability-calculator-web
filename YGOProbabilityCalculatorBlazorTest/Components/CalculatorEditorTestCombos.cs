@@ -23,7 +23,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
     public async Task EmptyDeckCanAuthorCommonCategoryAndOrAndSameCardRequirements() {
-        CategoryBase level8 = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "level:8");
+        CategoryBase level8 = new NumericPropertyRange(NumericPropertyKind.Level, 8, 8).ToCategory();
         CategoryBase monster = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "kind:monster");
         CategoryBase fire = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "attribute:fire");
         CategoryBase dark = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "attribute:dark");
@@ -41,17 +41,18 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         Assert.That(editor.FindAll("optgroup").Select(static group => group.GetAttribute("label")),
             Is.EqualTo(new[] { "Common properties" }));
         Assert.That(editor.FindAll("optgroup").All(static group => group.QuerySelectorAll("option").Length > 0), Is.True);
-        Assert.That(editor.FindAll("option[value^='metadata:']").Select(static option => option.GetAttribute("value")),
+        Assert.That(editor.FindAll("option").Select(static option => option.GetAttribute("value")),
             Does.Contain(monster.Identity).And.Contain(fire.Identity).And.Contain(dark.Identity)
-                .And.Contain(level8.Identity).And.Contain(quickPlay.Identity));
-        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = level8.Identity });
+                .And.Contain("numeric:level").And.Contain(quickPlay.Identity));
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "numeric:level" });
+        await editor.Find("input[aria-label='Level']").InputAsync(new() { Value = "8" });
         await Button(editor, "Add").ClickAsync(new());
         await ExtendRequirement(editor, "category:0", sameCard: true);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = monster.Identity });
         await Button(editor, "Add property").ClickAsync(new());
 
         ComboCategory sameCard = editor.Instance.Combo.Categories.Single();
-        Assert.That(sameCard.Selector.CategoryIdentities, Is.EquivalentTo(new[] { level8.Identity, monster.Identity }));
+        Assert.That(sameCard.CategoryBases.Select(category => category.Identity), Is.EquivalentTo(new[] { level8.Identity, monster.Identity }));
 
         await ExtendRequirement(editor, "category:0");
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = fire.Identity });
@@ -65,7 +66,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
         ComboAlternativeGroup alternatives = editor.Instance.Combo.AlternativeGroups.Single();
         string[][] identities = alternatives.Alternatives
-            .Select(static alternative => alternative.Category!.Selector.CategoryIdentities.ToArray())
+            .Select(static alternative => alternative.Category!.CategoryBases.Select(category => category.Identity).ToArray())
             .ToArray();
         Assert.Multiple(() => {
             Assert.That(identities[0], Is.EquivalentTo(new[] { level8.Identity, monster.Identity }));

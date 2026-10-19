@@ -89,7 +89,7 @@ const { chromium } = require('playwright');
 
         assert.deepEqual(await authoredLabels(), ['A AND B AND C AND D'], 'selector editor groups all flat leaves in authored order');
         await simulation.locator('.selector-expression[data-selector-path="root"] .requirement-edit').click();
-        const selectorInput = simulation.locator('.selector-operand select').first();
+        const selectorInput = simulation.locator('.requirement-operand .requirement-property-picker > select').first();
         await selectorInput.selectOption('user:E');
 
         const categoryManagement = page.locator('details.category-management');
@@ -128,7 +128,7 @@ const { chromium } = require('playwright');
                     body: document.body.scrollWidth
                 }));
                 assert.ok(overflow.document <= width && overflow.body <= width, `no horizontal page overflow at ${width}px ${theme}: ${JSON.stringify(overflow)}`);
-                const outOfBounds = await page.locator('.requirement-list .requirement-edit, .selector-expression .requirement-edit, .selector-condition-row > .selector-operand, .selector-condition-row > .selector-operator').evaluateAll(elements => elements.map(element => {
+                const outOfBounds = await page.locator('.requirement-list .requirement-edit, .selector-expression .requirement-edit, .requirement-edit-grid .requirement-operand, .requirement-inputs > .expression-separator').evaluateAll(elements => elements.map(element => {
                     const rect = element.getBoundingClientRect();
                     return { selector: element.className, left: rect.left, right: rect.right };
                 }).filter(rect => rect.left < -1 || rect.right > innerWidth + 1));

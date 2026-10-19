@@ -129,6 +129,7 @@ const session = () => ({
             await assertNoOverflow(`${width}/${theme}`);
         };
 
+        await require('./numeric-requirement-browser-cases.cjs')({ page, load, setLayout, saveSession, capture, assertNoOverflow, session });
         await require('./term-editor-browser-cases.cjs')({ page, load, setLayout, saveSession, capture, assertNoOverflow, activate, session });
         let combo = await load(session());
         assert.equal(await page.locator('.combo-editor [role="status"]').filter({ hasText: 'Missing card reference' }).count(), 1,
@@ -264,13 +265,13 @@ const session = () => ({
         const postDrawOr = simulation.getByLabel('Change OR operator', { exact: true }).first();
         await activate(postDrawOr);
         await postDrawOr.selectOption('AND');
-        const selectorForm = simulation.locator('.selector-condition-row');
+        const selectorForm = simulation.locator('.requirement-edit-grid');
         const selectorFormContainer = () => selectorForm.locator('xpath=..');
         await selectorForm.waitFor();
-        assert.equal(await selectorForm.locator('.selector-operand').count(), 2);
+        assert.equal(await selectorForm.locator('.requirement-operand').count(), 2);
         await capture('06-post-draw-selector-touch-1280-light');
         await selectorFormContainer().getByRole('button', { name: 'Cancel', exact: true }).click();
-        assert.equal(await simulation.locator('.selector-condition-row').count(), 0, 'selector Cancel closes the grouped edit');
+        assert.equal(await simulation.locator('.requirement-edit-grid').count(), 0, 'selector Cancel closes the grouped edit');
         await simulation.getByRole('button', { name: 'Cancel', exact: true }).click();
 
         // Saved category-rule expression is distinct from its draft; Apply and Remove are explicit.

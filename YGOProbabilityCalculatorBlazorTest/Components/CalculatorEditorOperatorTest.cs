@@ -204,7 +204,7 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
             .Add(component => component.Selector, original).Add(component => component.CategoryBases, new[] { a, b })
             .Add(component => component.OnChanged, value => { saved = value; editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value)); }));
         await editor.Find("[aria-label='Grouped eligibility filter'] .expression-operator").ChangeAsync(new() { Value = "OR" });
-        Assert.That(editor.FindAll("form .selector-operand"), Has.Count.EqualTo(2));
+        Assert.That(editor.FindAll("form .requirement-operand"), Has.Count.EqualTo(2));
         Assert.That(editor.Find("[aria-label='Row operator']").TextContent, Is.EqualTo("ANDOR"));
         await Button(editor, "Cancel").ClickAsync(new());
         Assert.That(saved, Is.SameAs(original));

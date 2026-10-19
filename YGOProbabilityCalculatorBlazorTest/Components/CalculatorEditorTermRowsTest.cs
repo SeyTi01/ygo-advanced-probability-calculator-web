@@ -123,7 +123,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
             row.Find(".requirement-edit").Click();
             Assert.That(editor.FindAll("form"), Has.Count.EqualTo(1));
             int operands = row.FindAll(".draw-selector-chip").Count;
-            Assert.That(editor.FindAll("form .selector-operand"), Has.Count.EqualTo(operands));
+            Assert.That(editor.FindAll("form .requirement-operand"), Has.Count.EqualTo(operands));
             row.Find(".requirement-edit").Click();
             Assert.That(editor.FindAll("form"), Is.Empty, "Clicking the same field closes its draft.");
             row.Find(".requirement-edit").Click();
@@ -146,7 +146,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
             }));
         foreach (string action in new[] { "Cancel", "Escape", "Save" }) {
             editor.Find(".requirement-edit").Click();
-            editor.FindAll(".selector-operand select").ToArray()[2].Change(Properties[3].Identity);
+            editor.FindAll(".requirement-operand .requirement-property-picker > select").ToArray()[2].Change(Properties[3].Identity);
             if (action == "Cancel") { Button(editor, "Cancel").Click(); }
             else if (action == "Escape") { editor.Find("form").KeyDown(new KeyboardEventArgs { Key = "Escape" }); }
             else { editor.Find("form").Submit(); }
@@ -205,11 +205,11 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
             }));
         SelectorExpressionEditor first = editor.FindComponents<SelectorExpressionEditor>().Single(child => !child.Instance.IsRoot && child.Instance.Selector.Kind == CardSelectorKind.AllOf).Instance;
         editor.Find(".requirement-edit").Click();
-        editor.FindAll("form .selector-operand select").ToArray()[1].Change(Properties[4].Identity);
+        editor.FindAll("form .requirement-operand .requirement-property-picker > select").ToArray()[1].Change(Properties[4].Identity);
         current = CardSelector.AllOfSelectors([CardSelector.For(Properties[0]), CardSelector.For(Properties[1]), CardSelector.LevelAtLeast(5), nested]);
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Selector, current));
         Assert.That(editor.FindComponents<SelectorExpressionEditor>().Any(child => ReferenceEquals(child.Instance, first)), Is.True);
-        Assert.That(editor.FindAll("form .selector-operand select").ToArray()[1].GetAttribute("value"), Is.EqualTo(Properties[4].Identity));
+        Assert.That(editor.FindAll("form .requirement-operand .requirement-property-picker > select").ToArray()[1].GetAttribute("value"), Is.EqualTo(Properties[4].Identity));
         editor.Find("form").Submit();
         Assert.That(current.AuthoredTerms.Take(3), Is.EqualTo(new[] { CardSelector.For(Properties[0]), CardSelector.For(Properties[4]), CardSelector.LevelAtLeast(5) }));
         Assert.That(current.AuthoredTerms.Last(), Is.SameAs(nested));
