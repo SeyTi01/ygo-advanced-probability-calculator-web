@@ -90,6 +90,7 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
         if (selector.Kind is CardSelectorKind.Objective or CardSelectorKind.Not) {
             return (selector.Kind == CardSelectorKind.Objective ? "verified " : "except ") + DescribeSelector(selector.Children[0], categories);
         }
+        if (selector.NumericRange is { } range) { return range.Description; }
         if (selector.Kind == CardSelectorKind.LevelAtLeast) {
             return $"Level >= {selector.MinimumLevel}";
         }

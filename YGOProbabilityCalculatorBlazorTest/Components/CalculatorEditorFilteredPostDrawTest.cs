@@ -41,14 +41,14 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
 
         foreach (IRenderedComponent<PostDrawSelectorEditor> selector in new[] { pre, post }) {
             selector.Find(".requirement-edit").Click();
-            string[] optionValues = selector.FindAll("form .selector-operand select").First().QuerySelectorAll("optgroup option").Select(static option => option.GetAttribute("value")!).ToArray();
-            IElement[] groups = selector.FindAll("form .selector-operand select").First().QuerySelectorAll("optgroup").ToArray();
+            string[] optionValues = selector.FindAll("form .requirement-operand .requirement-property-picker > select").First().QuerySelectorAll("optgroup option").Select(static option => option.GetAttribute("value")!).ToArray();
+            IElement[] groups = selector.FindAll("form .requirement-operand .requirement-property-picker > select").First().QuerySelectorAll("optgroup").ToArray();
             Assert.That(optionValues, Does.Contain(monster.Identity).And.Contain(dark.Identity)
-                .And.Contain(CardPropertyProvider.CommonCategories.Single(category => category.MetadataKey == "level:8").Identity)
+                .And.Contain("numeric:level")
                 .And.Contain(spell.Identity));
             Assert.That(optionValues.Distinct(StringComparer.Ordinal).Count(), Is.EqualTo(optionValues.Length));
             Assert.That(groups.Select(static group => group.GetAttribute("label")),
-                Is.EqualTo(new[] { "User categories", "Relevant properties", "Common properties" }));
+                Is.EqualTo(new[] { "Categories", "Relevant properties", "Common properties" }));
             Button(selector, "Cancel").Click();
             Assert.That(groups.All(static group => group.QuerySelectorAll("option").Length > 0), Is.True);
         }

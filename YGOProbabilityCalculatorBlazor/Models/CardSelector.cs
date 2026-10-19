@@ -4,7 +4,7 @@ using YGOProbabilityCalculatorBlazor.Services.Converter;
 
 namespace YGOProbabilityCalculatorBlazor.Models;
 
-public enum CardSelectorKind { Any, Category, AnyOf, AllOf, LevelAtLeast, Objective, Not }
+public enum CardSelectorKind { Any, Category, AnyOf, AllOf, LevelAtLeast, Objective, Not, NumericRange }
 
 // Bounded, immutable Boolean predicates over one physical card.
 // Counts and distinct-copy roles belong to combo requirements, not selectors.
@@ -22,17 +22,19 @@ public sealed class CardSelector : IEquatable<CardSelector> {
     private readonly IReadOnlyList<CardSelector>? _authoredTerms;
     public IEnumerable<CardSelector> AuthoredTerms => _authoredTerms ?? Terms;
     public int? MinimumLevel { get; }
+    public NumericPropertyRange? NumericRange { get; }
+    public bool HasNumericPredicate { get; }
     public int Depth { get; } = 1;
     public int NodeCount { get; } = 1;
     public int CategoryReferenceCount { get; }
     public bool HasLevelPredicate { get; }
-    public bool IsGrouped => HasLevelPredicate || Kind is CardSelectorKind.Objective or CardSelectorKind.Not
+    public bool IsGrouped => HasNumericPredicate || Kind is CardSelectorKind.Objective or CardSelectorKind.Not
         || Kind == CardSelectorKind.AllOf && Children.Count > 0 || Children.Any(child => child.Children.Count > 0);
     public int EvaluationSize => IsGrouped ? NodeCount + CategoryReferenceCount : CategoryIdentities.Count;
 
     public CardSelector(CardSelectorKind kind, IEnumerable<string> categoryIdentities) {
         ArgumentNullException.ThrowIfNull(categoryIdentities);
-        if (!Enum.IsDefined(kind) || kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.Objective or CardSelectorKind.Not) {
+        if (!Enum.IsDefined(kind) || kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.Objective or CardSelectorKind.Not or CardSelectorKind.NumericRange) {
             throw new ArgumentOutOfRangeException(nameof(kind));
         }
 
@@ -93,8 +95,21 @@ public sealed class CardSelector : IEquatable<CardSelector> {
         Kind = CardSelectorKind.LevelAtLeast;
         MinimumLevel = minimum;
         HasLevelPredicate = true;
+        HasNumericPredicate = true;
         CategoryIdentities = Array.Empty<string>();
         Signature = "LevelAtLeast:" + minimum.ToString(CultureInfo.InvariantCulture);
+    }
+
+    public static CardSelector ForNumericRange(NumericPropertyRange range) => new(range);
+
+    private CardSelector(NumericPropertyRange range) {
+        ArgumentNullException.ThrowIfNull(range);
+        Kind = CardSelectorKind.NumericRange;
+        NumericRange = range;
+        HasNumericPredicate = true;
+        HasLevelPredicate = range.Property == NumericPropertyKind.Level;
+        CategoryIdentities = Array.Empty<string>();
+        Signature = "NumericRange:" + range.Identity;
     }
 
     private static CardSelector Combine(CardSelectorKind operation, IEnumerable<CardSelector> selectors) {
@@ -131,6 +146,7 @@ public sealed class CardSelector : IEquatable<CardSelector> {
         Children = Array.AsReadOnly(children);
         _authoredTerms = Array.AsReadOnly(authored ?? children);
         HasLevelPredicate = children.Any(child => child.HasLevelPredicate);
+        HasNumericPredicate = children.Any(child => child.HasNumericPredicate);
         CategoryIdentities = Array.AsReadOnly(children.SelectMany(child => child.CategoryIdentities)
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray());
         Signature = operation + "Children:" + string.Concat(children.Select(child =>
@@ -165,6 +181,7 @@ public sealed class CardSelector : IEquatable<CardSelector> {
                 && !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)).ToArray(), card),
         CardSelectorKind.Not => !Children[0].Matches(categories, card),
         CardSelectorKind.LevelAtLeast => MatchesLevel(categories, card),
+        CardSelectorKind.NumericRange => NumericRange!.Matches(categories, card),
         CardSelectorKind.AllOf when Children.Count > 0 => Children.All(child => child.Matches(categories, card)),
         CardSelectorKind.AllOf => CategoryIdentities.All(identity => categories.Any(category => category.Identity == identity)),
         CardSelectorKind.AnyOf when Children.Count > 0 => Children.Any(child => child.Matches(categories, card)),
@@ -205,7 +222,7 @@ public sealed class CardSelector : IEquatable<CardSelector> {
         ? Kind is CardSelectorKind.Objective or CardSelectorKind.Not
             ? new(Kind, Children.Select(child => child.RenameCategory(previousIdentity, newIdentity)).ToArray())
             : Combine(Kind, AuthoredTerms.Select(child => child.RenameCategory(previousIdentity, newIdentity)))
-        : Kind == CardSelectorKind.LevelAtLeast ? this
+        : Kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.NumericRange ? this
             : new(Kind, AuthoredTerms.SelectMany(term => term.CategoryIdentities).Select(identity => identity == previousIdentity ? newIdentity : identity));
 
     public bool Equals(CardSelector? other) => other is not null && Signature == other.Signature;

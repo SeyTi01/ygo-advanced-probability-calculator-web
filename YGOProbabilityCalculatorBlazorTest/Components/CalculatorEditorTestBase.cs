@@ -96,13 +96,13 @@ public abstract class CalculatorEditorTestBase {
     protected static async Task AddEligibilityProperty(IRenderedFragment editor, string label, string identity) {
         await EligibilityRow(editor, label).ClickAsync(new());
         await Button(editor, "Add property (AND)").ClickAsync(new());
-        await editor.Find(".selector-expression form .selector-operand select").ChangeAsync(new() { Value = identity });
+        await editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").ChangeAsync(new() { Value = identity });
         await editor.Find(".selector-expression form").SubmitAsync();
     }
 
     protected static async Task RemoveEligibility(IRenderedFragment editor, string label, string identity) {
         await EligibilityRow(editor, label).ClickAsync(new());
-        int index = editor.FindAll(".selector-expression form .selector-operand select").ToList()
+        int index = editor.FindAll(".selector-expression form .requirement-operand .requirement-property-picker > select").ToList()
             .FindIndex(select => select.GetAttribute("value") == identity);
         await Button(editor, $"Remove condition {index + 1}").ClickAsync(new());
         await editor.Find(".selector-expression form").SubmitAsync();

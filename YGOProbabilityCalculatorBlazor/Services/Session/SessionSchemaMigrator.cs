@@ -27,7 +27,8 @@ public sealed class SessionSchemaMigrator {
             [10] = root => {
                 root[nameof(SessionState.FastExecutionStrategy)] = "Progressive";
                 SetSchemaVersion(root, 11);
-            }
+            },
+            [11] = root => SetSchemaVersion(root, 12)
         };
 
     public string MigrateToCurrent(string json) {

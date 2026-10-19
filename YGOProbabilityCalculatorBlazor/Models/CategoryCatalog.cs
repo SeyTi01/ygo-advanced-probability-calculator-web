@@ -36,7 +36,8 @@ public static class CategoryCatalog {
                 .Where(static category => category.Source == CategorySource.Metadata))
             .Concat(comboArray.SelectMany(static combo => combo.AllCategories)
                 .SelectMany(static requirement => requirement.CategoryBases)
-                .Where(static category => category.Source == CategorySource.Metadata))
+                .Where(static category => category.Source == CategorySource.Metadata
+                    && !category.MetadataKey!.StartsWith("numeric:", StringComparison.Ordinal)))
             .DistinctBy(static category => category.Identity)
             .ToArray();
 

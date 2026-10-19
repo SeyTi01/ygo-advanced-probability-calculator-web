@@ -143,7 +143,7 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
                 const outer = card.locator('[data-selector-path="root"] > .requirement-or-group > .requirement-and-separator select, [data-selector-path="root"] > .requirement-or-group > .alternative-separator select');
                 assert.deepEqual(await outer.evaluateAll(elements => elements.map(element => element.value)), index < 2 ? [] : [index === 3 || index === 4 ? 'OR' : 'AND']);
                 await activate(rows.first().locator('.requirement-edit'));
-                assert.equal(await card.locator('.selector-expression form .selector-operand').count(), expectedSelectors[index].split(';')[0].length);
+                assert.equal(await card.locator('.selector-expression form .requirement-operand').count(), expectedSelectors[index].split(';')[0].length);
                 await assertNoOverflow(`editing selector ${index}/${width}/${theme}`);
                 if ([1, 2, 3].includes(index)) { await capture(`term-selector-${index}-${width}-${theme}`); }
                 await card.locator('.selector-expression form').getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -159,7 +159,7 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
     await card.locator('.simulation-edit').click();
     await card.locator('.selector-expression .requirement-edit').click();
     await card.locator('.selector-expression form').getByRole('button', { name: 'Add alternative (OR)', exact: true }).click();
-    await card.locator('.selector-expression form .selector-operand select').selectOption(`user:${categories[3].Name}`);
+    await card.locator('.selector-expression form .requirement-operand .requirement-property-picker > select').selectOption(`user:${categories[3].Name}`);
     await card.locator('.selector-expression form button[type="submit"]').click();
     assert.equal(await card.locator('.selector-expression .requirement-row').count(), 2);
     assert.equal(await card.locator('.selector-expression .requirement-edit').first().evaluate(element => element === document.activeElement), true);

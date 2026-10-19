@@ -23,8 +23,8 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.Markup, Does.Not.Contain("Any condition"));
         foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
             row.Find(".requirement-edit").Click();
-            Assert.That(editor.FindAll(".selector-condition-row > .selector-operand"), Has.Count.EqualTo(2));
-            Assert.That(editor.FindAll(".selector-condition-row > .selector-operator select"), Has.Count.EqualTo(1));
+            Assert.That(editor.FindAll(".requirement-edit-grid .requirement-operand"), Has.Count.EqualTo(2));
+            Assert.That(editor.FindAll(".requirement-inputs > .expression-separator select"), Has.Count.EqualTo(1));
             SaveRow(editor);
         }
         editor.Find(".simulation-save").Click();
@@ -42,12 +42,12 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         IRenderedComponent<SelectorExpressionEditor> first = editor.FindComponents<SelectorExpressionEditor>()
             .Single(component => component.Instance.Selector.CategoryIdentities.Contains("user:A"));
         first.Find(".requirement-edit").Click();
-        editor.Find(".selector-operand select").Change("user:E");
+        editor.Find(".requirement-operand .requirement-property-picker > select").Change("user:E");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card,
             source.WithSearch(source.Search! with { Selector = original.RenameCategory("user:A", "user:Z") }))
             .Add(component => component.CategoryBases, categories.Skip(1).Append(new CategoryBase("Z")).ToArray())
             .Add(component => component.CategoryRename, new CategoryRenameNotice(1, "A", "Z")));
-        Assert.That(editor.Find(".selector-operand select").GetAttribute("value"), Is.EqualTo("user:E"));
+        Assert.That(editor.Find(".requirement-operand .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo("user:E"));
         Assert.That(editor.FindComponents<SelectorExpressionEditor>().Any(component => ReferenceEquals(component.Instance, first.Instance)), Is.True);
         SaveRow(editor);
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Contain("E"));
@@ -61,7 +61,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
     private static void OpenLevel(IRenderedFragment editor) {
         Node(editor, CardSelectorKind.LevelAtLeast).Find(".requirement-edit").Click();
         for (int depth = 0; editor.FindAll("input[aria-label='Minimum Level']").Count == 0 && depth < CardSelector.MaximumDepth; depth++) {
-            editor.FindAll(".selector-operand button").Single(button => button.TextContent.Contains("Level")).Click();
+            editor.FindAll(".requirement-operand button").Single(button => button.TextContent.Contains("Level")).Click();
         }
     }
     private static void SaveRow(IRenderedFragment editor) => editor.Find(".selector-expression .requirement-form").Submit();
@@ -132,7 +132,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.True);
         editor.Find("#cardSearchOnce0").Change(false);
         Assert.That(editor.Find("input[aria-label='Minimum Level']").GetAttribute("value"), Is.EqualTo("-1"));
-        Assert.That(editor.Find(".selector-expression [role='alert']").TextContent, Does.Contain("Enter a Level"));
+        Assert.That(editor.Find(".selector-expression [role='alert']").TextContent, Does.Contain("non-negative whole number"));
         editor.Find("input[aria-label='Minimum Level']").Input("7");
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.True, "Finish the valid local edit first.");
         SaveRow(editor);
@@ -164,13 +164,13 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         editor.Find(".simulation-edit").Click();
         Node(editor, CardSelectorKind.Category).Find(".requirement-edit").Click();
         Button(editor, "Add alternative (OR)").Click();
-        editor.Find(".selector-expression form .selector-operand select").Change(b.Identity);
+        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change(b.Identity);
         SaveRow(editor);
         Node(editor, CardSelectorKind.AnyOf).Find(".requirement-edit").Click();
         Button(editor, "Add property (AND)").Click();
-        editor.Find(".selector-expression form .selector-operand select").Change("metadata:kind:monster");
+        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change("metadata:kind:monster");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.DrawEffectsEnabled, false));
-        Assert.That(editor.Find(".selector-expression form .selector-operand select").GetAttribute("value"), Is.EqualTo("metadata:kind:monster"));
+        Assert.That(editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo("metadata:kind:monster"));
         SaveRow(editor);
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(2));
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));
@@ -223,13 +223,14 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Contain("Z"));
         OpenLevel(editor);
-        editor.Find(".selector-expression form .selector-operand select").Change("level-at-least");
-        editor.Find(".selector-operand input").Input("12");
+        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change("numeric:level");
+        editor.Find("select[aria-label='Comparison']").Change("minimum");
+        editor.Find(".requirement-operand input").Input("12");
         CategoryBase final = new("Final");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card,
             changed.WithSearch(changed.Search! with { Selector = changed.Search.Selector.RenameCategory(renamed.Identity, final.Identity) }))
             .Add(component => component.CategoryBases, new[] { final }).Add(component => component.CategoryRename, new CategoryRenameNotice(2, "Z", "Final")));
-        Assert.That(editor.Find(".selector-operand input").GetAttribute("value"), Is.EqualTo("12"));
+        Assert.That(editor.Find(".requirement-operand input").GetAttribute("value"), Is.EqualTo("12"));
         CancelRow(editor);
     }
 
@@ -252,7 +253,8 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             .Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity));
         branch.Find(".requirement-edit").Click();
         Button(editor, "Group condition 1").Click();
-        editor.Find("form .selector-operand select").Change("level-at-least");
+        editor.Find("form .requirement-operand .requirement-property-picker > select").Change("numeric:level");
+        editor.Find("select[aria-label='Comparison']").Change("minimum");
         editor.Find("input[aria-label='Minimum Level']").Input("6");
         SaveRow(editor);
         Assert.That(current.Children, Does.Contain(untouched));
@@ -267,7 +269,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(current.Children, Does.Contain(untouched));
         nested.Find(".requirement-edit").Click();
         Button(editor, "Replace group").Click();
-        editor.Find("form .selector-operand select").Change(a.Identity);
+        editor.Find("form .requirement-operand .requirement-property-picker > select").Change(a.Identity);
         SaveRow(editor);
         Assert.That(current, Is.EqualTo(initial));
         editor.FindComponents<SelectorExpressionEditor>().Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity)).Find(".requirement-edit").Click();
@@ -307,10 +309,10 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
             }));
         OpenLevel(editor);
-        int levelOperand = editor.FindAll(".selector-condition-row > .selector-operand").ToList()
+        int levelOperand = editor.FindAll(".requirement-edit-grid .requirement-operand").ToList()
             .FindIndex(operand => operand.QuerySelector("input[aria-label='Minimum Level']") is not null);
         Button(editor, $"Group condition {levelOperand + 1}").Click();
-        editor.Find("form .selector-operand select").Change("metadata:kind:monster");
+        editor.Find("form .requirement-operand .requirement-property-picker > select").Change("metadata:kind:monster");
         SaveRow(editor);
         Assert.That(changes, Is.Zero);
         Assert.That(current, Is.SameAs(original));

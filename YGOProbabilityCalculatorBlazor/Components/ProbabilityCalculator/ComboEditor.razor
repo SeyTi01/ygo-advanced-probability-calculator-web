@@ -174,77 +174,29 @@
         </EditorContent>
     </ExpressionRow>;
 
-    private RenderFragment RequirementForm() => @<ExpressionForm OnSubmit="AddConstraint" OnKeyDown="HandleRequirementKeyDown">
-        <div class="requirement-form-heading">
-            <strong>@(_editingRequirement is not null ? "Edit requirement" : AndScope ? "Another property · same card" : AlternativeScope ? "Add an alternative · OR" : "Add requirement")</strong>
-            @if (AuthoringScope || _editingRequirement is not null || _editingNewRequirement) {
-                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelRequirement">Cancel</button>
-            }
-        </div>
-        @if (AuthoringScope) {
-            <p class="alternative-scope text-body-secondary">@ScopeLabel</p>
-        }
-        @if (_editingRequirement is not null && _draftProperties.Count > 1) {
-            <div class="property-edit-list" role="group" aria-label="Properties on the same card">
-                @for (int propertyIndex = 0; propertyIndex < _draftProperties.Count; propertyIndex++) {
-                    int currentProperty = propertyIndex;
-                    @if (propertyIndex > 0) { <ExpressionSeparator Operator="AND" /> }
-                    <div class="property-edit-row">
-                        <select class="form-select" aria-label="@($"Same-card property {currentProperty + 1}")"
-                                value="@_draftProperties[currentProperty].Identity"
-                                @onchange="e => ChangeProperty(currentProperty, e.Value?.ToString())">
-                            @foreach (CategoryBase category in _availableCategories) {
-                                <option value="@category.Identity">@category.Name</option>
-                            }
-                        </select>
-                        <button type="button" class="btn btn-outline-secondary" aria-label="@($"Remove property {currentProperty + 1}")"
-                                @onclick="() => RemoveDraftProperty(currentProperty)">×</button>
-                    </div>
-                }
-                <small class="text-body-secondary">Every property must match the same card.</small>
-            </div>
-        }
-        <div class="requirement-fields @(_editingRequirement is not null && _draftProperties.Count > 1 ? "composite-fields" : "")">
-            @if (_draftProperties.Count <= 1 || _editingRequirement is null) {
-                <div class="requirement-selector">
-                    <label for="comboTarget@(Index)" class="form-label">@(AndScope ? "Property or category" : "Card, category or property")</label>
-                    <select id="comboTarget@(Index)" @ref="_alternativeEntryTarget" class="form-select" value="@SelectedTarget" @onchange="e => SelectTarget(e.Value?.ToString())">
-                        <option value="">Choose…</option>
-                        @if (_editingRequirement?.Card is { } missing && !Cards.Any(card => card.Id == missing.CardId)) {
-                            <option value="@($"card:{missing.CardId}")">@CardDisplayName(missing.CardId)</option>
-                        }
-                        @if (!AndScope && AlphabeticalCards.Any()) {
-                            <optgroup label="Cards">
-                                @foreach (Card card in AlphabeticalCards) { <option value="@($"card:{card.Id}")">@CardSelectionLabel(card.Id)</option> }
-                            </optgroup>
-                        }
-                        @if (SelectableUserCategories.Any()) {
-                            <optgroup label="Categories">
-                                @foreach (CategoryBase category in SelectableUserCategories) { <option value="@category.Identity">@category.Name</option> }
-                            </optgroup>
-                        }
-                        @if (SelectableRelevantProperties.Any()) {
-                            <optgroup label="Relevant properties">
-                                @foreach (CategoryBase category in SelectableRelevantProperties) { <option value="@category.Identity">@category.Name</option> }
-                            </optgroup>
-                        }
-                        <optgroup label="Common properties">
-                            @foreach (CategoryBase category in SelectableCommonProperties) { <option value="@category.Identity">@category.Name</option> }
-                        </optgroup>
-                    </select>
-                </div>
-            }
-            <div class="requirement-min">
-                <label for="minCount@(Index)" class="form-label">At least</label>
-                <input id="minCount@(Index)" class="form-control" type="number" min="0" step="1" value="@_minCount"
-                       @ref="_minimumInput"
-                       @onkeydown="HandleCountKeyDown" @onkeydown:stopPropagation
-                       @oninput="e => _minCount = e.Value?.ToString() ?? string.Empty" />
-            </div>
-            <div class="requirement-submit">
-                <button type="button" class="btn btn-primary" @onclick="AddConstraint">@(_editingRequirement is not null ? "Save" : AndScope ? "Add property" : AlternativeScope ? "Add alternative" : HasSelectedConstraint ? "Update requirement" : "Add")</button>
-            </div>
-        </div>
+    private RenderFragment RequirementForm() => @<RequirementEditForm @key="_formVersion"
+        Title="@(_editingRequirement is not null ? "Edit requirement" : AndScope ? "Another property · same card" : AlternativeScope ? "Add an alternative · OR" : "Add requirement")"
+        SubmitLabel="@(_editingRequirement is not null ? "Save" : AndScope ? "Add property" : AlternativeScope ? "Add alternative" : HasSelectedConstraint ? "Update requirement" : "Add")"
+        OperandCount="FormOperandCount" OperandKey="FormOperandKey" Error="@PropertyError" OnSubmit="AddConstraint" OnCancel="CancelRequirement" OnKeyDown="HandleRequirementKeyDown"
+        OnRemoveOperand="RemoveDraftProperty">
+        <BeforeContent>@if (AuthoringScope) { <p class="alternative-scope text-body-secondary">@ScopeLabel</p> }</BeforeContent>
+        <OperandContent Context="position">
+            <RequirementPropertyPicker @ref="_propertyPickers[position]" Id="@(position == 0 ? $"comboTarget{Index}" : $"comboProperty{Index}-{position}")"
+                Value="@(FormOperandCount > 1 ? _draftProperties[position].Identity : SelectedTarget)"
+                Label="@(FormOperandCount > 1 || AndScope ? "Property or category" : "Card, category or property")"
+                AccessibleLabel="@(FormOperandCount > 1 ? $"Same-card property {position + 1}" : null)"
+                Categories="@(FormOperandCount > 1 ? _availableCategories : SelectableCategories.ToArray())" Cards="@(AndScope || FormOperandCount > 1 ? [] : Cards)"
+                RelevantIdentities="_categoryOptions.RelevantMetadataIdentities" CardLabel="card => CardSelectionLabel(card.Id)"
+                OnChanged="change => ChangeRequirementTarget(position, change)" />
+        </OperandContent>
+        <QuantityContent>
+            <label for="minCount@(Index)" class="form-label">At least</label>
+            <input id="minCount@(Index)" class="form-control" type="number" min="0" step="1" value="@_minCount"
+                   @ref="_minimumInput"
+                   @onkeydown="HandleCountKeyDown" @onkeydown:stopPropagation
+                   @oninput="e => _minCount = e.Value?.ToString() ?? string.Empty" />
+        </QuantityContent>
+        <AfterContent>
         <details class="requirement-bounds" open="@(_maxCount.Length > 0)">
             <summary>Maximum: @(string.IsNullOrEmpty(_maxCount) ? "Any" : _maxCount)</summary>
             <div class="requirement-max">
@@ -255,16 +207,17 @@
                 <small class="text-body-secondary">Leave empty for any number. Set both counts to 0 to exclude matching cards.</small>
             </div>
         </details>
-        @if (_editingRequirement is { } editing) {
-            <div class="requirement-context-actions">
+        </AfterContent>
+        <ActionsContent>
+        @if (_editingRequirement is not null) {
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-action="alternative" @onclick="ExtendWithAlternative">@(EditingHasChanges ? "Save & add alternative (OR)" : "Add alternative (OR)")</button>
                 @if (_selectedKind == "Category") {
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-action="property" @onclick="ExtendWithProperty">@(EditingHasChanges ? "Save & add property (AND)" : "Add property (AND)")</button>
                 }
                 <button type="button" class="btn btn-sm btn-outline-danger" @onclick="DeleteEditingRequirement">@( _editingGroupIndex is not null ? "Remove alternative" : "Remove requirement")</button>
-            </div>
         }
-    </ExpressionForm>;
+        </ActionsContent>
+    </RequirementEditForm>;
 
     [Parameter] public int Index { get; set; }
     [Parameter] public int Count { get; set; }
@@ -295,7 +248,11 @@
     private string _selectedKind = "Category";
     private string _minCount = "1";
     private string _maxCount = string.Empty;
-    private ElementReference _alternativeEntryTarget;
+    private readonly Dictionary<int, RequirementPropertyPicker> _propertyPickers = [];
+    private readonly Dictionary<int, string> _propertyErrors = [];
+    private readonly Dictionary<string, CategoryBase> _numericCategories = new(StringComparer.Ordinal);
+    private int _formVersion;
+    private readonly List<object> _propertyKeys = [];
     private bool _focusAlternativeEntry;
     private (string Kind, string Category, string Card, string Min, string Max)? _suspendedDraft;
     private ComboAlternativeGroup? _alternativeGroup;
@@ -411,6 +368,9 @@
     </span>;
 
     private void CancelScopedAuthoring() {
+        _formVersion++;
+        _propertyKeys.Clear();
+        _propertyErrors.Clear();
         _connectorErrorKey = null;
         _connectorError = null;
         _focusAlternativeEntry = true;
@@ -504,7 +464,8 @@
             return Task.CompletedTask;
         }
 
-        CategoryBase? category = SelectableCategories.FirstOrDefault(candidate => candidate.Identity == _selectedCategory);
+        CategoryBase? category = FindRequirementCategory(_selectedCategory);
+        if (category is not null && _andSeed!.CategoryBases.Any(existing => existing.Identity == category.Identity)) { category = null; }
 
         if (category is null) {
             _error = "Select a category to add as an AND condition.";
@@ -563,7 +524,7 @@
         if (_selectedKind == "Card" && Cards.Any(card => card.Id == _selectedCardId)) {
             leaf = ComboAlternative.For(new ComboCard(_selectedCardId, minimum, maximum, MaximumMode));
         }
-        else if (_selectedKind == "Category" && _availableCategories.FirstOrDefault(category => category.Identity == _selectedCategory) is { } category) {
+        else if (_selectedKind == "Category" && FindRequirementCategory(_selectedCategory) is { } category) {
             leaf = ComboAlternative.For(new ComboCategory(category, minimum, maximum, MaximumMode));
         }
         else {
@@ -712,7 +673,7 @@
 
     private bool HasSelectedConstraint => _selectedKind == "Card"
         ? Combo.Cards.Any(card => card.CardId == _selectedCardId)
-        : Combo.Categories.Any(category => category.Selector.Kind == CardSelectorKind.Category && category.BaseCategory.Identity == _selectedCategory);
+        : Combo.Categories.Any(category => category.CategoryBases.Count == 1 && category.BaseCategory.Identity == _selectedCategory);
 
     private int ConstraintCount => Combo.RequirementCount;
     private IEnumerable<Card> AlphabeticalCards => CardOrdering.Alphabetize(Cards);
@@ -768,6 +729,7 @@
         OnReplaceCombo.InvokeAsync((Index, Combo.WithGroup(string.IsNullOrEmpty(groupId) ? null : groupId)));
 
     private Task AddConstraint() {
+        if (PropertyError is not null) { _error = PropertyError; return Task.CompletedTask; }
         if (_editingRequirement is not null) {
             return CommitEdit();
         }
@@ -790,7 +752,7 @@
             return Task.CompletedTask;
         }
 
-        CategoryBase? categoryBase = _availableCategories.FirstOrDefault(category => category.Identity == _selectedCategory);
+        CategoryBase? categoryBase = FindRequirementCategory(_selectedCategory);
 
         if (categoryBase is null) {
             _error = "Selected category not found.";
@@ -811,7 +773,7 @@
         }
 
         List<ComboCategory> newCategories = Combo.Categories.ToList();
-        int existingIndex = newCategories.FindIndex(category => category.Selector.Kind == CardSelectorKind.Category && category.BaseCategory.Identity == categoryBase.Identity);
+        int existingIndex = newCategories.FindIndex(category => category.CategoryBases.Count == 1 && category.BaseCategory.Identity == categoryBase.Identity);
         ComboCategory constraint = new(categoryBase, minimum, maximum, MaximumMode);
 
         if (existingIndex >= 0) {
@@ -920,7 +882,7 @@
 
         ComboCategory? existing = AlternativeScope || _editingRequirement is not null
             ? null
-            : Combo.Categories.FirstOrDefault(category => category.Selector.Kind == CardSelectorKind.Category && category.BaseCategory.Identity == _selectedCategory);
+            : Combo.Categories.FirstOrDefault(category => category.CategoryBases.Count == 1 && category.BaseCategory.Identity == _selectedCategory);
 
         if (existing is not null) {
             _minCount = existing.MinCount.ToString();
@@ -965,7 +927,7 @@
                 await button.FocusAsync(preventScroll: true);
             }
             else if (_editingNewRequirement || _editingRequirement is not null || AuthoringScope) {
-                await _alternativeEntryTarget.FocusAsync();
+                if (_propertyPickers.TryGetValue(0, out RequirementPropertyPicker? picker)) { await picker.FocusAsync(); }
             }
             else if (ShowNewRequirementRow && _newRequirementRow is not null) {
                 await _newRequirementRow.FocusAsync(preventScroll: true);

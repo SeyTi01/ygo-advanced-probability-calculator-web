@@ -62,6 +62,26 @@ public partial class ComboEditor {
     private static bool SameRequirement(ComboAlternative left, ComboAlternative right) =>
         left.Kind == right.Kind && ReferenceEquals(left.Category, right.Category) && ReferenceEquals(left.Card, right.Card);
 
+    private object FormOperandKey(int index) {
+        while (_propertyKeys.Count <= index) { _propertyKeys.Add(new object()); }
+        return _propertyKeys[index];
+    }
+    private int FormOperandCount => _editingRequirement is not null && _draftProperties.Count > 1 ? _draftProperties.Count : 1;
+    private string? PropertyError => _propertyErrors.Values.FirstOrDefault();
+    private CategoryBase? FindRequirementCategory(string? identity) {
+        if (identity is not null && _numericCategories.TryGetValue(identity, out CategoryBase? numeric)) { return numeric; }
+        if (identity?.StartsWith("metadata:numeric:", StringComparison.Ordinal) == true && NumericPropertyRange.TryFromIdentity(identity, out NumericPropertyRange? range)) { return range.ToCategory(); }
+        return _availableCategories.FirstOrDefault(category => category.Identity == identity);
+    }
+
+    private void ChangeRequirementTarget(int index, RequirementPropertyPicker.Change change) {
+        if (change.Error is not null) { _propertyErrors[index] = change.Error; return; }
+        _propertyErrors.Remove(index);
+        if (change.Category is { } category) { _numericCategories[category.Identity] = category; }
+        if (FormOperandCount > 1) { ChangeProperty(index, change.Value); }
+        else { SelectTarget(change.Value); }
+    }
+
     private void SelectTarget(string? value) {
         _draftProperties.Clear();
         if (value?.StartsWith("card:", StringComparison.Ordinal) == true) {
@@ -73,7 +93,7 @@ public partial class ComboEditor {
             _selectedKind = "Category";
             _selectedCardId = string.Empty;
             OnSelectCategory(value);
-            if (_availableCategories.FirstOrDefault(category => category.Identity == value) is { } category) {
+            if (FindRequirementCategory(value) is { } category) {
                 _draftProperties.Add(category);
             }
         }
@@ -90,6 +110,9 @@ public partial class ComboEditor {
             CancelScopedAuthoring();
         }
 
+        _formVersion++;
+        _propertyKeys.Clear();
+        _propertyErrors.Clear();
         _editingNewRequirement = false;
         _suspendedDraft = (_selectedKind, _selectedCategory, _selectedCardId, _minCount, _maxCount);
         _editingRequirement = requirement;
@@ -114,7 +137,7 @@ public partial class ComboEditor {
     }
 
     private void ChangeProperty(int index, string? identity) {
-        CategoryBase? category = _availableCategories.FirstOrDefault(candidate => candidate.Identity == identity);
+        CategoryBase? category = FindRequirementCategory(identity);
         if (category is not null && index >= 0 && index < _draftProperties.Count) {
             _draftProperties[index] = category;
             _selectedCategory = _draftProperties[0].Identity;
@@ -124,6 +147,10 @@ public partial class ComboEditor {
     private void RemoveDraftProperty(int index) {
         if (index >= 0 && index < _draftProperties.Count && _draftProperties.Count > 1) {
             _draftProperties.RemoveAt(index);
+            Dictionary<int, string> remainingErrors = _propertyErrors.Where(pair => pair.Key != index).ToDictionary(pair => pair.Key > index ? pair.Key - 1 : pair.Key, pair => pair.Value);
+            _propertyErrors.Clear();
+            foreach (KeyValuePair<int, string> error in remainingErrors) { _propertyErrors[error.Key] = error.Value; }
+            if (index < _propertyKeys.Count) { _propertyKeys.RemoveAt(index); }
             _selectedCategory = _draftProperties[0].Identity;
             _focusAlternativeEntry = _draftProperties.Count == 1;
         }
@@ -150,6 +177,7 @@ public partial class ComboEditor {
 
     private bool TryEditedRequirement(out ComboAlternative? replacement) {
         replacement = null;
+        if (PropertyError is not null) { _error = PropertyError; return false; }
         if (_editingRequirement is null || CurrentEditingRequirement is not { } current || !SameRequirement(current, _editingRequirement)) {
             CancelScopedAuthoring();
             return false;

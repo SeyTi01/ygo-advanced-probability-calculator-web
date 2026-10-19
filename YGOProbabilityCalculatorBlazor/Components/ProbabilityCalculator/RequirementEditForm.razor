@@ -1,0 +1,51 @@
+<ExpressionForm OnSubmit="OnSubmit" OnKeyDown="OnKeyDown" StopKeyPropagation="true">
+    <div class="requirement-form-heading">
+        <strong>@Title</strong>
+        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnCancel">Cancel</button>
+    </div>
+    @BeforeContent
+    <div class="requirement-edit-grid @(OperandCount > 1 ? "requirement-edit-multiple" : "") @(QuantityContent is null ? "requirement-edit-no-quantity" : "")">
+        <div class="requirement-inputs">
+            @for (int index = 0; index < OperandCount; index++) {
+                int position = index;
+                @if (index > 0) { <ExpressionSeparator Operator="@Operator" InputLabel="Row operator" OnOperatorChanged="OnOperatorChanged" /> }
+                <div class="requirement-operand" @key="OperandKey?.Invoke(index)">
+                    @OperandContent(index)
+                    @if (OnRemoveOperand.HasDelegate && OperandCount > 1) {
+                        <button type="button" class="btn btn-outline-secondary" aria-label="@($"Remove property {index + 1}")" @onclick="() => OnRemoveOperand.InvokeAsync(position)">×</button>
+                    }
+                </div>
+            }
+        </div>
+        @if (QuantityContent is not null) { <div class="requirement-quantity">@QuantityContent</div> }
+        <div class="requirement-submit">
+            <button type="submit" class="btn btn-primary" @ref="_submit" disabled="@(Error is not null)" @onclick="OnSubmit" @onclick:preventDefault>@SubmitLabel</button>
+        </div>
+    </div>
+    @AfterContent
+    @if (Error is not null) { <div class="text-danger small mt-2" role="alert">@Error</div> }
+    @if (ActionsContent is not null) { <div class="requirement-context-actions">@ActionsContent</div> }
+</ExpressionForm>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Edit requirement";
+    [Parameter] public string SubmitLabel { get; set; } = "Save";
+    [Parameter] public string Operator { get; set; } = "AND";
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public Func<int, object>? OperandKey { get; set; }
+    [Parameter] public int OperandCount { get; set; } = 1;
+    [Parameter, EditorRequired] public RenderFragment<int> OperandContent { get; set; } = default!;
+    [Parameter] public RenderFragment? QuantityContent { get; set; }
+    [Parameter] public RenderFragment? BeforeContent { get; set; }
+    [Parameter] public RenderFragment? AfterContent { get; set; }
+    [Parameter] public RenderFragment? ActionsContent { get; set; }
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<Microsoft.AspNetCore.Components.Web.KeyboardEventArgs> OnKeyDown { get; set; }
+    [Parameter] public EventCallback<string> OnOperatorChanged { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveOperand { get; set; }
+
+    private ElementReference _submit;
+
+    public ValueTask FocusAsync() => _submit.FocusAsync();
+}

@@ -24,6 +24,25 @@ public sealed class CardSelectorConverter : JsonConverter<CardSelector> {
             throw new JsonException("Selector exceeds its depth or node limit.");
         }
         JsonProperty[] properties = root.EnumerateObject().ToArray();
+        if (root.TryGetProperty("Kind", out JsonElement numericKind) && numericKind.ValueKind == JsonValueKind.String && numericKind.GetString() == "NumericRange") {
+            string[] allowed = ["Kind", "Property", "Minimum", "Maximum", "ObjectiveOnly"];
+            if (properties.Length != allowed.Length || properties.Any(property => !allowed.Contains(property.Name))
+                || properties.Select(property => property.Name).Distinct().Count() != allowed.Length
+                || root.GetProperty("Property").ValueKind != JsonValueKind.String
+                || !Enum.TryParse(root.GetProperty("Property").GetString(), out NumericPropertyKind propertyKind)
+                || !Enum.IsDefined(propertyKind) || root.GetProperty("Property").GetString() != propertyKind.ToString()
+                || root.GetProperty("ObjectiveOnly").ValueKind is not (JsonValueKind.True or JsonValueKind.False)) {
+                throw new JsonException("Invalid numeric range fields.");
+            }
+            int? Bound(string name) {
+                JsonElement bound = root.GetProperty(name);
+                if (bound.ValueKind == JsonValueKind.Null) { return null; }
+                if (bound.ValueKind != JsonValueKind.Number || !bound.TryGetInt32(out int value)) { throw new JsonException("Numeric bounds require whole numbers."); }
+                return value;
+            }
+            return CardSelector.ForNumericRange(new(propertyKind, Bound("Minimum"), Bound("Maximum"), root.GetProperty("ObjectiveOnly").GetBoolean()));
+        }
+
         if (properties.Length != 2 || properties.Count(property => property.Name == "Kind") != 1
             || properties.Count(property => property.Name is "Categories" or "Children" or "Minimum") != 1) {
             throw new JsonException("A selector requires Kind and exactly one operand field.");
@@ -75,7 +94,14 @@ public sealed class CardSelectorConverter : JsonConverter<CardSelector> {
     public override void Write(Utf8JsonWriter writer, CardSelector value, JsonSerializerOptions options) {
         writer.WriteStartObject();
         writer.WriteString("Kind", value.Kind.ToString());
-        if (value.Kind == CardSelectorKind.LevelAtLeast) {
+        if (value.Kind == CardSelectorKind.NumericRange) {
+            NumericPropertyRange range = value.NumericRange!;
+            writer.WriteString("Property", range.Property.ToString());
+            if (range.Minimum is int minimum) { writer.WriteNumber("Minimum", minimum); } else { writer.WriteNull("Minimum"); }
+            if (range.Maximum is int maximum) { writer.WriteNumber("Maximum", maximum); } else { writer.WriteNull("Maximum"); }
+            writer.WriteBoolean("ObjectiveOnly", range.ObjectiveOnly);
+        }
+        else if (value.Kind == CardSelectorKind.LevelAtLeast) {
             writer.WriteNumber("Minimum", value.MinimumLevel!.Value);
         }
         else if (value.Children.Count > 0) {

@@ -8,7 +8,7 @@ public static class CategoryMembership {
 
     public static void ValidateRule(CardSelector rule) {
         ArgumentNullException.ThrowIfNull(rule);
-        if (rule.Kind == CardSelectorKind.Any || rule.HasLevelPredicate
+        if (rule.Kind == CardSelectorKind.Any || rule.HasNumericPredicate
             || rule.Children.Any(child => child.Children.Count > 0 || child.Kind is not (CardSelectorKind.Category or CardSelectorKind.AllOf))
             || (rule.Kind == CardSelectorKind.AllOf && rule.Children.Count > 0)
             || rule.CategoryIdentities.Any(identity => !identity.StartsWith("metadata:", StringComparison.Ordinal))
