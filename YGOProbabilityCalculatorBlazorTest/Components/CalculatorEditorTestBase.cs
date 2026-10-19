@@ -58,6 +58,24 @@ public abstract class CalculatorEditorTestBase {
     protected static IElement Button(IRenderedFragment fragment, string text) =>
         fragment.FindAll("button").Single(element => element.TextContent.Trim() == text || element.GetAttribute("aria-label") == text);
 
+    public static void OpenNewRequirement(IRenderedFragment fragment, int? index = null) {
+        int rowIndex = index ?? int.Parse(fragment.Find("div.accordion-collapse[id^='combo']").Id![5..]);
+        if (fragment.FindAll($"#combo{rowIndex} [data-new-requirement][aria-expanded=true]").Count > 0) { return; }
+        string scope = $"#combo{rowIndex}";
+        IElement? row = fragment.FindAll($"{scope} [data-new-requirement]").FirstOrDefault();
+        if (row is not null) { row.Click(); }
+        else { fragment.Find($"{scope} .add-top-level-group").Click(); }
+    }
+
+    // Tests that author a new requirement explicitly open its concrete row first.
+    public static IElement RequirementField(IRenderedFragment fragment, string selector) {
+        if (fragment.FindAll(selector).Count == 0) {
+            string digits = new(selector.SkipWhile(character => !char.IsDigit(character)).TakeWhile(char.IsDigit).ToArray());
+            OpenNewRequirement(fragment, digits.Length == 0 ? null : int.Parse(digits));
+        }
+        return fragment.Find(selector);
+    }
+
     protected static void OpenSimulation(IRenderedFragment editor) {
         if (editor.FindAll(".simulation-editor").Count == 0) {
             editor.Find(".simulation-edit").Click();
@@ -126,7 +144,7 @@ public abstract class CalculatorEditorTestBase {
     }
 
     protected static void AssertAnyMaximumDraft(IRenderedFragment fragment, int index = 0) {
-        IElement maximum = fragment.Find($"#maxCount{index}");
+        IElement maximum = RequirementField(fragment, $"#maxCount{index}");
         Assert.That(maximum.GetAttribute("value"), Is.EqualTo(string.Empty));
         Assert.That(maximum.GetAttribute("placeholder"), Is.EqualTo("Any"));
         Assert.That(maximum.GetAttribute("title"), Is.EqualTo("Leave empty for Any"));

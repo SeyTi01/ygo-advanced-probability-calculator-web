@@ -212,7 +212,6 @@ summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2p
 .combo-footer .combo-group-field { max-width: 20rem; }
 .combo-footer .form-label { font-size: .8rem; }
 .add-top-level-group { margin-bottom: .5rem; min-height: 36px; }
-.inline-member-picker { width: 6rem; max-width: 100%; min-height: 36px; }
 .expanded-expression ::deep .requirement-or-group { display: grid; gap: .5rem; }
 .same-card-conjunct ::deep .requirement-and-separator { display: inline-flex; gap: 0; }
 .same-card-conjunct ::deep .requirement-and-separator::before,

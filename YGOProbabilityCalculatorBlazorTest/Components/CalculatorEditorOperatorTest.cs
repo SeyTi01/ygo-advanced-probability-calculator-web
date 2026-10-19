@@ -43,8 +43,8 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
         Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
         await EditRequirement(editor, "alternative:0:1");
-        await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
+        await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "0" });
         await Button(editor, "Save").ClickAsync(new());
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "AND" });
         Assert.That(editor.Instance.Combo.Categories.Single().MinCount, Is.Zero);
@@ -58,24 +58,24 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
             ComboAlternative.For(ComboCategory.SameCard([a, b], 1, 2)), ComboAlternative.For(new ComboCategory(b, 0, 0))])]);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [original] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "3" });
         await EditRequirement(editor, key);
-        await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
         await EditRequirement(editor, key);
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("3"));
         await EditRequirement(editor, key);
-        await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
         await EditRequirement(editor, "category:1");
         Assert.That(editor.FindAll(".requirement-row form"), Has.Count.EqualTo(1));
         await Button(editor, "Cancel").ClickAsync(new());
         await EditRequirement(editor, key);
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("1"));
-        await editor.Find("#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("1"));
+        await RequirementField(editor, "#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
-        Assert.That(editor.FindAll(".requirement-edit[aria-expanded=true]"), Is.Empty);
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(editor.FindAll(".requirement-edit[aria-expanded=true]:not([data-new-requirement])"), Is.Empty);
     }
 
     [Test]
@@ -83,17 +83,17 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
         CategoryBase c = new("C");
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b, c], Combos = [new([new(a, 1, 2), new(b, 1, 2), new(c, 1, 3)])] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "3" });
         await EditRequirement(editor, "category:2");
-        await editor.Find("#minCount0").InputAsync(new() { Value = "" });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "" });
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
         Assert.That(editor.Instance.Combo.AlternativeGroups, Has.Count.EqualTo(1));
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.Empty);
-        Assert.That(editor.Find(".requirement-edit[aria-expanded=true]").GetAttribute("data-requirement"), Is.EqualTo("category:0"));
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.Empty);
+        Assert.That(editor.Find(".requirement-edit[aria-expanded=true]:not([data-new-requirement])").GetAttribute("data-requirement"), Is.EqualTo("category:0"));
         await Button(editor, "Cancel").ClickAsync(new());
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
-        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
     }
     [Test]
     public async Task SelectorAndPropertyRuleConnectorsOfferOnlyAndOrAndRespectCancel() {

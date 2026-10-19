@@ -47,6 +47,7 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
                 const rows = combo.locator('.expanded-expression .requirement-row');
                 assert.equal(await rows.count(), expectedCombos[index].split(';').length, `combo ${index} at ${width}/${theme}`);
                 assert.equal(await readTerms(rows), expectedCombos[index]);
+                assert.equal(await combo.locator('.expanded-expression .expression-parenthesis, .inline-member-picker, .requirement-form').count(), 0);
                 await activate(rows.first().locator('.requirement-edit'));
                 assert.equal(await combo.locator('.requirement-row form').count(), 1);
                 await assertNoOverflow(`editing combo ${index}/${width}/${theme}`);
@@ -62,6 +63,7 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
                 const rows = card.locator('.selector-expression .requirement-row');
                 assert.equal(await rows.count(), expectedSelectors[index].split(';').length, `selector ${index}/${width}/${theme}`);
                 assert.equal(await readTerms(rows), expectedSelectors[index]);
+                assert.deepEqual(await card.locator('.selector-nested-term').evaluateAll(terms => terms.map(term => [getComputedStyle(term, '::before').content, getComputedStyle(term, '::after').content])), index < 2 ? [] : Array(index === 4 || index === 5 ? 1 : 2).fill(['none', 'none']));
                 const outer = card.locator('[data-selector-path="root"] > .requirement-or-group > .requirement-and-separator select, [data-selector-path="root"] > .requirement-or-group > .alternative-separator select');
                 assert.deepEqual(await outer.evaluateAll(elements => elements.map(element => element.value)), index < 2 ? [] : [index === 3 || index === 4 ? 'OR' : 'AND']);
                 await activate(rows.first().locator('.requirement-edit'));
@@ -90,6 +92,19 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
     const after = await saveSession();
     assert.deepEqual(after.Combos, original.Combos, 'term presentation does not change combo models');
     assert.deepEqual(after.Cards, original.Cards, 'term presentation does not change saved selectors');
+    const empty = { ...fixture, Combos: [{ Name: 'Operator review combo', Active: true, Categories: [], Cards: [], AlternativeGroups: [] }] };
+    const emptyCombo = await load(empty);
+    assert.equal(await emptyCombo.locator('.requirement-row').count(), 1);
+    assert.equal(await emptyCombo.locator('.requirement-form, .add-top-level-group').count(), 0);
+    await emptyCombo.locator('[data-new-requirement]').click();
+    await emptyCombo.locator('#comboTarget0').selectOption(`user:${categories[0].Name}`);
+    await emptyCombo.getByRole('button', { name: 'Add', exact: true }).click();
+    assert.equal(await emptyCombo.locator('.requirement-form, [data-new-requirement]').count(), 0);
+    await emptyCombo.getByRole('button', { name: '+ Add requirement', exact: true }).click();
+    assert.equal(await emptyCombo.locator('.requirement-row').count(), 2);
+    await emptyCombo.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.equal(await emptyCombo.locator('.requirement-row').count(), 1);
+    assert.equal(await emptyCombo.locator('.requirement-form').count(), 0);
     await setLayout(1280, 'light');
     console.log('PASS term fields: every combo/selector example at 1280/768/390/320 in light/dark, editing and collapsed.');
 };

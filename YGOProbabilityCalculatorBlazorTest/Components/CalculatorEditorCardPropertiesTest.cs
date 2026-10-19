@@ -72,6 +72,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(cards.Select(card => card.Id), Is.EqualTo(new[] { "ash", "custom" }));
         Assert.That(cut.FindComponent<CategoryListEditor>().FindAll(".category-chip").Select(chip => chip.TextContent.Trim()), Is.EqualTo(new[] { "Monster" }));
         IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(combo);
         Assert.That(combo.FindAll("optgroup[label='Relevant properties'] option").Select(option => option.TextContent), Does.Contain("Tuner Monster"));
         Assert.That(combo.Instance.Combo.Categories.Single().BaseCategory.Source, Is.EqualTo(CategorySource.User));
         double expected = SmallDeckOracle.EnumerateProbability(cards, [combo.Instance.Combo], 1);
@@ -107,6 +108,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         await Button(help, "Try It with Example Data").ClickAsync(new());
         IRenderedComponent<ProbabilityCalculatorComponent> cut = context.RenderComponent<ProbabilityCalculatorComponent>();
         cut.WaitForAssertion(() => Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(25)));
+        OpenNewRequirement(cut.FindComponent<ComboEditor>());
         Assert.That(cut.FindComponent<ComboEditor>().FindAll("optgroup[label='Relevant properties'] option").Select(option => option.TextContent),
             Does.Contain("Monster").And.Contain("Quick-Play Spell"));
         Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
@@ -138,22 +140,24 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(card.FindAll("optgroup[label='User categories'] option").Select(o => o.GetAttribute("value")), Is.EqualTo(new[] { "user:Spell", "user:B" }));
         Assert.That(card.FindAll("optgroup[label='Relevant properties'] option").Select(o => o.GetAttribute("value")), Is.EqualTo(new[] { orphan.Identity }));
         IRenderedComponent<ComboEditor> combo = cut.FindComponents<ComboEditor>()[1];
+        OpenNewRequirement(combo);
         Assert.That(combo.FindAll("optgroup").Select(g => g.GetAttribute("label")),
             Is.EqualTo(new[] { "Cards", "Categories", "Relevant properties", "Common properties" }));
+        OpenNewRequirement(combo);
         Assert.That(combo.FindAll("optgroup[label='Relevant properties'] option").Select(o => o.TextContent),
             Is.EqualTo(new[] { "Monster", "Spell", "Quick-Play Spell" }));
         Assert.That(combo.FindAll("option").Where(o => o.TextContent == "Spell").Select(o => o.GetAttribute("value")),
             Is.EquivalentTo(new[] { "user:Spell", "metadata:kind:spell" }));
 
-        await combo.Find("#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
+        await RequirementField(combo, "#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
         await Button(combo, "Add").ClickAsync(new());
-        await combo.Find("#comboTarget1").ChangeAsync(new() { Value = user.Identity });
+        await RequirementField(combo, "#comboTarget1").ChangeAsync(new() { Value = user.Identity });
         await Button(combo, "Add").ClickAsync(new());
         Assert.That(combo.Instance.Combo.Categories.Select(c => c.BaseCategory.Source),
             Is.EqualTo(new[] { CategorySource.Metadata, CategorySource.User }));
-        await combo.Find("#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
-        await combo.Find("#minCount1").InputAsync(new() { Value = "0" });
-        await combo.Find("#maxCount1").InputAsync(new() { Value = "0" });
+        await RequirementField(combo, "#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
+        await RequirementField(combo, "#minCount1").InputAsync(new() { Value = "0" });
+        await RequirementField(combo, "#maxCount1").InputAsync(new() { Value = "0" });
         await Button(combo, "Update requirement").ClickAsync(new());
         Assert.That(combo.Instance.Combo.Categories[0].MaxCount, Is.Zero);
         Assert.That(combo.Instance.Combo.Categories[1].MinCount, Is.EqualTo(1));
@@ -162,11 +166,11 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         await card.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = user.Identity });
         await Button(card, "Add").ClickAsync(new());
         Assert.That(card.Instance.Card.Categories, Has.Count.EqualTo(3));
-        await combo.Find("#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
+        await RequirementField(combo, "#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
         await categories.Find("[aria-label='Edit category Spell']").ClickAsync(new());
         await categories.Find("[aria-label='New name for category Spell']").InputAsync(new() { Value = "Role" });
         await categories.Find("[aria-label='Save category name']").ClickAsync(new());
-        Assert.That(combo.Find("#comboTarget1").GetAttribute("value"), Is.EqualTo(spell.Identity));
+        Assert.That(RequirementField(combo, "#comboTarget1").GetAttribute("value"), Is.EqualTo(spell.Identity));
         Assert.That(combo.Instance.Combo.Categories.Select(c => c.BaseCategory.Name), Is.EqualTo(new[] { "Spell", "Role" }));
         Assert.That(card.Instance.Card.Categories[0], Is.EqualTo(spell));
         Assert.That(card.Instance.Card.Categories[2].Name, Is.EqualTo("Role"));
@@ -181,9 +185,10 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(categories.FindAll(".category-chip"), Has.Count.EqualTo(1));
         Assert.That(combo.Instance.Combo.Categories.Single().BaseCategory, Is.EqualTo(spell));
         await FirstRowAction(cut, "card", "Remove").ClickAsync(new());
+        OpenNewRequirement(combo);
         Assert.That(combo.FindAll("optgroup[label='Relevant properties'] option").Select(o => o.GetAttribute("value")),
             Is.EquivalentTo(new[] { orphan.Identity, spell.Identity }));
-        await combo.Find("#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
+        await RequirementField(combo, "#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
         Assert.That(Button(combo, "Update requirement"), Is.Not.Null);
     }
 

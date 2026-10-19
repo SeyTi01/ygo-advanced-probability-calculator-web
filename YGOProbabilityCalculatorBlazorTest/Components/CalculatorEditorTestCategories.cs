@@ -272,6 +272,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
         cut.Find("[placeholder='Category name']").Input("A");
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
+        OpenNewRequirement(cut);
         Assert.That(cut.FindAll("select option[value='user:A']"), Has.Count.EqualTo(2));
         cut.Find("[placeholder='Category name']").Input("a");
         cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
@@ -283,6 +284,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         Assert.That(cut.Find("[role=alertdialog]").TextContent, Does.Contain("remove every membership"));
         card.Find(".accordion-body .badge button").Click();
         cut.Find("[aria-label='Remove category A']").Click();
+        OpenNewRequirement(cut);
         Assert.That(cut.FindAll("select option[value='user:A']"), Is.Empty);
     }
 
@@ -313,6 +315,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         combo.Find("[data-requirement='category:0']").Click();
         Button(combo, "Remove requirement").Click();
         cut.Find("[aria-label='Remove category A']").Click();
+        OpenNewRequirement(cut);
         Assert.That(cut.FindAll("select option[value='user:A']"), Is.Empty);
     }
 

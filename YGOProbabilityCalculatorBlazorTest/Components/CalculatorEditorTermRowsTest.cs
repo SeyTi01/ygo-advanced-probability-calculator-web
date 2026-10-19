@@ -58,7 +58,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
             Is.All.EqualTo("+"));
         if (shape == "nested-or") {
             Assert.That(editor.FindAll(".requirement-or-group > .alternative-separator select").Single().GetAttribute("value"), Is.EqualTo("OR"));
-            Assert.That(editor.FindAll(".expanded-expression .composite-alternative .expression-parenthesis"), Has.Count.EqualTo(4));
+            Assert.That(editor.FindAll(".expanded-expression .expression-parenthesis, .expanded-expression .composite-alternative"), Is.Empty);
         }
     }
 
@@ -70,7 +70,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
     [TestCase("run-and-or", 2, "AB;CD", "AND")]
     [TestCase("separated-runs", 3, "A;BC;DE", "AND")]
     [TestCase("deep", 4, "A;BC;D;E", "AND")]
-    public void SelectorFieldsUseMaximalAdjacentRunsAndRetainParentheses(string shape, int count, string contents, string operation) {
+    public void SelectorFieldsUseMaximalAdjacentRunsAndRetainNestedBoundaries(string shape, int count, string contents, string operation) {
         CardSelector A(int index) => CardSelector.For(Properties[index]);
         CardSelector And(params int[] indices) => CardSelector.AllOf(indices.Select(index => Properties[index].Identity));
         CardSelector Or(params int[] indices) => CardSelector.AnyOf(indices.Select(index => Properties[index].Identity));
@@ -96,7 +96,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
             IElement[] connectors = editor.FindAll("[data-selector-path='root'] > .requirement-or-group > .requirement-and-separator select, [data-selector-path='root'] > .requirement-or-group > .alternative-separator select").ToArray();
             Assert.That(connectors, Has.Length.EqualTo(shape is "deep" or "separated-runs" ? 2 : 1));
             Assert.That(connectors.Select(select => select.GetAttribute("value")), Is.All.EqualTo(operation));
-            Assert.That(editor.FindAll(".selector-parenthesized-term"), Is.Not.Empty);
+            Assert.That(editor.FindAll(".selector-nested-term"), Is.Not.Empty);
         }
         foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
             row.Find(".requirement-edit").Click();
@@ -134,7 +134,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         }
     }
     [Test]
-    public async Task FlatOrPreservesEachMemberAndActiveDraftWhileInsertingAndRemovingFourthMember() {
+    public async Task FlatOrPreservesEachMemberThroughLocalAdditionAndRemovalOfFourthMember() {
         ComboCategory first = new(Properties[0], 0, 0);
         ComboCard second = new("target", 2, 19, RequirementMaximumMode.HandSize);
         ComboCategory third = new(Properties[1], 1, 2);
@@ -144,19 +144,20 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await EditRequirement(editor, "alternative:0:2");
-        await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
-        await editor.Find("[aria-label='Add condition to OR group 1']").ChangeAsync(new() { Value = Properties[2].Identity });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
+        await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "0" });
+        await editor.Find("[data-action='alternative']").ClickAsync(new());
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = Properties[2].Identity });
+        await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
-        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
-        await Button(editor, "Save").ClickAsync(new());
+        Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
         ComboAlternativeGroup group = editor.Instance.Combo.AlternativeGroups.Single();
         Assert.That(group.Alternatives, Has.Count.EqualTo(4));
         Assert.That(group.Alternatives[0].Category, Is.SameAs(first));
         Assert.That(group.Alternatives[1].Card, Is.SameAs(second));
         Assert.That((group.Alternatives[2].Category!.MinCount, group.Alternatives[2].Category!.MaxCount), Is.EqualTo((0, 0)));
         await EditRequirement(editor, "alternative:0:1");
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = Properties[3].Identity });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = Properties[3].Identity });
         await Button(editor, "Save").ClickAsync(new());
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[1].Category!.MaxCount, Is.EqualTo(19));
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[1].Category!.MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
@@ -191,6 +192,46 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         editor.Find("form").Submit();
         Assert.That(current.AuthoredTerms.Take(3), Is.EqualTo(new[] { CardSelector.For(Properties[0]), CardSelector.For(Properties[4]), CardSelector.LevelAtLeast(5) }));
         Assert.That(current.AuthoredTerms.Last(), Is.SameAs(nested));
+    }
+
+    [Test]
+    public async Task EmptyComboUsesOneClosedDraftRowAndOnlyConcreteRowsOpenForms() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Categories = Properties.ToList(), Combos = [new([])] });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll("[data-new-requirement]"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-form, .add-top-level-group"), Is.Empty);
+        Assert.That(editor.Instance.Combo.RequirementCount, Is.Zero);
+        await editor.Find("[data-new-requirement]").ClickAsync(new());
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = Properties[0].Identity });
+        await Button(editor, "Add").ClickAsync(new());
+        Assert.That(editor.Instance.Combo.RequirementCount, Is.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-form, [data-new-requirement]"), Is.Empty);
+        await Button(editor, "+ Add requirement").ClickAsync(new());
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(2));
+        Assert.That(editor.FindAll(".requirement-row form"), Has.Count.EqualTo(1));
+        await Button(editor, "Cancel").ClickAsync(new());
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-form"), Is.Empty);
+        await DeleteRequirement(editor, "category:0");
+        Assert.That(editor.Instance.Combo.RequirementCount, Is.Zero);
+        Assert.That(editor.FindAll("[data-new-requirement]"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-form"), Is.Empty);
+        await editor.Find("[data-new-requirement]").ClickAsync(new());
+        await editor.Find("#comboTarget0").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
+        Assert.That(editor.FindAll("[data-new-requirement]"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-form"), Is.Empty);
+    }
+
+    [Test]
+    public void ExpandedTermsHaveNoBracketsOrPickersAndKeepTheCompactHeaderGrouping() {
+        Combo combo = new([Same(0, 1)], alternativeGroups: [new([Leaf(2), Leaf(3)])]);
+        IRenderedComponent<ComboEditor> editor = context.RenderComponent<ComboEditor>(parameters => parameters
+            .Add(component => component.Combo, combo).Add(component => component.CategoryBases, Properties));
+        Assert.That(editor.FindAll(".expanded-expression .expression-parenthesis, .inline-member-picker, .expression-row-controls, .requirement-form"), Is.Empty);
+        Assert.That(editor.FindAll(".combo-header-requirements .expression-parenthesis"), Has.Count.EqualTo(4));
+        Assert.That(editor.Find(".requirement-explanation").TextContent, Is.EqualTo("+ separates physical card requirements; AND/OR describe one card."));
+        Assert.That(editor.Markup, Does.Not.Contain("Match every requirement."));
     }
 
 }

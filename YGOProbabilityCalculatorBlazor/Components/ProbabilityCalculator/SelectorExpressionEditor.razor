@@ -8,7 +8,7 @@
                 int position = index;
                 SelectorRow currentRow = Rows[index];
                 @if (index > 0) { <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" OnOperatorChanged="ChangeGroupOperator" /> }
-                <div @key="_termKeys[currentRow.Value.Signature]" class="selector-term @(currentRow.Value.Kind != Selector.Kind && currentRow.Value.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf ? "selector-parenthesized-term" : "")">
+                <div @key="_termKeys[currentRow.Value.Signature]" class="selector-term @(currentRow.Value.Kind != Selector.Kind && currentRow.Value.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf ? "selector-nested-term" : "")">
                 <SelectorExpressionEditor @ref="_childEditors[_termKeys[currentRow.Value.Signature]]"
                     Selector="Rows[index].Value" IsRoot="false" Path="@($"{Path}.{index}")" Available="Available" Options="Options"
                     CategoryColorIndices="CategoryColorIndices" CategoryRename="CategoryRename" Session="EditorSession"
@@ -118,7 +118,7 @@
                         else { <span class="small fw-semibold">@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")</span> }
                     }
                     @if (terms[index].Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
-                        <span class="selector-summary-group">(<span>@Summary(terms[index])</span>)</span>
+                        <span class="selector-summary-group">@Summary(terms[index])</span>
                     }
                     else { @Summary(terms[index]) }
                 </span>

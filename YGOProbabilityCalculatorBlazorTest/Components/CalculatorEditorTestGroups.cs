@@ -102,9 +102,9 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         IRenderedComponent<ComboEditor> first = cut.FindComponents<ComboEditor>()[0];
         Assert.That(first.Find(".combo-header-content").QuerySelector(".combo-group-membership"), Is.Null);
-        first.Find("#comboTarget0").Change("user:B");
-        first.Find("#minCount0").Input("0");
-        first.Find("#maxCount0").Input("0");
+        RequirementField(first, "#comboTarget0").Change("user:B");
+        RequirementField(first, "#minCount0").Input("0");
+        RequirementField(first, "#maxCount0").Input("0");
 
         cut.Find("[aria-label='Add combo group']").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
@@ -120,7 +120,7 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         first.Find("#comboGroup0").Change(groupId);
         Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
             Does.Contain("Tier 1"));
-        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(RequirementField(first, "#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.Find("[aria-label='New combo group name']").Input("Tier 2");
         cut.Find("[aria-label='New combo group name']")
@@ -128,7 +128,7 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         string secondId = cut.FindAll("#comboGroup0 option:not([value=''])").ToArray()[1].GetAttribute("value")!;
 
         cut.Find("[aria-label='Edit group Tier 1']").Click();
-        context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 1);
+        context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 2);
         cut.Find("[aria-label='New name for group Tier 1']").Input("");
         cut.Find("[aria-label='Save group name']").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
@@ -138,27 +138,27 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         cut.Find("[aria-label='New name for group Tier 1']").Input("Tier One");
         cut.Find("[aria-label='New name for group Tier 1']")
             .KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
-        context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 2);
+        context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 3);
         Assert.That(cut.Find("[aria-label='Edit group Tier One']").TextContent, Is.EqualTo("Tier One"));
         Assert.That(first.Instance.Combo.GroupId,
             Is.EqualTo(groupId));
         Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
             Does.Contain("Tier One"));
         Assert.That(cut.Find("#comboGroup0").TextContent, Does.Contain("Tier One"));
-        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(RequirementField(first, "#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.Find("[aria-label='Edit group Tier 2']").Click();
         IElement secondRename = cut.Find("[aria-label='New name for group Tier 2']");
         secondRename.Input("Discarded");
         secondRename.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
-        context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 4);
+        context.JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus", 5);
         Assert.That(cut.Find("[aria-label='Edit group Tier 2']").TextContent, Is.EqualTo("Tier 2"));
 
         cut.Find("#comboGroup0").Change(secondId);
         Assert.That(first.Instance.Combo.GroupId, Is.EqualTo(secondId));
         Assert.That(first.Find(".combo-header-content .combo-group-membership").TextContent,
             Does.Contain("Tier 2"));
-        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(RequirementField(first, "#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.Find("#comboGroup0").Change("");
         Assert.That(first.Instance.Combo.GroupId, Is.Null);
@@ -175,7 +175,7 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         cut.Find("[aria-label='Remove group Tier 2']").Click();
         Assert.That(cut.FindAll(".combo-group-chip"), Is.Empty);
         Assert.That(first.Instance.Combo.GroupId, Is.Null);
-        Assert.That(first.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(RequirementField(first, "#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(2));
     }
 

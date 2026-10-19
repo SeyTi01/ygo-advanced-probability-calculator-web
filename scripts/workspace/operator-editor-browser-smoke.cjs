@@ -132,6 +132,7 @@ const session = () => ({
             'missing card references are visible in the combo editor');
         const operators = combo.getByRole('combobox', { name: /Change .* operator/ });
         assert.ok(await operators.count() >= 3, 'combo connectors expose native operator choices');
+        assert.equal(await combo.locator('.requirement-form').count(), 0);
 
         // A missing target remains visible and keyboard focus can return to its row.
         const missingRow = combo.locator('[data-requirement="card:1"]');
@@ -180,22 +181,16 @@ const session = () => ({
         const group = combo.locator('.requirement-or-group').first();
         const innerChoices = await group.locator('.expression-operator option').allTextContents();
         assert.ok(!innerChoices.includes('+'));
-        const insert = combo.getByLabel('Add condition to OR group 1', { exact: true });
-        assert.equal(await insert.locator('option[value=""]').innerText(), 'Add');
-        await insert.scrollIntoViewIfNeeded();
-        await insert.focus();
-        await page.waitForTimeout(250);
-        const before = await group.locator('.requirement-row').evaluateAll(rows => rows.map(row => row.getBoundingClientRect().top));
-        const scrollBeforeInsert = await page.evaluate(() => scrollY);
-        await insert.selectOption('metadata:attribute:fire');
-        const after = await group.locator('.requirement-row').evaluateAll(rows => rows.map(row => row.getBoundingClientRect().top));
-        assert.deepEqual(after.slice(0, before.length), before, 'insertion leaves existing member positions unchanged');
-        assert.equal(await page.evaluate(() => scrollY), scrollBeforeInsert, 'insertion does not move the viewport');
-        assert.equal(await insert.evaluate(element => element === document.activeElement), true, 'insertion keeps its picker focused');
-        assert.equal(await insert.inputValue(), '', 'insertion picker resets for another choice');
+        assert.equal(await combo.locator('.inline-member-picker, .expression-row-controls, .expanded-expression .expression-parenthesis').count(), 0);
+        assert.equal(await combo.locator('.requirement-form').count(), 0, 'adding is closed by default');
+        await group.locator('[data-requirement="alternative:0:0"]').click();
+        await combo.locator('[data-action="alternative"]').click();
+        await combo.locator('#comboTarget0').selectOption('metadata:attribute:fire');
+        await combo.getByRole('button', { name: 'Add alternative', exact: true }).click();
         saved = await saveSession();
         assert.equal(saved.Combos[0].AlternativeGroups[0].Alternatives.length, 3);
         assert.equal(saved.Combos[0].AlternativeGroups[0].Alternatives[2].Category.MaximumMode, 'HandSize');
+        assert.equal(await combo.locator('.requirement-form').count(), 0);
 
         // Repeat click, Escape and sibling switching discard row drafts.
         const firstRow = combo.locator('[data-requirement="alternative:0:0"]');
@@ -214,16 +209,16 @@ const session = () => ({
         assert.deepEqual((await saveSession()).Combos, saved.Combos);
 
         // Add a same-card property in place, then introduce a top-level exclusion.
-        const propertyInsert = combo.getByLabel('Add condition to OR group 1', { exact: true });
-        await propertyInsert.focus();
-        await propertyInsert.selectOption('AND|metadata:monster-trait:effect');
-        assert.equal(await propertyInsert.evaluate(element => element === document.activeElement), true, 'same-card insertion retains picker focus');
+        await combo.locator('[data-requirement="alternative:0:0"]').click();
+        await combo.locator('[data-action="property"]').click();
+        await combo.locator('#comboTarget0').selectOption('metadata:monster-trait:effect');
+        await combo.getByRole('button', { name: 'Add property', exact: true }).click();
         assert.equal(await combo.locator('.requirement-row form').count(), 0);
         const compositeRow = combo.locator('[data-requirement="alternative:0:0"]');
         await compositeRow.click();
         await combo.locator('#minCount0').press('Escape');
         assert.equal(await compositeRow.evaluate(element => element === document.activeElement), true, 'a newly nested term restores focus to its visible field');
-        const bottomPlus = combo.getByRole('button', { name: '+ Add group', exact: true });
+        const bottomPlus = combo.getByRole('button', { name: '+ Add requirement', exact: true });
         await bottomPlus.focus();
         await bottomPlus.press('Enter');
         assert.equal(await combo.locator('#comboTarget0').evaluate(element => element === document.activeElement), true);

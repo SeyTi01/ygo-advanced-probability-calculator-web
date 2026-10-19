@@ -47,23 +47,23 @@ public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase
             Categories = [a, b], Cards = [new([a], 2, "Physical", id: "physical")], Combos = [new([])], HandSize = 2
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = "card:physical" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:physical" });
         await Button(editor, "Add").ClickAsync(new());
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = a.Identity });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(RowKinds(editor), Is.EqualTo(new[] { "card:0", "category:0" }));
         Assert.That(editor.Find(".combo-header-requirements").TextContent.IndexOf("Physical", StringComparison.Ordinal),
             Is.LessThan(editor.Find(".combo-header-requirements").TextContent.IndexOf("A", StringComparison.Ordinal)));
         await EditRequirement(editor, "card:0");
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
+        await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "0" });
         await Button(editor, "Save").ClickAsync(new());
         Assert.That(RowKinds(editor), Is.EqualTo(new[] { "category:1", "category:0" }));
         Assert.That(editor.Instance.Combo.Categories[1].MinCount, Is.Zero);
         Assert.That(editor.Instance.Combo.Categories[1].MaxCount, Is.Zero);
         await ExtendRequirement(editor, "category:1");
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = "card:physical" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:physical" });
         await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(RowKinds(editor), Is.EqualTo(new[] { "alternative:0:0", "alternative:0:1", "category:0" }));
         await DeleteRequirement(editor, "alternative:0:1");
@@ -79,11 +79,11 @@ public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await EditRequirement(editor, "category:0");
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "1" });
+        await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "1" });
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Z" });
         await cut.Find("[aria-label='Save category name']").ClickAsync(new());
-        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("1"));
+        Assert.That(RequirementField(editor, "#maxCount0").GetAttribute("value"), Is.EqualTo("1"));
         await Button(editor, "Cancel").ClickAsync(new());
         Assert.That(RowKinds(editor), Is.EqualTo(new[] { "card:0", "category:0" }));
         await DuplicateComboAsync(cut, 0);

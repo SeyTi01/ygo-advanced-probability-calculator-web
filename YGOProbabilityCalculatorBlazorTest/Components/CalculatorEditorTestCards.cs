@@ -158,8 +158,8 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
         cut.FindComponents<CardEditor>()[0].Find("#cardCategory0").Change("user:B");
         cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").Click();
-        cut.FindComponents<ComboEditor>()[0].Find("#comboTarget0").Change("user:B");
-        cut.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");
+        RequirementField(cut.FindComponents<ComboEditor>()[0], "#comboTarget0").Change("user:B");
+        RequirementField(cut.FindComponents<ComboEditor>()[0], "#minCount0").Input("0");
 
         RowAction(cut, "card First, row 1", "Move down").Click();
         RowAction(cut, "combo First combo, row 1", "Move down").Click();
@@ -168,7 +168,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(cut.FindComponents<CardEditor>()[1].Find("#cardCategory1").GetAttribute("value"), Is.EqualTo("user:B"));
         Assert.That(cut.FindComponents<ComboEditor>()[1].Instance.Combo.Name, Is.EqualTo("First combo"));
         Assert.That(cut.FindComponents<ComboEditor>()[1].Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
-        Assert.That(cut.FindComponents<ComboEditor>()[1].Find("#minCount1").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(RequirementField(cut.FindComponents<ComboEditor>()[1], "#minCount1").GetAttribute("value"), Is.EqualTo("0"));
 
         cut.FindComponents<CardEditor>()[1].Find("#cardName1").Input("Moved card");
         cut.FindComponents<ComboEditor>()[1].Find("#comboName1").Input("Moved combo");
@@ -260,7 +260,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         await editor.Find(".accordion-button").ClickAsync(new());
         Assert.That(editor.Find("[role='status']").TextContent, Does.Contain("Missing card reference"));
 
-        IElement selector = editor.Find("#comboTarget0");
+        IElement selector = RequirementField(editor, "#comboTarget0");
         Assert.That(selector.QuerySelectorAll("optgroup[label='Cards'] option").Select(option => option.TextContent.Trim()), Is.EqualTo(new[] {
             "alpha #2", "Alpha #3", "beta #4", "Beta #5", "beta #6", "zebra #1",
             "Unnamed card #7", "Unnamed card #8"
@@ -273,9 +273,9 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         Assert.That(cut.FindComponents<CardEditor>().Select(cardEditor => cardEditor.Instance.Card.Id), Is.EqualTo(deckOrder));
 
         await selector.ChangeAsync(new() { Value = CardTarget("beta-case") });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
-        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget("beta-case")));
-        Assert.That(editor.Find("#comboTarget0").QuerySelectorAll("optgroup[label='Categories'] option").Select(option => option.TextContent.Trim()),
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
+        Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget("beta-case")));
+        Assert.That(RequirementField(editor, "#comboTarget0").QuerySelectorAll("optgroup[label='Categories'] option").Select(option => option.TextContent.Trim()),
             Is.EqualTo(new[] { "Zeta", "Alpha" }), "category selectors retain configured category order");
         Assert.That(cut.FindComponents<CardEditor>().Select(cardEditor => cardEditor.Instance.Card.Id), Is.EqualTo(deckOrder));
     }
@@ -320,9 +320,9 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> comboEditor = cut.FindComponent<ComboEditor>();
         ComboEditor originalComboEditor = comboEditor.Instance;
         await comboEditor.Find(".accordion-button").ClickAsync(new());
-        await comboEditor.Find("#comboTarget0").ChangeAsync(new() { Value = CardTarget(alphaLower.Id) });
-        await comboEditor.Find("#minCount0").InputAsync(new() { Value = "2" });
-        await comboEditor.Find("#maxCount0").InputAsync(new() { Value = "3" });
+        await RequirementField(comboEditor, "#comboTarget0").ChangeAsync(new() { Value = CardTarget(alphaLower.Id) });
+        await RequirementField(comboEditor, "#minCount0").InputAsync(new() { Value = "2" });
+        await RequirementField(comboEditor, "#maxCount0").InputAsync(new() { Value = "3" });
 
         await sortButton.ClickAsync(new());
         IReadOnlyList<IRenderedComponent<CardEditor>> sortedEditors = cut.FindComponents<CardEditor>();
@@ -354,9 +354,9 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         }
 
         Assert.That(comboEditor.Instance, Is.SameAs(originalComboEditor));
-        Assert.That(comboEditor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget(alphaLower.Id)));
-        Assert.That(comboEditor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
-        Assert.That(comboEditor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(RequirementField(comboEditor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget(alphaLower.Id)));
+        Assert.That(RequirementField(comboEditor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
+        Assert.That(RequirementField(comboEditor, "#maxCount0").GetAttribute("value"), Is.EqualTo("3"));
         Assert.That(comboEditor.Instance.Combo.Cards.Single().CardId, Is.EqualTo(zebra.Id));
 
         await RowAction(cut, "card alpha, row 1", "Move down").ClickAsync(new());
@@ -413,15 +413,15 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:A");
-        combo.Find("select[id^='comboTarget']").Change("user:A");
-        combo.Find("#minCount1").Input("0");
-        combo.Find("#maxCount1").Input("0");
+        RequirementField(combo, "select[id^='comboTarget']").Change("user:A");
+        RequirementField(combo, "#minCount1").Input("0");
+        RequirementField(combo, "#maxCount1").Input("0");
         FirstRowAction(cut.FindComponents<CardEditor>()[0], "card", "Remove").Click();
         FirstRowAction(cut.FindComponents<ComboEditor>()[0], "combo", "Remove").Click();
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
         Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(1));
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:A"));
-        Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(RequirementField(combo, "#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Button(card, "Add").Click();
@@ -447,15 +447,15 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
                 .Add(component => component.CategoryBases, session.Categories);
         });
         cards.FindComponents<CardEditor>()[0].Find("select[id^='cardCategory']").Change("user:B");
-        combos.FindComponents<ComboEditor>()[0].Find("select[id^='comboTarget']").Change("user:B");
-        combos.FindComponents<ComboEditor>()[0].Find("#minCount0").Input("0");
-        combos.FindComponents<ComboEditor>()[0].Find("#maxCount0").Input("0");
+        RequirementField(combos.FindComponents<ComboEditor>()[0], "select[id^='comboTarget']").Change("user:B");
+        RequirementField(combos.FindComponents<ComboEditor>()[0], "#minCount0").Input("0");
+        RequirementField(combos.FindComponents<ComboEditor>()[0], "#maxCount0").Input("0");
         session.Cards.Reverse();
         session.Combos.Reverse();
         cards.SetParametersAndRender(parameters => parameters.Add(component => component.Cards, session.Cards));
         combos.SetParametersAndRender(parameters => parameters.Add(component => component.Combos, session.Combos));
         Assert.That(cards.FindComponents<CardEditor>()[1].Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:B"));
-        Assert.That(combos.FindComponents<ComboEditor>()[1].Find("#maxCount1").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(RequirementField(combos.FindComponents<ComboEditor>()[1], "#maxCount1").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(cards.FindComponents<CardEditor>()[0].Find("select[id^='cardCategory']").GetAttribute("value"), Is.Null.Or.Empty);
     }
 
