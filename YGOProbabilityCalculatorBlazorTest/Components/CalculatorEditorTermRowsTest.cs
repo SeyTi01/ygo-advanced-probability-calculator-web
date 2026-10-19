@@ -15,6 +15,27 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
     private static ComboAlternative Leaf(int index) => ComboAlternative.For(Requirement(index));
     private static ComboCategory Same(params int[] indices) => ComboCategory.SameCard(indices.Select(index => Properties[index]), 1, 3);
 
+    [TestCase("AND")]
+    [TestCase("OR")]
+    public void ComboAndSimulationTermsUseTheSamePresentationComponents(string operation) {
+        Combo combo = operation == "AND" ? new([Same(0, 1)]) : new([], alternativeGroups: [new([Leaf(0), Leaf(1)])]);
+        CardSelector selector = new(operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf, Properties.Take(2).Select(property => property.Identity));
+        IRenderedComponent<ComboEditor> comboEditor = context.RenderComponent<ComboEditor>(parameters => parameters
+            .Add(component => component.Combo, combo).Add(component => component.CategoryBases, Properties));
+        IRenderedComponent<SelectorExpressionEditor> selectorEditor = context.RenderComponent<SelectorExpressionEditor>(parameters => parameters
+            .Add(component => component.Selector, selector).Add(component => component.Available, Properties));
+
+        foreach (IRenderedComponent<ExpressionRow> row in new[] { comboEditor.FindComponents<ExpressionRow>().Single(), selectorEditor.FindComponent<ExpressionRow>() }) {
+            IRenderedComponent<ExpressionTerm> term = row.FindComponents<ExpressionTerm>().Single(component => !component.Instance.Compact);
+            Assert.That(term.Instance.Count, Is.EqualTo(2));
+            Assert.That(term.Instance.Operator, Is.EqualTo(operation));
+            Assert.That(term.FindComponents<ExpressionBadge>(), Has.Count.EqualTo(2));
+            Assert.That(term.FindComponents<ExpressionSeparator>().Single().Instance.Inline, Is.True);
+            Assert.That(term.Find("select.expression-operator").GetAttribute("value"), Is.EqualTo(operation));
+            Assert.That(row.FindAll("button button, button select"), Is.Empty);
+        }
+    }
+
     [TestCase("plus", 3, "A;B;C")]
     [TestCase("and", 1, "ABC")]
     [TestCase("or", 1, "ABC")]

@@ -70,6 +70,9 @@ const session = () => ({
             else if (name.startsWith('term-selector-')) {
                 await page.locator('.card-editor').filter({ hasText: `Selector case ${name.split('-')[2]}` }).screenshot({ path: path.join(evidence, `${name}.png`), animations: 'disabled' });
             }
+            else if (name.startsWith('shared-selector-')) {
+                await page.locator('.card-editor').filter({ hasText: `Selector geometry ${name.split('-')[2]}` }).screenshot({ path: path.join(evidence, `${name}.png`), animations: 'disabled' });
+            }
             else if (name.startsWith('inline-combo')) {
                 await page.locator('.combo-editor').first().screenshot({ path: path.join(evidence, `${name}.png`), animations: 'disabled' });
             }

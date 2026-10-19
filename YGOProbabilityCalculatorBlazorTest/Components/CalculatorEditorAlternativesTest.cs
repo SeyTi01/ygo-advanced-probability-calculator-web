@@ -156,7 +156,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(editor.Instance.Combo.AlternativeGroups, Has.Count.EqualTo(1), "A one-leaf group promotes its card into the ordinary card list.");
         Assert.That(editor.Instance.Combo.Cards.Single(), Is.SameAs(cardSurvivor));
         Assert.That(editor.Find(".combo-header-content").OuterHtml, Is.Not.EqualTo(header));
-        Assert.That(editor.FindAll(".summary-group"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".combo-header-requirements .alternative-group"), Has.Count.EqualTo(1));
         Assert.That(editor.Find(".combo-header-content").TextContent, Does.Contain("Card: R"));
 
         await RemoveOrLeaf(editor, 1, 2);

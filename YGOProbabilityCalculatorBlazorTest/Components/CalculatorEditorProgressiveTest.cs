@@ -24,7 +24,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         IElement requirements = editor.Find(".requirement-list");
-        Assert.That(requirements.Children.Skip(1).Select(element => element.ClassName), Is.EqualTo(new[] {
+        Assert.That(requirements.Children.Skip(1).Select(element => element.ClassList.Single(name => name is "requirement-row" or "requirement-and-separator" or "requirement-or-group")), Is.EqualTo(new[] {
             "requirement-row", "requirement-and-separator", "requirement-row", "requirement-and-separator",
             "requirement-or-group", "requirement-and-separator", "requirement-or-group"
         }));

@@ -1,0 +1,25 @@
+<span class="expression-term-content @(Compact ? "expression-term-compact" : "")">
+    @for (int index = 0; index < Count; index++) {
+        <span class="expression-term-part" @key="OperandKey?.Invoke(index)">
+            @if (index > 0) {
+                <span @onclick:stopPropagation="@(OnOperatorChanged.HasDelegate || SeparatorContent is not null)">
+                    @if (SeparatorContent is not null) { @SeparatorContent(index) }
+                    else { <ExpressionSeparator Operator="@Operator" Inline="true" AllowedOperators="AllowedOperators" Error="@Error" OnOperatorChanged="OnOperatorChanged" /> }
+                </span>
+            }
+            @OperandContent(index)
+        </span>
+    }
+</span>
+
+@code {
+    [Parameter] public int Count { get; set; }
+    [Parameter] public string Operator { get; set; } = "AND";
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public Func<int, object>? OperandKey { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<int> OperandContent { get; set; } = default!;
+    [Parameter] public RenderFragment<int>? SeparatorContent { get; set; }
+    [Parameter] public IReadOnlyList<string> AllowedOperators { get; set; } = ["AND", "OR"];
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback<string> OnOperatorChanged { get; set; }
+}

@@ -1,0 +1,4 @@
+.expression-member { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: 36px; padding: 0; border: 0; border-radius: .25rem; background: transparent; color: inherit; font: inherit; text-align: start; }
+.expression-member:hover, .expression-member[aria-expanded="true"] { background: var(--bs-secondary-bg); }
+.expression-member:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+@media (pointer: coarse) { .expression-member { min-height: 44px; } }

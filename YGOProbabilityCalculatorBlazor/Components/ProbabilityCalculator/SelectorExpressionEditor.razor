@@ -50,7 +50,7 @@
                 int position = index;
                 OperandDraft operand = _operands[index];
                 @if (index == 1 && _mode != "add") { @OperatorField() }
-                else if (index > 1) { <span class="selector-join small fw-semibold">@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")</span> }
+                else if (index > 1) { <ExpressionSeparator Operator="@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")" /> }
                 <div class="selector-operand" @key="operand">
                     @if (operand.Group is { } group) {
                         <label class="form-label small">Condition @(index + 1)</label>
@@ -103,31 +103,22 @@
 
     private RenderFragment OperatorField() => @<div class="selector-operator">
         <label for="@(_fieldId + "-operator")" class="form-label small">Operator</label>
-        <select id="@(_fieldId + "-operator")" @ref="_operatorInput" aria-label="Row operator" class="form-select form-select-sm" @bind="_operation">
-            <option value="AllOf">AND</option><option value="AnyOf">OR</option>
-        </select>
+        <ExpressionSeparator @ref="_operatorInput" InputId="@(_fieldId + "-operator")" InputLabel="Row operator" Inline="true"
+            Operator="@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")" OnOperatorChanged="@(operation => _operation = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf)" />
     </div>;
 
-    private RenderFragment Summary(CardSelector selector, bool interactive = false) => @<span class="selector-summary">
+    private RenderFragment Summary(CardSelector selector, bool interactive = false) => @<text>
         @if (selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
             CardSelector[] terms = selector.AuthoredTerms.ToArray();
-            @for (int index = 0; index < terms.Length; index++) {
-                <span class="selector-summary-term">
-                    @if (index > 0) {
-                        @if (interactive) { <span @onclick:stopPropagation><ExpressionSeparator Operator="@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" OnOperatorChanged="ChangeGroupOperator" /></span> }
-                        else { <span class="small fw-semibold">@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")</span> }
-                    }
-                    @if (terms[index].Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
-                        <span class="selector-summary-group">@Summary(terms[index])</span>
-                    }
-                    else { @Summary(terms[index]) }
-                </span>
-            }
+            <ExpressionTerm Count="terms.Length" Operator="@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")"
+                OnOperatorChanged="@(interactive ? EventCallback.Factory.Create<string>(this, ChangeGroupOperator) : default)">
+                <OperandContent Context="index">@Summary(terms[index])</OperandContent>
+            </ExpressionTerm>
         }
         else {
-            <span class="badge category-tag draw-selector-chip text-wrap @ChipClass(selector)" title="@FullLabel(selector)">@Description(selector)</span>
+            <ExpressionBadge CssClass="@($"draw-selector-chip {ChipClass(selector)}")" Title="@FullLabel(selector)">@Description(selector)</ExpressionBadge>
         }
-    </span>;
+    </text>;
 
     [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;
     [Parameter] public bool IsRoot { get; set; } = true;
@@ -161,7 +152,7 @@
     private readonly List<OperandDraft> _operands = [];
     private readonly Dictionary<int, ElementReference> _entryInputs = [];
     private readonly Dictionary<int, ElementReference> _levelInputs = [];
-    private ElementReference _operatorInput;
+    private ExpressionSeparator? _operatorInput;
     private SelectorEditSession EditorSession => Session ?? _session;
     private bool IsEditing => ReferenceEquals(EditorSession.ActiveNode, _node);
     private bool IsGroup => Selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf;
@@ -503,7 +494,7 @@
                 _focusEntry = false;
                 await entryInput.FocusAsync();
             }
-            else if (_operatorInput.Context is not null) {
+            else if (_operatorInput is not null) {
                 _focusEntry = false;
                 await _operatorInput.FocusAsync();
             }

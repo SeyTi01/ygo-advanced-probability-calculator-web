@@ -1,0 +1,7 @@
+<span class="badge category-tag expression-badge @CssClass" title="@Title">@ChildContent</span>
+
+@code {
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

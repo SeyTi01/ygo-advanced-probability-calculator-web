@@ -10,7 +10,7 @@ public partial class ComboEditor {
     private int? _editingGroupIndex;
     private readonly List<CategoryBase> _draftProperties = [];
     private readonly Dictionary<string, ExpressionRow> _rowButtons = [];
-    private readonly Dictionary<string, ElementReference> _alternativeButtons = [];
+    private readonly Dictionary<string, ExpressionMember> _alternativeButtons = [];
     private bool _hasNewRequirementRow;
     private bool _editingNewRequirement;
     private ExpressionRow? _newRequirementRow;

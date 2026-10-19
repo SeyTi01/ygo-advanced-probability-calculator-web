@@ -84,7 +84,7 @@ const { chromium } = require('playwright');
         await simulation.locator('.simulation-edit').click();
         const selectorRows = () => simulation.locator('.selector-expression[data-selector-path="root"] .requirement-edit');
         const authoredLabels = async () => selectorRows().evaluateAll(rows => rows.map(row =>
-            [...row.closest('.requirement-row').querySelectorAll('.selector-summary-term')].map((term, index) =>
+            [...row.closest('.requirement-row').querySelectorAll('.expression-term-part')].map((term, index) =>
                 `${index > 0 ? term.querySelector('select').value + ' ' : ''}${term.querySelector('.draw-selector-chip').textContent.trim()}`).join(' ')));
 
         assert.deepEqual(await authoredLabels(), ['A AND B AND C AND D'], 'selector editor groups all flat leaves in authored order');
