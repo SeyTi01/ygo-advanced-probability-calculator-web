@@ -57,6 +57,16 @@ public static class ComboOperatorEditing {
                 }
                 throw new ArgumentException("Same-card AND requires matching bounds. Set every operand to the same minimum and fixed/Any maximum, then save.");
             }
+            if (positions.Count != 1 || positions[0].Kind != ComboRequirementKind.Group
+                || categories.Any(category => category.CategoryBases.Count != 1)
+                || categories.Select(category => category.BaseCategory.Identity).Distinct(StringComparer.Ordinal).Count() != categories.Length) {
+                throw new ArgumentException("This operator change cannot be reversed without losing requirements or grouping.");
+            }
+            IReadOnlyList<ComboAlternative> original = combo.AlternativeGroups[positions[0].Index].Alternatives;
+            if (original.Count != edit.Operands.Count
+                || !original.Zip(edit.Operands).All(pair => ReferenceEquals(pair.First.Category, pair.Second.Category))) {
+                throw new ArgumentException("Change only the operator of the existing alternatives.");
+            }
             sameCard = ComboCategory.SameCard(categories.SelectMany(category => category.CategoryBases), first.MinCount, first.MaxCount, first.MaximumMode);
         }
 

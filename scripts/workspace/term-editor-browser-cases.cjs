@@ -44,6 +44,8 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
     await stableCombo.locator('.expanded-expression > .requirement-and-separator select').selectOption('OR');
     assert.equal(await stableRows.count(), 2, '+ to OR retains existing fields');
     assert.deepEqual(await stableContents(), ['AB', 'CD']);
+    assert.deepEqual(await stableCombo.locator('.requirement-or-group > .alternative-separator select option').allTextContents(), ['+', 'OR'],
+        'AND cannot merge existing fields and discard their grouping');
     await stableCombo.locator('.requirement-or-group > .alternative-separator select').selectOption('+');
     assert.deepEqual(await stableContents(), ['AB', 'CD'], 'OR to + retains each original group');
     assert.equal(await stableCombo.locator('.expanded-expression > .requirement-and-separator select').evaluate(element => element === document.activeElement), true,
@@ -56,6 +58,23 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
     await stableCombo.getByRole('button', { name: 'Remove requirement', exact: true }).click();
     assert.deepEqual(await stableContents(), ['CD'], 'only an emptied row disappears');
     console.log('PASS stable authored rows through +/OR round trips and partial/full row deletion.');
+    const unsafeSelector = { Kind: 'AnyOf', Children: [and(0, 1), property(0), property(1)] };
+    const unsafeCombo = await load({ ...fixture, Combos: [{ ...combos[6], Name: 'Operator review combo' }],
+        Cards: [{ ...fixture.Cards[0], Name: 'Overlapping selector', PostDrawSelector: unsafeSelector }] });
+    await page.waitForFunction(() => document.querySelectorAll('.combo-editor .requirement-interactive-summary').length === 2);
+    if (await unsafeCombo.locator('.accordion-button').getAttribute('aria-expanded') !== 'true') { await unsafeCombo.locator('.accordion-button').click(); }
+    const outerOr = unsafeCombo.locator('.expanded-expression .requirement-or-group > .alternative-separator select');
+    assert.equal((await outerOr.locator('option').allTextContents()).includes('AND'), false, 'OR cannot flatten existing AND groups');
+    for (const nestedAnd of await unsafeCombo.locator('.requirement-interactive-summary select').all()) {
+        assert.deepEqual(await nestedAnd.locator('option').allTextContents(), ['AND'], 'nested AND cannot lose its OR boundary');
+    }
+    const unsafeCard = page.locator('.card-editor').filter({ hasText: 'Overlapping selector' });
+    await unsafeCard.locator('.accordion-button').click();
+    await unsafeCard.locator('.simulation-edit').click();
+    const nestedAnd = unsafeCard.locator('[data-selector-path="root.0"] .expression-operator');
+    assert.deepEqual(await nestedAnd.locator('option').allTextContents(), ['AND'], 'simulation cannot deduplicate sibling conditions');
+    await unsafeCard.locator('.simulation-editor').getByRole('button', { name: 'Cancel', exact: true }).click();
+    console.log('PASS irreversible combo and simulation operator choices are unavailable.');
     // Measure actual chip/control geometry: inherited font sizes and margins
     // can look correct in markup while still differing between AND/OR fields.
     const shortCategories = categories.map((value, index) => ({ ...value, Name: String.fromCharCode(65 + index) }));

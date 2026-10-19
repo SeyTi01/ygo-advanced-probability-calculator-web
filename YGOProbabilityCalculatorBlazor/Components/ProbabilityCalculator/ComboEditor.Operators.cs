@@ -92,12 +92,11 @@ public partial class ComboEditor {
         ComboRequirementPosition[] positions = [Combo.RequirementOrder[index - 1], right];
         ComboAlternative[] operands = positions.SelectMany(position => position.Kind == ComboRequirementKind.Group
             ? Combo.AlternativeGroups[position.Index].Alternatives : new[] { RequirementOperand(position) }).ToArray();
-        bool hasGroup = positions.Any(position => position.Kind == ComboRequirementKind.Group);
         return ComboOperators.Where(operation => operation == "+"
-            || (operation != "AND" || !hasGroup) && CanApplyInline(positions, new(operation, operands))).ToArray();
+            || operation == "OR" && CanApplyInline(positions, new(operation, operands))).ToArray();
     }
 
-    private IReadOnlyList<string> GroupOperators(int index) => CanApplyInline(
+    private IReadOnlyList<string> GroupOperators(int index) => AlternativeTerms(Combo.AlternativeGroups[index]).Count() == 1 && CanApplyInline(
         [new(ComboRequirementKind.Group, index)], new("AND", Combo.AlternativeGroups[index].Alternatives)) ? ["AND", "OR"] : ["OR"];
 
     private IReadOnlyList<string> AlternativeRowOperators(int groupIndex, int? boundary) => boundary is null
@@ -107,8 +106,8 @@ public partial class ComboEditor {
         ? SplitAlternativeRows(groupIndex, split) : ChangeGroupOperator(groupIndex, operation);
 
     private IReadOnlyList<string> SameCardOperators(ComboAlternative requirement, int index, int? group) {
-        ComboRequirementPosition position = group is int groupIndex
-            ? new(ComboRequirementKind.Group, groupIndex) : new(ComboRequirementKind.Category, index);
+        if (group is not null) { return ["AND"]; }
+        ComboRequirementPosition position = new(ComboRequirementKind.Category, index);
         return CanApplyInline([position], new("OR", [requirement])) ? ["AND", "OR"] : ["AND"];
     }
 
@@ -118,10 +117,6 @@ public partial class ComboEditor {
         if (index <= 0) { return Task.CompletedTask; }
         ComboRequirementPosition left = Combo.RequirementOrder[index - 1];
         string key = $"peer:{right}";
-        if (operation == "AND" && (left.Kind == ComboRequirementKind.Group || right.Kind == ComboRequirementKind.Group)) {
-            RefuseInline(key, "A nested OR cannot become same-card AND. Change its inner operator first.");
-            return Task.CompletedTask;
-        }
         ComboAlternative[] operands = new[] { left, right }.SelectMany(position => position.Kind == ComboRequirementKind.Group
             ? Combo.AlternativeGroups[position.Index].Alternatives : new[] { RequirementOperand(position) }).ToArray();
         return ApplyInline([left, right], new(operation, operands), key);
@@ -156,12 +151,6 @@ public partial class ComboEditor {
         if (operation == "AND" || requirement.Category is not { } category || !SameCardOperators(requirement, index, group).Contains(operation)) { return Task.CompletedTask; }
         ComboAlternative[] operands = category.CategoryBases.Select(property => ComboAlternative.For(
             new ComboCategory(property, category.MinCount, category.MaxCount, category.MaximumMode))).ToArray();
-        if (group is int groupIndex) {
-            List<ComboAlternative> alternatives = Combo.AlternativeGroups[groupIndex].Alternatives.ToList();
-            alternatives.RemoveAt(index);
-            alternatives.InsertRange(index, operands);
-            return ApplyInline([new(ComboRequirementKind.Group, groupIndex)], new("OR", alternatives), $"same:{RowKey(requirement, index, group)}");
-        }
         return ApplyInline([new(ComboRequirementKind.Category, index)], new(operation, operands), $"same:{RowKey(requirement, index, group)}");
     }
 
