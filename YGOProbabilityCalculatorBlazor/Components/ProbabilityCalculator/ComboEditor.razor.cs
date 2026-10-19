@@ -10,6 +10,9 @@ public partial class ComboEditor {
     private int? _editingGroupIndex;
     private readonly List<CategoryBase> _draftProperties = [];
     private readonly Dictionary<string, ExpressionRow> _rowButtons = [];
+    private readonly Dictionary<string, ElementReference> _alternativeButtons = [];
+    private readonly Dictionary<string, ElementReference> _memberPickers = [];
+    private string? _focusPicker;
     private ElementReference _minimumInput;
     private bool _focusMinimum;
     private string? _returnRowKey;

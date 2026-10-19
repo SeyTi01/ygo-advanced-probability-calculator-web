@@ -20,7 +20,7 @@ public class CalculatorEditorPreDrawTest : CalculatorEditorTestBase {
         await SaveSimulation(editor);
         await editor.Find("#cardCostEligibility0").ChangeAsync(new() { Value = "user:A" });
         await SaveSimulation(editor);
-        await editor.Find("[aria-label='Add AND eligibility to alternative 1']").ChangeAsync(new() { Value = "metadata:kind:monster" });
+        await AddEligibilityProperty(editor, "A", "metadata:kind:monster");
         await SaveSimulation(editor);
         await editor.Find("#cardCostEligibility0").ChangeAsync(new() { Value = "user:B" });
         await SaveSimulation(editor);
@@ -62,7 +62,7 @@ public class CalculatorEditorPreDrawTest : CalculatorEditorTestBase {
         await RowAction(cut, "card First, row 1", "Move down").ClickAsync(new());
         editor = cut.FindComponents<CardEditor>().ToArray()[1];
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
-        await editor.Find("[aria-label='Remove eligibility A']").ClickAsync(new());
+        await RemoveEligibility(editor, "A", a.Identity);
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PreDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Category));
         await editor.Find("#cardCostEligibility1").ChangeAsync(new() { Value = "any" });

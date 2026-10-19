@@ -71,6 +71,25 @@ public abstract class CalculatorEditorTestBase {
         }
     }
 
+    protected static IElement EligibilityRow(IRenderedFragment editor, string label) => editor.FindAll(".selector-expression .requirement-row")
+        .First(row => row.QuerySelectorAll(".draw-selector-chip").Any(chip => chip.TextContent.Equals(label, StringComparison.OrdinalIgnoreCase)))
+        .QuerySelector(".requirement-edit")!;
+
+    protected static async Task AddEligibilityProperty(IRenderedFragment editor, string label, string identity) {
+        await EligibilityRow(editor, label).ClickAsync(new());
+        await Button(editor, "Add property (AND)").ClickAsync(new());
+        await editor.Find(".selector-expression form .selector-operand select").ChangeAsync(new() { Value = identity });
+        await editor.Find(".selector-expression form").SubmitAsync();
+    }
+
+    protected static async Task RemoveEligibility(IRenderedFragment editor, string label, string identity) {
+        await EligibilityRow(editor, label).ClickAsync(new());
+        int index = editor.FindAll(".selector-expression form .selector-operand select").ToList()
+            .FindIndex(select => select.GetAttribute("value") == identity);
+        await Button(editor, $"Remove condition {index + 1}").ClickAsync(new());
+        await editor.Find(".selector-expression form").SubmitAsync();
+    }
+
     protected static string SimulationDetails(IRenderedFragment editor) {
         if (editor.FindAll(".simulation-details").Count == 0) {
             editor.Find(".simulation-details-toggle").Click();

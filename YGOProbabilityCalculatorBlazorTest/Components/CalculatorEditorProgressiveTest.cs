@@ -33,7 +33,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
             Assert.That(separator.GetAttribute("aria-label"), Is.EqualTo("+: separate card requirements"));
         }
         foreach (IElement group in requirements.QuerySelectorAll(".requirement-or-group")) {
-            Assert.That(group.QuerySelectorAll(".requirement-row"), Has.Length.EqualTo(2));
+            Assert.That(group.QuerySelectorAll(".requirement-row"), Has.Length.EqualTo(group == requirements.QuerySelector(".requirement-or-group") ? 1 : 2));
             Assert.That(group.QuerySelector(".alternative-separator select")!.GetAttribute("value"), Is.EqualTo("OR"));
             Assert.That(group.Children.Where(element => element.ClassList.Contains("requirement-and-separator")), Is.Empty);
         }

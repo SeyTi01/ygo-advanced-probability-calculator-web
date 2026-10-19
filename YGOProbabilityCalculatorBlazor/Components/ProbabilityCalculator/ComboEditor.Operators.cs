@@ -3,6 +3,42 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 public partial class ComboEditor {
+    private static string GroupKey(int groupIndex) => $"group:{groupIndex}";
+
+    private static bool IsComposite(ComboAlternative alternative) => alternative.Category?.CategoryBases.Count > 1;
+
+    private static IEnumerable<(int Start, int Count)> AlternativeTerms(ComboAlternativeGroup group) {
+        for (int start = 0; start < group.Alternatives.Count;) {
+            int end = start + 1;
+            if (!IsComposite(group.Alternatives[start])) {
+                while (end < group.Alternatives.Count && !IsComposite(group.Alternatives[end])) { end++; }
+            }
+            yield return (start, end - start);
+            start = end;
+        }
+    }
+
+    private void ToggleAlternativeTerm(ComboAlternativeGroup group, int groupIndex, int start, int count) {
+        int open = Enumerable.Range(start, count).FirstOrDefault(index => IsOpenRow(group.Alternatives[index], index, groupIndex), -1);
+        int selected = open < 0 ? start : open;
+        BeginEdit(group.Alternatives[selected], selected, groupIndex);
+    }
+
+    private bool HasInlineAlternativeButton(string key) => Rows(Combo).Any(row => row.Group is not null
+        && !IsComposite(row.Requirement) && RowKey(row.Requirement, row.Index, row.Group) == key);
+
+    private string VisibleRowKey(string key) {
+        foreach ((ComboAlternativeGroup group, int groupIndex) in Combo.AlternativeGroups.Select((group, index) => (group, index))) {
+            foreach ((int start, int count) in AlternativeTerms(group)) {
+                if (Enumerable.Range(start, count).Any(index => RowKey(group.Alternatives[index], index, groupIndex) == key)) {
+                    return RowKey(group.Alternatives[start], start, groupIndex);
+                }
+            }
+        }
+
+        return key;
+    }
+
     private static readonly string[] ComboOperators = ["+", "AND", "OR"];
     private readonly Dictionary<string, ExpressionSeparator> _connectors = [];
     private Dictionary<string, object> _rowIdentities = [];
@@ -224,6 +260,8 @@ public partial class ComboEditor {
             updated = Combo.WithCategories(categories);
         }
         _connectorErrorKey = null;
+        _focusPicker = groupIndex is int currentGroup && index == 0
+            ? $"Add condition to OR group {currentGroup + 1}" : $"Add condition to {RowKey(requirement, index, groupIndex)}";
         TransferRowIdentities(updated);
         await OnReplaceCombo.InvokeAsync((Index, updated));
     }

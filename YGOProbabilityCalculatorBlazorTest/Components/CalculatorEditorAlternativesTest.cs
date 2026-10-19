@@ -149,7 +149,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await editor.Find("#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(editor.Instance.Combo.AlternativeGroups.Select(g => g.Alternatives.Count), Is.EqualTo(new[] { 3, 2 }));
-        Assert.That(editor.FindAll(".accordion-button button, [aria-label^='Edit alternative'], [aria-label^='Move alternative group']"), Is.Empty);
+        Assert.That(editor.FindAll(".accordion-button button, [aria-label^='Move alternative group']"), Is.Empty);
         await RemoveOrLeaf(editor, 1, 3);
         Assert.That(editor.Instance.Combo.AlternativeGroups.Select(g => g.Alternatives.Count), Is.EqualTo(new[] { 2, 2 }), "Three leaves become a two-leaf OR group.");
         await RemoveOrLeaf(editor, 2, 2);

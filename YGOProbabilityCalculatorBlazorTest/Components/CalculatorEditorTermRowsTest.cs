@@ -1,0 +1,196 @@
+using System.Text.Json;
+using AngleSharp.Dom;
+using Bunit;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazor.Models;
+
+namespace YGOProbabilityCalculatorBlazorTest.Components;
+
+public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
+    private static readonly CategoryBase[] Properties = [new("A"), new("B"), new("C"), new("D"), new("E")];
+    private static ComboCategory Requirement(int index) => new(Properties[index], 1, 3);
+    private static ComboAlternative Leaf(int index) => ComboAlternative.For(Requirement(index));
+    private static ComboCategory Same(params int[] indices) => ComboCategory.SameCard(indices.Select(index => Properties[index]), 1, 3);
+
+    [TestCase("plus", 3, "A;B;C")]
+    [TestCase("and", 1, "ABC")]
+    [TestCase("or", 1, "ABC")]
+    [TestCase("and-plus-or", 2, "AB;CD")]
+    [TestCase("leaf-plus-or-plus-leaf", 3, "A;BC;D")]
+    [TestCase("or-plus-or", 2, "AB;CD")]
+    [TestCase("nested-or", 2, "AB;CD")]
+    [TestCase("mixed-or", 3, "A;BC;DE")]
+    public void ComboFieldsFollowTermsWithoutChangingStoredRequirements(string shape, int count, string contents) {
+        Combo original = shape switch {
+            "plus" => new([Requirement(0), Requirement(1), Requirement(2)]),
+            "and" => new([Same(0, 1, 2)]),
+            "or" => new([], alternativeGroups: [new([Leaf(0), Leaf(1), Leaf(2)])]),
+            "and-plus-or" => new([Same(0, 1)], alternativeGroups: [new([Leaf(2), Leaf(3)])]),
+            "leaf-plus-or-plus-leaf" => new Combo([Requirement(0), Requirement(3)], alternativeGroups: [new([Leaf(1), Leaf(2)])])
+                .WithRequirementAt(new(ComboRequirementKind.Group, 0), 1),
+            "or-plus-or" => new([], alternativeGroups: [new([Leaf(0), Leaf(1)]), new([Leaf(2), Leaf(3)])]),
+            "nested-or" => new([], alternativeGroups: [new([ComboAlternative.For(Same(0, 1)), ComboAlternative.For(Same(2, 3))])]),
+            _ => new([], alternativeGroups: [new([Leaf(0), ComboAlternative.For(Same(1, 2)), Leaf(3), Leaf(4)])])
+        };
+        string json = JsonSerializer.Serialize(original);
+        IRenderedComponent<ComboEditor> editor = context.RenderComponent<ComboEditor>(parameters => parameters
+            .Add(component => component.Combo, original).Add(component => component.CategoryBases, Properties));
+        foreach (bool expanded in new[] { false, true }) {
+            editor.SetParametersAndRender(parameters => parameters.Add(component => component.ActiveComboIndex, expanded ? 0 : -1));
+            IElement[] rows = editor.FindAll(".expanded-expression .requirement-row").ToArray();
+            Assert.That(rows, Has.Length.EqualTo(count));
+            Assert.That(rows.Select(row => string.Concat(row.QuerySelectorAll(".requirement-description .category-tag")
+                .Select(chip => chip.TextContent.Trim()[0]))), Is.EqualTo(contents.Split(';')));
+            for (int index = 0; index < count; index++) {
+                IElement row = editor.FindAll(".expanded-expression .requirement-row").ToArray()[index];
+                Assert.That(row.QuerySelectorAll("button button, button select"), Is.Empty);
+                row.QuerySelector(".requirement-edit")!.Click();
+                Assert.That(editor.FindAll(".requirement-row form"), Has.Count.EqualTo(1));
+                Button(editor.FindComponent<ExpressionForm>(), "Cancel").Click();
+                Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
+            }
+        }
+        Assert.That(JsonSerializer.Serialize(editor.Instance.Combo), Is.EqualTo(json));
+        Assert.That(editor.FindAll(".expanded-expression > .requirement-and-separator select").Select(select => select.GetAttribute("value")),
+            Is.All.EqualTo("+"));
+        if (shape == "nested-or") {
+            Assert.That(editor.FindAll(".requirement-or-group > .alternative-separator select").Single().GetAttribute("value"), Is.EqualTo("OR"));
+            Assert.That(editor.FindAll(".expanded-expression .composite-alternative .expression-parenthesis"), Has.Count.EqualTo(4));
+        }
+    }
+
+    [TestCase("and", 1, "ABC", "AND")]
+    [TestCase("or", 1, "ABC", "OR")]
+    [TestCase("and-of-or", 2, "AB;CD", "AND")]
+    [TestCase("or-of-and", 2, "AB;CD", "OR")]
+    [TestCase("leaf-or-and", 2, "A;BC", "OR")]
+    [TestCase("run-and-or", 2, "AB;CD", "AND")]
+    [TestCase("separated-runs", 3, "A;BC;DE", "AND")]
+    [TestCase("deep", 4, "A;BC;D;E", "AND")]
+    public void SelectorFieldsUseMaximalAdjacentRunsAndRetainParentheses(string shape, int count, string contents, string operation) {
+        CardSelector A(int index) => CardSelector.For(Properties[index]);
+        CardSelector And(params int[] indices) => CardSelector.AllOf(indices.Select(index => Properties[index].Identity));
+        CardSelector Or(params int[] indices) => CardSelector.AnyOf(indices.Select(index => Properties[index].Identity));
+        CardSelector selector = shape switch {
+            "and" => And(0, 1, 2),
+            "or" => Or(0, 1, 2),
+            "and-of-or" => CardSelector.AllOfSelectors([Or(0, 1), Or(2, 3)]),
+            "or-of-and" => CardSelector.AnyOfSelectors([And(0, 1), And(2, 3)]),
+            "leaf-or-and" => CardSelector.AnyOfSelectors([A(0), And(1, 2)]),
+            "run-and-or" => CardSelector.AllOfSelectors([A(0), A(1), Or(2, 3)]),
+            "deep" => CardSelector.AllOfSelectors([A(0), CardSelector.AnyOfSelectors([And(1, 2), A(3)]), A(4)]),
+            _ => CardSelector.AllOfSelectors([A(0), Or(1, 2), A(3), A(4)])
+        };
+        string json = JsonSerializer.Serialize(selector);
+        int changes = 0;
+        IRenderedComponent<SelectorExpressionEditor> editor = context.RenderComponent<SelectorExpressionEditor>(parameters => parameters
+            .Add(component => component.Selector, selector).Add(component => component.Available, Properties)
+            .Add(component => component.OnChanged, _ => changes++));
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(count));
+        Assert.That(editor.FindAll(".requirement-row").Select(row => string.Concat(row.QuerySelectorAll(".draw-selector-chip").Select(chip => chip.TextContent))),
+            Is.EqualTo(contents.Split(';')));
+        if (count > 1) {
+            IElement[] connectors = editor.FindAll("[data-selector-path='root'] > .requirement-or-group > .requirement-and-separator select, [data-selector-path='root'] > .requirement-or-group > .alternative-separator select").ToArray();
+            Assert.That(connectors, Has.Length.EqualTo(shape is "deep" or "separated-runs" ? 2 : 1));
+            Assert.That(connectors.Select(select => select.GetAttribute("value")), Is.All.EqualTo(operation));
+            Assert.That(editor.FindAll(".selector-parenthesized-term"), Is.Not.Empty);
+        }
+        foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
+            row.Find(".requirement-edit").Click();
+            Assert.That(editor.FindAll("form"), Has.Count.EqualTo(1));
+            int operands = row.FindAll(".draw-selector-chip").Count;
+            Assert.That(editor.FindAll("form .selector-operand"), Has.Count.EqualTo(operands));
+            row.Find(".requirement-edit").Click();
+            Assert.That(editor.FindAll("form"), Is.Empty, "Clicking the same field closes its draft.");
+            row.Find(".requirement-edit").Click();
+            editor.Find("form").Submit();
+        }
+        Assert.That(changes, Is.Zero);
+        Assert.That(JsonSerializer.Serialize(selector), Is.EqualTo(json));
+    }
+
+    [Test]
+    public void ThreeOperandSelectorDraftSupportsCancelEscapeAndAtomicSave() {
+        CardSelector current = CardSelector.AnyOf(Properties.Take(3).Select(property => property.Identity));
+        CardSelector original = current;
+        IRenderedComponent<SelectorExpressionEditor>? editor = null;
+        editor = context.RenderComponent<SelectorExpressionEditor>(parameters => parameters
+            .Add(component => component.Selector, current).Add(component => component.Available, Properties)
+            .Add(component => component.OnChanged, value => {
+                current = value;
+                editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
+            }));
+        foreach (string action in new[] { "Cancel", "Escape", "Save" }) {
+            editor.Find(".requirement-edit").Click();
+            editor.FindAll(".selector-operand select").ToArray()[2].Change(Properties[3].Identity);
+            if (action == "Cancel") { Button(editor, "Cancel").Click(); }
+            else if (action == "Escape") { editor.Find("form").KeyDown(new KeyboardEventArgs { Key = "Escape" }); }
+            else { editor.Find("form").Submit(); }
+            Assert.That(current, Is.EqualTo(action == "Save" ? CardSelector.AnyOf([Properties[0].Identity, Properties[1].Identity, Properties[3].Identity]) : original));
+            Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
+        }
+    }
+    [Test]
+    public async Task FlatOrPreservesEachMemberAndActiveDraftWhileInsertingAndRemovingFourthMember() {
+        ComboCategory first = new(Properties[0], 0, 0);
+        ComboCard second = new("target", 2, 19, RequirementMaximumMode.HandSize);
+        ComboCategory third = new(Properties[1], 1, 2);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = Properties.ToList(), Cards = [new([], id: "target")],
+            Combos = [new([], alternativeGroups: [new([ComboAlternative.For(first), ComboAlternative.For(second), ComboAlternative.For(third)])])]
+        });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        await EditRequirement(editor, "alternative:0:2");
+        await editor.Find("#minCount0").InputAsync(new() { Value = "0" });
+        await editor.Find("#maxCount0").InputAsync(new() { Value = "0" });
+        await editor.Find("[aria-label='Add condition to OR group 1']").ChangeAsync(new() { Value = Properties[2].Identity });
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
+        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        await Button(editor, "Save").ClickAsync(new());
+        ComboAlternativeGroup group = editor.Instance.Combo.AlternativeGroups.Single();
+        Assert.That(group.Alternatives, Has.Count.EqualTo(4));
+        Assert.That(group.Alternatives[0].Category, Is.SameAs(first));
+        Assert.That(group.Alternatives[1].Card, Is.SameAs(second));
+        Assert.That((group.Alternatives[2].Category!.MinCount, group.Alternatives[2].Category!.MaxCount), Is.EqualTo((0, 0)));
+        await EditRequirement(editor, "alternative:0:1");
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = Properties[3].Identity });
+        await Button(editor, "Save").ClickAsync(new());
+        Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[1].Category!.MaxCount, Is.EqualTo(19));
+        Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[1].Category!.MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
+        await EditRequirement(editor, "alternative:0:3");
+        await Button(editor, "Remove alternative").ClickAsync(new());
+        Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives, Has.Count.EqualTo(3));
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
+        await Button(cut, "Save Session").ClickAsync(new());
+        SessionState session = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
+        Combo restored = session.Combos[0];
+        Assert.That(JsonSerializer.Serialize(restored), Is.EqualTo(JsonSerializer.Serialize(editor.Instance.Combo)));
+    }
+
+    [Test]
+    public void SelectorRunKeepsDraftAndNewAdjacentPeerInAuthoredOrder() {
+        CardSelector nested = CardSelector.AnyOf(Properties.Skip(2).Take(2).Select(property => property.Identity));
+        CardSelector current = CardSelector.AllOfSelectors([CardSelector.For(Properties[0]), CardSelector.For(Properties[1]), nested]);
+        IRenderedComponent<SelectorExpressionEditor>? editor = null;
+        editor = context.RenderComponent<SelectorExpressionEditor>(parameters => parameters
+            .Add(component => component.Selector, current).Add(component => component.Available, Properties)
+            .Add(component => component.OnChanged, value => {
+                current = value;
+                editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
+            }));
+        SelectorExpressionEditor first = editor.FindComponents<SelectorExpressionEditor>().Single(child => !child.Instance.IsRoot && child.Instance.Selector.Kind == CardSelectorKind.AllOf).Instance;
+        editor.Find(".requirement-edit").Click();
+        editor.FindAll("form .selector-operand select").ToArray()[1].Change(Properties[4].Identity);
+        current = CardSelector.AllOfSelectors([CardSelector.For(Properties[0]), CardSelector.For(Properties[1]), CardSelector.LevelAtLeast(5), nested]);
+        editor.SetParametersAndRender(parameters => parameters.Add(component => component.Selector, current));
+        Assert.That(editor.FindComponents<SelectorExpressionEditor>().Any(child => ReferenceEquals(child.Instance, first)), Is.True);
+        Assert.That(editor.FindAll("form .selector-operand select").ToArray()[1].GetAttribute("value"), Is.EqualTo(Properties[4].Identity));
+        editor.Find("form").Submit();
+        Assert.That(current.AuthoredTerms.Take(3), Is.EqualTo(new[] { CardSelector.For(Properties[0]), CardSelector.For(Properties[4]), CardSelector.LevelAtLeast(5) }));
+        Assert.That(current.AuthoredTerms.Last(), Is.SameAs(nested));
+    }
+
+}
