@@ -1,8 +1,5 @@
 .selector-expression { min-width: 0; }
 .selector-expression ::deep > .requirement-or-group { display: grid; gap: .5rem; }
-.selector-summary { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .35rem; min-width: 0; }
-.selector-summary-term { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: .35rem; min-width: 0; max-width: 100%; }
-.selector-summary-group { display: inline-flex; align-items: center; gap: .15rem; min-width: 0; }
 .selector-condition-row { display: grid; grid-template-columns: minmax(0, 1fr) 4rem minmax(0, 1fr); gap: .5rem; align-items: start; }
 .selector-operand, .selector-operator, .selector-seed { min-width: 0; }
 .selector-operand:only-child { grid-column: 1 / -1; }
@@ -11,7 +8,6 @@
 .selector-seed { align-self: center; }
 .selector-many-conditions { grid-template-columns: minmax(0, 1fr); }
 .selector-many-conditions .selector-operator { max-width: 6rem; }
-.selector-operator select { font-size: .8rem; }
 .selector-more-actions summary { cursor: pointer; min-height: 36px; }
 .selector-more-actions[open] { flex-basis: 100%; }
 .selector-more-actions .btn { margin: .35rem .35rem 0 0; }

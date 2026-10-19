@@ -1,6 +1,6 @@
-<div class="@(Operator == "OR" ? "alternative-separator" : "requirement-and-separator")" role="@(OnOperatorChanged.HasDelegate ? "group" : "separator")" aria-label="@Label">
+<div class="expression-separator @(Operator == "OR" ? "alternative-separator" : "requirement-and-separator") @(Inline ? "expression-inline-separator" : "") @(Symbol == "+" ? "expression-copy-separator" : "")" role="@(OnOperatorChanged.HasDelegate ? "group" : "separator")" aria-label="@Label">
     @if (OnOperatorChanged.HasDelegate) {
-        <select class="expression-operator" @ref="_select" aria-invalid="@(Error is not null ? "true" : null)" aria-label="@($"Change {Symbol ?? Operator} operator")" @bind:get="Symbol ?? Operator" @bind:set="Change">
+        <select id="@InputId" class="expression-operator" @ref="_select" aria-invalid="@(Error is not null ? "true" : null)" aria-label="@(InputLabel ?? $"Change {Symbol ?? Operator} operator")" @bind:get="Symbol ?? Operator" @bind:set="Change">
             @foreach (string choice in AllowedOperators) {
                 <option value="@choice">@choice</option>
             }
@@ -15,7 +15,10 @@
 @code {
     [Parameter] public string Operator { get; set; } = "AND";
     [Parameter] public string? Symbol { get; set; }
+    [Parameter] public bool Inline { get; set; }
     [Parameter] public string? AccessibleLabel { get; set; }
+    [Parameter] public string? InputId { get; set; }
+    [Parameter] public string? InputLabel { get; set; }
     [Parameter] public string? Error { get; set; }
     [Parameter] public IReadOnlyList<string> AllowedOperators { get; set; } = ["AND", "OR"];
     [Parameter] public EventCallback<string> OnOperatorChanged { get; set; }

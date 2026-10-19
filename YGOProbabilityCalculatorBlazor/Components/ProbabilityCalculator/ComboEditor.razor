@@ -148,7 +148,7 @@
         </EditorContent>
     </ExpressionRow>;
 
-    private RenderFragment GroupSeparator(int groupIndex) => @<ExpressionSeparator Operator="OR"
+    private RenderFragment GroupSeparator(int groupIndex, bool inline = false) => @<ExpressionSeparator Operator="OR" Inline="inline"
         AllowedOperators="GroupOperators(groupIndex)" Error="@ConnectorError($"group:{groupIndex}")"
         @ref="_connectors[GroupKey(groupIndex)]" OnOperatorChanged="operation => ChangeGroupOperator(groupIndex, operation)" />;
 
@@ -158,19 +158,16 @@
         InteractiveSummary="true" @ref="_rowButtons[RowKey(group.Alternatives[start], start, groupIndex)]"
         OnEdit="() => ToggleAlternativeTerm(group, groupIndex, start, count)">
         <ChildContent>
-            <span class="alternative-group-content">
-                    @for (int index = start; index < start + count; index++) {
-                        int leafIndex = index;
-                        ComboAlternative leaf = group.Alternatives[index];
-                        @if (index > start) { <span @onclick:stopPropagation>@GroupSeparator(groupIndex)</span> }
-                        <button type="button" class="alternative-member" @key="RowIdentity(leaf, index, groupIndex)"
-                            @ref="_alternativeButtons[RowKey(leaf, leafIndex, groupIndex)]" data-requirement="@RowKey(leaf, index, groupIndex)" aria-label="@($"Edit {AlternativeTargetLabel(leaf)}")"
-                            aria-expanded="@IsOpenRow(leaf, index, groupIndex).ToString().ToLowerInvariant()"
-                            @onclick="() => BeginEdit(leaf, leafIndex, groupIndex)" @onclick:stopPropagation>
-                            @AlternativeBadge(leaf)
-                        </button>
-                    }
-            </span>
+            <ExpressionTerm Count="count" Operator="OR" OperandKey="offset => RowIdentity(group.Alternatives[start + offset], start + offset, groupIndex)">
+                <SeparatorContent>@GroupSeparator(groupIndex, inline: true)</SeparatorContent>
+                <OperandContent Context="offset">
+                    @{ int leafIndex = start + offset; ComboAlternative leaf = group.Alternatives[leafIndex]; }
+                    <ExpressionMember @ref="_alternativeButtons[RowKey(leaf, leafIndex, groupIndex)]" data-requirement="@RowKey(leaf, leafIndex, groupIndex)"
+                        Label="@($"Edit {AlternativeTargetLabel(leaf)}")" Expanded="IsOpenRow(leaf, leafIndex, groupIndex)" OnEdit="() => BeginEdit(leaf, leafIndex, groupIndex)">
+                        @AlternativeBadge(leaf)
+                    </ExpressionMember>
+                </OperandContent>
+            </ExpressionTerm>
         </ChildContent>
         <EditorContent>
             @if (Enumerable.Range(start, count).Any(index => IsOpenRow(group.Alternatives[index], index, groupIndex))) { @RequirementForm() }
@@ -371,47 +368,38 @@
 
     private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null, bool showParentheses = true) => @<span class="@(category.CategoryBases.Count > 1 ? (showParentheses ? "composite-alternative same-card-group" : "same-card-group") : null)">
         @if (showParentheses && category.CategoryBases.Count > 1) { @ExpressionParenthesis(true) }
-        <span class="same-card-category">
-        @for (int index = 0; index < category.CategoryBases.Count; index++) {
-            CategoryBase conjunct = category.CategoryBases[index];
-            <span @key="conjunct.Identity" class="same-card-conjunct">
-                @if (index > 0) {
-                    @if (changeOperator is not null) { <span class="same-card-and" @onclick:stopPropagation><ExpressionSeparator Operator="AND" AllowedOperators="allowedOperators!" Error="@operatorError" OnOperatorChanged="changeOperator" /></span> }
-                    else { <span class="same-card-and">AND</span> }
-                }
-                <span class="badge category-tag @CategoryCssClass(conjunct)" title="@(conjunct.Source == CategorySource.Metadata ? "Card property" : null)">
+        <ExpressionTerm Count="category.CategoryBases.Count" Compact="showParentheses" OperandKey="index => category.CategoryBases[index].Identity"
+            AllowedOperators="@(allowedOperators ?? ["AND", "OR"])" Error="@operatorError"
+            OnOperatorChanged="@(changeOperator is null ? default : EventCallback.Factory.Create(this, changeOperator))">
+            <OperandContent Context="index">
+                @{ CategoryBase conjunct = category.CategoryBases[index]; }
+                <ExpressionBadge CssClass="@CategoryCssClass(conjunct)" Title="@(conjunct.Source == CategorySource.Metadata ? "Card property" : null)">
                     @conjunct.Name
                     @if (index == category.CategoryBases.Count - 1) {
                         <span class="same-card-range"> (@RequirementRangeFormatter.Format(category.MinCount, category.MaxCount, category.MaximumMode))</span>
                     }
-                </span>
-            </span>
-        }
-        </span>
+                </ExpressionBadge>
+            </OperandContent>
+        </ExpressionTerm>
         @if (showParentheses && category.CategoryBases.Count > 1) { @ExpressionParenthesis(false) }
     </span>;
 
-    private RenderFragment CardBadge(ComboCard card) => @<span class="badge category-tag combo-card-tag @(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")">
+    private RenderFragment CardBadge(ComboCard card) => @<ExpressionBadge CssClass="@($"combo-card-tag {(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")}")">
         Card: @CardDisplayName(card.CardId) <span class="same-card-range">(@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))</span>
-    </span>;
+    </ExpressionBadge>;
 
-    private RenderFragment AlternativeBadge(ComboAlternative alternative) => @<span class="alternative-badge">
+    private RenderFragment AlternativeBadge(ComboAlternative alternative) => @<text>
         @if (alternative.Category is { } category) {
             @CategoryBadge(category)
         }
         else { @CardBadge(alternative.Card!) }
-    </span>;
+    </text>;
 
-    private RenderFragment AlternativeGroupMarkup(ComboAlternativeGroup group) => @<span class="alternative-group summary-group">
+    private RenderFragment AlternativeGroupMarkup(ComboAlternativeGroup group) => @<span class="alternative-group">
         @ExpressionParenthesis(true)
-        <span class="alternative-group-content">
-            @for (int index = 0; index < group.Alternatives.Count; index++) {
-                <span class="alternative-term">
-                    @if (index > 0) { <span class="alternative-separator">OR</span> }
-                    <span class="alternative-leaf">@AlternativeBadge(group.Alternatives[index])</span>
-                </span>
-            }
-        </span>
+        <ExpressionTerm Count="group.Alternatives.Count" Operator="OR" Compact="true">
+            <OperandContent Context="index">@AlternativeBadge(group.Alternatives[index])</OperandContent>
+        </ExpressionTerm>
         @ExpressionParenthesis(false)
     </span>;
 
@@ -968,7 +956,7 @@
 
         if (_focusAlternativeEntry) {
             _focusAlternativeEntry = false;
-            if (_returnRowKey is { } member && _alternativeButtons.TryGetValue(member, out ElementReference memberButton) && HasInlineAlternativeButton(member)) {
+            if (_returnRowKey is { } member && _alternativeButtons.TryGetValue(member, out ExpressionMember? memberButton) && HasInlineAlternativeButton(member)) {
                 _returnRowKey = null;
                 await memberButton.FocusAsync(preventScroll: true);
             }

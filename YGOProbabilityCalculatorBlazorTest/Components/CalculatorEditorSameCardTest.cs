@@ -69,7 +69,7 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
-        Assert.That(editor.FindAll(".expanded-expression .same-card-and"), Has.Count.EqualTo(2));
+        Assert.That(editor.FindAll(".expanded-expression .expression-inline-separator"), Has.Count.EqualTo(2));
 
         await RemoveProperty(editor, "category:0", 2);
         Assert.That(editor.Instance.Combo.Categories.Single().Selector.Kind, Is.EqualTo(CardSelectorKind.Category));
@@ -144,9 +144,9 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
 
         IElement expression = editor.Find(".expanded-expression > .requirement-row");
         Assert.That(expression.QuerySelector(".composite-alternative, .expression-parenthesis"), Is.Null);
-        Assert.That(expression.QuerySelectorAll(".same-card-category .same-card-conjunct"), Has.Length.EqualTo(2));
-        Assert.That(expression.QuerySelectorAll(".same-card-and"), Has.Length.EqualTo(1));
-        Assert.That(editor.Find(".combo-header-content .same-card-category").QuerySelectorAll(".same-card-conjunct"), Has.Length.EqualTo(2));
+        Assert.That(expression.QuerySelectorAll(".expression-term-content > .expression-term-part"), Has.Length.EqualTo(2));
+        Assert.That(expression.QuerySelectorAll(".expression-inline-separator"), Has.Length.EqualTo(1));
+        Assert.That(editor.Find(".combo-header-content .expression-term-content").QuerySelectorAll(".expression-term-part"), Has.Length.EqualTo(2));
     }
 
     [Test]

@@ -1,11 +1,14 @@
+.expression-separator {
+    color: var(--bs-secondary-color);
+    font-size: .8rem;
+    font-weight: 600;
+    line-height: 1;
+}
+.expression-copy-separator { font-size: 1rem; }
 .requirement-and-separator {
     display: flex;
     align-items: center;
     gap: .65rem;
-    color: var(--bs-secondary-color);
-    font-size: 1rem;
-    font-weight: 600;
-    line-height: 1;
 }
 .requirement-and-separator::before, .requirement-and-separator::after {
     content: "";
@@ -13,7 +16,9 @@
     border-block-start: 1px solid var(--bs-border-color);
 }
 
-.alternative-separator { display: block; padding: .25rem .65rem; text-align: center; color: var(--bs-secondary-color); font-size: .8rem; font-weight: 600; }
+.alternative-separator { display: block; padding: .25rem .65rem; text-align: center; }
+.expression-inline-separator { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0; padding: 0; }
+.expression-inline-separator::before, .expression-inline-separator::after { display: none; }
 .expression-operator {
     appearance: none;
     background: var(--bs-body-bg);

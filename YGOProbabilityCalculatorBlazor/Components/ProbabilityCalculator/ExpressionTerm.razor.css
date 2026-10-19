@@ -1,0 +1,10 @@
+.expression-term-content,
+.expression-term-part {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--expression-term-gap, .5rem);
+    min-width: 0;
+    max-width: 100%;
+}
+.expression-term-compact { --expression-term-gap: .25rem; }

@@ -111,7 +111,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card, saved));
         editor.Find(".simulation-edit").Click();
         Node(editor, CardSelectorKind.AnyOf).Find(".requirement-edit").Click();
-        editor.Find("[aria-label='Row operator']").Change("AllOf");
+        editor.Find("[aria-label='Row operator']").Change("AND");
         SaveRow(editor);
         editor.Find(".simulation-save").Click();
         Assert.That(saved!.Search!.Selector.Signature, Does.Contain("AllOf"));
@@ -194,7 +194,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(2));
         Assert.That(editor.FindComponents<ExpressionForm>(), Has.Count.EqualTo(1));
         Assert.That(editor.FindComponents<ExpressionGroup>(), Has.Count.EqualTo(1));
-        Assert.That(editor.FindComponents<ExpressionSeparator>(), Has.Count.EqualTo(2));
+        Assert.That(editor.FindAll(".expanded-expression .expression-separator"), Has.Count.EqualTo(2));
         Button(editor.FindComponent<ExpressionForm>(), "Cancel").Click();
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
     }
@@ -262,7 +262,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         IRenderedComponent<SelectorExpressionEditor> nested = editor.FindComponents<SelectorExpressionEditor>()
             .Single(component => !component.Instance.IsRoot && component.Instance.Selector.Kind == CardSelectorKind.AnyOf);
         nested.Find(".requirement-edit").Click();
-        editor.Find("[aria-label='Row operator']").Change("AllOf");
+        editor.Find("[aria-label='Row operator']").Change("AND");
         CancelRow(editor);
         Assert.That(current.Children, Does.Contain(untouched));
         nested.Find(".requirement-edit").Click();

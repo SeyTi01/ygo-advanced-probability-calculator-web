@@ -38,26 +38,42 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
     // can look correct in markup while still differing between AND/OR fields.
     const shortCategories = categories.map((value, index) => ({ ...value, Name: String.fromCharCode(65 + index) }));
     const shortCategory = index => ({ ...category(index), BaseCategory: shortCategories[index] });
-    const geometryFixture = { ...fixture, Categories: shortCategories, Cards: [], Combos: [{
+    const geometryCards = ['AllOf', 'AnyOf'].map((Kind, index) => ({
+        Id: `geometry-${index}`, Name: `Selector geometry ${index}`, Copies: 1, Active: true, Categories: shortCategories,
+        DrawCount: 1, PostDrawDiscardCount: 1, PostDrawSelector: { Kind, Categories: ['user:B', 'user:C'] }
+    }));
+    const geometryFixture = { ...fixture, Categories: shortCategories, Cards: geometryCards, Combos: [{
         Name: 'Operator review combo', Active: true,
         Categories: [shortCategory(0), { ...same(1, 2), CategoryBases: shortCategories.slice(1, 3), Selector: { Kind: 'AllOf', Categories: ['user:B', 'user:C'] } }],
         Cards: [], AlternativeGroups: [{ Alternatives: [3, 4].map(index => ({ Kind: 'Category', Category: shortCategory(index) })) }]
     }] };
     const geometryCombo = await load(geometryFixture);
+    const measureRows = rows => rows.evaluateAll(elements => elements.map(row => {
+        const box = element => { const rect = element.getBoundingClientRect(); return { left: rect.left, right: rect.right, center: rect.top + rect.height / 2, height: rect.height }; };
+        const surface = row.querySelector('.requirement-interactive-summary') || row.querySelector('.requirement-edit');
+        return {
+            center: box(surface).center,
+            badges: [...row.querySelectorAll('.category-tag')].map(element => ({ ...box(element), font: getComputedStyle(element).fontSize, margin: getComputedStyle(element).marginBottom })),
+            operators: [...row.querySelectorAll('.expression-operator')].map(element => ({ ...box(element), style: Object.fromEntries(
+                ['fontSize', 'fontWeight', 'lineHeight', 'padding', 'minHeight', 'minWidth'].map(property => [property, getComputedStyle(element)[property]])) }))
+        };
+    }));
     for (const width of [1280, 768]) {
         for (const theme of ['light', 'dark']) {
             await setLayout(width, theme);
-            const measurements = await geometryCombo.locator('.expanded-expression .requirement-row').evaluateAll(rows => rows.map(row => {
-                const box = element => { const rect = element.getBoundingClientRect(); return { left: rect.left, right: rect.right, center: rect.top + rect.height / 2, height: rect.height }; };
-                const surface = row.querySelector('.requirement-interactive-summary') || row.querySelector('.requirement-edit');
-                return {
-                    center: box(surface).center,
-                    badges: [...row.querySelectorAll('.category-tag')].map(element => ({ ...box(element), font: getComputedStyle(element).fontSize, margin: getComputedStyle(element).marginBottom })),
-                    operators: [...row.querySelectorAll('.expression-operator')].map(box)
-                };
-            }));
+            const measurements = await measureRows(geometryCombo.locator('.expanded-expression .requirement-row'));
+            for (let index = 0; index < geometryCards.length; index++) {
+                const card = page.locator('.card-editor').filter({ hasText: `Selector geometry ${index}` });
+                await card.locator('.accordion-button').click();
+                await card.locator('.simulation-edit').click();
+                measurements.push(...await measureRows(card.locator('.selector-expression .requirement-row')));
+                await capture(`shared-selector-${index}-${width}-${theme}`);
+                await card.locator('.simulation-editor').getByRole('button', { name: 'Cancel', exact: true }).click();
+                await card.locator('.accordion-button').click();
+            }
             const reference = measurements[0].badges[0];
             const gaps = [];
+            const referenceOperator = measurements[1].operators[0];
             for (const row of measurements) {
                 for (const badge of row.badges) {
                     assert.equal(badge.font, reference.font, `badge font at ${width}/${theme}`);
@@ -67,6 +83,8 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
                 }
                 if (row.operators.length) {
                     const operator = row.operators[0];
+                    assert.deepEqual(operator.style, referenceOperator.style, `same combo/simulation AND/OR control styles at ${width}/${theme}`);
+                    assert.equal(operator.height, referenceOperator.height, `same combo/simulation control heights at ${width}/${theme}`);
                     assert.ok(Math.abs(operator.center - row.center) < 1, `operator centered at ${width}/${theme}`);
                     gaps.push(operator.left - row.badges[0].right, row.badges[1].left - operator.right);
                 }
@@ -77,10 +95,11 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
             const headerBadges = await geometryCombo.locator('.combo-header-requirements .category-tag').evaluateAll(elements => elements.map(element => ({ font: getComputedStyle(element).fontSize, height: element.getBoundingClientRect().height })));
             assert.equal(headerBadges.length, 5);
             assert.ok(headerBadges.every(badge => badge.font === headerBadges[0].font && badge.height === headerBadges[0].height), `equal header badge sizes at ${width}/${theme}`);
-            await geometryCombo.locator('.accordion-button').click();
+            await geometryCombo.locator('.combo-header-requirements .expression-separator').last().click();
+            assert.equal(await geometryCombo.locator('.accordion-button').getAttribute('aria-expanded'), 'true', 'static header operators let the header open');
         }
     }
-    console.log('PASS badge geometry: centered chips and operators, equal AND/OR gaps and equal header badge sizes.');
+    console.log('PASS shared combo/simulation geometry: equal AND/OR control styles, centered chips/operators, equal gaps and header badge sizes.');
     await load(fixture);
     await page.waitForFunction(count => document.querySelectorAll('.combo-editor').length === count, combos.length);
     const original = await saveSession();
@@ -96,7 +115,15 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
                 assert.equal(await rows.count(), expectedCombos[index].split(';').length, `combo ${index} at ${width}/${theme}`);
                 assert.equal(await readTerms(rows), expectedCombos[index]);
                 assert.equal(await combo.locator('.expanded-expression .expression-parenthesis, .inline-member-picker, .requirement-form').count(), 0);
-                await activate(rows.first().locator('.requirement-edit'));
+                try {
+                    await activate(rows.first().locator('.requirement-edit'));
+                }
+                catch (error) {
+                    console.error('Term activation diagnostics', { index, width, theme, expanded: await combo.locator('.accordion-button').getAttribute('aria-expanded'),
+                        rows: await rows.evaluateAll(elements => elements.map(element => ({ text: element.textContent, box: element.getBoundingClientRect().toJSON() }))) });
+                    await capture(`term-combo-${index}-failure-${width}-${theme}`);
+                    throw error;
+                }
                 assert.equal(await combo.locator('.requirement-row form').count(), 1);
                 await assertNoOverflow(`editing combo ${index}/${width}/${theme}`);
                 if ([2, 3, 6].includes(index)) { await capture(`term-combo-${index}-${width}-${theme}`); }
@@ -112,6 +139,7 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
                 assert.equal(await rows.count(), expectedSelectors[index].split(';').length, `selector ${index}/${width}/${theme}`);
                 assert.equal(await readTerms(rows), expectedSelectors[index]);
                 assert.deepEqual(await card.locator('.selector-nested-term').evaluateAll(terms => terms.map(term => [getComputedStyle(term, '::before').content, getComputedStyle(term, '::after').content])), index < 2 ? [] : Array(index === 4 || index === 5 ? 1 : 2).fill(['none', 'none']));
+                assert.deepEqual(await card.locator('.selector-expression .expression-operator').evaluateAll(elements => [...new Set(elements.map(element => getComputedStyle(element).fontSize))]), ['12.8px']);
                 const outer = card.locator('[data-selector-path="root"] > .requirement-or-group > .requirement-and-separator select, [data-selector-path="root"] > .requirement-or-group > .alternative-separator select');
                 assert.deepEqual(await outer.evaluateAll(elements => elements.map(element => element.value)), index < 2 ? [] : [index === 3 || index === 4 ? 'OR' : 'AND']);
                 await activate(rows.first().locator('.requirement-edit'));
