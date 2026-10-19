@@ -28,5 +28,5 @@
 }
 .requirement-description { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; min-width: 0; }
 .requirement-description ::deep .badge { margin: 0; white-space: normal; overflow-wrap: anywhere; }
-.requirement-row .requirement-edit .requirement-description ::deep .badge { margin-block-end: 0; }
+.requirement-row :is(.requirement-edit, .requirement-interactive-summary) .requirement-description ::deep .badge { margin-block-end: 0; }
 .requirement-edit-label { font-size: .8rem; color: var(--bs-link-color); flex-shrink: 0; }

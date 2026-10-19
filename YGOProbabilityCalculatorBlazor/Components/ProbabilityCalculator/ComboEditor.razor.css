@@ -175,7 +175,6 @@
 
 .alternative-separator, .expression-and { font-size: .8rem; font-weight: 600; }
 .alternative-separator, .same-card-and, .expression-and { white-space: nowrap; flex-shrink: 0; }
-.summary-group { font-size: .8rem; }
 .requirement-fields { display: grid; align-items: end; }
 .requirement-fields > div { min-width: 0; }
 
@@ -224,10 +223,11 @@ summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2p
     .requirement-submit .btn { white-space: normal; }
 }
 
-.alternative-member { display: inline-flex; min-width: 0; max-width: 100%; padding: .15rem; border: 0; border-radius: .25rem; background: transparent; color: inherit; text-align: start; min-height: 36px; align-items: center; }
+.alternative-member { display: inline-flex; min-width: 0; max-width: 100%; padding: 0; border: 0; border-radius: .25rem; background: transparent; color: inherit; font: inherit; text-align: start; min-height: 36px; align-items: center; }
 .alternative-member:hover, .alternative-member[aria-expanded="true"] { background: var(--bs-secondary-bg); }
 .alternative-member:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
-.alternative-group-content ::deep .alternative-separator { display: inline-flex; gap: 0; }
+.expanded-expression :is(.same-card-category, .same-card-conjunct, .alternative-group-content) { gap: .5rem; }
+.alternative-group-content ::deep .alternative-separator { display: inline-flex; gap: 0; padding: 0; line-height: 1; }
 .alternative-group-content ::deep .alternative-separator::before,
 .alternative-group-content ::deep .alternative-separator::after { display: none; }
 @media (pointer: coarse) { .alternative-member { min-height: 44px; } }

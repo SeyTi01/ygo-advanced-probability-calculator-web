@@ -34,7 +34,55 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
     })) };
     const expectedCombos = ['A;B;C', 'ABC', 'ABC', 'AB;CD', 'A;BC;D', 'AB;CD', 'AB;CD'];
     const expectedSelectors = ['ABC', 'ABC', 'AB;CD', 'AB;CD', 'A;BC', 'AB;CD'];
+    // Measure actual chip/control geometry: inherited font sizes and margins
+    // can look correct in markup while still differing between AND/OR fields.
+    const shortCategories = categories.map((value, index) => ({ ...value, Name: String.fromCharCode(65 + index) }));
+    const shortCategory = index => ({ ...category(index), BaseCategory: shortCategories[index] });
+    const geometryFixture = { ...fixture, Categories: shortCategories, Cards: [], Combos: [{
+        Name: 'Operator review combo', Active: true,
+        Categories: [shortCategory(0), { ...same(1, 2), CategoryBases: shortCategories.slice(1, 3), Selector: { Kind: 'AllOf', Categories: ['user:B', 'user:C'] } }],
+        Cards: [], AlternativeGroups: [{ Alternatives: [3, 4].map(index => ({ Kind: 'Category', Category: shortCategory(index) })) }]
+    }] };
+    const geometryCombo = await load(geometryFixture);
+    for (const width of [1280, 768]) {
+        for (const theme of ['light', 'dark']) {
+            await setLayout(width, theme);
+            const measurements = await geometryCombo.locator('.expanded-expression .requirement-row').evaluateAll(rows => rows.map(row => {
+                const box = element => { const rect = element.getBoundingClientRect(); return { left: rect.left, right: rect.right, center: rect.top + rect.height / 2, height: rect.height }; };
+                const surface = row.querySelector('.requirement-interactive-summary') || row.querySelector('.requirement-edit');
+                return {
+                    center: box(surface).center,
+                    badges: [...row.querySelectorAll('.category-tag')].map(element => ({ ...box(element), font: getComputedStyle(element).fontSize, margin: getComputedStyle(element).marginBottom })),
+                    operators: [...row.querySelectorAll('.expression-operator')].map(box)
+                };
+            }));
+            const reference = measurements[0].badges[0];
+            const gaps = [];
+            for (const row of measurements) {
+                for (const badge of row.badges) {
+                    assert.equal(badge.font, reference.font, `badge font at ${width}/${theme}`);
+                    assert.equal(badge.height, reference.height, `badge height at ${width}/${theme}`);
+                    assert.equal(badge.margin, '0px', `badge margin at ${width}/${theme}`);
+                    assert.ok(Math.abs(badge.center - row.center) < 1, `badge centered in field at ${width}/${theme}`);
+                }
+                if (row.operators.length) {
+                    const operator = row.operators[0];
+                    assert.ok(Math.abs(operator.center - row.center) < 1, `operator centered at ${width}/${theme}`);
+                    gaps.push(operator.left - row.badges[0].right, row.badges[1].left - operator.right);
+                }
+            }
+            assert.ok(gaps.every(gap => Math.abs(gap - gaps[0]) < 1), `equal space on both sides of AND/OR: ${gaps}`);
+            await capture(`inline-combo-geometry-${width}-${theme}`);
+            await geometryCombo.locator('.accordion-button').click();
+            const headerBadges = await geometryCombo.locator('.combo-header-requirements .category-tag').evaluateAll(elements => elements.map(element => ({ font: getComputedStyle(element).fontSize, height: element.getBoundingClientRect().height })));
+            assert.equal(headerBadges.length, 5);
+            assert.ok(headerBadges.every(badge => badge.font === headerBadges[0].font && badge.height === headerBadges[0].height), `equal header badge sizes at ${width}/${theme}`);
+            await geometryCombo.locator('.accordion-button').click();
+        }
+    }
+    console.log('PASS badge geometry: centered chips and operators, equal AND/OR gaps and equal header badge sizes.');
     await load(fixture);
+    await page.waitForFunction(count => document.querySelectorAll('.combo-editor').length === count, combos.length);
     const original = await saveSession();
     const readTerms = rows => rows.evaluateAll(elements => elements.map(row => [...row.querySelectorAll('.requirement-description .category-tag')]
         .map(chip => chip.textContent.trim().charAt(0)).join('')).join(';'));
