@@ -199,86 +199,22 @@ public partial class ComboEditor {
         }
     }
 
-    private async Task InsertGroupMember(int groupIndex, string? target) {
-        if (!TryInlineTarget(target, out ComboAlternative? leaf)) { return; }
-        if (_alternativeGroupIndex == groupIndex || _andGroupIndex == groupIndex) {
-            RefuseInline($"group:{groupIndex}", "Finish the pending addition before inserting another condition.");
-            return;
-        }
-        List<ComboAlternativeGroup> groups = Combo.AlternativeGroups.ToList();
-        groups[groupIndex] = new(groups[groupIndex].Alternatives.Append(leaf!).ToArray());
-        _connectorErrorKey = null;
-        Combo updated = Combo.WithAlternativeGroups(groups);
-        TransferRowIdentities(updated);
-        await OnReplaceCombo.InvokeAsync((Index, updated));
+    private void ToggleNewRequirement() {
+        if (_editingNewRequirement) { CancelRequirement(); return; }
+        BeginTopLevelRequirement();
     }
 
-    private Task InsertRowMember(ComboAlternative requirement, int index, int? groupIndex, string target) {
-        if (target.StartsWith("AND|", StringComparison.Ordinal)) {
-            return InsertProperty(requirement, index, groupIndex, target[4..]);
-        }
-        if (groupIndex is int group) { return InsertGroupMember(group, target); }
-        if (!TryInlineTarget(target, out ComboAlternative? leaf)) { return Task.CompletedTask; }
-        return ApplyInline([new(requirement.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card, index)],
-            new("OR", [requirement, leaf!]), RowKey(requirement, index, groupIndex));
-    }
-
-    private async Task InsertProperty(ComboAlternative requirement, int index, int? groupIndex, string? target) {
-        if (requirement.Category is not { } category || _availableCategories.FirstOrDefault(candidate => candidate.Identity == target) is not { } property) { return; }
-        if (_editingRequirement is not null && SameRequirement(_editingRequirement, requirement)
-            && _editingIndex == index && _editingGroupIndex == groupIndex) {
-            if (_selectedKind != "Category") {
-                RefuseInline(RowKey(requirement, index, groupIndex), "Save or cancel the target change first.");
-                return;
-            }
-            if (!_draftProperties.Any(candidate => candidate.Identity == property.Identity)) { _draftProperties.Add(property); }
-            return;
-        }
-        if (AuthoringScope) {
-            RefuseInline(RowKey(requirement, index, groupIndex), "Finish the pending addition first.");
-            return;
-        }
-        ComboCategory replacement;
-        try {
-            replacement = ComboCategory.SameCard(category.CategoryBases.Append(property), category.MinCount, category.MaxCount, category.MaximumMode);
-        }
-        catch (ArgumentException exception) {
-            RefuseInline(RowKey(requirement, index, groupIndex), exception.Message);
-            return;
-        }
-        Combo updated;
-        if (groupIndex is int group) {
-            List<ComboAlternativeGroup> groups = Combo.AlternativeGroups.ToList();
-            List<ComboAlternative> leaves = groups[group].Alternatives.ToList();
-            leaves[index] = ComboAlternative.For(replacement);
-            groups[group] = new(leaves);
-            updated = Combo.WithAlternativeGroups(groups);
-        }
-        else {
-            List<ComboCategory> categories = Combo.Categories.ToList();
-            categories[index] = replacement;
-            updated = Combo.WithCategories(categories);
-        }
-        _connectorErrorKey = null;
-        _focusPicker = groupIndex is int currentGroup && index == 0
-            ? $"Add condition to OR group {currentGroup + 1}" : $"Add condition to {RowKey(requirement, index, groupIndex)}";
-        TransferRowIdentities(updated);
-        await OnReplaceCombo.InvokeAsync((Index, updated));
-    }
-
-    private bool TryInlineTarget(string? target, out ComboAlternative? requirement) {
-        requirement = null;
-        if (target?.StartsWith("card:", StringComparison.Ordinal) == true && Cards.Any(card => card.Id == target[5..])) {
-            requirement = ComboAlternative.For(new ComboCard(target[5..], 1, HandSize, RequirementMaximumMode.HandSize));
-        }
-        else if (_availableCategories.FirstOrDefault(category => category.Identity == target) is { } category) {
-            requirement = ComboAlternative.For(new ComboCategory(category, 1, HandSize, RequirementMaximumMode.HandSize));
-        }
-        return requirement is not null;
+    private void FinishNewRequirement(string key) {
+        _editingNewRequirement = false;
+        _hasNewRequirementRow = false;
+        _returnRowKey = key;
+        _focusAlternativeEntry = true;
     }
 
     private void BeginTopLevelRequirement() {
         if (_editingRequirement is not null || AuthoringScope) { CancelScopedAuthoring(); }
+        _hasNewRequirementRow = true;
+        _editingNewRequirement = true;
         _focusAlternativeEntry = true;
         _returnRowKey = null;
     }

@@ -271,18 +271,18 @@ public class ActiveEntriesEditorTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:B");
-        combo.Find("select[id^='comboTarget']").Change("user:B");
-        combo.Find("#minCount0").Input("0");
-        combo.Find("#maxCount0").Input("0");
+        CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").Change("user:B");
+        CalculatorEditorTestBase.RequirementField(combo, "#minCount0").Input("0");
+        CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").Input("0");
         SetActiveAsync(card, "#cardActive0", true).GetAwaiter().GetResult();
         SetActiveAsync(card, "#cardActive0", false).GetAwaiter().GetResult();
         SetActiveAsync(combo, "#comboActive0", true).GetAwaiter().GetResult();
         SetActiveAsync(combo, "#comboActive0", false).GetAwaiter().GetResult();
 
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:B"));
-        Assert.That(combo.Find("select[id^='comboTarget']").GetAttribute("value"), Is.EqualTo("user:B"));
-        Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
-        Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").GetAttribute("value"), Is.EqualTo("user:B"));
+        Assert.That(CalculatorEditorTestBase.RequirementField(combo, "#minCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
 
@@ -348,9 +348,9 @@ public class ActiveEntriesEditorTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:A");
-        combo.Find("select[id^='comboTarget']").Change("user:A");
-        combo.Find("#minCount0").Input("0");
-        combo.Find("#maxCount0").Input("0");
+        CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").Change("user:A");
+        CalculatorEditorTestBase.RequirementField(combo, "#minCount0").Input("0");
+        CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").Input("0");
 
         cut.Find("[aria-label='Edit category A']").Click();
         cut.Find("[aria-label='New name for category A']").Input("Renamed A");
@@ -361,9 +361,9 @@ public class ActiveEntriesEditorTest {
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
         Assert.That(combo.Find("#comboActive0").TextContent.Equals("Deactivate", StringComparison.Ordinal), Is.False);
         Assert.That(combo.Find(".accordion-button").TextContent, Does.Contain("Inactive").And.Contain("Renamed A"));
-        Assert.That(combo.Find("select[id^='comboTarget']").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
-        Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
-        Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").GetAttribute("value"), Is.EqualTo("user:Renamed A"));
+        Assert.That(CalculatorEditorTestBase.RequirementField(combo, "#minCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
     }

@@ -96,9 +96,9 @@ public class CategoryRenameTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:Old");
-        combo.Find("select[id^='comboTarget']").Change("user:Old");
-        combo.Find("#minCount0").Input("0");
-        combo.Find("#maxCount0").Input("1");
+        CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").Change("user:Old");
+        CalculatorEditorTestBase.RequirementField(combo, "#minCount0").Input("0");
+        CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").Input("1");
 
         RenameCategory(cut, "Old", "Renamed");
 
@@ -107,9 +107,9 @@ public class CategoryRenameTest {
         Assert.That(card.Instance.Card, Is.SameAs(originalCards[0]));
         Assert.That(combo.Instance.Combo, Is.SameAs(originalCombos[0]));
         Assert.That(card.Find("select[id^='cardCategory']").GetAttribute("value"), Is.EqualTo("user:Renamed"));
-        Assert.That(combo.Find("select[id^='comboTarget']").GetAttribute("value"), Is.EqualTo("user:Renamed"));
-        Assert.That(combo.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
-        Assert.That(combo.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("1"));
+        Assert.That(CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").GetAttribute("value"), Is.EqualTo("user:Renamed"));
+        Assert.That(CalculatorEditorTestBase.RequirementField(combo, "#minCount0").GetAttribute("value"), Is.EqualTo("0"));
+        Assert.That(CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").GetAttribute("value"), Is.EqualTo("1"));
         Assert.That(card.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(combo.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
 

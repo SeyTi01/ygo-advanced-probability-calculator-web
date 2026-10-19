@@ -233,8 +233,8 @@ public class BackgroundCalculationComponentTest {
         }
         else {
             await editor.Find("[data-action='alternative']").ClickAsync(new());
-            await editor.Find("#comboTarget0").ChangeAsync(new() { Value = "card:b" });
-            await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
+            await CalculatorEditorTestBase.RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:b" });
+            await CalculatorEditorTestBase.RequirementField(editor, "#minCount0").InputAsync(new() { Value = "3" });
             await editor.Find(".requirement-form-heading button").ClickAsync(new());
         }
         string serializedSession = codec.SerializeSession(new SessionState { Cards = editor.Instance.Cards.ToList(), Combos = [editor.Instance.Combo], HandSize = 2 });
@@ -258,7 +258,7 @@ public class BackgroundCalculationComponentTest {
         await editor.Find(".accordion-button").ClickAsync(new());
         await editor.Find("[data-requirement='card:0']").ClickAsync(new());
         await editor.Find("[data-action='alternative']").ClickAsync(new());
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = "card:b" });
+        await CalculatorEditorTestBase.RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:b" });
         await editor.Find(".requirement-submit button").ClickAsync(new());
         Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
         if (error) {

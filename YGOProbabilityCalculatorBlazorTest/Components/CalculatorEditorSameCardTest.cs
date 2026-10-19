@@ -17,29 +17,29 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "3" });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "4" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "3" });
+        await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "4" });
         Combo before = editor.Instance.Combo;
 
         await ExtendRequirement(editor, "category:0", sameCard: true);
-        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.Empty);
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("1"));
-        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("2"));
+        Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.Empty);
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("1"));
+        Assert.That(RequirementField(editor, "#maxCount0").GetAttribute("value"), Is.EqualTo("2"));
         Assert.That(editor.FindAll("#comboTarget0 option").ToArray().Any(option => option.GetAttribute("value") == a.Identity), Is.False);
         Assert.That(editor.FindAll("#comboTarget0 option").ToArray().Any(option => option.GetAttribute("value") == b.Identity), Is.True);
         Assert.That(editor.Instance.Combo, Is.SameAs(before));
 
         await Button(editor, "Cancel").ClickAsync(new());
         Assert.That(editor.Instance.Combo, Is.SameAs(before));
-        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
-        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
+        Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(RequirementField(editor, "#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
 
         await ExtendRequirement(editor, "category:0", sameCard: true);
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
+        await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "" });
         await Button(editor, "Add property").ClickAsync(new());
 
         ComboCategory requirement = editor.Instance.Combo.Categories.Single();
@@ -47,9 +47,9 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         Assert.That(requirement.Selector.CategoryIdentities, Is.EquivalentTo(new[] { a.Identity, b.Identity }));
         Assert.That(requirement.MinCount, Is.EqualTo(2));
         Assert.That(requirement.MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
-        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("3"));
-        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
+        Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("3"));
+        Assert.That(RequirementField(editor, "#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
     }
 
     [Test]
@@ -98,21 +98,21 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         await ExtendRequirement(editor, "category:0", sameCard: true);
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await Button(editor, "Add property").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories[0].Selector.CategoryIdentities, Is.EquivalentTo(new[] { a.Identity, b.Identity }));
 
         await ExtendRequirement(editor, "category:0");
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = c.Identity });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "3" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = c.Identity });
+        await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "3" });
         await Button(editor, "Add alternative").ClickAsync(new());
 
         await ExtendRequirement(editor, "alternative:0:1", sameCard: true);
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("1"));
-        Assert.That(editor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("3"));
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
-        await editor.Find("#maxCount0").InputAsync(new() { Value = "" });
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("1"));
+        Assert.That(RequirementField(editor, "#maxCount0").GetAttribute("value"), Is.EqualTo("3"));
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
+        await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "" });
         await Button(editor, "Add property").ClickAsync(new());
 
         ComboAlternativeGroup group = editor.Instance.Combo.AlternativeGroups.Single();
@@ -143,7 +143,7 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         await editor.Find(".accordion-button").ClickAsync(new());
 
         IElement expression = editor.Find(".expanded-expression > .requirement-row");
-        Assert.That(expression.QuerySelector(".composite-alternative"), Is.Not.Null);
+        Assert.That(expression.QuerySelector(".composite-alternative, .expression-parenthesis"), Is.Null);
         Assert.That(expression.QuerySelectorAll(".same-card-category .same-card-conjunct"), Has.Length.EqualTo(2));
         Assert.That(expression.QuerySelectorAll(".same-card-and"), Has.Length.EqualTo(1));
         Assert.That(editor.Find(".combo-header-content .same-card-category").QuerySelectorAll(".same-card-conjunct"), Has.Length.EqualTo(2));
@@ -158,14 +158,14 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         await ExtendRequirement(editor, "category:0", sameCard: true);
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Renamed" });
         await cut.Find("[aria-label='New name for category A']").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
 
-        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
+        Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
         Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("requirement 1"));
         await Button(editor, "Add property").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories.Single().Selector.CategoryIdentities, Does.Contain("user:Renamed"));
@@ -183,14 +183,14 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         await ExtendRequirement(editor, "alternative:0:0", sameCard: true);
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Renamed" });
         await cut.Find("[aria-label='New name for category A']").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
 
         Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("OR group 1, alternative 1"));
-        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
+        Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
         await Button(editor, "Add property").ClickAsync(new());
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[0].Category!.Selector.CategoryIdentities,
             Is.EquivalentTo(new[] { "user:Renamed", b.Identity }));

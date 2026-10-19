@@ -75,7 +75,7 @@
 
             <div class="requirement-list expanded-expression" aria-label="Combo requirements">
                 @if (ConstraintCount > 0) {
-                    <p class="requirement-explanation text-body-secondary">Match every requirement. Required card copies cannot be shared between requirements.</p>
+                    <p class="requirement-explanation text-body-secondary">+ separates physical card requirements; AND/OR describe one card.</p>
                 }
                 @foreach (ComboRequirementPosition position in Combo.RequirementOrder) {
                     @if (position != Combo.RequirementOrder[0]) { @RequirementSeparator(position) }
@@ -99,10 +99,18 @@
                         </ExpressionGroup>
                     }
                 }
+                @if (ShowNewRequirementRow) {
+                    @if (ConstraintCount > 0) { <ExpressionSeparator Operator="AND" Symbol="+" AllowedOperators="@(new[] { "+" })" /> }
+                    <ExpressionRow Label="Edit new requirement" Expanded="_editingNewRequirement" OnEdit="ToggleNewRequirement"
+                                   @ref="_newRequirementRow" data-new-requirement="true">
+                        <ChildContent><span class="text-body-secondary">Choose a card, category or property</span></ChildContent>
+                        <EditorContent>@if (_editingNewRequirement) { @RequirementForm() }</EditorContent>
+                    </ExpressionRow>
+                }
             </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary add-top-level-group" title="Add a separate-copy requirement" @onclick="BeginTopLevelRequirement">+ Add group</button>
-            @if (!AuthoringScope && _editingRequirement is null) {
-                @RequirementForm()
+            @if (!ShowNewRequirementRow) {
+                <button type="button" class="btn btn-sm btn-outline-secondary add-top-level-group" title="Add a separate-copy requirement"
+                        @ref="_newRequirementButton" @onclick="BeginTopLevelRequirement">+ Add requirement</button>
             }
 
             <div class="combo-footer">
@@ -132,16 +140,9 @@
         @ref="_rowButtons[RowKey(requirement, index, groupIndex)]" data-requirement="@RowKey(requirement, index, groupIndex)"
         OnEdit="() => BeginEdit(requirement, index, groupIndex)">
         <ChildContent>
-            @if (requirement.Category is { } category) { @CategoryBadge(category, operation => ConvertSameCard(requirement, index, groupIndex, operation), SameCardOperators(requirement, index, groupIndex), ConnectorError($"same:{RowKey(requirement, index, groupIndex)}")) }
+            @if (requirement.Category is { } category) { @CategoryBadge(category, operation => ConvertSameCard(requirement, index, groupIndex, operation), SameCardOperators(requirement, index, groupIndex), ConnectorError($"same:{RowKey(requirement, index, groupIndex)}"), showParentheses: false) }
             else { @CardBadge(requirement.Card!) }
         </ChildContent>
-        <Controls>
-            @MemberPicker(groupIndex is int group && index == 0 ? $"Add condition to OR group {group + 1}" : $"Add condition to {RowKey(requirement, index, groupIndex)}", requirement.Category is not null,
-                target => InsertRowMember(requirement, index, groupIndex, target))
-            @if (ConnectorError(RowKey(requirement, index, groupIndex)) is { } insertionError) {
-                <small class="text-danger" role="alert">@insertionError</small>
-            }
-        </Controls>
         <EditorContent>
             @if (IsOpenRow(requirement, index, groupIndex)) { @RequirementForm() }
         </EditorContent>
@@ -157,9 +158,7 @@
         InteractiveSummary="true" @ref="_rowButtons[RowKey(group.Alternatives[start], start, groupIndex)]"
         OnEdit="() => ToggleAlternativeTerm(group, groupIndex, start, count)">
         <ChildContent>
-            <span class="alternative-group">
-                @ExpressionParenthesis(true)
-                <span class="alternative-group-content">
+            <span class="alternative-group-content">
                     @for (int index = start; index < start + count; index++) {
                         int leafIndex = index;
                         ComboAlternative leaf = group.Alternatives[index];
@@ -171,39 +170,17 @@
                             @AlternativeBadge(leaf)
                         </button>
                     }
-                </span>
-                @ExpressionParenthesis(false)
             </span>
         </ChildContent>
-        <Controls>
-            @MemberPicker(start == 0 ? $"Add condition to OR group {groupIndex + 1}" : $"Add condition to alternative:{groupIndex}:{start}", group.Alternatives[start].Category is not null,
-                target => InsertRowMember(group.Alternatives[start], start, groupIndex, target))
-            @if (ConnectorError($"group:{groupIndex}") is { } error) { <small class="text-danger" role="alert">@error</small> }
-        </Controls>
         <EditorContent>
             @if (Enumerable.Range(start, count).Any(index => IsOpenRow(group.Alternatives[index], index, groupIndex))) { @RequirementForm() }
         </EditorContent>
     </ExpressionRow>;
 
-    private RenderFragment MemberPicker(string label, bool allowAnd, Func<string, Task> insert) => @<select
-        class="form-select form-select-sm inline-member-picker" aria-label="@label" title="@label"
-        @ref="_memberPickers[label]" @bind:get="string.Empty" @bind:set="insert">
-        <option value="">Add</option>
-        @if (allowAnd) {
-            <optgroup label="AND · same card">
-                @foreach (CategoryBase property in _availableCategories) { <option value="@($"AND|{property.Identity}")">@property.Name</option> }
-            </optgroup>
-        }
-        <optgroup label="OR · alternative">
-            @foreach (Card card in AlphabeticalCards) { <option value="@($"card:{card.Id}")">@CardSelectionLabel(card.Id)</option> }
-            @foreach (CategoryBase category in _availableCategories) { <option value="@category.Identity">@category.Name</option> }
-        </optgroup>
-    </select>;
-
     private RenderFragment RequirementForm() => @<ExpressionForm OnSubmit="AddConstraint" OnKeyDown="HandleRequirementKeyDown">
         <div class="requirement-form-heading">
             <strong>@(_editingRequirement is not null ? "Edit requirement" : AndScope ? "Another property · same card" : AlternativeScope ? "Add an alternative · OR" : "Add requirement")</strong>
-            @if (AuthoringScope || _editingRequirement is not null) {
+            @if (AuthoringScope || _editingRequirement is not null || _editingNewRequirement) {
                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelRequirement">Cancel</button>
             }
         </div>
@@ -392,8 +369,8 @@
         return $"{subject} ({AlternativeRange(alternative)})";
     }
 
-    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null) => @<span class="@(category.CategoryBases.Count > 1 ? "composite-alternative same-card-group" : null)">
-        @if (category.CategoryBases.Count > 1) { @ExpressionParenthesis(true) }
+    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null, bool showParentheses = true) => @<span class="@(category.CategoryBases.Count > 1 ? (showParentheses ? "composite-alternative same-card-group" : "same-card-group") : null)">
+        @if (showParentheses && category.CategoryBases.Count > 1) { @ExpressionParenthesis(true) }
         <span class="same-card-category">
         @for (int index = 0; index < category.CategoryBases.Count; index++) {
             CategoryBase conjunct = category.CategoryBases[index];
@@ -411,7 +388,7 @@
             </span>
         }
         </span>
-        @if (category.CategoryBases.Count > 1) { @ExpressionParenthesis(false) }
+        @if (showParentheses && category.CategoryBases.Count > 1) { @ExpressionParenthesis(false) }
     </span>;
 
     private RenderFragment CardBadge(ComboCard card) => @<span class="badge category-tag combo-card-tag @(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")">
@@ -449,6 +426,7 @@
         _connectorErrorKey = null;
         _connectorError = null;
         _focusAlternativeEntry = true;
+        _editingNewRequirement = false;
         _editingRequirement = null;
         _editingIndex = null;
         _editingGroupIndex = null;
@@ -572,6 +550,8 @@
             return Task.CompletedTask;
         }
 
+        _returnRowKey = _andGroupIndex is int savedGroup
+            ? $"alternative:{savedGroup}:{_andAlternativeIndex}" : $"category:{_andSeedIndex}";
         CancelScopedAuthoring();
 
         return OnReplaceCombo.InvokeAsync((Index, updated));
@@ -630,6 +610,8 @@
         if (authoredPosition is int position) {
             updated = updated.WithRequirementAt(new(ComboRequirementKind.Group, groups.Count - 1), position);
         }
+        int savedGroup = _alternativeGroupIndex ?? groups.Count - 1;
+        _returnRowKey = $"alternative:{savedGroup}:{groups[savedGroup].Alternatives.Count - 1}";
         CancelAlternative();
 
         return OnReplaceCombo.InvokeAsync((Index, updated));
@@ -855,7 +837,7 @@
         _selectedCategory = string.Empty;
         _error = null;
         ResetEditorDefaults();
-        _focusAlternativeEntry = true;
+        FinishNewRequirement($"category:{(existingIndex >= 0 ? existingIndex : newCategories.Count - 1)}");
 
         return OnReplaceCombo.InvokeAsync((Index, newCombo));
     }
@@ -893,7 +875,7 @@
         _selectedCardId = string.Empty;
         _error = null;
         ResetEditorDefaults();
-        _focusAlternativeEntry = true;
+        FinishNewRequirement($"card:{(existingIndex >= 0 ? existingIndex : newCards.Count - 1)}");
         return OnReplaceCombo.InvokeAsync((Index, Combo.WithCards(newCards)));
     }
 
@@ -979,10 +961,6 @@
                 await connector.FocusAsync();
             }
         }
-        if (_focusPicker is { } pickerLabel) {
-            _focusPicker = null;
-            if (_memberPickers.TryGetValue(pickerLabel, out ElementReference picker)) { await picker.FocusAsync(preventScroll: true); }
-        }
         if (_focusMinimum) {
             _focusMinimum = false;
             await _minimumInput.FocusAsync();
@@ -998,8 +976,14 @@
                 _returnRowKey = null;
                 await button.FocusAsync(preventScroll: true);
             }
-            else {
+            else if (_editingNewRequirement || _editingRequirement is not null || AuthoringScope) {
                 await _alternativeEntryTarget.FocusAsync();
+            }
+            else if (ShowNewRequirementRow && _newRequirementRow is not null) {
+                await _newRequirementRow.FocusAsync(preventScroll: true);
+            }
+            else {
+                await _newRequirementButton.FocusAsync(preventScroll: true);
             }
         }
 

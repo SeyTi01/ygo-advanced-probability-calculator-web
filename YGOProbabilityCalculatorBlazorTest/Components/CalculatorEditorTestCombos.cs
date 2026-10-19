@@ -37,29 +37,30 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
 
+        OpenNewRequirement(editor);
         Assert.That(editor.FindAll("optgroup").Select(static group => group.GetAttribute("label")),
             Is.EqualTo(new[] { "Common properties" }));
         Assert.That(editor.FindAll("optgroup").All(static group => group.QuerySelectorAll("option").Length > 0), Is.True);
         Assert.That(editor.FindAll("option[value^='metadata:']").Select(static option => option.GetAttribute("value")),
             Does.Contain(monster.Identity).And.Contain(fire.Identity).And.Contain(dark.Identity)
                 .And.Contain(level8.Identity).And.Contain(quickPlay.Identity));
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = level8.Identity });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = level8.Identity });
         await Button(editor, "Add").ClickAsync(new());
         await ExtendRequirement(editor, "category:0", sameCard: true);
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = monster.Identity });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = monster.Identity });
         await Button(editor, "Add property").ClickAsync(new());
 
         ComboCategory sameCard = editor.Instance.Combo.Categories.Single();
         Assert.That(sameCard.Selector.CategoryIdentities, Is.EquivalentTo(new[] { level8.Identity, monster.Identity }));
 
         await ExtendRequirement(editor, "category:0");
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = fire.Identity });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = fire.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
         await ExtendRequirement(editor, "group:0");
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = dark.Identity });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = dark.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
         await ExtendRequirement(editor, "group:0");
-        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = quickPlay.Identity });
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = quickPlay.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
 
         ComboAlternativeGroup alternatives = editor.Instance.Combo.AlternativeGroups.Single();
@@ -219,9 +220,9 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         });
 
         await duplicateEditor.Find("#comboName2").InputAsync(new() { Value = "Adjusted route" });
-        await duplicateEditor.Find("#comboTarget2").ChangeAsync(new() { Value = a.Identity });
-        await duplicateEditor.Find("#minCount2").InputAsync(new() { Value = "2" });
-        await duplicateEditor.Find("#maxCount2").InputAsync(new() { Value = "2" });
+        await RequirementField(duplicateEditor, "#comboTarget2").ChangeAsync(new() { Value = a.Identity });
+        await RequirementField(duplicateEditor, "#minCount2").InputAsync(new() { Value = "2" });
+        await RequirementField(duplicateEditor, "#maxCount2").InputAsync(new() { Value = "2" });
         await Button(duplicateEditor, "Update requirement").ClickAsync(new());
         await DeleteRequirement(duplicateEditor, "card:0");
         await duplicateEditor.Find("#comboGroup2").ChangeAsync(new() { Value = "group-two" });
@@ -294,12 +295,12 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> sourceEditor = cut.FindComponents<ComboEditor>()[1];
         IRenderedComponent<ComboEditor> otherEditor = cut.FindComponents<ComboEditor>()[2];
 
-        await sourceEditor.Find("#comboTarget1").ChangeAsync(new() { Value = b.Identity });
-        await sourceEditor.Find("#minCount1").InputAsync(new() { Value = "0" });
-        await sourceEditor.Find("#maxCount1").InputAsync(new() { Value = "0" });
-        await otherEditor.Find("#comboTarget2").ChangeAsync(new() { Value = a.Identity });
-        await otherEditor.Find("#minCount2").InputAsync(new() { Value = "0" });
-        await otherEditor.Find("#maxCount2").InputAsync(new() { Value = "2" });
+        await RequirementField(sourceEditor, "#comboTarget1").ChangeAsync(new() { Value = b.Identity });
+        await RequirementField(sourceEditor, "#minCount1").InputAsync(new() { Value = "0" });
+        await RequirementField(sourceEditor, "#maxCount1").InputAsync(new() { Value = "0" });
+        await RequirementField(otherEditor, "#comboTarget2").ChangeAsync(new() { Value = a.Identity });
+        await RequirementField(otherEditor, "#minCount2").InputAsync(new() { Value = "0" });
+        await RequirementField(otherEditor, "#maxCount2").InputAsync(new() { Value = "2" });
 
         await DuplicateComboAsync(cut, 1);
 
@@ -307,19 +308,19 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         Assert.That(editors[1].Instance, Is.SameAs(sourceEditor.Instance));
         Assert.That(editors[3].Instance, Is.SameAs(otherEditor.Instance));
         Assert.Multiple(() => {
-            Assert.That(sourceEditor.Find("#comboTarget1").GetAttribute("value"), Is.EqualTo(b.Identity));
-            Assert.That(sourceEditor.Find("#minCount1").GetAttribute("value"), Is.EqualTo("0"));
-            Assert.That(sourceEditor.Find("#maxCount1").GetAttribute("value"), Is.EqualTo("0"));
+            Assert.That(RequirementField(sourceEditor, "#comboTarget1").GetAttribute("value"), Is.EqualTo(b.Identity));
+            Assert.That(RequirementField(sourceEditor, "#minCount1").GetAttribute("value"), Is.EqualTo("0"));
+            Assert.That(RequirementField(sourceEditor, "#maxCount1").GetAttribute("value"), Is.EqualTo("0"));
             Assert.That(editors[2].Instance.Combo.Categories.Select(category => category.BaseCategory.Identity),
                 Is.EqualTo(new[] { a.Identity }));
-            Assert.That(editors[2].Find("#comboTarget2").GetAttribute("value"), Is.Null.Or.Empty);
-            Assert.That(editors[2].Find("#minCount2").GetAttribute("value"), Is.EqualTo("1"));
-            Assert.That(editors[2].Find("#maxCount2").GetAttribute("value"), Is.EqualTo(string.Empty));
-            Assert.That(editors[2].Find("#maxCount2").GetAttribute("placeholder"), Is.EqualTo("Any"));
+            Assert.That(RequirementField(editors[2], "#comboTarget2").GetAttribute("value"), Is.Null.Or.Empty);
+            Assert.That(RequirementField(editors[2], "#minCount2").GetAttribute("value"), Is.EqualTo("1"));
+            Assert.That(RequirementField(editors[2], "#maxCount2").GetAttribute("value"), Is.EqualTo(string.Empty));
+            Assert.That(RequirementField(editors[2], "#maxCount2").GetAttribute("placeholder"), Is.EqualTo("Any"));
             Assert.That(editors[2].FindAll("#maxAny2"), Is.Empty);
-            Assert.That(otherEditor.Find("#comboTarget3").GetAttribute("value"), Is.EqualTo(a.Identity));
-            Assert.That(otherEditor.Find("#minCount3").GetAttribute("value"), Is.EqualTo("0"));
-            Assert.That(otherEditor.Find("#maxCount3").GetAttribute("value"), Is.EqualTo("2"));
+            Assert.That(RequirementField(otherEditor, "#comboTarget3").GetAttribute("value"), Is.EqualTo(a.Identity));
+            Assert.That(RequirementField(otherEditor, "#minCount3").GetAttribute("value"), Is.EqualTo("0"));
+            Assert.That(RequirementField(otherEditor, "#maxCount3").GetAttribute("value"), Is.EqualTo("2"));
         });
 
         await RowAction(cut, "combo Middle copy, row 3", "Move down").ClickAsync(new());
@@ -327,7 +328,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         Assert.That(editors.Select(editor => editor.Instance.Combo.Name),
             Is.EqualTo(new[] { "Before", "Middle", "After", "Middle copy" }));
         Assert.That(editors[3].Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("true"));
-        Assert.That(otherEditor.Find("#comboTarget2").GetAttribute("value"), Is.EqualTo(a.Identity));
+        Assert.That(RequirementField(otherEditor, "#comboTarget2").GetAttribute("value"), Is.EqualTo(a.Identity));
     }
 
     [Test]
@@ -338,23 +339,23 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<ComboEditor> sourceEditor = cut.FindComponent<ComboEditor>();
         string cardId = session.Cards[1].Id;
-        await sourceEditor.Find("#comboTarget0").ChangeAsync(new() { Value = CardTarget(cardId) });
-        await sourceEditor.Find("#minCount0").InputAsync(new() { Value = "2" });
-        await sourceEditor.Find("#maxCount0").InputAsync(new() { Value = "2" });
+        await RequirementField(sourceEditor, "#comboTarget0").ChangeAsync(new() { Value = CardTarget(cardId) });
+        await RequirementField(sourceEditor, "#minCount0").InputAsync(new() { Value = "2" });
+        await RequirementField(sourceEditor, "#maxCount0").InputAsync(new() { Value = "2" });
         await DuplicateComboAsync(cut, 0);
 
         IReadOnlyList<IRenderedComponent<ComboEditor>> editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors[0].Instance, Is.SameAs(sourceEditor.Instance));
         Assert.Multiple(() => {
             Assert.That(sourceEditor.Instance.Combo.Cards, Is.Empty);
-            Assert.That(sourceEditor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget(cardId)));
-            Assert.That(sourceEditor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
-            Assert.That(sourceEditor.Find("#maxCount0").GetAttribute("value"), Is.EqualTo("2"));
+            Assert.That(RequirementField(sourceEditor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget(cardId)));
+            Assert.That(RequirementField(sourceEditor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
+            Assert.That(RequirementField(sourceEditor, "#maxCount0").GetAttribute("value"), Is.EqualTo("2"));
             Assert.That(editors[1].Instance.Combo.Cards, Is.Empty);
-            Assert.That(editors[1].Find("#comboTarget1").GetAttribute("value"), Is.Null.Or.Empty);
-            Assert.That(editors[1].Find("#minCount1").GetAttribute("value"), Is.EqualTo("1"));
-            Assert.That(editors[1].Find("#maxCount1").GetAttribute("value"), Is.EqualTo(string.Empty));
-            Assert.That(editors[1].Find("#maxCount1").GetAttribute("placeholder"), Is.EqualTo("Any"));
+            Assert.That(RequirementField(editors[1], "#comboTarget1").GetAttribute("value"), Is.Null.Or.Empty);
+            Assert.That(RequirementField(editors[1], "#minCount1").GetAttribute("value"), Is.EqualTo("1"));
+            Assert.That(RequirementField(editors[1], "#maxCount1").GetAttribute("value"), Is.EqualTo(string.Empty));
+            Assert.That(RequirementField(editors[1], "#maxCount1").GetAttribute("placeholder"), Is.EqualTo("Any"));
             Assert.That(editors[1].FindAll("#maxAny1"), Is.Empty);
         });
     }

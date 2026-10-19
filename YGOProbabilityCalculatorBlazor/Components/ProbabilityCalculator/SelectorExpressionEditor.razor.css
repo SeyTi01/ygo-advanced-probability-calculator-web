@@ -21,6 +21,3 @@
 }
 
 .selector-term { min-width: 0; }
-.selector-parenthesized-term { display: grid; grid-template-columns: .4rem minmax(0, 1fr) .4rem; gap: .2rem; align-items: center; }
-.selector-parenthesized-term::before { content: "("; align-self: start; line-height: 44px; }
-.selector-parenthesized-term::after { content: ")"; align-self: start; line-height: 44px; }
