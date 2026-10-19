@@ -58,10 +58,7 @@
 }
 
 .alternative-group {
-    display: inline-grid;
-    grid-template-columns: .35rem minmax(0, 1fr) .35rem;
-    align-items: center;
-    gap: .375rem;
+    display: inline-block;
     max-width: 100%;
     min-width: 0;
     margin: 0;
@@ -94,18 +91,20 @@
 }
 
 .composite-alternative {
-    display: inline-grid;
-    grid-template-columns: .35rem minmax(0, 1fr) .35rem;
-    align-items: center;
-    gap: .2rem;
+    display: inline-block;
     max-width: 100%;
     min-width: 0;
 }
 
+.single-card-group { display: contents; }
+
 .expression-parenthesis {
     position: relative;
-    align-self: stretch;
-    min-height: 1rem;
+    display: inline-block;
+    flex: 0 0 .35rem;
+    width: .35rem;
+    height: 1.3em;
+    vertical-align: middle;
 }
 
 .expression-parenthesis svg {

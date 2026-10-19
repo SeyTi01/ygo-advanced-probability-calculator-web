@@ -1,6 +1,7 @@
 <span class="expression-term-content @(Compact ? "expression-term-compact" : "")">
     @for (int index = 0; index < Count; index++) {
         <span class="expression-term-part" @key="OperandKey?.Invoke(index)">
+            @if (index == 0) { @PrefixContent }
             @if (index > 0) {
                 <span @onclick:stopPropagation="@(OnOperatorChanged.HasDelegate || SeparatorContent is not null)">
                     @if (SeparatorContent is not null) { @SeparatorContent(index) }
@@ -8,6 +9,7 @@
                 </span>
             }
             @OperandContent(index)
+            @if (index == Count - 1) { @SuffixContent }
         </span>
     }
 </span>
@@ -19,6 +21,8 @@
     [Parameter] public Func<int, object>? OperandKey { get; set; }
     [Parameter, EditorRequired] public RenderFragment<int> OperandContent { get; set; } = default!;
     [Parameter] public RenderFragment<int>? SeparatorContent { get; set; }
+    [Parameter] public RenderFragment? PrefixContent { get; set; }
+    [Parameter] public RenderFragment? SuffixContent { get; set; }
     [Parameter] public IReadOnlyList<string> AllowedOperators { get; set; } = ["AND", "OR"];
     [Parameter] public string? Error { get; set; }
     [Parameter] public EventCallback<string> OnOperatorChanged { get; set; }

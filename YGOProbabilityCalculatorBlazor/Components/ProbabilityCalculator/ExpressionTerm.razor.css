@@ -7,4 +7,17 @@
     min-width: 0;
     max-width: 100%;
 }
-.expression-term-compact { --expression-term-gap: .25rem; }
+.expression-term-compact {
+    --expression-term-gap: .25rem;
+    display: inline;
+}
+.expression-term-compact > .expression-term-part {
+    display: inline-flex;
+    width: max-content;
+    flex-wrap: nowrap;
+    vertical-align: middle;
+}
+.expression-term-compact > .expression-term-part + .expression-term-part {
+    margin-inline-start: .25rem;
+    max-width: calc(100% - .25rem);
+}

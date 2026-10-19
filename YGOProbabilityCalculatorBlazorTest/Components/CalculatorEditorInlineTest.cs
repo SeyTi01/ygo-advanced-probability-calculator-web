@@ -35,7 +35,7 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Combo, Is.SameAs(original), "Availability checks never rewrite the expression.");
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
         options = editor.FindAll(".expression-operator option").Select(option => option.TextContent).ToArray();
-        Assert.That(options, Is.EqualTo(supportsAnd ? new[] { "AND", "OR" } : new[] { "OR" }));
+        Assert.That(options, Is.EqualTo(supportsAnd ? new[] { "+", "AND", "OR" } : new[] { "+", "OR" }));
         Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
         Assert.That(editor.FindAll(".inline-member-picker"), Is.Empty);
     }
@@ -153,7 +153,7 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         Assert.That(leaves.Skip(1).Select(leaf => leaf.Category!.BaseCategory.Name), Is.EqualTo(new[] { "B", "A" }));
         Assert.That(leaves.Skip(1).All(leaf => leaf.Category!.MinCount == 0 && leaf.Category.MaxCount == 0), Is.True);
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
-        Assert.That(editor.FindAll(".requirement-or-group .expression-operator option").Select(option => option.TextContent), Does.Not.Contain("+"));
+        Assert.That(editor.FindAll(".requirement-or-group > .alternative-separator .expression-operator option").Select(option => option.TextContent), Does.Contain("+"));
     }
 
     [Test]

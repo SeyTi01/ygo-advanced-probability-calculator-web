@@ -188,7 +188,8 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         Assert.That(editor.Find(".requirement-or-group .same-card-group .expression-operator").GetAttribute("value"), Is.EqualTo("AND"));
         Assert.That(editor.FindAll(".combo-header-content .composite-alternative"), Has.Count.EqualTo(1));
         foreach (IElement expression in editor.FindAll(".combo-header-content .alternative-group, .combo-header-content .composite-alternative")) {
-            IElement[] parentheses = expression.Children.Where(element => element.ClassList.Contains("expression-parenthesis")).ToArray();
+            IElement[] parentheses = expression.QuerySelectorAll(".expression-parenthesis")
+                .Where(element => element.ParentElement!.ParentElement!.ParentElement == expression).ToArray();
             Assert.That(parentheses.Select(element => element.TextContent.Trim()), Is.EqualTo(new[] { "(", ")" }));
             Assert.That(parentheses.All(element => element.QuerySelector("svg")?.GetAttribute("aria-hidden") == "true"), Is.True);
         }
