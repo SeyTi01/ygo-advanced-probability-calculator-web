@@ -50,10 +50,10 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
         'returning to + keeps keyboard focus on the resulting separator');
     await stableCombo.locator('.expanded-expression > .requirement-and-separator select').selectOption('OR');
     await stableCombo.locator('[data-requirement="alternative:0:0"]').click();
-    await stableCombo.getByRole('button', { name: 'Remove alternative', exact: true }).click();
+    await stableCombo.getByRole('button', { name: 'Remove requirement', exact: true }).click();
     assert.deepEqual(await stableContents(), ['B', 'CD'], 'a partially deleted row remains separate');
     await stableCombo.locator('[data-requirement="alternative:0:0"]').click();
-    await stableCombo.getByRole('button', { name: 'Remove alternative', exact: true }).click();
+    await stableCombo.getByRole('button', { name: 'Remove requirement', exact: true }).click();
     assert.deepEqual(await stableContents(), ['CD'], 'only an emptied row disappears');
     console.log('PASS stable authored rows through +/OR round trips and partial/full row deletion.');
     // Measure actual chip/control geometry: inherited font sizes and margins
@@ -88,6 +88,15 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
                 const card = page.locator('.card-editor').filter({ hasText: `Selector geometry ${index}` });
                 await card.locator('.accordion-button').click();
                 await card.locator('.simulation-edit').click();
+                const operator = card.locator('.selector-expression .expression-operator').first();
+                await operator.selectOption(index === 0 ? 'OR' : 'AND');
+                assert.equal(await card.locator('.selector-expression form').count(), 0, 'operator changes never open a form');
+                await operator.selectOption(index === 0 ? 'AND' : 'OR');
+                await card.locator('.selector-expression .requirement-edit').first().click();
+                assert.deepEqual(await card.locator('.requirement-context-actions button').allTextContents(),
+                    ['Add alternative (OR)', 'Add property (AND)', 'Remove requirement']);
+                assert.equal(await card.locator('.selector-more-actions, .selector-expression details').count(), 0, 'no simulation-only actions menu');
+                await card.locator('.selector-expression form').getByRole('button', { name: 'Cancel', exact: true }).click();
                 measurements.push(...await measureRows(card.locator('.selector-expression .requirement-row')));
                 await capture(`shared-selector-${index}-${width}-${theme}`);
                 await card.locator('.simulation-editor').getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -171,6 +180,12 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
                 assert.deepEqual(await card.locator('.selector-expression .expression-operator').evaluateAll(elements => [...new Set(elements.map(element => getComputedStyle(element).fontSize))]), ['12.8px']);
                 const outer = card.locator('[data-selector-path="root"] > .requirement-or-group > .requirement-and-separator select, [data-selector-path="root"] > .requirement-or-group > .alternative-separator select');
                 assert.deepEqual(await outer.evaluateAll(elements => elements.map(element => element.value)), index < 2 ? [] : [index === 3 || index === 4 ? 'OR' : 'AND']);
+                const lines = await outer.evaluateAll(elements => elements.map(select => ['::before', '::after'].map(pseudo => {
+                    const style = getComputedStyle(select.parentElement, pseudo);
+                    return [style.borderTopStyle, style.borderTopWidth, style.flexGrow];
+                })));
+                assert.ok(lines.every(sides => sides.every(style => JSON.stringify(style) === JSON.stringify(['solid', '1px', '1']))),
+                    `AND/OR separators draw identical lines at ${width}/${theme}: ${JSON.stringify(lines)}`);
                 await activate(rows.first().locator('.requirement-edit'));
                 assert.equal(await card.locator('.selector-expression form .requirement-operand').count(), expectedSelectors[index].split(';')[0].length);
                 await assertNoOverflow(`editing selector ${index}/${width}/${theme}`);

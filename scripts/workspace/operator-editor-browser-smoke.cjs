@@ -265,13 +265,9 @@ const session = () => ({
         const postDrawOr = simulation.getByLabel('Change OR operator', { exact: true }).first();
         await activate(postDrawOr);
         await postDrawOr.selectOption('AND');
-        const selectorForm = simulation.locator('.requirement-edit-grid');
-        const selectorFormContainer = () => selectorForm.locator('xpath=..');
-        await selectorForm.waitFor();
-        assert.equal(await selectorForm.locator('.requirement-operand').count(), 2);
+        assert.equal(await simulation.locator('.requirement-edit-grid').count(), 0, 'changing a simulation operator applies without opening a form');
+        assert.equal(await simulation.getByLabel('Change AND operator', { exact: true }).first().inputValue(), 'AND');
         await capture('06-post-draw-selector-touch-1280-light');
-        await selectorFormContainer().getByRole('button', { name: 'Cancel', exact: true }).click();
-        assert.equal(await simulation.locator('.requirement-edit-grid').count(), 0, 'selector Cancel closes the grouped edit');
         await simulation.getByRole('button', { name: 'Cancel', exact: true }).click();
 
         // Saved category-rule expression is distinct from its draft; Apply and Remove are explicit.

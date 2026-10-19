@@ -7,13 +7,13 @@
             @for (int index = 0; index < Rows.Length; index++) {
                 int position = index;
                 SelectorRow currentRow = Rows[index];
-                @if (index > 0) { <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" OnOperatorChanged="ChangeGroupOperator" /> }
+                @if (index > 0) { <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@_operatorError" OnOperatorChanged="ChangeGroupOperator" /> }
                 <div @key="_termKeys[currentRow.Value.Signature]" class="selector-term @(currentRow.Value.Kind != Selector.Kind && currentRow.Value.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf ? "selector-nested-term" : "")">
                 <SelectorExpressionEditor @ref="_childEditors[_termKeys[currentRow.Value.Signature]]"
-                    Selector="Rows[index].Value" IsRoot="false" Path="@($"{Path}.{index}")" Available="Available" Options="Options"
+                    Selector="Rows[index].Value" IsRoot="false" Path="@($"{Path}.{index}")" Available="Available"
                     CategoryColorIndices="CategoryColorIndices" RelevantMetadataIdentities="RelevantMetadataIdentities" CategoryRename="CategoryRename" Session="EditorSession"
                     ReplaceSelector="value => ReplaceRow(position, value)" OnRemove="() => RemoveRow(position)"
-                    OnValidation="OnValidation" OnEditingChanged="OnEditingChanged" OnEditContainer="BeginEdit" />
+                    OnValidation="OnValidation" OnEditingChanged="OnEditingChanged" />
                 </div>
             }
         </ExpressionGroup>
@@ -28,7 +28,7 @@
         <ExpressionGroup Label="Nested conditions" Nested="true">
             <button type="button" class="btn btn-link btn-sm p-0" @onclick="Back">Back to row</button>
             <SelectorExpressionEditor Selector="Terms[nestedIndex]" IsRoot="false" @ref="_nestedEditor" Path="@($"{Path}.nested")"
-                Available="Available" Options="Options" CategoryColorIndices="CategoryColorIndices" RelevantMetadataIdentities="RelevantMetadataIdentities" CategoryRename="CategoryRename"
+                Available="Available" CategoryColorIndices="CategoryColorIndices" RelevantMetadataIdentities="RelevantMetadataIdentities" CategoryRename="CategoryRename"
                 Session="EditorSession" ReplaceSelector="value => ReplaceTerm(nestedIndex, value)" OnRemove="() => RemoveTerm(nestedIndex)"
                 OnValidation="OnValidation" OnEditingChanged="OnEditingChanged" />
         </ExpressionGroup>
@@ -37,11 +37,12 @@
 
 @code {
     private RenderFragment EditForm() => @<RequirementEditForm @key="_mode" @ref="_editForm"
-        Title="@(_mode == "add" ? "Add requirement" : _mode == "replace" ? "Replace group" : "Edit requirement")"
+        Mode="@(_mode == "edit" ? "edit" : _operation == CardSelectorKind.AnyOf ? "OR" : "AND")"
+        ShowActions="@(_mode == "edit")" OnAddAlternative="() => Add(CardSelectorKind.AnyOf)"
+        OnAddProperty="() => Add(CardSelectorKind.AllOf)" OnRemoveRequirement="RemoveSelf"
         OperandCount="_operands.Count" OperandKey="index => _operands[index]" Operator="@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@_error"
         OnSubmit="Save" OnCancel="Cancel" OnKeyDown="HandleKeyDown" OnRemoveOperand="RemoveOperand"
-        OnOperatorChanged="@(operation => _operation = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf)">
-        <BeforeContent>@if (_mode == "add") { <div class="mb-2">@Summary(_seed!)</div> }</BeforeContent>
+        OnOperatorChanged="ChangeGroupOperator">
         <OperandContent Context="position">
             @{ OperandDraft operand = _operands[position]; }
             @if (operand.Group is { } group) {
@@ -52,35 +53,12 @@
                     Categories="Available" RelevantIdentities="RelevantMetadataIdentities" OnChanged="change => ChangeIdentity(position, change)" />
             }
         </OperandContent>
-        <ActionsContent>
-            @if (_mode == "edit") {
-                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => Add(CardSelectorKind.AllOf)">Add property (AND)</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => Add(CardSelectorKind.AnyOf)">Add alternative (OR)</button>
-                @if (IsGroup || OnEditContainer.HasDelegate) {
-                    <details class="selector-more-actions">
-                        <summary>More actions</summary>
-                        @if (IsGroup) {
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ReplaceGroup">Replace group</button>
-                            @for (int index = 0; index < _operands.Count; index++) {
-                                int position = index;
-                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => GroupOperand(position)">Group condition @(index + 1)</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => RemoveOperand(position)">Remove condition @(index + 1)</button>
-                            }
-                        }
-                        @if (OnEditContainer.HasDelegate) {
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnEditContainer">Edit outer group</button>
-                        }
-                        </details>
-                }
-            }
-            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="RemoveSelf">@(IsGroup ? "Remove group" : "Remove clause")</button>
-        </ActionsContent>
     </RequirementEditForm>;
 
     private RenderFragment Summary(CardSelector selector, bool interactive = false) => @<text>
         @if (selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
             CardSelector[] terms = selector.AuthoredTerms.ToArray();
-            <ExpressionTerm Count="terms.Length" Operator="@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")"
+            <ExpressionTerm Count="terms.Length" Operator="@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@(interactive ? _operatorError : null)"
                 OnOperatorChanged="@(interactive ? EventCallback.Factory.Create<string>(this, ChangeGroupOperator) : default)">
                 <OperandContent Context="index">@Summary(terms[index])</OperandContent>
             </ExpressionTerm>
@@ -96,13 +74,11 @@
     [Parameter] public IReadOnlyList<CategoryBase> Available { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>();
     [Parameter] public IReadOnlySet<string> RelevantMetadataIdentities { get; set; } = new HashSet<string>();
-    [Parameter] public RenderFragment? Options { get; set; }
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
     [Parameter] public SelectorEditSession? Session { get; set; }
     [Parameter] public Func<CardSelector, Task>? ReplaceSelector { get; set; }
     [Parameter] public EventCallback<CardSelector> OnChanged { get; set; }
     [Parameter] public EventCallback OnRemove { get; set; }
-    [Parameter] public EventCallback OnEditContainer { get; set; }
     [Parameter] public EventCallback<bool> OnEditingChanged { get; set; }
     [Parameter] public EventCallback<(CardSelector Selector, string? Message)> OnValidation { get; set; }
 
@@ -135,14 +111,13 @@
     private CardSelector[] Terms { get; set; } = [];
     private SelectorRow[] Rows { get; set; } = [];
     private CardSelector? _previous;
+    private SelectorRow[]? _retainedRows;
     private CardSelector? _seed;
-    private CardSelector[]? _operandContainer;
-    private CardSelectorKind _containerOperation;
-    private int? _operandIndex;
     private CardSelector? _validationOwner;
     private CardSelectorKind _operation;
     private string _mode = "edit";
     private string? _error;
+    private string? _operatorError;
     private int _renameVersion;
     private bool _focusEntry;
     private bool _focusRow;
@@ -154,15 +129,11 @@
 
     private string OperandId(int index) => $"{_fieldId}-{index}";
     private string IdentityLabel(string identity) {
-        if (Available.FirstOrDefault(category => category.Identity == identity) is { } category) { return ShortLabel(category); }
+        if (Available.FirstOrDefault(category => category.Identity == identity) is { } category) { return category.Name; }
         bool metadata = identity.StartsWith("metadata:", StringComparison.Ordinal);
         int separator = metadata ? identity.LastIndexOf(':') : identity.IndexOf(':');
         string value = Uri.UnescapeDataString(identity[(separator + 1)..]);
         return metadata ? System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(value) : value;
-    }
-    private static string ShortLabel(CategoryBase category) {
-        int colon = category.Name.IndexOf(':');
-        return category.Source == CategorySource.Metadata && colon > 0 ? category.Name[(colon + 1)..].Trim() : category.Name;
     }
     private string Description(CardSelector selector) => selector.Kind switch {
         CardSelectorKind.AllOf => string.Join(" AND ", selector.AuthoredTerms.Select(Description)),
@@ -206,6 +177,19 @@
         }
     }
 
+    private static SelectorRow[] RetainRows(CardSelectorKind operation, CardSelector[] terms, SelectorRow[]? retained) {
+        if (retained is null) { return ProjectRows(operation, terms); }
+        List<SelectorRow> rows = [];
+        HashSet<CardSelector> assigned = [];
+        foreach (SelectorRow row in retained) {
+            CardSelector[] members = row.Terms.SelectMany(term => term.Kind == operation ? term.AuthoredTerms : [term])
+                .Where(term => terms.Contains(term) && assigned.Add(term)).ToArray();
+            if (members.Length > 0) { rows.Add(new(Combine(operation, members), members)); }
+        }
+        foreach (SelectorRow row in ProjectRows(operation, terms.Where(term => !assigned.Contains(term)).ToArray())) { rows.Add(row); }
+        return rows.ToArray();
+    }
+
     protected override void OnParametersSet() {
         if (CategoryRename is { } rename && rename.Version != _renameVersion) {
             string oldIdentity = $"user:{rename.OldName}";
@@ -223,7 +207,6 @@
             Rows = Rows.Select(row => new SelectorRow(row.Value.RenameCategory(oldIdentity, newIdentity),
                 row.Terms.Select(term => term.RenameCategory(oldIdentity, newIdentity)).ToArray())).ToArray();
             _seed = _seed?.RenameCategory(oldIdentity, newIdentity);
-            _operandContainer = _operandContainer?.Select(term => term.RenameCategory(oldIdentity, newIdentity)).ToArray();
             _nestedTarget = _nestedTarget?.RenameCategory(oldIdentity, newIdentity);
             _renameVersion = rename.Version;
         }
@@ -231,7 +214,10 @@
             CardSelector[] previousTerms = Terms;
             SelectorRow[] previousRows = Rows;
             Terms = IsGroup ? Selector.AuthoredTerms.ToArray() : [Selector];
-            Rows = IsGroup ? ProjectRows(Selector.Kind, Terms) : [];
+            bool previousRowsCoverTerms = Terms.All(term => previousRows.Any(row => row.Terms.Any(previous =>
+                previous.Equals(term) || previous.Kind == Selector.Kind && previous.AuthoredTerms.Contains(term))));
+            Rows = IsGroup ? RetainRows(Selector.Kind, Terms, _retainedRows ?? (previousRowsCoverTerms ? previousRows : null)) : [];
+            _retainedRows = null;
             HashSet<object> retainedKeys = Rows.Where(row => _termKeys.ContainsKey(row.Value.Signature))
                 .Select(row => _termKeys[row.Value.Signature]).ToHashSet();
             foreach (SelectorRow row in Rows) {
@@ -267,6 +253,7 @@
             }
             _previous = Selector;
         }
+        if (IsEditing) { EditorSession.ActiveSelector = Selector; }
         HashSet<string> current = Rows.Select(row => row.Value.Signature).ToHashSet(StringComparer.Ordinal);
         foreach (string removed in _termKeys.Keys.Where(signature => !current.Contains(signature)).ToArray()) { _termKeys.Remove(removed); }
         foreach (SelectorRow row in Rows) { _termKeys.TryAdd(row.Value.Signature, new object()); }
@@ -274,8 +261,33 @@
     }
 
     private async Task ChangeGroupOperator(string operation) {
-        await BeginEdit();
-        _operation = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf;
+        _operatorError = null;
+        CardSelectorKind kind = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf;
+        if (kind == Selector.Kind) { return; }
+        if (EditorSession.ActiveSelector is { } active
+            && (ContainsSelector(Selector, active) || Rows.Any(row => ContainsSelector(row.Value, active)))) {
+            if (EditorSession.HasChanges?.Invoke() == true) {
+                _operatorError = "Save or cancel the pending row before changing its grouping.";
+                EditorSession.ClearOperatorError = () => InvokeAsync(() => { _operatorError = null; StateHasChanged(); });
+                return;
+            }
+            if (EditorSession.CancelActive is { } cancel) { await cancel(); }
+        }
+        SelectorRow[] rows = Rows;
+        await Apply(() => {
+            CardSelector updated = Combine(kind, Rows.Length > 1 ? Rows.Select(row => row.Value) : Terms);
+            _retainedRows = rows;
+            return updated;
+        });
+    }
+
+    private static bool ContainsSelector(CardSelector parent, CardSelector target) => parent.Equals(target)
+        || parent.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf && parent.AuthoredTerms.Any(child => ContainsSelector(child, target));
+
+    private bool HasChanges() {
+        if (_mode != "edit" || _operands.Any(operand => operand.Error is not null)) { return true; }
+        try { return !Edited().Equals(Selector); }
+        catch (ArgumentException) { return true; }
     }
 
     public async Task<bool> EditGroupOperatorAsync(CardSelector target, string operation) {
@@ -299,12 +311,13 @@
         _nestedTarget = null;
         _mode = "edit";
         _seed = null;
-        _operandIndex = null;
         _operands.Clear();
         _operands.AddRange(Terms.Select(term => new OperandDraft(term)));
         _operation = IsGroup ? Selector.Kind : CardSelectorKind.AllOf;
         _validationOwner = Selector;
         EditorSession.ActiveNode = _node;
+        EditorSession.ActiveSelector = Selector;
+        EditorSession.HasChanges = HasChanges;
         EditorSession.CancelActive = () => InvokeAsync(() => Close(false));
         _focusEntry = true;
         await OnEditingChanged.InvokeAsync(true);
@@ -312,7 +325,11 @@
 
     private async Task Close(bool focus) {
         await SetError(null);
+        if (EditorSession.ClearOperatorError is { } clear) { await clear(); }
+        EditorSession.ClearOperatorError = null;
         EditorSession.ActiveNode = null;
+        EditorSession.ActiveSelector = null;
+        EditorSession.HasChanges = null;
         EditorSession.CancelActive = null;
         _focusRow = focus;
         await OnEditingChanged.InvokeAsync(false);
@@ -344,29 +361,8 @@
         await Validate();
         if (_error is not null) { return; }
         _seed = Edited();
-        _operandIndex = null;
         _operation = operation;
         _mode = "add";
-        _operands.Clear();
-        _operands.Add(new(CardSelector.Any));
-        _focusEntry = true;
-        await SetError(null);
-    }
-    private async Task GroupOperand(int index) {
-        await Validate();
-        if (_error is not null) { return; }
-        _operandContainer = _operands.Select(operand => operand.Build()).ToArray();
-        _containerOperation = _operation;
-        _operandIndex = index;
-        _seed = _operandContainer[index];
-        _operation = CardSelectorKind.AnyOf;
-        _mode = "add";
-        _operands.Clear();
-        _operands.Add(new(CardSelector.Any));
-        _focusEntry = true;
-    }
-    private async Task ReplaceGroup() {
-        _mode = "replace";
         _operands.Clear();
         _operands.Add(new(CardSelector.Any));
         _focusEntry = true;
@@ -382,11 +378,7 @@
         if (_error is not null || _operands.Count == 0) { return; }
         if (await Apply(BuildResult)) { await Close(true); }
     }
-    private CardSelector BuildResult() {
-        CardSelector value = _mode == "add" ? Combine(_operation, [_seed!, Edited()]) : Edited();
-        return _mode == "add" && _operandIndex is { } position
-            ? Combine(_containerOperation, _operandContainer!.Select((term, index) => index == position ? value : term)) : value;
-    }
+    private CardSelector BuildResult() => _mode == "add" ? Combine(_operation, [_seed!, Edited()]) : Edited();
     private static CardSelector Combine(CardSelectorKind kind, IEnumerable<CardSelector> terms) => kind == CardSelectorKind.AllOf
         ? CardSelector.AllOfSelectors(terms) : CardSelector.AnyOfSelectors(terms);
     private async Task Publish(CardSelector value) {
@@ -396,21 +388,25 @@
     }
     private async Task<bool> Apply(Func<CardSelector> create) {
         try { await Publish(create()); await SetError(null); return true; }
-        catch (ArgumentException) { await SetError("Filter is too large or too deeply grouped."); return false; }
+        catch (ArgumentException) { _retainedRows = null; await SetError("Filter is too large or too deeply grouped."); return false; }
     }
     private async Task ReplaceRow(int position, CardSelector value) {
         SelectorRow row = Rows[position];
-        CardSelector updated = Combine(Selector.Kind, Rows.SelectMany((current, index) => index == position ? [value] : current.Terms));
+        CardSelector updated = Combine(Selector.Kind, Rows.Select((current, index) => index == position ? value : current.Value));
         _termKeys.TryAdd(value.Signature, _termKeys[row.Value.Signature]);
         bool rowRetained = updated.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf
             && ProjectRows(updated.Kind, updated.AuthoredTerms.ToArray()).Any(projected => projected.Value.Equals(value));
+        _retainedRows = Rows.Select((current, index) => index == position ? new SelectorRow(value, [value]) : current).ToArray();
         await Publish(updated);
         if (!rowRetained) { _focusRow = true; StateHasChanged(); }
     }
     private async Task RemoveRow(int position) {
         CardSelector[] remaining = Terms.Where(term => !Rows[position].Terms.Contains(term)).ToArray();
         if (remaining.Length == 0) { await OnRemove.InvokeAsync(); }
-        else { await Publish(Combine(Selector.Kind, remaining)); }
+        else {
+            _retainedRows = Rows.Where((_, index) => index != position).ToArray();
+            await Publish(Combine(Selector.Kind, remaining));
+        }
         _focusRow = true;
         StateHasChanged();
     }

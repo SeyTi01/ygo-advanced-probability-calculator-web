@@ -176,15 +176,16 @@
     </ExpressionRow>;
 
     private RenderFragment RequirementForm() => @<RequirementEditForm @key="_formVersion"
-        Title="@(_editingRequirement is not null ? "Edit requirement" : AndScope ? "Another property · same card" : AlternativeScope ? "Add an alternative · OR" : "Add requirement")"
-        SubmitLabel="@(_editingRequirement is not null ? "Save" : AndScope ? "Add property" : AlternativeScope ? "Add alternative" : HasSelectedConstraint ? "Update requirement" : "Add")"
+        Mode="@(_editingRequirement is not null ? "edit" : AndScope ? "AND" : AlternativeScope ? "OR" : "add")"
+        UpdateExisting="@(_editingRequirement is null && !AuthoringScope && HasSelectedConstraint)"
+        ShowActions="@(_editingRequirement is not null)" ActionOperators="@(_selectedKind == "Category" ? new[] { "AND", "OR" } : new[] { "OR" })"
+        OnAddAlternative="ExtendWithAlternative" OnAddProperty="ExtendWithProperty" OnRemoveRequirement="DeleteEditingRequirement"
         OperandCount="FormOperandCount" OperandKey="FormOperandKey" Error="@PropertyError" OnSubmit="AddConstraint" OnCancel="CancelRequirement" OnKeyDown="HandleRequirementKeyDown"
-        OnRemoveOperand="RemoveDraftProperty">
-        <BeforeContent>@if (AuthoringScope) { <p class="alternative-scope text-body-secondary">@ScopeLabel</p> }</BeforeContent>
+        OnRemoveOperand="RemoveDraftProperty" AllowedOperators="@(new[] { "AND" })">
         <OperandContent Context="position">
             <RequirementPropertyPicker @ref="_propertyPickers[position]" Id="@(position == 0 ? $"comboTarget{Index}" : $"comboProperty{Index}-{position}")"
                 Value="@(FormOperandCount > 1 ? _draftProperties[position].Identity : SelectedTarget)"
-                Label="@(FormOperandCount > 1 || AndScope ? "Property or category" : "Card, category or property")"
+                Label="Requirement"
                 AccessibleLabel="@(FormOperandCount > 1 ? $"Same-card property {position + 1}" : null)"
                 Categories="@(FormOperandCount > 1 ? _availableCategories : SelectableCategories.ToArray())" Cards="@(AndScope || FormOperandCount > 1 ? [] : Cards)"
                 RelevantIdentities="_categoryOptions.RelevantMetadataIdentities" CardLabel="card => CardSelectionLabel(card.Id)"
@@ -209,15 +210,6 @@
             </div>
         </details>
         </AfterContent>
-        <ActionsContent>
-        @if (_editingRequirement is not null) {
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-action="alternative" @onclick="ExtendWithAlternative">@(EditingHasChanges ? "Save & add alternative (OR)" : "Add alternative (OR)")</button>
-                @if (_selectedKind == "Category") {
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="property" @onclick="ExtendWithProperty">@(EditingHasChanges ? "Save & add property (AND)" : "Add property (AND)")</button>
-                }
-                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="DeleteEditingRequirement">@( _editingGroupIndex is not null ? "Remove alternative" : "Remove requirement")</button>
-        }
-        </ActionsContent>
     </RequirementEditForm>;
 
     [Parameter] public int Index { get; set; }
@@ -286,24 +278,6 @@
         .Where(category => category.Source == CategorySource.Metadata && _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity));
     private IEnumerable<CategoryBase> SelectableCommonProperties => SelectableCategories
         .Where(category => CategoryCatalog.IsCommonMetadata(category) && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity));
-    private string ScopeLabel {
-        get {
-            if (_andSeed is { } andSeed) {
-                int alternativeNumber = (_andAlternativeIndex ?? 0) + 1;
-                return _andGroupIndex is int groupIndex
-                    ? $"OR group {groupIndex + 1}, alternative {alternativeNumber}: {andSeed.DisplayName} ({RequirementRangeFormatter.Format(andSeed.MinCount, andSeed.MaxCount, andSeed.MaximumMode)})"
-                    : $"requirement {(_andSeedIndex ?? 0) + 1}: {andSeed.DisplayName} ({RequirementRangeFormatter.Format(andSeed.MinCount, andSeed.MaxCount, andSeed.MaximumMode)})";
-            }
-
-            if (_alternativeSeed is ComboAlternative seed) {
-                int requirementOffset = seed.Category is not null ? 0 : Combo.Categories.Count;
-                return $"requirement {requirementOffset + _alternativeSeedIndex + 1}: {AlternativeTargetLabel(seed)}";
-            }
-
-            return $"OR group {_alternativeGroupIndex + 1}";
-        }
-    }
-
     private string AlternativeLabel(ComboAlternative alternative) =>
         alternative.Category?.DisplayName ?? $"Card: {CardDisplayName(alternative.Card!.CardId)}";
 

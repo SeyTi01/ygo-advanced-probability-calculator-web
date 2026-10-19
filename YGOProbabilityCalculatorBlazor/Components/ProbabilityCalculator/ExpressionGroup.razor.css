@@ -1,4 +1,4 @@
-.requirement-or-group { min-width: 0; }
+.requirement-or-group { display: grid; gap: .5rem; min-width: 0; }
 .expression-group-nested {
     display: grid;
     gap: .5rem;

@@ -74,7 +74,7 @@ const { chromium } = require('playwright');
         await combo.locator('.requirement-submit button').click();
         assert.deepEqual(await rowOrder(), ['alternative:0:0', 'alternative:0:1', 'category:0'], 'OR promotion preserves the first requirement’s slot');
         await combo.locator("button[data-requirement='alternative:0:1']").click();
-        await combo.getByRole('button', { name: 'Remove alternative', exact: true }).click();
+        await combo.getByRole('button', { name: 'Remove requirement', exact: true }).click();
         assert.deepEqual(await rowOrder(), ['category:1', 'category:0'], 'unwrapping a single surviving OR leaf restores its original slot');
 
         const card = page.locator('.card-editor').first();

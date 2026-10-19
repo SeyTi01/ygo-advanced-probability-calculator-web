@@ -41,7 +41,7 @@
         <div class="mt-2" aria-label="Grouped eligibility filter">
             <SelectorExpressionEditor Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
                                       RelevantMetadataIdentities="_categoryOptions.RelevantMetadataIdentities" CategoryRename="CategoryRename" OnEditingChanged="OnEditingChanged"
-                                      Options="GroupedOptions" OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
+                                      OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
         </div>
     }
     @if (_error is not null) { <div class="text-danger small" role="alert">@_error</div> }
@@ -69,21 +69,6 @@
         || selector.Children.Any(HasVerifiedPredicate);
 
     private bool Grouped => Selector.IsGrouped;
-
-    private RenderFragment GroupedOptions => @<text>
-        <option value="numeric:level">Level</option><option value="numeric:rank">Rank</option><option value="numeric:link">Link</option>
-        @foreach (IGrouping<string, CategoryBase> group in GroupedAvailable.GroupBy(category => category.Source == CategorySource.User
-            ? "User categories" : _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity) ? "Relevant properties" : "Common properties")) {
-            <optgroup label="@group.Key">
-                @foreach (CategoryBase category in group) { <option value="@category.Identity">@GroupOptionLabel(category)</option> }
-            </optgroup>
-        }
-    </text>;
-
-    private static string GroupOptionLabel(CategoryBase category) {
-        int colon = category.Name.IndexOf(':');
-        return category.Source == CategorySource.Metadata && colon > 0 ? category.Name[(colon + 1)..].Trim() : category.Name;
-    }
 
     private Task Clear() => PublishGrouped(CardSelector.Any);
 

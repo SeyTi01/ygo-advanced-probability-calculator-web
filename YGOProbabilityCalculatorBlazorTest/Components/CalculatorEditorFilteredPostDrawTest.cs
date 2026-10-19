@@ -75,7 +75,7 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         IElement chip = EligibilityChip(selector, "x");
         Assert.That(chip.ClassList, Does.Contain(CardPropertyColorPalette.GenericMetadataClass));
         selector.Find(".requirement-edit").Click();
-        Assert.That(Button(selector, "Remove clause"), Is.Not.Null);
+        Assert.That(Button(selector, "Remove requirement"), Is.Not.Null);
     }
 
     [Test]

@@ -96,7 +96,7 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
     }
     [Test]
-    public async Task SelectorAndPropertyRuleConnectorsOfferOnlyAndOrAndRespectCancel() {
+    public async Task SelectorAndPropertyRuleConnectorsApplyDirectlyWithinTheirOwningEditor() {
         CategoryBase monster = new("Monster", CategorySource.Metadata, "kind:monster");
         CategoryBase fire = new("FIRE", CategorySource.Metadata, "attribute:fire");
         CategoryBase water = new("WATER", CategorySource.Metadata, "attribute:water");
@@ -108,10 +108,7 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
             .Add(component => component.OnChanged, value => { current = value; editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value)); }));
         Assert.That(editor.FindAll(".expression-operator option").Select(option => option.TextContent), Is.All.AnyOf("AND", "OR"));
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
-        await Button(editor, "Cancel").ClickAsync(new());
-        Assert.That(current, Is.SameAs(selector));
-        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
-        await Button(editor, "Save").ClickAsync(new());
+        Assert.That(editor.FindAll("form"), Is.Empty);
         Assert.That(current.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
         Assert.That(current.CategoryIdentities, Is.EqualTo(selector.CategoryIdentities));
 
@@ -196,7 +193,7 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task FlatEligibilityConnectorOpensSharedDraftWithoutOfferingSeparateCopies() {
+    public async Task FlatEligibilityConnectorAppliesImmediatelyWithoutOfferingSeparateCopies() {
         CardSelector original = CardSelector.AllOf([b.Identity, a.Identity]);
         CardSelector saved = original;
         IRenderedComponent<PostDrawSelectorEditor>? editor = null;
@@ -204,9 +201,9 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
             .Add(component => component.Selector, original).Add(component => component.CategoryBases, new[] { a, b })
             .Add(component => component.OnChanged, value => { saved = value; editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value)); }));
         await editor.Find("[aria-label='Grouped eligibility filter'] .expression-operator").ChangeAsync(new() { Value = "OR" });
-        Assert.That(editor.FindAll("form .requirement-operand"), Has.Count.EqualTo(2));
-        Assert.That(editor.Find("[aria-label='Row operator']").TextContent, Is.EqualTo("ANDOR"));
-        await Button(editor, "Cancel").ClickAsync(new());
-        Assert.That(saved, Is.SameAs(original));
+        Assert.That(editor.FindAll("form"), Is.Empty);
+        Assert.That(saved.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
+        Assert.That(saved.AuthoredTerms.Select(term => term.CategoryIdentities.Single()), Is.EqualTo(new[] { b.Identity, a.Identity }));
+        Assert.That(editor.Find(".expression-operator").TextContent, Is.EqualTo("ANDOR"));
     }
 }

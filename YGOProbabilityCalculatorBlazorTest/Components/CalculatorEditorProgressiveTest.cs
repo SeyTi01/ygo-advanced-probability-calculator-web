@@ -163,7 +163,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await EditRequirement(editor, "category:0");
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "4" });
-        Assert.That(editor.Find("[data-action='alternative']").TextContent, Does.StartWith("Save &"));
+        Assert.That(editor.Find("[data-action='alternative']").TextContent, Is.EqualTo("Add alternative (OR)"));
         await editor.Find("[data-action='alternative']").ClickAsync(new());
         Assert.That(editor.FindAll("[role='alert']"), Has.Count.EqualTo(1));
         Assert.That(editor.Instance.Combo.Categories.Single().MinCount, Is.EqualTo(1));

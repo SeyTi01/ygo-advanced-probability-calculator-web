@@ -166,7 +166,7 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
 
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
-        Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("requirement 1"));
+        Assert.That(editor.Find(".requirement-form-heading").TextContent, Does.Contain("Another property"));
         await Button(editor, "Add property").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories.Single().Selector.CategoryIdentities, Does.Contain("user:Renamed"));
     }
@@ -189,7 +189,7 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Renamed" });
         await cut.Find("[aria-label='New name for category A']").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
 
-        Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("OR group 1, alternative 1"));
+        Assert.That(editor.Find(".requirement-form-heading").TextContent, Does.Contain("Another property"));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
         await Button(editor, "Add property").ClickAsync(new());
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[0].Category!.Selector.CategoryIdentities,
