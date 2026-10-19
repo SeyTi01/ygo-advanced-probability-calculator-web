@@ -139,7 +139,6 @@ summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2p
 .requirement-max input { max-width: 7rem; }
 .requirement-max small { grid-column: 1 / -1; }
 
-.alternative-scope { font-size: .8rem; margin-bottom: .6rem; }
 .combo-footer { margin-top: 1rem; }
 .combo-footer .combo-group-field { max-width: 20rem; }
 .combo-footer .form-label { font-size: .8rem; }

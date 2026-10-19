@@ -34,7 +34,7 @@
 @code {
     public sealed record Change(string Value, CategoryBase? Category, string? Error = null);
     [Parameter] public string Id { get; set; } = "requirement-target";
-    [Parameter] public string Label { get; set; } = "Category or property";
+    [Parameter] public string Label { get; set; } = "Requirement";
     [Parameter] public string? AccessibleLabel { get; set; }
     [Parameter] public string Value { get; set; } = "";
     [Parameter] public IReadOnlyList<CategoryBase> Categories { get; set; } = [];

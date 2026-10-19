@@ -16,6 +16,72 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
     private static ComboCategory Same(params int[] indices) => ComboCategory.SameCard(indices.Select(index => Properties[index]), 1, 3);
 
     [Test]
+    public async Task BothEditorsApplyOperatorsImmediatelyAndUseTheSameActions() {
+        Combo combo = new([Same(0, 1)]);
+        CardSelector selector = CardSelector.AllOf(Properties.Take(2).Select(property => property.Identity));
+        IRenderedComponent<ComboEditor>? comboEditor = null;
+        IRenderedComponent<SelectorExpressionEditor>? selectorEditor = null;
+        comboEditor = context.RenderComponent<ComboEditor>(parameters => parameters
+            .Add(component => component.Combo, combo).Add(component => component.CategoryBases, Properties)
+            .Add(component => component.OnReplaceCombo, change => {
+                combo = change.NewCombo;
+                comboEditor!.SetParametersAndRender(next => next.Add(component => component.Combo, combo));
+            }));
+        selectorEditor = context.RenderComponent<SelectorExpressionEditor>(parameters => parameters
+            .Add(component => component.Selector, selector).Add(component => component.Available, Properties)
+            .Add(component => component.OnChanged, change => {
+                selector = change;
+                selectorEditor!.SetParametersAndRender(next => next.Add(component => component.Selector, selector));
+            }));
+        await comboEditor.Find(".expanded-expression .expression-operator").ChangeAsync(new() { Value = "OR" });
+        await selectorEditor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
+        Assert.That(combo.AlternativeGroups, Has.Count.EqualTo(1));
+        Assert.That(selector.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
+        Assert.That(comboEditor.FindAll("form"), Is.Empty);
+        Assert.That(selectorEditor.FindAll("form"), Is.Empty);
+        comboEditor.Find(".requirement-edit").Click();
+        selectorEditor.Find(".requirement-edit").Click();
+        foreach (IRenderedComponent<RequirementActions> actions in new[] { comboEditor.FindComponent<RequirementActions>(), selectorEditor.FindComponent<RequirementActions>() }) {
+            Assert.That(actions.FindAll("button").Select(button => button.TextContent.Trim()),
+                Is.EqualTo(new[] { "Add alternative (OR)", "Add property (AND)", "Remove requirement" }));
+        }
+        Assert.That(selectorEditor.FindAll("details"), Is.Empty);
+        Assert.That(selectorEditor.Markup, Does.Not.Contain("More actions").And.Not.Contain("Edit outer group").And.Not.Contain("Replace group"));
+    }
+
+    [Test]
+    public async Task SimulationOperatorChangesPreserveRowsAndProtectPendingEdits() {
+        CardSelector original = CardSelector.AllOfSelectors([
+            CardSelector.AnyOf(Properties.Take(2).Select(property => property.Identity)),
+            CardSelector.AnyOf(Properties.Skip(2).Take(2).Select(property => property.Identity))
+        ]);
+        CardSelector current = original;
+        IRenderedComponent<SelectorExpressionEditor>? editor = null;
+        editor = context.RenderComponent<SelectorExpressionEditor>(parameters => parameters
+            .Add(component => component.Selector, current).Add(component => component.Available, Properties)
+            .Add(component => component.OnChanged, value => {
+                current = value;
+                editor!.SetParametersAndRender(next => next.Add(component => component.Selector, current));
+            }));
+        await editor.Find("[data-selector-path='root'] > .requirement-or-group > .requirement-and-separator select").ChangeAsync(new() { Value = "OR" });
+        Assert.That(current.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(2));
+        Assert.That(editor.FindAll("form"), Is.Empty);
+        editor.FindAll(".requirement-edit").First().Click();
+        editor.Find("form .requirement-property-picker > select").Change(Properties[4].Identity);
+        await editor.Find("[data-selector-path='root'] > .requirement-or-group > .alternative-separator select").ChangeAsync(new() { Value = "AND" });
+        Assert.That(current.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
+        Assert.That(editor.Find("form .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo(Properties[4].Identity));
+        Assert.That(editor.FindAll("[role='alert']").Select(alert => alert.TextContent), Has.Some.Contains("Save or cancel"));
+        Button(editor, "Cancel").Click();
+        await editor.Find("[data-selector-path='root'] > .requirement-or-group > .alternative-separator select").ChangeAsync(new() { Value = "AND" });
+        Assert.That(current.Kind, Is.EqualTo(CardSelectorKind.AllOf));
+        Assert.That(current, Is.EqualTo(original));
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(2));
+        Assert.That(editor.FindAll("form"), Is.Empty);
+    }
+
+    [Test]
     public async Task SwitchingPlusToOrPreservesRowsAndCanBeReversed() {
         Combo current = new([], alternativeGroups: [new([Leaf(0), Leaf(1)]), new([Leaf(2), Leaf(3)])]);
         IRenderedComponent<ComboEditor>? editor = null;
@@ -56,12 +122,12 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         await editor.Find(".expanded-expression > .requirement-and-separator select").ChangeAsync(new() { Value = "OR" });
         ExpressionRow first = editor.FindComponents<ExpressionRow>().First().Instance;
         await editor.Find("[data-requirement='alternative:0:0']").ClickAsync(new());
-        await Button(editor, "Remove alternative").ClickAsync(new());
+        await Button(editor, "Remove requirement").ClickAsync(new());
         Assert.That(editor.FindAll(".expanded-expression .requirement-row"), Has.Count.EqualTo(2));
         Assert.That(editor.FindComponents<ExpressionRow>().First().Instance, Is.SameAs(first));
         Assert.That(editor.FindAll(".expanded-expression .requirement-row").First().TextContent, Does.Contain("B"));
         await editor.Find("[data-requirement='alternative:0:0']").ClickAsync(new());
-        await Button(editor, "Remove alternative").ClickAsync(new());
+        await Button(editor, "Remove requirement").ClickAsync(new());
         Assert.That(editor.FindAll(".expanded-expression .requirement-row"), Has.Count.EqualTo(1));
         Assert.That(current.AllCategories.Single().BaseCategory.Name, Is.EqualTo("C"));
     }
@@ -254,7 +320,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[1].Category!.MaxCount, Is.EqualTo(19));
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives[1].Category!.MaximumMode, Is.EqualTo(RequirementMaximumMode.HandSize));
         await EditRequirement(editor, "alternative:0:3");
-        await Button(editor, "Remove alternative").ClickAsync(new());
+        await Button(editor, "Remove requirement").ClickAsync(new());
         Assert.That(editor.Instance.Combo.AlternativeGroups[0].Alternatives, Has.Count.EqualTo(3));
         Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
         await Button(cut, "Save Session").ClickAsync(new());

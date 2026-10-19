@@ -18,7 +18,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));
         editor.Find(".simulation-edit").Click();
         Assert.That(editor.FindAll(".requirement-edit").Select(row => row.GetAttribute("aria-label")), Is.EqualTo(new[] {
-            "Edit Monster AND Level >= 5", "Edit LIGHT OR DARK", "Edit Pyro OR Aqua"
+            "Edit Monster AND Level >= 5", "Edit Attribute: LIGHT OR Attribute: DARK", "Edit Pyro OR Aqua"
         }));
         Assert.That(editor.Markup, Does.Not.Contain("Any condition"));
         foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
@@ -112,7 +112,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         editor.Find(".simulation-edit").Click();
         Node(editor, CardSelectorKind.AnyOf).Find(".requirement-edit").Click();
         editor.Find("[aria-label='Row operator']").Change("AND");
-        SaveRow(editor);
+        Assert.That(editor.FindAll(".selector-expression form"), Is.Empty);
         editor.Find(".simulation-save").Click();
         Assert.That(saved!.Search!.Selector.Signature, Does.Contain("AllOf"));
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card, saved));
@@ -145,7 +145,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
         OpenLevel(editor);
         editor.Find("input[aria-label='Minimum Level']").Input("");
-        Button(editor, "Remove condition 2").Click();
+        Button(editor, "Remove property 2").Click();
         SaveRow(editor);
         Assert.That(editor.FindAll("input[aria-label='Minimum Level']"), Is.Empty);
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
@@ -252,7 +252,6 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         IRenderedComponent<SelectorExpressionEditor> branch = editor.FindComponents<SelectorExpressionEditor>()
             .Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity));
         branch.Find(".requirement-edit").Click();
-        Button(editor, "Group condition 1").Click();
         editor.Find("form .requirement-operand .requirement-property-picker > select").Change("numeric:level");
         editor.Find("select[aria-label='Comparison']").Change("minimum");
         editor.Find("input[aria-label='Minimum Level']").Input("6");
@@ -262,18 +261,13 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(current.Matches(new Card([b, .. SelectorExpressionTest.Target(5).Categories], externalCardId: 100)), Is.False);
         AssertRoundTrip(current);
         IRenderedComponent<SelectorExpressionEditor> nested = editor.FindComponents<SelectorExpressionEditor>()
-            .Single(component => !component.Instance.IsRoot && component.Instance.Selector.Kind == CardSelectorKind.AnyOf);
+            .Single(component => !component.Instance.IsRoot && component.Instance.Selector.HasNumericPredicate);
         nested.Find(".requirement-edit").Click();
-        editor.Find("[aria-label='Row operator']").Change("AND");
-        CancelRow(editor);
-        Assert.That(current.Children, Does.Contain(untouched));
-        nested.Find(".requirement-edit").Click();
-        Button(editor, "Replace group").Click();
         editor.Find("form .requirement-operand .requirement-property-picker > select").Change(a.Identity);
         SaveRow(editor);
         Assert.That(current, Is.EqualTo(initial));
         editor.FindComponents<SelectorExpressionEditor>().Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity)).Find(".requirement-edit").Click();
-        Button(editor, "Remove group").Click();
+        Button(editor, "Remove requirement").Click();
         Assert.That(current, Is.EqualTo(untouched), "Removing one OR branch promotes the remaining complete AND branch.");
         AssertRoundTrip(current);
     }
@@ -293,7 +287,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
     }
 
     [Test]
-    public void AncestorBoundsRejectOnlyTheLocalEditAndRemainRecoverable() {
+    public void DeepLegacyRowsRejectInvalidNumericDraftsAndRemainRecoverable() {
         CardSelector original = CardSelector.LevelAtLeast(1);
         for (int index = 0; index < CardSelector.MaximumDepth - 1; index++) {
             CardSelector sibling = CardSelector.For(new CategoryBase($"Sibling {index}"));
@@ -309,14 +303,11 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
             }));
         OpenLevel(editor);
-        int levelOperand = editor.FindAll(".requirement-edit-grid .requirement-operand").ToList()
-            .FindIndex(operand => operand.QuerySelector("input[aria-label='Minimum Level']") is not null);
-        Button(editor, $"Group condition {levelOperand + 1}").Click();
-        editor.Find("form .requirement-operand .requirement-property-picker > select").Change("metadata:kind:monster");
+        editor.Find("input[aria-label='Minimum Level']").Input("-1");
         SaveRow(editor);
         Assert.That(changes, Is.Zero);
         Assert.That(current, Is.SameAs(original));
-        Assert.That(editor.Find(".selector-expression [role='alert']").TextContent, Does.Contain("too deeply grouped"));
+        Assert.That(editor.Find(".selector-expression [role='alert']").TextContent, Does.Contain("non-negative whole number"));
         Assert.That(editor.FindAll("form"), Has.Count.EqualTo(1));
         CancelRow(editor);
         OpenLevel(editor);

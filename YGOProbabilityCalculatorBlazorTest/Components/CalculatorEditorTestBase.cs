@@ -90,7 +90,7 @@ public abstract class CalculatorEditorTestBase {
     }
 
     protected static IElement EligibilityRow(IRenderedFragment editor, string label) => editor.FindAll(".selector-expression .requirement-row")
-        .First(row => row.QuerySelectorAll(".draw-selector-chip").Any(chip => chip.TextContent.Equals(label, StringComparison.OrdinalIgnoreCase)))
+        .First(row => row.QuerySelectorAll(".draw-selector-chip").Any(chip => (chip.TextContent.Equals(label, StringComparison.OrdinalIgnoreCase) || chip.TextContent.EndsWith(": " + label, StringComparison.OrdinalIgnoreCase))))
         .QuerySelector(".requirement-edit")!;
 
     protected static async Task AddEligibilityProperty(IRenderedFragment editor, string label, string identity) {
@@ -104,7 +104,7 @@ public abstract class CalculatorEditorTestBase {
         await EligibilityRow(editor, label).ClickAsync(new());
         int index = editor.FindAll(".selector-expression form .requirement-operand .requirement-property-picker > select").ToList()
             .FindIndex(select => select.GetAttribute("value") == identity);
-        await Button(editor, $"Remove condition {index + 1}").ClickAsync(new());
+        await Button(editor, $"Remove property {index + 1}").ClickAsync(new());
         await editor.Find(".selector-expression form").SubmitAsync();
     }
 
@@ -130,11 +130,11 @@ public abstract class CalculatorEditorTestBase {
     }
 
     protected static async Task DeleteRequirement(IRenderedFragment editor, string target) {
-        if (editor.FindAll(".alternative-scope").Count > 0) {
+        if (editor.FindAll(".requirement-form-heading").Any(heading => heading.TextContent.Contains("Add an alternative") || heading.TextContent.Contains("Another property"))) {
             await Button(editor, "Cancel").ClickAsync(new());
         }
         await EditRequirement(editor, target);
-        await Button(editor, target.StartsWith("alternative:", StringComparison.Ordinal) ? "Remove alternative" : "Remove requirement").ClickAsync(new());
+        await Button(editor, "Remove requirement").ClickAsync(new());
     }
 
     protected static async Task RemoveProperty(IRenderedFragment editor, string target, int property) {

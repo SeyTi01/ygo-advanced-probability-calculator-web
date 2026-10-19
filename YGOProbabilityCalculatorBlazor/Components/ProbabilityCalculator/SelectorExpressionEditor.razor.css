@@ -1,10 +1,2 @@
 .selector-expression { min-width: 0; }
-.selector-expression ::deep > .requirement-or-group { display: grid; gap: .5rem; }
-.selector-more-actions summary { cursor: pointer; min-height: 36px; }
-.selector-more-actions[open] { flex-basis: 100%; }
-.selector-more-actions .btn { margin: .35rem .35rem 0 0; }
-@media (max-width: 575.98px) {
-    .selector-more-actions summary { min-height: 44px; }
-}
-
 .selector-term { min-width: 0; }

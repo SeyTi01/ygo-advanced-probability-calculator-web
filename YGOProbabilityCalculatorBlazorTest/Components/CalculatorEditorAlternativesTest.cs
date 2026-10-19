@@ -33,7 +33,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(editor.Instance.Combo, Is.SameAs(before));
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget("r")));
         await ChooseAlternativeTarget(editor, "category:0");
-        Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("requirement 1: Category: A"));
+        Assert.That(editor.Find(".requirement-form-heading").TextContent, Does.Contain("Add an alternative"));
         await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(editor.Instance.Combo, Is.SameAs(before), "Invalid incomplete additions publish nothing.");
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "8" });
@@ -242,7 +242,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
         await ChooseAlternativeTarget(editor, "category:1");
-        Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("requirement 2: Category: A"));
+        Assert.That(editor.Find(".requirement-form-heading").TextContent, Does.Contain("Add an alternative"));
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Categories, Has.Count.EqualTo(1));
@@ -271,7 +271,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
 
         Assert.That(editor.FindAll(".requirement-edit"), Has.Count.EqualTo(2));
         await ChooseAlternativeTarget(editor, "group:1");
-        Assert.That(editor.Find(".alternative-scope").TextContent, Does.Contain("OR group 2"));
+        Assert.That(editor.Find(".requirement-form-heading").TextContent, Does.Contain("Add an alternative"));
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await Button(editor, "Add alternative").ClickAsync(new());
 

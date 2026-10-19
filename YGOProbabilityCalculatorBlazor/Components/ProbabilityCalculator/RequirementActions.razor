@@ -1,0 +1,14 @@
+@if (AllowedOperators.Contains("OR")) {
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="alternative" @onclick="OnAddAlternative">Add alternative (OR)</button>
+}
+@if (AllowedOperators.Contains("AND")) {
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="property" @onclick="OnAddProperty">Add property (AND)</button>
+}
+<button type="button" class="btn btn-sm btn-outline-danger" @onclick="OnRemove">Remove requirement</button>
+
+@code {
+    [Parameter] public IReadOnlyList<string> AllowedOperators { get; set; } = ["AND", "OR"];
+    [Parameter] public EventCallback OnAddAlternative { get; set; }
+    [Parameter] public EventCallback OnAddProperty { get; set; }
+    [Parameter] public EventCallback OnRemove { get; set; }
+}
