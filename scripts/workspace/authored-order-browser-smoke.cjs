@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
     const baseUrl = process.argv[2] || 'http://127.0.0.1:5096';
     const evidence = process.env.WORKSPACE_SCREENSHOTS;
     const errors = [];
-    const browser = await chromium.launch({ channel: 'msedge', headless: true, timeout: 20000 });
+    const browser = await chromium.launch({ headless: true, timeout: 20000, ...(process.env.OPERATOR_EXECUTABLE ? { executablePath: process.env.OPERATOR_EXECUTABLE } : { channel: 'msedge' }) });
     try {
         const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, hasTouch: true });
         page.on('pageerror', error => errors.push(error.message));
@@ -53,8 +53,10 @@ const { chromium } = require('playwright');
         await combo.locator('.requirement-submit button').click();
         const rowOrder = async () => combo.locator('.requirement-list button[data-requirement]').evaluateAll(rows => rows.map(row => row.dataset.requirement));
         assert.deepEqual(await rowOrder(), ['card:0', 'category:0'], 'new direct-card and category requirements retain their authored order');
+        await combo.locator('.accordion-button').click();
         const header = await combo.locator('.combo-header-requirements').innerText();
         assert.ok(header.indexOf('Physical') < header.indexOf('A'), `header keeps card before category: ${header}`);
+        await combo.locator('.accordion-button').click();
 
         await combo.locator("button[data-requirement='card:0']").click();
         await page.locator('#comboTarget0').selectOption('user:B');
@@ -78,12 +80,13 @@ const { chromium } = require('playwright');
         if (await cardToggle.getAttribute('aria-expanded') !== 'true') await cardToggle.click();
         const simulation = card.locator('.card-simulation');
         await simulation.locator('.simulation-edit').click();
-        await simulation.getByRole('button', { name: 'Edit groups', exact: true }).click();
-        const selectorRows = () => simulation.locator('.selector-expression[data-selector-path^="root."] .requirement-edit');
+        const selectorRows = () => simulation.locator('.selector-expression[data-selector-path="root"] .requirement-edit');
         const authoredLabels = async () => selectorRows().evaluateAll(rows => rows.map(row =>
-            row.querySelector('.requirement-description').innerText.replace(/\s+/g, ' ').trim()));
-        assert.deepEqual(await authoredLabels(), ['A AND B', 'C AND D'], 'selector editor pairs leaves in authored order');
-        await simulation.locator('.selector-expression[data-selector-path="root.0"] .requirement-edit').click();
+            [...row.closest('.requirement-row').querySelectorAll('.selector-summary-term')].map((term, index) =>
+                `${index > 0 ? term.querySelector('select').value + ' ' : ''}${term.querySelector('.draw-selector-chip').textContent.trim()}`).join(' ')));
+
+        assert.deepEqual(await authoredLabels(), ['A AND B AND C AND D'], 'selector editor groups all flat leaves in authored order');
+        await simulation.locator('.selector-expression[data-selector-path="root"] .requirement-edit').click();
         const selectorInput = simulation.locator('.selector-operand select').first();
         await selectorInput.selectOption('user:E');
 
@@ -98,15 +101,14 @@ const { chromium } = require('playwright');
         await categoryManagement.getByRole('button', { name: 'Edit category Z', exact: true }).waitFor();
         assert.equal(await categoryManagement.getByRole('button', { name: 'Edit category Z', exact: true }).evaluate(element => document.activeElement === element), true, 'saving a rename returns focus to its category trigger');
         assert.equal(await selectorInput.inputValue(), 'user:E', 'selector operand draft survives category rename');
-        assert.deepEqual(await authoredLabels(), ['Z AND B', 'C AND D'], 'rename preserves authored order within the paired selector row');
-        await simulation.locator('.selector-expression[data-selector-path="root.0"] .requirement-form button[type="submit"]').click();
-        assert.deepEqual(await authoredLabels(), ['E AND B', 'C AND D'], 'saved selector operand replaces only its original authored slot');
+        assert.deepEqual(await authoredLabels(), ['Z AND B AND C AND D'], 'rename preserves authored order within the flat selector term');
+        await simulation.locator('.selector-expression[data-selector-path="root"] .requirement-form button[type="submit"]').click();
+        assert.deepEqual(await authoredLabels(), ['E AND B AND C AND D'], 'saved selector operand replaces only its original authored slot');
         await simulation.locator('.simulation-save').click();
         await simulation.locator('.simulation-edit').click();
-        await simulation.getByRole('button', { name: 'Edit groups', exact: true }).click();
-        assert.deepEqual(await authoredLabels(), ['E AND B', 'C AND D'], 'saved selector display remains in authored order when reopened');
+        assert.deepEqual(await authoredLabels(), ['E AND B AND C AND D'], 'saved selector display remains in authored order when reopened');
         const accessibleLabels = await selectorRows().evaluateAll(rows => rows.map(row => row.getAttribute('aria-label')));
-        assert.deepEqual(accessibleLabels, ['Edit E AND B', 'Edit C AND D'], 'accessible row labels match the visible authored term order');
+        assert.deepEqual(accessibleLabels, ['Edit E AND B AND C AND D'], 'accessible row labels match the visible authored term order');
 
         const capture = async name => {
             if (!evidence) return;
@@ -133,7 +135,7 @@ const { chromium } = require('playwright');
             }
         }
         assert.deepEqual(errors, [], `browser errors: ${errors.join('; ')}`);
-        console.log(JSON.stringify({ browser: browser.version(), port: 5096, widths: [1280, 390], themes: ['Light', 'Dark'], assertions: ['card/category order', 'type-change slot', 'OR promotion/unwrapping', 'selector pair replacement in place', 'rename focus and draft retention', 'responsive overflow'], visibleSelectorOrder: await authoredLabels(), accessibleSelectorLabels: accessibleLabels, result: 'passed' }));
+        console.log(JSON.stringify({ browser: browser.version(), port: 5096, widths: [1280, 390], themes: ['Light', 'Dark'], assertions: ['card/category order', 'type-change slot', 'OR promotion/unwrapping', 'selector term replacement in place', 'rename focus and draft retention', 'responsive overflow'], visibleSelectorOrder: await authoredLabels(), accessibleSelectorLabels: accessibleLabels, result: 'passed' }));
     } finally {
         await browser.close();
     }

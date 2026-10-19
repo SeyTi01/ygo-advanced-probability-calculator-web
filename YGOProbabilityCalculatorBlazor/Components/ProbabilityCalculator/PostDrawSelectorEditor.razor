@@ -37,46 +37,12 @@
             }
         </select>
     }
-    @if (Selector.Kind != CardSelectorKind.Any && Grouped && !HasVerifiedPredicate(Selector)) {
-        <div class="form-label mb-1">Eligible</div>
+    @if (Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
         <div class="mt-2" aria-label="Grouped eligibility filter">
-            <SelectorExpressionEditor @ref="_expressionEditor" Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
+            <SelectorExpressionEditor Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
                                       CategoryRename="CategoryRename" OnEditingChanged="OnEditingChanged"
                                       Options="GroupedOptions" OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
         </div>
-    }
-    else if (Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
-        <div class="d-flex flex-wrap align-items-center gap-1 mt-2" aria-label="Removal filter">
-            @for (int index = 0; index < Alternatives.Length; index++) {
-                int branch = index;
-                CardSelector alternative = Alternatives[index];
-                @if (index > 0) { <ExpressionSeparator Operator="OR" OnOperatorChanged="operation => BeginGroupOperator(Selector, operation)" /> }
-                <div class="d-inline-flex flex-wrap align-items-center gap-1 border rounded p-1" style="max-width:100%">
-                    @{ string[] identities = OrderedIdentities(alternative); }
-                    @for (int conjunct = 0; conjunct < identities.Length; conjunct++) {
-                        string identity = identities[conjunct];
-                        string label = Label(identity);
-                        @if (conjunct > 0) { <ExpressionSeparator Operator="AND" OnOperatorChanged="operation => BeginGroupOperator(alternative, operation)" /> }
-                        <span class="badge category-tag draw-selector-chip text-wrap d-inline-flex align-items-center @ChipCssClass(identity)">
-                            <span>@label</span>
-                            <ChipRemoveButton Class="category-remove-button ms-1"
-                                    aria-label="@($"Remove eligibility {label}")" title="@($"Remove eligibility {label}")"
-                                    OnClick="() => Remove(branch, identity)" />
-                        </span>
-                    }
-                    <select class="form-select form-select-sm" style="width:auto;max-width:100%" aria-label="Add AND eligibility to alternative @(index + 1)"
-                            value="" @onchange="e => AddAnd(branch, e.Value?.ToString())">
-                        <option value="">Add AND…</option>
-                        @foreach (CategoryBase category in Available) {
-                            <option value="@category.Identity">@category.Name</option>
-                        }
-                    </select>
-                </div>
-            }
-        </div>
-    }
-    @if (Selector.Kind != CardSelectorKind.Any && !Grouped) {
-        <button type="button" class="btn btn-link btn-sm p-0 mt-1" @onclick="() => _grouped = true">Edit groups</button>
     }
     @if (_error is not null) { <div class="text-danger small" role="alert">@_error</div> }
     @if (ShowHelp) {
@@ -98,26 +64,11 @@
     [Parameter] public EventCallback<bool> OnEditingChanged { get; set; }
 
     private readonly Dictionary<CardSelector, string> _validationErrors = [];
-    private bool _grouped;
-    private SelectorExpressionEditor? _expressionEditor;
-    private (CardSelector Target, string Operation)? _pendingGroupOperator;
     private string? _error;
     private static bool HasVerifiedPredicate(CardSelector selector) => selector.Kind is CardSelectorKind.Objective or CardSelectorKind.Not
         || selector.Children.Any(HasVerifiedPredicate);
 
-    private void BeginGroupOperator(CardSelector target, string operation) {
-        _grouped = true;
-        _pendingGroupOperator = (target, operation);
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_pendingGroupOperator is { } pending && _expressionEditor is not null) {
-            _pendingGroupOperator = null;
-            await _expressionEditor.EditGroupOperatorAsync(pending.Target, pending.Operation);
-        }
-    }
-
-    private bool Grouped => _grouped || Selector.IsGrouped;
+    private bool Grouped => Selector.IsGrouped;
 
     private RenderFragment GroupedOptions => @<text>
         <option value="level-at-least">Level >=</option>
@@ -179,32 +130,12 @@
             && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity))
         .ToArray();
 
-    private string Label(string identity) {
-        CategoryBase? category = Available.FirstOrDefault(candidate => candidate.Identity == identity);
-        if (category is not null) {
-            return category.Name;
-        }
-
-        if (identity.StartsWith("user:", StringComparison.Ordinal)) {
-            return identity["user:".Length..];
-        }
-
-        return identity.StartsWith("metadata:", StringComparison.Ordinal)
-            ? Uri.UnescapeDataString(identity["metadata:".Length..])
-            : identity;
-    }
-
-    private string ChipCssClass(string identity) => Available.FirstOrDefault(category => category.Identity == identity) is { } category
-        ? CategoryChipPalette.GetCssClass(category, CategoryColorIndices)
-        : CategoryChipPalette.GetFallbackCssClass(identity);
-
     private Task Change(ChangeEventArgs args) {
         string? identity = args.Value?.ToString();
         if (identity == "any") {
             return Clear();
         }
         if (identity == "level-at-least") {
-            _grouped = true;
             return Apply(() => Selector.Kind == CardSelectorKind.Any ? CardSelector.LevelAtLeast(5)
                 : CardSelector.AnyOfSelectors([Selector, CardSelector.LevelAtLeast(5)]));
         }
@@ -221,31 +152,6 @@
         catch (ArgumentException) {
             _error = "Filter is too large or too deeply grouped.";
         }
-    }
-
-    private static string[] OrderedIdentities(CardSelector selector) => selector.AuthoredTerms.SelectMany(term => term.CategoryIdentities).ToArray();
-
-    private Task AddAnd(int branch, string? identity) {
-        if (!Available.Any(category => category.Identity == identity)) {
-            return Task.CompletedTask;
-        }
-        return Apply(() => {
-            CardSelector[] alternatives = Alternatives;
-            alternatives[branch] = CardSelector.AllOf(OrderedIdentities(alternatives[branch]).Append(identity!));
-            return CardSelector.AnyOfSelectors(alternatives);
-        });
-    }
-
-    private Task Remove(int branch, string identity) {
-        List<CardSelector> alternatives = Alternatives.ToList();
-        string[] remaining = OrderedIdentities(alternatives[branch]).Where(category => category != identity).ToArray();
-        if (remaining.Length == 0) {
-            alternatives.RemoveAt(branch);
-        }
-        else {
-            alternatives[branch] = CardSelector.AllOf(remaining);
-        }
-        return PublishGrouped(alternatives.Count == 0 ? CardSelector.Any : CardSelector.AnyOfSelectors(alternatives));
     }
 
     protected override void OnParametersSet() =>

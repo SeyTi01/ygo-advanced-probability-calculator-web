@@ -87,13 +87,14 @@
                     }
                     else {
                         int groupIndex = position.Index;
-                        string groupKey = $"group:{groupIndex}";
                         ComboAlternativeGroup group = Combo.AlternativeGroups[groupIndex];
                         <ExpressionGroup Label="@($"Alternative group {groupIndex + 1}")">
-                            @for (int leafIndex = 0; leafIndex < group.Alternatives.Count; leafIndex++) {
-                                int currentLeafIndex = leafIndex;
-                                @if (currentLeafIndex > 0) { <ExpressionSeparator Operator="OR" AllowedOperators="GroupOperators(groupIndex)" Error="@ConnectorError(groupKey)" @ref="_connectors[groupKey]" OnOperatorChanged="operation => ChangeGroupOperator(groupIndex, operation)" /> }
-                                @RequirementRow(group.Alternatives[currentLeafIndex], currentLeafIndex, groupIndex)
+                            @foreach ((int start, int count) in AlternativeTerms(group)) {
+                                @if (start > 0) { @GroupSeparator(groupIndex) }
+                                @if (count == 1 && IsComposite(group.Alternatives[start])) {
+                                    @RequirementRow(group.Alternatives[start], start, groupIndex)
+                                }
+                                else { @AlternativeTerm(group, groupIndex, start, count) }
                             }
                         </ExpressionGroup>
                     }
@@ -146,9 +147,47 @@
         </EditorContent>
     </ExpressionRow>;
 
+    private RenderFragment GroupSeparator(int groupIndex) => @<ExpressionSeparator Operator="OR"
+        AllowedOperators="GroupOperators(groupIndex)" Error="@ConnectorError($"group:{groupIndex}")"
+        @ref="_connectors[GroupKey(groupIndex)]" OnOperatorChanged="operation => ChangeGroupOperator(groupIndex, operation)" />;
+
+    private RenderFragment AlternativeTerm(ComboAlternativeGroup group, int groupIndex, int start, int count) => @<ExpressionRow
+        @key="RowIdentity(group.Alternatives[start], start, groupIndex)" Label="@($"Edit alternatives in OR group {groupIndex + 1}")"
+        Expanded="@Enumerable.Range(start, count).Any(index => IsOpenRow(group.Alternatives[index], index, groupIndex))"
+        InteractiveSummary="true" @ref="_rowButtons[RowKey(group.Alternatives[start], start, groupIndex)]"
+        OnEdit="() => ToggleAlternativeTerm(group, groupIndex, start, count)">
+        <ChildContent>
+            <span class="alternative-group">
+                @ExpressionParenthesis(true)
+                <span class="alternative-group-content">
+                    @for (int index = start; index < start + count; index++) {
+                        int leafIndex = index;
+                        ComboAlternative leaf = group.Alternatives[index];
+                        @if (index > start) { <span @onclick:stopPropagation>@GroupSeparator(groupIndex)</span> }
+                        <button type="button" class="alternative-member" @key="RowIdentity(leaf, index, groupIndex)"
+                            @ref="_alternativeButtons[RowKey(leaf, leafIndex, groupIndex)]" data-requirement="@RowKey(leaf, index, groupIndex)" aria-label="@($"Edit {AlternativeTargetLabel(leaf)}")"
+                            aria-expanded="@IsOpenRow(leaf, index, groupIndex).ToString().ToLowerInvariant()"
+                            @onclick="() => BeginEdit(leaf, leafIndex, groupIndex)" @onclick:stopPropagation>
+                            @AlternativeBadge(leaf)
+                        </button>
+                    }
+                </span>
+                @ExpressionParenthesis(false)
+            </span>
+        </ChildContent>
+        <Controls>
+            @MemberPicker(start == 0 ? $"Add condition to OR group {groupIndex + 1}" : $"Add condition to alternative:{groupIndex}:{start}", group.Alternatives[start].Category is not null,
+                target => InsertRowMember(group.Alternatives[start], start, groupIndex, target))
+            @if (ConnectorError($"group:{groupIndex}") is { } error) { <small class="text-danger" role="alert">@error</small> }
+        </Controls>
+        <EditorContent>
+            @if (Enumerable.Range(start, count).Any(index => IsOpenRow(group.Alternatives[index], index, groupIndex))) { @RequirementForm() }
+        </EditorContent>
+    </ExpressionRow>;
+
     private RenderFragment MemberPicker(string label, bool allowAnd, Func<string, Task> insert) => @<select
         class="form-select form-select-sm inline-member-picker" aria-label="@label" title="@label"
-        @bind:get="string.Empty" @bind:set="insert">
+        @ref="_memberPickers[label]" @bind:get="string.Empty" @bind:set="insert">
         <option value="">Add</option>
         @if (allowAnd) {
             <optgroup label="AND · same card">
@@ -940,6 +979,10 @@
                 await connector.FocusAsync();
             }
         }
+        if (_focusPicker is { } pickerLabel) {
+            _focusPicker = null;
+            if (_memberPickers.TryGetValue(pickerLabel, out ElementReference picker)) { await picker.FocusAsync(preventScroll: true); }
+        }
         if (_focusMinimum) {
             _focusMinimum = false;
             await _minimumInput.FocusAsync();
@@ -947,7 +990,11 @@
 
         if (_focusAlternativeEntry) {
             _focusAlternativeEntry = false;
-            if (_returnRowKey is { } key && _rowButtons.TryGetValue(key, out ExpressionRow? button) && RowExists(key)) {
+            if (_returnRowKey is { } member && _alternativeButtons.TryGetValue(member, out ElementReference memberButton) && HasInlineAlternativeButton(member)) {
+                _returnRowKey = null;
+                await memberButton.FocusAsync(preventScroll: true);
+            }
+            else if (_returnRowKey is { } key && _rowButtons.TryGetValue(VisibleRowKey(key), out ExpressionRow? button) && RowExists(key)) {
                 _returnRowKey = null;
                 await button.FocusAsync(preventScroll: true);
             }

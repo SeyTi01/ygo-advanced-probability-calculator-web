@@ -171,7 +171,7 @@ public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase
             }));
         await editor.Find("#removalSelector").ChangeAsync(new() { Value = b.Identity });
         await editor.Find("#removalSelector").ChangeAsync(new() { Value = a.Identity });
-        Assert.That(editor.FindAll(".draw-selector-chip > span").Select(element => element.TextContent), Is.EqualTo(new[] { "B", "A" }));
+        Assert.That(editor.FindAll(".draw-selector-chip").Select(element => element.TextContent), Is.EqualTo(new[] { "B", "A" }));
         Assert.That(selector.Signature, Is.EqualTo(CardSelector.AnyOf([a.Identity, b.Identity]).Signature));
     }
 }

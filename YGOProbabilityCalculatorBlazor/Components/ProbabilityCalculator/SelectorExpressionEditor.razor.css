@@ -9,7 +9,8 @@
 .selector-condition-row .form-select { min-width: 0; padding-inline-start: .4rem; padding-inline-end: 1.3rem; background-position: right .2rem center; }
 .selector-condition-row .form-label { font-size: .8rem; }
 .selector-seed { align-self: center; }
-.selector-many-conditions .selector-operand:nth-child(n+4) { grid-column: 1 / -1; }
+.selector-many-conditions { grid-template-columns: minmax(0, 1fr); }
+.selector-many-conditions .selector-operator { max-width: 6rem; }
 .selector-operator select { font-size: .8rem; }
 .selector-more-actions summary { cursor: pointer; min-height: 36px; }
 .selector-more-actions[open] { flex-basis: 100%; }
@@ -18,3 +19,8 @@
     .selector-condition-row { grid-template-columns: minmax(0, 1fr) 3.7rem minmax(0, 1fr); gap: .35rem; }
     .selector-more-actions summary { min-height: 44px; }
 }
+
+.selector-term { min-width: 0; }
+.selector-parenthesized-term { display: grid; grid-template-columns: .4rem minmax(0, 1fr) .4rem; gap: .2rem; align-items: center; }
+.selector-parenthesized-term::before { content: "("; align-self: start; line-height: 44px; }
+.selector-parenthesized-term::after { content: ")"; align-self: start; line-height: 44px; }

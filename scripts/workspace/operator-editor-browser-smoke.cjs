@@ -48,7 +48,7 @@ const session = () => ({
 
 (async () => {
     const useFirefox = process.env.OPERATOR_BROWSER === 'firefox';
-    const browser = await (useFirefox ? firefox.launch({ headless: true }) : chromium.launch({ channel: 'msedge', headless: true }));
+    const browser = await (useFirefox ? firefox.launch({ headless: true }) : chromium.launch({ headless: true, ...(process.env.OPERATOR_EXECUTABLE ? { executablePath: process.env.OPERATOR_EXECUTABLE } : { channel: 'msedge' }) }));
     try {
         const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, hasTouch: !useFirefox });
         const activate = locator => useFirefox ? locator.click() : locator.tap();
@@ -64,7 +64,13 @@ const session = () => ({
 
         const capture = async name => {
             await fs.mkdir(evidence, { recursive: true });
-            if (name.startsWith('inline-combo')) {
+            if (name.startsWith('term-combo-')) {
+                await page.locator('.combo-editor').nth(Number(name.split('-')[2])).screenshot({ path: path.join(evidence, `${name}.png`), animations: 'disabled' });
+            }
+            else if (name.startsWith('term-selector-')) {
+                await page.locator('.card-editor').filter({ hasText: `Selector case ${name.split('-')[2]}` }).screenshot({ path: path.join(evidence, `${name}.png`), animations: 'disabled' });
+            }
+            else if (name.startsWith('inline-combo')) {
                 await page.locator('.combo-editor').first().screenshot({ path: path.join(evidence, `${name}.png`), animations: 'disabled' });
             }
             else {
@@ -75,7 +81,7 @@ const session = () => ({
             await page.locator('#sessionFileInput').setInputFiles({
                 name: 'operator-review.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(value))
             });
-            await page.getByText('Operator review combo', { exact: true }).waitFor();
+            await page.getByText('Operator review combo', { exact: true }).waitFor().catch(async error => { console.error('Session load diagnostics:', await page.locator('body').innerText()); throw error; });
             await page.waitForTimeout(150);
             const combo = page.locator('.combo-editor').first();
             if (await combo.locator('.accordion-button').getAttribute('aria-expanded') !== 'true') {
@@ -120,6 +126,7 @@ const session = () => ({
             await assertNoOverflow(`${width}/${theme}`);
         };
 
+        await require('./term-editor-browser-cases.cjs')({ page, load, setLayout, saveSession, capture, assertNoOverflow, activate, session });
         let combo = await load(session());
         assert.equal(await page.locator('.combo-editor [role="status"]').filter({ hasText: 'Missing card reference' }).count(), 1,
             'missing card references are visible in the combo editor');
@@ -212,6 +219,10 @@ const session = () => ({
         await propertyInsert.selectOption('AND|metadata:monster-trait:effect');
         assert.equal(await propertyInsert.evaluate(element => element === document.activeElement), true, 'same-card insertion retains picker focus');
         assert.equal(await combo.locator('.requirement-row form').count(), 0);
+        const compositeRow = combo.locator('[data-requirement="alternative:0:0"]');
+        await compositeRow.click();
+        await combo.locator('#minCount0').press('Escape');
+        assert.equal(await compositeRow.evaluate(element => element === document.activeElement), true, 'a newly nested term restores focus to its visible field');
         const bottomPlus = combo.getByRole('button', { name: '+ Add group', exact: true });
         await bottomPlus.focus();
         await bottomPlus.press('Enter');

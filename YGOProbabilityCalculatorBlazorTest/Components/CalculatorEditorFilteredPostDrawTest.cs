@@ -40,14 +40,16 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         IRenderedComponent<PostDrawSelectorEditor> post = editor.FindComponents<PostDrawSelectorEditor>()[1];
 
         foreach (IRenderedComponent<PostDrawSelectorEditor> selector in new[] { pre, post }) {
-            string[] optionValues = selector.FindAll("optgroup option").Select(static option => option.GetAttribute("value")!).ToArray();
-            IElement[] groups = selector.FindAll("optgroup").ToArray();
+            selector.Find(".requirement-edit").Click();
+            string[] optionValues = selector.FindAll("form .selector-operand select").First().QuerySelectorAll("optgroup option").Select(static option => option.GetAttribute("value")!).ToArray();
+            IElement[] groups = selector.FindAll("form .selector-operand select").First().QuerySelectorAll("optgroup").ToArray();
             Assert.That(optionValues, Does.Contain(monster.Identity).And.Contain(dark.Identity)
                 .And.Contain(CardPropertyProvider.CommonCategories.Single(category => category.MetadataKey == "level:8").Identity)
                 .And.Contain(spell.Identity));
             Assert.That(optionValues.Distinct(StringComparer.Ordinal).Count(), Is.EqualTo(optionValues.Length));
             Assert.That(groups.Select(static group => group.GetAttribute("label")),
                 Is.EqualTo(new[] { "User categories", "Relevant properties", "Common properties" }));
+            Button(selector, "Cancel").Click();
             Assert.That(groups.All(static group => group.QuerySelectorAll("option").Length > 0), Is.True);
         }
 
@@ -72,7 +74,8 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
 
         IElement chip = EligibilityChip(selector, "x");
         Assert.That(chip.ClassList, Does.Contain(CardPropertyColorPalette.GenericMetadataClass));
-        Assert.That(chip.QuerySelector("button[aria-label='Remove eligibility x']"), Is.Not.Null);
+        selector.Find(".requirement-edit").Click();
+        Assert.That(Button(selector, "Remove clause"), Is.Not.Null);
     }
 
     [Test]
@@ -98,7 +101,7 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         await RowAction(cut, "card First, row 1", "Move down").ClickAsync(new());
         editor = cut.FindComponents<CardEditor>().ToArray()[1];
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
-        await editor.Find("[aria-label='Remove eligibility A']").ClickAsync(new());
+        await RemoveEligibility(editor, "A", a.Identity);
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Category));
         await editor.Find("#cardEligibility1").ChangeAsync(new() { Value = "any" });
@@ -129,5 +132,5 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
 
     private static IElement EligibilityChip(IRenderedFragment fragment, string label) =>
         fragment.FindAll(".badge.category-tag")
-            .Single(chip => chip.TextContent.Trim().StartsWith(label, StringComparison.Ordinal));
+            .Single(chip => chip.GetAttribute("title")?.Equals(label, StringComparison.OrdinalIgnoreCase) == true || chip.TextContent.Trim().StartsWith(label, StringComparison.OrdinalIgnoreCase));
 }

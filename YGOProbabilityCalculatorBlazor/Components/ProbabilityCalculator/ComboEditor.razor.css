@@ -224,3 +224,11 @@ summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2p
     .requirement-submit { justify-self: end; }
     .requirement-submit .btn { white-space: normal; }
 }
+
+.alternative-member { display: inline-flex; min-width: 0; max-width: 100%; padding: .15rem; border: 0; border-radius: .25rem; background: transparent; color: inherit; text-align: start; min-height: 36px; align-items: center; }
+.alternative-member:hover, .alternative-member[aria-expanded="true"] { background: var(--bs-secondary-bg); }
+.alternative-member:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.alternative-group-content ::deep .alternative-separator { display: inline-flex; gap: 0; }
+.alternative-group-content ::deep .alternative-separator::before,
+.alternative-group-content ::deep .alternative-separator::after { display: none; }
+@media (pointer: coarse) { .alternative-member { min-height: 44px; } }
