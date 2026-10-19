@@ -11,17 +11,18 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
     [Test]
-    public async Task ConnectorsCommitImmediatelyAndKeepSeparateCopyAndSameCardMeaningDistinct() {
-        List<Card> deck = [new([a, b], 1, "Both"), new([], 1, "Neither")];
+    public async Task ReversibleConnectorsCommitImmediatelyAndKeepSameCardMeaning() {
+        List<Card> deck = [new([a, b], 1, "Both"), new([a], 1, "A only"), new([], 1, "Neither")];
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
-            Categories = [a, b], Cards = deck, Combos = [new([new(a, 1, 1), new(b, 1, 1)])], HandSize = 1
+            Categories = [a, b], Cards = deck, Combos = [new([], alternativeGroups: [new([
+                ComboAlternative.For(new ComboCategory(a, 1, 1)), ComboAlternative.For(new ComboCategory(b, 1, 1))])])], HandSize = 1
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        Assert.That(SmallDeckOracle.EnumerateProbability(deck, [editor.Instance.Combo], 1), Is.Zero);
+        Assert.That(SmallDeckOracle.EnumerateProbability(deck, [editor.Instance.Combo], 1), Is.EqualTo(2.0 / 3));
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "AND" });
         Assert.That(editor.Instance.Combo.Categories.Single().CategoryBases.Select(category => category.Name), Is.EqualTo(new[] { "A", "B" }));
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
-        Assert.That(SmallDeckOracle.EnumerateProbability(deck, [editor.Instance.Combo], 1), Is.EqualTo(.5));
+        Assert.That(SmallDeckOracle.EnumerateProbability(deck, [editor.Instance.Combo], 1), Is.EqualTo(1.0 / 3));
         await EditRequirement(editor, "category:0");
         Assert.That(editor.FindAll(".property-edit-list option").Select(option => option.TextContent), Does.Not.Contain("+"));
         await editor.Find(".requirement-interactive-summary .expression-operator").ChangeAsync(new() { Value = "OR" });
@@ -149,14 +150,22 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task RuleDraftMutationClearsAnObsoleteOperatorLimitError() {
+    public async Task RuleCannotMergeCompositeAlternativesOrSplitMoreThanTwoProperties() {
         CategoryBase[] properties = Enumerable.Range(0, 17).Select(index => new CategoryBase($"P{index}", CategorySource.Metadata, $"test:{index}")).ToArray();
         CardSelector original = CardSelector.AnyOfSelectors([CardSelector.AllOf(properties.Take(16).Select(property => property.Identity)), CardSelector.For(properties[16])]);
+        CardSelector? saved = null;
         IRenderedComponent<CategoryRuleEditor> editor = context.RenderComponent<CategoryRuleEditor>(parameters => parameters
             .Add(component => component.Category, new CategoryBase("Rule", rule: original))
-            .Add(component => component.CategoryBases, properties));
+            .Add(component => component.CategoryBases, properties).Add(component => component.OnApply, value => saved = value));
+        Assert.That(editor.FindAll(".expression-operator option").Select(option => option.TextContent), Has.None.EqualTo("+"));
+        Assert.That(editor.Find(".expression-operator[value='OR']").QuerySelectorAll("option").Select(option => option.TextContent), Is.EqualTo(new[] { "OR" }));
+        Assert.That(editor.Find(".expression-operator[value='AND']").QuerySelectorAll("option").Select(option => option.TextContent), Is.EqualTo(new[] { "AND" }));
+        string[] before = editor.FindAll(".category-rule-term").Select(term => term.TextContent).ToArray();
         await editor.Find(".expression-operator[value='OR']").ChangeAsync(new() { Value = "AND" });
-        Assert.That(editor.Find("[role='alert']").TextContent, Does.Contain("16 properties"));
+        await editor.Find(".expression-operator[value='AND']").ChangeAsync(new() { Value = "OR" });
+        Assert.That(editor.FindAll(".category-rule-term").Select(term => term.TextContent), Is.EqualTo(before));
+        await Button(editor, "Apply rule").ClickAsync(new());
+        Assert.That(System.Text.Json.JsonSerializer.Serialize(saved), Is.EqualTo(System.Text.Json.JsonSerializer.Serialize(original)));
         await editor.Find("[aria-label='Remove property P0 from alternative 1']").ClickAsync(new());
         Assert.That(editor.FindAll("[role='alert']"), Is.Empty);
     }

@@ -131,7 +131,10 @@ const session = () => ({
 
         await require('./numeric-requirement-browser-cases.cjs')({ page, load, setLayout, saveSession, capture, assertNoOverflow, session });
         await require('./term-editor-browser-cases.cjs')({ page, load, setLayout, saveSession, capture, assertNoOverflow, activate, session });
-        let combo = await load(session());
+        const reversible = session();
+        reversible.Combos[0].AlternativeGroups = [{ Alternatives: reversible.Combos[0].Categories.map(Category => ({ Kind: 'Category', Category })) }];
+        reversible.Combos[0].Categories = [];
+        let combo = await load(reversible);
         assert.equal(await page.locator('.combo-editor [role="status"]').filter({ hasText: 'Missing card reference' }).count(), 1,
             'missing card references are visible in the combo editor');
         const operators = combo.getByRole('combobox', { name: /Change .* operator/ });
@@ -149,9 +152,9 @@ const session = () => ({
         assert.equal(await missingRow.evaluate(element => element === document.activeElement), true, 'Escape restores focus to the edited missing-card row');
 
         // Native connector changes commit immediately, with no secondary form.
-        const firstConnector = combo.locator('.requirement-list > .requirement-and-separator select').first();
+        const firstConnector = combo.locator('.requirement-or-group .expression-operator').first();
         await firstConnector.focus();
-        await firstConnector.press('ArrowDown');
+        await firstConnector.press('ArrowUp');
         await combo.locator('.requirement-interactive-summary').waitFor();
         assert.equal(await combo.locator('.requirement-row form').count(), 0);
         assert.equal(await combo.getByRole('button', { name: 'Edit group', exact: true }).count(), 0);

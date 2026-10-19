@@ -27,15 +27,18 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         RequirementMaximumMode secondMode,
         bool supportsAnd
     ) {
-        Combo original = new([new(a, firstMin, firstMax, firstMode), new(b, secondMin, secondMax, secondMode)]);
+        Combo original = new([], alternativeGroups: [new([
+            ComboAlternative.For(new ComboCategory(a, firstMin, firstMax, firstMode)),
+            ComboAlternative.For(new ComboCategory(b, secondMin, secondMax, secondMode))])]);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [original] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         string[] options = editor.FindAll(".expression-operator option").Select(option => option.TextContent).ToArray();
-        Assert.That(options, Is.EqualTo(supportsAnd ? new[] { "+", "AND", "OR" } : new[] { "+", "OR" }));
+        Assert.That(options, Is.EqualTo(supportsAnd ? new[] { "AND", "OR" } : new[] { "OR" }));
         Assert.That(editor.Instance.Combo, Is.SameAs(original), "Availability checks never rewrite the expression.");
-        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
+        await editor.Find(".expression-operator").ChangeAsync(new() { Value = "AND" });
+        if (supportsAnd) { await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" }); }
         options = editor.FindAll(".expression-operator option").Select(option => option.TextContent).ToArray();
-        Assert.That(options, Is.EqualTo(supportsAnd ? new[] { "+", "AND", "OR" } : new[] { "+", "OR" }));
+        Assert.That(options, Is.EqualTo(supportsAnd ? new[] { "AND", "OR" } : new[] { "OR" }));
         Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
         Assert.That(editor.FindAll(".inline-member-picker"), Is.Empty);
     }
@@ -139,7 +142,7 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task NestedSameCardToOrRetainsEveryOtherAlternativeAndItsBounds() {
+    public async Task NestedSameCardCannotFlattenIntoItsContainingOrGroup() {
         ComboCategory both = ComboCategory.SameCard([b, a], 0, 0);
         ComboCard direct = new("r", 1, 2, RequirementMaximumMode.HandSize);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
@@ -147,11 +150,16 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
             Combos = [new([], alternativeGroups: [new([ComboAlternative.For(direct), ComboAlternative.For(both)])])]
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        Combo original = editor.Instance.Combo;
+        Assert.That(editor.FindAll(".requirement-interactive-summary .expression-operator option").Select(option => option.TextContent), Is.EqualTo(new[] { "AND" }));
         await editor.Find(".requirement-interactive-summary .expression-operator").ChangeAsync(new() { Value = "OR" });
+        Assert.That(editor.Instance.Combo, Is.SameAs(original));
         IReadOnlyList<ComboAlternative> leaves = editor.Instance.Combo.AlternativeGroups.Single().Alternatives;
         Assert.That(leaves[0].Card, Is.SameAs(direct));
-        Assert.That(leaves.Skip(1).Select(leaf => leaf.Category!.BaseCategory.Name), Is.EqualTo(new[] { "B", "A" }));
-        Assert.That(leaves.Skip(1).All(leaf => leaf.Category!.MinCount == 0 && leaf.Category.MaxCount == 0), Is.True);
+        Assert.That(leaves, Has.Count.EqualTo(2));
+        Assert.That(leaves[1].Category, Is.SameAs(both));
+        Assert.That(both.CategoryBases.Select(property => property.Name), Is.EqualTo(new[] { "B", "A" }));
+        Assert.That((both.MinCount, both.MaxCount), Is.EqualTo((0, 0)));
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
         Assert.That(editor.FindAll(".requirement-or-group > .alternative-separator .expression-operator option").Select(option => option.TextContent), Does.Contain("+"));
     }

@@ -7,13 +7,14 @@
             @for (int index = 0; index < Rows.Length; index++) {
                 int position = index;
                 SelectorRow currentRow = Rows[index];
-                @if (index > 0) { <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@_operatorError" OnOperatorChanged="ChangeGroupOperator" /> }
+                @if (index > 0) { <ExpressionSeparator Operator="@(Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@_operatorError" AllowedOperators="GroupOperators" OnOperatorChanged="ChangeGroupOperator" /> }
                 <div @key="_termKeys[currentRow.Value.Signature]" class="selector-term @(currentRow.Value.Kind != Selector.Kind && currentRow.Value.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf ? "selector-nested-term" : "")">
                 <SelectorExpressionEditor @ref="_childEditors[_termKeys[currentRow.Value.Signature]]"
                     Selector="Rows[index].Value" IsRoot="false" Path="@($"{Path}.{index}")" Available="Available"
                     CategoryColorIndices="CategoryColorIndices" RelevantMetadataIdentities="RelevantMetadataIdentities" CategoryRename="CategoryRename" Session="EditorSession"
                     ReplaceSelector="value => ReplaceRow(position, value)" OnRemove="() => RemoveRow(position)"
-                    OnValidation="OnValidation" OnEditingChanged="OnEditingChanged" />
+                    OnValidation="OnValidation" OnEditingChanged="OnEditingChanged"
+                    CanReplaceOperator="(updated, restored) => CanReplaceRowOperator(position, updated, restored)" />
                 </div>
             }
         </ExpressionGroup>
@@ -42,7 +43,7 @@
         OnAddProperty="() => Add(CardSelectorKind.AllOf)" OnRemoveRequirement="RemoveSelf"
         OperandCount="_operands.Count" OperandKey="index => _operands[index]" Operator="@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@_error"
         OnSubmit="Save" OnCancel="Cancel" OnKeyDown="HandleKeyDown" OnRemoveOperand="RemoveOperand"
-        OnOperatorChanged="ChangeGroupOperator">
+        AllowedOperators="GroupOperators" OnOperatorChanged="ChangeGroupOperator">
         <OperandContent Context="position">
             @{ OperandDraft operand = _operands[position]; }
             @if (operand.Group is { } group) {
@@ -59,6 +60,7 @@
         @if (selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
             CardSelector[] terms = selector.AuthoredTerms.ToArray();
             <ExpressionTerm Count="terms.Length" Operator="@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@(interactive ? _operatorError : null)"
+                AllowedOperators="@(interactive ? GroupOperators : new[] { "AND", "OR" })"
                 OnOperatorChanged="@(interactive ? EventCallback.Factory.Create<string>(this, ChangeGroupOperator) : default)">
                 <OperandContent Context="index">@Summary(terms[index])</OperandContent>
             </ExpressionTerm>
@@ -77,6 +79,7 @@
     [Parameter] public CategoryRenameNotice? CategoryRename { get; set; }
     [Parameter] public SelectorEditSession? Session { get; set; }
     [Parameter] public Func<CardSelector, Task>? ReplaceSelector { get; set; }
+    [Parameter] public Func<CardSelector, CardSelector, bool>? CanReplaceOperator { get; set; }
     [Parameter] public EventCallback<CardSelector> OnChanged { get; set; }
     [Parameter] public EventCallback OnRemove { get; set; }
     [Parameter] public EventCallback<bool> OnEditingChanged { get; set; }
@@ -260,7 +263,45 @@
         foreach (object removed in _childEditors.Keys.Where(key => !_termKeys.Values.Contains(key)).ToArray()) { _childEditors.Remove(removed); }
     }
 
+    private IReadOnlyList<string> GroupOperators => new[] { "AND", "OR" }.Where(operation =>
+        operation == (Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR") || CanChangeOperator(operation)).ToArray();
+
+    private static bool SameRows(SelectorRow[] original, SelectorRow[] restored) => original.Length == restored.Length
+        && original.Zip(restored).All(pair => OperatorReversibility.SameExpression(pair.First.Value, pair.Second.Value));
+
+    private bool CanChangeOperator(string operation) {
+        if (!IsGroup) { return false; }
+        CardSelectorKind kind = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf;
+        try {
+            CardSelector updated = Combine(kind, Rows.Length > 1 ? Rows.Select(row => row.Value) : Terms);
+            if (updated.Kind is not (CardSelectorKind.AllOf or CardSelectorKind.AnyOf)) { return false; }
+            SelectorRow[] updatedRows = RetainRows(updated.Kind, updated.AuthoredTerms.ToArray(), Rows);
+            CardSelector restored = Combine(Selector.Kind, updatedRows.Length > 1 ? updatedRows.Select(row => row.Value) : updated.AuthoredTerms);
+            SelectorRow[] restoredRows = RetainRows(restored.Kind, restored.AuthoredTerms.ToArray(), updatedRows);
+            return OperatorReversibility.SameExpression(Selector, restored) && SameRows(Rows, restoredRows)
+                && (CanReplaceOperator?.Invoke(updated, restored) ?? true);
+        }
+        catch (ArgumentException) { return false; }
+    }
+
+    private bool CanReplaceRowOperator(int position, CardSelector updated, CardSelector restored) {
+        try {
+            SelectorRow[] replaced = Rows.Select((row, index) => index == position ? new SelectorRow(updated, [updated]) : row).ToArray();
+            CardSelector forward = Combine(Selector.Kind, replaced.Select(row => row.Value));
+            SelectorRow[] forwardRows = RetainRows(forward.Kind, forward.AuthoredTerms.ToArray(), replaced);
+            int target = Array.FindIndex(forwardRows, row => OperatorReversibility.SameExpression(row.Value, updated));
+            if (target < 0) { return false; }
+            SelectorRow[] reversed = forwardRows.Select((row, index) => index == target ? new SelectorRow(restored, [restored]) : row).ToArray();
+            CardSelector backward = Combine(Selector.Kind, reversed.Select(row => row.Value));
+            SelectorRow[] backwardRows = RetainRows(backward.Kind, backward.AuthoredTerms.ToArray(), reversed);
+            return OperatorReversibility.SameExpression(Selector, backward) && SameRows(Rows, backwardRows)
+                && (CanReplaceOperator?.Invoke(forward, backward) ?? true);
+        }
+        catch (ArgumentException) { return false; }
+    }
+
     private async Task ChangeGroupOperator(string operation) {
+        if (!GroupOperators.Contains(operation)) { return; }
         _operatorError = null;
         CardSelectorKind kind = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf;
         if (kind == Selector.Kind) { return; }
@@ -292,6 +333,7 @@
 
     public async Task<bool> EditGroupOperatorAsync(CardSelector target, string operation) {
         if (Selector.Equals(target)) {
+            if (!GroupOperators.Contains(operation)) { return false; }
             await ChangeGroupOperator(operation);
             StateHasChanged();
             return true;

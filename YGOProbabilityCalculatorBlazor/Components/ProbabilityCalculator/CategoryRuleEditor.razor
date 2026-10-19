@@ -4,11 +4,11 @@
     <h5 class="fs-6" tabindex="-1" @ref="_heading">Properties for @Category.Name</h5>
     @for (int index = 0; index < _alternatives.Count; index++) {
         int branch = index;
-        @if (index > 0) { <ExpressionSeparator Operator="OR" OnOperatorChanged="operation => ChangeAlternativeOperator(branch, operation)" /> }
+        @if (index > 0) { <ExpressionSeparator Operator="OR" AllowedOperators="AlternativeOperators(branch)" OnOperatorChanged="operation => ChangeAlternativeOperator(branch, operation)" /> }
         <div class="d-flex flex-wrap align-items-center gap-2 border rounded p-2">
             @for (int term = 0; term < _alternatives[index].Count; term++) {
                 string identity = _alternatives[index][term];
-                @if (term > 0) { <ExpressionSeparator Operator="AND" OnOperatorChanged="operation => ChangePropertyOperator(branch, operation)" /> }
+                @if (term > 0) { <ExpressionSeparator Operator="AND" AllowedOperators="PropertyOperators(branch)" OnOperatorChanged="operation => ChangePropertyOperator(branch, operation)" /> }
                 <span class="badge category-tag card-property-tag text-wrap category-rule-term @CardPropertyColorPalette.GetCssClass(identity[9..])">
                     @Label(identity)
                     <ChipRemoveButton Class="category-remove-button ms-1" aria-label="@($"Remove property {Label(identity)} from alternative {index + 1}")"
@@ -129,7 +129,7 @@
     }
 
     private void ChangeAlternativeOperator(int right, string operation) {
-        if (operation != "AND") { return; }
+        if (operation != "AND" || !CanReverseAlternative(right)) { return; }
         List<string> combined = _alternatives[right - 1].Concat(_alternatives[right]).Distinct(StringComparer.Ordinal).ToList();
         if (combined.Count > CategoryMembership.MaximumPropertiesPerAlternative) {
             _operatorError = "The AND group would exceed 16 properties. Remove a property before combining.";
@@ -142,7 +142,7 @@
     }
 
     private void ChangePropertyOperator(int branch, string operation) {
-        if (operation != "OR") { return; }
+        if (operation != "OR" || !CanReverseProperty(branch)) { return; }
         List<string> properties = _alternatives[branch];
         if (_alternatives.Count - 1 + properties.Count > CategoryMembership.MaximumAlternatives) {
             _operatorError = "The OR group would exceed 16 alternatives. Remove an alternative before splitting.";
@@ -152,6 +152,47 @@
         _alternatives.InsertRange(branch, properties.Select(property => new List<string> { property }));
         _operatorError = null;
         UpdatePreview();
+    }
+
+    private IReadOnlyList<string> AlternativeOperators(int right) => CanReverseAlternative(right) ? ["AND", "OR"] : ["OR"];
+    private IReadOnlyList<string> PropertyOperators(int branch) => CanReverseProperty(branch) ? ["AND", "OR"] : ["AND"];
+
+    private static List<List<string>> NormalizeAlternatives(List<List<string>> alternatives) {
+        CardSelector rule = CardSelector.AnyOfSelectors(alternatives.Select(CardSelector.AllOf));
+        IEnumerable<CardSelector> branches = rule.Kind == CardSelectorKind.AnyOf ? rule.AuthoredTerms : [rule];
+        return branches.Select(branch => branch.AuthoredTerms.SelectMany(term => term.CategoryIdentities).ToList()).ToList();
+    }
+
+    private bool SameAlternatives(List<List<string>> restored) => _alternatives.Count == restored.Count
+        && _alternatives.Zip(restored).All(pair => pair.First.SequenceEqual(pair.Second, StringComparer.Ordinal));
+
+    private bool CanReverseAlternative(int right) {
+        if (right <= 0 || right >= _alternatives.Count || _alternatives[right - 1].Count != 1 || _alternatives[right].Count != 1
+            || _alternatives[right - 1][0] == _alternatives[right][0]) { return false; }
+        List<string> combined = [.. _alternatives[right - 1], .. _alternatives[right]];
+        List<List<string>> changed = _alternatives.Select(branch => branch.ToList()).ToList();
+        changed[right - 1] = combined;
+        changed.RemoveAt(right);
+        changed = NormalizeAlternatives(changed);
+        int index = changed.FindIndex(branch => branch.SequenceEqual(combined, StringComparer.Ordinal));
+        if (index < 0) { return false; }
+        changed.RemoveAt(index);
+        changed.InsertRange(index, combined.Select(property => new List<string> { property }));
+        return SameAlternatives(changed);
+    }
+
+    private bool CanReverseProperty(int branch) {
+        List<string> properties = _alternatives[branch];
+        if (properties.Count != 2 || _alternatives.Count + 1 > CategoryMembership.MaximumAlternatives) { return false; }
+        List<List<string>> changed = _alternatives.Select(value => value.ToList()).ToList();
+        changed.RemoveAt(branch);
+        changed.InsertRange(branch, properties.Select(property => new List<string> { property }));
+        changed = NormalizeAlternatives(changed);
+        int index = changed.FindIndex(value => value.Count == 1 && value[0] == properties[0]);
+        if (index < 0 || index + 1 >= changed.Count || changed[index + 1].Count != 1 || changed[index + 1][0] != properties[1]) { return false; }
+        changed[index] = properties.ToList();
+        changed.RemoveAt(index + 1);
+        return SameAlternatives(changed);
     }
 
     private Task KeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
