@@ -7,6 +7,35 @@ public sealed record ComboGroupEdit(string Operator, IReadOnlyList<ComboAlternat
 // Conversions compose existing bounded requirements; the solver representation
 // and separate-copy matching are unchanged.
 public static class ComboOperatorEditing {
+    // A separator between existing rows divides the OR at that exact boundary;
+    // alternatives on either side keep their own Boolean grouping and bounds.
+    public static Combo SplitAlternatives(Combo combo, int groupIndex, int boundary) {
+        ComboAlternativeGroup group = combo.AlternativeGroups[groupIndex];
+        if (boundary <= 0 || boundary >= group.Alternatives.Count) {
+            throw new ArgumentOutOfRangeException(nameof(boundary));
+        }
+        ComboRequirementPosition position = new(ComboRequirementKind.Group, groupIndex);
+        int authoredPosition = combo.RequirementOrder.ToList().IndexOf(position);
+        Combo updated = combo.WithoutRequirement(position);
+        foreach (ComboAlternative[] segment in new[] { group.Alternatives.Take(boundary).ToArray(), group.Alternatives.Skip(boundary).ToArray() }) {
+            ComboRequirementPosition added;
+            if (segment.Length > 1) {
+                updated = updated.WithAlternativeGroups(updated.AlternativeGroups.Append(new(segment)));
+                added = new(ComboRequirementKind.Group, updated.AlternativeGroups.Count - 1);
+            }
+            else if (segment[0].Category is { } category) {
+                updated = updated.WithCategories(updated.Categories.Append(category));
+                added = new(ComboRequirementKind.Category, updated.Categories.Count - 1);
+            }
+            else {
+                updated = updated.WithCards(updated.Cards.Append(segment[0].Card!));
+                added = new(ComboRequirementKind.Card, updated.Cards.Count - 1);
+            }
+            updated = updated.WithRequirementAt(added, authoredPosition++);
+        }
+        return updated;
+    }
+
     private static ComboCategory? Validate(Combo combo, IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
         if (positions.Count == 0 || positions.Distinct().Count() != positions.Count || positions.Any(position => !combo.RequirementOrder.Contains(position))) {
             throw new ArgumentException("The edited conditions changed. Reopen the group.");

@@ -280,6 +280,11 @@ public partial class ComboEditor {
             groupIndex is int group ? updated.AlternativeGroups[group] : null,
             groupIndex
         );
+        _alternativeTermIdentity = TermIdentity(replacement, index, groupIndex);
+        if (groupIndex is int selectedGroup) {
+            (int start, int count) = AlternativeTerms(updated.AlternativeGroups[selectedGroup]).Single(term => index >= term.Start && index < term.Start + term.Count);
+            _alternativeInsertIndex = start + count;
+        }
     }
 
     private async Task ExtendWithProperty() {

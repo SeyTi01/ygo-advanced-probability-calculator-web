@@ -15,6 +15,77 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
     private static ComboAlternative Leaf(int index) => ComboAlternative.For(Requirement(index));
     private static ComboCategory Same(params int[] indices) => ComboCategory.SameCard(indices.Select(index => Properties[index]), 1, 3);
 
+    [Test]
+    public async Task SwitchingPlusToOrPreservesRowsAndCanBeReversed() {
+        Combo current = new([], alternativeGroups: [new([Leaf(0), Leaf(1)]), new([Leaf(2), Leaf(3)])]);
+        IRenderedComponent<ComboEditor>? editor = null;
+        editor = context.RenderComponent<ComboEditor>(parameters => parameters
+            .Add(component => component.Combo, current).Add(component => component.CategoryBases, Properties)
+            .Add(component => component.OnReplaceCombo, value => {
+                current = value.NewCombo;
+                editor!.SetParametersAndRender(next => next.Add(component => component.Combo, current));
+            }));
+
+        await editor.Find(".expanded-expression > .requirement-and-separator select").ChangeAsync(new() { Value = "OR" });
+        Assert.That(current.AlternativeGroups, Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".expanded-expression .requirement-row"), Has.Count.EqualTo(2));
+        Assert.That(RowContents(), Is.EqualTo(new[] { "AB", "CD" }));
+
+        await editor.Find(".requirement-or-group > .alternative-separator select").ChangeAsync(new() { Value = "+" });
+        Assert.That(current.AlternativeGroups, Has.Count.EqualTo(2));
+        Assert.That(current.AlternativeGroups.Select(group => group.Alternatives.Count), Is.EqualTo(new[] { 2, 2 }));
+        Assert.That(RowContents(), Is.EqualTo(new[] { "AB", "CD" }));
+        await editor.Find(".expanded-expression > .requirement-and-separator select").ChangeAsync(new() { Value = "OR" });
+        Assert.That(RowContents(), Is.EqualTo(new[] { "AB", "CD" }));
+
+        string[] RowContents() => editor.FindAll(".expanded-expression .requirement-row").Select(row =>
+            string.Concat(row.QuerySelectorAll(".requirement-description .category-tag").Select(chip => chip.TextContent.Trim()[0]))).ToArray();
+    }
+
+    [Test]
+    public async Task OrRowSurvivesRemovingItsFirstMemberUntilItsLastMemberIsRemoved() {
+        Combo current = new([Requirement(2)], alternativeGroups: [new([Leaf(0), Leaf(1)])]);
+        current = current.WithRequirementAt(new(ComboRequirementKind.Group, 0), 0);
+        IRenderedComponent<ComboEditor>? editor = null;
+        editor = context.RenderComponent<ComboEditor>(parameters => parameters
+            .Add(component => component.Combo, current).Add(component => component.CategoryBases, Properties)
+            .Add(component => component.OnReplaceCombo, value => {
+                current = value.NewCombo;
+                editor!.SetParametersAndRender(next => next.Add(component => component.Combo, current));
+            }));
+        await editor.Find(".expanded-expression > .requirement-and-separator select").ChangeAsync(new() { Value = "OR" });
+        ExpressionRow first = editor.FindComponents<ExpressionRow>().First().Instance;
+        await editor.Find("[data-requirement='alternative:0:0']").ClickAsync(new());
+        await Button(editor, "Remove alternative").ClickAsync(new());
+        Assert.That(editor.FindAll(".expanded-expression .requirement-row"), Has.Count.EqualTo(2));
+        Assert.That(editor.FindComponents<ExpressionRow>().First().Instance, Is.SameAs(first));
+        Assert.That(editor.FindAll(".expanded-expression .requirement-row").First().TextContent, Does.Contain("B"));
+        await editor.Find("[data-requirement='alternative:0:0']").ClickAsync(new());
+        await Button(editor, "Remove alternative").ClickAsync(new());
+        Assert.That(editor.FindAll(".expanded-expression .requirement-row"), Has.Count.EqualTo(1));
+        Assert.That(current.AllCategories.Single().BaseCategory.Name, Is.EqualTo("C"));
+    }
+
+    [Test]
+    public async Task AddingAnAlternativeToAPreservedRowKeepsItInThatRow() {
+        IRenderedComponent<ProbabilityCalculatorComponent> calculator = Render(new SessionState {
+            Categories = Properties.ToList(), Combos = [new([Requirement(0), Requirement(1), Requirement(2)])]
+        });
+        IRenderedComponent<ComboEditor> editor = calculator.FindComponent<ComboEditor>();
+        await editor.FindAll(".expanded-expression > .requirement-and-separator select").First().ChangeAsync(new() { Value = "OR" });
+        Assert.That(editor.FindAll(".expanded-expression .requirement-row"), Has.Count.EqualTo(3));
+        await EditRequirement(editor, "alternative:0:0");
+        await editor.Find("[data-action='alternative']").ClickAsync(new());
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = Properties[3].Identity });
+        await Button(editor, "Add alternative").ClickAsync(new());
+        Assert.That(editor.FindAll(".expanded-expression .requirement-row"), Has.Count.EqualTo(3));
+        Assert.That(editor.FindAll(".expanded-expression .requirement-row").Select(row =>
+            string.Concat(row.QuerySelectorAll(".requirement-description .category-tag").Select(chip => chip.TextContent.Trim()[0]))),
+            Is.EqualTo(new[] { "AD", "B", "C" }));
+        Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives.Select(leaf => leaf.Category!.BaseCategory.Name),
+            Is.EqualTo(new[] { "A", "D", "B" }));
+    }
+
     [TestCase("AND")]
     [TestCase("OR")]
     public void ComboAndSimulationTermsUseTheSamePresentationComponents(string operation) {
@@ -26,7 +97,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
             .Add(component => component.Selector, selector).Add(component => component.Available, Properties));
 
         foreach (IRenderedComponent<ExpressionRow> row in new[] { comboEditor.FindComponents<ExpressionRow>().Single(), selectorEditor.FindComponent<ExpressionRow>() }) {
-            IRenderedComponent<ExpressionTerm> term = row.FindComponents<ExpressionTerm>().Single(component => !component.Instance.Compact);
+            IRenderedComponent<ExpressionTerm> term = row.FindComponents<ExpressionTerm>().Single(component => !component.Instance.Compact && component.Instance.Count > 1);
             Assert.That(term.Instance.Count, Is.EqualTo(2));
             Assert.That(term.Instance.Operator, Is.EqualTo(operation));
             Assert.That(term.FindComponents<ExpressionBadge>(), Has.Count.EqualTo(2));

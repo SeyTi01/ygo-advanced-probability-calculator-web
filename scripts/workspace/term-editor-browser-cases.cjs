@@ -34,6 +34,28 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
     })) };
     const expectedCombos = ['A;B;C', 'ABC', 'ABC', 'AB;CD', 'A;BC;D', 'AB;CD', 'AB;CD'];
     const expectedSelectors = ['ABC', 'ABC', 'AB;CD', 'AB;CD', 'A;BC', 'AB;CD'];
+    const stableCombo = await load({ ...fixture, Combos: [{ ...combos[0], Categories: [],
+        AlternativeGroups: [{ Alternatives: [leaf(0), leaf(1)] }, { Alternatives: [leaf(2), leaf(3)] }] }] });
+    await page.waitForFunction(() => document.querySelectorAll('.combo-editor .requirement-or-group').length === 2);
+    if (await stableCombo.locator('.accordion-button').getAttribute('aria-expanded') !== 'true') { await stableCombo.locator('.accordion-button').click(); }
+    const stableRows = stableCombo.locator('.expanded-expression .requirement-row');
+    const stableContents = () => stableRows.evaluateAll(rows => rows.map(row => [...row.querySelectorAll('.requirement-description .category-tag')]
+        .map(chip => chip.textContent.trim().charAt(0)).join('')));
+    await stableCombo.locator('.expanded-expression > .requirement-and-separator select').selectOption('OR');
+    assert.equal(await stableRows.count(), 2, '+ to OR retains existing fields');
+    assert.deepEqual(await stableContents(), ['AB', 'CD']);
+    await stableCombo.locator('.requirement-or-group > .alternative-separator select').selectOption('+');
+    assert.deepEqual(await stableContents(), ['AB', 'CD'], 'OR to + retains each original group');
+    assert.equal(await stableCombo.locator('.expanded-expression > .requirement-and-separator select').evaluate(element => element === document.activeElement), true,
+        'returning to + keeps keyboard focus on the resulting separator');
+    await stableCombo.locator('.expanded-expression > .requirement-and-separator select').selectOption('OR');
+    await stableCombo.locator('[data-requirement="alternative:0:0"]').click();
+    await stableCombo.getByRole('button', { name: 'Remove alternative', exact: true }).click();
+    assert.deepEqual(await stableContents(), ['B', 'CD'], 'a partially deleted row remains separate');
+    await stableCombo.locator('[data-requirement="alternative:0:0"]').click();
+    await stableCombo.getByRole('button', { name: 'Remove alternative', exact: true }).click();
+    assert.deepEqual(await stableContents(), ['CD'], 'only an emptied row disappears');
+    console.log('PASS stable authored rows through +/OR round trips and partial/full row deletion.');
     // Measure actual chip/control geometry: inherited font sizes and margins
     // can look correct in markup while still differing between AND/OR fields.
     const shortCategories = categories.map((value, index) => ({ ...value, Name: String.fromCharCode(65 + index) }));
@@ -129,6 +151,13 @@ module.exports = async ({ page, load, setLayout, saveSession, capture, assertNoO
                 if ([2, 3, 6].includes(index)) { await capture(`term-combo-${index}-${width}-${theme}`); }
                 await combo.locator('.requirement-row form').getByRole('button', { name: 'Cancel', exact: true }).click();
                 await combo.locator('.accordion-button').click();
+                const closingGaps = await combo.locator('.combo-header-requirements .expression-parenthesis').evaluateAll(elements => elements
+                    .filter(element => element.textContent.trim() === ')').map(element => {
+                        let previous = element.previousElementSibling;
+                        if (previous.getBoundingClientRect().width === 0) { previous = [...previous.querySelectorAll('.expression-badge')].at(-1); }
+                        return element.getBoundingClientRect().left - previous.getBoundingClientRect().right;
+                    }));
+                assert.ok(closingGaps.every(gap => Math.abs(gap - 4) < 1), `closing parentheses hug the expression at ${width}/${theme}: ${closingGaps}`);
                 await assertNoOverflow(`collapsed combo ${index}/${width}/${theme}`);
             }
             for (let index = 0; index < selectors.length; index++) {
