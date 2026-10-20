@@ -9,6 +9,12 @@ public static partial class CalculationWorkerExports {
     public static string Calculate(string json) => CalculationWire.Execute(json);
 
     [JSExport]
+    public static string CalculateInteractiveExact(string json) => CalculationWire.ExecuteInteractiveExact(json);
+
+    [JSExport]
+    public static string UpgradeProgressiveFast(string json) => CalculationWire.ExecuteProgressiveUpgrade(json);
+
+    [JSExport]
     public static string BeginFast(string json) => CalculationWire.ExecuteFastStage(json);
 
     [JSExport]

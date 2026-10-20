@@ -20,7 +20,7 @@ internal static class FastPhysicalRoute {
         // Reduced user budgets retain the historical primary/certificate behavior.
         if (cards.Count > 6 || handSize is < 1 or > 3 || cards.Sum(card => card.Copies) > 7
             || effects.Count > 2 || combos.Count is < 1 or > 7 || (groups?.Count ?? 0) > 2
-            || budget.Allowance < CalculationWorkPolicy.Default.WorkUnits
+            || (budget.Allowance is long allowance && allowance < CalculationWorkPolicy.Default.WorkUnits)
             || budget.StoragePolicy.EntryLimit < CalculationStoragePolicy.Standard.EntryLimit
             || budget.StoragePolicy.CellLimit < CalculationStoragePolicy.Standard.CellLimit) {
             return false;

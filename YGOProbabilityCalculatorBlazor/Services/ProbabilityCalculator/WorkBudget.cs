@@ -11,7 +11,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 // DP/binomial integer payload is also checked; object overhead is extra.
 // This is not a total-memory ceiling. Arithmetic work is charged separately.
 internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStoragePolicy? storagePolicy = null) {
-    private long _remaining = policy.WorkUnits;
+    private long? _remaining = policy.IsUnlimited ? null : policy.WorkUnits;
+    private long _spent;
     private readonly CalculationStoragePolicy _storagePolicy = storagePolicy ?? CalculationStoragePolicy.Standard;
 
     internal SearchCountingDiagnostics? SearchDiagnostics { get; init; }
@@ -19,23 +20,27 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
     internal long PeakEntries { get; private set; }
     internal long PeakCells { get; private set; }
 
-    internal long Allowance => policy.WorkUnits;
+    internal long? Allowance => policy.IsUnlimited ? null : policy.WorkUnits;
+    internal long? Remaining => _remaining;
 
-    internal long Spent => policy.WorkUnits - _remaining;
+    internal long Spent => _spent;
     internal CalculationStoragePolicy StoragePolicy => _storagePolicy;
 
     public void Spend(long units) {
         ArgumentOutOfRangeException.ThrowIfNegative(units);
 
-        if (units > _remaining) {
+        if (_remaining is long remaining && units > remaining) {
             throw new ProbabilityCalculationLimitException();
         }
 
         _remaining -= units;
+        // Telemetry saturates; exhaustion is decided only by the finite remainder.
+        _spent = units > long.MaxValue - _spent ? long.MaxValue : _spent + units;
     }
 
     internal void EnsureAvailable(long units) {
-        if (units > _remaining) {
+        ArgumentOutOfRangeException.ThrowIfNegative(units);
+        if (_remaining is long remaining && units > remaining) {
             throw new ProbabilityCalculationLimitException();
         }
     }

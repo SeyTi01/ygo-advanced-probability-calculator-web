@@ -77,7 +77,8 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
                         }
                     }
                     else {
-                        response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast);
+                        response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast,
+                            snapshot.RequestedMode == CalculationModel.Exact);
                     }
                     token.ThrowIfCancellationRequested();
                     result = CalculationWire.ReadResult(response, snapshot.RequestedMode);

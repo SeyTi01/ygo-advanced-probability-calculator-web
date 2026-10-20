@@ -25,9 +25,12 @@ internal sealed partial class PostDrawCalculation {
     ) {
         Route = SolverRoute.SearchPhysicalDeferred;
         int copies = cards.Sum(card => card.Copies);
+        // A lossless encoding of remaining counts, held counts and hidden count.
+        // Decode just the terminal currently being counted, not the whole map.
+        bool packed = compactSearchTerminals && copies <= byte.MaxValue;
         Dictionary<State, BigInteger> terminal;
         using (budget.SearchDiagnostics?.Measure("selective draw distribution")) {
-            terminal = resolver.Resolve<SurvivorTerminal>(handSize, copies, factorial, compactFrontierThreshold);
+            terminal = resolver.Resolve<SurvivorTerminal>(handSize, copies, factorial, compactFrontierThreshold, packed);
         }
         TerminalStates = terminal.Count;
         List<Card> explicitRows = cards.Take(cards.Count - 1).ToList();
@@ -35,8 +38,13 @@ internal sealed partial class PostDrawCalculation {
         BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "physical results");
         foreach ((State state, BigInteger mass) in terminal) {
-            PhysicalSearchScenario scenario = new(originals, explicitRows, state.Values,
-                state.Values[2 * cards.Count - 1], state.Values[^1], budget);
+            int[] terminalValues = state.Values;
+            if (packed) {
+                budget.Spend(terminalValues[0]);
+                terminalValues = DrawFrontierPacking.Unpack(terminalValues);
+            }
+            PhysicalSearchScenario scenario = new(originals, explicitRows, terminalValues,
+                terminalValues[2 * cards.Count - 1], terminalValues[^1], budget);
             // The visible trace already integrates hidden skips. Conditional on
             // it, held pool labels are uniform and H hidden positions are uniform
             // among remaining UNOBSERVED copies. Seen-minus-held explicit copies

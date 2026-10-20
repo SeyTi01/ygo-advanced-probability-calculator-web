@@ -156,6 +156,19 @@ public sealed record CalculationResponse(
 );
 
 public static class CalculationWire {
+    private enum WorkExecution { Bounded, InteractiveExact, ProgressiveExact }
+
+    // Trusted worker entry points select unlimited execution. The snapshot stays
+    // finite and strictly validated, including on these entry points.
+    internal static string ExecuteInteractiveExact(string json) =>
+        ExecuteCore(json, out _, false, null, WorkExecution.InteractiveExact);
+
+    internal static string ExecuteProgressiveUpgrade(string json) {
+        string response = ExecuteCore(json, out _, true, null, WorkExecution.ProgressiveExact);
+        return JsonSerializer.Serialize(new AutomaticFastStage(response, "0"),
+            CalculationJsonContext.Default.AutomaticFastStage);
+    }
+
     public static string Execute(string json) => ExecuteCore(json, out _, false, null);
 
     // Version-local worker protocol, not a session option or a new public mode.
@@ -165,7 +178,13 @@ public static class CalculationWire {
             CalculationJsonContext.Default.AutomaticFastStage);
     }
 
-    private static string ExecuteCore(string json, out long remaining, bool fastStage, string? remainingWork) {
+    private static string ExecuteCore(
+        string json,
+        out long remaining,
+        bool fastStage,
+        string? remainingWork,
+        WorkExecution execution = WorkExecution.Bounded
+    ) {
         CalculationResponse response;
         CalculationModel mode = CalculationModel.Fast;
         WorkBudget? budget = null;
@@ -181,6 +200,10 @@ public static class CalculationWire {
             }
             if (fastStage && mode != CalculationModel.Fast) {
                 throw new ArgumentException("Automatic physical counting requires a Fast request.");
+            }
+
+            if (execution == WorkExecution.InteractiveExact && mode != CalculationModel.Exact) {
+                throw new ArgumentException("Interactive Exact requires an Exact request.");
             }
 
             List<Card> cards = input.Cards
@@ -234,7 +257,7 @@ public static class CalculationWire {
                 }
                 workPolicy = new(allowance);
             }
-            budget = new(workPolicy, storagePolicy);
+            budget = new(execution == WorkExecution.Bounded ? workPolicy : CalculationWorkPolicy.Unlimited, storagePolicy);
 
             ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateWithBudget(
                 cards,
@@ -243,7 +266,7 @@ public static class CalculationWire {
                 input.Groups,
                 budget,
                 input.Options,
-                physicalFast: remainingWork is not null
+                physicalFast: remainingWork is not null || execution == WorkExecution.ProgressiveExact
             );
 
             response = new(result, null);
@@ -266,7 +289,7 @@ public static class CalculationWire {
             response = new(null, ex.Message, FailureKind: CalculationFailureKind.Error);
         }
         finally {
-            remaining = budget is null ? 0 : budget.Allowance - budget.Spent;
+            remaining = budget?.Remaining ?? 0;
         }
 
         return JsonSerializer.Serialize(response, CalculationJsonContext.Default.CalculationResponse);
