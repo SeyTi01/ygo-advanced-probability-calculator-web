@@ -108,7 +108,7 @@ public sealed class BoundedHandPresetTest {
                 Assert.That(imported.EffectProfile.Source, Is.EqualTo(EffectSource.BuiltIn), definition.Name);
                 Assert.That(selected.Search, Is.EqualTo(imported.Search), definition.Name + " selected");
                 Assert.That(restored.Search, Is.EqualTo(imported.Search), definition.Name + " restored");
-                Assert.That(restored.EffectProfile.Revision, Is.EqualTo(1), definition.Name + " revision");
+                Assert.That(restored.EffectProfile.Revision, Is.EqualTo(definition.Revision), definition.Name + " revision");
             });
         }
     }
