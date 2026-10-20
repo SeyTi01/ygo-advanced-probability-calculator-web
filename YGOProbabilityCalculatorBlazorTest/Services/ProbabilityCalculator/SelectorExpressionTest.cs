@@ -93,8 +93,8 @@ public sealed class SelectorExpressionTest {
             string json = JsonSerializer.Serialize(selector);
             Assert.That(JsonSerializer.Serialize(JsonSerializer.Deserialize<CardSelector>(json)), Is.EqualTo(json));
         }
-        Assert.That(Compact.Children.Count, Is.EqualTo(4));
-        Assert.That(Compact.CategoryIdentities.Count, Is.EqualTo(5));
+        Assert.That(Compact.Children.Count, Is.EqualTo(3));
+        Assert.That(Compact.CategoryIdentities.Count, Is.EqualTo(4));
     }
 
     [TestCase("{\"Kind\":\"LevelAtLeast\",\"Minimum\":-1}")]

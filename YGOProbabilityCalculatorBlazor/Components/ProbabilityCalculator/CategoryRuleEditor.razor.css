@@ -1,4 +1,5 @@
 .category-rule-editor { min-width: 0; overflow-wrap: anywhere; }
-.category-rule-select { width: auto; max-width: 100%; flex: 1 1 12rem; }
 .category-rule-term { display: inline-flex; align-items: center; max-width: 100%; line-height: 1.35; }
 .category-rule-preview { max-height: 7rem; overflow-y: auto; }
+.category-rule-numeric { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; min-width: 0; max-width: 100%; }
+.category-rule-numeric ::deep .requirement-property-picker { flex: 1 1 12rem; min-width: 0; }

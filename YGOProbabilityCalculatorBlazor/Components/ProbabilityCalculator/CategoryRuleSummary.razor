@@ -53,11 +53,15 @@
         }
     </span>;
 
-    private RenderFragment Property(CardSelector selector) => @<span class="badge category-tag card-property-tag text-wrap category-rule-summary-property @CardPropertyColorPalette.GetCssClass(selector.CategoryIdentities[0][9..])">
+    private RenderFragment Property(CardSelector selector) => @<span class="badge category-tag card-property-tag text-wrap category-rule-summary-property @CardPropertyColorPalette.GetCssClass(PropertyKey(selector))">
         @Label(selector)
     </span>;
 
-    private string Label(CardSelector selector) => _properties
+    private static string PropertyKey(CardSelector selector) => NumericPropertyRange.TryFromSelector(selector, out NumericPropertyRange? range)
+        ? range.Key + ":0" : selector.CategoryIdentities[0][9..];
+
+    private string Label(CardSelector selector) => NumericPropertyRange.TryFromSelector(selector, out NumericPropertyRange? range)
+        ? range.Description : _properties
         .FirstOrDefault(property => property.Identity == selector.CategoryIdentities[0])?.Name
         ?? FallbackName(selector.CategoryIdentities[0]);
 

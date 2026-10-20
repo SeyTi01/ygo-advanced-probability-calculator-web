@@ -7,33 +7,37 @@
         @if (index > 0) { <ExpressionSeparator Operator="OR" AllowedOperators="AlternativeOperators(branch)" OnOperatorChanged="operation => ChangeAlternativeOperator(branch, operation)" /> }
         <div class="d-flex flex-wrap align-items-center gap-2 border rounded p-2">
             @for (int term = 0; term < _alternatives[index].Count; term++) {
-                string identity = _alternatives[index][term];
+                RuleProperty property = _alternatives[index][term];
                 @if (term > 0) { <ExpressionSeparator Operator="AND" AllowedOperators="PropertyOperators(branch)" OnOperatorChanged="operation => ChangePropertyOperator(branch, operation)" /> }
-                <span class="badge category-tag card-property-tag text-wrap category-rule-term @CardPropertyColorPalette.GetCssClass(identity[9..])">
-                    @Label(identity)
-                    <ChipRemoveButton Class="category-remove-button ms-1" aria-label="@($"Remove property {Label(identity)} from alternative {index + 1}")"
-                                      title="@($"Remove property {Label(identity)} from alternative {index + 1}")"
-                            OnClick="() => Remove(branch, identity)" />
-                </span>
-            }
-            <select class="form-select form-select-sm category-rule-select" value="" aria-label="Add AND property to alternative @(index + 1)"
-                    disabled="@(_alternatives[index].Count >= CategoryMembership.MaximumPropertiesPerAlternative)"
-                    @onchange="args => AddProperty(branch, args.Value?.ToString())">
-                <option value="">Add property (AND)…</option>
-                @foreach (CategoryBase property in _properties.Where(property => !_alternatives[branch].Contains(property.Identity))) {
-                    <option value="@property.Identity">@property.Name</option>
+                @if (NumericPropertyRange.TryFromSelector(property.Selector, out _)) {
+                    <div @key="property" class="category-rule-numeric">
+                        <RequirementPropertyPicker @ref="property.Picker" Id="@property.Id" Value="@property.Identity" Label="Property" Categories="_properties"
+                            OnChanged="change => ChangeProperty(property, change)" />
+                        <ChipRemoveButton Class="category-remove-button" aria-label="@($"Remove property {Label(property)} from alternative {index + 1}")"
+                            OnClick="() => Remove(branch, property)" />
+                        @if (property.Error is not null) { <div class="text-danger small" role="alert">@property.Error</div> }
+                    </div>
                 }
-            </select>
+                else {
+                    <span @key="property" class="badge category-tag card-property-tag text-wrap category-rule-term @CardPropertyColorPalette.GetCssClass(property.Identity[9..])">
+                        @Label(property)
+                        <ChipRemoveButton Class="category-remove-button ms-1" aria-label="@($"Remove property {Label(property)} from alternative {index + 1}")"
+                                          title="@($"Remove property {Label(property)} from alternative {index + 1}")"
+                                OnClick="() => Remove(branch, property)" />
+                    </span>
+                }
+            }
+            @if (_alternatives[index].Count < CategoryMembership.MaximumPropertiesPerAlternative) {
+                <RequirementPropertyPicker @key="(_alternatives[index], _additionVersion)" Id="@($"rule-add-property-{index}")" Label="Add property (AND)"
+                    AccessibleLabel="@($"Add AND property to alternative {index + 1}")" Categories="_properties"
+                    OnChanged="change => AddProperty(branch, change)" />
+            }
         </div>
     }
-    <select class="form-select form-select-sm mt-2" value="" aria-label="Add rule alternative"
-            disabled="@(_alternatives.Count >= CategoryMembership.MaximumAlternatives)"
-            @onchange="args => AddAlternative(args.Value?.ToString())">
-        <option value="">@(_alternatives.Count == 0 ? "Choose a property…" : "Add alternative (OR)…")</option>
-        @foreach (CategoryBase property in _properties) {
-            <option value="@property.Identity">@property.Name</option>
-        }
-    </select>
+    @if (_alternatives.Count < CategoryMembership.MaximumAlternatives) {
+        <RequirementPropertyPicker @key="_additionVersion" Id="rule-add-alternative" Label="@(_alternatives.Count == 0 ? "Choose a property" : "Add alternative (OR)")"
+            AccessibleLabel="Add rule alternative" Categories="_properties" OnChanged="AddAlternative" />
+    }
     @if (_operatorError is not null) { <p class="small text-danger" role="alert">@_operatorError</p> }
     <div class="small mt-3" role="status" aria-live="polite">
         @if (Draft is null) {
@@ -47,7 +51,7 @@
         }
     </div>
     <div class="d-flex flex-wrap gap-2 mt-3">
-        <button type="button" class="btn btn-primary btn-sm" disabled="@(Draft is null)" @onclick="() => OnApply.InvokeAsync(Draft)">Apply rule</button>
+        <button type="button" class="btn btn-primary btn-sm" disabled="@(Draft is null || HasErrors)" @onclick="Apply">Apply rule</button>
         <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OnCancel">Cancel</button>
         @if (Category.Rule is not null) {
             <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => OnApply.InvokeAsync((CardSelector?)null)">Remove rule</button>
@@ -62,7 +66,19 @@
     [Parameter] public EventCallback<CardSelector?> OnApply { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
-    private readonly List<List<string>> _alternatives = [];
+    private sealed class RuleProperty(CardSelector selector) {
+        public CardSelector Selector { get; set; } = selector;
+        public string Id { get; } = "rule-property-" + Guid.NewGuid().ToString("N");
+        public string? Error { get; set; }
+        public RequirementPropertyPicker? Picker;
+        public string Identity => NumericPropertyRange.TryFromSelector(Selector, out NumericPropertyRange? range)
+            && Selector.Kind != CardSelectorKind.Category ? range.Identity : Selector.CategoryIdentities[0];
+    }
+
+    private int _additionVersion;
+    private RuleProperty? _focusProperty;
+    private bool HasErrors => _alternatives.SelectMany(branch => branch).Any(property => property.Error is not null);
+    private readonly List<List<RuleProperty>> _alternatives = [];
     private CategoryBase[] _properties = [];
     private Card[] _matches = [];
     private ElementReference _heading;
@@ -72,14 +88,14 @@
     protected override void OnInitialized() {
         IEnumerable<CardSelector> alternatives = Category.Rule is not { } rule ? [] : rule.Kind == CardSelectorKind.AnyOf ? rule.AuthoredTerms : [rule];
         foreach (CardSelector alternative in alternatives) {
-            _alternatives.Add(alternative.AuthoredTerms.SelectMany(term => term.CategoryIdentities).ToList());
+            _alternatives.Add((alternative.Kind == CardSelectorKind.AllOf ? alternative.AuthoredTerms : [alternative]).Select(term => new RuleProperty(term)).ToList());
         }
         UpdatePreview();
     }
 
     protected override void OnParametersSet() {
         // Retain draft terms even when the last card providing a contextual property disappears.
-        IEnumerable<string> identities = _alternatives.SelectMany(alternative => alternative);
+        IEnumerable<string> identities = _alternatives.SelectMany(alternative => alternative).SelectMany(property => property.Selector.CategoryIdentities);
         _properties = CategoryCatalog.Build(CategoryBases, Cards, [])
             .Where(category => category.Source == CategorySource.Metadata)
             .Concat(identities.Select(identity => new CategoryBase(Uri.UnescapeDataString(identity[9..]), CategorySource.Metadata, identity[9..])))
@@ -91,46 +107,62 @@
         if (firstRender) {
             await _heading.FocusAsync();
         }
+
+        if (_focusProperty?.Picker is { } picker) {
+            _focusProperty = null;
+            await picker.FocusAsync(number: true);
+        }
     }
 
-    private string Label(string identity) => _properties.FirstOrDefault(property => property.Identity == identity)?.Name ?? Uri.UnescapeDataString(identity[9..]);
+    private string Label(RuleProperty property) => DrawEffectPresentation.DescribeSelector(property.Selector, _properties);
 
-    private void AddAlternative(string? identity) {
-        if (_alternatives.Count >= CategoryMembership.MaximumAlternatives || !_properties.Any(property => property.Identity == identity)) {
-            return;
-        }
-        _alternatives.Add([identity!]);
+    private void AddAlternative(RequirementPropertyPicker.Change change) {
+        if (_alternatives.Count >= CategoryMembership.MaximumAlternatives || change.Error is not null || change.Category is null) { return; }
+        RuleProperty property = new(NumericPropertyRange.SelectorFor(change.Category));
+        _alternatives.Add([property]);
+        _focusProperty = property;
+        _additionVersion++;
         _operatorError = null;
         UpdatePreview();
     }
 
-    private void AddProperty(int branch, string? identity) {
-        if (_alternatives[branch].Count >= CategoryMembership.MaximumPropertiesPerAlternative
-            || !_properties.Any(property => property.Identity == identity) || _alternatives[branch].Contains(identity!)) {
-            return;
-        }
-        _alternatives[branch].Add(identity!);
+    private void AddProperty(int branch, RequirementPropertyPicker.Change change) {
+        if (_alternatives[branch].Count >= CategoryMembership.MaximumPropertiesPerAlternative || change.Error is not null || change.Category is null) { return; }
+        CardSelector selector = NumericPropertyRange.SelectorFor(change.Category);
+        if (_alternatives[branch].Any(property => property.Selector.Equals(selector))) { return; }
+        RuleProperty property = new(selector);
+        _alternatives[branch].Add(property);
+        _focusProperty = property;
+        _additionVersion++;
         _operatorError = null;
         UpdatePreview();
     }
 
-    private void Remove(int branch, string identity) {
-        _alternatives[branch].Remove(identity);
-        if (_alternatives[branch].Count == 0) {
-            _alternatives.RemoveAt(branch);
+    private void ChangeProperty(RuleProperty property, RequirementPropertyPicker.Change change) {
+        property.Error = change.Error;
+        if (change.Error is null && change.Category is not null && change.Value != property.Identity) {
+            property.Selector = NumericPropertyRange.SelectorFor(change.Category);
         }
+        UpdatePreview();
+    }
+
+    private void Remove(int branch, RuleProperty property) {
+        _alternatives[branch].Remove(property);
+        if (_alternatives[branch].Count == 0) { _alternatives.RemoveAt(branch); }
         _operatorError = null;
         UpdatePreview();
     }
+
+    private Task Apply() => Draft is null || HasErrors ? Task.CompletedTask : OnApply.InvokeAsync(Draft);
 
     private void UpdatePreview() {
-        Draft = _alternatives.Count == 0 ? null : CardSelector.AnyOfSelectors(_alternatives.Select(CardSelector.AllOf));
+        Draft = _alternatives.Count == 0 ? null : CardSelector.AnyOfSelectors(_alternatives.Select(branch => CardSelector.AllOfSelectors(branch.Select(property => property.Selector))));
         _matches = Draft is null ? [] : Cards.Where(card => Draft.Matches(card)).ToArray();
     }
 
     private void ChangeAlternativeOperator(int right, string operation) {
         if (operation != "AND" || !CanReverseAlternative(right)) { return; }
-        List<string> combined = _alternatives[right - 1].Concat(_alternatives[right]).Distinct(StringComparer.Ordinal).ToList();
+        List<RuleProperty> combined = _alternatives[right - 1].Concat(_alternatives[right]).DistinctBy(property => property.Selector).ToList();
         if (combined.Count > CategoryMembership.MaximumPropertiesPerAlternative) {
             _operatorError = "The AND group would exceed 16 properties. Remove a property before combining.";
             return;
@@ -143,13 +175,13 @@
 
     private void ChangePropertyOperator(int branch, string operation) {
         if (operation != "OR" || !CanReverseProperty(branch)) { return; }
-        List<string> properties = _alternatives[branch];
+        List<RuleProperty> properties = _alternatives[branch];
         if (_alternatives.Count - 1 + properties.Count > CategoryMembership.MaximumAlternatives) {
             _operatorError = "The OR group would exceed 16 alternatives. Remove an alternative before splitting.";
             return;
         }
         _alternatives.RemoveAt(branch);
-        _alternatives.InsertRange(branch, properties.Select(property => new List<string> { property }));
+        _alternatives.InsertRange(branch, properties.Select(property => new List<RuleProperty> { property }));
         _operatorError = null;
         UpdatePreview();
     }
@@ -157,39 +189,41 @@
     private IReadOnlyList<string> AlternativeOperators(int right) => CanReverseAlternative(right) ? ["AND", "OR"] : ["OR"];
     private IReadOnlyList<string> PropertyOperators(int branch) => CanReverseProperty(branch) ? ["AND", "OR"] : ["AND"];
 
-    private static List<List<string>> NormalizeAlternatives(List<List<string>> alternatives) {
-        CardSelector rule = CardSelector.AnyOfSelectors(alternatives.Select(CardSelector.AllOf));
+    private static List<List<RuleProperty>> NormalizeAlternatives(List<List<RuleProperty>> alternatives) {
+        CardSelector rule = CardSelector.AnyOfSelectors(alternatives.Select(branch => CardSelector.AllOfSelectors(branch.Select(property => property.Selector))));
         IEnumerable<CardSelector> branches = rule.Kind == CardSelectorKind.AnyOf ? rule.AuthoredTerms : [rule];
-        return branches.Select(branch => branch.AuthoredTerms.SelectMany(term => term.CategoryIdentities).ToList()).ToList();
+        RuleProperty[] properties = alternatives.SelectMany(branch => branch).ToArray();
+        return branches.Select(branch => (branch.Kind == CardSelectorKind.AllOf ? branch.AuthoredTerms : [branch])
+            .Select(selector => properties.First(property => property.Selector.Equals(selector))).ToList()).ToList();
     }
 
-    private bool SameAlternatives(List<List<string>> restored) => _alternatives.Count == restored.Count
-        && _alternatives.Zip(restored).All(pair => pair.First.SequenceEqual(pair.Second, StringComparer.Ordinal));
+    private bool SameAlternatives(List<List<RuleProperty>> restored) => _alternatives.Count == restored.Count
+        && _alternatives.Zip(restored).All(pair => pair.First.Select(property => property.Selector).SequenceEqual(pair.Second.Select(property => property.Selector)));
 
     private bool CanReverseAlternative(int right) {
         if (right <= 0 || right >= _alternatives.Count || _alternatives[right - 1].Count != 1 || _alternatives[right].Count != 1
-            || _alternatives[right - 1][0] == _alternatives[right][0]) { return false; }
-        List<string> combined = [.. _alternatives[right - 1], .. _alternatives[right]];
-        List<List<string>> changed = _alternatives.Select(branch => branch.ToList()).ToList();
+            || _alternatives[right - 1][0].Selector.Equals(_alternatives[right][0].Selector)) { return false; }
+        List<RuleProperty> combined = [.. _alternatives[right - 1], .. _alternatives[right]];
+        List<List<RuleProperty>> changed = _alternatives.Select(branch => branch.ToList()).ToList();
         changed[right - 1] = combined;
         changed.RemoveAt(right);
         changed = NormalizeAlternatives(changed);
-        int index = changed.FindIndex(branch => branch.SequenceEqual(combined, StringComparer.Ordinal));
+        int index = changed.FindIndex(branch => branch.Select(property => property.Selector).SequenceEqual(combined.Select(property => property.Selector)));
         if (index < 0) { return false; }
         changed.RemoveAt(index);
-        changed.InsertRange(index, combined.Select(property => new List<string> { property }));
+        changed.InsertRange(index, combined.Select(property => new List<RuleProperty> { property }));
         return SameAlternatives(changed);
     }
 
     private bool CanReverseProperty(int branch) {
-        List<string> properties = _alternatives[branch];
+        List<RuleProperty> properties = _alternatives[branch];
         if (properties.Count != 2 || _alternatives.Count + 1 > CategoryMembership.MaximumAlternatives) { return false; }
-        List<List<string>> changed = _alternatives.Select(value => value.ToList()).ToList();
+        List<List<RuleProperty>> changed = _alternatives.Select(value => value.ToList()).ToList();
         changed.RemoveAt(branch);
-        changed.InsertRange(branch, properties.Select(property => new List<string> { property }));
+        changed.InsertRange(branch, properties.Select(property => new List<RuleProperty> { property }));
         changed = NormalizeAlternatives(changed);
-        int index = changed.FindIndex(value => value.Count == 1 && value[0] == properties[0]);
-        if (index < 0 || index + 1 >= changed.Count || changed[index + 1].Count != 1 || changed[index + 1][0] != properties[1]) { return false; }
+        int index = changed.FindIndex(value => value.Count == 1 && value[0].Selector.Equals(properties[0].Selector));
+        if (index < 0 || index + 1 >= changed.Count || changed[index + 1].Count != 1 || !changed[index + 1][0].Selector.Equals(properties[1].Selector)) { return false; }
         changed[index] = properties.ToList();
         changed.RemoveAt(index + 1);
         return SameAlternatives(changed);

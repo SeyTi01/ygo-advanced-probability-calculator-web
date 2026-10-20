@@ -18,13 +18,15 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));
         editor.Find(".simulation-edit").Click();
         Assert.That(editor.FindAll(".requirement-edit").Select(row => row.GetAttribute("aria-label")), Is.EqualTo(new[] {
-            "Edit Monster AND Level >= 5", "Edit Attribute: LIGHT OR Attribute: DARK", "Edit Pyro OR Aqua"
+            "Edit Level >= 5", "Edit Attribute: LIGHT OR Attribute: DARK", "Edit Pyro OR Aqua"
         }));
         Assert.That(editor.Markup, Does.Not.Contain("Any condition"));
+        int[] expectedCounts = [1, 2, 2];
+        int index = 0;
         foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
             row.Find(".requirement-edit").Click();
-            Assert.That(editor.FindAll(".requirement-edit-grid .requirement-operand"), Has.Count.EqualTo(2));
-            Assert.That(editor.FindAll(".requirement-inputs > .expression-separator select"), Has.Count.EqualTo(1));
+            Assert.That(editor.FindAll(".requirement-edit-grid .requirement-operand"), Has.Count.EqualTo(expectedCounts[index]));
+            Assert.That(editor.FindAll(".requirement-inputs > .expression-separator select"), Has.Count.EqualTo(expectedCounts[index++] - 1));
             SaveRow(editor);
         }
         editor.Find(".simulation-save").Click();
@@ -80,7 +82,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.FindComponents<ExpressionGroup>(), Has.Count.EqualTo(1));
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(3));
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Not.Contain("Any condition"));
-        Assert.That(editor.FindAll(".draw-selector-chip"), Has.Count.EqualTo(6));
+        Assert.That(editor.FindAll(".draw-selector-chip"), Has.Count.EqualTo(5));
         Assert.That(editor.FindAll(".selector-expression select:not(.expression-operator), .selector-expression input, .selector-extend"), Is.Empty);
         foreach (IElement separator in editor.FindAll(".selector-expression .requirement-and-separator, .selector-expression .alternative-separator")) {
             Assert.That(separator.QuerySelector("select")!.GetAttribute("value"), Is.AnyOf("AND", "OR"));
@@ -118,7 +120,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card, saved));
         editor.Find(".simulation-restore").Click();
         Assert.That(saved!.EffectPlan, Is.EqualTo(source.EffectPlan));
-        Assert.That(saved.EffectProfile.Revision, Is.EqualTo(2));
+        Assert.That(saved.EffectProfile.Revision, Is.EqualTo(3));
     }
 
     [Test]
@@ -145,8 +147,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
         OpenLevel(editor);
         editor.Find("input[aria-label='Minimum Level']").Input("");
-        Button(editor, "Remove property 2").Click();
-        SaveRow(editor);
+        Button(editor, "Remove requirement").Click();
         Assert.That(editor.FindAll("input[aria-label='Minimum Level']"), Is.Empty);
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
     }

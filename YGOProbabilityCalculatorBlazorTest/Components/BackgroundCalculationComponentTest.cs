@@ -72,6 +72,8 @@ public class BackgroundCalculationComponentTest {
         await Progress(0, initial);
         Assert.That(task.IsCompleted, Is.False);
         Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Preliminary"));
+        Assert.That(_cut.FindAll(".probability-result-status-preliminary"), Has.Count.EqualTo(1));
+        Assert.That(_cut.Find(".probability-result-status-slot").GetAttribute("aria-live"), Is.EqualTo("polite"));
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-label"), Is.EqualTo("Cancel Exact upgrade"));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
         Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.IsCalculating, Is.True);
@@ -100,6 +102,7 @@ public class BackgroundCalculationComponentTest {
         }
         Assert.That(_calculator.Tokens[0].IsCancellationRequested, Is.True);
         Assert.That(_cut.FindAll(".probability-result-status").Any(status => status.TextContent.Contains("Preliminary")), Is.False);
+        Assert.That(_cut.FindAll(".probability-result-status-preliminary"), Is.Empty);
         Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.IsStale, Is.EqualTo(edit));
         Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.Result.Contract!.Fractions, Is.SameAs(initial.Contract!.Fractions));
         Task second = Start();

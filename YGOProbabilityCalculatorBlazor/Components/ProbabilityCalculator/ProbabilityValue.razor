@@ -1,6 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 
-<span class="probability-with-accuracy" tabindex="0" role="note" aria-label="@($"{_display.Summary}. {_display.Detail}")" title="@_display.Detail">
+<span class="probability-with-accuracy @(_display.Accuracy == "±0%" ? "probability-zero-uncertainty" : null)" tabindex="0" role="note" aria-label="@($"{_display.Summary}. {_display.Detail}")" title="@_display.Detail">
     <strong class="combo-probability-value @ValueClass">@_display.Value</strong>
     <small class="probability-uncertainty">@_display.Accuracy</small>
     <span class="probability-proof" aria-hidden="true">@_display.Detail</span>

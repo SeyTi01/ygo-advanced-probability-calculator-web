@@ -223,7 +223,7 @@
                                 <span class="probability-result-status-space-compact">Preliminary</span>
                             </span>
                             @if (_isPreliminary || _calculationResultIsStale) {
-                                <span class="probability-result-status">
+                                <span class="probability-result-status @(_isPreliminary ? "probability-result-status-preliminary" : null)">
                                     <span class="probability-result-status-full" aria-hidden="true">@(_isPreliminary ? "Preliminary · checking Exact" : "Previous result · inputs changed")</span>
                                     <span class="probability-result-status-compact" aria-hidden="true">@(_isPreliminary ? "Preliminary" : "Stale")</span>
                                     <span class="visually-hidden">@(_isPreliminary ? "Preliminary · checking Exact" : "Previous result · inputs changed")</span>

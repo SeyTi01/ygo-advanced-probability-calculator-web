@@ -175,7 +175,12 @@ public sealed partial class SearchEffectsTest {
             Assert.That(card.ManualMetadataCategoryKeys, Is.Empty);
             Assert.That(card.Categories.All(category => category.Source == CategorySource.Metadata), Is.True);
             Assert.That(card.Categories.Any(category => category.MetadataKey == "kind:spell"), Is.True);
-            Assert.That(card.EffectPlan, Is.EqualTo(Preset(card.ExternalCardId!.Value).EffectPlan));
+            Card current = Preset(card.ExternalCardId!.Value);
+            Assert.That(session.Cards.Where(card.Search!.Matches).Select(target => target.Id),
+                Is.EqualTo(session.Cards.Where(current.Search!.Matches).Select(target => target.Id)));
+            Assert.That(card.EffectPlan with { Search = current.Search }, Is.EqualTo(current.EffectPlan));
+            Assert.That(card.EffectProfile.Revision, Is.EqualTo(card.ExternalCardId == 92221402 ? 2 : 1),
+                "Loading must not replace saved plans or provenance with the current definition.");
         }
         foreach (Card card in session.Cards.Except([caseK9, chaotic])) {
             Card old = previous.Cards.Single(candidate => candidate.Id == card.Id);

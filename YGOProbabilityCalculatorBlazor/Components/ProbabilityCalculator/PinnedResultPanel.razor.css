@@ -5,6 +5,7 @@
 .pinned-row { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
 .pinned-row span { min-width: 0; overflow-wrap: anywhere; }
 .pinned-row ::deep .probability-with-accuracy { flex: 0 1 auto; max-width: 65%; }
+.pinned-row ::deep .probability-zero-uncertainty { flex-shrink: 0; }
 .pinned-total { border-bottom: 1px solid var(--bs-border-color); font-size: 1.2rem; padding-bottom: .75rem; margin-bottom: .75rem; }
 .pinned-total strong { font-size: 1.1em; }
 .pinned-group { padding: .35rem 0 .5rem; }
