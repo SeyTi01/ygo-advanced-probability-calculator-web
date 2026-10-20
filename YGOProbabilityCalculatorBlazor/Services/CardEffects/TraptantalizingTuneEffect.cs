@@ -4,7 +4,6 @@ namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
 public sealed class TraptantalizingTuneEffect : ICardEffectDefinition {
     private static readonly CardSelector LevelFourInsectOrPlant = CardSelector.AllOfSelectors([
-        CardSelector.For(EffectProperties.Property("Monster", "kind:monster")),
         CardSelector.For(EffectProperties.Property("Level 4", "level:4")),
         CardSelector.AnyOf([
             "metadata:monster-race:insect",
@@ -18,9 +17,8 @@ public sealed class TraptantalizingTuneEffect : ICardEffectDefinition {
 
     public int CanonicalCardId => 48805472;
     public string Name => "Traptantalizing Tune";
-    public int Revision => 1;
+    public int Revision => 2;
     public IReadOnlyList<CategoryBase> FilterProperties => [
-        EffectProperties.Property("Monster", "kind:monster"),
         EffectProperties.Property("Level 4", "level:4"),
         EffectProperties.Property("Insect", "monster-race:insect"),
         EffectProperties.Property("Plant", "monster-race:plant"),
