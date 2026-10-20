@@ -12,18 +12,24 @@ internal sealed partial class PostDrawCalculation {
         }
 
         internal void EnumerateFrontier(int handSize, int copies, BigInteger[] factorial, Action<int[], int, BigInteger> terminal) {
-            Dictionary<State, BigInteger> states = Resolve<PhysicalTerminal>(handSize, copies, factorial, DefaultCompactFrontierThreshold);
+            bool packed = owner.CompactPhysicalTerminals && copies <= byte.MaxValue && layout.RowCount <= byte.MaxValue;
+            Dictionary<State, BigInteger> states = Resolve<PhysicalTerminal>(handSize, copies, factorial, DefaultCompactFrontierThreshold, packed);
             foreach ((State state, BigInteger mass) in states) {
                 budget.Spend(layout.RowCount + WorkBudget.IntegerCells(mass));
+                int[] values = state.Values;
+                if (packed) {
+                    budget.Spend(values[0]);
+                    values = DrawFrontierPacking.Unpack(values);
+                }
                 int remaining = 0;
                 for (int row = 0; row < layout.RowCount; row++) {
-                    remaining += state.Values[row];
+                    remaining += values[row];
                 }
                 // Resolve already multiplied each terminal prefix by its unseen
                 // suffix factorial. Remove that factor before jointly splitting
                 // hidden positions; equal explicit states have the same suffix.
                 budget.Spend(WorkBudget.IntegerCells(mass) * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
-                terminal(state.Values, remaining, mass / factorial[remaining]);
+                terminal(values, remaining, mass / factorial[remaining]);
             }
         }
 
@@ -247,6 +253,10 @@ internal sealed class PhysicalSearchHandCounter {
     private readonly (int Source, int[] Targets)[] _sources;
     private int _compiledSize = -1;
     private List<List<CompiledEvent?>> _events = [];
+    private readonly int[] _hand;
+    private readonly int[] _allowance;
+    private readonly bool[] _success;
+    private readonly Stack<(int Kind, int Index, int Start, int Left)> _stack = new();
 
     internal PhysicalSearchHandCounter(List<Card> cards, List<Combo> combos, WorkBudget budget) {
         _cards = cards;
@@ -257,20 +267,34 @@ internal sealed class PhysicalSearchHandCounter {
         _sources = cards.Select((card, row) => (Card: card, Row: row)).Where(entry => entry.Card.Search is not null)
             .Select(entry => (entry.Row, cards.Select((card, row) => (Card: card, Row: row))
                 .Where(target => target.Row != entry.Row && entry.Card.Search!.Matches(target.Card)).Select(target => target.Row).ToArray())).ToArray();
+        budget.CheckStorage(cards.Count + _sources.Length + combos.Count,
+            cards.Count + (long)_sources.Length + combos.Count);
+        _hand = new int[cards.Count];
+        _allowance = new int[_sources.Length];
+        _success = new bool[combos.Count];
     }
 
+    // The caller consumes this borrowed row buffer before evaluating the next
+    // terminal. No input, result, or mutable state is retained across requests.
     internal bool[] Evaluate(ReadOnlySpan<int> original, int[] available) {
         _budget.Spend(original.Length + _combos.Count + 1L);
-        int[] hand = original.ToArray();
+        int[] hand = _hand;
+        original.CopyTo(hand);
         int size = hand.Sum();
         if (size != _compiledSize) {
             ComboEventCompiler compiler = new(_cards, size, _budget);
             _events = _combos.Select(compiler.CompileCombo).ToList();
             _compiledSize = size;
         }
-        int[] allowance = _sources.Select(source => Math.Min(hand[source.Source], _cards[source.Source].MaximumActivations)).ToArray();
-        bool[] success = new bool[_combos.Count];
-        Stack<(int Kind, int Index, int Start, int Left)> stack = new();
+        int[] allowance = _allowance;
+        for (int index = 0; index < _sources.Length; index++) {
+            int source = _sources[index].Source;
+            allowance[index] = Math.Min(hand[source], _cards[source].MaximumActivations);
+        }
+        bool[] success = _success;
+        Array.Clear(success);
+        Stack<(int Kind, int Index, int Start, int Left)> stack = _stack;
+        stack.Clear();
         Push(0, 0, 0, 0);
         while (stack.Count > 0) {
             _budget.Spend(1);

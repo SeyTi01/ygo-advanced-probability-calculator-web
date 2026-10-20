@@ -1,7 +1,9 @@
-.probability-with-accuracy { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; column-gap: .35em; min-width: 0; max-width: 100%; text-align: right; }
+.probability-with-accuracy { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; column-gap: .35em; min-width: 0; max-width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
 .probability-with-accuracy:focus-visible { outline: 2px solid var(--app-focus-ring-color, currentColor); outline-offset: 3px; border-radius: .15rem; }
-.combo-probability-value { white-space: nowrap; }
+/* Reserve 100.00% and its uncertainty so an Exact upgrade cannot unwrap row labels. */
+.combo-probability-value { white-space: nowrap; min-width: 7.5ch; }
 .probability-uncertainty, .probability-uninformative { font-size: .75em; font-weight: normal; white-space: nowrap; }
+.probability-uncertainty { min-width: 7ch; }
 .probability-uninformative { flex-basis: 100%; }
 .probability-total-value { font-size: 1.1em; }
 

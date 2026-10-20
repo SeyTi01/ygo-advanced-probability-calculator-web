@@ -108,12 +108,14 @@ export function createOwner() {
         if (typeof data.remainingWork !== 'string' || !/^[0-9]+$/.test(data.remainingWork)) {
             return fallback(lease, 5);
         }
-        if (/^0+$/.test(data.remainingWork)) return fallback(lease, 2);
+        if (!lease.progressive && /^0+$/.test(data.remainingWork)) return fallback(lease, 2);
         if (!lease.progressive) {
             lease.deadline = Math.min(lease.deadline, performance.now() + upgradeMilliseconds);
             arm(lease);
         }
-        lease.state.worker.postMessage({ id: lease.id, json: lease.json, fastStage: 'upgrade', remainingWork: data.remainingWork });
+        lease.state.worker.postMessage(lease.progressive
+            ? { id: lease.id, json: lease.json, fastStage: 'progressive-exact-v1' }
+            : { id: lease.id, json: lease.json, fastStage: 'upgrade', remainingWork: data.remainingWork });
         lease.json = undefined;
         // Only an actually dispatched upgrade has a presentation stage. The
         // terminal promise still owns the lease until C# validates and releases it.
@@ -131,7 +133,9 @@ export function createOwner() {
                 lease.json = json;
                 if (!lease.progressive) lease.deadline = performance.now() + opportunityMilliseconds;
                 lease.state.worker.postMessage({ id: lease.id, json, fastStage: 'initial' });
-            } else lease.state.worker.postMessage({ id: lease.id, json });
+            } else lease.state.worker.postMessage(lease.interactiveExact
+                ? { id: lease.id, json, execution: 'interactive-exact-v1' }
+                : { id: lease.id, json });
         }
         catch { retire(lease.state, 'Could not send the background calculation.'); }
     }
@@ -212,11 +216,12 @@ export function createOwner() {
                     if (!lease.final) return Promise.reject(new Error('No progressive calculation was started.'));
                     return lease.final;
                 },
-                run(json, automatic = false) {
+                run(json, automatic = false, interactiveExact = false) {
                     if (lease.phase !== 'created') return Promise.reject(new Error(lease.error ||
                         (lease.phase === 'running' ? 'Calculation is already running.' : 'Calculation is already finished.')));
                     lease.phase = 'running';
                     lease.automatic = automatic === true;
+                    lease.interactiveExact = interactiveExact === true;
                     lease.state.runningAutomatic = lease.automatic;
                     return new Promise((resolve, reject) => {
                         lease.pending = { json, resolve, reject };

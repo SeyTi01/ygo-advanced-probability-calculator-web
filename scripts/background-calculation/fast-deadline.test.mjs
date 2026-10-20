@@ -40,7 +40,7 @@ test('progressive initial response is immediate but never releases the single le
     assert.deepEqual(JSON.parse(stage.response), initial);
     assert.throws(() => s.job.release(), /successful response/);
     assert.throws(() => s.owner.createJob(), /already running/);
-    assert.deepEqual(s.worker.sent[1], {id:1,json:'frozen',fastStage:'upgrade',remainingWork:'1234'});
+    assert.deepEqual(s.worker.sent[1], {id:1,json:'frozen',fastStage:'progressive-exact-v1'});
     s.emit(success(0));
     assert.equal(JSON.parse(await s.job.finish()).Result.Contract.AutomaticExact, 0);
     s.job.release(); assert.equal(s.worker.terminated, 0);
@@ -63,7 +63,7 @@ for (const [kind, outcome] of [['work',2],['storage',3],['unsupported',4],['tran
     });
 }
 
-for (const kind of ['exact','no-work','initial-failure']) {
+for (const kind of ['exact','initial-failure']) {
     test(`progressive ${kind} has only a final stage`, async t => {
         const s = setup(t, true); s.ready();
         if (kind === 'no-time') s.tick(7000);
@@ -231,7 +231,7 @@ for (const initialDelay of [0, 12000]) {
     });
 }
 
-for (const [remaining, outcome] of [['0',2], ['000',2], ['',5], ['-1',5], [null,5]]) {
+for (const [remaining, outcome] of [['',5], ['-1',5], [null,5]]) {
     test(`Progressive invalid/empty Work allowance ${remaining} keeps completed Fast`, async t => {
         const s=setup(t,true); s.ready(); const initial=success(); s.emit(initial,remaining);
         const stage=await s.promise;
@@ -245,3 +245,24 @@ for (const [remaining, outcome] of [['0',2], ['000',2], ['',5], ['-1',5], [null,
         s.job.release();
     });
 }
+
+for (const remaining of ['0', '000', '1', '149999999']) test(`progressive Exact outlives old deadlines with ${remaining} Fast Work remaining`, async t => {
+    const s = setup(t, true); s.ready(); s.emit(success(), remaining);
+    assert.equal((await s.promise).isPreliminary, true);
+    assert.deepEqual(s.worker.sent[1], { id: 1, json: 'frozen', fastStage: 'progressive-exact-v1' });
+    s.tick(600000);
+    assert.equal(s.worker.terminated, 0);
+    s.emit(success(0), '0');
+    assert.equal(JSON.parse(await s.job.finish()).Result.Contract.AutomaticExact, 0);
+    s.job.release();
+});
+
+test('manual Exact uses an explicit worker command and remains cancellable after ten minutes', async t => {
+    const s = setup(t); s.job.dispose(); await assert.rejects(s.promise);
+    const job = s.owner.createJob(); const pending = job.run('exact', false, true);
+    s.tick(2500); const worker = s.workers.at(-1); worker.emit({ ready: true });
+    assert.deepEqual(worker.sent[0], { id: 2, json: 'exact', execution: 'interactive-exact-v1' });
+    s.tick(600000); assert.equal(worker.terminated, 0);
+    job.dispose(); await assert.rejects(pending, /cancelled/);
+    assert.equal(worker.terminated, 1);
+});

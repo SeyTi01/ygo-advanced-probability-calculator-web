@@ -237,7 +237,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
             else {
                 Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
                 Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-                    Is.EqualTo("Shows Fast first, then attempts Exact until completed, canceled, or stopped by Work, Storage or unsupported conditions."));
+                    Is.EqualTo("Shows Fast first, then attempts Exact until completed, canceled, or stopped by Storage or unsupported conditions. Exact has no Work cutoff."));
             }
         }
     }

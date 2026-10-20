@@ -24,6 +24,7 @@ internal sealed partial class PostDrawCalculation(
     // A quarter of Standard's cell allowance. Small conditional frontiers retain
     // their original representation; this is a trigger, never a raised limit.
     internal const int DefaultCompactFrontierThreshold = 65_536;
+    private bool CompactPhysicalTerminals => compactSearchTerminals;
     private bool EagerTerminalAggregation { get; } = eagerTerminalAggregation;
     internal int TerminalStates { get; private set; }
     internal SolverRoute Route { get; private set; }

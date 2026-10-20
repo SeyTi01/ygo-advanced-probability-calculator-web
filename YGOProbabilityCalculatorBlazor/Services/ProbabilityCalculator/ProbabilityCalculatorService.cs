@@ -78,8 +78,8 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         return CalculateWithBudget(deck, combos, handSize, groups, new WorkBudget(workPolicy, storagePolicy), options);
     }
 
-    // Worker stages carve their allowance from one request. Native callers keep
-    // the unchanged synchronous policy; only the worker owns a wall-time limit.
+    // Worker entry points select bounded Fast or unlimited physical Exact.
+    // Native callers retain their explicitly selected synchronous work policy.
     internal ProbabilityCalculationResult CalculateWithBudget(
         List<Card> deck,
         List<Combo> combos,

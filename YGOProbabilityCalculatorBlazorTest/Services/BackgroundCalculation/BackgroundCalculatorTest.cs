@@ -32,7 +32,7 @@ public class BackgroundCalculatorTest {
         Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Bounded));
         Assert.That(result.Contract.AutomaticExact, Is.Null);
         _job.Verify(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(),
-            It.Is<object?[]?>(args => args!.Length == 2 && Equals(args[0], snapshot.Json) && Equals(args[1], false))), Times.Once);
+            It.Is<object?[]?>(args => args!.Length == 3 && Equals(args[0], snapshot.Json) && Equals(args[1], false) && Equals(args[2], false))), Times.Once);
         _job.Verify(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()), Times.Never);
         _job.Verify(j => j.InvokeAsync<string>("finish", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()), Times.Never);
         _job.Verify(j => j.InvokeAsync<long>("release", It.IsAny<object?[]?>()), Times.Once);
@@ -214,7 +214,7 @@ public class BackgroundCalculatorTest {
             .ReturnsAsync(CalculationWire.Execute(snapshot.Json));
         await _service.CalculateAsync(snapshot, default);
         _job.Verify(j => j.InvokeAsync<string>("run", It.IsAny<CancellationToken>(),
-            It.Is<object?[]?>(args => args!.Length == 2 && (bool)args[1]! == automatic)), Times.Once);
+            It.Is<object?[]?>(args => args!.Length == 3 && (bool)args[1]! == automatic && (bool)args[2]! == (mode == CalculationModel.Exact))), Times.Once);
     }
 
     [TestCase(false)]

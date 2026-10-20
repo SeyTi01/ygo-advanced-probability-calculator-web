@@ -53,7 +53,9 @@ internal static class TargetSurvivalUpperBound {
         }
         // A child allowance is carved from the EXISTING request, with publication
         // headroom left intact. Every spent unit is debited even on a failed proof.
-        long allowance = Math.Min(MaximumAdditionalWork, request.Allowance - request.Spent - PublicationReserve);
+        long allowance = request.Remaining is long remaining
+            ? Math.Min(MaximumAdditionalWork, remaining - PublicationReserve)
+            : MaximumAdditionalWork;
         if (allowance <= 0) {
             return null;
         }
