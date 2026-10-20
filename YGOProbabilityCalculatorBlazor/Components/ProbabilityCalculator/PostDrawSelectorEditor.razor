@@ -7,35 +7,11 @@
         <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">@(Selector.Kind == CardSelectorKind.Not && Selector.Children[0].Kind == CardSelectorKind.Any ? "Replace empty filter" : "Replace verified filter")</button>
     }
     else if (!Grouped || Selector.Kind == CardSelectorKind.Any) {
-        <label for="@Id" class="form-label mb-1">Eligible</label>
-        <select id="@Id" class="form-select form-select-sm" value="" @onchange="Change">
-            <option value="">@(Selector.Kind == CardSelectorKind.Any ? "Any card" : "Add OR category/property…")</option>
-            @if (Selector.Kind != CardSelectorKind.Any) {
-                <option value="any">Any card (clear filter)</option>
-            }
-            <option value="numeric:level">Level</option><option value="numeric:rank">Rank</option><option value="numeric:link">Link</option>
-            @if (Available.Any(static category => category.Source == CategorySource.User)) {
-                <optgroup label="User categories">
-                    @foreach (CategoryBase category in Available.Where(static category => category.Source == CategorySource.User)) {
-                        <option value="@category.Identity">@category.Name</option>
-                    }
-                </optgroup>
-            }
-            @if (RelevantMetadata.Length > 0) {
-                <optgroup label="Relevant properties">
-                    @foreach (CategoryBase category in RelevantMetadata) {
-                        <option value="@category.Identity">@category.Name</option>
-                    }
-                </optgroup>
-            }
-            @if (RemainingCommonMetadata.Length > 0) {
-                <optgroup label="Common properties">
-                    @foreach (CategoryBase category in RemainingCommonMetadata) {
-                        <option value="@category.Identity">@category.Name</option>
-                    }
-                </optgroup>
-            }
-        </select>
+        <RequirementPropertyPicker Id="@Id" Label="Eligible" AccessibleLabel="Eligible" AllowAny="true" Categories="Available"
+            RelevantIdentities="_categoryOptions.RelevantMetadataIdentities" OnChanged="AddProperty" />
+    }
+    @if (Grouped && Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
+        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">Any card (clear filter)</button>
     }
     @if (Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
         <div class="mt-2" aria-label="Grouped eligibility filter">
@@ -105,30 +81,11 @@
     private static string MetadataFallbackLabel(string identity) => System.Globalization.CultureInfo.InvariantCulture.TextInfo
         .ToTitleCase(Uri.UnescapeDataString(identity[(identity.LastIndexOf(':') + 1)..]));
 
-    private CategoryBase[] RelevantMetadata => Available
-        .Where(category => category.Source == CategorySource.Metadata && !NumericPropertyRange.TryFromIdentity(category.Identity, out _)
-            && (!CategoryCatalog.IsCommonMetadata(category) || _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity)))
-        .ToArray();
-
-    private CategoryBase[] RemainingCommonMetadata => Available
-        .Where(category => CategoryCatalog.IsCommonMetadata(category)
-            && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity))
-        .ToArray();
-
-    private Task Change(ChangeEventArgs args) {
-        string? identity = args.Value?.ToString();
-        if (identity == "any") {
-            return Clear();
-        }
-        if (identity?.StartsWith("numeric:", StringComparison.Ordinal) == true && Enum.TryParse(identity[8..], true, out NumericPropertyKind property)) {
-            int number = property == NumericPropertyKind.Link ? 1 : 5;
-            CardSelector numeric = CardSelector.ForNumericRange(new(property, number, number));
-            return Apply(() => Selector.Kind == CardSelectorKind.Any ? numeric : CardSelector.AnyOfSelectors([Selector, numeric]));
-        }
-        if (!Available.Any(category => category.Identity == identity)) {
-            return Task.CompletedTask;
-        }
-        return Apply(() => CardSelector.AnyOfSelectors(Alternatives.Append(new CardSelector(CardSelectorKind.Category, [identity!]))));
+    private Task AddProperty(RequirementPropertyPicker.Change change) {
+        if (change.Value == "any") { return Clear(); }
+        if (change.Error is not null || change.Category is null) { return Task.CompletedTask; }
+        CardSelector added = NumericPropertyRange.SelectorFor(change.Category);
+        return Apply(() => Selector.Kind == CardSelectorKind.Any ? added : CardSelector.AnyOfSelectors([.. Alternatives, added]));
     }
 
     private async Task Apply(Func<CardSelector> create) {

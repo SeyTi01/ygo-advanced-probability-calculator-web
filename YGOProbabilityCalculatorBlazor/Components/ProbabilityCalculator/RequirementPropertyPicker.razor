@@ -4,6 +4,7 @@
     <label for="@Id" class="form-label">@Label</label>
     <select id="@Id" class="form-select" aria-label="@AccessibleLabel" value="@Selection" @onchange="Select" @ref="_target">
         <option value="">Choose…</option>
+        @if (AllowAny) { <option value="any">Any card (clear filter)</option> }
         @if (Cards.Count > 0) {
             <optgroup label="Cards">@foreach (Card card in CardOrdering.Alphabetize(Cards)) { <option value="@($"card:{card.Id}")">@(CardLabel?.Invoke(card) ?? card.Name)</option> }</optgroup>
         }
@@ -33,6 +34,7 @@
 
 @code {
     public sealed record Change(string Value, CategoryBase? Category, string? Error = null);
+    [Parameter] public bool AllowAny { get; set; }
     [Parameter] public string Id { get; set; } = "requirement-target";
     [Parameter] public string Label { get; set; } = "Requirement";
     [Parameter] public string? AccessibleLabel { get; set; }

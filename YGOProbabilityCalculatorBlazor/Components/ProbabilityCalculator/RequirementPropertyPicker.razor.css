@@ -1,4 +1,4 @@
 .requirement-property-picker { min-width: 0; }
 .requirement-property-picker .form-select { min-width: 0; }
-.requirement-numeric-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: .5rem; margin-top: .5rem; }
+.requirement-numeric-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: .5rem; margin-top: .5rem; }
 .requirement-numeric-fields > div { min-width: 0; }

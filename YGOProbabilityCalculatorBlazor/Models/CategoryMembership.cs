@@ -8,13 +8,16 @@ public static class CategoryMembership {
 
     public static void ValidateRule(CardSelector rule) {
         ArgumentNullException.ThrowIfNull(rule);
-        if (rule.Kind == CardSelectorKind.Any || rule.HasNumericPredicate
-            || rule.Children.Any(child => child.Children.Count > 0 || child.Kind is not (CardSelectorKind.Category or CardSelectorKind.AllOf))
-            || (rule.Kind == CardSelectorKind.AllOf && rule.Children.Count > 0)
-            || rule.CategoryIdentities.Any(identity => !identity.StartsWith("metadata:", StringComparison.Ordinal))
-            || rule.Alternatives.Count() > MaximumAlternatives
-            || rule.Alternatives.Any(alternative => alternative.CategoryIdentities.Count > MaximumPropertiesPerAlternative)) {
-            throw new ArgumentException("A rule needs metadata properties only, with at most 16 alternatives and 16 properties per alternative.", nameof(rule));
+        bool IsProperty(CardSelector selector) => selector.Kind is CardSelectorKind.NumericRange or CardSelectorKind.LevelAtLeast
+            || selector.Kind == CardSelectorKind.Category
+                && selector.CategoryIdentities[0].StartsWith("metadata:", StringComparison.Ordinal)
+                && !selector.CategoryIdentities[0].StartsWith("metadata:numeric:", StringComparison.Ordinal);
+        bool IsAlternative(CardSelector selector) => IsProperty(selector)
+            || selector.Kind == CardSelectorKind.AllOf && selector.AuthoredTerms.Count() <= MaximumPropertiesPerAlternative
+                && selector.AuthoredTerms.All(IsProperty);
+        CardSelector[] alternatives = rule.Alternatives.ToArray();
+        if (alternatives.Length > MaximumAlternatives || !alternatives.All(IsAlternative)) {
+            throw new ArgumentException("A rule needs metadata or numeric properties only, with at most 16 alternatives and 16 properties per alternative.", nameof(rule));
         }
     }
 

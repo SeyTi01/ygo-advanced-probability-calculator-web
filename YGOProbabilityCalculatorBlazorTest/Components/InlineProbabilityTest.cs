@@ -71,6 +71,7 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
             // Render order: total, right group + combo 1, left group + combo 0, ungrouped combo 2.
             Assert.That(cut.FindAll(root + " .probability-uncertainty").Select(element => element.TextContent),
                 Is.EqualTo(new[] { "±3.34%", "±3.34%", "±3.34%", "±0%", "±0%", "±25.00%" }));
+            Assert.That(cut.FindAll(root + " .probability-zero-uncertainty"), Has.Count.EqualTo(2));
             Assert.That(cut.FindAll(root + " .probability-uninformative"), Has.Count.EqualTo(1));
             Assert.That(cut.FindAll(root + " table"), Is.Empty);
             Assert.That(cut.Find(root + " .probability-with-accuracy").GetAttribute("aria-label"), Does.Contain("[1/2, 17/30]"));
@@ -94,6 +95,8 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         IRenderedComponent<PinnedResultPanel> pin = context.RenderComponent<PinnedResultPanel>(parameters => parameters.Add(value => value.Snapshot, snapshot));
         string expected = accuracy == CalculationAccuracy.Exact ? "±0%" : "⚠ Uncertified";
         Assert.That(current.Find(".probability-uncertainty").TextContent, Is.EqualTo(expected));
+        Assert.That(current.FindAll(".probability-zero-uncertainty"), Has.Count.EqualTo(accuracy == CalculationAccuracy.Exact ? 1 : 0));
+        Assert.That(pin.FindAll(".probability-zero-uncertainty"), Has.Count.EqualTo(accuracy == CalculationAccuracy.Exact ? 3 : 0));
         Assert.That(pin.FindAll(".probability-uncertainty").Select(element => element.TextContent), Is.All.EqualTo(expected));
         Assert.That(pin.FindAll("table"), Is.Empty);
         Assert.That(pin.Find(".accuracy-details summary").TextContent, Is.EqualTo("Accuracy details"));

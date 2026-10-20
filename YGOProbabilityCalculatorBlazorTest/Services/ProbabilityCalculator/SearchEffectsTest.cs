@@ -186,7 +186,9 @@ public sealed partial class SearchEffectsTest {
             Assert.That(session.Cards.Where(rota.Search!.Matches).Select(card => card.Id), Is.EqualTo(new[] { razen.Id }));
             Assert.That(rota.Categories.Select(category => category.MetadataKey), Is.EquivalentTo(new[] { "kind:spell", "spell-type:normal" }));
             Assert.That(rota.ManualMetadataCategoryKeys, Is.Empty);
-            Assert.That(rota.EffectPlan, Is.EqualTo(Rota().EffectPlan));
+            Assert.That(rota.EffectProfile.Revision, Is.EqualTo(1), "Loading keeps the saved definition revision.");
+            Assert.That(session.Cards.Where(Rota().Search!.Matches).Select(card => card.Id),
+                Is.EqualTo(session.Cards.Where(rota.Search!.Matches).Select(card => card.Id)));
         });
         WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
         Stopwatch watch = Stopwatch.StartNew();
