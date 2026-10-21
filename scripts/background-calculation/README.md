@@ -28,6 +28,10 @@ desktop/mobile, light/dark, pinned/unpinned geometry and screenshots. Timing run
 must run alone, without builds or other calculations. The deterministic JS and
 .NET tests additionally cover malformed replies and adversarial interleavings.
 
+`progressive-failure-smoke.cjs` takes the same arguments and deliberately faults
+the real worker's upgrade transport after Fast completes. It checks retained
+Fast rows, worker retirement and a successful request on a fresh, unmodified worker.
+
 ## Search-counting throughput
 
 `SelectiveSurvivorTest.Export` writes the untouched `desires_trade_in.json`
@@ -45,6 +49,17 @@ outside normal execution and must not be used as latency/allocation evidence.
 Scenario times include their child phases; do not add inclusive times together.
 Both paired runners accept `Primary: true` on a frozen fixture to isolate the
 primary engine without certificate completion or a public accuracy contract.
+
+Fixtures can explicitly set `UnlimitedExact: true` when `Input.Options.Mode` is
+Exact. Both runners forward this measurement-only option and require the probe
+to report `WorkPolicy: "Unlimited"` with no `WorkLimit`. Stored `Input.WorkUnits`
+remain unchanged; omission or `false` retains the existing finite allowance/default.
+The probe reports `WorkPolicy` and `WorkLimit` for every measurement.
+
+`AllowRouteChange: true` permits only cross-revision `Route` and
+`Result.Contract.SolverRoute` differences. Every other result field, fraction,
+accuracy and certificate remains checked. Within-revision determinism and the
+default strict route comparison remain unchanged; output retains the actual routes.
 
 Compile `paired-search-throughput.cs` as a temporary `net10.0` console with
 implicit usings and nullable enabled. With `DOTNET_TieredCompilation=0`, pass

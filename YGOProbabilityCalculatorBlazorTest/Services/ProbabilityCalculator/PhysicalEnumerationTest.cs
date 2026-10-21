@@ -66,15 +66,20 @@ public sealed class PhysicalEnumerationTest {
     }
 
     [Test]
-    public void LargeDistinctOpeningSpaceFailsConservativelyBeforeEnumeration() {
+    public void ManyObservationallyEqualEntriesCompleteWithinOriginalLimits() {
         CategoryBase target = new("Target");
         List<Card> deck = Enumerable.Range(0, 38).Select(index => new Card([target], 1, id: "t" + index)).ToList();
         deck.Add(new([], 1, id: "s", search: new(CardSelector.For(target), false)));
         deck.Add(new([], 1, id: "d", drawCount: 1, postDrawDiscardCount: 1));
         WorkBudget budget = new(CalculationWorkPolicy.Default);
         DrawEffectCalculation execution = new(deck, 5, budget, physicalSearch: true);
-        Assert.Throws<ProbabilityCalculationLimitException>(() => execution.Calculate([new([new(target, 1, 6)], "Target")], []));
-        Assert.That(budget.Spent, Is.LessThan(100000));
-        Assert.Throws<InvalidOperationException>(() => execution.DescribeCapability());
+        ExactCalculationResult result = execution.Calculate([new([new(target, 1, 6)], "Target")], []);
+        // Every five-card opening contains at least three targets. The only
+        // draw can remove at most one; declining the optional search preserves
+        // a target. This bound is independent of the row quotient.
+        Assert.That(result.Total.ToFraction(), Is.EqualTo(new ProbabilityFraction("1", "1")));
+        Assert.That(result.Combos.Single().ToFraction(), Is.EqualTo(result.Total.ToFraction()));
+        Assert.That(budget.Spent, Is.LessThan(CalculationWorkPolicy.Default.WorkUnits));
+        Assert.That(budget.PeakCells, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.CellLimit));
     }
 }

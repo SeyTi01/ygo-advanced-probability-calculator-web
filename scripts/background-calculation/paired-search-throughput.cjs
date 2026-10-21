@@ -61,6 +61,10 @@ async function main() {
         const output = [];
         for (const fixture of fixtures) {
             const sides = [0, 1];
+            const unlimitedExact = fixture.UnlimitedExact === undefined ? false : fixture.UnlimitedExact;
+            const allowRouteChange = fixture.AllowRouteChange === undefined ? false : fixture.AllowRouteChange;
+            assert.equal(typeof unlimitedExact, 'boolean', 'UnlimitedExact must be boolean');
+            assert.equal(typeof allowRouteChange, 'boolean', 'AllowRouteChange must be boolean');
             const first = [];
             const samples = Array.from({ length: 2 }, () => []);
             const warmups = Number(process.env.YGO_WARMUPS || 2);
@@ -68,7 +72,8 @@ async function main() {
             for (let trial = 0; trial < warmups + count; trial++) {
                 for (const {side} of sides.map(side => ({side, order: random()})).sort((a, b) => a.order - b.order)) {
                     const input = structuredClone(fixture.Input);
-                    const request = { Input: input, MeasureCertificate: !fixture.Primary };
+                    if (unlimitedExact) assert.equal(input.Options?.Mode, 2, 'UnlimitedExact requires an explicit Exact input mode');
+                    const request = { Input: input, MeasureCertificate: !fixture.Primary, UnlimitedExact: unlimitedExact };
                     const measured = await page.evaluate(({side, request}) => new Promise((resolve, reject) => {
                         const worker = probes[side];
                         const timer = setTimeout(() => reject(Error('Probe timeout')), 600000);
@@ -76,6 +81,10 @@ async function main() {
                         worker.postMessage(JSON.stringify(request));
                     }), {side, request});
                     if (trial === 0) first[side] = measured;
+                    if (unlimitedExact) {
+                        assert.equal(measured.WorkPolicy, 'Unlimited', 'The measurement probe must confirm unlimited Exact work');
+                        assert.ok(measured.WorkLimit == null, 'Unlimited Exact must not retain a finite Work limit');
+                    }
                     if (request.MeasureCertificate && measured.Outcome === 'Success') {
                         const mode = input.Options?.Mode ?? 0;
                         assert.equal(measured.Result.Contract.RequestedMode, mode);
@@ -97,8 +106,17 @@ async function main() {
             const fields = fixture.Unchanged
                 ? ['Total', 'Combos', 'Groups', 'Route', 'Outcome', 'Work', 'Entries', 'Cells', 'Result']
                 : expected.Outcome === 'Success' ? ['Total', 'Combos', 'Groups', 'Route', 'Outcome', 'Result'] : [];
-            for (const field of fields) assert.deepEqual(samples[1][0][field], expected[field], `${fixture.Name}/${field}`);
-            output.push({Name: fixture.Name, First: first, Samples: samples});
+            const comparable = (value, field) => {
+                if (!allowRouteChange || field !== 'Result' || value == null) return value;
+                const result = structuredClone(value);
+                if (result.Contract) delete result.Contract.SolverRoute;
+                return result;
+            };
+            for (const field of fields) {
+                if (allowRouteChange && field === 'Route') continue;
+                assert.deepEqual(comparable(samples[1][0][field], field), comparable(expected[field], field), `${fixture.Name}/${field}`);
+            }
+            output.push({Name: fixture.Name, UnlimitedExact: unlimitedExact, AllowRouteChange: allowRouteChange, First: first, Samples: samples});
             await fs.writeFile(process.argv[5], JSON.stringify({browser: browser.version(), BootstrapMilliseconds: bootstrap, output}));
             console.log(`${fixture.Name}: ` + samples.map(side => side.length ? side.map(value => value.Milliseconds).sort((a, b) => a - b)[Math.floor(side.length / 2)].toFixed(3) : '-' ).join(' / '));
         }
