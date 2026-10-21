@@ -59,6 +59,11 @@ internal sealed partial class PostDrawCalculation {
         HashSet<string> observed = SearchPolicyObservedRows(cards, deferUnremovableSearchers: compactPhysical || compactFast);
         List<Card> deferred = (!physical || compactPhysical) && deferIdentities ? DeferUnobservedIdentities(ref cards, observed) : [];
         compactPhysical &= deferred.Count > 0;
+        if (physical && !compactPhysical && coalesceOrdinary) {
+            budget.SearchDiagnostics?.Add("physical input rows", cards.Count);
+            cards = CoalescePhysicalSearchDeck(cards, combos);
+            budget.SearchDiagnostics?.Add("physical quotient rows", cards.Count);
+        }
         Route = deferred.Count > 0 ? SolverRoute.SearchOrderedDeferred : SolverRoute.SearchOrdered;
         int n = cards.Count;
         bool customPriority = priority?.Mode == DrawActivationMode.CustomPriority;
@@ -169,6 +174,110 @@ internal sealed partial class PostDrawCalculation {
         _searchCertificate = new(cards, deferred, identities, terminal, packed, factorial[copies]);
 
         return result;
+    }
+
+    private List<Card> CoalescePhysicalSearchDeck(List<Card> cards, List<Combo> combos) {
+        int count = cards.Count;
+        CheckStorage(count, 3L * count, "physical row partition");
+        bool[] joinsPrevious = new bool[count];
+        for (int row = 1; row < count; row++) {
+            budget.Spend(1);
+            joinsPrevious[row] = Ordinary(cards[row - 1]) && Ordinary(cards[row]);
+        }
+
+        // Begin with the established canonical order. Category atoms and direct
+        // IDs retain its group boundaries; complete selector truth also protects
+        // numeric/objective predicates whose atoms alone are insufficient.
+        foreach (Combo combo in combos) {
+            foreach (ComboCategory requirement in combo.AllCategories) {
+                foreach (CategoryBase category in requirement.CategoryBases) {
+                    for (int row = 1; row < count; row++) {
+                        budget.Spend(cards[row - 1].Categories.Count + (long)cards[row].Categories.Count + 1);
+                        joinsPrevious[row] &= cards[row - 1].Categories.Contains(category) == cards[row].Categories.Contains(category);
+                    }
+                }
+                Include(requirement.Selector);
+            }
+            foreach (ComboCard requirement in combo.AllCards) {
+                for (int row = 1; row < count; row++) {
+                    budget.Spend(1);
+                    joinsPrevious[row] &= (cards[row - 1].Id == requirement.CardId) == (cards[row].Id == requirement.CardId);
+                }
+            }
+        }
+        foreach (Card source in cards) {
+            if (source.Copies <= 0) {
+                continue;
+            }
+            // Bounded searches can pay or remove hand material after draws.
+            if (source.PreDrawRemovalCount > 0) {
+                Include(source.PreDrawSelector);
+            }
+            if (source.PostDrawDiscardCount > 0) {
+                Include(source.PostDrawSelector);
+            }
+            if (source.Search is not { } search) {
+                continue;
+            }
+            foreach (SearchEffectMode mode in search.Modes ?? [new(search.Selector)]) {
+                CheckStorage(count, 3L * count + mode.Selector.EvaluationSize, "physical row partition");
+                bool[] eligible = new bool[count];
+                for (int row = 0; row < count; row++) {
+                    budget.Spend((mode.Selector.EvaluationSize + 1L) * (cards[row].Categories.Count + 1L));
+                    eligible[row] = cards[row].Id != source.Id && search.Matches(cards[row], mode.Selector);
+                }
+                Refine(eligible);
+            }
+        }
+
+        List<Card> reduced = new(count);
+        long retainedCategoryCells = 0;
+        for (int row = 0; row < count;) {
+            budget.Spend(1);
+            Card representative = cards[row];
+            int copies = representative.Copies;
+            int next = row + 1;
+            while (next < count && joinsPrevious[next]) {
+                budget.Spend(1);
+                copies = checked(copies + cards[next].Copies);
+                next++;
+            }
+            if (next > row + 1) {
+                // WithCopies owns a category-list copy and checks every manual
+                // key against it. Clone once per run; charge the full validation
+                // bound and retain at most two int-sized cells per reference.
+                int categories = representative.Categories.Count;
+                retainedCategoryCells += 2L * categories;
+                CheckStorage(count, 3L * count + retainedCategoryCells, "physical row partition");
+                budget.Spend((categories + 1L) * (representative.ManualMetadataCategoryKeys.Count + 1L));
+                representative = representative.WithCopies(copies);
+            }
+            reduced.Add(representative);
+            row = next;
+        }
+
+        // Keep actual pooled remaining and held counts through draws and search.
+        // Every policy transition observes identical selector truth within each
+        // adjacent run; its internal tie winner changes only the pooled count.
+        // Draw multiplicities add to the pool's remaining copies. Joint hidden
+        // allocations sum to C(sum remaining, lost) by Vandermonde. Every source
+        // and mode reaches either the entire pool or none of it, so shared physical
+        // target capacity is its actual survivor count. No survivor identity is inferred.
+        return reduced;
+
+        static bool Ordinary(Card card) => card.Active && card.Copies > 0 && card.DrawCount is null && card.Search is null;
+
+        void Include(CardSelector selector) {
+            CheckStorage(count, 3L * count + selector.EvaluationSize, "physical row partition");
+            Refine(CardSelectorCompiler.Compile(selector, cards, budget));
+        }
+
+        void Refine(bool[] eligible) {
+            for (int row = 1; row < count; row++) {
+                budget.Spend(1);
+                joinsPrevious[row] &= eligible[row - 1] == eligible[row];
+            }
+        }
     }
 
     private List<Card> ReduceSearchDeck(List<Combo> combos, out Dictionary<string, List<Card>> identities, bool merge = true) {

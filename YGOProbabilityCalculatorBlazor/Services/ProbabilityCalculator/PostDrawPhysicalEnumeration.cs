@@ -3,7 +3,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-internal enum PhysicalEnumerationMethod { Auto, Streaming, Frontier }
+internal enum PhysicalEnumerationMethod { Auto, Streaming, Frontier, BatchStreaming }
 
 internal sealed partial class PostDrawCalculation {
     private sealed partial class OrderedResolver {
@@ -166,6 +166,9 @@ internal sealed partial class PostDrawCalculation {
         else if (frontier) {
             resolver.EnumerateFrontier(handSize, copies, factorial, CountTerminal);
         }
+        else if (method == PhysicalEnumerationMethod.BatchStreaming || (method == PhysicalEnumerationMethod.Auto && AggregatePhysicalBatches)) {
+            resolver.EnumerateBatches(handSize, copies, factorial, CountTerminal);
+        }
         else {
             resolver.Enumerate(handSize, copies, CountTerminal);
         }
@@ -175,6 +178,8 @@ internal sealed partial class PostDrawCalculation {
             totalOnly ? [] : result.Skip(1 + combos.Count).ToArray());
 
         void CountTerminal(int[] state, int remaining, BigInteger weight) {
+            using IDisposable? terminalMeasurement = budget.SearchDiagnostics?.Measure("physical terminal resolution");
+            budget.SearchDiagnostics?.Add("physical visible terminals");
             int hidden = layout.HasHiddenCount ? state[layout.HiddenCount] : 0;
             // Conditional on this complete VISIBLE trace, all unobserved labels
             // are exchangeable. The policy inspected only hand identities and
@@ -195,6 +200,9 @@ internal sealed partial class PostDrawCalculation {
             }
 
             void Record(BigInteger mass) {
+                using IDisposable? searchMeasurement = budget.SearchDiagnostics?.Measure("physical hand search");
+                budget.SearchDiagnostics?.Add("physical search evaluations");
+                ObservePhysicalOutcome?.Invoke(cards, (int[])state.Clone(), (int[])available.Clone(), mass);
                 bool[] success = bounded is null ? counter!.Evaluate(state.AsSpan(layout.HandStart, n), available)
                     : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available);
                 if (success.Any(value => value)) {
@@ -217,6 +225,7 @@ internal sealed partial class PostDrawCalculation {
             }
 
             void VisitLoss(int row, int left, int pool, BigInteger mass) {
+                budget.SearchDiagnostics?.Add("physical hidden allocation nodes");
                 budget.Spend(1 + WorkBudget.IntegerCells(mass));
                 CheckStorage(n + 1L, (n + 1L) * (WorkBudget.IntegerCells(factorial[copies]) + 5), "hidden loss stack");
                 if (row == n) {

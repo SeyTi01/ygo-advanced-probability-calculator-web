@@ -44,6 +44,65 @@ public sealed class BoundedSearchMixedPhaseTest {
     }
 
     [Test]
+    public void PooledFillersPreserveBoundedSearchAndHiddenLossAcrossPhysicalRoutes() {
+        CategoryBase targetKind = new("Search target");
+        CategoryBase costKind = new("Search cost");
+        List<Card> deck = [
+            new(
+                [new("Search source")],
+                id: "source",
+                search: new(CardSelector.For(targetKind), false),
+                preDrawRemovalCount: 1,
+                preDrawSelector: CardSelector.For(costKind)
+            ),
+            new([targetKind], id: "target"),
+            new([costKind], id: "cost"),
+            new([], id: "draw", drawCount: 1, drawOncePerTurn: false, preDrawDeckRemovalCount: 1),
+            new([], id: "filler-a"),
+            new([], id: "filler-b")
+        ];
+        List<Combo> combos = [new([new(targetKind, 1, 1)], "One target", groupId: "target")];
+        List<ComboGroup> groups = [new("target", "Target"), new("empty", "Empty")];
+        // The oracle deals every physical order, including the two filler labels,
+        // and has only one eligible payment card. No production removal policy or
+        // pooled state participates in its expected result.
+        OracleCounts oracle = EnumerateLabeledOrders(deck, 2, targetKind, requiredTargets: 1);
+        Assert.That(oracle.HiddenTargetLossWitnesses, Is.GreaterThan(0));
+        BigInteger[] expected = [oracle.Wins, oracle.Wins, oracle.Wins, BigInteger.Zero];
+        PhysicalEnumerationMethod[] methods = [
+            PhysicalEnumerationMethod.Streaming,
+            PhysicalEnumerationMethod.BatchStreaming,
+            PhysicalEnumerationMethod.Frontier
+        ];
+        foreach (PhysicalEnumerationMethod method in methods) {
+            foreach (bool pool in new[] { false, true }) {
+                WorkBudget budget = new(CalculationWorkPolicy.Unlimited);
+                PostDrawCalculation calculation = new(deck, 2, budget, deferIdentities: false);
+                ExactCalculationResult result = calculation.CalculateSearch(
+                    combos,
+                    groups,
+                    false,
+                    new(deck, budget),
+                    physical: true,
+                    method: method,
+                    coalesceOrdinary: pool
+                );
+                string description = $"bounded search and hidden loss/{method}/{pool}";
+                Assert.That(calculation.ReducedRows, Is.EqualTo(pool ? 5 : 6), description);
+                ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+                Assert.That(rows, Has.Length.EqualTo(expected.Length), description);
+                for (int row = 0; row < rows.Length; row++) {
+                    Assert.That(
+                        rows[row].Numerator * oracle.Orders,
+                        Is.EqualTo(expected[row] * rows[row].Denominator),
+                        description + "/" + row
+                    );
+                }
+            }
+        }
+    }
+
+    [Test]
     public void DrawFetchedBySearchIsInertBecauseTheDrawPhaseHasAlreadyFinished() {
         CategoryBase targetKind = new("Combo target");
         CategoryBase costKind = new("Search cost");

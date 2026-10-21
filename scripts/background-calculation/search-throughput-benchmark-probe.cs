@@ -2,6 +2,8 @@
 // Never include this probe in a production publish. MeasureCertificate=false
 // isolates primary Fast work; true uses the real public completion path.
 // Define ADAPTIVE_FAST for both post-221 measurement builds.
+// UnlimitedExact=true explicitly overrides finite Input.WorkUnits for Exact only.
+// Omitted/false preserves the stored finite allowance and bounded wire default.
 using System.Diagnostics;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
@@ -28,8 +30,17 @@ public static partial class FastCertificateBenchmarkProbe {
             combo.GroupId, combo.Cards, combo.AlternativeGroups)).ToList();
         bool diagnose = document.RootElement.TryGetProperty("Diagnose", out JsonElement diag) && diag.GetBoolean();
         SearchCountingDiagnostics? diagnostics = diagnose ? new() : null;
-        WorkBudget budget = new(new(input.WorkUnits ?? CalculationWorkPolicy.Default.WorkUnits),
+        bool unlimitedExact = document.RootElement.TryGetProperty("UnlimitedExact", out JsonElement unlimited) && unlimited.GetBoolean();
+        if (unlimitedExact && input.Options?.Mode != CalculationModel.Exact) {
+            throw new ArgumentException("UnlimitedExact requires Input.Options.Mode to be Exact.", nameof(json));
+        }
+        CalculationWorkPolicy workPolicy = unlimitedExact
+            ? CalculationWorkPolicy.Unlimited
+            : new(input.WorkUnits ?? CalculationWorkPolicy.Default.WorkUnits);
+        WorkBudget budget = new(workPolicy,
             CalculationStoragePolicy.ForTier(input.StorageTier ?? CalculationStorageTier.Standard)) { SearchDiagnostics = diagnostics };
+        string policyName = workPolicy.IsUnlimited ? "Unlimited" : "Finite";
+        long? workLimit = workPolicy.IsUnlimited ? null : workPolicy.WorkUnits;
         long allocated = GC.GetAllocatedBytesForCurrentThread();
         long started = Stopwatch.GetTimestamp();
         string outcome = "Success";
@@ -58,14 +69,15 @@ public static partial class FastCertificateBenchmarkProbe {
         allocated = GC.GetAllocatedBytesForCurrentThread() - allocated;
         return JsonSerializer.Serialize(new FastCertificateMeasurement(milliseconds, allocated, outcome, route, budget.Spent, budget.PeakEntries, budget.PeakCells,
             diagnostics?.Counts, diagnostics?.Milliseconds, GC.GetTotalMemory(false), OperatingSystem.IsBrowser() ? null : Process.GetCurrentProcess().WorkingSet64,
-            exact?.Total.ToFraction(), exact?.Combos.Select(value => value.ToFraction()).ToArray(), exact?.Groups.Select(value => value.ToFraction()).ToArray(), result),
+            exact?.Total.ToFraction(), exact?.Combos.Select(value => value.ToFraction()).ToArray(), exact?.Groups.Select(value => value.ToFraction()).ToArray(), result, policyName, workLimit),
             FastCertificateMeasurementJsonContext.Default.FastCertificateMeasurement);
     }
 }
 
 internal sealed record FastCertificateMeasurement(double Milliseconds, long Allocated, string Outcome, string? Route, long Work, long Entries, long Cells,
     Dictionary<string, long>? Counts, Dictionary<string, double>? Phases, long ManagedHeapBytes, long? WorkingSetBytes,
-    ProbabilityFraction? Total, ProbabilityFraction[]? Combos, ProbabilityFraction[]? Groups, ProbabilityCalculationResult? Result);
+    ProbabilityFraction? Total, ProbabilityFraction[]? Combos, ProbabilityFraction[]? Groups, ProbabilityCalculationResult? Result,
+    string WorkPolicy, long? WorkLimit);
 
 [JsonSerializable(typeof(FastCertificateMeasurement))]
 internal partial class FastCertificateMeasurementJsonContext : JsonSerializerContext;

@@ -26,19 +26,29 @@ static class Program {
         List<object> output = [];
         foreach (JsonElement fixture in fixtures) {
             const int sides = 2;
+            bool unlimitedExact = fixture.TryGetProperty("UnlimitedExact", out JsonElement unlimited) && unlimited.GetBoolean();
+            bool allowRouteChange = fixture.TryGetProperty("AllowRouteChange", out JsonElement routeChange) && routeChange.GetBoolean();
             JsonElement[] first = new JsonElement[sides];
             List<JsonElement>[] samples = Enumerable.Range(0, sides).Select(_ => new List<JsonElement>()).ToArray();
             for (int trial = 0; trial < (args.Length > 4 ? int.Parse(args[4]) : 12); trial++) {
                 foreach (int side in Enumerable.Range(0, sides).OrderBy(_ => random.Next())) {
                     JsonNode input = JsonNode.Parse(fixture.GetProperty("Input").GetRawText())!;
                     bool certify = !fixture.TryGetProperty("Primary", out JsonElement primary) || !primary.GetBoolean();
-                    JsonObject request = new() { ["Input"] = input, ["MeasureCertificate"] = certify, ["Diagnose"] = Environment.GetEnvironmentVariable("YGO_DIAG") == "1" };
+                    if (unlimitedExact && input["Options"]?["Mode"]?.GetValue<int>() != 2) {
+                        throw new InvalidOperationException("UnlimitedExact requires an explicit Exact input mode.");
+                    }
+                    JsonObject request = new() { ["Input"] = input, ["MeasureCertificate"] = certify,
+                        ["UnlimitedExact"] = unlimitedExact, ["Diagnose"] = Environment.GetEnvironmentVariable("YGO_DIAG") == "1" };
                     GC.Collect();
                     GC.WaitForPendingFinalizers();
                     GC.Collect();
                     int[] collections = Enumerable.Range(0, 3).Select(GC.CollectionCount).ToArray();
                     string text = (string)probes[side].Invoke(null, [request.ToJsonString()])!;
                     JsonNode measurement = JsonNode.Parse(text)!;
+                    if (unlimitedExact && (measurement["WorkPolicy"]?.GetValue<string>() != "Unlimited"
+                        || measurement["WorkLimit"] is not null)) {
+                        throw new InvalidOperationException("The measurement probe did not confirm unlimited Exact work.");
+                    }
                     measurement["Collections"] = JsonSerializer.SerializeToNode(Enumerable.Range(0, 3)
                         .Select(generation => GC.CollectionCount(generation) - collections[generation]).ToArray());
                     if (certify && measurement["Outcome"]!.GetValue<string>() == "Success") {
@@ -68,15 +78,31 @@ static class Program {
                 bool completed = samples[side][0].GetProperty("Outcome").GetString() == "Success";
                 foreach (string field in unchanged ? new[] { "Total", "Combos", "Groups", "Route", "Outcome", "Work", "Entries", "Cells", "Result" }
                     : completed ? new[] { "Total", "Combos", "Groups", "Route", "Outcome", "Result" } : Array.Empty<string>()) {
-                    if (samples[side][0].GetProperty(field).GetRawText() != samples[side + 1][0].GetProperty(field).GetRawText()) {
+                    if (allowRouteChange && field == "Route") {
+                        continue;
+                    }
+                    if (Comparable(samples[side][0], field) != Comparable(samples[side + 1][0], field)) {
                         throw new InvalidOperationException($"{fixture.GetProperty("Name")}/{field}: successful baseline changed");
                     }
                 }
             }
-            output.Add(new { Name = fixture.GetProperty("Name").GetString(), First = first, Samples = samples });
+            output.Add(new { Name = fixture.GetProperty("Name").GetString(), UnlimitedExact = unlimitedExact,
+                AllowRouteChange = allowRouteChange, First = first, Samples = samples });
             File.WriteAllText(args[3], JsonSerializer.Serialize(output));
             Console.WriteLine($"{fixture.GetProperty("Name")}: " + string.Join(" / ", samples.Select(side =>
                 side.Select(value => value.GetProperty("Milliseconds").GetDouble()).Order().ElementAt(samples[0].Count / 2).ToString("F3"))));
+
+            string Comparable(JsonElement sample, string field) {
+                string text = sample.GetProperty(field).GetRawText();
+                if (!allowRouteChange || field != "Result") {
+                    return text;
+                }
+                JsonNode? result = JsonNode.Parse(text);
+                if (result?["Contract"] is JsonObject contract) {
+                    contract.Remove("SolverRoute");
+                }
+                return result?.ToJsonString() ?? "null";
+            }
         }
     }
 }

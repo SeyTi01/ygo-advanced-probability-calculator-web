@@ -11,7 +11,9 @@ async function main() {
     const [root, fixturesPath, output] = process.argv.slice(2);
     const fixture = JSON.parse(fs.readFileSync(fixturesPath)).find(value => value.Name === 'selector-edge-9');
     const input = structuredClone(fixture.Input);
-    input.WorkUnits = 150000000;
+    // The same deliberately insufficient finite allowance must fail through the
+    // compatibility entry point and be overridden by explicit interactive Exact.
+    input.WorkUnits = 100;
     input.HandSize = 4;
     input.Cards.find(card => card.Id === 'd').Copies = 1;
     input.Cards.find(card => card.Id === 'f').Copies++;
@@ -59,31 +61,64 @@ async function main() {
             fs.writeFileSync(output, JSON.stringify(evidence, null, 2));
         }
         await page.evaluate(() => exactOwner.dispose());
-        // Exercise the same high-work case through the real component, including
-        // cancellation and a fresh request. No worker response is substituted.
+        // Use the still-expensive VS/K9 case for cancellation: the selector
+        // control can now complete before a human could press Cancel.
+        // No worker response is substituted.
+        const longFixture = JSON.parse(fs.readFileSync(fixturesPath)).find(value => value.Name === 'vs-k9-ordered-40');
         const session = structuredClone(fixture.Session);
         session.HandSize = 4;
         session.Cards.find(card => card.Id === 'd').Copies = 1;
         session.Cards.find(card => card.Id === 'f').Copies++;
         await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
-        await page.locator('#sessionFileInput').setInputFiles({ name: 'unlimited-exact.json', mimeType: 'application/json',
-            buffer: Buffer.from(JSON.stringify(session)) });
-        await page.waitForFunction(() => document.querySelector('#handSize')?.value === '4');
-        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-        await page.getByRole('button', { name: 'Cancel calculation', exact: true }).waitFor();
-        await page.waitForTimeout(2000);
-        const cancelStarted = Date.now();
-        await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
-        await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
-        evidence.cancelUiMilliseconds = Date.now() - cancelStarted;
+        await page.locator('#sessionFileInput').setInputFiles({ name: 'long-exact.json', mimeType: 'application/json',
+            buffer: Buffer.from(JSON.stringify(longFixture.Session)) });
+        await page.waitForFunction(count => {
+            try {
+                return JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Cards.length === count;
+            } catch { return false; }
+        }, longFixture.Session.Cards.length);
         await page.evaluate(() => {
             window.exactFrames = 0;
             window.countExactFrames = true;
             function frame() { if (countExactFrames) { exactFrames++; requestAnimationFrame(frame); } }
             requestAnimationFrame(frame);
         });
-        const uiStarted = Date.now();
+        const longWorkerReady = page.waitForEvent('worker', {
+            predicate: worker => worker.url().endsWith('/js/calculation-worker.js')
+        });
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+        const longWorker = await longWorkerReady;
+        let closedAt;
+        const longWorkerClosed = new Promise(resolve => longWorker.on('close', () => {
+            closedAt = Date.now();
+            resolve();
+        }));
+        await page.getByRole('button', { name: 'Cancel calculation', exact: true }).waitFor();
+        await page.waitForTimeout(2000);
+        const cancelStarted = Date.now();
+        await page.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
+        await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
+        evidence.cancelUiMilliseconds = Date.now() - cancelStarted;
+        evidence.cancelFrames = await page.evaluate(() => { countExactFrames = false; return exactFrames; });
+        assert(evidence.cancelFrames > 1, 'Explicit Exact must leave the UI responsive');
+        // Observe execution-context closure, not merely the enabled UI or a call
+        // to terminate(). Chromium can take a grace period to interrupt Wasm.
+        let closeTimer;
+        try {
+            await Promise.race([longWorkerClosed, new Promise((_, reject) => {
+                closeTimer = setTimeout(() => reject(Error('Cancelled worker did not close')), 10000);
+            })]);
+        } finally { clearTimeout(closeTimer); }
+        evidence.cancelWorkerClosedMilliseconds = closedAt - cancelStarted;
+        await page.locator('#sessionFileInput').setInputFiles({ name: 'completed-exact.json', mimeType: 'application/json',
+            buffer: Buffer.from(JSON.stringify(session)) });
+        await page.waitForFunction(() => document.querySelector('#handSize')?.value === '4');
+        const uiStarted = Date.now();
+        const freshWorkerReady = page.waitForEvent('worker', {
+            predicate: worker => worker.url().endsWith('/js/calculation-worker.js')
+        });
+        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+        assert.notEqual(await freshWorkerReady, longWorker, 'A cancelled worker must never be reused');
         await page.waitForFunction(() => document.querySelector('.probability-results .probability-total-value'), null, { timeout: 180000 });
         assert.equal(await page.getByRole('alert').count(), 0);
         assert.equal(await page.locator('.probability-results .probability-result-status').count(), 0);
@@ -91,9 +126,7 @@ async function main() {
         for (const fraction of [reference.Total, ...reference.Combos]) {
             assert(titles.some(title => title.includes(`${fraction.Numerator}/${fraction.Denominator}`)));
         }
-        evidence.ui = { milliseconds: Date.now() - uiStarted,
-            frames: await page.evaluate(() => { countExactFrames = false; return exactFrames; }), titles };
-        assert(evidence.ui.frames > 1, 'Explicit Exact must leave the UI responsive');
+        evidence.ui = { milliseconds: Date.now() - uiStarted, titles };
         fs.writeFileSync(output, JSON.stringify(evidence, null, 2));
     } finally {
         await browser.close();
