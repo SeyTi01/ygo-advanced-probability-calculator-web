@@ -3,7 +3,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-internal enum PhysicalEnumerationMethod { Auto, Streaming, Frontier, BatchStreaming }
+internal enum PhysicalEnumerationMethod { Auto, Streaming, Frontier, BatchStreaming, SingleSource }
 
 internal sealed partial class PostDrawCalculation {
     private sealed partial class OrderedResolver {
@@ -127,6 +127,9 @@ internal sealed partial class PostDrawCalculation {
         BoundedSearchHandCounter? bounded = cards.Any(card => card.EffectPlan.RequiresSearchResolution || (card.Search is not null && card.MinimumHandSize > 0))
             ? new(cards, combos, budget) : null;
         PhysicalSearchHandCounter? counter = bounded is null ? new(cards, combos, budget) : null;
+        PhysicalSearchLossCounter? lossCounter = bounded is null && ObservePhysicalOutcome is null
+            && cards.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0)
+            ? new(cards, budget) : null;
         int[] available = new int[n];
         long activations = cards.Where(card => card.DrawCount is not null).Sum(card => Math.Min(card.MaximumActivations, card.Copies));
         long observations = handSize + cards.Sum(card => (long)(card.DrawCount ?? 0) * (Math.Min(card.MaximumActivations, card.Copies)));
@@ -166,7 +169,13 @@ internal sealed partial class PostDrawCalculation {
         else if (frontier) {
             resolver.EnumerateFrontier(handSize, copies, factorial, CountTerminal);
         }
-        else if (method == PhysicalEnumerationMethod.BatchStreaming || (method == PhysicalEnumerationMethod.Auto && AggregatePhysicalBatches)) {
+        else if ((method == PhysicalEnumerationMethod.Auto || method == PhysicalEnumerationMethod.SingleSource)
+            && resolver.TryEnumerateSingleSource(handSize, copies, factorial, CountTerminal)) {
+            // The source-conditioned quotient has already counted both opening
+            // partitions through the same physical terminal/search boundary.
+        }
+        else if (method is PhysicalEnumerationMethod.BatchStreaming or PhysicalEnumerationMethod.SingleSource
+            || (method == PhysicalEnumerationMethod.Auto && AggregatePhysicalBatches)) {
             resolver.EnumerateBatches(handSize, copies, factorial, CountTerminal);
         }
         else {
@@ -195,15 +204,21 @@ internal sealed partial class PostDrawCalculation {
                 state.AsSpan(0, n).CopyTo(available);
                 Record(suffixWeight);
             }
+            else if (lossCounter is not null) {
+                lossCounter.Enumerate(state.AsSpan(layout.HandStart, n), state.AsSpan(0, n), hidden, (capacity, mass) => {
+                    budget.Spend((WorkBudget.IntegerCells(suffixWeight) + 1) * (WorkBudget.IntegerCells(mass) + 1));
+                    Record(suffixWeight * mass, capacity);
+                });
+            }
             else {
                 VisitLoss(0, hidden, remaining, suffixWeight);
             }
 
-            void Record(BigInteger mass) {
+            void Record(BigInteger mass, int[]? capacity = null) {
                 using IDisposable? searchMeasurement = budget.SearchDiagnostics?.Measure("physical hand search");
                 budget.SearchDiagnostics?.Add("physical search evaluations");
                 ObservePhysicalOutcome?.Invoke(cards, (int[])state.Clone(), (int[])available.Clone(), mass);
-                bool[] success = bounded is null ? counter!.Evaluate(state.AsSpan(layout.HandStart, n), available)
+                bool[] success = bounded is null ? counter!.Evaluate(state.AsSpan(layout.HandStart, n), capacity ?? available)
                     : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available);
                 if (success.Any(value => value)) {
                     wins[0] += mass;
@@ -217,7 +232,14 @@ internal sealed partial class PostDrawCalculation {
                     }
                     for (int group = 0; group < (groups?.Count ?? 0); group++) {
                         budget.Spend(combos.Count + WorkBudget.IntegerCells(mass));
-                        if (success.Where((_, index) => combos[index].GroupId == groups![group].Id).Any(value => value)) {
+                        bool matches = false;
+                        for (int combo = 0; combo < combos.Count; combo++) {
+                            if (success[combo] && combos[combo].GroupId == groups![group].Id) {
+                                matches = true;
+                                break;
+                            }
+                        }
+                        if (matches) {
                             wins[1 + combos.Count + group] += mass;
                         }
                     }
@@ -260,8 +282,9 @@ internal sealed class PhysicalSearchHandCounter {
     private readonly WorkBudget _budget;
     private readonly List<Combo> _combos;
     private readonly (int Source, int[] Targets)[] _sources;
+    private readonly record struct HandBound(int[] Rows, int Minimum, int Maximum);
     private int _compiledSize = -1;
-    private List<List<CompiledEvent?>> _events = [];
+    private List<List<HandBound[]>> _events = [];
     private readonly int[] _hand;
     private readonly int[] _allowance;
     private readonly bool[] _success;
@@ -291,8 +314,46 @@ internal sealed class PhysicalSearchHandCounter {
         original.CopyTo(hand);
         int size = hand.Sum();
         if (size != _compiledSize) {
+            _budget.SearchDiagnostics?.Add("physical event compilations");
             ComboEventCompiler compiler = new(_cards, size, _budget);
-            _events = _combos.Select(compiler.CompileCombo).ToList();
+            List<List<HandBound[]>> events = [];
+            long cells = _combos.Count;
+            long entries = 0;
+            foreach (Combo combo in _combos) {
+                List<HandBound[]> routes = [];
+                foreach (CompiledEvent? compiled in compiler.CompileCombo(combo)) {
+                    if (compiled is null) {
+                        continue;
+                    }
+                    entries++;
+                    cells += compiled.Constraints.Length + 1L;
+                    _budget.CheckStorage(entries, cells);
+                    HandBound[] bounds = new HandBound[compiled.Constraints.Length];
+                    for (int index = 0; index < bounds.Length; index++) {
+                        CountBound bound = compiled.Constraints[index];
+                        _budget.Spend(2L * _cards.Count * (WorkBudget.IntegerCells(bound.EligibleRows) + 1));
+                        int count = 0;
+                        for (int row = 0; row < _cards.Count; row++) {
+                            if ((bound.EligibleRows & (BigInteger.One << row)) != 0) {
+                                count++;
+                            }
+                        }
+                        cells += count + 3L;
+                        _budget.CheckStorage(entries, cells);
+                        int[] rows = new int[count];
+                        int next = 0;
+                        for (int row = 0; row < _cards.Count; row++) {
+                            if ((bound.EligibleRows & (BigInteger.One << row)) != 0) {
+                                rows[next++] = row;
+                            }
+                        }
+                        bounds[index] = new(rows, bound.MinCount, bound.MaxCount);
+                    }
+                    routes.Add(bounds);
+                }
+                events.Add(routes);
+            }
+            _events = events;
             _compiledSize = size;
         }
         int[] allowance = _allowance;
@@ -340,14 +401,22 @@ internal sealed class PhysicalSearchHandCounter {
                 continue;
             }
             if (index == _sources.Length) {
+                _budget.SearchDiagnostics?.Add("physical search witnesses");
                 for (int combo = 0; combo < success.Length; combo++) {
                     _budget.Spend(1);
                     if (success[combo]) {
                         continue;
                     }
-                    foreach (CompiledEvent? route in _events[combo]) {
+                    foreach (HandBound[] route in _events[combo]) {
                         _budget.Spend(1);
-                        if (route is not null && route.Constraints.All(Matches)) {
+                        bool matches = true;
+                        foreach (HandBound bound in route) {
+                            if (!Matches(bound)) {
+                                matches = false;
+                                break;
+                            }
+                        }
+                        if (matches) {
                             success[combo] = true;
                             break;
                         }
@@ -366,15 +435,14 @@ internal sealed class PhysicalSearchHandCounter {
             stack.Push((kind, index, start, left));
         }
 
-        bool Matches(CountBound bound) {
-            _budget.Spend(_cards.Count * (WorkBudget.IntegerCells(bound.EligibleRows) + 1));
+        bool Matches(HandBound bound) {
+            _budget.SearchDiagnostics?.Add("physical predicate evaluations");
+            _budget.Spend(bound.Rows.Length + 1L);
             int count = 0;
-            for (int row = 0; row < hand.Length; row++) {
-                if ((bound.EligibleRows & (BigInteger.One << row)) != 0) {
-                    count += hand[row];
-                }
+            foreach (int row in bound.Rows) {
+                count += hand[row];
             }
-            return count >= bound.MinCount && count <= bound.MaxCount;
+            return count >= bound.Minimum && count <= bound.Maximum;
         }
     }
 }
