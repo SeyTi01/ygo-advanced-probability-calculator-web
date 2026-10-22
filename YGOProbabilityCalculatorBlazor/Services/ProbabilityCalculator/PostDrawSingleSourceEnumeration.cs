@@ -15,33 +15,24 @@ internal sealed partial class PostDrawCalculation {
             int handSize,
             int copies,
             BigInteger[] factorial,
-            Action<int[], int, BigInteger> terminal
+            Action<int[], int, BigInteger> terminal,
+            bool? sourcePresent = null
         ) {
-            int source = -1;
-            for (int row = 0; row < cards.Count; row++) {
-                budget.Spend(1);
-                if (cards[row].Copies <= 0 || cards[row].DrawCount is null) {
-                    continue;
-                }
-                if (source >= 0 || cards[row].Copies != 1 || cards[row].PreDrawRemovalCount != 0) {
-                    return false;
-                }
-                source = row;
-            }
-            if (source < 0 || handSize == 0 || handSize < cards[source].MinimumHandSize) {
+            int source = SingleSource(handSize, copies);
+            if (source < 0) {
                 return false;
             }
             int drawCount = cards[source].DrawCount!.Value;
-            int consumption = drawCount + cards[source].PreDrawDeckRemovalCount + cards[source].PostDrawDeckMillCount;
-            if (consumption > copies - handSize) {
-                return false;
-            }
 
             // Source absence and source presence partition every opening hand.
             // A hidden label is never inspected here; the existing terminal
             // resolver still jointly allocates its hidden positions afterward.
-            Enumerate(present: false);
-            Enumerate(present: true);
+            if (sourcePresent != true) {
+                Enumerate(present: false);
+            }
+            if (sourcePresent != false) {
+                Enumerate(present: true);
+            }
             return true;
 
             void Enumerate(bool present) {
@@ -100,6 +91,26 @@ internal sealed partial class PostDrawCalculation {
                     }
                 }
             }
+        }
+
+        internal int SingleSource(int handSize, int copies) {
+            int source = -1;
+            for (int row = 0; row < cards.Count; row++) {
+                budget.Spend(1);
+                if (cards[row].Copies <= 0 || cards[row].DrawCount is null) {
+                    continue;
+                }
+                if (source >= 0 || cards[row].Copies != 1 || cards[row].PreDrawRemovalCount != 0) {
+                    return -1;
+                }
+                source = row;
+            }
+            if (source < 0 || handSize == 0 || handSize < cards[source].MinimumHandSize) {
+                return -1;
+            }
+            int drawCount = cards[source].DrawCount!.Value;
+            int consumption = drawCount + cards[source].PreDrawDeckRemovalCount + cards[source].PostDrawDeckMillCount;
+            return consumption <= copies - handSize ? source : -1;
         }
     }
 }

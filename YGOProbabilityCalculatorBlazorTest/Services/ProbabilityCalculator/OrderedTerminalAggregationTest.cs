@@ -22,6 +22,7 @@ public sealed class OrderedTerminalAggregationTest {
                 WorkBudget budget = new(CalculationWorkPolicy.Interactive);
                 PostDrawCalculation calculation = new(deck, fixture.Hand, budget, priority, defer,
                     compactFrontierThreshold: 0, eagerTerminalAggregation: route == 1) {
+                    StreamSearchTerminals = false,
                     ObserveTerminal = (hand, mass) => {
                         distributions[side].Add(string.Join(',', hand), mass);
                         Array.Fill(hand, int.MinValue); // Audit copies cannot corrupt retained keys.
