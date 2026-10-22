@@ -72,11 +72,13 @@ public sealed class BoundedSearchMixedPhaseTest {
         PhysicalEnumerationMethod[] methods = [
             PhysicalEnumerationMethod.Streaming,
             PhysicalEnumerationMethod.BatchStreaming,
+            PhysicalEnumerationMethod.SingleSource,
             PhysicalEnumerationMethod.Frontier
         ];
         foreach (PhysicalEnumerationMethod method in methods) {
             foreach (bool pool in new[] { false, true }) {
-                WorkBudget budget = new(CalculationWorkPolicy.Unlimited);
+                SearchCountingDiagnostics? diagnostics = method == PhysicalEnumerationMethod.SingleSource ? new() : null;
+                WorkBudget budget = new(CalculationWorkPolicy.Unlimited) { SearchDiagnostics = diagnostics };
                 PostDrawCalculation calculation = new(deck, 2, budget, deferIdentities: false);
                 ExactCalculationResult result = calculation.CalculateSearch(
                     combos,
@@ -89,6 +91,10 @@ public sealed class BoundedSearchMixedPhaseTest {
                 );
                 string description = $"bounded search and hidden loss/{method}/{pool}";
                 Assert.That(calculation.ReducedRows, Is.EqualTo(pool ? 5 : 6), description);
+                if (diagnostics is not null) {
+                    Assert.That(diagnostics.Counts.GetValueOrDefault("primary/physical single-source frames"), Is.EqualTo(2),
+                        "The combined-source route must run before bounded search pays its filtered hand cost.");
+                }
                 ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
                 Assert.That(rows, Has.Length.EqualTo(expected.Length), description);
                 for (int row = 0; row < rows.Length; row++) {
