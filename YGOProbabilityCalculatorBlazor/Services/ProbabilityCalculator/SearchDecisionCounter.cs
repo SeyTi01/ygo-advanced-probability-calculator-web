@@ -69,6 +69,17 @@ internal sealed partial class SearchDecisionCounter {
 
     internal BigInteger Count(int root) => Count(root, 0, _handSize);
 
+    // A fully observed hand follows exactly one edge at every retained variable.
+    // Skipped levels cannot affect the Boolean event; no weights are needed.
+    internal bool Evaluate(int root, ReadOnlySpan<int> hand) {
+        while (root > 1) {
+            _budget.Spend(1);
+            Node node = _nodes[root];
+            root = node.Children[hand[node.Level]];
+        }
+        return root == 1;
+    }
+
     private int Bound(CountBound bound) {
         if (_bounds.TryGetValue(bound, out int cached)) {
             return cached;

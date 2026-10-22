@@ -111,8 +111,8 @@ internal sealed class SearchAccessCalculation(
         return new(total, individual, grouped);
     }
 
-    // Both passes consume the completed primary distribution. In particular,
-    // declining search never dispatches a different draw/retention policy.
+    // Reuse completed primary state. A streamed lower pass may replay its
+    // guarded partition, always with the same draw/retention policy.
     internal ExactCalculationResult CalculateLower(
         List<Combo> combos,
         IReadOnlyList<ComboGroup>? groups,

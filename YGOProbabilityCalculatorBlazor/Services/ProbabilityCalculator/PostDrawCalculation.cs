@@ -44,6 +44,7 @@ internal sealed partial class PostDrawCalculation(
     // Internal reference switch for paired algorithm tests and diagnostic runs.
     // Forced Streaming always retains the original entry-word implementation.
     internal bool AggregatePhysicalBatches { get; init; } = true;
+    internal bool StreamSearchTerminals { get; init; } = true;
 
     private void CheckStorage(long entries, long cells, string structure) {
         if (cells > PeakCells) {

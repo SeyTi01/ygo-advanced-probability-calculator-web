@@ -44,6 +44,8 @@ internal sealed partial class PostDrawCalculation {
         PhysicalEnumerationMethod method = PhysicalEnumerationMethod.Auto,
         bool coalesceOrdinary = true
     ) {
+        _searchCertificate = null;
+        _streamedSearch = null;
         List<Card> cards = ReduceSearchDeck(combos, out Dictionary<string, List<Card>> identities, merge: !physical && coalesceOrdinary);
         // Only removable searchers need policy target counts. Unrelated targets
         // can still join the deferred pool when no removal can observe them.
@@ -148,6 +150,24 @@ internal sealed partial class PostDrawCalculation {
                 return CountSelectiveSurvivors(cards, deferred, resolver, factorial, combos, groups, totalOnly, search);
             }
             return CountPhysicalSearch(cards, layout, resolver, factorial, combos, groups, totalOnly, method);
+        }
+
+        if (StreamSearchTerminals && deferred.Count == 0
+            && CanStreamSearch(cards, identities, combos, resolver, copies, out int source)) {
+            int rows = 1 + combos.Count + (groups?.Count ?? 0);
+            CheckStorage(4L * rows, 4L * rows * (WorkBudget.IntegerCells(factorial[copies]) + 1), "streamed search results");
+            StreamedSearchState state = new(
+                cards,
+                layout,
+                resolver,
+                factorial,
+                source,
+                [new BigInteger[rows], new BigInteger[rows]],
+                [new BigInteger[rows], new BigInteger[rows]]
+            );
+            ExactCalculationResult streamedResult = CountStreamedSearch(state, combos, groups, totalOnly);
+            _streamedSearch = state;
+            return streamedResult;
         }
 
         // Every held count and scalar capacity is bounded by copies. The length
@@ -450,6 +470,9 @@ internal sealed partial class PostDrawCalculation {
         bool useKnownLoss = true
     ) {
         using IDisposable? stage = budget.SearchDiagnostics?.Stage(declineSearch ? "witness" : "lower");
+        if (_streamedSearch is { } streamed) {
+            return CountStreamedLower(streamed, combos, groups, declineSearch, useKnownLoss);
+        }
         SearchCertificateState state = _searchCertificate
             ?? throw new InvalidOperationException("Missing completed ordered search distribution.");
         budget.Spend(4L * deck.Count + 3L * state.Cards.Count + 2L * state.Deferred.Count + 1);
