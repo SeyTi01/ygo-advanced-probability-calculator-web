@@ -52,12 +52,12 @@ async function main() {
         await page.waitForFunction(() => document.querySelectorAll('.combo-editor').length === 8
             || getComputedStyle(document.querySelector('#blazor-error-ui')).display !== 'none');
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false, errors.join('\n'));
-        assert.equal(await page.locator('.card-editor').count(), 25);
+        assert.equal(await page.locator('.card-editor').count(), 24);
         assert.equal(await page.locator('.combo-editor').count(), 8);
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') !== 'true');
         const exampleResult = Number((await page.locator('.probability-total-value').innerText()).replace('%', '').replace(',', '.').trim());
-        assert.equal(exampleResult, 83.61, 'Bundled example total');
+        assert.equal(exampleResult, 85.92, 'Bundled example total');
 
         await load(cases.find(item => item.Name === 'atomic').Session);
         await expand('.combo-editor .accordion-button');

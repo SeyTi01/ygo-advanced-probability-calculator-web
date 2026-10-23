@@ -238,7 +238,7 @@ const { chromium, firefox } = require('playwright');
         await command('combo', 2, 'Remove');
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.locator('.probability-total-value').waitFor();
-        assert.match(await page.locator('.probability-total-value').innerText(), /83\.59/);
+        assert.match(await page.locator('.probability-total-value').innerText(), /85\.92/);
 
         await page.getByRole('button', { name: 'Pin result', exact: true }).click();
         await page.getByRole('button', { name: 'Unpin result', exact: true }).waitFor();
