@@ -85,7 +85,7 @@ async function main() {
             });
             const errorUi = document.querySelector('#blazor-error-ui');
             const errorUiStyle = errorUi && getComputedStyle(errorUi);
-            const marker = document.querySelector('.probability-result-status-preliminary');
+            const marker = document.querySelector('.probability-result-status');
             const style = marker && getComputedStyle(marker);
             const statusSlot = document.querySelector('.probability-results .probability-result-status-slot');
             const rgb = value => value.match(/[\d.]+/g).slice(0, 3).map(Number);
@@ -98,6 +98,7 @@ async function main() {
             return { anchors: Object.fromEntries(anchors.map(selector => [selector, [...document.querySelectorAll(selector)].map(box)])),
                 compact, warning, preliminary: marker?.textContent.trim() ?? null,
                 preliminaryPadding: style ? [style.paddingLeft, style.paddingRight] : null,
+                badgeClass: marker?.className ?? null,
                 statusText: statusSlot?.innerText.trim() ?? null,
                 statusLabel: statusSlot?.getAttribute('aria-label'),
                 errorUiVisible: !!errorUi && errorUiStyle.display !== 'none' && errorUi.getBoundingClientRect().width > 0 && errorUi.getBoundingClientRect().height > 0,
@@ -156,27 +157,47 @@ async function main() {
         await page.getByRole('button', { name: 'Copy results', exact: true }).click();
         const copied = await page.evaluate(() => polish.copied.at(-1));
         assert(copied.includes('Target route') && copied.includes('±0%') && !copied.includes('Preliminary'));
-        await page.evaluate(() => document.documentElement.style.zoom = '2');
-        const zoomedGeometry = await geometry();
-        assert(zoomedGeometry.overflow <= 0, '200% zoom overflow');
-        assert(!zoomedGeometry.errorUiVisible, `#blazor-error-ui visible at 200% zoom; page errors: ${errors.join(' | ')}; console errors: ${consoleErrors.join(' | ')}`);
-        await page.evaluate(() => document.documentElement.style.zoom = '');
-        for (const resultPanel of [page.locator('.probability-results'), page.locator('.pinned-result')]) {
-            const values = resultPanel.locator('.probability-with-accuracy');
-            assert(await values.count() >= 3, 'total, combo, and group probability rows');
-            for (let index = 0; index < await values.count(); index++) {
-                const value = values.nth(index);
-                await value.focus();
-                assert(await value.locator('.probability-proof').isVisible());
-                const primaryFraction = await value.locator('.probability-proof').innerText();
-                assert.match(primaryFraction, /^Modeled primary fraction: \d+\/\d+$/);
-                const accessibleProbability = await value.getAttribute('aria-label');
-                assert.equal(await value.getAttribute('title'), primaryFraction);
-                assert(accessibleProbability.endsWith(`. ${primaryFraction}`));
-                assert(!/(?:Certified range|Exact within|Uncertified|optimistic primary)/.test(accessibleProbability));
+        const checkFocusedFractions = async (label) => {
+            const measurements = [];
+            for (const resultPanel of [page.locator('.probability-results'), page.locator('.pinned-result')]) {
+                const values = resultPanel.locator('.probability-with-accuracy');
+                assert(await values.count() >= 3, `${label}: total, combo, and group probability rows`);
+                for (let index = 0; index < await values.count(); index++) {
+                    const value = values.nth(index);
+                    await value.focus();
+                    const proof = value.locator('.probability-proof');
+                    assert(await proof.isVisible());
+                    const primaryFraction = await proof.innerText();
+                    assert.match(primaryFraction, /^Modeled primary fraction: \d+\/\d+$/);
+                    const accessibleProbability = await value.getAttribute('aria-label');
+                    assert.equal(await value.getAttribute('title'), primaryFraction);
+                    assert(accessibleProbability.endsWith(`. ${primaryFraction}`));
+                    assert(!/(?:Certified range|Exact within|Uncertified|optimistic primary)/.test(accessibleProbability));
+                    const alignment = await value.evaluate(element => {
+                        const proofText = element.querySelector('.probability-proof');
+                        const range = document.createRange();
+                        range.selectNodeContents(proofText);
+                        const textRight = Math.max(...[...range.getClientRects()].map(rect => rect.right));
+                        return { valueRight: element.getBoundingClientRect().right, textRight };
+                    });
+                    assert(Math.abs(alignment.valueRight - alignment.textRight) <= 1, `${label}: modeled fraction right edge alignment ${JSON.stringify(alignment)}`);
+                    measurements.push(alignment);
+                }
             }
+            assert((await geometry()).overflow <= 0, `${label}: focused proof overflow`);
+            return measurements;
+        };
+        for (const record of records) {
+            await page.setViewportSize({ width: record.width, height: 1000 });
+            await page.getByLabel('Color theme preference').selectOption({ label: record.theme });
+            record.fractionAlignment = await checkFocusedFractions(`${record.width}px/${record.theme}`);
+            await page.evaluate(() => document.documentElement.style.zoom = '2');
+            const zoomedGeometry = await geometry();
+            assert(zoomedGeometry.overflow <= 0, `${record.width}px/${record.theme}: 200% zoom overflow`);
+            assert(!zoomedGeometry.errorUiVisible, `${record.width}px/${record.theme}: #blazor-error-ui visible at 200% zoom; page errors: ${errors.join(' | ')}; console errors: ${consoleErrors.join(' | ')}`);
+            record.zoomedFractionAlignment = await checkFocusedFractions(`${record.width}px/${record.theme}/200% zoom`);
+            await page.evaluate(() => document.documentElement.style.zoom = '');
         }
-        assert((await geometry()).overflow <= 0, 'focused proof overflow');
         await page.getByRole('button', { name: 'Calculate', exact: true }).focus();
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.waitForFunction(() => !!polish.pending);
@@ -210,10 +231,38 @@ async function main() {
         await rule.getByRole('button', { name: 'Apply rule', exact: true }).click();
         await page.locator('[aria-label="Edit category Target"]').click();
         assert((await page.locator('.category-rule-summary').innerText()).includes('Level 3–5'));
+        const staleMeasurements = [];
+        for (const theme of ['Light', 'Dark']) for (const width of [320, 390, 1280]) {
+            await page.setViewportSize({ width, height: 1000 });
+            await page.getByLabel('Color theme preference').selectOption({ label: theme });
+            const stale = page.locator('.probability-results .probability-result-status');
+            assert.equal((await stale.innerText()).trim(), 'Inputs changed', `${width}/${theme}: stale badge label`);
+            assert((await stale.getAttribute('class')).includes('probability-result-status-neutral'), `${width}/${theme}: neutral variant`);
+            const statusSlot = page.locator('.probability-results .probability-result-status-slot');
+            assert.equal(await statusSlot.getAttribute('role'), 'status');
+            assert.equal(await statusSlot.getAttribute('aria-live'), 'polite');
+            assert.equal((await stale.evaluate(element => element.textContent.trim())), 'Inputs changed', 'single accessible status text');
+            assert.equal(await page.locator('.probability-result-status-placeholder').getAttribute('aria-hidden'), 'true');
+            const staleStyle = await stale.evaluate(element => {
+                const style = getComputedStyle(element);
+                return { color: style.color, background: style.backgroundColor, borderColor: style.borderTopColor, borderRadius: style.borderRadius,
+                    padding: [style.paddingLeft, style.paddingRight] };
+            });
+            assert.equal(staleStyle.padding[0], staleStyle.padding[1]);
+            const staleContrast = await stale.evaluate(element => {
+                const rgb = value => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+                const luminance = color => rgb(color).map(value => { value /= 255; return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4; }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+                const style = getComputedStyle(element), foreground = luminance(style.color), background = luminance(style.backgroundColor);
+                return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+            });
+            assert(staleContrast >= 4.5, `${width}/${theme}: stale badge contrast ${staleContrast}`);
+            assert((await geometry()).overflow <= 0, `${width}/${theme}: stale badge overflow`);
+            staleMeasurements.push({ width, theme, staleStyle, staleContrast });
+        }
         assert.deepEqual(errors, []);
-        await fs.writeFile(path.join(output, 'geometry.json'), JSON.stringify({ browser: browser.version(), records, errors, consoleErrors }, null, 2));
+        await fs.writeFile(path.join(output, 'geometry.json'), JSON.stringify({ browser: browser.version(), records, staleMeasurements, errors, consoleErrors }, null, 2));
         console.log(`Browser console errors captured: ${consoleErrors.length}; #blazor-error-ui remained hidden in all checked states.`);
-        console.log(`Numeric/result polish smoke passed; ${records.length} viewport/theme pairs, compact Preliminary badge/accessibility/cancellation, modeled-fraction focus disclosure, real Exact/pin/copy, compact gaps, warning contrast, stable anchors, numeric draft/removal/apply and 200% zoom. Evidence: ${output}`);
+        console.log(`Numeric/result polish smoke passed; ${records.length} viewport/theme pairs, Preliminary and Inputs changed status, aligned current/pinned modeled fractions, real Exact/pin/copy, compact gaps, badge contrast, stable anchors, numeric draft/removal/apply and 200% zoom. Evidence: ${output}`);
     } finally {
         await browser?.close();
         await new Promise(resolve => server.close(resolve));

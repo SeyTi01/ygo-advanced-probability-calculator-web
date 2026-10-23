@@ -145,8 +145,13 @@ public class ProbabilityResultLayoutTest {
         await groupName.InputAsync(new() { Value = "Alpha renamed" });
         await groupName.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
 
-        Assert.That(cut.Find(".probability-result-status .visually-hidden").TextContent.Trim(),
-            Is.EqualTo("Previous result · inputs changed"));
+        IElement status = cut.Find(".probability-result-status");
+        Assert.That(status.TextContent.Trim(), Is.EqualTo("Inputs changed"));
+        Assert.That(status.ClassList, Does.Contain("probability-result-status-neutral"));
+        Assert.That(status.ClassList, Does.Contain("probability-result-status-chip"));
+        Assert.That(cut.Find(".probability-result-status-slot").GetAttribute("role"), Is.EqualTo("status"));
+        Assert.That(cut.Find(".probability-result-status-slot").GetAttribute("aria-live"), Is.EqualTo("polite"));
+        Assert.That(cut.Find(".probability-result-status-placeholder").GetAttribute("aria-hidden"), Is.EqualTo("true"));
         Assert.That(cut.Find("[aria-label='Group for Editor combo 1']").GetAttribute("value"), Is.EqualTo("group-b"));
         IElement[] staleGroups = ResultGroups(cut);
         Assert.That(staleGroups.Select(GroupName), Is.EqualTo(new[] { "Alpha", "Beta" }));

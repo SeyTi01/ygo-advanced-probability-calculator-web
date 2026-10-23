@@ -61,7 +61,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(cut.Find("#calculationModel option[value=OpeningHand]").TextContent, Is.EqualTo("No effect simulation"));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
         Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Is.EqualTo("Shows Fast first, then attempts Exact until completed, canceled, or stopped by Storage or unsupported conditions. Exact has no Work cutoff."));
+            Is.EqualTo("Shows Fast first, then attempts Exact."));
         Assert.That(cut.Find("#storageSafetyHelp").TextContent.Trim(),
             Is.EqualTo("Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy."));
         context.JSInterop.VerifyInvoke("workspaceMenus.watchOutside", 1);
@@ -78,6 +78,12 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(cut.Find("#drawEffectsHelp").TextContent,
             Is.EqualTo("Calculates physical Deck-search survival exactly without a Work cutoff, subject to Storage limits and cancellation."));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "FastOnly" });
+        Assert.That(cut.Find("#drawEffectsHelp").TextContent,
+            Is.EqualTo("Calculates probabilities quickly, but results may be approximate."));
+        Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Not.Contain("Fast"));
+        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
+        Assert.That(cut.Find("#drawEffectsHelp").TextContent, Is.EqualTo("Shows Fast first, then attempts Exact."));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         await cut.InvokeAsync(() => cut.FindComponent<CalculationSettingsMenu>().Instance.Dismiss());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);

@@ -270,8 +270,8 @@ const sessionFixture = () => ({
         await page.waitForFunction(() => ![...document.querySelectorAll('details.category-management .category-chip')]
             .some(chip => chip.textContent.includes('A')));
         const staleMarked = await page.waitForFunction(() =>
-            [...document.querySelectorAll('.probability-result-status .visually-hidden')]
-                .some(status => status.textContent.includes('Previous result · inputs changed')),
+            [...document.querySelectorAll('.probability-result-status')]
+                .some(status => status.textContent.trim() === 'Inputs changed'),
         { timeout: 10000 }).then(() => true).catch(() => false);
         if (!staleMarked) {
             const diagnosis = await page.evaluate(() => ({

@@ -5,7 +5,7 @@
 .probability-uninformative { flex-basis: 100%; }
 .probability-total-value { font-size: 1.1em; }
 
-.probability-proof { display: none; flex-basis: 100%; font-size: .75rem; font-weight: normal; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.probability-proof { display: none; flex-basis: 100%; min-width: 0; max-width: 100%; font-size: .75rem; font-weight: normal; text-align: right; white-space: normal; overflow-wrap: anywhere; }
 .probability-with-accuracy:focus .probability-proof { display: block; }
 
 .probability-zero-uncertainty .combo-probability-value, .probability-zero-uncertainty .probability-uncertainty { min-width: 0; }

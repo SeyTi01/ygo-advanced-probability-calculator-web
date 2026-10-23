@@ -75,6 +75,7 @@ public class BackgroundCalculationComponentTest {
         Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Preliminary"));
         Assert.That(_cut.Find(".probability-result-status-slot").InnerHtml, Does.Not.Contain("checking Exact"));
         Assert.That(_cut.FindAll(".probability-result-status.probability-result-status-preliminary"), Has.Count.EqualTo(1));
+        Assert.That(_cut.Find(".probability-result-status").ClassList, Does.Contain("probability-result-status-chip"));
         Assert.That(_cut.Find(".probability-result-status-slot").GetAttribute("aria-live"), Is.EqualTo("polite"));
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-label"), Is.EqualTo("Cancel Exact upgrade"));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
@@ -206,7 +207,7 @@ public class BackgroundCalculationComponentTest {
         _calculator.Jobs[1].SetResult(Result("late rule result"));
         await pending;
         Assert.That(_cut.Markup, Does.Not.Contain("late rule result"));
-        Assert.That(_cut.Markup, Does.Contain("Previous result"));
+        Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         Assert.That(_cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pin));
         Task current = Start();
         _calculator.Jobs[2].SetResult(Result("current"));
@@ -423,7 +424,7 @@ public class BackgroundCalculationComponentTest {
         Task second = Start();
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
-        Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
+        Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         Task third = Start();
         _calculator.Jobs[2].SetResult(Result("current"));
         await third;
@@ -448,7 +449,7 @@ public class BackgroundCalculationComponentTest {
         Task pending = Start();
         await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
-        Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
+        Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
 
         Task disabled = Start();
         Assert.That(_calculator.Snapshots[2].Json, Does.Contain("\"DrawCount\":null"));
