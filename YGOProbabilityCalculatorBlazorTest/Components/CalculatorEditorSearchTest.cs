@@ -19,11 +19,13 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         editor.Find(".accordion-button").Click();
-        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("target (29302858)"));
+        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("target"));
+        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Not.Contain("29302858"));
         await cut.InvokeAsync(() => cut.FindComponent<CardListEditor>().Instance.ReplaceCard((1, target.WithActive(false))));
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));
         await cut.InvokeAsync(() => cut.FindComponent<CardListEditor>().Instance.ReplaceCard((1, target)));
-        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("target (29302858)"));
+        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("target"));
+        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Not.Contain("29302858"));
         editor.Find(".simulation-edit").Click();
         editor.Find("#cardDraw0").Change("");
         editor.Find(".simulation-cancel").Click();
@@ -82,6 +84,49 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.DrawEffectsEnabled, false));
         Assert.That(editor.Find(".simulation-mode").TextContent, Does.Contain("Opening hand only"));
     }
+
+    [Test]
+    public void SearchSummaryUsesMaintainedCopyOnlyForAnEquivalentPlan() {
+        Card builtIn = SearchEffectsTest.Rota();
+        Card custom = builtIn.WithEffect(builtIn.EffectPlan, builtIn.EffectProfile.AsCustom());
+        Card changed = builtIn.WithSearch(new(CardSelector.Any, false));
+
+        IRenderedComponent<CardSimulationEditor> builtInEditor = RenderSearchEditor(builtIn);
+        IRenderedComponent<CardSimulationEditor> customEditor = RenderSearchEditor(custom);
+        IRenderedComponent<CardSimulationEditor> changedEditor = RenderSearchEditor(changed);
+
+        Assert.That(builtInEditor.Find(".simulation-summary").TextContent, Is.EqualTo("Search 1 Level 1–4 Warrior monster"));
+        Assert.That(customEditor.Find(".simulation-source").TextContent, Does.Contain("Custom simulation"));
+        Assert.That(customEditor.Find(".simulation-summary").TextContent, Is.EqualTo("Search 1 Level 1–4 Warrior monster"));
+        Assert.That(changedEditor.Find(".simulation-summary").TextContent, Is.EqualTo("Search 1 card from Deck"));
+    }
+
+    [Test]
+    public void SearchTargetNamesOmitUniqueIdsAndDisambiguateOnlyNameCollisions() {
+        Card source = SearchEffectsTest.Rota();
+        Card catalogTarget = SearchEffectsTest.Warrior();
+        Card sameCatalogEntry = new(catalogTarget.Categories, name: "target", id: "duplicate-entry", externalCardId: 29302858);
+        Card otherCatalogTarget = new(catalogTarget.Categories, name: "target", id: "other-catalog", externalCardId: 12345);
+        Card customTarget = new(catalogTarget.Categories, name: "target", id: "8b106ff0-4a99-467d-b2f9-533181f24a56");
+        source = source.WithSearch(source.Search! with { ObjectiveMetadataOnly = false });
+        IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
+            .Add(component => component.Card, source)
+            .Add(component => component.Deck, new[] { source, catalogTarget, sameCatalogEntry, otherCatalogTarget, customTarget }));
+
+        string targets = editor.Find(".simulation-targets").TextContent;
+
+        Assert.That(targets, Does.Contain("target (29302858)"));
+        Assert.That(targets, Does.Contain("target (12345)"));
+        Assert.That(targets, Does.Contain("target (custom 1)"));
+        Assert.That(targets, Does.Not.Contain("8b106ff0"));
+        Assert.That(targets.Split("target (29302858)", StringSplitOptions.None), Has.Length.EqualTo(2),
+            "Repeated entries for the same catalog card are presented once.");
+    }
+
+    private IRenderedComponent<CardSimulationEditor> RenderSearchEditor(Card card) => context.RenderComponent<CardSimulationEditor>(parameters => parameters
+        .Add(component => component.Card, card)
+        .Add(component => component.Deck, new[] { card, SearchEffectsTest.Warrior() }));
+
     [TestCase(false), TestCase(true)]
     public void BuiltInToCustomRoleWorksWithoutProvenanceOption(bool automatic) {
         CategoryBase fire = new("FIRE", CategorySource.Metadata, "attribute:fire");
