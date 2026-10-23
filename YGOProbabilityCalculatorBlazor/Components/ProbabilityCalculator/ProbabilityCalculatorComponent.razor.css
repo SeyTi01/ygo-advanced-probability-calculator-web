@@ -53,17 +53,6 @@
 .probability-result-status { white-space: nowrap; }
 
 .probability-result-status-placeholder { visibility: hidden; }
-.probability-result-status-compact { display: none; }
-
-@container (max-width: 560px) {
-    .probability-result-status-full {
-        display: none;
-    }
-
-    .probability-result-status-compact {
-        display: inline;
-    }
-}
 
 .probability-total {
     border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.3);
@@ -516,13 +505,23 @@
 
 .draw-complexity-notice { overflow-wrap: anywhere; }
 
-.probability-result-status-preliminary {
+.probability-result-status-chip {
     display: inline-block;
     padding: .1rem .4rem;
+    border: 1px solid;
+    border-radius: .25rem;
+}
+
+.probability-result-status-preliminary {
     color: var(--bs-warning-text-emphasis);
     background-color: var(--bs-warning-bg-subtle);
-    border-radius: .25rem;
-    box-shadow: 0 0 0 1px var(--bs-warning-border-subtle);
+    border-color: var(--bs-warning-border-subtle);
+}
+
+.probability-result-status-neutral {
+    color: var(--bs-secondary-color);
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
 }
 
 /* Keep the total label's wrapping stable without padding the completed value. */

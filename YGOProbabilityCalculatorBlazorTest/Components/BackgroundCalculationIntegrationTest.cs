@@ -192,7 +192,7 @@ public class BackgroundCalculationIntegrationTest {
         Assert.That(_cut.FindComponents<CardEditor>()[0].Instance.Card.Name, Is.EqualTo(saved.Cards[0].Name));
         if (edit) {
             Assert.That(_cut.Markup, Does.Contain("Current work changed while loading"));
-            Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
+            Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         }
         else {
             Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
@@ -231,7 +231,7 @@ public class BackgroundCalculationIntegrationTest {
         SessionState saved = await _sessions.LoadSessionAsync(await Milestone(update, "edit autosave during calculation"));
         Assert.That(saved.HandSize, Is.EqualTo(3));
         Assert.That(_calculator.Tokens[2].IsCancellationRequested, Is.True);
-        Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
+        Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
         Assert.That(_context.JSInterop.Invocations["copyText"].Last().Arguments[0],

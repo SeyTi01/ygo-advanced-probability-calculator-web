@@ -160,8 +160,7 @@ public abstract class CalculatorEditorTestBase {
 
     protected static void AssertPreviousResult(IRenderedFragment fragment) {
         Assert.That(fragment.FindAll(".probability-results"), Has.Count.EqualTo(1));
-        Assert.That(fragment.Find(".probability-result-status .visually-hidden").TextContent.Trim(),
-            Is.EqualTo("Previous result · inputs changed"));
+        Assert.That(fragment.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
     }
 
     protected string SavedSessionJson(int saveNumber = 0) {

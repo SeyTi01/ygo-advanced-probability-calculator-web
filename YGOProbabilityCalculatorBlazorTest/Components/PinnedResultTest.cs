@@ -316,7 +316,7 @@ public partial class PinnedResultTest {
                 break;
         }
 
-        Assert.That(_cut.Find(".probability-result-status-full").TextContent, Is.EqualTo("Previous result · inputs changed"));
+        Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         Assert.That(Accepted, Is.SameAs(accepted));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("aria-describedby"), Is.False);
@@ -358,7 +358,7 @@ public partial class PinnedResultTest {
 
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
 
-        Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
+        Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
         Assert.That(Pinned, Is.SameAs(pin));
         Assert.That(Accepted, Is.SameAs(accepted));
@@ -463,7 +463,7 @@ public partial class PinnedResultTest {
         else {
             Assert.That(Accepted, Is.SameAs(accepted));
             AssertNoComparisonUi();
-            Assert.That(_cut.Find(".probability-result-status").TextContent, Does.Contain("Previous result"));
+            Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         }
     }
 
@@ -780,7 +780,7 @@ public partial class PinnedResultTest {
             "Hand size 2 · 8 cards");
 
         await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
-        Assert.That(_cut.Find(".probability-result-status-full").TextContent, Is.EqualTo("Previous result · inputs changed"));
+        Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
         await Accept(.75);
 

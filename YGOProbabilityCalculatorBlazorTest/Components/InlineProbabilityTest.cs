@@ -59,7 +59,7 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         AssertAccuracyDisclosure(cut, ".probability-results");
         AssertAccuracyDisclosure(cut, ".pinned-result");
         Assert.That(cut.Find(".probability-results .probability-result-status").TextContent,
-            Does.Contain("Previous result · inputs changed"));
+            Is.EqualTo("Inputs changed"));
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(owned));
         await cut.Find("button[title='Copy results']").ClickAsync(new());

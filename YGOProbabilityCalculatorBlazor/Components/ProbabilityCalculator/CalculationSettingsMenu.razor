@@ -169,8 +169,8 @@
     private ElementReference _drawEffectsInput;
     private string? ModelHelp => Model switch {
         CalculationModel.Fast => Strategy == FastExecutionStrategy.FastOnly
-            ? "Runs Fast once, preserving its certified bounds and accuracy status."
-            : "Shows Fast first, then attempts Exact until completed, canceled, or stopped by Storage or unsupported conditions. Exact has no Work cutoff.",
+            ? "Calculates probabilities quickly, but results may be approximate."
+            : "Shows Fast first, then attempts Exact.",
         CalculationModel.Exact => "Calculates physical Deck-search survival exactly without a Work cutoff, subject to Storage limits and cancellation.",
         CalculationModel.OpeningHand => null,
         _ => throw new ArgumentOutOfRangeException(nameof(Model))
