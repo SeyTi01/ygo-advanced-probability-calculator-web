@@ -71,13 +71,9 @@ function displayed(actual, expected) {
     const ratio = fraction => `${fraction.Numerator}/${fraction.Denominator}`;
     const activeGroups = expected.GroupProbabilities.map((group, index) => group.ActiveComboCount > 0 ? index : -1)
         .filter(index => index >= 0);
-    const rows = expected.SearchAvailability
-        ? [expected.SearchAvailability.Total, ...expected.SearchAvailability.Combos,
-            ...activeGroups.map(index => expected.SearchAvailability.Groups[index])]
-            .map(interval => `rational endpoints [${ratio(interval.Lower)}, ${ratio(interval.Upper)}]`)
-        : [expected.Contract.Fractions.Total, ...expected.Contract.Fractions.Combos,
-            ...activeGroups.map(index => expected.Contract.Fractions.Groups[index])]
-            .map(fraction => `Modeled primary fraction: ${ratio(fraction)}.`);
+    const rows = [expected.Contract.Fractions.Total, ...expected.Contract.Fractions.Combos,
+        ...activeGroups.map(index => expected.Contract.Fractions.Groups[index])]
+        .map(fraction => `Modeled primary fraction: ${ratio(fraction)}`);
     const titles = actual.values.map(value => value.title);
     assert.equal(titles.length, rows.length);
     for (const row of rows) {

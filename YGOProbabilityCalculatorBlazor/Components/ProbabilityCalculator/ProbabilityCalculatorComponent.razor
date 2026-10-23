@@ -219,14 +219,24 @@
                         <h5 id="probabilityResultsHeading">@(_pinnedResult is null ? "Results" : "Current result")</h5>
                         <small class="probability-result-status-slot text-body-secondary fw-normal" role="status" aria-live="polite">
                             <span class="probability-result-status-placeholder" aria-hidden="true">
-                                <span class="probability-result-status-space-full">Preliminary · checking Exact</span>
-                                <span class="probability-result-status-space-compact">Preliminary</span>
+                                @if (_calculationResultIsStale) {
+                                    <span class="probability-result-status-full">Previous result · inputs changed</span>
+                                    <span class="probability-result-status-compact">Stale</span>
+                                }
+                                else {
+                                    <span class="probability-result-status-preliminary">Preliminary</span>
+                                }
                             </span>
                             @if (_isPreliminary || _calculationResultIsStale) {
                                 <span class="probability-result-status @(_isPreliminary ? "probability-result-status-preliminary" : null)">
-                                    <span class="probability-result-status-full" aria-hidden="true">@(_isPreliminary ? "Preliminary · checking Exact" : "Previous result · inputs changed")</span>
-                                    <span class="probability-result-status-compact" aria-hidden="true">@(_isPreliminary ? "Preliminary" : "Stale")</span>
-                                    <span class="visually-hidden">@(_isPreliminary ? "Preliminary · checking Exact" : "Previous result · inputs changed")</span>
+                                    @if (_isPreliminary) {
+                                        <span>Preliminary</span>
+                                    }
+                                    else {
+                                        <span class="probability-result-status-full" aria-hidden="true">Previous result · inputs changed</span>
+                                        <span class="probability-result-status-compact" aria-hidden="true">Stale</span>
+                                        <span class="visually-hidden">Previous result · inputs changed</span>
+                                    }
                                 </span>
                             }
                             else {
