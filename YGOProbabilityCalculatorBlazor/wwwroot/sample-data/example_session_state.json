@@ -1,5 +1,5 @@
 {
-  "SchemaVersion": 9,
+  "SchemaVersion": 12,
   "Categories": [],
   "Cards": [
     {
@@ -1026,8 +1026,8 @@
         "Selector": {
           "Kind": "AllOf",
           "Categories": [
-            "metadata:archetype:k9",
-            "metadata:kind:monster"
+            "metadata:kind:monster",
+            "metadata:archetype:k9"
           ]
         },
         "ObjectiveMetadataOnly": true,
@@ -1462,7 +1462,8 @@
     }
   ],
   "HandSize": 5,
-  "CalculationModel": "Exact",
+  "CalculationModel": "Fast",
+  "FastExecutionStrategy": "Progressive",
   "DrawActivationPriority": {
     "Mode": "EncounterOrder",
     "CardIds": []
