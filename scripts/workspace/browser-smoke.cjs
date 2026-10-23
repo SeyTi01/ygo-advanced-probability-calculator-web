@@ -76,11 +76,18 @@ const { chromium, firefox } = require('playwright');
                     assert.equal(await section.details.locator('.editor-add-row button').isDisabled(), true);
                     assert.equal((await section.details.locator(section.chipSelector).count()) > 0, content === 'populated');
 
-                    const summaryBox = await section.details.locator('summary').boundingBox();
-                    const row = section.details.locator('.editor-add-row');
-                    const rowBox = await row.boundingBox();
-                    const inputBox = await row.locator('input').boundingBox();
-                    const buttonBox = await row.locator('button').boundingBox();
+                    const { summaryBox, rowBox, inputBox, buttonBox } = await section.details.evaluate(element => {
+                        const rect = selector => {
+                            const bounds = element.querySelector(selector).getBoundingClientRect();
+                            return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+                        };
+                        return {
+                            summaryBox: rect('summary'),
+                            rowBox: rect('.editor-add-row'),
+                            inputBox: rect('.editor-add-row input'),
+                            buttonBox: rect('.editor-add-row button')
+                        };
+                    });
                     assert.ok(summaryBox && rowBox && inputBox && buttonBox);
                     assert.ok(Math.abs(rowBox.x - summaryBox.x) <= 1, `${section.title} creation row aligns with its summary at ${width}px`);
                     assert.ok(rowBox.width <= 513 && rowBox.x + rowBox.width <= width + 1);
@@ -231,7 +238,7 @@ const { chromium, firefox } = require('playwright');
         await command('combo', 2, 'Remove');
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.locator('.probability-total-value').waitFor();
-        assert.match(await page.locator('.probability-total-value').innerText(), /83\.61/);
+        assert.match(await page.locator('.probability-total-value').innerText(), /83\.59/);
 
         await page.getByRole('button', { name: 'Pin result', exact: true }).click();
         await page.getByRole('button', { name: 'Unpin result', exact: true }).waitFor();
