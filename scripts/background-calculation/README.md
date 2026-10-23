@@ -141,11 +141,14 @@ entire published output together; do not mix runtime assets from different build
 The browser must support module workers and the app's .NET WebAssembly runtime.
 Startup/transport failures are shown in the existing calculation alert, with no
 foreground fallback. Worker initialization times out after 30 seconds, separately
-from the legacy automatic API's calculation deadline described below. Ordinary Calculate captures a request-local
-**150,000,000-unit** work allowance immediately. Synchronous engine callers omitting
+from the legacy automatic API's calculation deadline described below. UI Fast and
+No effect simulation capture a request-local **150,000,000-unit** finite Work
+allowance. Interactive Exact and the current Progressive physical Exact stage use
+unlimited Work, with the selected Storage tier still enforced. Synchronous engine callers omitting
 the explicit `CalculationWorkPolicy` overload and wire requests omitting
 `WorkUnits` retain the bounded **10,000,000-unit** default. Policies are immutable,
-positive `long` values; invalid input cannot select unlimited work. There is no
+positive `long` values on bounded APIs; invalid wire input cannot select unlimited
+work. Unlimited interactive execution is a separate validated entry point. There is no
 retry, budget UI or persisted preference. Weighted units are not elapsed seconds.
 Results retain primary doubles and add a versioned immutable accuracy contract with rational total/combo/group rows. Each request captures its
 own input JSON, excluding inactive
@@ -206,23 +209,27 @@ opt-in policy smoke verifies that a finite burst closes every execution context.
 
 ### Automatic Exact opportunity in Fast
 
-The UI opts Fast into a staged worker lease. `BeginFast` executes the unchanged
-Fast calculation and returns its complete response and unused Work (an integer
-string, never a rounded JavaScript number). Proven Exact ends immediately.
-Otherwise JS retains that response, and `UpgradeFast` runs physical counting
-with the remaining allowance and original Storage tier. The physical result
-keeps requested/executed Fast, the actual solver route, proof and rational rows.
-Native synchronous Fast and the one-shot `createJob` wire helper retain their
-existing reference behavior; they do not own browser clocks or worker lifetimes.
-
-The Progressive UI uses `runProgressive` / `finish` without a calculation deadline.
-C# validates and presents the first result while the same lease continues physical
-Exact. A slow initial Fast pass does not prevent the upgrade. Work, Storage,
-unsupported cases and execution/transport failures retain the accepted Fast result.
+The current Progressive UI uses `runProgressive` / `finish` on a staged worker
+lease without a calculation deadline. C# validates and presents the completed Fast
+response while the same lease continues physical Exact if needed. Proven Exact
+ends immediately. A slow initial Fast pass does not prevent the upgrade; the
+upgrade uses unlimited Work even if Fast has no allowance remaining, and retains
+the original Storage tier. Cancellation, Storage limits, unsupported cases and
+execution/transport failures retain the accepted Fast result and its accuracy.
 Only a validated terminal response releases the lease. Fast only uses `run(json, false)`.
+
 For compatibility, standalone `CalculateAsync` and `run(json, true)` retain their
-legacy seven-second opportunity and five-second upgrade maximum; new Progressive
-requests never produce Deadline or NoTime.
+legacy seven-second opportunity and five-second upgrade maximum. On this bounded
+path, `BeginFast` returns the complete response and unused Work as an integer
+string; `UpgradeFast` uses the remaining finite allowance and original Storage
+tier. Current Progressive requests never produce Deadline or NoTime. Native
+synchronous Fast and the one-shot `createJob` helper do not acquire browser clocks
+or worker lifetimes. The physical Fast upgrade preserves requested/executed Fast
+and reports its actual solver route, proof and rational rows.
+
+See the [accuracy and performance guide](../../docs/accuracy-and-performance.md)
+for the current user-facing mode, certificate and resource contracts. Measurements
+below apply to their stated fixtures and API policies, not universal completion.
 
 After actual interruption of automatic work, the module shares a 2500-ms restart
 delay across owners. Successful upgrades reuse the worker. Startup retains its
