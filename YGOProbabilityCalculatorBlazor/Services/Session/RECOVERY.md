@@ -2,7 +2,9 @@
 
 `SessionService.SerializeSession` is the offline serialization boundary shared with
 Save Session. Loading uses the existing migration, converters and ID validation.
-The transport envelope is version 1; the enclosed session uses the current schema version 3.
+The transport envelope is version 1; the enclosed session uses the session schema emitted by the current serializer (currently version 12).
+The envelope version is independent of that schema. See the
+[usage guide](https://dev.ygo-calculator.pages.dev/help#sessions) for user instructions.
 
 `SessionRecovery` compares serialized accepted model values on parent renders. This
 covers category/color/name/order changes, cards and manual properties, constraints,
@@ -58,9 +60,9 @@ detects corruption, and provides no authentication or encryption.
 
 The application cap is 16,384 characters for a complete generated URL and for an
 incoming fragment, with at most 262,144 decompressed bytes. This is a conservative
-sharing policy, not a universal browser limit. Measured test-origin links are
-3,240 characters for the current bundled example and 2,592 for a synthetic
-100-card/50-combo fixture. A longer base path or less repetitive names can increase
+sharing policy, not a universal browser limit. Historical test-origin measurements were
+3,240 characters for the then-bundled example and 2,592 for a synthetic
+100-card/50-combo fixture; these do not specify the size of the current example. A longer base path or less repetitive names can increase
 these sizes. Larger sessions must use normal session-file sharing; no truncation
 or partial link is produced. Input is bounded before base64 decoding. Declared
 output length is checked before allocation, and gzip reads into that bounded

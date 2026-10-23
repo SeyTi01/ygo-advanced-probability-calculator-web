@@ -34,114 +34,100 @@
 <div class="help-content mt-4">
     <section class="mb-4">
         <h1>Yu-Gi-Oh! Advanced Probability Calculator <small class="text-muted">v@(ProjectConstants.Version)</small></h1>
-        <p>Calculate the exact probability of opening one or more defined combo routes in your deck.</p>
-        <p>The calculator is built around three things: your deck, reusable card categories, and the combos you want to open.</p>
+        <p>Define the hands you want to open, configure supported effects, and calculate probabilities with an explicit accuracy status. The calculator counts random outcomes under your saved rules; it does not simulate full gameplay or optimal play.</p>
+        <nav aria-label="Help topics">
+            <a href="help#getting-started">Start</a> · <a href="help#requirements">Requirements</a> · <a href="help#simulations">Effects</a> · <a href="help#modes">Modes</a> · <a href="help#results">Results</a> · <a href="help#sessions">Save and share</a> · <a href="help#example">Example</a>
+        </nav>
     </section>
 
-    <section class="mb-4">
+    <section id="getting-started" class="mb-4">
         <h2>Getting started</h2>
         <ol>
-            <li><strong>Enter your deck or import a <code>.ydk</code> file.</strong></li>
-            <li><strong>Create custom categories</strong> for reusable roles; imported cards already expose objective card properties.</li>
-            <li><strong>Assign categories to cards.</strong> A card can belong to any number of categories.</li>
-            <li><strong>Create combos</strong> using categories, specific cards, or both.</li>
-            <li><strong>Set the required minimum and maximum counts.</strong></li>
-            <li><strong>Calculate</strong> to see the probability of each combo and the combined probability of opening any active combo.</li>
+            <li>Import a <code>.ydk</code> file or YDKe deck code, or add cards manually. Check copy counts and the opening hand size.</li>
+            <li>Use imported properties or create custom categories for roles such as Starter and Extender. One card can belong to several categories.</li>
+            <li>Create a combo and use <strong>Add requirement</strong> to choose cards, categories or properties. Set its counts, then submit.</li>
+            <li>Inspect the saved simulations of effect cards. Choose a mode in the gear <strong>Calculation settings</strong> menu.</li>
+            <li>Choose <strong>Calculate</strong>, then read each result's accuracy alongside its percentage.</li>
         </ol>
-        <p>You can save the complete setup as a session and load it again later.</p>
+        <p>Common properties are available before a matching card is present. Imported metadata supplies objective values such as Monster, FIRE and Level; more specific values such as archetypes appear when relevant. Use custom categories for your own roles. Manual role assignments do not rewrite a built-in search's objective eligibility.</p>
+        <p>Deactivate a card or combo to omit it temporarily. Use arrows or <strong>Move to position</strong> to reorder cards, categories, combos and groups. Destinations start at 1; enter a position and apply, or press Escape to cancel. Visual deck order does not shuffle cards or set effect priority.</p>
     </section>
 
-    <section class="mb-4">
-        <h2>Categories</h2>
-        <p>Categories are reusable labels for cards that can fulfill the same role.</p>
-        <p>For example, the included Vanquish Soul / K9 session uses three custom role categories:</p>
+    <section id="requirements" class="mb-4">
+        <h2>Build combo requirements</h2>
+        <p>Choose a target in <strong>Add requirement</strong> and set <strong>At least</strong>. Open <strong>Maximum: Any</strong> to add an upper bound. Empty maximum means Any, using the final hand size; a fixed zero stays zero. Set both counts to <code>0</code> to exclude matching cards. Maxima count all matching cards in the final hand.</p>
+        <p>Separate positive requirements need separate physical copies. One card that is both Starter and FIRE cannot fill both parts of <code>Starter + Fire</code>. Two copies can. Each combo is checked independently.</p>
         <ul>
-            <li><code>VS Monster</code></li>
-            <li><code>VS Starter</code></li>
-            <li><code>K9 Starter</code></li>
+            <li><strong>Same-card AND:</strong> open a property requirement and choose <strong>Add property (AND)</strong>. <code>(Orcust AND Monster) Min 2</code> needs two cards that each match both properties.</li>
+            <li><strong>OR:</strong> choose <strong>Add alternative (OR)</strong>. <code>Razen + (Fire OR Dark)</code> needs Razen and a distinct copy satisfying one alternative. Each alternative keeps its own bounds; satisfying several counts once.</li>
+            <li><strong>Numeric properties:</strong> choose Level, Rank or Link rating and an exact, minimum, maximum or range comparison. Range endpoints are inclusive and apply to one card. A missing or inapplicable value does not match. <code>Level 1–4 AND Warrior</code> is one selector, not four separate requirements.</li>
         </ul>
-        <p>Objective properties such as <code>Attribute: FIRE</code>, <code>Attribute: DARK</code>, and <code>Level 5</code> come from card metadata instead of duplicate user categories. Functional exceptions can be assigned a property manually; for example, Chaotic Elements and &quot;A Case for K9&quot; are treated as Level 5 for combo modeling.</p>
-        <p>A card can combine several custom roles and properties. Vanquish Soul Razen, for example, is both a <code>VS Monster</code> and a <code>VS Starter</code> and also has the FIRE property.</p>
-        <p>Categories and card properties make it possible to describe a route such as <code>K9 Starter + Lv. 5</code> once instead of creating a separate combo for every possible K9 starter.</p>
+        <p>Click a requirement or alternative to edit its target, bounds or properties. Enter in a count field submits; Escape or Cancel leaves the saved requirement unchanged and restores the ordinary add draft. Extension buttons save pending edits before adding a property or alternative. Remove a requirement or alternative inside its editor. Removing the next-to-last OR alternative promotes the remaining one without changing its bounds.</p>
+        <p><code>Fire (2–2) OR Dark (2–2)</code> needs two Fire or two Dark, rather than one of each. Repeated references to the same target intersect their bounds; use the minimum count to request multiple copies. Groups organize the union of member combos; they do not add requirements to a combo.</p>
     </section>
 
-    <section class="mb-4">
-        <h2>Combos and requirements</h2>
-        <p>A combo is satisfied when all of its requirements can be met by the opening hand.</p>
-        <p>Choose a card, category or property in <strong>Add requirement</strong>, set <strong>At least</strong>, and submit. Open <strong>Maximum: Any</strong> for an upper bound; leave it empty for Any or set both counts to zero to exclude matching cards. Click a requirement row to edit its target, counts or properties. Enter in a count field submits; Escape or Cancel restores your ordinary add draft.</p>
-        <p>Inside a category requirement or alternative, choose <strong>Add property (AND)</strong> to require another property on each matching card. <code>(Orcust AND Monster) Min 2</code> needs two cards that each match both properties. Separate requirements still need distinct physical copies. You can change or remove individual properties in the same-card editor, then save.</p>
-        <p>Inside any requirement, choose <strong>Add alternative (OR)</strong>, select another card, category or property, and submit. The resulting group shows <strong>OR</strong> between its alternatives and needs one of them. <code>Razen + (Fire OR Dark)</code> means Razen AND either Fire or Dark. Each alternative keeps its own minimum and fixed maximum or Any; satisfying both counts once. Open any alternative to edit it, add another, or remove it. When only one alternative remains it becomes an ordinary requirement with its bounds intact. If edits are pending, extension buttons explicitly save them before continuing. Result groups organize combo results; they do not change the expression.</p>
-        <p>Separate positive requirements still need distinct copies across the selected route. <code>Fire (2–2) OR Dark (2–2)</code> needs two Fire or two Dark, not one of each. Repeated references to the exact same target intersect their bounds; use Min to request multiple copies.</p>
-        <p>Requirements can reference:</p>
+    <section id="simulations" class="mb-4">
+        <h2>Inspect and configure effects</h2>
+        <p>Expand a card to inspect its saved simulation. Maintained definitions show <strong>Built-in simulation</strong>; incomplete printed-card models show <strong>Partial</strong>. <strong>Model notes</strong> contains card-specific assumptions or saved-version information. A recognized import or database selection can receive a maintained plan; other cards start ordinary.</p>
+        <p>Open <strong>Customize simulation</strong> or <strong>Configure simulation</strong>, edit, then <strong>Save</strong>. <strong>Cancel</strong> leaves the saved plan unchanged. Saving a change creates a <strong>Custom simulation</strong>, even if you later match the built-in values manually. <strong>Restore built-in simulation</strong> explicitly applies the current plan. Loading preserves saved plans; compatible built-in descriptions can refresh without changing the saved settings. Differing historical plans keep their own notes. Unsupported execution models are reported rather than replaced by generic draws.</p>
+        <p>Custom choices include <strong>None</strong>, draws, and <strong>Search 1</strong>. None makes the card ordinary without deactivating it. An activating effect consumes its source. <strong>Once per turn</strong> is shared by copies of the same entry; later copies remain held. With it off, newly drawn copies may also activate. Separate entries have independent allowances.</p>
+        <p><strong>Before drawing</strong> can require an eligible hand cost; <strong>After drawing</strong> can require a removal. Filters support properties, same-card AND and OR. The activating copy cannot pay its own cost. <strong>Advanced → Banish from deck</strong> removes hidden top cards before drawing; saved milling operations deplete the deck afterward. A full draw batch and cost must be possible before activation. Otherwise the source stays held without spending its allowance. A failed mandatory removal remains a failed outcome in the original denominator.</p>
+        <p>The fixed keep policy protects positive combo pieces and usable effects before other cards; it is shared by all result rows and can change when active combos change. It does not optimize gameplay. <strong>Draw activation priority</strong> defaults to Encounter order. Choose Custom priority to rank entries with arrows or a direct destination. A batch, mill and removal finish before the next effect; newly drawn higher-priority effects can then overtake waiting ones. Rankings are saved, while visual deck sorting does not change them.</p>
+        <p>Draws and hand operations resolve before optional searches. Each search consumes a held source and transfers one eligible remaining target; searches share copy and deck-capacity limits. Fetched effects stay in hand and do not restart resolution. Different combo rows may use different legal search choices, while groups and the total count each random outcome once. Search plus draw on the same source is unsupported.</p>
+        <p>Completed physical Exact counts surviving search targets after supported banishment, milling, costs and removals, including ordered draw paths. Fast can prove a result exact or report bounds/Uncertified when survival is unproven. Neither mode infers banished-card recovery, GY triggers or other omitted gameplay. Removing a cost creates a different hypothetical model, not necessarily an upper bound on the printed card.</p>
+    </section>
+
+    <section id="modes" class="mb-4">
+        <h2>Choose a calculation mode</h2>
         <ul>
-            <li>a category,</li>
-            <li>a specific card,</li>
-            <li>or a mixture of both.</li>
+            <li><strong>Progressive (default):</strong> present completed Fast first, then continue physical Exact if needed. A proven Fast result finishes immediately. An interrupted upgrade keeps the accepted Fast result and its accuracy.</li>
+            <li><strong>Fast only:</strong> run Fast once without an automatic upgrade. Its result may be Exact, Bounded or Uncertified.</li>
+            <li><strong>Exact only:</strong> publish values only when physical Exact completes. A failed request supplies no new values.</li>
+            <li><strong>No effect simulation:</strong> count the dealt hand without executing any configured effects. Saved card settings are preserved.</li>
         </ul>
-        <p>Common card properties are available in card, combo, and draw-filter selectors before a matching card is present. Imported cards expose objective properties such as Monster, attributes, levels, and Quick-Play Spell using the same metadata identities. Specific values such as archetypes and monster types appear when relevant. Derived properties are read-only; use your own categories for custom roles such as Starter or Extender.</p>
-        <p>Each requirement has a minimum and maximum count. Leave <strong>Max</strong> empty for <strong>Any</strong> (the current hand size), or enter a number for a fixed maximum; <code>0</code> remains a fixed zero.</p>
-        <p>Separate positive requirements need separate physical card copies. For example, if a card belongs to both <code>VS Starter</code> and <code>Fire</code>, one copy cannot satisfy both parts of <code>VS Starter + Fire</code> by itself.</p>
-        <p>Maximums apply to all matching cards in the hand. Setting both the minimum and maximum to <code>0</code> can therefore be used to exclude a card or category from a combo entirely.</p>
+        <p>Interactive Exact and Progressive's Exact stage have no calculation deadline or cumulative Work cutoff. You can cancel; Storage limits, unsupported cases and failures still apply. Unlimited Work does not guarantee completion. Fast and No effect simulation have a finite 150-million-unit Work allowance; units are not seconds. A larger <strong>Storage safety limit</strong> may allow more states but uses more browser memory and is a runtime preference, not a session setting.</p>
+        <p>A slow-configuration notice is guidance, not a completion promise. <strong>Recalculate using Exact</strong> makes a one-off request without changing your selected mode.</p>
     </section>
 
-    <section class="mb-4">
-        <h2>Deterministic draw effects</h2>
-        <p>Expand a card to see its saved simulation. Maintained effects show <strong>Built-in simulation</strong>; each is defined by its own card-effect class. Open <strong>Customize simulation</strong> or <strong>Configure simulation</strong> to edit, then <strong>Save</strong> or <strong>Cancel</strong>. Opening or canceling the editor leaves saved settings unchanged. Built-in effects have a neutral check icon; partial models are marked <strong>Partial</strong>. <strong>Model notes</strong> appears only for card-specific limitations or saved-version information.</p>
-        <p>In the custom editor, choose <strong>None</strong>, <strong>Draw 1</strong>, <strong>Draw 2</strong>, or <strong>Draw 3</strong>. With <strong>Once per turn</strong> enabled (the default), the first copy encountered automatically draws that many cards and is consumed; later copies of the same entry stay in hand. Turn it off to let every copy activate and be consumed, including copies drawn by another effect. Separate entries have independent allowances, even when their names match.</p>
-        <p>Requirements apply to the final hand. Retained duplicates count toward categories, specific-card requirements, and maximums; <strong>Any</strong> uses the complete final hand size. An effect activates only when its full draw amount is available; otherwise its source stays in hand and the outcome is evaluated normally in the original probability denominator.</p>
-        <p><strong>None</strong> makes the card ordinary without deactivating it. Newly imported or explicitly selected real cards in a small curated set receive a built-in simulation. Other imports and selections, and manual free-text cards, start with no effect. Saving a change creates a <strong>Custom simulation</strong>, even if you later return its values to the built-in values. <strong>Restore built-in simulation</strong> explicitly applies the current definition. Saved sessions retain their exact settings, built-in revisions and limitations; older snapshots show <strong>Saved simulation</strong>. Unsupported execution models are reported and cannot silently run as generic draws. When a draw amount is set, <strong>After drawing</strong> supports None, Remove 1, or Remove 2. <strong>Eligible</strong> supports Any card, one category/property, same-card AND groups, or OR alternatives containing those groups. Use <strong>Add AND</strong> within a filter alternative to require all selected properties on the same card. New Dark World Dealings defaults to Draw 1 / discard 1; Graceful Charity defaults to Draw 3 / discard 2, both without once-per-turn limits. Existing saves do not gain these discard settings. New Allure of Darkness defaults to Draw 2 / non-OPT / remove one DARK card; Radiant Typhoon Vision defaults to Draw 2 / OPT / remove one Quick-Play Spell OR Radiant Typhoon card. Missing eligible material fails the branch without renormalizing other outcomes. Existing saved Allure/Radiant cards keep their earlier settings. Choosing Draw None clears the removal setting and filter.</p>
-        <p>The gear <strong>Calculation settings</strong> menu offers <strong>Progressive (default)</strong>, <strong>Fast only</strong>, <strong>Exact only</strong> and <strong>No effect simulation</strong>. Progressive shows a complete Fast result first, then attempts physical Exact on the same saved rules and fixed policy. Already proven Fast results finish immediately. Fast only keeps its completed bounds or Uncertified result without an upgrade. Exact only returns values when the physical solver proves every row; failures return no values. No effect simulation remains exact for the dealt hand with all effects ignored. These modes do not simulate full gameplay or optimal play.</p>
-        <p>Progressive has no calculation time cutoff. Exact continues until completion, cancellation, a Storage limit, an unsupported case or an error; an interrupted upgrade keeps the completed Fast result. Fast keeps its bounded 150M Work allowance; Exact has no Work cutoff, even when Fast has no Work remaining. Both stages use the selected Storage tier. Worker startup retains a separate 30-second guard. Actual interruption of automatic work retains the 2.5-second restart delay. Schema 11 saves the strategy separately: older Fast sessions select Progressive, while new Fast-only selections remain distinct. Saved Exact and No effect simulation selections and card settings are preserved. Storage remains a runtime preference.</p>
-        <p>A nonblocking pre-calculation notice flags potentially expensive draw configurations. Slow calculations remain cancelable. A failed Exact-only request publishes no new values; an interrupted automatic upgrade retains the completed Fast result. An uncertain current Fast result offers <strong>Recalculate using Exact</strong>. This one-off request keeps your mode preference, selected Storage limit and manual cancellation, without a Work cutoff. The next ordinary Calculate uses your selected model.</p>
-        <p>Fast and No effect simulation allow 150 million bounded work units, which are not elapsed seconds. Interactive Exact has no cumulative Work cutoff and can take arbitrarily long; completion is not guaranteed. You can cancel it at any time. Storage limits apply separately. Larger mixed draw configurations may require an explicit <strong>High</strong> or <strong>VeryHigh</strong> storage selection; a higher work allowance cannot resolve a Storage limit.</p>
-        <p>With configured effects, the full draw batch and any complete pre-draw cost are checked before activation. If the batch cannot fit, the source stays in hand and neither OPT nor cost is consumed. A legal activation consumes its source, draws exactly its configured amount, and performs its removal before the next surviving FIFO candidate activates. The consumed source cannot be removed again, but newly drawn cards can. Only eligible cards enter the removal ranking. Keep priority is: held positive combo pieces and searches with plausible access to one; other usable searches and draw cards; potentially usable cost-deferred draws; other cards. Search capacity excludes the draw already reserved for a pre-draw cost. Maximum-only requirements do not protect cards. Ties use stable requirement membership and card identity, independently of deck-row order. Discarded candidates never activate.</p>
-        <p><strong>Before drawing</strong> can remove one or two eligible cards from hand as an activation cost. The full cost must be available without using the activating copy itself. If it cannot be paid, the source stays in hand and does not use its once-per-turn allowance. FIFO candidates that cannot pay are deferred; after another activation finishes, retry from the oldest surviving candidate. Candidates with too few cards for their full batch are not retried because the deck only gets smaller. A pass without activation ends resolution. Costs use the same deterministic keep policy as post-draw removals.</p>
-        <p><strong>Advanced → Banish from deck</strong> in the custom editor removes 0–60 unobserved top cards face-down before drawing, independently of hand costs. The built-in Pot of Desires simulation banishes 10 then draws 2, once per turn: at least 12 cards must physically remain. Later effects see the depleted deck size. Banished identities, recoveries and whether combo resources remain in deck are not simulated. For an unknown shuffled deck, hidden identities are averaged out exactly under these limits. With <strong>No effect simulation</strong>, no card effects resolve, and existing saved cards keep their settings.</p>
-        <p>Customize an individual card with <strong>Before drawing: None</strong>, <strong>After drawing: None</strong>, or <strong>Banish from deck: 0</strong> to remove only that operation. Other cards keep their saved costs. The reported accuracy refers to the modified plan, which may differ from the printed card. For example, removing Allure’s post-draw DARK banish does not model Maliss recovery or banish triggers. Such hypothetical results are not guaranteed upper bounds under maximum counts or exclusions. <strong>Restore built-in simulation</strong> restores the maintained plan.</p>
-        <p>New Trade-In simulations remove one Level 8 before Draw 2, without OPT. New Orcustrated Return simulations remove one (Orcust AND Monster) OR (World Legacy AND Monster) from hand before Draw 2, with OPT. Return's field alternative and Graveyard/discard triggers are not modeled. Existing saves do not gain these presets.</p>
-        <p>All individual, group, and total results use the same policy and resulting hands. Changing active routes can change which cards are protected. Random draws are counted exactly for this deterministic policy; this is <strong>not optimal-play simulation</strong>. Optional draw activation, discard triggers, and other card effects remain unsupported.</p>
+    <section id="results" class="mb-4">
+        <h2>Read and compare results</h2>
+        <p>Each active combo has a row. <strong>Any active combo</strong> counts success in at least one active combo; group rows count success in at least one member. Overlapping successes count once, so do not add individual percentages.</p>
+        <ul>
+            <li><strong>Exact / ±0%:</strong> proven probability for the configured model, including Fast cases that prove exactness.</li>
+            <li><strong>Bounded / ±:</strong> a certified interval encloses the physical-model probability. The displayed percentage is its midpoint, with an outward-rounded radius.</li>
+            <li><strong>Uncertified:</strong> a completed modeled result has no established physical error bound. Its physical exactness is unproven.</li>
+        </ul>
+        <p>Hover or keyboard-focus a result value for its primary fraction. For a bounded Fast result, that fraction belongs to the primary model and can differ from the displayed midpoint or even exceed the certified upper endpoint. Inspect accuracy details and copy results with their context. Exactness applies to the saved model, including its omissions.</p>
+        <p><strong>Preliminary</strong> means an accepted Fast result is awaiting a possible upgrade. A previous/stale label means inputs changed after calculation. Pin results to retain their captured context for comparison; a pinned or copied value is not recalculated by editing the workspace.</p>
     </section>
 
-    <section class="mb-4">
-        <h2>Reading the results</h2>
-        <p>Each active combo gets its own probability.</p>
-        <p>Because the same opening hand can satisfy several combos, those percentages may overlap and should not simply be added together.</p>
-        <p><strong>Any active combo</strong> is the exact probability that the opening hand satisfies at least one active combo. A hand that satisfies several routes is still counted only once.</p>
-        <p>Combos can also be placed into groups. A group result works the same way: it shows the probability of opening at least one active combo in that group.</p>
+    <section id="sessions" class="mb-4">
+        <h2>Save, share and recover work</h2>
+        <p><strong>Save Session</strong> downloads the accepted deck, categories, requirements, groups, ordering and calculation preferences. Load a session to restore that setup. Save editor drafts first: unsaved drafts, calculation results, artwork and theme preferences are not session content. Supported older sessions migrate without silently replacing their saved effects; an older application may reject newer saves.</p>
+        <p><strong>Copy share link</strong> puts the accepted setup in the link. Anyone with it can read the setup; it is not encrypted. Opening it offers an explicit load choice before replacing the workspace. Large sessions may need a session file instead. A failed clipboard operation offers selectable text.</p>
+        <p>Local recovery stores accepted workspace edits in this browser's storage. It can offer a draft after returning, but storage denial, clearing, a crash or unsaved drafts can prevent recovery. Keep session files for durable copies. Multiple tabs can detect conflicting recovery records; choose which workspace to keep rather than assuming live synchronization.</p>
+        <p>Imported thumbnails load as rows approach the viewport; expand a card for a larger preview. Missing artwork does not affect saved sessions or calculations. Images are supplied by <a href="https://ygoprodeck.com/api-guide/" target="_blank" rel="noopener noreferrer">YGOPRODeck</a> and retained on project hosting; the software license does not cover third-party artwork.</p>
     </section>
 
-    <section class="mb-4">
+    <section id="example" class="mb-4">
         <h2>Example: Vanquish Soul / K9</h2>
-        <p>The included Vanquish Soul / K9 example models nine underlying routes as eight combo definitions. <code>VS Starter + (Fire OR Dark)</code> combines two starter routes into one OR definition. The routes either reach the full Vanquish Soul setup directly or can make Ripper + Saryuja as a bridge. Half boards are intentionally not counted.</p>
-        <p>Reinforcement of the Army searches a remaining Razen copy instead of carrying proxy VS/FIRE roles. Its targets are Level 1–4 Warrior monsters with objective metadata in the configured deck; manual property overrides do not affect eligibility.</p>
-        <p>All draws and hand removals resolve before optional searches. Each search consumes its source and transfers one remaining target to hand. Each combo uses any legal target choices that fulfill it; different rows may use different choices. Groups and the total count each random outcome once, including when several choices win. Copies, exclusions and maxima still apply. Only searchers held after draws can activate; fetched effects stay in hand. Searches without an eligible target outside the current hand or remaining capacity receive no extra discard protection.</p>
-        <p>Search plus draw on one source is unsupported. Mixed draw/search results use a search-access approximation: targets outside the final hand are assumed available, even if drawn and removed, banished or milled. Each substitution uses one available deck slot; no target copy can be claimed twice. Custom search filters, disabling, and Restore built-in are available in the card editor. Saved schema-6 sessions preserve the search plan; older sessions keep their original settings and proxy roles until explicitly changed.</p>
-        <p>With all eight combo definitions active, the modeled probability of opening at least one of them is <strong>83.74%</strong>.</p>
-        <p>Use <strong>Try It with Example Data</strong> below to load the complete configuration into the calculator.</p>
+        <p>The supplied session contains 24 card entries representing 40 copies, a five-card opening hand, eight combo definitions, and the <strong>Full VS</strong> and <strong>Full K9</strong> groups. It has no user-defined categories; requirements use card identities and objective metadata. <code>VS Starter + (Fire OR Dark)</code> combines alternatives in one definition.</p>
+        <p>Search cards transfer eligible remaining monsters instead of carrying proxy monster roles. Reinforcement of the Army uses one Level 1–4 Warrior term; it and Chaotic Elements use their current maintained plans in this example.</p>
+        <p>With all eight combos active and <strong>Exact</strong> selected, the modeled total is <strong>85.92% (565375/658008)</strong>. Load the example to inspect the complete configuration; loading replaces the current setup.</p>
         <div class="mt-3 example-session-action">
             <button class="btn btn-primary" disabled="@_loadingExample" @onclick="LoadExampleSession">Try It with Example Data</button>
             <div class="example-session-status">
                 <SessionLoadingStatus RequestVersion="@(_loadingExample ? 1L : null)" />
             </div>
             @if (!string.IsNullOrEmpty(_errorMessage)) {
-                <div class="alert alert-danger mt-2">
-                    @_errorMessage
-                </div>
+                <div class="alert alert-danger mt-2">@_errorMessage</div>
             }
         </div>
     </section>
 
     <section class="mb-4">
-        <h2>Experimenting with a deck</h2>
-        <p>Cards and combos can be temporarily deactivated without deleting them. This is useful for comparing deck choices or removing a route from the calculation.</p>
-        <p>You can also reorder cards, categories, combos, and combo groups to keep larger configurations readable.</p>
-        <p>New saved sessions use schema 5 for pre-draw costs. Supported older sessions migrate without acquiring costs or presets; schema 4 draw settings retain their meaning. Older applications may reject new saves; ancient readers without schema checks may misinterpret them.</p>
-        <p>When you want to keep a setup, save it as a session. Sessions preserve the deck, categories, combo definitions, ordering, and other calculator settings.</p>
-        <p>Imported cards show thumbnails automatically as their rows approach the viewport. Expand a card editor for a larger preview using the same image. Artwork is served from retained project-hosted copies and is recovered using the card's external ID when a session is loaded. Missing or unavailable images do not affect calculations. Card images are supplied by <a href="https://ygoprodeck.com/api-guide/" target="_blank" rel="noopener noreferrer">YGOPRODeck</a>; the calculator's software license does not cover third-party artwork.</p>
-    </section>
-
-    <section class="mb-4">
-        <h2>Credits</h2>
+        <h2>Further reading and credits</h2>
+        <p>The <a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/README.md" target="_blank" rel="noopener noreferrer">documentation index</a> links the supported model, worked probability explanation, and accuracy/resource reference. These describe the development branch; the stable deployment may differ.</p>
         <p>Created by <a href="https://github.com/SeyTi01" target="_blank" rel="noopener noreferrer">SeyTi01</a>.</p>
     </section>
 </div>
