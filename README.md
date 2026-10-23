@@ -6,7 +6,7 @@ Calculate opening-hand combo probabilities for Yu-Gi-Oh! decks with overlapping 
 
 This README describes the current `dev` branch; the stable deployment may differ.
 
-![Dark full-page calculator with loaded card artwork, ROTA's one editable Warrior AND Level 1–4 selector row, and a settled Progressive result of 85.92%.](YGOProbabilityCalculatorBlazor/Assets/probability_calculator_example.png)
+![Dark full-page calculator showing a 40-card Vanquish Soul deck, eight combos, and a settled Progressive result of 85.92%.](YGOProbabilityCalculatorBlazor/Assets/probability_calculator_example.png)
 
 ## What it models
 
