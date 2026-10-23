@@ -23,7 +23,7 @@ An interrupted Progressive upgrade retains the accepted Fast result and its accu
 | Bounded | Certified lower and upper endpoints enclose the physical-model probability. Each total, group and combo has its own interval. |
 | Uncertified | A completed primary modeled result exists, but no usable physical certificate was established. Treat it as the configured approximation, without an asserted physical error bound. |
 
-Fast does not always approximate. Search-only cases and other proven routes can be exact; uncertain survival after draws can require bounds. Certification runs after a complete primary result and can itself exhaust its allowance or fail, leaving that primary Uncertified. Exhausting Work before primary completion is a calculation failure, not a completed Uncertified answer.
+Fast does not always approximate. Search-only cases and other proven routes can be exact; uncertain survival after draws can require bounds. Certification runs after a complete primary result. If no usable interval completes, a certification limit or error leaves that primary Uncertified. If a later refinement fails, the last completed certified interval is retained. Exhausting Work before primary completion is a calculation failure, not a completed Uncertified answer.
 
 Keep three quantities separate:
 
