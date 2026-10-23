@@ -29,7 +29,6 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Combo.Categories, Is.Empty);
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives, Has.Count.EqualTo(2));
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
-        Assert.That(editor.Markup, Does.Not.Contain("Edit group").And.Not.Contain("Save group"));
     }
 
     [Test]

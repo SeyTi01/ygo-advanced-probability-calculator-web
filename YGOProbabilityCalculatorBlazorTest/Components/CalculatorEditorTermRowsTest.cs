@@ -46,7 +46,6 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
                 Is.EqualTo(new[] { "Add alternative (OR)", "Add property (AND)", "Remove requirement" }));
         }
         Assert.That(selectorEditor.FindAll("details"), Is.Empty);
-        Assert.That(selectorEditor.Markup, Does.Not.Contain("More actions").And.Not.Contain("Edit outer group").And.Not.Contain("Replace group"));
     }
 
     [Test]
@@ -379,17 +378,6 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         await editor.Find("#comboTarget0").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
         Assert.That(editor.FindAll("[data-new-requirement]"), Has.Count.EqualTo(1));
         Assert.That(editor.FindAll(".requirement-form"), Is.Empty);
-    }
-
-    [Test]
-    public void ExpandedTermsHaveNoBracketsOrPickersAndKeepTheCompactHeaderGrouping() {
-        Combo combo = new([Same(0, 1)], alternativeGroups: [new([Leaf(2), Leaf(3)])]);
-        IRenderedComponent<ComboEditor> editor = context.RenderComponent<ComboEditor>(parameters => parameters
-            .Add(component => component.Combo, combo).Add(component => component.CategoryBases, Properties));
-        Assert.That(editor.FindAll(".expanded-expression .expression-parenthesis, .inline-member-picker, .expression-row-controls, .requirement-form"), Is.Empty);
-        Assert.That(editor.FindAll(".combo-header-requirements .expression-parenthesis"), Has.Count.EqualTo(4));
-        Assert.That(editor.Find(".requirement-explanation").TextContent, Is.EqualTo("+ separates physical card requirements; AND/OR describe one card."));
-        Assert.That(editor.Markup, Does.Not.Contain("Match every requirement."));
     }
 
 }

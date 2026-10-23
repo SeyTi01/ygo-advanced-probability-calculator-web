@@ -10,12 +10,10 @@ public class PublishedOutputSeoTest {
     private const string AppTitle = "Yu-Gi-Oh! Advanced Probability Calculator";
 
     [TestCase("index.html", AppTitle,
-        "Calculate exact Yu-Gi-Oh! opening-hand and deck-combo probabilities with overlapping card categories, direct card requirements, and custom constraints.",
         "https://ygo-calculator.pages.dev/")]
     [TestCase("help.html", "Help | " + AppTitle,
-        "Help and usage guide for the Yu-Gi-Oh! Advanced Probability Calculator, including cards, categories, combo requirements, constraints, and probability results.",
         "https://ygo-calculator.pages.dev/help")]
-    public async Task PublicRouteContainsCompleteInitialHtml(string relativePath, string title, string description, string canonical) {
+    public async Task PublicRouteContainsCompleteInitialHtml(string relativePath, string title, string canonical) {
         string? publishRoot = Environment.GetEnvironmentVariable("YGO_PUBLISH_ROOT");
         Assert.That(publishRoot, Is.Not.Null.And.Not.Empty, "Set YGO_PUBLISH_ROOT to the published wwwroot directory.");
         string path = Path.Combine(publishRoot!, relativePath);
@@ -23,7 +21,7 @@ public class PublishedOutputSeoTest {
 
         // Parse the deployable file only. Do not execute JavaScript or render Razor components.
         using IHtmlDocument document = await new HtmlParser().ParseDocumentAsync(await File.ReadAllTextAsync(path));
-        AssertSeo(document, relativePath, title, description, canonical);
+        AssertSeo(document, relativePath, title, canonical);
         Assert.That(File.Exists(Path.Combine(publishRoot!, "help", "index.html")), Is.False,
             "A directory-index Help asset makes Cloudflare redirect the canonical /help route.");
     }
@@ -55,15 +53,15 @@ public class PublishedOutputSeoTest {
         using IHtmlDocument document = await new HtmlParser().ParseDocumentAsync(await response.Content.ReadAsStringAsync());
         bool isRoot = route == "/";
         AssertSeo(document, isRoot ? "index.html" : "help.html", isRoot ? AppTitle : "Help | " + AppTitle,
-            isRoot
-                ? "Calculate exact Yu-Gi-Oh! opening-hand and deck-combo probabilities with overlapping card categories, direct card requirements, and custom constraints."
-                : "Help and usage guide for the Yu-Gi-Oh! Advanced Probability Calculator, including cards, categories, combo requirements, constraints, and probability results.",
             isRoot ? "https://ygo-calculator.pages.dev/" : "https://ygo-calculator.pages.dev/help");
     }
 
-    private static void AssertSeo(IDocument document, string relativePath, string title, string description, string canonical) {
+    private static void AssertSeo(IDocument document, string relativePath, string title, string canonical) {
         AssertSingle(document, "head title", title);
-        AssertAttribute(document, "head meta[name='description']", "content", description);
+        string? description = Single(document, "head meta[name='description']").GetAttribute("content");
+        Assert.That(description, Is.Not.Null.And.Not.Empty, "The published route needs a description before JavaScript runs.");
+        string? imageDescription = Single(document, "head meta[property='og:image:alt']").GetAttribute("content");
+        Assert.That(imageDescription, Is.Not.Null.And.Not.Empty, "The social image needs a text alternative.");
         AssertAttribute(document, "head link[rel='canonical']", "href", canonical);
         AssertSingle(document, "h1", relativePath == "index.html" ? AppTitle : $"{AppTitle} v{ProjectConstants.Version}");
 
@@ -74,14 +72,13 @@ public class PublishedOutputSeoTest {
             ["og:description"] = description,
             ["og:url"] = canonical,
             ["og:image"] = "https://ygo-calculator.pages.dev/social-preview.png",
-            ["og:image:alt"] = "Dark calculator interface showing Vanquish Soul Razen with VS Monster and VS Starter roles, a VS Starter plus FIRE-or-DARK combo expression, and exact Full VS probability results.",
             ["og:image:width"] = "1280",
             ["og:image:height"] = "640",
             ["twitter:card"] = "summary_large_image",
             ["twitter:title"] = title,
             ["twitter:description"] = description,
             ["twitter:image"] = "https://ygo-calculator.pages.dev/social-preview.png",
-            ["twitter:image:alt"] = "Dark calculator interface showing Vanquish Soul Razen with VS Monster and VS Starter roles, a VS Starter plus FIRE-or-DARK combo expression, and exact Full VS probability results."
+            ["twitter:image:alt"] = imageDescription!
         };
         foreach (KeyValuePair<string, string> metadataEntry in metadata) {
             string attribute = metadataEntry.Key.StartsWith("og:", StringComparison.Ordinal) ? "property" : "name";

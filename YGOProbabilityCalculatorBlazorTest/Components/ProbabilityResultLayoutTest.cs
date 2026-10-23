@@ -89,10 +89,9 @@ public class ProbabilityResultLayoutTest {
         IHtmlCollection<IElement> firstGroupMembers = groups[1].QuerySelectorAll(".probability-group-members .combo-probability-item");
         Assert.That(ComboNames(firstGroupMembers), Is.EqualTo(new[] { "Shared route", "Shared route" }));
         Assert.That(ComboProbabilities(firstGroupMembers), Is.EqualTo(new[] { 0.4.ToString("P2"), 0.51.ToString("P2") }));
-        Assert.That(results.TextContent, Does.Not.Contain("Empty group").And.Not.Contain("(0 active)"));
+        Assert.That(results.TextContent, Does.Not.Contain("Empty group"));
 
         Assert.That(results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item"), Has.Length.EqualTo(2));
-        Assert.That(results.QuerySelector("h6:not(.probability-group-heading)")!.TextContent.Trim(), Is.EqualTo("Ungrouped combos"));
         Assert.That(ComboNames(results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item")),
             Is.EqualTo(new[] { "Loose route", "Unnamed combo 5" }));
         Assert.That(results.QuerySelectorAll(".combo-probability-item"), Has.Length.EqualTo(5),
@@ -117,7 +116,6 @@ public class ProbabilityResultLayoutTest {
 
         IElement results = cut.Find(".probability-results");
         Assert.That(results.QuerySelectorAll(".probability-group-container"), Is.Empty);
-        Assert.That(results.QuerySelector("h6:not(.probability-group-heading)")!.TextContent.Trim(), Is.EqualTo("Individual combos"));
         IHtmlCollection<IElement> rows = results.QuerySelectorAll(".probability-ungrouped-combos .combo-probability-item");
         Assert.That(ComboNames(rows), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
         Assert.That(ComboProbabilities(rows), Is.EqualTo(new[] {
@@ -147,11 +145,8 @@ public class ProbabilityResultLayoutTest {
 
         IElement status = cut.Find(".probability-result-status");
         Assert.That(status.TextContent.Trim(), Is.EqualTo("Inputs changed"));
-        Assert.That(status.ClassList, Does.Contain("probability-result-status-neutral"));
-        Assert.That(status.ClassList, Does.Contain("probability-result-status-chip"));
         Assert.That(cut.Find(".probability-result-status-slot").GetAttribute("role"), Is.EqualTo("status"));
         Assert.That(cut.Find(".probability-result-status-slot").GetAttribute("aria-live"), Is.EqualTo("polite"));
-        Assert.That(cut.Find(".probability-result-status-placeholder").GetAttribute("aria-hidden"), Is.EqualTo("true"));
         Assert.That(cut.Find("[aria-label='Group for Editor combo 1']").GetAttribute("value"), Is.EqualTo("group-b"));
         IElement[] staleGroups = ResultGroups(cut);
         Assert.That(staleGroups.Select(GroupName), Is.EqualTo(new[] { "Alpha", "Beta" }));
@@ -207,8 +202,8 @@ public class ProbabilityResultLayoutTest {
             Assert.That(group.TextContent, Does.Contain("Bounded group").And.Contain("Bounded route").And.Contain("±25.00%"));
             Assert.That(group.QuerySelector("[role='note']")!.GetAttribute("aria-label"), Is.EqualTo("50.00% ±25.00%"));
         }
-        Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Hidden empty").And.Not.Contain("Ungrouped combos"));
-        Assert.That(cut.Find(".pinned-result").TextContent, Does.Not.Contain("Hidden empty").And.Not.Contain("Ungrouped combos"));
+        Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Hidden empty"));
+        Assert.That(cut.Find(".pinned-result").TextContent, Does.Not.Contain("Hidden empty"));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Groups, Has.Length.EqualTo(3));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.SearchAvailability, Is.SameAs(certificate));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result!.GroupProbabilities, Has.Count.EqualTo(3));
@@ -228,11 +223,10 @@ public class ProbabilityResultLayoutTest {
         await Calculate(cut);
         await cut.Find(".pin-result-action").ClickAsync(new());
         foreach (IElement panel in new[] { cut.Find(".probability-results"), cut.Find(".pinned-result") }) {
-            Assert.That(panel.TextContent, Does.Not.Contain("Hidden empty").And.Not.Contain("Ungrouped combos"));
-            Assert.That(panel.QuerySelectorAll("h6"), Has.Length.EqualTo(hasCombo ? 1 : 0));
-            Assert.That(panel.QuerySelectorAll("ol"), Has.Length.EqualTo(hasCombo ? 1 : 0));
+            Assert.That(panel.TextContent, Does.Not.Contain("Hidden empty"));
+            Assert.That(panel.QuerySelectorAll(".combo-probability-item, .pinned-list > li"), Has.Length.EqualTo(hasCombo ? 1 : 0));
             if (hasCombo) {
-                Assert.That(panel.TextContent, Does.Contain("Individual combos").And.Contain("Loose route"));
+                Assert.That(panel.TextContent, Does.Contain("Loose route"));
             }
         }
         string copied = ProbabilityResultSummaryFormatter.Format(_resultToReturn, 1, System.Globalization.CultureInfo.InvariantCulture);

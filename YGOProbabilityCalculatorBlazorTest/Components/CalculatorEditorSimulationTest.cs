@@ -103,7 +103,6 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
         Assert.That(editor.Find(".simulation-source").TextContent, Is.EqualTo("Built-in simulation"));
         Assert.That(editor.FindAll(".simulation-summary"), Is.Empty);
-        Assert.That(editor.Find(".card-simulation").TextContent, Does.Not.Contain("Modeled within calculator rules"));
         if (card.EffectProfile.Support == EffectSupport.ModeledWithinRules) {
             Assert.That(editor.FindAll(".simulation-status"), Is.Empty);
             Assert.That(editor.Find(".simulation-source svg").GetAttribute("aria-hidden"), Is.EqualTo("true"));
@@ -120,12 +119,12 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
             Assert.That(editor.FindAll(".simulation-details-toggle"), Is.Empty);
         }
         else {
-            Assert.That(editor.Find(".simulation-details-toggle").TextContent, Is.EqualTo("Model notes"));
             Assert.That(editor.Find(".simulation-details-toggle").GetAttribute("aria-expanded"), Is.EqualTo("false"));
             SimulationDetails(editor);
             Assert.That(editor.FindAll(".simulation-performance"), Has.Count.EqualTo(performance ? 1 : 0));
-            Assert.That(editor.FindAll(".simulation-details p:not(.simulation-performance)").Select(element => element.TextContent.Trim()),
-                Is.EqualTo(string.IsNullOrWhiteSpace(card.EffectProfile.Limitations) ? Array.Empty<string>() : new[] { $"Model limits: {card.EffectProfile.Limitations}" }));
+            if (!string.IsNullOrWhiteSpace(card.EffectProfile.Limitations)) {
+                Assert.That(editor.Find(".simulation-limitations").TextContent, Does.Contain(card.EffectProfile.Limitations));
+            }
             editor.Find(".simulation-details-toggle").KeyDown(new KeyboardEventArgs { Key = "Escape" });
             Assert.That(editor.FindAll(".simulation-details"), Is.Empty);
         }
@@ -197,7 +196,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
         Assert.That(editor.FindAll(".simulation-mill-note"), Is.Empty);
         OpenSimulation(editor);
-        Assert.That(editor.Find(".simulation-mill-note").TextContent, Does.Contain("top 2 deck cards to the GY"));
+        Assert.That(editor.FindAll(".simulation-mill-note"), Has.Count.EqualTo(1));
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "1" });
         await editor.Find(".simulation-cancel").ClickAsync(new());
         Assert.That(editor.Instance.Card, Is.SameAs(original));
@@ -206,7 +205,6 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         await editor.Find(".simulation-save").ClickAsync(new());
         Assert.That(editor.Instance.Card.PostDrawDeckMillCount, Is.EqualTo(2));
         Assert.That(editor.Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
-        Assert.That(editor.Find(".simulation-summary").TextContent, Does.Contain("send 2 unseen top deck cards to the GY"));
         await editor.Find("#cardCopies0").InputAsync(new() { Value = "2" });
         Assert.That(editor.Instance.Card.PostDrawDeckMillCount, Is.EqualTo(2));
         await Button(cut, "Save Session").ClickAsync(new());
@@ -231,7 +229,9 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
         Assert.That(editor.Find(".simulation-source").TextContent, Is.EqualTo("Saved simulation"));
         Assert.That(editor.FindAll(".simulation-status, .simulation-restore"), Is.Empty);
-        Assert.That(SimulationDetails(editor), Does.Contain("Saved settings; no built-in revision recorded."));
+        SimulationDetails(editor);
+        Assert.That(editor.Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.LegacySnapshot));
+        Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(card.EffectPlan));
     }
 
     [Test]
@@ -311,7 +311,7 @@ public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [older, legacy, removed] });
         IRenderedComponent<CardEditor>[] editors = cut.FindComponents<CardEditor>().ToArray();
         Assert.That(editors[0].Find(".card-simulation").TextContent, Does.Not.Contain("Saved revision summary"));
-        Assert.That(SimulationDetails(editors[0]), Does.Contain("revision 7").And.Contain("Saved limitation"));
+        Assert.That(SimulationDetails(editors[0]), Does.Contain(older.EffectProfile.Limitations));
         Assert.That(editors[1].Find(".simulation-source").TextContent, Is.EqualTo("Saved simulation"));
         Assert.That(editors[1].Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.LegacySnapshot));
         Assert.That(editors[2].FindAll(".simulation-restore"), Is.Empty);

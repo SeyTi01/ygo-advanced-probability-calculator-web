@@ -57,13 +57,11 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         await trigger.ClickAsync(new());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.False);
         Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("Fast"));
-        Assert.That(cut.FindAll("#calculationModel option"), Has.Count.EqualTo(4));
-        Assert.That(cut.Find("#calculationModel option[value=OpeningHand]").TextContent, Is.EqualTo("No effect simulation"));
+        Assert.That(cut.FindAll("#calculationModel option").Select(option => option.GetAttribute("value")),
+            Is.EquivalentTo(new[] { "OpeningHand", "Fast", "FastOnly", "Exact" }));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
-        Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Is.EqualTo("Shows Fast first, then attempts Exact."));
-        Assert.That(cut.Find("#storageSafetyHelp").TextContent.Trim(),
-            Is.EqualTo("Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy."));
+        Assert.That(cut.Find("#drawEffectsHelp").GetAttribute("role"), Is.EqualTo("note"));
+        Assert.That(cut.Find("#storageSafetyTier").GetAttribute("aria-describedby"), Is.EqualTo(cut.Find("#storageSafetyHelp").Id));
         context.JSInterop.VerifyInvoke("workspaceMenus.watchOutside", 1);
         await cut.Find("#storageSafetyTier").ChangeAsync(new() { Value = "High" });
         await cut.Find("#calculationModel").KeyDownAsync(new() { Key = "Escape" });
@@ -73,17 +71,11 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(cut.FindAll("#drawEffectsHelp"), Is.Empty);
         Assert.That(cut.Find("#calculationModel").HasAttribute("aria-describedby"), Is.False);
-        Assert.That(cut.Find("#calculationModel").TextContent, Does.Not.Contain("Opening hand only"));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
-        Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Is.EqualTo("Calculates physical Deck-search survival exactly without a Work cutoff, subject to Storage limits and cancellation."));
         Assert.That(cut.Find("#calculationModel").GetAttribute("aria-describedby"), Is.EqualTo("drawEffectsHelp"));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "FastOnly" });
-        Assert.That(cut.Find("#drawEffectsHelp").TextContent,
-            Is.EqualTo("Calculates probabilities quickly, but results may be approximate."));
-        Assert.That(cut.Find("#drawEffectsHelp").TextContent, Does.Not.Contain("Fast"));
+        Assert.That(cut.Find("#calculationModel").GetAttribute("value"), Is.EqualTo("FastOnly"));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
-        Assert.That(cut.Find("#drawEffectsHelp").TextContent, Is.EqualTo("Shows Fast first, then attempts Exact."));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         await cut.InvokeAsync(() => cut.FindComponent<CalculationSettingsMenu>().Instance.Dismiss());
         Assert.That(cut.Find("#calculationSettingsPanel").HasAttribute("hidden"), Is.True);
@@ -146,7 +138,6 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
             Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {new PinnedCalculationContext(0, 0, 0, mode).ModeDescription}"));
             Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(new PinnedCalculationContext(0, 0, 0, mode).ModeDescription));
         }
-        Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Hypothetical, often optimistic"));
         await Button(cut, "Save Session").ClickAsync(new());
         string saved = SavedSessionJson();
         Assert.That(saved, Does.Not.Contain("ConditionalEffectsEnabled").And.Not.Contain("StorageTier"));

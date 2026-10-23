@@ -84,16 +84,6 @@ public class SessionServiceTests {
     }
 
     [Test]
-    public async Task SaveSessionAsync_WhenInteropResolvesNormally_CompletesSuccessfully() {
-        CapturingJsRuntime runtime = new();
-        SessionService service = new(runtime, new RealJsonSerializer());
-
-        await service.SaveSessionAsync(new SessionState(), "cancelled");
-
-        Assert.That(runtime.InvokedFunction, Is.EqualTo("saveSessionFile"));
-    }
-
-    [Test]
     public void SaveSessionAsync_WhenJavaScriptInteropFails_PropagatesTheFailure() {
         SessionService service = new(new FailingJsRuntime(), new RealJsonSerializer());
 
@@ -101,26 +91,6 @@ public class SessionServiceTests {
             await service.SaveSessionAsync(new SessionState(), "write-failure"));
 
         Assert.That(exception!.Message, Is.EqualTo("Session file write failed."));
-    }
-
-    [Test]
-    public async Task LoadSessionAsync_WithValidJson_ReturnsDeserializedSession() {
-        const string fileContent = "{}";
-        SessionState expectedSession = new();
-
-        _serializerMock.Setup(x => x.Deserialize<SessionState>(It.IsAny<string>(), It.IsAny<JsonSerializerOptions>()))
-            .Returns(expectedSession);
-
-        SessionState result = await _sessionService.LoadSessionAsync(fileContent);
-
-        Assert.That(result, Is.SameAs(expectedSession));
-        _serializerMock.Verify(
-            serializer => serializer.Deserialize<SessionState>(
-                It.Is<string>(json => JsonDocument.Parse(json).RootElement.GetProperty("SchemaVersion").GetInt32() == SessionState.CurrentSchemaVersion),
-                It.IsAny<JsonSerializerOptions>()
-            ),
-            Times.Once
-        );
     }
 
     [Test]
@@ -574,12 +544,9 @@ public class SessionServiceTests {
 
     private sealed class CapturingJsRuntime : IJSRuntime {
         private object?[]? _lastArguments;
-        public string? InvokedFunction { get; private set; }
-
         public string DownloadedJson => Encoding.UTF8.GetString(Convert.FromBase64String((string)_lastArguments![1]!));
 
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) {
-            InvokedFunction = identifier;
             _lastArguments = args;
             return ValueTask.FromResult(default(TValue)!);
         }

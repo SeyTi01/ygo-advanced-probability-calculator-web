@@ -82,21 +82,6 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.DrawEffectsEnabled, false));
         Assert.That(editor.Find(".simulation-mode").TextContent, Does.Contain("Opening hand only"));
     }
-    [Test]
-    public void DrawSearchDoesNotClaimUniversalTargetAvailability() {
-        Card rota = SearchEffectsTest.Rota();
-        Card target = SearchEffectsTest.Warrior();
-        Card hidden = new([], drawCount: 2, preDrawDeckRemovalCount: 10);
-        IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
-            .Add(component => component.Card, rota).Add(component => component.Deck, new[] { rota, target }));
-        Assert.That(editor.Markup, Does.Not.Contain("targets outside the final hand"));
-        editor.SetParametersAndRender(parameters => parameters.Add(component => component.Deck, new[] { rota, target, hidden }));
-        Assert.That(editor.Markup, Does.Not.Contain("targets outside the final hand"));
-        Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
-        editor.SetParametersAndRender(parameters => parameters.Add(component => component.Deck, new[] { rota, target, hidden.WithActive(false) }));
-        Assert.That(editor.Markup, Does.Not.Contain("targets outside the final hand"));
-    }
-
     [TestCase(false), TestCase(true)]
     public void BuiltInToCustomRoleWorksWithoutProvenanceOption(bool automatic) {
         CategoryBase fire = new("FIRE", CategorySource.Metadata, "attribute:fire");

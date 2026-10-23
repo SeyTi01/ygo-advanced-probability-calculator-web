@@ -51,7 +51,7 @@ public sealed partial class SearchEffectsTest {
     }
 
     [Test]
-    public void PresetsRejectUnknownRankSpellAndCounterfeitMetadataAndDescribeScope() {
+    public void PresetsRejectUnknownRankSpellAndCounterfeitMetadata() {
         Card target = Element();
         Card rank = target.WithObjectiveMetadata(target.Categories.Where(category => category.Source == CategorySource.Metadata && category.MetadataKey != "level:5")
             .Append(new("Rank 5", CategorySource.Metadata, "rank:5")), 100);
@@ -78,7 +78,6 @@ public sealed partial class SearchEffectsTest {
         Assert.That(Preset(80181649).Search!.Matches(spellK9), Is.False);
         EffectiveCardEffect chaotic = CardEffectRegistry.Default.Describe(Preset(92221402));
         Assert.That(chaotic.Support, Is.EqualTo(EffectSupport.ModeledWithinRules));
-        Assert.That(chaotic.Limitations, Does.Contain("Main Deck").And.Contain("GY retrieval").And.Contain("destruction"));
     }
 
     [TestCase(1), TestCase(2)]

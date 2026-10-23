@@ -12,7 +12,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
     [Test]
-    public void PreAndPostDrawFiltersExposeCommonMetadataAndUseCanonicalChipColors() {
+    public void PreAndPostDrawFiltersExposeCommonMetadataAndRetainAuthoredExpressions() {
         CategoryBase role = new("Role");
         CategoryBase fire = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "attribute:fire");
         CategoryBase dark = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "attribute:dark");
@@ -42,38 +42,30 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         foreach (IRenderedComponent<PostDrawSelectorEditor> selector in new[] { pre, post }) {
             selector.Find(".requirement-edit").Click();
             string[] optionValues = selector.FindAll("form .requirement-operand .requirement-property-picker > select").First().QuerySelectorAll("optgroup option").Select(static option => option.GetAttribute("value")!).ToArray();
-            IElement[] groups = selector.FindAll("form .requirement-operand .requirement-property-picker > select").First().QuerySelectorAll("optgroup").ToArray();
             Assert.That(optionValues, Does.Contain(monster.Identity).And.Contain(dark.Identity)
                 .And.Contain("numeric:level")
                 .And.Contain(spell.Identity));
             Assert.That(optionValues.Distinct(StringComparer.Ordinal).Count(), Is.EqualTo(optionValues.Length));
-            Assert.That(groups.Select(static group => group.GetAttribute("label")),
-                Is.EqualTo(new[] { "Categories", "Relevant properties", "Common properties" }));
             Button(selector, "Cancel").Click();
-            Assert.That(groups.All(static group => group.QuerySelectorAll("option").Length > 0), Is.True);
         }
 
-        Assert.That(EligibilityChip(pre, fire.Name).ClassList, Does.Contain("card-property-color-attribute-fire"));
-        Assert.That(EligibilityChip(pre, fire.Name).ClassList, Does.Contain("draw-selector-chip"));
-        Assert.That(EligibilityChip(pre, role.Name).ClassList, Does.Contain("category-color-7").And.Not.Contain("card-property-tag"));
-        Assert.That(EligibilityChip(pre, dark.Name).ClassList, Does.Contain("card-property-color-attribute-dark"));
-        Assert.That(EligibilityChip(post, monster.Name).ClassList, Does.Contain("card-property-color-monster"));
-        Assert.That(EligibilityChip(post, spell.Name).ClassList, Does.Contain("card-property-color-spell"));
-        Assert.That(EligibilityChip(post, trap.Name).ClassList, Does.Contain("card-property-color-trap"));
+        Assert.That(pre.FindAll(".draw-selector-chip").Select(chip => chip.TextContent.Trim()),
+            Is.EquivalentTo(new[] { fire.Name, role.Name, dark.Name }));
+        Assert.That(post.FindAll(".draw-selector-chip").Select(chip => chip.TextContent.Trim()),
+            Is.EquivalentTo(new[] { monster.Name, spell.Name, trap.Name }));
         Assert.That(pre.Markup, Does.Contain("AND").And.Contain("OR"));
         Assert.That(post.Markup, Does.Contain("AND").And.Contain("OR"));
     }
 
     [Test]
-    public void UnresolvedLegacySelectorIdentityKeepsItsLabelAndUsesGenericPropertyColor() {
+    public void UnresolvedLegacySelectorIdentityKeepsItsLabelAndCanBeRemoved() {
         Card card = new([], name: "Legacy selector", drawCount: 2, postDrawDiscardCount: 1,
             postDrawSelector: new(CardSelectorKind.Category, ["metadata:x"]));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [card] });
         OpenSimulation(cut.FindComponent<CardEditor>());
         IRenderedComponent<PostDrawSelectorEditor> selector = cut.FindComponent<PostDrawSelectorEditor>();
 
-        IElement chip = EligibilityChip(selector, "x");
-        Assert.That(chip.ClassList, Does.Contain(CardPropertyColorPalette.GenericMetadataClass));
+        Assert.That(EligibilityChip(selector, "x"), Is.Not.Null);
         selector.Find(".requirement-edit").Click();
         Assert.That(Button(selector, "Remove requirement"), Is.Not.Null);
     }

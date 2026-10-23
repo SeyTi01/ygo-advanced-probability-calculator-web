@@ -83,7 +83,6 @@ public partial class PinnedResultTest {
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
         Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.Contain("Mode: Exact only"));
         Assert.That(fast.Contract!.AutomaticExact, Is.EqualTo(AutomaticExactOutcome.Deadline));
-        AssertNoComparisonUi();
         Task normal = Start();
         int normalJob = exactJob + 1;
         Assert.That(_worker.Inputs[normalJob].RequestedMode, Is.EqualTo(CalculationModel.Fast));

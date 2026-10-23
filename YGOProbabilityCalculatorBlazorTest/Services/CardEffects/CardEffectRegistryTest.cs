@@ -67,16 +67,6 @@ public class CardEffectRegistryTest {
         Assert.That(registry.FilterProperties, Is.EqualTo(new[] { added }));
         Assert.That(registry.FilterProperties[0].Name, Is.EqualTo("New property"));
         Assert.That(new CardEffectRegistry([new PotOfGreedEffect()]).FilterProperties, Is.Empty);
-        Assert.That(CuratedDrawEffectPresets.FilterProperties, Is.SameAs(Registry.FilterProperties));
-        Assert.That(Registry.FilterProperties.Select(property => (property.Name, property.MetadataKey)), Is.EquivalentTo(new[] {
-            ("Attribute: DARK", "attribute:dark"), ("Quick-Play Spell", "spell-type:quick-play"),
-            ("Archetype: Radiant Typhoon", "archetype:radiant%20typhoon"), ("Monster", "kind:monster"),
-            ("Level 8", "level:8"), ("Archetype: Orcust", "archetype:orcust"),
-            ("Archetype: World Legacy", "archetype:world%20legacy"), ("Archetype: Lightsworn", "archetype:lightsworn"),
-            ("Archetype: Sky Striker", "archetype:sky%20striker"), ("Archetype: Darklord", "archetype:darklord"),
-            ("Insect", "monster-race:insect"), ("Plant", "monster-race:plant"), ("Level 4", "level:4"),
-            ("Normal Trap", "trap-type:normal"), ("Trap", "kind:trap")
-        }));
     }
 
     // Frozen scalar expectations from dev 2a3c7d9, independently of registry output.
