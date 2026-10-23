@@ -4,7 +4,7 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator {
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
 // Arrays are owned by their key and never mutated after insertion.
 internal sealed record DrawComposition(int OrdinaryCount, int[] EffectCounts) {
@@ -20,15 +20,6 @@ internal sealed record DrawComposition(int OrdinaryCount, int[] EffectCounts) {
 
         return hash.ToHashCode();
     }
-}
-
-
-
-
-namespace DrawResolution {
-    internal sealed record DrawResolution(
-        Dictionary<DrawComposition, ExactProbability> Scenarios
-    );
 }
 
 internal static class DrawEffectResolver {
@@ -173,5 +164,4 @@ internal static class DrawEffectResolver {
 
         return maximumDraws <= totalCopies - handSize;
     }
-}
 }
