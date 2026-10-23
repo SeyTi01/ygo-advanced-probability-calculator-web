@@ -218,6 +218,7 @@ async function main() {
         await assertClose(edited);
         assert.equal(await page.locator('.pinned-result').innerText(), pin, 'editing preserves manual pin');
         evidence.controlled.push('edit revokes held request');
+        evidence.layout = await require('./result-layout.cjs')(page, effectSession, { calculate, hold, release });
         assert.deepEqual(evidence.pageErrors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
         if (process.argv[3]) fs.writeFileSync(process.argv[3], JSON.stringify(evidence, null, 2));
