@@ -1,6 +1,8 @@
 using System.Numerics;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 
 // Evaluates exact unions of independently compiled events; intersections never
 // create distinct-copy assignments across different combos.

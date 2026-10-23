@@ -1,7 +1,12 @@
 using YGOProbabilityCalculatorBlazor.Models;
+using PostDrawCalculation = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.PostDrawCalculation;
+using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 // Search setup is isolated from every no-search counting path. Simple draws keep
 // their original count-state distribution; hand operations retain deferred pools.
@@ -17,7 +22,7 @@ internal sealed class SearchAccessCalculation(
     private CapabilityReason? _targetLossReason;
     private SolverRoute _route;
     private PostDrawCalculation? _ordered;
-    private DrawResolution? _resolution;
+    private DrawResolutionResult? _resolution;
     internal List<Card> Cards { get; private set; } = null!;
     internal List<Card> Effects { get; private set; } = null!;
     internal SearchAccessPlan Search { get; private set; } = null!;
@@ -87,7 +92,7 @@ internal sealed class SearchAccessCalculation(
             return result;
         }
         _route = SolverRoute.SearchCountState;
-        DrawResolution resolution = DrawEffectResolver.Resolve<SearchComposition>(ordinary.Sum(card => card.Copies), effects, handSize, budget);
+        DrawResolutionResult resolution = DrawEffectResolver.Resolve<SearchComposition>(ordinary.Sum(card => card.Copies), effects, handSize, budget);
         _resolution = resolution;
         ExactProbability total = ExactProbability.Zero;
         ExactProbability[] individual = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : combos.Count).ToArray();
@@ -122,7 +127,7 @@ internal sealed class SearchAccessCalculation(
         if (_ordered is not null) {
             return _ordered.CalculateSearchLower(combos, groups, declineSearch);
         }
-        DrawResolution resolution = _resolution ?? throw new InvalidOperationException("Missing completed search distribution.");
+        DrawResolutionResult resolution = _resolution ?? throw new InvalidOperationException("Missing completed search distribution.");
         budget.Spend((long)Cards.Count * (Effects.Count + 1) + 1);
         List<Card> ordinary = Cards.Where(card => !Effects.Contains(card)).ToList();
         int copies = Cards.Sum(card => card.Copies);

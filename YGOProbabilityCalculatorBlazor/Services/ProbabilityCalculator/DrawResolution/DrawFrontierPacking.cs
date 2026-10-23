@@ -1,4 +1,4 @@
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 // A bijection on bounded vectors, not a new state equivalence. Preserve every
 // count, flag, phase and FIFO entry, including trailing zero-valued candidates.

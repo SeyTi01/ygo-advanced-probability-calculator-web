@@ -1,6 +1,7 @@
 using System.Numerics;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 internal sealed partial class SearchDecisionCounter {
     // Shares one Boolean diagram and one joint weighted memo across total,

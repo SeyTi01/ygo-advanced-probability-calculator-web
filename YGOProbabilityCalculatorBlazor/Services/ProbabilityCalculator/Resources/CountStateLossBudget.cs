@@ -1,6 +1,6 @@
 using YGOProbabilityCalculatorBlazor.Models;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 // Only for completed count-state draws: every batch fits, there are no hand
 // operations, and D = sum a_j (1 + hidden_j). For target i, bound its own

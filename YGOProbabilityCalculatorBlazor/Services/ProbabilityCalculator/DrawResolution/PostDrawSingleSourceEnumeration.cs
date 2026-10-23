@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 internal sealed partial class PostDrawCalculation {
     private sealed partial class OrderedResolver {

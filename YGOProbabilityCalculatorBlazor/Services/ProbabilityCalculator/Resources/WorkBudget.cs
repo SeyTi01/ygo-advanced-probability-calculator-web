@@ -1,7 +1,8 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 // Bound retained entries/count-vector cells and cumulative work, rather than
 // pretending the 30-combo compatibility ceiling is a runtime guarantee.

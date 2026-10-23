@@ -1,6 +1,7 @@
 using System.Diagnostics;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 // Explicit test/benchmark probe only. Normal requests never allocate a probe,
 // read a clock, or retain diagnostic maps. Counts aggregate across draw scenarios.

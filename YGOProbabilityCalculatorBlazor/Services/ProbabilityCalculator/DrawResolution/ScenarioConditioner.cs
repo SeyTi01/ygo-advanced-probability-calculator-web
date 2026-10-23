@@ -1,7 +1,9 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 internal sealed class ScenarioConditioner(int ordinaryRows, int randomHandSize, List<Card> retained, WorkBudget budget, bool sparseFixedRows = false) {
     internal CompiledEvent? Project(CompiledEvent? compiled) {

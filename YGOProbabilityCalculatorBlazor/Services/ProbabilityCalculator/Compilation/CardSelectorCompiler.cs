@@ -1,6 +1,7 @@
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 
 internal static class CardSelectorCompiler {
     internal static bool[] Compile(CardSelector selector, IReadOnlyList<Card> cards, WorkBudget budget) {

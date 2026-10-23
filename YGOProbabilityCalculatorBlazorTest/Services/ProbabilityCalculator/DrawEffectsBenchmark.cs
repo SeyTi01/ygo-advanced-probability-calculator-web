@@ -7,6 +7,11 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -138,7 +143,7 @@ public partial class DrawEffectsBenchmark {
             CalculationWorkPolicy policy = allowance is null ? CalculationWorkPolicy.Interactive : new(long.Parse(allowance));
             WorkBudget resolutionBudget = new(policy);
             Stopwatch resolutionTimer = Stopwatch.StartNew();
-            DrawResolution resolution = DrawEffectResolver.Resolve(ordinary, effects, session.HandSize, resolutionBudget);
+            DrawResolutionResult resolution = DrawEffectResolver.Resolve(ordinary, effects, session.HandSize, resolutionBudget);
             resolutionTimer.Stop();
             WorkBudget budget = new(policy);
             long allocated = GC.GetAllocatedBytesForCurrentThread();

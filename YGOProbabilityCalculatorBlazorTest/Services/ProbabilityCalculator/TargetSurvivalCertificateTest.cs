@@ -6,6 +6,11 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
+using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -203,14 +208,14 @@ public sealed class TargetSurvivalCertificateTest {
     public void OversizedScenarioAndIdentityProofsSkipWithoutSpendingTheirRequest() {
         SessionState state = Motivating();
         ExactCalculationResult primary = new(ExactProbability.One, [ExactProbability.One], []);
-        DrawResolution oversized = new(Enumerable.Range(0, 65).ToDictionary(
+        DrawResolutionResult oversized = new(Enumerable.Range(0, 65).ToDictionary(
             count => new DrawComposition(count, [0, 0]), _ => ExactProbability.One));
         WorkBudget budget = new(CalculationWorkPolicy.Default);
         Assert.That(TargetSurvivalUpperBound.TryCalculate(state.Cards, [state.Cards[0]], oversized, state.Combos, [], primary, budget), Is.Null);
         Assert.That(budget.Spent, Is.Zero);
         Assert.That(budget.PeakCells, Is.Zero);
         state.Combos[0] = new([], cards: Enumerable.Repeat(new ComboCard("target", 5, 5), 5));
-        DrawResolution small = new(new() { [new(5, [0, 35])] = ExactProbability.One });
+        DrawResolutionResult small = new(new() { [new(5, [0, 35])] = ExactProbability.One });
         Assert.That(TargetSurvivalUpperBound.TryCalculate(state.Cards, [state.Cards[0]], small, state.Combos, [], primary, budget), Is.Null);
         Assert.That(budget.Spent, Is.LessThan(100));
     }

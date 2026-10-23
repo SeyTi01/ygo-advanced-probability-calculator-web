@@ -1,7 +1,11 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
+using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 // Conditional on a count-state terminal: ordinary hands are uniform k-subsets;
 // the hidden positions are one uniform H-subset of the STILL UNOBSERVED pool.
@@ -99,7 +103,7 @@ internal sealed class PhysicalSearchCalculation(
 ) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         int ordinary = cards.Where(card => !effects.Contains(card)).Sum(card => card.Copies);
-        DrawResolution resolution = DrawEffectResolver.Resolve<PhysicalSearchComposition>(ordinary, effects, handSize, budget);
+        DrawResolutionResult resolution = DrawEffectResolver.Resolve<PhysicalSearchComposition>(ordinary, effects, handSize, budget);
         int rowCount = 1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0));
         budget.CheckStorage(rowCount, 2L * rowCount);
         ExactProbability[] totals = Enumerable.Repeat(ExactProbability.Zero, rowCount).ToArray();

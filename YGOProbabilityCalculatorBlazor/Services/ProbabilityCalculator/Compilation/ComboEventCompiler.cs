@@ -1,8 +1,9 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 
 // Expands routes and compiles each combo into hand-wide bounds using Hall's condition.
 internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudget budget) {

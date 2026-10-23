@@ -1,4 +1,10 @@
 using YGOProbabilityCalculatorBlazor.Models;
+using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
@@ -93,7 +99,7 @@ internal sealed class DrawEffectCalculation(
         // hand operations, every encountered source can resolve in any priority order;
         // its visible-draw contribution and OPT remainder are identical. Hidden positions
         // remain exchangeable. Priority therefore does not invalidate this fast path.
-        DrawResolution resolution = DrawEffectResolver.Resolve(ordinaryCopies, effects, handSize, budget);
+        DrawResolutionResult resolution = DrawEffectResolver.Resolve(ordinaryCopies, effects, handSize, budget);
         ExactProbability total = ExactProbability.Zero;
         ExactProbability[] individual = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : combos.Count).ToArray();
         ExactProbability[] grouped = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : groups?.Count ?? 0).ToArray();

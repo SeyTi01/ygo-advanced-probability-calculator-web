@@ -1,8 +1,9 @@
 using System.Numerics;
 using System.Globalization;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 
 // Count pairs need not be reduced: preserve the existing no-effect conversion.
 // Scenario arithmetic cancels factors before multiplying, and never uses double.

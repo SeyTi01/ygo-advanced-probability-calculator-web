@@ -1,6 +1,7 @@
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 // A successful ordered terminal has D = N - held - remaining losses. Each
 // activation contributes exactly 1 + cost + discard + banish + mill to D;
