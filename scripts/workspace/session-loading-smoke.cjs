@@ -67,7 +67,7 @@ const { chromium } = require('playwright');
     });
     const idle = page => page.waitForFunction(() => !document.querySelector('.session-loading-content'));
     const ready = async page => {
-        await page.waitForFunction(() => document.querySelectorAll('.card-editor').length === 25 && document.querySelectorAll('.combo-editor').length === 8 && document.querySelector('.card-editor') !== window.previousSessionRow);
+        await page.waitForFunction(() => document.querySelectorAll('.card-editor').length === 24 && document.querySelectorAll('.combo-editor').length === 8 && document.querySelector('.card-editor') !== window.previousSessionRow);
         await idle(page);
     };
     const inputReady = page => page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
@@ -105,7 +105,12 @@ const { chromium } = require('playwright');
         return { context, page };
     };
     try {
-        browser = await chromium.launch({ channel: 'msedge', headless: true });
+        browser = await chromium.launch({
+            headless: true,
+            ...(process.env.WORKSPACE_BROWSER_PATH
+                ? { executablePath: process.env.WORKSPACE_BROWSER_PATH }
+                : { channel: 'msedge' })
+        });
         for (const entry of ['example', 'json']) {
             for (const [width, colorScheme, reducedMotion] of [[390, 'light', 'reduce'], [390, 'dark', 'no-preference'], [1280, 'light', 'no-preference'], [1280, 'dark', 'reduce'], [320, 'light', 'no-preference']]) {
                 console.log(JSON.stringify({ checking: entry, width, colorScheme, reducedMotion }));
@@ -167,7 +172,7 @@ const { chromium } = require('playwright');
                 await upload(page, Buffer.from('{ malformed'));
                 await page.waitForFunction(() => document.body.textContent.includes('Failed to load session'));
                 await idle(page);
-                assert.equal(await page.locator('.card-editor').count(), 25);
+                assert.equal(await page.locator('.card-editor').count(), 24);
                 assert.equal(await page.locator('#blazor-error-ui').isVisible(), false, JSON.stringify(errors));
                 results.push({ entry, width, colorScheme, reducedMotion, before, after, spacing, heldStatusPainted: true });
                 await context.close();

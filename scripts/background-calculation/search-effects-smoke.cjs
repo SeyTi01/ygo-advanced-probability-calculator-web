@@ -65,7 +65,7 @@ async function main() {
         const calculate = page.getByRole('button', { name: 'Calculate', exact: true });
         await calculate.waitFor();
         await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
-        const sample = JSON.parse(await fs.readFile(path.join(root, 'sample-data/example_session_state.json'), 'utf8'));
+        const sample = JSON.parse(await fs.readFile(path.join(__dirname, '../../YGOProbabilityCalculatorBlazorTest/Fixtures/search_example_session_state.json'), 'utf8'));
         let sequence = 0;
         async function load(session) {
             const marker = `Search smoke ${++sequence}`;

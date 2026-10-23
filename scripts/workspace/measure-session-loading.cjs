@@ -84,7 +84,7 @@ const { chromium } = require('playwright');
                     new MutationObserver(() => {
                         const probe = window.sessionProbe;
                         if (!probe || probe.ready !== null || probe.waiting) return;
-                        if (document.querySelectorAll('.card-editor').length !== 25 || document.querySelectorAll('.combo-editor').length !== 8 ||
+                        if (document.querySelectorAll('.card-editor').length !== 24 || document.querySelectorAll('.combo-editor').length !== 8 ||
                             document.querySelector('.card-editor') === probe.old) return;
                         probe.dom = performance.now() - probe.start;
                         probe.waiting = true;

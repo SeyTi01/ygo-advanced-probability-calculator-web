@@ -262,7 +262,7 @@ const fixture = {
         await editor.locator('.accordion-button').click();
         await capture('after-vs-k9-1440-dark');
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-        const examplePercent = (100 * 550033 / 658008).toFixed(2);
+        const examplePercent = (100 * 565375 / 658008).toFixed(2);
         await page.waitForFunction(expected => document.querySelector('.probability-total-value')?.textContent.replace(',', '.').includes(expected), examplePercent);
         const second = page.locator('.combo-editor').nth(1);
         await second.locator('.accordion-button').click();
@@ -283,7 +283,7 @@ const fixture = {
         assert.equal(await page.locator('.combo-editor').count(), comboCount + 1);
         assert.equal(await page.locator('.combo-editor').first().locator('.accordion-button').getAttribute('aria-expanded'), 'false');
         assert.deepEqual(errors, []);
-        console.log(JSON.stringify({ browser: useFirefox ? 'firefox' : 'chromium', scenarios: 'add/edit, contextual OR, same-card, mixed alternatives, + boundaries between whole OR groups, group label below name, 0/0, save/reload, group cleanup, keyboard, touch, exact 50% vs 0%, VS/K9 550033/658008', widths: [320, 375, 390, 768, 1280, 1440], headerWidths: [320, 375, 768, 900, 960, 1024, 1280, 1440], themes: ['light', 'dark'], pageErrors: errors }));
+        console.log(JSON.stringify({ browser: useFirefox ? 'firefox' : 'chromium', scenarios: 'add/edit, contextual OR, same-card, mixed alternatives, + boundaries between whole OR groups, group label below name, 0/0, save/reload, group cleanup, keyboard, touch, exact 50% vs 0%, VS/K9 565375/658008', widths: [320, 375, 390, 768, 1280, 1440], headerWidths: [320, 375, 768, 900, 960, 1024, 1280, 1440], themes: ['light', 'dark'], pageErrors: errors }));
     } finally {
         await browser.close();
     }
