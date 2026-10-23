@@ -13,7 +13,7 @@ variant = sys.argv[3]
 if variant not in ("brute-hidden", "streaming", "frontier") or destination.exists():
     raise SystemExit("Choose brute-hidden, streaming or frontier and a new destination")
 shutil.copytree(source, destination, ignore=shutil.ignore_patterns(".git", "bin", "obj"))
-path = destination / "YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/PostDrawPhysicalEnumeration.cs"
+path = destination / "YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/DrawResolution/PostDrawPhysicalEnumeration.cs"
 text = path.read_text()
 if variant == "brute-hidden":
     old = "                VisitLoss(0, hidden, remaining, suffixWeight);"
@@ -43,13 +43,13 @@ if variant == "brute-hidden":
 else:
     old = "PhysicalEnumerationMethod method = PhysicalEnumerationMethod.Auto"
     new = "PhysicalEnumerationMethod method = PhysicalEnumerationMethod." + variant.title()
-    path = destination / "YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/PostDrawSearchCalculation.cs"
+    path = destination / "YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/DrawResolution/PostDrawSearchCalculation.cs"
     text = path.read_text()
 if text.count(old) != 1:
     raise SystemExit("Source changed: review the transformation before benchmarking")
 path.write_text(text.replace(old, new))
 
 if variant == "brute-hidden":
-    dispatcher = destination / "YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/PostDrawSearchCalculation.cs"
+    dispatcher = destination / "YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/DrawResolution/PostDrawSearchCalculation.cs"
     dispatcher.write_text(dispatcher.read_text().replace("PhysicalEnumerationMethod method = PhysicalEnumerationMethod.Auto",
         "PhysicalEnumerationMethod method = PhysicalEnumerationMethod.Streaming"))
