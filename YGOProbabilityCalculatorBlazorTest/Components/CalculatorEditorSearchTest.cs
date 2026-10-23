@@ -83,7 +83,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
         Assert.That(editor.Find(".simulation-mode").TextContent, Does.Contain("Opening hand only"));
     }
     [Test]
-    public void DrawSearchNoteExplainsAccessAssumptionWithoutBlockingHiddenRemoval() {
+    public void DrawSearchDoesNotClaimUniversalTargetAvailability() {
         Card rota = SearchEffectsTest.Rota();
         Card target = SearchEffectsTest.Warrior();
         Card hidden = new([], drawCount: 2, preDrawDeckRemovalCount: 10);
@@ -91,7 +91,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
             .Add(component => component.Card, rota).Add(component => component.Deck, new[] { rota, target }));
         Assert.That(editor.Markup, Does.Not.Contain("targets outside the final hand"));
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Deck, new[] { rota, target, hidden }));
-        Assert.That(editor.Markup, Does.Contain("Search access assumes targets outside the final hand remain available."));
+        Assert.That(editor.Markup, Does.Not.Contain("targets outside the final hand"));
         Assert.That(editor.FindAll("[role=alert]"), Is.Empty);
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Deck, new[] { rota, target, hidden.WithActive(false) }));
         Assert.That(editor.Markup, Does.Not.Contain("targets outside the final hand"));

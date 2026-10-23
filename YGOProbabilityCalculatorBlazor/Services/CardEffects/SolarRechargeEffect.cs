@@ -17,5 +17,5 @@ public sealed class SolarRechargeEffect : ICardEffectDefinition {
     };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
     public string Summary => "Discard 1 Lightsworn monster; draw 2, then send the top 2 deck cards to the GY. Requires 4 cards left.";
-    public string Limitations => "Milled identities and GY effects are not tracked; only unseen deck depletion is modeled.";
+    public string Limitations => "Milling depletes the Deck. Search-target survival follows result accuracy: Fast may be exact or uncertain; completed physical Exact accounts for it. GY-triggered effects are not simulated.";
 }
