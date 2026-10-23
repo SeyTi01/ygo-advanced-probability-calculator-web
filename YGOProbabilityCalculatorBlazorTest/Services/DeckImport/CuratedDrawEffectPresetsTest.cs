@@ -1,6 +1,7 @@
 using System.Text.Json;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
+using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
@@ -87,17 +88,22 @@ public class CuratedDrawEffectPresetsTest {
     }
 
     [Test]
-    public void TradeInCostRequiresOnlyLevelEightForImportsAndSelections() {
+    public void FreshTradeInUsesCanonicalLevelEightWhileShippedLiteralPaymentsRemainPermissive() {
         CardInfo info = new() { Id = 38120068, Name = "Trade-In" };
         Card imported = CuratedDrawEffectPresets.CreateImportedCard(info, 1, info.Id);
         Card selected = CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(new([]), info);
         CategoryBase levelEight = new("Level 8", CategorySource.Metadata, "level:8");
         CategoryBase monster = new("Monster", CategorySource.Metadata, "kind:monster");
 
+        Assert.That(LegacySelectorPlans.Plan(38120068).HandCostSelector.Matches([levelEight]), Is.True,
+            "The shipped revision 1 snapshot keeps its literal behavior.");
+
         foreach (Card card in new[] { imported, selected }) {
             Assert.Multiple(() => {
-                Assert.That(card.PreDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Category));
-                Assert.That(card.PreDrawSelector.Matches([levelEight]), Is.True);
+                Assert.That(card.EffectProfile.Revision, Is.EqualTo(2));
+                Assert.That(card.PreDrawSelector.NumericRange, Is.EqualTo(new NumericPropertyRange(NumericPropertyKind.Level, 8, 8)));
+                Assert.That(card.PreDrawSelector.Matches([levelEight]), Is.False);
+                Assert.That(card.PreDrawSelector.Matches([monster, levelEight]), Is.True);
                 Assert.That(card.PreDrawSelector.Matches([monster]), Is.False);
                 Assert.That(card.PreDrawRemovalCount, Is.EqualTo(1));
                 Assert.That(card.DrawCount, Is.EqualTo(2));

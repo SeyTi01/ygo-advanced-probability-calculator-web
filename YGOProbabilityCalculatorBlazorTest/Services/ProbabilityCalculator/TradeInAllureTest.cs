@@ -21,7 +21,7 @@ public class TradeInAllureTest {
         List<Card> deck = [
             new Card([], id: "trade").WithEffect(trade.Plan, trade.Profile),
             new Card([], id: "allure").WithEffect(allure.Plan, allure.Profile),
-            new([level, dark, role], id: "both"), new([dark], id: "dark"),
+            new([level, dark, role, new("Monster", CategorySource.Metadata, "kind:monster")], id: "both"), new([dark], id: "dark"),
             new([role], id: "target"), new([role], id: "other"), new([], id: "blank")
         ];
         List<Combo> combos = [new([new(role, 2, 0, RequirementMaximumMode.HandSize)], groupId: "g"),

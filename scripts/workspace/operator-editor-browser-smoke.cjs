@@ -1,9 +1,11 @@
 // Run against a local development app: node operator-editor-browser-smoke.cjs [url]
+// Or set OPERATOR_PUBLISH_ROOT to serve optimized wwwroot within this process.
 // Playwright is an external verification tool; screenshots are retained by default.
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium, firefox } = require('playwright');
+const { serve } = require('../background-calculation/measure-worker-lifecycle.cjs');
 
 const base = process.argv[2] || 'http://127.0.0.1:5098';
 const evidence = process.env.OPERATOR_SCREENSHOTS || path.resolve(__dirname, '../../packages/operator-browser-publish/evidence');
@@ -48,14 +50,15 @@ const session = () => ({
 
 (async () => {
     const useFirefox = process.env.OPERATOR_BROWSER === 'firefox';
-    const browser = await (useFirefox ? firefox.launch({ headless: true }) : chromium.launch({ headless: true, ...(process.env.OPERATOR_EXECUTABLE ? { executablePath: process.env.OPERATOR_EXECUTABLE } : { channel: 'msedge' }) }));
+    const hosted = process.env.OPERATOR_PUBLISH_ROOT ? await serve(process.env.OPERATOR_PUBLISH_ROOT) : null;
+    const browser = await (useFirefox ? firefox.launch({ headless: true }) : chromium.launch({ headless: true, ...(process.env.OPERATOR_EXECUTABLE ? { executablePath: process.env.OPERATOR_EXECUTABLE } : { channel: 'msedge' }) })).catch(error => { hosted?.server.close(); throw error; });
     try {
         const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, hasTouch: !useFirefox });
         const activate = locator => useFirefox ? locator.click() : locator.tap();
         const pageErrors = [];
         page.on('pageerror', error => pageErrors.push(error.message));
         await page.addInitScript(() => { window.showSaveFilePicker = undefined; });
-        await page.goto(base);
+        await page.goto(hosted?.url ?? base);
         await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor({ timeout: 60000 }).catch(async error => {
             console.error('App startup diagnostics:', pageErrors, await page.locator('body').innerText());
             throw error;
@@ -129,6 +132,11 @@ const session = () => ({
             await assertNoOverflow(`${width}/${theme}`);
         };
 
+        await require('./canonical-selector-browser-cases.cjs')({ page, load, setLayout, saveSession, capture, assertNoOverflow, session });
+        if (process.env.CANONICAL_SELECTORS_ONLY === '1') {
+            assert.deepEqual(pageErrors, [], `browser page errors: ${pageErrors.join('; ')}`);
+            return;
+        }
         await require('./numeric-requirement-browser-cases.cjs')({ page, load, setLayout, saveSession, capture, assertNoOverflow, session });
         await require('./term-editor-browser-cases.cjs')({ page, load, setLayout, saveSession, capture, assertNoOverflow, activate, session });
         const reversible = session();
@@ -315,6 +323,7 @@ const session = () => ({
     }
     finally {
         await browser.close();
+        hosted?.server.close();
     }
 })().catch(error => {
     console.error(error);

@@ -10,12 +10,13 @@ public sealed class OrcustratedReturnEffect : ICardEffectDefinition {
     public IReadOnlyList<CategoryBase> FilterProperties => [Monster, Orcust, WorldLegacy];
     public int CanonicalCardId => 26845680;
     public string Name => "Orcustrated Return";
-    public int Revision => 1;
+    public int Revision => 2;
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true) with {
         HandCost = 1,
-        HandCostSelector = CardSelector.AnyOfSelectors([
-            CardSelector.AllOf([Monster.Identity, Orcust.Identity]),
-            CardSelector.AllOf([Monster.Identity, WorldLegacy.Identity])])
+        HandCostSelector = CardSelector.AllOfSelectors([
+            CardSelector.For(Monster),
+            CardSelector.AnyOf([Orcust.Identity, WorldLegacy.Identity])
+        ])
     };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
     public string Summary => "Remove an Orcust or World Legacy monster from hand before drawing 2; once per turn.";

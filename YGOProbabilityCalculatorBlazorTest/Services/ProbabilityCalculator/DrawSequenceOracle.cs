@@ -159,6 +159,26 @@ internal static class DrawSequenceOracle {
         if (selector.Kind == CardSelectorKind.Any) {
             return true;
         }
+        if (selector.Kind == CardSelectorKind.NumericRange) {
+            NumericPropertyRange range = selector.NumericRange!;
+            string[] keys = card.Categories.Where(category => category.Source == CategorySource.Metadata
+                && (!range.ObjectiveOnly || !card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!)))
+                .Select(category => category.MetadataKey!).ToArray();
+            string[] dimensions = keys.Where(key => new[] { "level:", "rank:", "link:" }
+                .Any(prefix => key.StartsWith(prefix, StringComparison.Ordinal))).ToArray();
+            if (range.ObjectiveOnly && card.ExternalCardId is not > 0 || !keys.Contains("kind:monster")
+                || dimensions.Length != 1 || !dimensions[0].StartsWith(range.Key + ":", StringComparison.Ordinal)) {
+                return false;
+            }
+            bool conflictingType = range.Property switch {
+                NumericPropertyKind.Level => keys.Contains("monster-type:xyz") || keys.Contains("monster-type:link"),
+                NumericPropertyKind.Rank => keys.Contains("monster-type:link"),
+                _ => keys.Contains("monster-type:xyz")
+            };
+            return !conflictingType && int.TryParse(dimensions[0].Split(':')[1], System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out int number)
+                && number >= (range.Minimum ?? int.MinValue) && number <= (range.Maximum ?? int.MaxValue);
+        }
         if (selector.Children.Count > 0) {
             bool[] results = selector.Children.Select(child => MatchesSelector(child, card)).ToArray();
             return selector.Kind == CardSelectorKind.AllOf ? results.All(result => result) : results.Any(result => result);
