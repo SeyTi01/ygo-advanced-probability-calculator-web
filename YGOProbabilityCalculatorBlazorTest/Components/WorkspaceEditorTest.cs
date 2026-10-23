@@ -24,7 +24,7 @@ public class WorkspaceEditorTest : CalculatorEditorTestBase {
         Assert.That(cut.Find($"#{panelId}").HasAttribute("hidden"), Is.False);
         Assert.That(row.QuerySelector(".accordion-button")!.GetAttribute("aria-expanded"), Is.EqualTo("false"));
         Assert.That(cut.Find($"#{panelId}").QuerySelectorAll("button").Select(button => button.TextContent.Trim()),
-            Is.EqualTo(new[] { "Move up", "Move down", "Duplicate", "Deactivate", "Remove" }));
+            Is.EqualTo(new[] { "Move up", "Move down", "Move to position…", "Duplicate", "Deactivate", "Remove" }));
         Assert.That(cut.Find($"#{panelId} button").HasAttribute("disabled"), Is.True);
         await cut.Find($"#{kind}Active0").ClickAsync(new());
         Assert.That(cut.Find($"#{panelId}").HasAttribute("hidden"), Is.True);

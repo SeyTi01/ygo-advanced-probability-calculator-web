@@ -1,6 +1,9 @@
 (() => {
     // Let Blazor handle suggestion selection without scrolling the page with arrow keys.
     document.addEventListener('keydown', event => {
+        // Enter applies a destination in Blazor; its native default must not
+        // activate the trigger that receives focus after the move.
+        if (event.key === 'Enter' && event.target.matches?.('.move-position-panel input')) event.preventDefault();
         if (event.target.matches?.('.card-name-field input[aria-expanded="true"]')
             && ['ArrowDown', 'ArrowUp'].includes(event.key)) event.preventDefault();
     });
@@ -40,6 +43,7 @@
                 if (!panel.contains(event.target) && !trigger.contains(event.target)) dismiss();
             };
             const keydown = event => {
+                if (event.target.closest?.('.move-position-panel')) return;
                 if (event.key === 'Escape') {
                     event.preventDefault();
                     event.stopPropagation();
@@ -57,6 +61,8 @@
                 }
             };
             position();
+            const observer = new ResizeObserver(position);
+            observer.observe(panel);
             if (focusFirst) panel.querySelector('button:not(:disabled), input:not(:disabled)')?.focus({ preventScroll: true });
             document.addEventListener('pointerdown', outside, true);
             document.addEventListener('focusin', outside, true);
@@ -64,6 +70,7 @@
             window.addEventListener('resize', position);
             window.addEventListener('scroll', position, true);
             cleanups.set(panel, () => {
+                observer.disconnect();
                 document.removeEventListener('pointerdown', outside, true);
                 document.removeEventListener('focusin', outside, true);
                 panel.removeEventListener('keydown', keydown);

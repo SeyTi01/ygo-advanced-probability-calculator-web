@@ -181,9 +181,9 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<ComboEditor> sourceEditor = cut.FindComponents<ComboEditor>()[1];
 
-        Assert.That(cut.FindAll(".combo-editor .menu-command:nth-child(3)"), Has.Count.EqualTo(3));
+        Assert.That(cut.FindAll(".combo-editor .menu-command").Count(button => button.TextContent.Trim() == "Duplicate"), Is.EqualTo(3));
         await sourceEditor.Find(".accordion-button").ClickAsync(new());
-        Assert.That(cut.FindAll(".combo-editor .menu-command:nth-child(3)"), Has.Count.EqualTo(3));
+        Assert.That(cut.FindAll(".combo-editor .menu-command").Count(button => button.TextContent.Trim() == "Duplicate"), Is.EqualTo(3));
         IElement duplicateAction = FirstRowAction(sourceEditor, "combo", "Duplicate");
         Assert.Multiple(() => {
             Assert.That(duplicateAction.TextContent.Trim(), Is.EqualTo("Duplicate"));
