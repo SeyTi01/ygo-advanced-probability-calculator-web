@@ -1,4 +1,4 @@
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
 
 internal enum SolverRoute { Ordinary, CountState, Exchangeable, Ordered, OrderedDeferred, SearchOnly, SearchCountState, SearchOrdered, SearchOrderedDeferred, SearchPhysicalCountState, SearchPhysicalEnumeration, SearchPhysicalFrontier, SearchPhysicalDeferred }
 internal enum PhysicalSearchAccuracy { ProvenExact, OptimisticSurvivalUnproven }

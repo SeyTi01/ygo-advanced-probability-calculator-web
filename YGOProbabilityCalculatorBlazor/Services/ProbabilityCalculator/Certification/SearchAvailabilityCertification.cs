@@ -3,8 +3,11 @@ using System.Globalization;
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
 
 // Fixed-policy coupling: n_i=h_i+r_i+d_i, D=sum d_i=N-H-R, hence
 // max(0,n_i-h_i-D) <= r_i <= n_i-h_i simultaneously for all original rows.

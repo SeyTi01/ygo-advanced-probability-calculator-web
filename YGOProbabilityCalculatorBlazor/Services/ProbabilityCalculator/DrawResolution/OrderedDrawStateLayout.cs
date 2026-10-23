@@ -1,6 +1,6 @@
 using YGOProbabilityCalculatorBlazor.Models;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 // One descriptor per ordered request, never one per state. Offsets describe the
 // original int[] encoding; optional regions occupy no cells when absent. The

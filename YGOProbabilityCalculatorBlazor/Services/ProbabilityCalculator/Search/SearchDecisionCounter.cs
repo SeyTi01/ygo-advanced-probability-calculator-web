@@ -1,7 +1,9 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 // A reduced ordered multi-valued decision diagram over original entry counts.
 // Edges mean a count, not a choice of search assignment. Boolean OR therefore

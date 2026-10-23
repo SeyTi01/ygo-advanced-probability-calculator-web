@@ -1,7 +1,11 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 internal sealed partial class PostDrawCalculation {
     private StreamedSearchState? _streamedSearch;

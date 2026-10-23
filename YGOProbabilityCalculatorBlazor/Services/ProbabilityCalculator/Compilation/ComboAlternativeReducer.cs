@@ -1,7 +1,8 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 
 internal static class ComboAlternativeReducer {
     internal static IReadOnlyList<ComboAlternativeGroup> Reduce(IReadOnlyList<ComboAlternativeGroup> groups, WorkBudget budget) {

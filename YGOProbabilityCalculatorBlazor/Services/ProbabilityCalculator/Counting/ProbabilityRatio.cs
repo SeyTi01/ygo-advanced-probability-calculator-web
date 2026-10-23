@@ -1,6 +1,7 @@
 using System.Numerics;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 
 internal static class ProbabilityRatio {
     internal static double ToDouble(BigInteger successes, BigInteger denominator, WorkBudget budget) {

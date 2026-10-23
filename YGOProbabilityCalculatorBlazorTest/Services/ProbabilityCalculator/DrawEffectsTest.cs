@@ -6,6 +6,9 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -72,7 +75,7 @@ public class DrawEffectsTest {
         Assert.That(expected.Failed, Is.EqualTo(BigInteger.Zero), "Basic fixed draws must not fail solely because the deck is exhausted.");
         int deckCopies = deck.Sum(card => card.Copies);
         if (DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize)) {
-            DrawResolution resolution = DrawEffectResolver.Resolve(ordinary, effects, handSize, new(CalculationWorkPolicy.Interactive));
+            DrawResolutionResult resolution = DrawEffectResolver.Resolve(ordinary, effects, handSize, new(CalculationWorkPolicy.Interactive));
             ExactProbability mass = ExactProbability.Zero;
             foreach ((DrawComposition scenario, ExactProbability weight) in resolution.Scenarios) {
                 string key = $"{scenario.OrdinaryCount}|{string.Join(',', scenario.EffectCounts)}";
@@ -229,7 +232,7 @@ public class DrawEffectsTest {
         CalculationWorkPolicy limited = new(measured.Spent - 1);
         List<Card> effects = [deck[2]];
         List<Card> ordinary = deck.Take(2).ToList();
-        DrawResolution resolution = DrawEffectResolver.Resolve(16, effects, 4, new(limited));
+        DrawResolutionResult resolution = DrawEffectResolver.Resolve(16, effects, 4, new(limited));
         foreach (DrawComposition scenario in resolution.Scenarios.Keys) {
             List<Card> retained = scenario.EffectCounts[0] == 0 ? [] : [effects[0].WithCopies(scenario.EffectCounts[0])];
             Assert.DoesNotThrow(() => new ProbabilityCalculation(ordinary, scenario.OrdinaryCount, new WorkBudget(limited), retained)

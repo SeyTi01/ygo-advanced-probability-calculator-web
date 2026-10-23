@@ -1,7 +1,8 @@
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 // A measured, deliberately small domain; this is a cost estimate, never a
 // semantic proof. SearchAccessCalculation owns applicability and target survival.

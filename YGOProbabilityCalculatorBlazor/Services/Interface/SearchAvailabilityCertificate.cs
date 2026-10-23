@@ -26,7 +26,7 @@ public sealed record SearchAvailabilityCertificate(
     ImmutableArray<SearchAvailabilityInterval> Combos = default,
     ImmutableArray<SearchAvailabilityInterval> Groups = default
 ) {
-    public string Reference => ProbabilityCalculator.CalculationCapability.Reference;
+    public string Reference => ProbabilityCalculator.Certification.CalculationCapability.Reference;
 
     internal static SearchAvailabilityCertificate Unavailable(SearchAvailabilityStatus status, string detail) =>
         new(status, detail, null, [], []);

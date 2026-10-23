@@ -1,7 +1,10 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 // A layer counts visible labeled prefixes of equal length. Hidden removals leave
 // identities unobserved: their counts stay in the identity pool, while a separate

@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 
 internal readonly record struct CountBound(BigInteger EligibleRows, int MinCount, int MaxCount);
 

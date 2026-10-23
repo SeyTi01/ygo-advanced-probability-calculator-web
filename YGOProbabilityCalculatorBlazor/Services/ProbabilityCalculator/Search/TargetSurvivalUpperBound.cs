@@ -1,8 +1,11 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
+using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 // Necessary event only: every original copy of each unconditional direct-card
 // requirement with min == copies must escape hidden loss. Other roles, maxima
@@ -35,7 +38,7 @@ internal static class TargetSurvivalUpperBound {
     internal static ExactCalculationResult? TryCalculate(
         List<Card> cards,
         List<Card> effects,
-        DrawResolution? resolution,
+        DrawResolutionResult? resolution,
         List<Combo> combos,
         IReadOnlyList<ComboGroup>? groups,
         ExactCalculationResult upper,

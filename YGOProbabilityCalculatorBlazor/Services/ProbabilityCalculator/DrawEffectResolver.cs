@@ -1,6 +1,10 @@
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
+using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 
-namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator {
 
 // Arrays are owned by their key and never mutated after insertion.
 internal sealed record DrawComposition(int OrdinaryCount, int[] EffectCounts) {
@@ -18,15 +22,20 @@ internal sealed record DrawComposition(int OrdinaryCount, int[] EffectCounts) {
     }
 }
 
-internal sealed record DrawResolution(
-    Dictionary<DrawComposition, ExactProbability> Scenarios
-);
+
+
+
+namespace DrawResolution {
+    internal sealed record DrawResolution(
+        Dictionary<DrawComposition, ExactProbability> Scenarios
+    );
+}
 
 internal static class DrawEffectResolver {
-    internal static DrawResolution Resolve(int ordinaryCopies, List<Card> effects, int handSize, WorkBudget budget) =>
+    internal static DrawResolutionResult Resolve(int ordinaryCopies, List<Card> effects, int handSize, WorkBudget budget) =>
         Resolve<VisibleComposition>(ordinaryCopies, effects, handSize, budget);
 
-    internal static DrawResolution Resolve<TTerminal>(int ordinaryCopies, List<Card> effects, int handSize, WorkBudget budget)
+    internal static DrawResolutionResult Resolve<TTerminal>(int ordinaryCopies, List<Card> effects, int handSize, WorkBudget budget)
         where TTerminal : struct, IDrawTerminal {
         int totalCopies = ordinaryCopies;
         foreach (Card effect in effects) {
@@ -164,4 +173,5 @@ internal static class DrawEffectResolver {
 
         return maximumDraws <= totalCopies - handSize;
     }
+}
 }

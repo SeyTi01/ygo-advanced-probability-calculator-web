@@ -8,6 +8,8 @@ using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -111,7 +113,7 @@ public sealed class HandEffectActivationEligibilityTest {
         Card effect = new Card([], 3, id: "effect", drawCount: 1, drawOncePerTurn: false)
             .WithEffect(DrawEffectPlan.Draw(1, false) with { ActivationLimit = 2 }, EffectProfile.Legacy);
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        DrawResolution resolution = DrawEffectResolver.Resolve(3, [effect], 3, budget);
+        DrawResolutionResult resolution = DrawEffectResolver.Resolve(3, [effect], 3, budget);
         // Three seen sources consume only two copies, leaving one in every
         // terminal whose original source count is three.
         Assert.That(resolution.Scenarios.Keys.Any(state => state.EffectCounts[0] == 1), Is.True);

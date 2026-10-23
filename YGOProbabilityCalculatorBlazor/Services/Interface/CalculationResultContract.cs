@@ -36,7 +36,7 @@ public sealed record CalculationResultContract(
 ) {
     public const int CurrentVersion = 1;
     public const string OpeningReference = "Dealt opening hand satisfying the stated requirements; all effects ignored (v1)";
-    public const string EffectsReference = ProbabilityCalculator.CalculationCapability.Reference;
+    public const string EffectsReference = ProbabilityCalculator.Certification.CalculationCapability.Reference;
 
     internal static CalculationResultContract Failure(CalculationModel mode, CalculationCompletion completion, string reason) =>
         new(
