@@ -43,7 +43,8 @@ function probe() {
             actionFocused: document.activeElement === document.querySelector('.calculate-action > button'),
             marker: document.querySelector('.probability-result-status')?.textContent.trim() || '',
             values: [...document.querySelectorAll('.probability-results .probability-with-accuracy')].map(element => ({
-                label: element.getAttribute('aria-label'), title: element.title, text: element.innerText })),
+                label: element.getAttribute('aria-label'), title: element.title, text: element.innerText,
+                proof: element.querySelector('.probability-proof')?.textContent.trim() || '' })),
             mode: document.querySelector('.probability-results .result-accuracy')?.textContent,
             pinDisabled: document.querySelector('.pin-result-action')?.disabled,
             copyDisabled: document.querySelector('.probability-results [aria-label="Copy results"]')?.disabled,
@@ -96,17 +97,21 @@ function fractions(actual, expected) {
 function displayed(snapshot, expected) {
     const ratio = fraction => `${fraction.Numerator}/${fraction.Denominator}`;
     const activeGroups = expected.GroupProbabilities.map((group,index) => group.ActiveComboCount > 0 ? index : -1).filter(index => index >= 0);
-    const rows = expected.SearchAvailability
-        ? [expected.SearchAvailability.Total, ...expected.SearchAvailability.Combos, ...activeGroups.map(index => expected.SearchAvailability.Groups[index])]
-            .map(interval => `rational endpoints [${ratio(interval.Lower)}, ${ratio(interval.Upper)}]`)
-        : [expected.Contract.Fractions.Total, ...expected.Contract.Fractions.Combos, ...activeGroups.map(index => expected.Contract.Fractions.Groups[index])]
-            .map(fraction => `Modeled primary fraction: ${ratio(fraction)}.`);
+    const fractions = expected.Contract.Fractions;
+    const rows = [fractions.Total, ...fractions.Combos, ...activeGroups.map(index => fractions.Groups[index])]
+        .map(fraction => `Modeled primary fraction: ${ratio(fraction)}`);
+    assert.equal(snapshot.values.length, rows.length);
     const titles = snapshot.values.map(value => value.title);
-    assert.equal(titles.length,rows.length);
     for (const row of rows) {
-        const index = titles.findIndex(title => title.includes(row));
-        assert(index >= 0, `displayed rational evidence missing: ${row}`);
+        const index = titles.indexOf(row);
+        assert(index >= 0, `displayed modeled primary fraction missing: ${row}`);
         titles.splice(index,1);
+    }
+    for (const value of snapshot.values) {
+        assert.match(value.title, /^Modeled primary fraction: \d+\/\d+$/);
+        assert.equal(value.proof, value.title);
+        assert(value.label.endsWith(`. ${value.title}`), 'accessible label retains the modeled primary fraction');
+        assert(!/(?:Certified range|Exact within|Uncertified|optimistic primary)/.test(value.label), 'inline disclosure stays concise');
     }
 }
 

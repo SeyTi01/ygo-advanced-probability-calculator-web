@@ -7,7 +7,14 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 public enum ProbabilityRow { Total, Combo, Group }
 
-public sealed record ProbabilityDisplay(string Value, string Accuracy, string Detail, bool Uninformative = false, string? Evidence = null) {
+public sealed record ProbabilityDisplay(
+    string Value,
+    string Accuracy,
+    string Detail,
+    bool Uninformative = false,
+    string? Evidence = null,
+    string? FocusDetail = null
+) {
     public string Summary => $"{Value} {Accuracy}" + (Uninformative ? " · Uninformative" : "");
 }
 
@@ -41,11 +48,12 @@ public static class ProbabilityPresentation {
             ProbabilityRow.Combo => At(fractions.Combos, index),
             _ => At(fractions.Groups, index)
         } : null;
+        string? focusDetail = raw is not null && Read(raw, out _, out _) ? $"Modeled primary fraction: {Ratio(raw)}" : null;
         string value = primary.ToString("P2", culture);
         string modeled = raw is null ? "" : $" Modeled primary fraction: {Ratio(raw)}.";
         if (contract is { Completion: CalculationCompletion.Success, Accuracy: CalculationAccuracy.Exact }
             && certificate?.Status != SearchAvailabilityStatus.Exact) {
-            return new(value, "±0%", "Exact within the accepted calculation scope." + modeled);
+            return new(value, "±0%", "Exact within the accepted calculation scope." + modeled, FocusDetail: focusDetail);
         }
 
         SearchAvailabilityInterval? interval = certificate is null ? null : row switch {
@@ -61,7 +69,7 @@ public static class ProbabilityPresentation {
             string evidence = $"rational endpoints [{Ratio(interval.Lower)}, {Ratio(interval.Upper)}]; modeled optimistic primary: {Ratio(raw ?? interval.Upper)}";
             string range = $"Certified range: [{Percent(ln, ld, false, culture)}, {Percent(un, ud, true, culture)}]; rational endpoints [{Ratio(interval.Lower)}, {Ratio(interval.Upper)}].";
             if (width.IsZero) {
-                return new(Printed(Round(ln * 10000, ld), culture), "±0%", range + modeled, Evidence: evidence);
+                return new(Printed(Round(ln * 10000, ld), culture), "±0%", range + modeled, Evidence: evidence, FocusDetail: focusDetail);
             }
 
             // Round M to hundredths of a percent first. Then ceil BOTH exact
@@ -69,7 +77,7 @@ public static class ProbabilityPresentation {
             BigInteger center = Round((ln * ud + un * ld) * 10000, 2 * ld * ud);
             BigInteger radius = BigInteger.Max(Ceiling(center * ld - ln * 10000, ld), Ceiling(un * 10000 - center * ud, ud));
             string detail = range + " Display midpoint ± conservative absolute uncertainty; the retained optimistic primary may exceed the certified upper endpoint." + modeled;
-            return new(Printed(center, culture), "±" + Printed(radius, culture), detail + (ln.IsZero ? " Uninformative: the true probability could be zero." : ""), ln.IsZero, evidence);
+            return new(Printed(center, culture), "±" + Printed(radius, culture), detail + (ln.IsZero ? " Uninformative: the true probability could be zero." : ""), ln.IsZero, evidence, focusDetail);
         }
 
         string reason = certificate?.Status switch {
@@ -78,7 +86,7 @@ public static class ProbabilityPresentation {
             _ => "No complete valid interval: "
         };
         return new(value, "⚠ Uncertified", reason + (certificate?.Detail ?? contract?.Reason ?? "Accuracy unavailable for this result.") + modeled,
-            Evidence: raw is null ? null : $"modeled primary fraction: {Ratio(raw)}");
+            Evidence: raw is null ? null : $"modeled primary fraction: {Ratio(raw)}", FocusDetail: focusDetail);
     }
 
     public static int GroupIndex(IReadOnlyList<GroupProbabilityResult>? groups, string id) {

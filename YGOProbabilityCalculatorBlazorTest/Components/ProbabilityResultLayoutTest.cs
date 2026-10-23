@@ -200,7 +200,7 @@ public class ProbabilityResultLayoutTest {
         }
         foreach (IElement group in new[] { current[1], pinned[1] }) {
             Assert.That(group.TextContent, Does.Contain("Bounded group").And.Contain("Bounded route").And.Contain("±25.00%"));
-            Assert.That(group.QuerySelector("[role='note']")!.GetAttribute("aria-label"), Does.Contain("[1/4, 3/4]"));
+            Assert.That(group.QuerySelector("[role='note']")!.GetAttribute("aria-label"), Is.EqualTo("50.00% ±25.00%"));
         }
         Assert.That(cut.Find(".probability-results").TextContent, Does.Not.Contain("Hidden empty").And.Not.Contain("Ungrouped combos"));
         Assert.That(cut.Find(".pinned-result").TextContent, Does.Not.Contain("Hidden empty").And.Not.Contain("Ungrouped combos"));

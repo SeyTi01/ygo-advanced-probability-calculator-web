@@ -16,7 +16,9 @@ async function main() {
         browser = await chromium.launch({ headless: true, executablePath: process.env.YGO_BROWSER_EXECUTABLE });
         const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, locale: 'en-US' });
         const errors = [];
+        const consoleErrors = [];
         page.on('pageerror', error => errors.push(error.message));
+        page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
         await page.addInitScript(() => {
             window.polish = { pending: null, copied: [], hold: true, replies: [] };
             Object.defineProperty(navigator, 'clipboard', { value: { writeText: async value => polish.copied.push(value) } });
@@ -81,8 +83,11 @@ async function main() {
                 const textGap = accuracyText.getBoundingClientRect().left - valueText.getBoundingClientRect().right;
                 return { ...box(element), textGap, gap: ar.x - vr.right, expectedGap: parseFloat(getComputedStyle(element).columnGap), valueMin: getComputedStyle(value).minWidth, uncertaintyMin: getComputedStyle(accuracy).minWidth };
             });
+            const errorUi = document.querySelector('#blazor-error-ui');
+            const errorUiStyle = errorUi && getComputedStyle(errorUi);
             const marker = document.querySelector('.probability-result-status-preliminary');
             const style = marker && getComputedStyle(marker);
+            const statusSlot = document.querySelector('.probability-results .probability-result-status-slot');
             const rgb = value => value.match(/[\d.]+/g).slice(0, 3).map(Number);
             const luminance = color => rgb(color).map(value => { value /= 255; return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4; }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
             let warning = null;
@@ -91,7 +96,12 @@ async function main() {
                 warning = { color: style.color, background: style.backgroundColor, contrast: (Math.max(a, b) + .05) / (Math.min(a, b) + .05) };
             }
             return { anchors: Object.fromEntries(anchors.map(selector => [selector, [...document.querySelectorAll(selector)].map(box)])),
-                compact, warning, overflow: document.documentElement.scrollWidth - innerWidth, scroll: scrollY };
+                compact, warning, preliminary: marker?.textContent.trim() ?? null,
+                preliminaryPadding: style ? [style.paddingLeft, style.paddingRight] : null,
+                statusText: statusSlot?.innerText.trim() ?? null,
+                statusLabel: statusSlot?.getAttribute('aria-label'),
+                errorUiVisible: !!errorUi && errorUiStyle.display !== 'none' && errorUi.getBoundingClientRect().width > 0 && errorUi.getBoundingClientRect().height > 0,
+                overflow: document.documentElement.scrollWidth - innerWidth, scroll: scrollY };
         });
         const records = [];
         for (const theme of ['Light', 'Dark']) for (const width of [320, 390, 768, 1280]) {
@@ -99,8 +109,13 @@ async function main() {
             await page.getByLabel('Color theme preference').selectOption({ label: theme });
             await page.locator('.results-section').scrollIntoViewIfNeeded();
             const before = await geometry();
+            assert(!before.errorUiVisible, `${width}/${theme}: #blazor-error-ui visible; page errors: ${errors.join(' | ')}; console errors: ${consoleErrors.join(' | ')}`);
             assert(before.overflow <= 0, `${width}/${theme}: overflow`);
             assert(before.warning?.contrast >= 4.5, `${width}/${theme}: warning contrast`);
+            assert.equal(before.preliminary, 'Preliminary', `${width}/${theme}: compact Preliminary badge`);
+            assert.equal(before.statusText, 'Preliminary', `${width}/${theme}: accessible status text`);
+            assert(!before.statusText.includes('checking Exact'));
+            assert.deepEqual(before.preliminaryPadding?.[0], before.preliminaryPadding?.[1], 'symmetrical badge padding');
             assert(before.compact.length >= 3);
             for (const row of before.compact) {
                 assert.equal(row.valueMin, '0px'); assert.equal(row.uncertaintyMin, '0px');
@@ -111,13 +126,15 @@ async function main() {
         }
         await page.evaluate(() => { polish.pending(); polish.pending = null; });
         await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
-        assert.equal(await page.locator('.probability-result-status-preliminary').count(), 0);
+        await page.waitForFunction(() => document.querySelectorAll('.probability-result-status.probability-result-status-preliminary').length === 0);
+        assert.equal(await page.locator('.probability-results .probability-result-status').count(), 0);
         assert.equal(await page.locator('.pinned-result').innerText(), pin);
         for (const record of records) {
             await page.setViewportSize({ width: record.width, height: 1000 });
             await page.getByLabel('Color theme preference').selectOption({ label: record.theme });
             await page.locator('.results-section').scrollIntoViewIfNeeded();
             const final = await geometry();
+            assert(!final.errorUiVisible, `${record.width}/${record.theme}: #blazor-error-ui visible; page errors: ${errors.join(' | ')}; console errors: ${consoleErrors.join(' | ')}`);
             assert(final.overflow <= 0);
             record.final = final;
             await fs.writeFile(path.join(output, 'geometry-in-progress.json'), JSON.stringify(records, null, 2));
@@ -140,18 +157,33 @@ async function main() {
         const copied = await page.evaluate(() => polish.copied.at(-1));
         assert(copied.includes('Target route') && copied.includes('±0%') && !copied.includes('Preliminary'));
         await page.evaluate(() => document.documentElement.style.zoom = '2');
-        assert((await geometry()).overflow <= 0, '200% zoom overflow');
+        const zoomedGeometry = await geometry();
+        assert(zoomedGeometry.overflow <= 0, '200% zoom overflow');
+        assert(!zoomedGeometry.errorUiVisible, `#blazor-error-ui visible at 200% zoom; page errors: ${errors.join(' | ')}; console errors: ${consoleErrors.join(' | ')}`);
         await page.evaluate(() => document.documentElement.style.zoom = '');
-        const proof = page.locator('.probability-results .probability-zero-uncertainty').first();
-        await proof.focus();
-        assert(await proof.locator('.probability-proof').isVisible());
+        for (const resultPanel of [page.locator('.probability-results'), page.locator('.pinned-result')]) {
+            const values = resultPanel.locator('.probability-with-accuracy');
+            assert(await values.count() >= 3, 'total, combo, and group probability rows');
+            for (let index = 0; index < await values.count(); index++) {
+                const value = values.nth(index);
+                await value.focus();
+                assert(await value.locator('.probability-proof').isVisible());
+                const primaryFraction = await value.locator('.probability-proof').innerText();
+                assert.match(primaryFraction, /^Modeled primary fraction: \d+\/\d+$/);
+                const accessibleProbability = await value.getAttribute('aria-label');
+                assert.equal(await value.getAttribute('title'), primaryFraction);
+                assert(accessibleProbability.endsWith(`. ${primaryFraction}`));
+                assert(!/(?:Certified range|Exact within|Uncertified|optimistic primary)/.test(accessibleProbability));
+            }
+        }
         assert((await geometry()).overflow <= 0, 'focused proof overflow');
         await page.getByRole('button', { name: 'Calculate', exact: true }).focus();
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.waitForFunction(() => !!polish.pending);
         await page.getByRole('button', { name: 'Cancel Exact upgrade', exact: true }).click();
         await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
-        assert.equal(await page.locator('.probability-result-status-preliminary').count(), 0);
+        assert.equal(await page.locator('.probability-result-status.probability-result-status-preliminary').count(), 0);
+        assert.equal(await page.locator('.probability-results .probability-result-status').count(), 0);
         assert.equal(await page.locator('.pinned-result').innerText(), pin);
         // The category-rule property picker shares the same authoring choices.
         await page.locator('details.category-management > summary').click();
@@ -179,8 +211,9 @@ async function main() {
         await page.locator('[aria-label="Edit category Target"]').click();
         assert((await page.locator('.category-rule-summary').innerText()).includes('Level 3–5'));
         assert.deepEqual(errors, []);
-        await fs.writeFile(path.join(output, 'geometry.json'), JSON.stringify({ browser: browser.version(), records, errors }, null, 2));
-        console.log(`Numeric/result polish smoke passed; ${records.length} viewport/theme pairs, real Exact/pin/copy, compact gaps, warning contrast, stable anchors, numeric draft/removal/apply and 200% zoom. Evidence: ${output}`);
+        await fs.writeFile(path.join(output, 'geometry.json'), JSON.stringify({ browser: browser.version(), records, errors, consoleErrors }, null, 2));
+        console.log(`Browser console errors captured: ${consoleErrors.length}; #blazor-error-ui remained hidden in all checked states.`);
+        console.log(`Numeric/result polish smoke passed; ${records.length} viewport/theme pairs, compact Preliminary badge/accessibility/cancellation, modeled-fraction focus disclosure, real Exact/pin/copy, compact gaps, warning contrast, stable anchors, numeric draft/removal/apply and 200% zoom. Evidence: ${output}`);
     } finally {
         await browser?.close();
         await new Promise(resolve => server.close(resolve));

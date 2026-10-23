@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
+using AngleSharp.Dom;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -74,7 +75,15 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
             Assert.That(cut.FindAll(root + " .probability-zero-uncertainty"), Has.Count.EqualTo(2));
             Assert.That(cut.FindAll(root + " .probability-uninformative"), Has.Count.EqualTo(1));
             Assert.That(cut.FindAll(root + " table"), Is.Empty);
-            Assert.That(cut.Find(root + " .probability-with-accuracy").GetAttribute("aria-label"), Does.Contain("[1/2, 17/30]"));
+            foreach (IElement value in cut.FindAll(root + " .probability-with-accuracy")) {
+                string disclosure = value.QuerySelector(".probability-proof")!.TextContent;
+                string accessibleLabel = value.GetAttribute("aria-label")!;
+                Assert.That(value.GetAttribute("tabindex"), Is.EqualTo("0"));
+                Assert.That(disclosure, Does.Match("^Modeled primary fraction: \\d+/\\d+$"));
+                Assert.That(value.GetAttribute("title"), Is.EqualTo(disclosure));
+                Assert.That(accessibleLabel, Does.EndWith($". {disclosure}")
+                    .And.Not.Contain("Certified range").And.Not.Contain("optimistic primary"));
+            }
         }
     }
 
@@ -95,6 +104,8 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         IRenderedComponent<PinnedResultPanel> pin = context.RenderComponent<PinnedResultPanel>(parameters => parameters.Add(value => value.Snapshot, snapshot));
         string expected = accuracy == CalculationAccuracy.Exact ? "±0%" : "⚠ Uncertified";
         Assert.That(current.Find(".probability-uncertainty").TextContent, Is.EqualTo(expected));
+        Assert.That(current.Find(".probability-with-accuracy").GetAttribute("aria-label"), Does.EndWith(expected));
+        Assert.That(current.FindAll(".probability-proof"), Is.Empty);
         Assert.That(current.FindAll(".probability-zero-uncertainty"), Has.Count.EqualTo(accuracy == CalculationAccuracy.Exact ? 1 : 0));
         Assert.That(pin.FindAll(".probability-zero-uncertainty"), Has.Count.EqualTo(accuracy == CalculationAccuracy.Exact ? 3 : 0));
         Assert.That(pin.FindAll(".probability-uncertainty").Select(element => element.TextContent), Is.All.EqualTo(expected));

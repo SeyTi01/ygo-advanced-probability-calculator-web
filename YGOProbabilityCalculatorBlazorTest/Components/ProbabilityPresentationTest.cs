@@ -84,7 +84,30 @@ public sealed class ProbabilityPresentationTest {
             culture: CultureInfo.InvariantCulture);
         Assert.That(display.Summary, Is.EqualTo("50.00% ±0%"));
         Assert.That(display.Detail, Does.Contain("Modeled primary fraction: 3/4"));
+        Assert.That(display.FocusDetail, Is.EqualTo("Modeled primary fraction: 3/4"));
         Assert.That(display.Evidence, Does.Contain("modeled optimistic primary: 3/4"));
+    }
+
+    [Test]
+    public void FocusDisclosureUsesTheAcceptedRawFractionAndOmitsUnavailableFractions() {
+        CalculationResultContract contract = Contract(CalculationAccuracy.Bounded) with {
+            Fractions = new(new("7", "10"), [new("3", "5")], [new("1", "2")])
+        };
+        SearchAvailabilityCertificate certificate = new(SearchAvailabilityStatus.Bounded, "Proof",
+            new("Total", new("1", "2"), new("4", "5")), [new("Combo", new("1", "2"), new("7", "10"))],
+            [new("Group", new("1", "3"), new("2", "3"))]);
+
+        Assert.That(ProbabilityPresentation.Create(.7, contract, certificate).FocusDetail,
+            Is.EqualTo("Modeled primary fraction: 7/10"));
+        Assert.That(ProbabilityPresentation.Create(.6, contract, certificate, ProbabilityRow.Combo).FocusDetail,
+            Is.EqualTo("Modeled primary fraction: 3/5"));
+        Assert.That(ProbabilityPresentation.Create(.5, contract, certificate, ProbabilityRow.Group).FocusDetail,
+            Is.EqualTo("Modeled primary fraction: 1/2"));
+        Assert.That(ProbabilityPresentation.Create(.7, Contract(CalculationAccuracy.Bounded), certificate).FocusDetail,
+            Is.Null);
+        Assert.That(ProbabilityPresentation.Create(.7, Contract(CalculationAccuracy.Bounded) with {
+            Fractions = new(new("1", "0"), [], [])
+        }, certificate).FocusDetail, Is.Null);
     }
 
     [TestCase(SearchAvailabilityStatus.NotCertified)]
