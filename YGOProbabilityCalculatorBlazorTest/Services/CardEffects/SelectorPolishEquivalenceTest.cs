@@ -73,10 +73,10 @@ public sealed class SelectorPolishEquivalenceTest {
     }
 
     [Test]
-    public void FactoredFiltersPreserveManualAndContradictoryNumbersWithMonsterKindPresent() {
+    public void ShippedLiteralPlansPreserveManualAndContradictoryNumbersWithMonsterKindPresent() {
         foreach (int id in Bounded.Select(entry => entry.Id).Append(92221402)) {
             SearchEffectPlan previous = Previous(id);
-            SearchEffectPlan current = CardEffectRegistry.Default.Find(id)!.Plan.Search!;
+            SearchEffectPlan current = id == 92221402 ? CardEffectRegistry.Default.Find(id)!.Plan.Search! : LegacySelectorPlans.Plan(id).Search!;
             string[] facets = id == 92221402 ? ["kind:monster", "attribute:dark", "monster-race:aqua"] : Bounded.Single(entry => entry.Id == id).Facets;
             string[] keys = [.. facets, "level:1", "level:4", "level:5", "level:7", "level:8", "rank:4", "link:1", "monster-type:xyz", "kind:spell"];
             for (int mask = 0; mask < 1 << keys.Length; mask++) {
@@ -93,7 +93,8 @@ public sealed class SelectorPolishEquivalenceTest {
     [Test]
     public void LiteralRangesKeepTheirMeaningAndMonsterTraitsNeedNoSeparateKindCondition() {
         Card contradictory = new([Property("kind:monster"), Property("monster-race:warrior"), Property("level:4"), Property("rank:4")], externalCardId: 100);
-        Assert.That(CardEffectRegistry.Default.Find(32807846)!.Plan.Search!.Matches(contradictory), Is.True);
+        Assert.That(LegacySelectorPlans.Plan(32807846).Search!.Matches(contradictory), Is.True);
+        Assert.That(CardEffectRegistry.Default.Find(32807846)!.Plan.Search!.Matches(contradictory), Is.False, "The new revision deliberately validates numeric metadata.");
         Assert.That(new NumericPropertyRange(NumericPropertyKind.Level, 1, 4).ToSelector().Matches(contradictory), Is.False);
         Card partial = new([Property("attribute:light"), Property("monster-race:fiend")], externalCardId: 100);
         Assert.That(CardEffectRegistry.Default.Find(98567237)!.Plan.Search!.Matches(partial), Is.True);
@@ -108,14 +109,15 @@ public sealed class SelectorPolishEquivalenceTest {
             (98567237, ["attribute:light", "monster-race:fiend"]),
             (48805472, ["level:4", "monster-race:plant"])
         }) {
-            DrawEffectPlan plan = CardEffectRegistry.Default.Find(id)!.Plan;
+            DrawEffectPlan plan = id == 98567237 ? CardEffectRegistry.Default.Find(id)!.Plan : LegacySelectorPlans.Plan(id);
             CardSelector selector = plan.Search?.Selector ?? plan.HandCostSelector;
             Assert.That(selector.CategoryIdentities, Does.Not.Contain("metadata:kind:monster"), $"{id} has no redundant Monster clause");
             Card traitOnly = new(keys.Select(Property).ToArray(), externalCardId: 100);
             Assert.That(plan.Search?.Matches(traitOnly) ?? selector.Matches(traitOnly), Is.True, $"{id} is determined by its monster-specific properties");
         }
         Card legacyPayment = new([Property("level:8")]);
-        Assert.That(CardEffectRegistry.Default.Find(38120068)!.Plan.HandCostSelector.Matches(legacyPayment), Is.True);
+        Assert.That(LegacySelectorPlans.Plan(38120068).HandCostSelector.Matches(legacyPayment), Is.True);
+        Assert.That(CardEffectRegistry.Default.Find(38120068)!.Plan.HandCostSelector.Matches(legacyPayment), Is.False);
         Assert.That(new NumericPropertyRange(NumericPropertyKind.Level, 8, 8).ToSelector().Matches(legacyPayment), Is.False);
     }
 }
