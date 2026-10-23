@@ -39,9 +39,6 @@
         <div class="simulation-targets small" role="status" aria-label="Current search targets">
             Targets in this deck: @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : "None")
         </div>
-        @if (!Deck.Any(card => card.EffectPlan.RequiresSearchResolution) && Deck.Any(card => card.Active && card.Copies > 0 && card.DrawCount is not null)) {
-            <div class="small text-body-secondary" role="note">Search access assumes targets outside the final hand remain available.</div>
-        }
     }
     <div class="simulation-actions">
         @if (_effect.CanExecute) {
@@ -176,7 +173,7 @@
                                style="width: 4.5rem" value="@_draft.PreDrawDeckRemovalCount"
                                @onchange="e => ChangePreDrawDeckRemovalCount(e.Value)" />
                     </div>
-                    <div class="form-text">Tracks deck size only, not banished identities.</div>
+                    <div class="form-text">Deck depletion is modeled; search-target survival follows the reported result accuracy.</div>
                 </details>
             }
             <div class="d-flex gap-2 mt-3">
@@ -231,7 +228,7 @@
     private string EditLabel => _draft is not null ? "Close editor" : !Card.HasEffect && _effect.Source != EffectSource.BuiltIn
         ? "Configure simulation" : "Customize simulation";
     private bool HasSavedRevisionDetails => _effect.Source == EffectSource.BuiltIn
-        && (_effect.Maintained is null || Card.EffectProfile != _effect.Maintained.Profile || Card.EffectPlan != _effect.Maintained.Plan);
+        && !_effect.UsesCurrentDescription;
     private bool HasDetails => _performanceNote || (_effect.Source == EffectSource.BuiltIn
         && (!string.IsNullOrWhiteSpace(_effect.Limitations) || HasSavedRevisionDetails))
         || (_effect.Source == EffectSource.LegacySnapshot && Card.HasEffect);

@@ -9,5 +9,5 @@ public sealed class PotOfDesiresEffect : ICardEffectDefinition {
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true) with { HiddenDeckCost = 10 };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
     public string Summary => "Banish 10 unseen deck cards, then draw 2; once per turn. Requires 12 cards left.";
-    public string Limitations => "Banished card identities are not tracked; banishing a card that a combo needs to remain in the deck does not invalidate that combo.";
+    public string Limitations => "Deck depletion is modeled. Search-target survival follows result accuracy: Fast may be exact or uncertain; completed physical Exact accounts for it. Banishment-triggered effects are not simulated.";
 }

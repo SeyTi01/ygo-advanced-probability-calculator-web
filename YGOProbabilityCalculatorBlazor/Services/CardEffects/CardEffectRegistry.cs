@@ -31,7 +31,9 @@ public sealed record EffectiveCardEffect(
     EffectCapabilities Capabilities,
     bool CanExecute,
     bool CanRestore
-);
+) {
+    public bool UsesCurrentDescription { get; init; }
+}
 
 // Definitions compile once at registry construction. Only immutable resolved values
 // enter cards, sessions and workers. Calculation never consults current definitions.
@@ -138,13 +140,24 @@ public sealed class CardEffectRegistry {
         EffectProfile profile = card.EffectProfile;
         bool builtin = profile.Source == EffectSource.BuiltIn;
         bool executable = profile.ExecutionModel == EffectExecutionModel.DrawSequenceV1;
+        // Text-only corrections do not change semantic revisions or saved plans.
+        // Refresh presentation only for an otherwise identical current definition.
+        bool currentDescription = builtin && maintained is not null
+            && profile.CanonicalCardId == maintained.Profile.CanonicalCardId
+            && profile.Revision == maintained.Profile.Revision
+            && profile.ExecutionModel == maintained.Profile.ExecutionModel
+            && profile.Support == maintained.Profile.Support
+            && card.EffectPlan == maintained.Plan;
+        EffectProfile description = currentDescription ? maintained!.Profile : profile;
 
         return new(maintained, card.EffectPlan, profile.Source,
             executable && builtin ? profile.Support : EffectSupport.Unmodeled,
-            builtin ? profile.Summary! : card.EffectPlan.Describe(),
-            builtin ? profile.Limitations ?? "" : "",
+            builtin ? description.Summary! : card.EffectPlan.Describe(),
+            builtin ? description.Limitations ?? "" : "",
             profile.ExecutionModel, card.EffectPlan.Capabilities,
-            executable, maintained?.Profile.ExecutionModel == EffectExecutionModel.DrawSequenceV1);
+            executable, maintained?.Profile.ExecutionModel == EffectExecutionModel.DrawSequenceV1) {
+            UsesCurrentDescription = currentDescription
+        };
     }
 
     private MaintainedCardEffect? MaintainedFor(Card card) =>
