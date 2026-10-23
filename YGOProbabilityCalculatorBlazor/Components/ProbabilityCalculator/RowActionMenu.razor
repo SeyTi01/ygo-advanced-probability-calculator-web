@@ -3,6 +3,7 @@
 <ActionMenu @ref="_menu" Compact="true" Label="@($"Actions for {ItemLabel}")">
     <button type="button" class="menu-command" disabled="@(Index <= 0)" @onclick="() => Move(-1)">Move up</button>
     <button type="button" class="menu-command" disabled="@(Index >= Count - 1)" @onclick="() => Move(1)">Move down</button>
+    <MoveToPosition Index="Index" Count="Count" ItemLabel="@ItemLabel" MenuCommand="true" OnMove="MoveTo" />
     <button type="button" class="menu-command" @onclick="() => Run(OnDuplicate)">Duplicate</button>
     <button id="@($"{Kind}Active{Index}")" type="button" class="menu-command" @onclick="() => Run(OnToggle)">@(Active ? "Deactivate" : "Activate")</button>
     <button type="button" class="menu-command menu-remove" @onclick="() => Run(OnRemove, true)">Remove</button>
@@ -19,6 +20,7 @@
     [Parameter] public EventCallback OnToggle { get; set; }
     [Parameter] public EventCallback OnRemove { get; set; }
     private ActionMenu? _menu;
+    private bool _restoreFocus;
 
     private async Task Move(int direction) {
         int destination = Index + direction;
@@ -26,11 +28,20 @@
             return;
         }
 
+        await MoveTo((Index, destination));
+    }
+
+    private async Task MoveTo((int From, int To) move) {
         if (_menu is not null) {
             await _menu.Close();
         }
-        await OnMove.InvokeAsync((Index, destination));
-        if (_menu is not null) {
+        _restoreFocus = true;
+        await OnMove.InvokeAsync(move);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_restoreFocus && _menu is not null) {
+            _restoreFocus = false;
             await _menu.RestoreFocusAsync();
         }
     }

@@ -1,0 +1,128 @@
+@using System.Globalization
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<span class="move-position" @onclick:stopPropagation="true" @onkeydown:stopPropagation="@_open" @onkeydown="HandleKeyDown">
+    <button @ref="_trigger" type="button" class="@(MenuCommand ? "menu-command" : "move-position-trigger")"
+            disabled="@(Count < 2)" aria-label="Move @ItemLabel to position" title="Move to position"
+            aria-expanded="@(_open ? "true" : "false")" aria-controls="@_id" @onclick="Toggle">
+        @if (MenuCommand) { <span>Move to position…</span> }
+        else { <span aria-hidden="true">↕</span> }
+    </button>
+    @if (_open) {
+        <span @ref="_panel" id="@_id" class="move-position-panel" role="group" aria-label="Move @ItemLabel to position">
+            <label for="@(_id + "-input")">Position 1–@Count <span class="move-position-current">(current: @(Index + 1))</span></label>
+            <span class="move-position-fields">
+                <input @ref="_input" id="@(_id + "-input")" class="form-control form-control-sm" type="text" inputmode="numeric"
+                       value="@_destination" aria-invalid="@(_error is null ? "false" : "true")" aria-describedby="@(_error is null ? null : _id + "-error")"
+                       @oninput="Input" @onkeydown="HandleInputKeyDown" />
+                <button type="button" class="btn btn-primary btn-sm" @onclick="Apply">Move</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="Cancel">Cancel</button>
+            </span>
+            @if (_error is not null) {
+                <span id="@(_id + "-error")" class="move-position-error" role="alert">@_error</span>
+            }
+        </span>
+    }
+</span>
+
+@code {
+    [Parameter] public int Index { get; set; }
+    [Parameter] public int Count { get; set; }
+    [Parameter] public string ItemLabel { get; set; } = string.Empty;
+    [Parameter] public bool MenuCommand { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
+
+    private readonly string _id = "move-position-" + Guid.NewGuid().ToString("N");
+    private ElementReference _trigger;
+    private ElementReference _input;
+    private ElementReference _panel;
+    private DotNetObjectReference<MoveToPosition>? _reference;
+    private bool _attach;
+    private bool _open;
+    private bool _focusInput;
+    private bool _focusTrigger;
+    private string _destination = string.Empty;
+    private string? _error;
+
+    private Task Toggle() {
+        if (_open) {
+            return Cancel();
+        }
+
+        _destination = (Index + 1).ToString(CultureInfo.InvariantCulture);
+        _error = null;
+        _open = _focusInput = true;
+        _attach = !MenuCommand;
+        return Task.CompletedTask;
+    }
+
+    private void Input(ChangeEventArgs args) {
+        _destination = args.Value?.ToString() ?? string.Empty;
+        _error = null;
+    }
+
+    private async Task Apply() {
+        if (!int.TryParse(_destination, NumberStyles.None, CultureInfo.InvariantCulture, out int position) || position < 1 || position > Count) {
+            _error = $"Enter a whole number from 1 to {Count}.";
+            _focusInput = true;
+            return;
+        }
+
+        await ClosePanel();
+        _focusTrigger = !MenuCommand || position == Index + 1;
+        if (position != Index + 1) {
+            await OnMove.InvokeAsync((Index, position - 1));
+        }
+    }
+
+    private async Task Cancel() {
+        await ClosePanel();
+        _focusTrigger = true;
+    }
+
+    private async Task ClosePanel() {
+        if (!MenuCommand) {
+            await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
+        }
+        _open = _focusInput = _attach = false;
+    }
+
+    [JSInvokable]
+    public async Task Dismiss() {
+        _open = _focusInput = _attach = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync() {
+        try {
+            if (_reference is not null) {
+                await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
+            }
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or OperationCanceledException) {
+        }
+        _reference?.Dispose();
+    }
+
+    private Task HandleKeyDown(KeyboardEventArgs args) => _open && args.Key == "Escape" ? Cancel() : Task.CompletedTask;
+
+    private Task HandleInputKeyDown(KeyboardEventArgs args) => args.Key == "Enter" ? Apply() : Task.CompletedTask;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_attach) {
+            _attach = false;
+            _reference ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("workspaceMenus.open", _panel, _trigger, _reference, false);
+        }
+        if (_focusInput) {
+            _focusInput = false;
+            await _input.FocusAsync();
+        }
+        if (_focusTrigger) {
+            _focusTrigger = false;
+            await _trigger.FocusAsync();
+        }
+    }
+}

@@ -61,6 +61,7 @@
                                         aria-label="Move @label up" title="Move up" @onclick="() => MovePriority(index, -1)">↑</button>
                                 <button type="button" class="btn btn-outline-secondary" disabled="@(i == _entries.Length - 1)"
                                         aria-label="Move @label down" title="Move down" @onclick="() => MovePriority(index, 1)">↓</button>
+                                <MoveToPosition Index="index" Count="_entries.Length" ItemLabel="@label" OnMove="MovePriorityTo" />
                             </li>
                         }
                     </ol>
@@ -145,13 +146,15 @@
     }
 
     private Task MovePriority(int index, int offset) {
-        int target = index + offset;
-        if (target < 0 || target >= _entries.Length) {
+        _focusPriorityId = _entries[index].Id;
+        return MovePriorityTo((index, index + offset));
+    }
+
+    private Task MovePriorityTo((int From, int To) move) {
+        List<string> ids = _entries.Select(card => card.Id).ToList();
+        if (!ListMove.TryMove(ids, move.From, move.To)) {
             return Task.CompletedTask;
         }
-        string[] ids = _entries.Select(card => card.Id).ToArray();
-        _focusPriorityId = ids[index];
-        (ids[index], ids[target]) = (ids[target], ids[index]);
         // Effectless entries retain their preference until their effect is restored.
         string[] retained = Priority.CardIds.Where(id => !ids.Contains(id, StringComparer.Ordinal)).ToArray();
         return PriorityChanged.InvokeAsync(new DrawActivationPriority(Priority.Mode, [.. ids, .. retained]));

@@ -5,6 +5,7 @@
     <button @ref="_downButton" type="button" class="reorder-button" disabled="@(Index >= Count - 1)"
             aria-label="Move @ItemLabel @NextDirection" title="Move @ItemLabel @NextDirection"
             @onclick="() => Move(1)">@NextGlyph</button>
+    <MoveToPosition Index="Index" Count="Count" ItemLabel="@ItemLabel" OnMove="OnMove" />
 </span>
 
 @code {
