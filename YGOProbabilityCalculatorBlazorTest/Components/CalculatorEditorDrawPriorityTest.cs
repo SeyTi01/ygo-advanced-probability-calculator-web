@@ -27,7 +27,6 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
         await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
         Assert.That(cut.FindAll(".draw-priority-list li"), Has.Count.EqualTo(2));
         Assert.That(cut.FindComponent<SessionRecovery>().Instance.Session.DrawActivationPriority.CardIds, Is.EqualTo(Rows(cut)));
-        Assert.That(cut.Find("#calculationSettingsPanel").TextContent, Does.Not.Contain("unranked").And.Not.Contain("optimal play"));
         Assert.That(Button(cut, "Move Duplicate name (entry 1) up").HasAttribute("disabled"), Is.True);
         Assert.That(Button(cut, "Move Duplicate name (entry 2) down").HasAttribute("disabled"), Is.True);
         int focusCalls = context.JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count;

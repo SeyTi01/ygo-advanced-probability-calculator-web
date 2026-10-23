@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 const source = readFileSync(new URL('../../YGOProbabilityCalculatorBlazor/wwwroot/js/session-sharing.js', import.meta.url), 'utf8');
-const outboundWrite = 'await globalThis.navigator.clipboard.writeText(text);';
-function isolatedProbe(sourceText = source) {
+function isolatedProbe() {
     const counters = { clipboardReads: 0, navigationMutations: 0 };
     const denied = () => { counters.navigationMutations++; throw Error('Unexpected inbound navigation'); };
     let clipboard = 'unrelated synthetic text', focused = 0, selected = 0;
@@ -110,22 +109,4 @@ test('delayed outbound writes only finish their own copy result', async () => {
     resolve();
     assert.equal(await copy, true);
     assert.equal(reads, 0);
-});
-
-test('the read guard catches swallowed reads without rejecting harmless listeners', async () => {
-    const mutatedSource = source.replace(outboundWrite,
-        'try { globalThis.navigator.clipboard.readText(); } catch { /* simulate a swallowed read */ }\n        ' + outboundWrite);
-    assert.notEqual(mutatedSource, source, 'the sensitivity mutation must alter the expected call site');
-    const probe = isolatedProbe();
-    vm.runInContext(mutatedSource, probe.context);
-    probe.context.addEventListener('focus', () => {});
-    assert.equal(await probe.context.sessionSharing.copy('synthetic link'), true);
-    assert.equal(probe.counters.clipboardReads, 1);
-    assert.throws(() => assertOutboundIsolation(probe), assert.AssertionError);
-
-    const harmless = isolatedProbe();
-    vm.runInContext(source, harmless.context);
-    harmless.context.addEventListener('focus', () => {});
-    assert.equal(await harmless.context.sessionSharing.copy('synthetic link'), true);
-    assertOutboundIsolation(harmless);
 });

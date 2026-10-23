@@ -29,6 +29,12 @@ For focused tests, add `--filter "FullyQualifiedName~YGOProbabilityCalculatorBla
 
 `.github/workflows/tests.yml` runs the full regular suite on every branch push, including feature branches, `dev`, and `main`. CI complements local verification; run relevant tests before pushing. Retry with `-m:1` only after MSBuild parallel-node/reuse errors and report the workaround; serial builds are not the default.
 
+### Test maintenance
+
+- Keep a test when it catches a meaningful defect at the simplest reliable layer. Preserve independent probability oracles, compatibility, user state, accessibility and calculation ownership; remove redundant tests and their unused helpers rather than skipping them.
+- Treat explanatory prose and incidental styling as editable content. Test the selected data/source, accessible associations and consequential usability instead of full help sentences, rejected old wording, exact CSS lists or subpixel layout matrices. Exact numerical formatting and protocol/serialization contracts remain valid assertions.
+- Await terminal results without requiring calculations to stay busy. Control completion explicitly for cancellation, stale replies and progressive transitions; keep a compact optimized-published-WASM integration check. Keep opt-in measurements separate from correctness gates.
+
 ### Windows Codex execution requirements
 
 For Windows Codex tasks using the verified restricted environment:

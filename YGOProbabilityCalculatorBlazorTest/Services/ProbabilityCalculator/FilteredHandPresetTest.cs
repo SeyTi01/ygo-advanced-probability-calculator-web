@@ -71,12 +71,6 @@ public sealed class FilteredHandPresetTest {
                 Assert.That(source.Search.Matches(new(positive.Categories, externalCardId: null)), Is.False,
                     definition.Name + " requires recognized catalog identity");
                 Assert.That(definition.Support, Is.EqualTo(EffectSupport.ModeledWithinRules), definition.Name);
-                if (definition is PreparationOfRitesEffect) {
-                    Assert.That(definition.Limitations, Does.Contain("Ritual Spell recovery from the GY"));
-                }
-                else {
-                    Assert.That(definition.Limitations, Is.Empty, "No additional card-specific caveat is needed for these Deck searches.");
-                }
             });
         }
     }

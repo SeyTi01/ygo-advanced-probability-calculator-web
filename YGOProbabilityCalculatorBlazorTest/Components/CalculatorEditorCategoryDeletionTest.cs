@@ -19,7 +19,7 @@ public sealed class CalculatorEditorCategoryDeletionTest : CalculatorEditorTestB
         string before = SavedSessionJson();
         Card original = cut.FindComponents<CardEditor>()[0].Instance.Card;
         await cut.Find("[aria-label='Remove category A']").ClickAsync(new());
-        Assert.That(cut.Find("[role=alertdialog]").TextContent, Does.Contain("A").And.Contain("inactive").And.Contain("match no cards"));
+        Assert.That(cut.Find("[role=alertdialog]").TextContent, Does.Contain(a.Name));
         if (escape) {
             await cut.Find("[role=alertdialog]").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
         }

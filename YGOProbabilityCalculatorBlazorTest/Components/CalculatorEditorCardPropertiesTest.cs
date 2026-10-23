@@ -392,8 +392,6 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(editor.Find(".manual-card-properties").TextContent, Does.Contain("Manual").And.Contain(fire.Name));
         Assert.That(editor.FindAll(".accordion-button .category-tag").Select(badge => badge.TextContent.Trim()),
             Is.EqualTo(new[] { fire.Name }));
-        Assert.That(editor.Find(".manual-property-header-badge").ClassList,
-            Does.Contain("card-property-tag").And.Contain("card-property-color-attribute-fire"));
         // A stale/forged selection cannot add another membership or change provenance.
         await editor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = fire.Identity });
         await Button(editor, "Add").ClickAsync(new());

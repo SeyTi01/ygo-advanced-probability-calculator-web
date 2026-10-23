@@ -45,19 +45,14 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         });
         await Button(cut, "Calculate").ClickAsync(new());
         AssertRows(".probability-results");
-        AssertAccuracyDisclosure(cut, ".probability-results");
         ProbabilityCalculationResult owned = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
         await Button(cut, "Pin result").ClickAsync(new());
         AssertRows(".pinned-result");
-        AssertAccuracyDisclosure(cut, ".probability-results");
-        AssertAccuracyDisclosure(cut, ".pinned-result");
         await cut.Find("#handSize").ChangeAsync(new() { Value = "2" });
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
         await Button(cut, "Calculate").ClickAsync(new());
         AssertRows(".probability-results");
         AssertRows(".pinned-result");
-        AssertAccuracyDisclosure(cut, ".probability-results");
-        AssertAccuracyDisclosure(cut, ".pinned-result");
         Assert.That(cut.Find(".probability-results .probability-result-status").TextContent,
             Is.EqualTo("Inputs changed"));
         Assert.That(cut.FindAll(".result-difference"), Is.Empty);
@@ -110,19 +105,6 @@ public sealed class InlineProbabilityTest : CalculatorEditorTestBase {
         Assert.That(pin.FindAll(".probability-zero-uncertainty"), Has.Count.EqualTo(accuracy == CalculationAccuracy.Exact ? 3 : 0));
         Assert.That(pin.FindAll(".probability-uncertainty").Select(element => element.TextContent), Is.All.EqualTo(expected));
         Assert.That(pin.FindAll("table"), Is.Empty);
-        Assert.That(pin.Find(".accuracy-details summary").TextContent, Is.EqualTo("Accuracy details"));
-    }
-
-    private static void AssertAccuracyDisclosure(IRenderedFragment cut, string resultSelector) {
-        AngleSharp.Dom.IElement disclosure = cut.Find(resultSelector + " .accuracy-details");
-
-        Assert.That(disclosure.QuerySelectorAll("p"), Has.Count.EqualTo(1));
-        Assert.That(disclosure.QuerySelector("p")!.TextContent, Is.EqualTo(ProbabilityPresentation.AccuracyDetails));
-        Assert.That(disclosure.TextContent, Does.Not.Contain("Internal solver reference")
-            .And.Not.Contain("Certification Limited")
-            .And.Not.Contain("(v1)")
-            .And.Not.Contain("Work limit")
-            .And.Not.Contain("Storage diagnostics")
-            .And.Not.Contain("accepted bound retained"));
+        Assert.That(pin.Find(".accuracy-details").TextContent, Does.Contain(ProbabilityPresentation.AccuracyDetails));
     }
 }

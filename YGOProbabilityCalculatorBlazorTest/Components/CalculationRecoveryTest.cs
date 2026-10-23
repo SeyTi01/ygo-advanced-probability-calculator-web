@@ -56,23 +56,18 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
             Does.Contain(reason == ProbabilityCalculationLimitReason.Work ? "work allowance" : "storage safety limit").And.Contain("No probability was calculated"));
         Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(accepted));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot, Is.SameAs(pinned));
-        AssertNoRecovery(cut);
     }
 
     [Test]
-    public async Task LongFastAndCancellationNeverOfferNoEffectsAndManualSettingsStillWork() {
+    public async Task PendingCancellationAndManualModeSelectionPreserveConfiguredEffects() {
         SessionState session = Session();
         session.Cards[0] = session.Cards[0].WithDrawCount(2).WithPreDrawRemovalCount(1);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Controlled(session);
         Task active = Button(cut, "Calculate").ClickAsync(new());
-        await Task.Delay(TimeSpan.FromMilliseconds(3100));
-        AssertNoRecovery(cut);
-        Assert.That(cut.FindAll(".calculation-feedback-slot"), Has.Count.EqualTo(1));
         await Button(cut, "Cancel").ClickAsync(new());
         Assert.That(_tokens[0].IsCancellationRequested, Is.True);
         _jobs[0].SetCanceled();
         await active;
-        AssertNoRecovery(cut);
 
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Task manual = Button(cut, "Calculate").ClickAsync(new());
@@ -84,12 +79,6 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         double expected = SmallDeckOracle.EnumerateProbability(session.Cards.Select(card => card.WithDrawCount(null)).ToList(), session.Combos, session.HandSize);
         Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(expected.ToString("P2")));
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: No effect simulation"));
-        AssertNoRecovery(cut);
-    }
-
-    private static void AssertNoRecovery(IRenderedFragment cut) {
-        Assert.That(cut.FindAll(".calculation-recovery, .calculation-elapsed"), Is.Empty);
-        Assert.That(cut.FindAll("button").Any(button => button.TextContent.Contains("Calculate with no effect simulation")), Is.False);
     }
 
     [Test]

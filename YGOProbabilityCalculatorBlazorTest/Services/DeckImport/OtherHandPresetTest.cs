@@ -63,8 +63,6 @@ public sealed class OtherHandPresetTest {
             Assert.That(source.OncePerTurn, Is.False);
             Assert.That(source.DrawCount, Is.Null);
             Assert.That(source.EffectProfile.Support, Is.EqualTo(EffectSupport.ModeledWithinRules));
-            Assert.That(Registry.Describe(source).Limitations, Does.Contain("Main Monster Zones"));
-            Assert.That(Registry.Describe(source).Limitations, Does.Contain("3 or more Spells"));
         });
 
         CategoryBase archetype = source.Categories.Single(category => category.MetadataKey == "archetype:sky%20striker");

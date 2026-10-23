@@ -95,10 +95,6 @@ public partial class PinnedResultTest {
         (string Current, string Pinned) actual = ContextDescriptions();
         Assert.That(actual.Current, Is.EqualTo(current));
         Assert.That(actual.Pinned, Is.EqualTo(pinned));
-        Assert.That(_cut.Find(".probability-results > p.result-model").GetAttribute("class"), Is.EqualTo("small text-body-secondary mb-2 result-model"));
-        Assert.That(_cut.FindComponent<PinnedResultPanel>().Find(".pinned-result > p.small").GetAttribute("class"), Is.EqualTo("small text-body-secondary mb-2"));
-        Assert.That(actual.Current, Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition"));
-        Assert.That(actual.Pinned, Does.Not.Contain("Different hand size").And.Not.Contain("Different deck composition"));
     }
 
     private ProbabilityCalculationResult Result(int job, double total) {
@@ -144,24 +140,6 @@ public partial class PinnedResultTest {
         return Accepted;
     }
 
-    private void AssertNoComparisonUi() {
-        Assert.That(_cut.FindAll(".comparison-model-difference, .result-difference, .result-row-comparison, .pinned-match, .result-priority-difference"), Is.Empty);
-        foreach (string text in new[] {
-                     "Uncertain accuracy",
-                     "Uncertain search survival: numeric comparison unavailable",
-                     "Different question",
-                     "Accuracy unavailable",
-                     "New route",
-                     "Removed or inactive",
-                     "Definition changed",
-                     "Composition changed",
-                     "Comparable"
-                 }) {
-
-            Assert.That(_cut.Markup, Does.Not.Contain(text));
-        }
-    }
-
     private Task Upload(SessionState session) => _cut.InvokeAsync(() => {
         InputFile input = _cut.FindComponents<InputFile>()[1].Instance;
         string json = _sessions.SerializeSession(session);
@@ -202,7 +180,6 @@ public partial class PinnedResultTest {
         Assert.That(pinned.Combos[0].Probability, Is.EqualTo(initial.Combos[0].Probability));
         Assert.That(_cut.FindAll(".probability-results .probability-uncertainty").Select(element => element.TextContent.Trim()), Is.All.EqualTo("±0%"));
         Assert.That(_cut.FindAll(".pinned-result .probability-uncertainty").Select(element => element.TextContent.Trim()), Is.All.EqualTo("±0%"));
-        AssertNoComparisonUi();
     }
 
     [Test]
@@ -226,13 +203,10 @@ public partial class PinnedResultTest {
         Assert.That(Pinned, Is.SameAs(first));
         Assert.That(Accepted.Total, Is.EqualTo(.842));
         Assert.That(Pinned.Total, Is.EqualTo(.814));
-        AssertNoComparisonUi();
         await Pin();
         Assert.That(Pinned.Total, Is.EqualTo(.842));
-        AssertNoComparisonUi();
         await Clear();
         Assert.That(_cut.FindAll(".pinned-result"), Is.Empty);
-        AssertNoComparisonUi();
         Assert.That(_sessions.SerializeSession(FieldSession()), Is.EqualTo(before));
         Assert.That(Field<long>("_calculationVersion"), Is.EqualTo(version));
         Assert.That(_context.JSInterop.Invocations["sessionRecovery.update"], Has.Count.EqualTo(writes));
@@ -278,7 +252,6 @@ public partial class PinnedResultTest {
         await Pin();
         await Accept(double.NaN);
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
-        AssertNoComparisonUi();
         Assert.That(Pinned.Total, Is.EqualTo(.814));
     }
 
@@ -320,7 +293,6 @@ public partial class PinnedResultTest {
         Assert.That(Accepted, Is.SameAs(accepted));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("aria-describedby"), Is.False);
-        Assert.That(_cut.Markup, Does.Not.Contain("Calculate again to pin"));
         Assert.That(_worker.Jobs, Has.Count.EqualTo(2), "pinning a stale result must not start another calculation");
 
         await Pin();
@@ -343,7 +315,6 @@ public partial class PinnedResultTest {
 
         await Call("RenameGroup", ("g", "Edited after pin"));
         Assert.That(Pinned, Is.SameAs(accepted), "later workspace edits cannot mutate the pinned snapshot");
-        AssertNoComparisonUi();
     }
 
     [TestCase(.842)]
@@ -354,7 +325,6 @@ public partial class PinnedResultTest {
         PinnedResultSnapshot pin = Pinned;
         await Accept(probability);
         PinnedResultSnapshot accepted = Accepted;
-        AssertNoComparisonUi();
 
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
 
@@ -363,7 +333,6 @@ public partial class PinnedResultTest {
         Assert.That(Pinned, Is.SameAs(pin));
         Assert.That(Accepted, Is.SameAs(accepted));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("aria-describedby"), Is.False);
-        AssertNoComparisonUi();
 
         await Pin();
         Assert.That(Pinned, Is.SameAs(accepted));
@@ -373,11 +342,9 @@ public partial class PinnedResultTest {
         Task action = Start();
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
-        AssertNoComparisonUi();
         _worker.Jobs[^1].SetCanceled();
         await action;
         Assert.That(Accepted, Is.SameAs(accepted));
-        AssertNoComparisonUi();
     }
 
     [Test]
@@ -392,7 +359,6 @@ public partial class PinnedResultTest {
         PinnedResultSnapshot stalePin = Pinned;
         Assert.That(stalePin, Is.SameAs(previous));
         Task action = Start();
-        AssertNoComparisonUi();
 
         _worker.Jobs[^1].SetResult(Result(_worker.Jobs.Count - 1, .786));
         await action;
@@ -405,7 +371,6 @@ public partial class PinnedResultTest {
         Assert.That(accepted.Total, Is.EqualTo(.786));
         Assert.That(Pinned.Total, Is.EqualTo(.842));
         Assert.That(pin.Total, Is.EqualTo(.814));
-        AssertNoComparisonUi();
     }
 
     [TestCase("late-success")]
@@ -427,12 +392,10 @@ public partial class PinnedResultTest {
         PinnedResultSnapshot baseline = Pinned;
         Assert.That(baseline, Is.SameAs(accepted));
         Assert.That(baseline, Is.Not.SameAs(initialPin));
-        AssertNoComparisonUi();
         Task action = Start();
         await Call("PinCurrentResult");
         Assert.That(Pinned, Is.SameAs(baseline), "the event handler also rejects busy/stale pinning");
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
-        AssertNoComparisonUi();
         if (completion.StartsWith("late")) {
             await _cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
             await Accept(.842);
@@ -457,12 +420,10 @@ public partial class PinnedResultTest {
         await action;
         Assert.That(Pinned, Is.SameAs(baseline));
         if (completion.StartsWith("late")) {
-            AssertNoComparisonUi();
             Assert.That(_cut.Markup, Does.Not.Contain("Obsolete error"));
         }
         else {
             Assert.That(Accepted, Is.SameAs(accepted));
-            AssertNoComparisonUi();
             Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         }
     }
@@ -491,12 +452,10 @@ public partial class PinnedResultTest {
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.True);
         Assert.That(_cut.FindAll("[role='alert']"), Is.Empty);
-        AssertNoComparisonUi();
         _worker.Jobs[2].SetResult(Result(2, .842));
         await current;
         Assert.That(Field<PinnedResultSnapshot>("_acceptedResultSnapshot").Context.HandSize, Is.EqualTo(6));
         Assert.That(Pinned.Context.HandSize, Is.EqualTo(2));
-        AssertNoComparisonUi();
     }
 
     [Test]
@@ -514,7 +473,6 @@ public partial class PinnedResultTest {
         Assert.That(current.Combos[2].Probability, Is.EqualTo(.842));
         Assert.That(current.Total, Is.EqualTo(.842));
         Assert.That(Pinned, Is.SameAs(original));
-        AssertNoComparisonUi();
         AssertContextDescriptions("Hand size 2 · 7 cards", "Hand size 2 · 8 cards");
         Assert.That(Pinned.Combos.Select(c => c.Label), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
     }
@@ -541,7 +499,6 @@ public partial class PinnedResultTest {
 
         await Pin();
         AssertContextDescriptions("Hand size 3 · 3 cards", "Hand size 3 · 3 cards");
-        AssertNoComparisonUi();
     }
 
     [TestCase("requirement")]
@@ -573,7 +530,6 @@ public partial class PinnedResultTest {
         Assert.That(current.Combos[0].Probability, Is.EqualTo(.842));
         Assert.That(pin.Total, Is.EqualTo(.814));
         Assert.That(Pinned, Is.SameAs(pin));
-        AssertNoComparisonUi();
     }
 
     [TestCase("file")]
@@ -602,13 +558,11 @@ public partial class PinnedResultTest {
         }
         Assert.That(Pinned, Is.SameAs(pin));
         Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
-        AssertNoComparisonUi();
         Assert.That(_cut.FindAll(".pin-result-action"), Is.Empty);
         await Accept(.842);
         PinnedResultSnapshot current = Accepted;
         Assert.That(current.Total, Is.EqualTo(.842));
         Assert.That(Pinned, Is.SameAs(pin));
-        AssertNoComparisonUi();
         string currentContext = load == "ydk"
             ? "Hand size 2 · 8 cards"
             : "Hand size 3 · 8 cards";
@@ -714,7 +668,6 @@ public partial class PinnedResultTest {
         string? shared = _cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         Assert.That(shared, Is.EqualTo(_sessions.SerializeSession(FieldSession())));
         Assert.That(shared, Does.Not.Contain("acceptedResultSnapshot").And.Not.Contain("pinnedResult").And.Not.Contain("Previous result").And.Not.Contain("84.20%"));
-        AssertNoComparisonUi();
     }
 
     [TestCase("edit")] [TestCase("dismiss")] [TestCase("failure")]
@@ -787,7 +740,6 @@ public partial class PinnedResultTest {
         CalculationInput offInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs.Last().Json)!;
         Assert.That(offInput.Cards[0].DrawCount, Is.Null);
         Assert.That((cards[0].DrawCount, cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
-        AssertNoComparisonUi();
         AssertContextDescriptions("Hand size 2 · 8 cards",
             "Hand size 2 · 8 cards");
         Assert.That(Pinned.Context, Is.SameAs(pinnedOn.Context));

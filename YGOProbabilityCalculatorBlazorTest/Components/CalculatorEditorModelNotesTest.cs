@@ -20,13 +20,10 @@ public sealed class CalculatorEditorModelNotesTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [saved] });
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
         string details = SimulationDetails(editor);
-        Assert.That(details, Does.Contain(current.Profile.Limitations).And.Not.Contain("never tracked").And.Not.Contain("Saved built-in revision"));
+        Assert.That(details, Does.Contain(current.Profile.Limitations).And.Not.Contain(profile.Limitations));
         Assert.That(editor.FindAll(".simulation-restore"), Is.Empty);
         Assert.That(editor.Instance.Card, Is.SameAs(saved));
         OpenSimulation(editor);
-        if (identity == 35261759) {
-            Assert.That(editor.Markup, Does.Not.Contain("not banished identities"));
-        }
         await Button(editor, "Cancel").ClickAsync(new());
         await Button(cut, "Save Session").ClickAsync(new());
         Assert.That(CardJson(SavedSessionJson()), Is.EqualTo(before));
@@ -56,7 +53,7 @@ public sealed class CalculatorEditorModelNotesTest : CalculatorEditorTestBase {
         Card saved = new Card([], externalCardId: current.CanonicalCardId).WithEffect(plan, profile);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [saved] });
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
-        Assert.That(SimulationDetails(editor), Does.Contain("Historical scope").And.Contain("Saved built-in revision"));
+        Assert.That(SimulationDetails(editor), Does.Contain(profile.Limitations));
         Assert.That(editor.FindAll(".simulation-restore"), Has.Count.EqualTo(1));
         Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(plan));
         Assert.That(editor.Instance.Card.EffectProfile, Is.EqualTo(profile));

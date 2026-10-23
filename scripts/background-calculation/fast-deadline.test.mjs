@@ -50,7 +50,6 @@ for (const [kind, outcome] of [['work',2],['storage',3],['unsupported',4],['tran
     test(`progressive ${kind} retains exact initial payload and clears lease`, async t => {
         const s = setup(t, true); s.ready(); const initial = success(2); s.emit(initial);
         assert.equal((await s.promise).isPreliminary, true);
-        if (kind === 'deadline') { s.elapse(5000); s.emit(success(0)); }
         if (kind === 'work') s.emit({Error:'limit',LimitReason:1});
         if (kind === 'storage') s.emit({Error:'limit',LimitReason:2});
         if (kind === 'unsupported') s.emit({Error:'unsupported',FailureKind:3});
@@ -66,8 +65,7 @@ for (const [kind, outcome] of [['work',2],['storage',3],['unsupported',4],['tran
 for (const kind of ['exact','initial-failure']) {
     test(`progressive ${kind} has only a final stage`, async t => {
         const s = setup(t, true); s.ready();
-        if (kind === 'no-time') s.tick(7000);
-        s.emit(kind === 'initial-failure' ? {Error:'limit',LimitReason:1} : success(kind === 'exact' ? 0 : 1), kind === 'no-work' ? '0' : '10');
+        s.emit(kind === 'initial-failure' ? {Error:'limit',LimitReason:1} : success(0), '10');
         const stage = await s.promise; assert.equal(stage.isPreliminary,false);
         assert.equal(await s.job.finish(), stage.response);
         assert.equal(s.worker.sent.length,1); s.job.release();

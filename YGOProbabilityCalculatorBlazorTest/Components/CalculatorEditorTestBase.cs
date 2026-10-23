@@ -146,10 +146,7 @@ public abstract class CalculatorEditorTestBase {
     protected static void AssertAnyMaximumDraft(IRenderedFragment fragment, int index = 0) {
         IElement maximum = RequirementField(fragment, $"#maxCount{index}");
         Assert.That(maximum.GetAttribute("value"), Is.EqualTo(string.Empty));
-        Assert.That(maximum.GetAttribute("placeholder"), Is.EqualTo("Any"));
-        Assert.That(maximum.GetAttribute("title"), Is.EqualTo("Leave empty for Any"));
         Assert.That(maximum.HasAttribute("disabled"), Is.False);
-        Assert.That(fragment.FindAll($"#maxAny{index}"), Is.Empty);
     }
 
     protected static async Task DuplicateComboAsync(IRenderedFragment fragment, int index) {

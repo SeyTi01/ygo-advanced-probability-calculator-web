@@ -216,7 +216,7 @@ public class ProbabilityResultExportTest {
         AngleSharp.Dom.IElement textArea = cut.Find("textarea[readonly]");
         Assert.That(textArea.TextContent, Does.Contain("Hand size: 5"));
         Assert.That(textArea.TextContent, Does.Contain("Fallback combo"));
-        Assert.That(cut.Find("label[for]").TextContent, Is.EqualTo("Result summary"));
+        Assert.That(cut.Find($"label[for='{textArea.Id}']"), Is.Not.Null);
         Assert.That(cut.Find("#" + textArea.Id).GetAttribute("aria-describedby"), Does.Contain("copy-fallback-instruction"));
         Assert.That(_clipboard.FocusAttempts, Is.EqualTo(1));
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Is.Empty);
@@ -264,7 +264,7 @@ public class ProbabilityResultExportTest {
         );
 
         button = cut.Find(buttonSelector);
-        AssertDisabledDescription(cut, button, "Wait for the calculation to finish before copying results.");
+        AssertDisabledDescription(cut, button);
         Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
         Assert.That(cut.FindAll(".probability-result-copy-success-icon"), Is.Empty);
         await button.ClickAsync(new MouseEventArgs());
@@ -300,13 +300,12 @@ public class ProbabilityResultExportTest {
         Assert.That(empty.FindAll("button"), Is.Empty);
         Assert.That(_clipboard.CopyAttempts, Is.EqualTo(2));
         IRenderedComponent<ProbabilityResultExport> unknown = Render(result, handSize: 0, isStale: true);
-        AssertDisabledDescription(unknown, unknown.Find(buttonSelector), "The original result context is unavailable.");
+        AssertDisabledDescription(unknown, unknown.Find(buttonSelector));
     }
 
     private static void AssertDisabledDescription(
         IRenderedComponent<ProbabilityResultExport> cut,
-        AngleSharp.Dom.IElement button,
-        string expectedDescription
+        AngleSharp.Dom.IElement button
     ) {
         Assert.That(button.HasAttribute("disabled"), Is.True);
         Assert.That(button.TextContent.Trim(), Is.EqualTo("Copy results"));
@@ -314,9 +313,8 @@ public class ProbabilityResultExportTest {
         string? descriptionId = button.GetAttribute("aria-describedby");
         Assert.That(descriptionId, Is.Not.Null.And.Not.Empty);
         AngleSharp.Dom.IElement description = cut.Find("#" + descriptionId);
-        Assert.That(description.TagName, Is.EqualTo("SMALL"));
-        Assert.That(description.GetAttribute("class"), Is.EqualTo("visually-hidden"));
-        Assert.That(description.TextContent.Trim(), Is.EqualTo(expectedDescription));
+          Assert.That(description.TextContent.Trim(), Is.Not.Empty);
+        Assert.That(description.ClassList, Does.Contain("visually-hidden"));
         Assert.That(cut.FindAll(".probability-result-export-toolbar > small:not(.visually-hidden)"), Is.Empty,
             "the unavailable description is retained for assistive technology without a visible toolbar item");
     }

@@ -232,32 +232,6 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         Assert.That(savedColors.TryGetProperty("Removed", out _), Is.False);
     }
 
-    [Test]
-    public void MetadataPropertyColorsAreConsistentAcrossCardAndComboChipContexts() {
-        CategoryBase fire = new("Attribute: FIRE", CategorySource.Metadata, "attribute:fire");
-        Card detectedCard = new([fire], name: "Detected FIRE");
-        Card manualCard = new([fire], name: "Manual FIRE", manualMetadataCategoryKeys: [fire.MetadataKey!]);
-        Combo combo = new([new(fire, 1, 5)], "FIRE route");
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
-            Cards = [detectedCard, manualCard],
-            Combos = [combo],
-            HandSize = 5
-        });
-        IRenderedComponent<CardEditor> detected = cut.FindComponents<CardEditor>()[0];
-        IRenderedComponent<CardEditor> manual = cut.FindComponents<CardEditor>()[1];
-        IRenderedComponent<ComboEditor> comboEditor = cut.FindComponent<ComboEditor>();
-        const string expectedClass = "card-property-color-attribute-fire";
-
-        Assert.That(detected.Find(".detected-card-property").ClassList,
-            Does.Contain("card-property-tag").And.Contain(expectedClass));
-        Assert.That(manual.Find(".manual-card-property").ClassList,
-            Does.Contain("card-property-tag").And.Contain(expectedClass));
-        Assert.That(manual.Find(".manual-property-header-badge").ClassList, Does.Contain(expectedClass));
-        Assert.That(comboEditor.Find(".combo-header-content .category-tag").ClassList, Does.Contain(expectedClass));
-        Assert.That(comboEditor.Find(".accordion-body .category-tag").ClassList, Does.Contain(expectedClass));
-        Assert.That(cut.FindAll(".card-property-tag.text-bg-secondary"), Is.Empty);
-    }
-
     private static string CategoryColorClass(IRenderedFragment fragment, string selector, string categoryName) =>
         fragment.FindAll(selector)
             .Single(element => element.TextContent.Trim().StartsWith(categoryName, StringComparison.Ordinal))

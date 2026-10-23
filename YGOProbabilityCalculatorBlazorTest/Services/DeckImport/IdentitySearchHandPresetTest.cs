@@ -75,7 +75,6 @@ public sealed class IdentitySearchHandPresetTest {
             Assert.That(source.Search.Matches(manualIdentity), Is.False, "A manually added identity property is not objective metadata.");
             Assert.That((source.OncePerTurn, source.Search.ObjectiveMetadataOnly), Is.EqualTo((true, true)));
             Assert.That(Registry.Describe(source).Support, Is.EqualTo(EffectSupport.ModeledWithinRules));
-            Assert.That(Registry.Describe(source).Limitations, Does.Contain("Graveyard"));
             Assert.That(selector, Is.Not.EqualTo(CardSelector.Any));
         });
     }
@@ -90,7 +89,6 @@ public sealed class IdentitySearchHandPresetTest {
             Assert.That(source.Search.Matches(Objective("Train Connection")), Is.False);
             Assert.That(source.OncePerTurn, Is.True);
             Assert.That(source.DrawCount, Is.Null);
-            Assert.That(Registry.Describe(source).Limitations, Does.Contain("Diagram Token"));
         });
     }
 

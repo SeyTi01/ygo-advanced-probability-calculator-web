@@ -29,8 +29,7 @@ public sealed class CalculatorEditorTestClearWorkspace : CalculatorEditorTestBas
         await cut.Find("[aria-label='New combo group name']").InputAsync(new() { Value = "Uncommitted group" });
         await Button(cut, "Clear workspace").ClickAsync(new());
 
-        Assert.That(cut.Find(".clear-workspace-confirmation").TextContent,
-            Does.Contain("Clear the current deck, categories, and combos?"));
+        Assert.That(cut.Find(".clear-workspace-confirmation").GetAttribute("role"), Is.EqualTo("group"));
         Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(2));
         Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(2));
         Assert.That(cut.Find("#handSize").GetAttribute("value"), Is.EqualTo("2"));
