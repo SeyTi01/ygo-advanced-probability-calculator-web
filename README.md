@@ -6,7 +6,7 @@ Calculate opening-hand combo probabilities for Yu-Gi-Oh! decks with overlapping 
 
 This README describes the current `dev` branch; the stable deployment may differ.
 
-![Calculator showing the 40-card Vanquish Soul / K9 example with eight combos and an Exact 85.92% total](YGOProbabilityCalculatorBlazor/Assets/probability_calculator_example.png)
+![Dark full-page calculator with loaded card artwork, ROTA's one editable Warrior AND Level 1–4 selector row, and a settled Progressive result of 85.92%.](YGOProbabilityCalculatorBlazor/Assets/probability_calculator_example.png)
 
 ## What it models
 
@@ -27,11 +27,11 @@ Expand a card to inspect or customize its simulation. **Save** accepts edits; **
 
 ## Example: Vanquish Soul / K9
 
-The bundled session has **24 card entries representing 40 copies**, a **five-card hand**, **eight combo definitions**, and the **Full VS** and **Full K9** groups. It has no user-defined categories: requirements use card identities and objective metadata. `VS Starter + (Fire OR Dark)` combines alternatives in one definition.
+The bundled session has **24 card entries representing 40 copies**, a **five-card hand**, **eight combo definitions**, and the **Full VS** and **Full K9** groups. It has no user-defined categories: requirements use card identities and objective metadata. `VS Starter + (Fire OR Dark)` combines alternatives in one definition. It opens in **Progressive (default)** mode.
 
 Its search cards use their configured search effects; fetched monsters contribute their own identities and properties. Reinforcement of the Army uses one Level 1–4 Warrior predicate, and the supplied Reinforcement and Chaotic Elements plans match their current maintained definitions.
 
-With all eight combos active and **Exact** selected, **Any active combo is 85.92% (565375/658008)**. Open the [Help page](https://dev.ygo-calculator.pages.dev/help) and choose **Try It with Example Data** to inspect the complete setup.
+With all eight combos active, the settled **Progressive (default)** result is exact: **Any active combo is 85.92% (565375/658008)**. Open the [Help page](https://dev.ygo-calculator.pages.dev/help) and choose **Try It with Example Data** to inspect the complete setup.
 
 ## Modes and accuracy
 
