@@ -40,7 +40,13 @@
             @(UiText.Format("Effect.Targets", SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : UiText.Get("Ui.None")))
         </div>
     }
+    @if (Card.HasEffect && !Card.SimulationEnabled) {
+        <div class="simulation-disabled small text-body-secondary" role="status">@(UiText.Get("Ui.SimulationDisabled"))</div>
+    }
     <div class="simulation-actions">
+        @if (Card.HasEffect) {
+            <button type="button" class="btn btn-sm btn-link simulation-toggle" @onclick="ToggleSimulation">@(UiText.Get(Card.SimulationEnabled ? "Ui.DisableSimulation" : "Ui.EnableSimulation"))</button>
+        }
         @if (_effect.CanExecute) {
             <button @ref="_editButton" type="button" class="btn btn-sm btn-link simulation-edit"
                     aria-expanded="@(_draft is not null ? "true" : "false")" aria-controls="simulationEditor@(Index)"
@@ -318,6 +324,8 @@
         CloseEditor();
         await OnChanged.InvokeAsync(Card.WithEffect(plan, Card.EffectProfile.AsCustom()));
     }
+
+    private Task ToggleSimulation() => OnChanged.InvokeAsync(Card.WithSimulationEnabled(!Card.SimulationEnabled));
 
     private async Task Restore() {
         CloseEditor();

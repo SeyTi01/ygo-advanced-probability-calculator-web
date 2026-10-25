@@ -51,7 +51,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
     [Test]
     public async Task CustomSelectorAndDraftSurviveCategoryRename() {
         CategoryBase role = new("Role");
-        Card source = SearchEffectsTest.Rota().WithSearch(new(CardSelector.For(role), false));
+        Card source = SearchEffectsTest.Rota().WithSearch(new(CardSelector.For(role), false)).WithSimulationEnabled(false);
         SessionState state = new() { Cards = [source, new([role])], Categories = [role], HandSize = 1 };
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(state);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
@@ -66,6 +66,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
         editor.Find(".simulation-save").Click();
         Assert.That(editor.Instance.Card.OncePerTurn, Is.True);
         Assert.That(editor.Instance.Card.Search.ObjectiveMetadataOnly, Is.False);
+        Assert.That(editor.Instance.Card.SimulationEnabled, Is.False);
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Not.Contain("None"));
     }
 
