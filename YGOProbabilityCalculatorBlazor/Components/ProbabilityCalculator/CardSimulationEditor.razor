@@ -44,13 +44,13 @@
         <div class="simulation-disabled small text-body-secondary" role="status">@(UiText.Get("Ui.SimulationDisabled"))</div>
     }
     <div class="simulation-actions">
-        @if (Card.HasEffect) {
-            <button type="button" class="btn btn-sm btn-link simulation-toggle" @onclick="ToggleSimulation">@(UiText.Get(Card.SimulationEnabled ? "Ui.DisableSimulation" : "Ui.EnableSimulation"))</button>
-        }
         @if (_effect.CanExecute) {
             <button @ref="_editButton" type="button" class="btn btn-sm btn-link simulation-edit"
                     aria-expanded="@(_draft is not null ? "true" : "false")" aria-controls="simulationEditor@(Index)"
                     @onclick="ToggleEditor">@EditLabel</button>
+        }
+        @if (Card.HasEffect) {
+            <button type="button" class="btn btn-sm btn-link simulation-toggle" @onclick="ToggleSimulation">@(UiText.Get(Card.SimulationEnabled ? "Ui.DisableSimulation" : "Ui.EnableSimulation"))</button>
         }
         @if (_effect.CanRestore && _effect.Source != EffectSource.BuiltIn) {
             <button type="button" class="btn btn-sm btn-link simulation-restore" @onclick="Restore">@(UiText.Get("Ui.RestoreBuiltInSimulation"))</button>
