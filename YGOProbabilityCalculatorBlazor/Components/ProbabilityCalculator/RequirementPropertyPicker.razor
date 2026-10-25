@@ -1,5 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using Microsoft.AspNetCore.Components.Web
+<LanguageDraftBoundary Name="@($"picker:{LanguageKey ?? Id}")" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="requirement-property-picker">
     <label for="@Id" class="form-label">@Label</label>
     <select id="@Id" class="form-select" aria-label="@AccessibleLabel" value="@Selection" @onchange="Select" @ref="_target">
@@ -33,6 +34,7 @@
 </div>
 
 @code {
+    [Parameter] public string? LanguageKey { get; set; }
     public sealed record Change(string Value, CategoryBase? Category, string? Error = null);
     [Parameter] public bool AllowAny { get; set; }
     [Parameter] public string Id { get; set; } = "requirement-target";
@@ -107,5 +109,11 @@
     public ValueTask FocusAsync(bool number = false) => number && _property is not null ? _numberInput.FocusAsync() : _target.FocusAsync();
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_focusNumber) { _focusNumber = false; await _numberInput.FocusAsync(); }
+    }
+
+    private string CaptureLanguageDraft() => LanguageDraftState.Pack((_property, _comparison, _number, _maximum, _objectiveOnly, _previousValue));
+    private void RestoreLanguageDraft(string json) {
+        (_property, _comparison, _number, _maximum, _objectiveOnly, _previousValue) = LanguageDraftState.Unpack<(NumericPropertyKind?, string, string, string, bool, string?)>(json);
+
     }
 }

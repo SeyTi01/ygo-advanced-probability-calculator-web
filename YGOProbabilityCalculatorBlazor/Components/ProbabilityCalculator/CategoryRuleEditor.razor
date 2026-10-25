@@ -1,5 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Models
 
+<LanguageDraftBoundary Name="rule" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <section class="category-rule-editor border rounded p-3 mt-3" aria-label="@(UiText.Format("Category.RuleLabel", Category.Name))" @onkeydown="KeyDown">
     <h5 class="fs-6" tabindex="-1" @ref="_heading">@(UiText.Format("Category.RuleHeading", Category.Name))</h5>
     @for (int index = 0; index < _alternatives.Count; index++) {
@@ -11,7 +12,7 @@
                 @if (term > 0) { <ExpressionSeparator Operator="AND" AllowedOperators="PropertyOperators(branch)" OnOperatorChanged="operation => ChangePropertyOperator(branch, operation)" /> }
                 @if (NumericPropertyRange.TryFromSelector(property.Selector, out _)) {
                     <div @key="property" class="category-rule-numeric">
-                        <RequirementPropertyPicker @ref="property.Picker" Id="@property.Id" Value="@property.Identity" Label="@(UiText.Get("Ui.Property"))" Categories="_properties"
+                        <RequirementPropertyPicker @ref="property.Picker" Id="@property.Id" LanguageKey="@($"rule:{branch}:{term}")" Value="@property.Identity" Label="@(UiText.Get("Ui.Property"))" Categories="_properties"
                             OnChanged="change => ChangeProperty(property, change)" />
                         <ChipRemoveButton Class="category-remove-button" aria-label="@(UiText.Format("Ui.RemoveProperty0FromAlternative1", Label(property), index + 1))"
                             OnClick="() => Remove(branch, property)" />
@@ -230,4 +231,13 @@
     }
 
     private Task KeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
+
+    private string CaptureLanguageDraft() => LanguageDraftState.Pack((_alternatives.Select(branch => branch.Select(property => (property.Selector, property.Error)).ToArray()).ToArray(), _operatorError));
+    private void RestoreLanguageDraft(string json) {
+        ((CardSelector Selector, string? Error)[][] branches, string? error) = LanguageDraftState.Unpack<((CardSelector, string?)[][], string?)>(json);
+        _alternatives.Clear();
+        _alternatives.AddRange(branches.Select(branch => branch.Select(property => new RuleProperty(property.Selector) { Error = property.Error }).ToList()));
+        _operatorError = error;
+        OnParametersSet();
+    }
 }

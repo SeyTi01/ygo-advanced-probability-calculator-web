@@ -1,6 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
+<LanguageDraftBoundary Name="@($"combo:{Index}")" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="accordion-item combo-editor @(Combo.Active ? "" : "entry-inactive")">
     <div class="accordion-header entry-editor-header combo-editor-header">
         <h2 class="entry-heading">

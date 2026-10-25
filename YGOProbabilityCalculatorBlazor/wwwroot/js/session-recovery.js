@@ -30,6 +30,13 @@
         }
     };
     root.sessionRecovery = {
+        captureLanguage() {
+            const c = [...clients.values()][0];
+            if (!c) return null;
+            // Pending autosave is flushed by pagehide; capture its final expected value.
+            flush(c);
+            return { expected: c.expected, paused: c.paused };
+        },
         initialize(id, callback) {
             if (clients.has(id)) return clients.get(id).inspection;
             const c = { callback, generation: 0, expected: null, pending: null, paused: true };
@@ -48,6 +55,10 @@
                 }
             } catch {
                 inspection = { exists: true, error: 'The local recovery draft cannot be read. It is kept until you discard it or explicitly replace it.' };
+            }
+            const language = root.ygoLocale?.getHandoff()?.recovery;
+            if (language && !language.paused && c.expected === language.expected && !inspection.error) {
+                inspection = { exists: false };
             }
             c.inspection = inspection;
             c.paused = inspection.exists;

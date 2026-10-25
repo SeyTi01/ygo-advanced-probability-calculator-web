@@ -24,6 +24,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="wwwroot/localization/locales.json" LogicalName="ProductionLocales.json" />
         <CustomAdditionalCompileInputs Include="$(IntermediateOutputPath)deployment-channel.txt" />
         <PackageReference Include="BlazorWasmPreRendering.Build" Version="10.0.0" PrivateAssets="all"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.12"/>

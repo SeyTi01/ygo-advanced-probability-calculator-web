@@ -3,6 +3,7 @@
 @using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator
 @using Microsoft.AspNetCore.Components.Web
 
+<LanguageDraftBoundary Name="@($"simulation:{Card.Id}")" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <section class="card-simulation mb-3" aria-label="@(UiText.Get("Ui.Simulation"))" @onkeydown="HandleKeyDown" @oninput:stopPropagation="true">
     <div class="simulation-heading">
         <span class="simulation-source">
@@ -476,5 +477,14 @@
             _focusEdit = false;
             await _editButton.FocusAsync();
         }
+    }
+
+    private string CaptureLanguageDraft() => LanguageDraftState.Pack((_draft, _detailsOpen, _errors.ToArray(), _filterErrors.ToArray(), _filterEdits.ToArray()));
+    private void RestoreLanguageDraft(string json) {
+        (Card? draft, bool details, KeyValuePair<string, string>[] errors, KeyValuePair<string, string>[] filterErrors, string[] edits) = LanguageDraftState.Unpack<(Card?, bool, KeyValuePair<string, string>[], KeyValuePair<string, string>[], string[])>(json);
+        _draft = draft; _detailsOpen = details;
+        _errors.Clear(); foreach (KeyValuePair<string, string> error in errors) { _errors.Add(error.Key, error.Value); }
+        _filterErrors.Clear(); foreach (KeyValuePair<string, string> error in filterErrors) { _filterErrors.Add(error.Key, error.Value); }
+        _filterEdits.Clear(); _filterEdits.UnionWith(edits);
     }
 }

@@ -1,6 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.DeckImport
 
+<LanguageDraftBoundary Name="quick-add" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="quick-add mb-3">
     <div class="quick-add-row" @oninput:stopPropagation="true">
         <CardSearchInput @ref="_search" Value="@_name" Label="@(UiText.Get("Ui.AddCardByName"))" Placeholder="@(UiText.Get("Card.SearchPlaceholder"))"
@@ -39,5 +40,11 @@
         if (_search is not null) {
             await _search.ResetAsync();
         }
+    }
+
+    private string CaptureLanguageDraft() => LanguageDraftState.Pack((_name, _status));
+    private void RestoreLanguageDraft(string json) {
+        (_name, _status) = LanguageDraftState.Unpack<(string, string)>(json);
+
     }
 }

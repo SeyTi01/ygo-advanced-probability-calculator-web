@@ -116,7 +116,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
         }
     }
 
-    private static JsonSerializerOptions CreateSerializerOptions() {
+    internal static JsonSerializerOptions CreateSerializerOptions() {
         return new JsonSerializerOptions {
             WriteIndented = true,
             PropertyNameCaseInsensitive = true,
