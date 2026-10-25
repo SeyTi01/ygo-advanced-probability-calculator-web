@@ -5,6 +5,7 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Activation;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
@@ -23,6 +24,7 @@ internal sealed class DrawEffectCalculation(
     // Callers must not mutate input lists during this synchronous execution.
     // Worker inputs are already owned/materialized by CalculationSnapshot.
     private bool _completed;
+    private bool _unified;
     private SolverRoute _route;
     internal SearchAccessCalculation? SearchExecution { get; private set; }
 
@@ -30,11 +32,14 @@ internal sealed class DrawEffectCalculation(
         if (!_completed) {
             throw new InvalidOperationException("Capability requires a completed calculation.");
         }
-        return SearchExecution?.DescribeCapability() ?? CalculationCapability.NoSearch(_route);
+        return _unified
+            ? new(_route, PhysicalSearchAccuracy.ProvenExact, CapabilityReason.CausalSearchDecisions, CertificationSupport.ReusePrimary)
+            : SearchExecution?.DescribeCapability() ?? CalculationCapability.NoSearch(_route);
     }
 
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
         _completed = false;
+        _unified = false;
         SearchExecution = null;
         ExactCalculationResult result = CalculateCore(combos, groups, totalOnly);
         _completed = true;
@@ -43,6 +48,11 @@ internal sealed class DrawEffectCalculation(
 
     private ExactCalculationResult CalculateCore(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         if (deck.Any(card => card.Active && card.Copies > 0 && card.Search is not null)) {
+            if (UnifiedActivationRouting.Required(deck, handSize, priority, budget)) {
+                _unified = true;
+                _route = SolverRoute.UnifiedActivation;
+                return new UnifiedActivationCalculation(deck, handSize, budget, priority).Calculate(combos, groups, totalOnly);
+            }
             SearchExecution = new(deck, handSize, budget, priority, physicalSearch, adaptiveFast);
             return SearchExecution.Calculate(combos, groups, totalOnly);
         }

@@ -448,13 +448,6 @@
 
     private Task ReplaceCard((int Index, Card NewCard) payload) {
         (int index, Card newCard) = payload;
-        Card previous = _cards[index];
-        if (previous.ExternalCardId != newCard.ExternalCardId) {
-            _drawActivationPriority = new(
-                _drawActivationPriority.Mode,
-                _drawActivationPriority.CardIds.Where(id => id != previous.Id).ToArray()
-            );
-        }
         _cards[index] = newCard;
         InvalidateCalculation();
 

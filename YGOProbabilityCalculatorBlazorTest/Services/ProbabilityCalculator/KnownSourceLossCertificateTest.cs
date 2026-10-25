@@ -30,12 +30,12 @@ public sealed class KnownSourceLossCertificateTest {
     public void FortyCardMultiTargetSearchBecomesExactForEveryRow() {
         SessionState state = TwoTargetForty();
         WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(state.Cards, state.HandSize, budget);
+        DrawEffectCalculation execution = new(state.Cards, state.HandSize, budget, SearchProjectionTestPolicy.DrawFirst(state.Cards));
         ExactCalculationResult upper = execution.Calculate(state.Combos, state.ComboGroups);
         ExactCalculationResult old = execution.SearchExecution!.CalculateLower(state.Combos, state.ComboGroups, false);
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos, state.ComboGroups, upper, budget, execution);
         ExactCalculationResult physical = new DrawEffectCalculation(state.Cards, state.HandSize,
-            new(CalculationWorkPolicy.Default), physicalSearch: true).Calculate(state.Combos, state.ComboGroups);
+            new(CalculationWorkPolicy.Default), SearchProjectionTestPolicy.DrawFirst(state.Cards), physicalSearch: true).Calculate(state.Combos, state.ComboGroups);
         AssertRows(old, certificate, physical, upper);
         Assert.That(certificate.Status, Is.EqualTo(SearchAvailabilityStatus.Exact));
         Assert.That(old.Total.Numerator * upper.Total.Denominator,
@@ -46,12 +46,12 @@ public sealed class KnownSourceLossCertificateTest {
     public async Task FortyCardMillTightensEveryRowWithoutChangingPrimary() {
         SessionState state = await SearchAvailabilityCertificateTest.Example("mill2");
         WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(state.Cards, state.HandSize, budget);
+        DrawEffectCalculation execution = new(state.Cards, state.HandSize, budget, SearchProjectionTestPolicy.DrawFirst(state.Cards));
         ExactCalculationResult upper = execution.Calculate(state.Combos, state.ComboGroups);
         ExactCalculationResult old = execution.SearchExecution!.CalculateLower(state.Combos, state.ComboGroups, false);
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos, state.ComboGroups, upper, budget, execution);
         ExactCalculationResult physical = new DrawEffectCalculation(state.Cards, state.HandSize,
-            new(CalculationWorkPolicy.Default), physicalSearch: true).Calculate(state.Combos, state.ComboGroups);
+            new(CalculationWorkPolicy.Default), SearchProjectionTestPolicy.DrawFirst(state.Cards), physicalSearch: true).Calculate(state.Combos, state.ComboGroups);
         AssertRows(old, certificate, physical, upper);
         Assert.That(old.Total.ToFraction(), Is.EqualTo(new ProbabilityFraction("727693", "860472")));
         Assert.That(certificate.Total!.Lower, Is.EqualTo(new ProbabilityFraction("33165161", "39151476")));
@@ -62,11 +62,12 @@ public sealed class KnownSourceLossCertificateTest {
     public void MultipleTargetsStrictlyImproveAgainstIndependentPhysicalShuffleOracle() {
         SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == "known-source-two-targets");
         WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(fixture.Deck, fixture.Hand, budget);
+        DrawEffectCalculation execution = new(fixture.Deck, fixture.Hand, budget, SearchProjectionTestPolicy.DrawFirst(fixture.Deck, fixture.Priority));
         ExactCalculationResult upper = execution.Calculate(fixture.Combos, fixture.Groups);
         ExactCalculationResult old = execution.SearchExecution!.CalculateLower(fixture.Combos, fixture.Groups, false);
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(fixture.Combos, fixture.Groups, upper, budget, execution);
-        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups);
+        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups,
+            SearchProjectionTestPolicy.DrawFirst(fixture.Deck, fixture.Priority).CardIds.ToArray());
         ExactProbability[] values = oracle.Wins[1].Select(wins => new ExactProbability(wins, oracle.Outcomes)).ToArray();
         AssertRows(old, certificate, new(values[0], values.Skip(1).Take(fixture.Combos.Count).ToArray(),
             values.Skip(1 + fixture.Combos.Count).ToArray()), upper);
@@ -79,14 +80,14 @@ public sealed class KnownSourceLossCertificateTest {
     public async Task LimitAfterElementaryCompletionKeepsAllEarlierEndpoints() {
         SessionState state = await SearchAvailabilityCertificateTest.Example("mill2");
         WorkBudget measure = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation first = new(state.Cards, state.HandSize, measure);
+        DrawEffectCalculation first = new(state.Cards, state.HandSize, measure, SearchProjectionTestPolicy.DrawFirst(state.Cards));
         ExactCalculationResult upper = first.Calculate(state.Combos, state.ComboGroups);
         first.DescribeCapability();
         ExactCalculationResult old = first.SearchExecution!.CalculateLower(state.Combos, state.ComboGroups, false);
         // Enough for interval assembly and to begin the optional delta pass,
         // far short of its complete conditional search count.
         WorkBudget limited = new(new(measure.Spent + 10_000));
-        DrawEffectCalculation execution = new(state.Cards, state.HandSize, limited);
+        DrawEffectCalculation execution = new(state.Cards, state.HandSize, limited, SearchProjectionTestPolicy.DrawFirst(state.Cards));
         ExactCalculationResult actual = execution.Calculate(state.Combos, state.ComboGroups);
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos, state.ComboGroups, actual, limited, execution);
         Assert.That(certificate.Detail, Does.Contain("Limited refinement"));

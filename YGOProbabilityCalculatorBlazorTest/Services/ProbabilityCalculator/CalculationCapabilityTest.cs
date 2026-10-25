@@ -34,9 +34,9 @@ internal sealed class CalculationCapabilityTest {
     ];
 
     [TestCase(false), TestCase(true)]
-    public void OrderedNoLossReusesEveryPrimaryRowWithoutAnotherCountPass(bool customPriority) {
+    public void OrderedNoLossReusesEveryPrimaryRowWithoutAnotherCountPass(bool reverseDrawPriority) {
         List<Card> deck = OrderedDeck();
-        string[]? priority = customPriority ? ["e", "d"] : null;
+        string[]? priority = reverseDrawPriority ? ["e", "d"] : null;
         (CalculationCapability capability, ExactCalculationResult result) = CheckSearch(deck, 2, priority);
         Assert.That(capability.Route, Is.EqualTo(SolverRoute.SearchOrdered));
         Assert.That(capability.Reason, Is.EqualTo(CapabilityReason.NoReachableSearchTargetLoss));
@@ -114,18 +114,19 @@ internal sealed class CalculationCapabilityTest {
         Assert.That(capability.Reason, Is.EqualTo(reason));
         Assert.That(capability.Accuracy, Is.EqualTo(PhysicalSearchAccuracy.OptimisticSurvivalUnproven));
         Assert.That(capability.Certification, Is.EqualTo(support));
-        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(deck, hand, Combos, Groups);
+        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(deck, hand, Combos, Groups, SearchProjectionTestPolicy.DrawFirst(deck).CardIds.ToArray());
         Assert.That(result.Combos[0].Numerator * optimisticD, Is.EqualTo(result.Combos[0].Denominator * optimisticN));
         Assert.That(physical.Wins[1][1] * physicalD, Is.EqualTo(physical.Outcomes * physicalN));
     }
 
     [TestCase(false), TestCase(true)]
-    public void UnfilteredHandOperationsRemainConservativelyUnproven(bool cost) {
+    public void FetchableHandCostRequiresCausalResolutionWhileDiscardRetainsItsCertificate(bool cost) {
         List<Card> deck = OrderedDeck();
         deck[2] = new([], 1, id: "d", drawCount: 1, preDrawRemovalCount: cost ? 1 : 0, postDrawDiscardCount: cost ? 0 : 1);
         (CalculationCapability capability, _) = CheckSearch(deck, 2);
-        Assert.That(capability.Reason, Is.EqualTo(cost ? CapabilityReason.HandCostMayRemoveTarget : CapabilityReason.HandRemovalMayRemoveTarget));
-        Assert.That(capability.Certification, Is.EqualTo(CertificationSupport.OrderedTerminalLowerPass));
+        Assert.That(capability.Reason, Is.EqualTo(cost ? CapabilityReason.CausalSearchDecisions : CapabilityReason.HandRemovalMayRemoveTarget));
+        Assert.That(capability.Certification, Is.EqualTo(cost ? CertificationSupport.ReusePrimary : CertificationSupport.OrderedTerminalLowerPass));
+        Assert.That(capability.Route, Is.EqualTo(cost ? SolverRoute.UnifiedActivation : SolverRoute.SearchOrdered));
     }
 
     [Test]
@@ -152,22 +153,22 @@ internal sealed class CalculationCapabilityTest {
         deck[2] = new([], 1, "same", id: "d", drawCount: 1, preDrawRemovalCount: 1, preDrawSelector: filter);
         deck[4] = new([Material, monster, level], 1, id: "f", externalCardId: 2);
         (CalculationCapability capability, _) = CheckSearch(deck, 2);
-        Assert.That(capability.Accuracy, Is.EqualTo(manuallyAssignedLevel
-            ? PhysicalSearchAccuracy.ProvenExact : PhysicalSearchAccuracy.OptimisticSurvivalUnproven));
+        Assert.That(capability.Accuracy, Is.EqualTo(PhysicalSearchAccuracy.ProvenExact));
+        Assert.That(capability.Reason, Is.EqualTo(manuallyAssignedLevel
+            ? CapabilityReason.NoReachableSearchTargetLoss : CapabilityReason.CausalSearchDecisions));
     }
 
     [Test]
-    public void GloballyUnpayableUnfilteredCostIsInertButOpeningCostFailureIsNotAProof() {
+    public void GloballyUnpayableCostIsInertButSearchCanReviveAnOpeningCostFailure() {
         List<Card> deck = [new([], 1, id: "s", search: new(CardSelector.For(A), false)),
             new([A], 1, id: "d", drawCount: 1, preDrawRemovalCount: 2)];
         Assert.That(CheckSearch(deck, 1).Capability.Route, Is.EqualTo(SolverRoute.SearchOnly));
         deck.Add(new([], 1, id: "e", drawCount: 1));
         deck.Add(new([], 1, id: "f"));
         (CalculationCapability capability, _) = CheckSearch(deck, 1);
-        Assert.That(capability.Reason, Is.EqualTo(CapabilityReason.ConsumedSearchTarget));
-        // This deliberately admits a false negative: even a reachable loss need
-        // not change this request's success predicates. Unproven is not inexact.
-        Assert.That(capability.Accuracy, Is.EqualTo(PhysicalSearchAccuracy.OptimisticSurvivalUnproven));
+        Assert.That(capability.Route, Is.EqualTo(SolverRoute.UnifiedActivation));
+        Assert.That(capability.Reason, Is.EqualTo(CapabilityReason.CausalSearchDecisions));
+        Assert.That(capability.Accuracy, Is.EqualTo(PhysicalSearchAccuracy.ProvenExact));
     }
 
     [Test]
@@ -202,7 +203,7 @@ internal sealed class CalculationCapabilityTest {
     private static (CalculationCapability Capability, ExactCalculationResult Result) CheckSearch(List<Card> deck, int hand, string[]? priority = null) {
         SearchCountingDiagnostics diagnostics = new();
         WorkBudget budget = new(CalculationWorkPolicy.Default) { SearchDiagnostics = diagnostics };
-        DrawActivationPriority? activation = priority is null ? null : new(DrawActivationMode.CustomPriority, priority);
+        DrawActivationPriority activation = SearchProjectionTestPolicy.DrawFirst(deck, priority);
         DrawEffectCalculation execution = new(deck, hand, budget, activation);
         ExactCalculationResult result = execution.Calculate(Combos, Groups);
         Dictionary<string, long> primaryCounts = new(diagnostics.Counts);
@@ -211,9 +212,22 @@ internal sealed class CalculationCapabilityTest {
         Assert.That(execution.DescribeCapability(), Is.EqualTo(capability));
         Assert.That(budget.Spent, Is.EqualTo(proofWork), "proof is cached on this execution only");
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(Combos, Groups, result, budget, execution);
+        if (capability.Route == SolverRoute.UnifiedActivation) {
+            // A fetched payment can resume a deferred draw, so a terminal-search
+            // survival projection is no longer this request's reference model.
+            UnifiedActivationOracle.Rational[] causal = UnifiedActivationOracle.Count(deck, hand, Combos, Groups, activation);
+            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+            for (int row = 0; row < rows.Length; row++) {
+                Assert.That(rows[row].Numerator * causal[row].Denominator,
+                    Is.EqualTo(causal[row].Numerator * rows[row].Denominator), $"causal row {row}");
+            }
+            Assert.That(certificate.Status, Is.EqualTo(SearchAvailabilityStatus.Exact));
+            Assert.That(diagnostics.Counts, Is.EquivalentTo(primaryCounts));
+            return (capability, result);
+        }
         // Exhaustive labeled copies; shares only the TEST draw policy interpreter
         // with existing tests, never production masks, reduction, or search MDD.
-        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(deck, hand, Combos, Groups, priority);
+        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(deck, hand, Combos, Groups, activation.CardIds.ToArray());
         AssertRows(result, physical.Wins[2], physical.Outcomes);
         if (capability.Accuracy == PhysicalSearchAccuracy.ProvenExact) {
             AssertRows(result, physical.Wins[1], physical.Outcomes);

@@ -13,7 +13,7 @@ This README describes the current `dev` branch; the stable deployment may differ
 - **Overlapping roles and properties.** A card can be a custom Starter, a FIRE monster, and a Level 5 card at once. Imports supply objective card metadata; custom categories describe your own roles.
 - **Distinct physical copies.** Separate positive requirements such as `Starter + Fire` need different copies. Same-card `AND` combines properties on each matching card; `OR` offers alternative routes.
 - **Overlapping combos and groups.** Individual rows may overlap. Group totals and **Any active combo** count each successful random outcome once.
-- **Configured effects.** Supported built-in and custom draw/search plans resolve under a fixed policy, including supported costs, removals, hidden deck losses and activation priority. This models the saved plan, not full gameplay or optimal play.
+- **Configured effects.** Supported built-in and custom draw/search plans share one activation order, including supported costs, removals and hidden deck losses. Search choices maximize each result's success probability using current information; future draw order is unknown. Activation order and hand removal follow the saved model.
 
 ## Start with a deck
 

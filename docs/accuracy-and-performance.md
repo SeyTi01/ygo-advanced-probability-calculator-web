@@ -8,7 +8,7 @@
 | --- | --- |
 | Progressive (default) | Complete Fast first. If already proven Exact, finish; otherwise present it as Preliminary and continue physical Exact on the same captured input. A validated completed upgrade replaces it. |
 | Fast only | Complete Fast once; no automatic physical upgrade. It may be Exact, Bounded or Uncertified. |
-| Exact only | Physical counting under the saved rules and fixed policy; publish values only when the required physical proof completes. |
+| Exact only | Physical counting under the saved activation/removal policy and best causal search decisions; publish values only when the required physical proof completes. |
 | No effect simulation | Ignore configured effects on owned calculation copies and count the dealt hand. Saved effects remain unchanged. |
 
 `OpeningHand` is the internal name for No effect simulation. Progressive and Fast only share the Fast model but have different saved execution strategies. A one-off **Recalculate using Exact** does not change the selected preference.
@@ -23,15 +23,19 @@ An interrupted Progressive upgrade retains the accepted Fast result and its accu
 | Bounded | Certified lower and upper endpoints enclose the physical-model probability. Each total, group and combo has its own interval. |
 | Uncertified | A completed primary modeled result exists, but no usable physical certificate was established. Treat it as the configured approximation, without an asserted physical error bound. |
 
-Fast does not always approximate. Search-only cases and other proven routes can be exact; uncertain survival after draws can require bounds. Certification runs after a complete primary result. If no usable interval completes, a certification limit or error leaves that primary Uncertified. If a later refinement fails, the last completed certified interval is retained. Exhausting Work before primary completion is a calculation failure, not a completed Uncertified answer.
+Fast does not always approximate. Search-only cases and other proven routes can be exact; uncertain survival after draws can require bounds on routes proven equivalent to the selected activation policy. General chronological draw/search resolution computes the same causal result as Exact under Fast's finite budget: it returns Exact if completed, or a calculation limit without new probabilities if it cannot complete. It does not substitute a different effect order or invent an Uncertified primary.
+
+On routes supporting an approximate primary, certification runs after that primary completes. If no usable interval completes, a certification limit or error leaves the primary Uncertified. If a later refinement fails, the last completed certified interval is retained. Exhausting Work before primary completion is a calculation failure. Progressive needs an accepted Fast result before an Exact upgrade can begin.
 
 Keep three quantities separate:
 
 1. **Primary rational:** the retained result of the selected counting model. On an optimistic Fast search-access path it can exceed the certificate's upper endpoint. It is not the certified midpoint.
-2. **Certified interval:** rational lower/upper bounds established by physical survival analysis. The lower construction uses guaranteed surviving targets and the ability to decline searches under the same draw/removal policy; upper analysis also constrains physical availability.
+2. **Certified interval:** rational lower/upper bounds established by physical survival analysis on a route proven compatible with the selected chronological policy. The lower construction uses guaranteed surviving targets and the ability to decline searches under that policy; upper analysis also constrains physical availability.
 3. **Displayed percentage ± radius:** for Bounded rows, presentation uses the interval midpoint at display precision and rounds the radius outward to cover both endpoints around that displayed center. This can be wider than the exact half-width. The ± is an absolute change on the 0%–100% probability scale, not a relative percentage or a statistical confidence interval. No point inside the interval is claimed more likely. An interval collapsing to a point is exact; tiny nonzero uncertainty must not be presented as ±0%.
 
 Hover or keyboard-focus a result value to inspect its primary fraction. Accuracy details and copied results retain the status and interval context. Do not interpret the primary fraction alone as a certified physical answer, and do not add overlapping combo percentages. The [ten-hand example](probability-engine.md#worked-example-ten-equally-likely-hands) explains the union.
+
+Search decisions are optimized separately for each combo, group union and total union using current information, with future draw order unknown. A union row is its own optimization objective, rather than a union of independently optimized combo outcomes. All rows use the same fixed activation and discard policy. See [the search decision model](calculation-model.md#best-causal-search-decisions) for the information available at each choice.
 
 ## Work and Storage are independent
 

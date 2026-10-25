@@ -10,6 +10,8 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.BackgroundCalculation;
 
 [TestFixture]
 public sealed class AutomaticFastStageTest {
+    private static readonly DrawActivationPriority DrawBeforeSearch = new(DrawActivationMode.CustomPriority, ["d", "s"]);
+
     private static AutomaticFastStage Stage(string json, string? remaining = null) =>
         JsonSerializer.Deserialize<AutomaticFastStage>(CalculationWire.ExecuteFastStage(json, remaining))!;
 
@@ -17,7 +19,7 @@ public sealed class AutomaticFastStageTest {
     public void EachStagePreservesReferenceRowsAndPhysicalOracleWithOneAllowance(string kind, int hand) {
         List<Card> cards = ThreeCalculationModesTest.Counterexample(kind);
         string json = CalculationSnapshot.Capture(cards, ThreeCalculationModesTest.Combos, hand, ThreeCalculationModesTest.Groups,
-            CalculationWorkPolicy.Interactive).Json;
+            CalculationWorkPolicy.Interactive, options: new(DrawBeforeSearch)).Json;
         AutomaticFastStage first = Stage(json);
         Assert.That(first.Response, Is.EqualTo(CalculationWire.Execute(json)), "completed fallback is unchanged");
         long remaining = long.Parse(first.RemainingWork, CultureInfo.InvariantCulture);
@@ -25,7 +27,9 @@ public sealed class AutomaticFastStageTest {
         AutomaticFastStage second = Stage(json, first.RemainingWork);
         Assert.That(long.Parse(second.RemainingWork, CultureInfo.InvariantCulture), Is.LessThan(remaining));
         ProbabilityCalculationResult actual = CalculationWire.ReadResult(second.Response, CalculationModel.Fast);
-        ProbabilityCalculationResult exact = ThreeCalculationModesTest.Run(cards, hand, CalculationModel.Exact);
+        ProbabilityCalculationResult exact = CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(
+            cards, ThreeCalculationModesTest.Combos, hand, ThreeCalculationModesTest.Groups,
+            options: new(DrawBeforeSearch, Mode: CalculationModel.Exact)).Json));
         Assert.Multiple(() => {
             Assert.That(actual.Contract!.RequestedMode, Is.EqualTo(CalculationModel.Fast));
             Assert.That(actual.Contract.ExecutedMode, Is.EqualTo(CalculationModel.Fast));
@@ -61,7 +65,7 @@ public sealed class AutomaticFastStageTest {
     [Test]
     public void AutomaticOutcomeCannotFalselyClaimCompletedExactOrChangeMode() {
         string json = CalculationSnapshot.Capture(ThreeCalculationModesTest.Counterexample("banish"),
-            ThreeCalculationModesTest.Combos, 2, ThreeCalculationModesTest.Groups).Json;
+            ThreeCalculationModesTest.Combos, 2, ThreeCalculationModesTest.Groups, options: new(DrawBeforeSearch)).Json;
         JsonObject response = JsonNode.Parse(Stage(json).Response)!.AsObject();
         response["Result"]!["Contract"]!["AutomaticExact"] = 0;
         Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(response.ToJsonString(), CalculationModel.Fast));

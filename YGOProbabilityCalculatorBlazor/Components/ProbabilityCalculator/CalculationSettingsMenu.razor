@@ -121,7 +121,7 @@
     protected override void OnParametersSet() {
         Dictionary<string, int> ranks = Priority.CardIds.Select((id, index) => (id, index))
             .ToDictionary(entry => entry.id, entry => entry.index, StringComparer.Ordinal);
-        _entries = Cards.Where(card => card.DrawCount is not null)
+        _entries = Cards.Where(card => card.HasEffect && card.Active && card.Copies > 0 && card.SimulationEnabled)
             .OrderBy(card => ranks.GetValueOrDefault(card.Id, int.MaxValue))
             .ThenBy(card => card.Id, StringComparer.Ordinal).ToArray();
         HashSet<string> visible = _entries.Select(card => card.Id).ToHashSet(StringComparer.Ordinal);
@@ -132,8 +132,13 @@
 
     private string EntryLabel(Card entry) {
         string name = string.IsNullOrWhiteSpace(entry.Name) ? UiText.Get("Ui.UnnamedCard") : entry.Name;
-        Card[] sameName = _entries.Where(card => card.Name == entry.Name).OrderBy(card => card.Id, StringComparer.Ordinal).ToArray();
-        return sameName.Length > 1 ? UiText.Format("Ui.0Entry1", name, Array.IndexOf(sameName, entry) + 1) : name;
+        Card[] sameName = Cards.Where(card => card.Name == entry.Name).OrderBy(card => card.Id, StringComparer.Ordinal).ToArray();
+        if (sameName.Length > 1) {
+            name = UiText.Format("Ui.0Entry1", name, Array.IndexOf(sameName, entry) + 1);
+        }
+        string effect = UiText.Get(entry.Search is null ? "Priority.Draw" : "Priority.Search");
+
+        return UiText.Format("Priority.Entry", name, effect);
     }
 
     private Task OnPriorityModeChanged(ChangeEventArgs eventArgs) {
@@ -153,9 +158,12 @@
         if (!ListMove.TryMove(ids, move.From, move.To)) {
             return Task.CompletedTask;
         }
-        // Effectless entries retain their preference until their effect is restored.
-        string[] retained = Priority.CardIds.Where(id => !ids.Contains(id, StringComparer.Ordinal)).ToArray();
-        return PriorityChanged.InvokeAsync(new DrawActivationPriority(Priority.Mode, [.. ids, .. retained]));
+        // Reorder only active slots so dormant effects keep their authored position.
+        HashSet<string> visible = ids.ToHashSet(StringComparer.Ordinal);
+        int next = 0;
+        string[] ordered = Priority.ForWorkspace(Cards).CardIds
+            .Select(id => visible.Contains(id) ? ids[next++] : id).ToArray();
+        return PriorityChanged.InvokeAsync(new DrawActivationPriority(Priority.Mode, ordered));
     }
 
     private bool _isOpen;

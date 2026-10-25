@@ -21,6 +21,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
 
     private static SessionState BoundedSession(CalculationModel mode = CalculationModel.Fast) => new() {
         CalculationModel = mode,
+        DrawActivationPriority = new(DrawActivationMode.CustomPriority, ["d", "s"]),
         Cards = Services.ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("consumed"), HandSize = 1,
         Categories = [Services.ProbabilityCalculator.ThreeCalculationModesTest.Target],
         Combos = Services.ProbabilityCalculator.ThreeCalculationModesTest.Combos,
@@ -147,6 +148,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
             });
         context.Services.AddSingleton(worker.Object);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = ThreeCalculationModesTest.Counterexample("discard"), HandSize = 2,
+            DrawActivationPriority = new(DrawActivationMode.CustomPriority, ["d", "s"]),
             Categories = [ThreeCalculationModesTest.Target], Combos = ThreeCalculationModesTest.Combos, ComboGroups = ThreeCalculationModesTest.Groups });
         await Button(cut, "Calculate").ClickAsync(new());
         await Button(cut, "Pin result").ClickAsync(new());
@@ -177,6 +179,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
     public async Task AdaptiveFastPinsAndCopiesExactAccuracyWhenCurrentModeChanges() {
         SessionState session = new() {
             Cards = ThreeCalculationModesTest.Counterexample("discard"), HandSize = 2,
+            DrawActivationPriority = new(DrawActivationMode.CustomPriority, ["d", "s"]),
             Categories = [ThreeCalculationModesTest.Target], Combos = ThreeCalculationModesTest.Combos,
             ComboGroups = ThreeCalculationModesTest.Groups
         };

@@ -10,6 +10,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.BackgroundCalculation;
 
 [TestFixture]
 public class BackgroundCalculatorTest {
+    private static readonly DrawActivationPriority DrawBeforeSearch = new(DrawActivationMode.CustomPriority, ["d", "s"]);
     private Mock<IJSRuntime> _js = null!;
     private Mock<IJSObjectReference> _module = null!;
     private Mock<IJSObjectReference> _job = null!;
@@ -21,7 +22,8 @@ public class BackgroundCalculatorTest {
 
     private static CalculationSnapshot BoundedSnapshot() => CalculationSnapshot.Capture(
         ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish"),
-        ProbabilityCalculator.ThreeCalculationModesTest.Combos, 2, ProbabilityCalculator.ThreeCalculationModesTest.Groups);
+        ProbabilityCalculator.ThreeCalculationModesTest.Combos, 2, ProbabilityCalculator.ThreeCalculationModesTest.Groups,
+        options: new(DrawBeforeSearch));
 
     [Test]
     public async Task FastOnlyUsesOneOrdinaryFastRequestAndKeepsItsBounds() {
@@ -91,13 +93,13 @@ public class BackgroundCalculatorTest {
         if (uncertified) {
             List<Card> cards = ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish");
             WorkBudget budget = new(CalculationWorkPolicy.Default);
-            ExactCalculationResult rows = new DrawEffectCalculation(cards, 2, budget).Calculate(
+            ExactCalculationResult rows = new DrawEffectCalculation(cards, 2, budget, DrawBeforeSearch).Calculate(
                 ProbabilityCalculator.ThreeCalculationModesTest.Combos, ProbabilityCalculator.ThreeCalculationModesTest.Groups);
             // The real result producer retains a completed primary when its
             // secondary proof fails, just as in ThreeCalculationModesTest.
             ProbabilityCalculationResult result = ProbabilityCalculatorService.CompleteResult(
                 ProbabilityCalculator.ThreeCalculationModesTest.Combos, ProbabilityCalculator.ThreeCalculationModesTest.Groups,
-                CalculationModel.Fast, rows, budget, new DrawEffectCalculation(cards, 2, new(CalculationWorkPolicy.Default)));
+                CalculationModel.Fast, rows, budget, new DrawEffectCalculation(cards, 2, new(CalculationWorkPolicy.Default), DrawBeforeSearch));
             initial = System.Text.Json.JsonSerializer.Serialize(new CalculationResponse(result, null), CalculationJsonContext.Default.CalculationResponse);
         }
         TaskCompletionSource<string> final = new();

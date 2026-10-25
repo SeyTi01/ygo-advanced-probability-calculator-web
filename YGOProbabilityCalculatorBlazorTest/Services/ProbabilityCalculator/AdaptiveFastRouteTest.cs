@@ -14,13 +14,17 @@ public sealed class AdaptiveFastRouteTest {
     public void SelectedRequestsMatchEveryIndependentPhysicalRowAndExactMode() {
         int selected = 0;
         foreach (SearchCertificateFixtures.Fixture fixture in SearchCertificateFixtures.Fixtures()) {
-            CalculationOptions options = new(fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority));
+            CalculationOptions options = new(SearchProjectionTestPolicy.DrawFirst(fixture.Deck, fixture.Priority));
             ProbabilityCalculationResult fast = new ProbabilityCalculatorService().CalculateProbabilityResults(
                 fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, options);
             ProbabilityCalculationResult wire = CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(
                 fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, options: options).Json), CalculationModel.Fast);
             Assert.That(JsonSerializer.Serialize(wire), Is.EqualTo(JsonSerializer.Serialize(fast)), fixture.Name);
             if (!fast.Contract!.SolverRoute.StartsWith("SearchPhysical", StringComparison.Ordinal)) {
+                if (fast.Contract.SolverRoute == "UnifiedActivation") {
+                    Assert.That(fast.Contract.Accuracy, Is.EqualTo(CalculationAccuracy.Exact), fixture.Name);
+                    SearchProjectionTestPolicy.AssertCausalRows(fast, fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, options.DrawActivationPriority!);
+                }
                 AssertUnchanged(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, priority: options.DrawActivationPriority);
                 continue;
             }
@@ -35,7 +39,7 @@ public sealed class AdaptiveFastRouteTest {
                 fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, options with { Mode = CalculationModel.Exact });
             Assert.That(JsonSerializer.Serialize(fast.Contract.Fractions), Is.EqualTo(JsonSerializer.Serialize(exact.Contract!.Fractions)), fixture.Name);
             SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand,
-                fixture.Combos, fixture.Groups, fixture.Priority);
+                fixture.Combos, fixture.Groups, options.DrawActivationPriority!.CardIds.ToArray());
             PhysicalSearchTest.AssertRows(fast, oracle.Wins[1], oracle.Outcomes);
         }
         Assert.That(selected, Is.GreaterThanOrEqualTo(20));
@@ -43,15 +47,18 @@ public sealed class AdaptiveFastRouteTest {
     }
 
     [Test]
-    public void FilteredDiscardChangesTheFractionAndExplicitScalarPolicyWithoutRelabelingTheOldUpper() {
+    public void FilteredDiscardAdaptiveScalarAndExplicitCertificateProjectionKeepTheirOwnFractions() {
         SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == "minimal-filtered-target-discard");
         ProbabilityCalculatorService engine = new();
-        ProbabilityCalculationResult fast = engine.CalculateProbabilityResults(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups);
+        DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(fixture.Deck, fixture.Priority);
+        ProbabilityCalculationResult fast = engine.CalculateProbabilityResults(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups,
+            CalculationWorkPolicy.Default, new(priority));
         Assert.That(fast.Contract!.Fractions!.Total, Is.EqualTo(new ProbabilityFraction("1", "2")));
         Assert.That(fast.Contract.Fractions.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "2")));
         Assert.That(engine.CalculateProbabilityForCombos(fixture.Deck, fixture.Combos, fixture.Hand,
-            CalculationWorkPolicy.Default, new(Mode: CalculationModel.Fast)), Is.EqualTo(0.5));
-        Assert.That(engine.CalculateProbabilityForCombos(fixture.Deck, fixture.Combos, fixture.Hand), Is.EqualTo(17d / 30));
+            CalculationWorkPolicy.Default, new(priority, Mode: CalculationModel.Fast)), Is.EqualTo(0.5));
+        Assert.That(engine.CalculateProbabilityForCombos(fixture.Deck, fixture.Combos, fixture.Hand,
+            CalculationWorkPolicy.Default, new(priority, CertifySearchAvailability: true)), Is.EqualTo(17d / 30));
     }
 
     [TestCase(8), TestCase(9)]
@@ -73,9 +80,11 @@ public sealed class AdaptiveFastRouteTest {
                 postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(target))];
         List<Combo> combos = [new([new(target, 1, 2)], groupId: "g"), new([new(target, 0, 0)])];
         List<ComboGroup> groups = [new("g", "Positive")];
-        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(cards, combos, 2, groups);
+        DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(cards);
+        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(cards, combos, 2, groups,
+            CalculationWorkPolicy.Default, new(priority));
         Assert.That(result.Contract!.SolverRoute, Is.EqualTo("SearchPhysicalDeferred"));
-        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(cards, 2, combos, groups);
+        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(cards, 2, combos, groups, priority.CardIds.ToArray());
         PhysicalSearchTest.AssertRows(result, oracle.Wins[1], oracle.Outcomes);
         Assert.That(oracle.Failed, Is.GreaterThan(System.Numerics.BigInteger.Zero));
     }
@@ -110,6 +119,7 @@ public sealed class AdaptiveFastRouteTest {
     }
 
     private static void AssertUnchanged(List<Card> cards, List<Combo> combos, int hand, List<ComboGroup> groups, CalculationWorkPolicy? policy = null, DrawActivationPriority? priority = null) {
+        priority ??= SearchProjectionTestPolicy.DrawFirst(cards);
         WorkBudget oldBudget = new(policy ?? CalculationWorkPolicy.Default);
         DrawEffectCalculation old = new(cards, hand, oldBudget, priority);
         ExactCalculationResult oldRows = old.Calculate(combos, groups);
