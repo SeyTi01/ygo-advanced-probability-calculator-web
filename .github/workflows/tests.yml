@@ -27,8 +27,7 @@ jobs:
         id: setup-dotnet
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
-          dotnet-quality: "ga"
+          dotnet-version: "10.0.402"
 
       - name: Pin SDK for this run
         shell: bash
@@ -63,8 +62,7 @@ jobs:
         id: setup-dotnet
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
-          dotnet-quality: "ga"
+          dotnet-version: "10.0.402"
 
       - name: Pin SDK for this run
         shell: bash
