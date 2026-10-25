@@ -1,7 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 
-<section class="category-rule-editor border rounded p-3 mt-3" aria-label="Rule for @Category.Name" @onkeydown="KeyDown">
-    <h5 class="fs-6" tabindex="-1" @ref="_heading">Properties for @Category.Name</h5>
+<section class="category-rule-editor border rounded p-3 mt-3" aria-label="@(UiText.Format("Category.RuleLabel", Category.Name))" @onkeydown="KeyDown">
+    <h5 class="fs-6" tabindex="-1" @ref="_heading">@(UiText.Format("Category.RuleHeading", Category.Name))</h5>
     @for (int index = 0; index < _alternatives.Count; index++) {
         int branch = index;
         @if (index > 0) { <ExpressionSeparator Operator="OR" AllowedOperators="AlternativeOperators(branch)" OnOperatorChanged="operation => ChangeAlternativeOperator(branch, operation)" /> }
@@ -11,9 +11,9 @@
                 @if (term > 0) { <ExpressionSeparator Operator="AND" AllowedOperators="PropertyOperators(branch)" OnOperatorChanged="operation => ChangePropertyOperator(branch, operation)" /> }
                 @if (NumericPropertyRange.TryFromSelector(property.Selector, out _)) {
                     <div @key="property" class="category-rule-numeric">
-                        <RequirementPropertyPicker @ref="property.Picker" Id="@property.Id" Value="@property.Identity" Label="Property" Categories="_properties"
+                        <RequirementPropertyPicker @ref="property.Picker" Id="@property.Id" Value="@property.Identity" Label="@(UiText.Get("Ui.Property"))" Categories="_properties"
                             OnChanged="change => ChangeProperty(property, change)" />
-                        <ChipRemoveButton Class="category-remove-button" aria-label="@($"Remove property {Label(property)} from alternative {index + 1}")"
+                        <ChipRemoveButton Class="category-remove-button" aria-label="@(UiText.Format("Ui.RemoveProperty0FromAlternative1", Label(property), index + 1))"
                             OnClick="() => Remove(branch, property)" />
                         @if (property.Error is not null) { <div class="text-danger small" role="alert">@property.Error</div> }
                     </div>
@@ -21,40 +21,40 @@
                 else {
                     <span @key="property" class="badge category-tag card-property-tag text-wrap category-rule-term @CardPropertyColorPalette.GetCssClass(property.Identity[9..])">
                         @Label(property)
-                        <ChipRemoveButton Class="category-remove-button ms-1" aria-label="@($"Remove property {Label(property)} from alternative {index + 1}")"
-                                          title="@($"Remove property {Label(property)} from alternative {index + 1}")"
+                        <ChipRemoveButton Class="category-remove-button ms-1" aria-label="@(UiText.Format("Ui.RemoveProperty0FromAlternative1", Label(property), index + 1))"
+                                          title="@(UiText.Format("Ui.RemoveProperty0FromAlternative1", Label(property), index + 1))"
                                 OnClick="() => Remove(branch, property)" />
                     </span>
                 }
             }
             @if (_alternatives[index].Count < CategoryMembership.MaximumPropertiesPerAlternative) {
-                <RequirementPropertyPicker @key="(_alternatives[index], _additionVersion)" Id="@($"rule-add-property-{index}")" Label="Add property (AND)"
-                    AccessibleLabel="@($"Add AND property to alternative {index + 1}")" Categories="_properties"
+                <RequirementPropertyPicker @key="(_alternatives[index], _additionVersion)" Id="@($"rule-add-property-{index}")" Label="@(UiText.Get("Ui.AddPropertyAND"))"
+                    AccessibleLabel="@(UiText.Format("Ui.AddANDPropertyToAlternative0", index + 1))" Categories="_properties"
                     OnChanged="change => AddProperty(branch, change)" />
             }
         </div>
     }
     @if (_alternatives.Count < CategoryMembership.MaximumAlternatives) {
-        <RequirementPropertyPicker @key="_additionVersion" Id="rule-add-alternative" Label="@(_alternatives.Count == 0 ? "Choose a property" : "Add alternative (OR)")"
-            AccessibleLabel="Add rule alternative" Categories="_properties" OnChanged="AddAlternative" />
+        <RequirementPropertyPicker @key="_additionVersion" Id="rule-add-alternative" Label="@(_alternatives.Count == 0 ? UiText.Get("Ui.ChooseAProperty") : UiText.Get("Ui.AddAlternativeOR"))"
+            AccessibleLabel="@(UiText.Get("Ui.AddRuleAlternative"))" Categories="_properties" OnChanged="AddAlternative" />
     }
     @if (_operatorError is not null) { <p class="small text-danger" role="alert">@_operatorError</p> }
     <div class="small mt-3" role="status" aria-live="polite">
         @if (Draft is null) {
-            <span>0 matching entries</span>
+            <span>@(UiText.Get("Ui.0MatchingEntries"))</span>
         }
         else {
-            <strong>@_matches.Length matching @(_matches.Length == 1 ? "entry" : "entries") (@_matches.Sum(card => (long)card.Copies) copies)</strong>
+            <strong>@(_matches.Length == 1 ? UiText.Format("Category.OneMatch", _matches.Length, _matches.Sum(card => (long)card.Copies)) : UiText.Format("Category.ManyMatches", _matches.Length, _matches.Sum(card => (long)card.Copies)))</strong>
             @if (_matches.Length > 0) {
                 <div class="category-rule-preview mt-1">@string.Join(", ", _matches.Select(card => card.Name ?? "Unnamed card"))</div>
             }
         }
     </div>
     <div class="d-flex flex-wrap gap-2 mt-3">
-        <button type="button" class="btn btn-primary btn-sm" disabled="@(Draft is null || HasErrors)" @onclick="Apply">Apply rule</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OnCancel">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" disabled="@(Draft is null || HasErrors)" @onclick="Apply">@(UiText.Get("Ui.ApplyRule"))</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OnCancel">@(UiText.Get("Ui.Cancel"))</button>
         @if (Category.Rule is not null) {
-            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => OnApply.InvokeAsync((CardSelector?)null)">Remove rule</button>
+            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => OnApply.InvokeAsync((CardSelector?)null)">@(UiText.Get("Ui.RemoveRule"))</button>
         }
     </div>
 </section>
@@ -164,7 +164,7 @@
         if (operation != "AND" || !CanReverseAlternative(right)) { return; }
         List<RuleProperty> combined = _alternatives[right - 1].Concat(_alternatives[right]).DistinctBy(property => property.Selector).ToList();
         if (combined.Count > CategoryMembership.MaximumPropertiesPerAlternative) {
-            _operatorError = "The AND group would exceed 16 properties. Remove a property before combining.";
+            _operatorError = UiText.Get("Ui.TheANDGroupWouldExceed16PropertiesRemoveAPropertyBeforeCombining");
             return;
         }
         _alternatives[right - 1] = combined;
@@ -177,7 +177,7 @@
         if (operation != "OR" || !CanReverseProperty(branch)) { return; }
         List<RuleProperty> properties = _alternatives[branch];
         if (_alternatives.Count - 1 + properties.Count > CategoryMembership.MaximumAlternatives) {
-            _operatorError = "The OR group would exceed 16 alternatives. Remove an alternative before splitting.";
+            _operatorError = UiText.Get("Ui.TheORGroupWouldExceed16AlternativesRemoveAnAlternativeBeforeSplitting");
             return;
         }
         _alternatives.RemoveAt(branch);

@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using Microsoft.AspNetCore.Components;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -46,10 +47,10 @@ public partial class ProbabilityCalculatorComponent {
             }
 
             if (_isCalculating) {
-                return "Calculation is running.";
+                return UiText.Get("Ui.CalculationIsRunning");
             }
 
-            return "Calculate a valid result before pinning.";
+            return UiText.Get("Ui.CalculateAValidResultBeforePinning");
         }
     }
 

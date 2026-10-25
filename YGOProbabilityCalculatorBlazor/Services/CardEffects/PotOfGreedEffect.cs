@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -8,5 +9,5 @@ public sealed class PotOfGreedEffect : ICardEffectDefinition {
     public int Revision => 1;
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, false);
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Draw 2.";
+    public string Summary => UiText.English("Effects.55144522.Summary");
 }

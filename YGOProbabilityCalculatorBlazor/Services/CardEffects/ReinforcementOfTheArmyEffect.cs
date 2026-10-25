@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -7,7 +8,7 @@ public sealed class ReinforcementOfTheArmyEffect : ICardEffectDefinition {
     public string Name => "Reinforcement of the Army";
     public int Revision => 4;
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Search 1 Level 1–4 Warrior monster";
+    public string Summary => UiText.English("Effects.32807846.Summary");
     public DrawEffectPlan Compile() => new(null, false, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(CardSelector.AllOfSelectors([
             CardSelector.For(EffectProperties.Property("Warrior", "monster-race:warrior")),

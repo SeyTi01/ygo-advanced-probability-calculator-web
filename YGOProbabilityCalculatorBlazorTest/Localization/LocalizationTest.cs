@@ -1,0 +1,175 @@
+using System.Collections;
+using System.Globalization;
+using System.Resources;
+using Microsoft.JSInterop;
+using Moq;
+using Microsoft.Extensions.DependencyInjection;
+using YGOProbabilityCalculatorBlazor.Localization;
+using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
+using YGOProbabilityCalculatorBlazor.Services.CardEffects;
+using YGOProbabilityCalculatorBlazor.Services.DeckImport;
+using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.Session;
+
+namespace YGOProbabilityCalculatorBlazorTest.Localization;
+
+public sealed class LocalizationTest {
+    [Test]
+    public void RealSatelliteSubstitutionFallbackAndArguments() {
+        using PresentationLocale locale = new();
+        Assert.Multiple(() => {
+            Assert.That(UiText.Format("Deck.Count", 4), Is.EqualTo("⟦Deck 4⟧"));
+            Assert.That(UiText.Get("Ui.Cancel"), Is.EqualTo("Cancel"));
+            Assert.That(UiText.Get("Missing.TestKey"), Is.EqualTo("Missing.TestKey"));
+            Assert.That(UiText.Format("Move.ToPosition", "sentinel"), Is.EqualTo("Move sentinel to position"));
+            Assert.That(UiText.Format("Ui.TheActiveDeckHas0CopiesFewerThanTheHandSizeOf1", 2, 5), Is.EqualTo("⟦Hand 5; only 2 copies⟧"));
+            Assert.That(UiText.English("Effects.35261759.Summary"), Is.Not.EqualTo("⟦Maintained draw⟧"));
+            Assert.That(UiText.Get("Ui.PreviousResultCurrentInputsHaveChanged"), Is.EqualTo("Previous result — current inputs have changed.\n"));
+        });
+        Assert.Throws<FormatException>(() => UiText.Format("Deck.Count"));
+    }
+
+    [TestCase("{0} {1}", "{1} {0}", true)]
+    [TestCase("{0} {1}", "{1}", false)]
+    [TestCase("{0}", "{1}", false)]
+    [TestCase("{0}", "{", false)]
+    [TestCase("{{literal}} {0:N2}", "{0:N2} {{literal}}", true)]
+    public void PlaceholderValidationChecksIndicesAndSyntax(string english, string translated, bool valid) {
+        Assert.That(UiText.HasSameArguments(english, translated), Is.EqualTo(valid));
+    }
+
+    [Test]
+    public void EnglishInventoryAndAllMaintainedDefinitionsHaveValidResources() {
+        ResourceSet set = UiText.Resources.GetResourceSet(CultureInfo.InvariantCulture, true, true)!;
+        foreach (DictionaryEntry resource in set) {
+            string text = (string)resource.Value!;
+            Assert.That(UiText.HasSameArguments(text, text), Is.True, (string)resource.Key);
+        }
+        foreach (MaintainedCardEffect effect in CardEffectRegistry.Default.All) {
+            Assert.That(UiText.English($"Effects.{effect.CanonicalCardId}.Summary"), Is.EqualTo(effect.Profile.Summary));
+            Assert.That(UiText.English($"Effects.{effect.CanonicalCardId}.Limitations"), Is.EqualTo(effect.Profile.Limitations ?? ""));
+        }
+    }
+
+    [Test]
+    public void LabelsUseVerifiedCatalogIdentityAndNeverGuessStoredNameAuthorship() {
+        using PresentationLocale locale = new();
+        CardInfo catalog = new() { Id = 111, CanonicalCardId = 35261759, Name = "English name" };
+        CardInfo unknown = new() { Id = 112, Name = "Unknown catalog name" };
+        CategoryBase metadata = new("Monster", CategorySource.Metadata, "kind:monster");
+        CategoryBase manual = new("Monster");
+        Card saved = new([metadata], name: catalog.Name, externalCardId: 35261759);
+        Assert.Multiple(() => {
+            Assert.That(DisplayLabels.Card(catalog), Is.EqualTo("⟦Catalog card⟧"));
+            Assert.That(DisplayLabels.Card(unknown), Is.EqualTo(unknown.Name));
+            Assert.That(DisplayLabels.Card(saved), Is.EqualTo(saved.Name));
+            Assert.That(DisplayLabels.Card(saved.WithName("My deliberate name")), Is.EqualTo("My deliberate name"));
+            Assert.That(DisplayLabels.Category(metadata), Is.EqualTo("⟦Monster⟧"));
+            Assert.That(DisplayLabels.Category(manual), Is.EqualTo("Monster"));
+            Assert.That(DisplayLabels.Archetype("k9", "K9"), Is.EqualTo("⟦K9⟧"));
+            Assert.That(metadata.Identity, Is.EqualTo("metadata:kind:monster"));
+            Assert.That(CardSelector.For(metadata).CategoryIdentities, Is.EqualTo(new[] { metadata.Identity }));
+            Assert.That(new NumericPropertyRange(NumericPropertyKind.Level, 8, 8).ToCategory().Name, Is.EqualTo("Level 8"));
+        });
+    }
+
+    [TestCase("current")]
+    [TestCase("canonical")]
+    [TestCase("revision")]
+    [TestCase("plan")]
+    [TestCase("support")]
+    [TestCase("execution")]
+    [TestCase("custom")]
+    [TestCase("legacy")]
+    public void OnlyFullyCompatibleEffectsReceiveLocalizedMaintainedDescriptions(string difference) {
+        MaintainedCardEffect maintained = CardEffectRegistry.Default.Find(35261759)!;
+        EffectProfile profile = maintained.Profile with { Summary = "Historical summary", Limitations = "Historical limits" };
+        DrawEffectPlan plan = maintained.Plan;
+        profile = difference switch {
+            "canonical" => profile with { CanonicalCardId = 55144522 },
+            "revision" => profile with { Revision = maintained.Profile.Revision + 1 },
+            "support" => profile with { Support = EffectSupport.Partial },
+            "execution" => profile with { ExecutionModel = EffectExecutionModel.Unsupported },
+            "custom" => profile.AsCustom(),
+            "legacy" => EffectProfile.Legacy,
+            _ => profile
+        };
+        if (difference == "plan") { plan = plan with { HiddenDeckCost = 0 }; }
+        Card saved = new Card([], externalCardId: maintained.CanonicalCardId).WithEffect(plan, profile);
+        EffectiveCardEffect canonical = CardEffectRegistry.Default.Describe(saved);
+        SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        string savedJson = codec.SerializeSession(new() { Cards = [saved] });
+        using PresentationLocale locale = new();
+        EffectiveCardEffect display = EffectDescriptions.Describe(saved);
+        Assert.Multiple(() => {
+            Assert.That(display.UsesCurrentDescription, Is.EqualTo(difference == "current"));
+            Assert.That(display.Summary, Is.EqualTo(difference == "current" ? "⟦Maintained draw⟧" : canonical.Summary));
+            Assert.That(display.Limitations, Is.EqualTo(difference == "current" ? "⟦Maintained model note⟧" : canonical.Limitations));
+            Assert.That(display.Plan, Is.EqualTo(plan));
+            Assert.That(saved.EffectProfile, Is.EqualTo(profile));
+            Assert.That(display.CanExecute, Is.EqualTo(canonical.CanExecute));
+            Assert.That(codec.SerializeSession(new() { Cards = [saved] }), Is.EqualTo(savedJson));
+            Assert.That(new CardEffectRegistry([new PotOfDesiresEffect()]).Find(35261759)!.Profile, Is.EqualTo(maintained.Profile));
+        });
+    }
+
+    [Test]
+    public async Task SessionsShareLinksWorkerBytesAndExactFractionRemainLocaleIndependent() {
+        SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        CategoryBase monster = new("Monster", CategorySource.Metadata, "kind:monster");
+        CategoryBase authored = new("My role");
+        SessionState session = new() {
+            HandSize = 1, CalculationModel = CalculationModel.OpeningHand,
+            Categories = [authored],
+            Cards = [new([monster, authored], 1, "My card", id: "one"), new([], 2, "Other", id: "two")],
+            Combos = [new([new(authored, 1, 1)], "My combo")]
+        };
+        string before = codec.SerializeSession(session);
+        string link = SessionShareCodec.CreateLink("https://example.test/", before);
+        CalculationOptions options = new() { Mode = CalculationModel.OpeningHand };
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, 1, [], options: options);
+        ProbabilityCalculationResult english = new ProbabilityCalculatorService().CalculateProbabilityResults(session.Cards, session.Combos, 1, [], CalculationWorkPolicy.Default, options);
+        using PresentationLocale locale = new();
+        SessionState loaded = await codec.LoadSessionAsync(before);
+        DisplayLabels.Category(monster);
+        ProbabilityCalculationResult translated = new ProbabilityCalculatorService().CalculateProbabilityResults(loaded.Cards, loaded.Combos, 1, [], CalculationWorkPolicy.Default, options);
+        Assert.Multiple(() => {
+            Assert.That(codec.SerializeSession(loaded), Is.EqualTo(before));
+            Assert.That(SessionShareCodec.CreateLink("https://example.test/", codec.SerializeSession(loaded)), Is.EqualTo(link));
+            Assert.That(CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 1, [], options: options).Json, Is.EqualTo(snapshot.Json));
+            Assert.That(translated.TotalProbability, Is.EqualTo(1d / 3));
+            Assert.That(translated.Contract!.Fractions!.Total, Is.EqualTo(english.Contract!.Fractions!.Total));
+            Assert.That(translated.Contract.Fractions.Total, Is.EqualTo(new ProbabilityFraction("1", "3")));
+            Assert.That(loaded.Cards[0].Name, Is.EqualTo("My card"));
+            Assert.That(loaded.Combos[0].Name, Is.EqualTo("My combo"));
+        });
+    }
+
+    [Test, NonParallelizable]
+    public void ShellInitializationIsEnglishForPrerenderAndInteractiveWithoutChangingNumericCulture() {
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        CultureInfo? previousDefault = CultureInfo.DefaultThreadCurrentUICulture;
+        CultureInfo numbers = CultureInfo.CurrentCulture;
+        try {
+            LocalePreference preference = new();
+            preference.Initialize("fr", ["de-DE", "en-GB"]);
+            Assert.That(preference.Locale, Is.EqualTo("en"));
+            Assert.That(CultureInfo.CurrentUICulture.Name, Is.EqualTo("en"));
+            Assert.That(CultureInfo.CurrentCulture, Is.SameAs(numbers));
+            Assert.That(LocalePreference.Resolve("xx", ["de"]), Is.EqualTo("en"));
+            Assert.That(LocalePreference.SupportedLocales, Is.EqualTo(new[] { "en" }));
+            ServiceCollection services = new();
+            YGOProbabilityCalculatorBlazor.Program.ConfigureServices(services, "https://example.test/");
+            using ServiceProvider provider = services.BuildServiceProvider();
+            Assert.That(provider.GetRequiredService<LocalePreference>().Locale, Is.EqualTo("en"));
+            Assert.That(CultureInfo.CurrentCulture, Is.SameAs(numbers));
+        }
+        finally {
+            CultureInfo.CurrentUICulture = previous;
+            CultureInfo.DefaultThreadCurrentUICulture = previousDefault;
+        }
+    }
+}

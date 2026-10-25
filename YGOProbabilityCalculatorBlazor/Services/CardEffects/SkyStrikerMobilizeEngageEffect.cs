@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -10,8 +11,8 @@ public sealed class SkyStrikerMobilizeEngageEffect : ICardEffectDefinition {
     public int Revision => 1;
     public IReadOnlyList<CategoryBase> FilterProperties => [SkyStriker];
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Search 1 other Sky Striker card from the Deck; no once-per-turn limit.";
-    public string Limitations => "Assumes no monsters in your Main Monster Zones; the optional draw with 3 or more Spells in the GY is outside this search model.";
+    public string Summary => UiText.English("Effects.63166095.Summary");
+    public string Limitations => UiText.English("Effects.63166095.Limitations");
 
     public DrawEffectPlan Compile() => new(null, false, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(CardSelector.AllOfSelectors([

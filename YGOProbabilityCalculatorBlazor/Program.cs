@@ -6,6 +6,7 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Shared;
+using YGOProbabilityCalculatorBlazor.Localization;
 
 namespace YGOProbabilityCalculatorBlazor;
 
@@ -22,6 +23,9 @@ public static class Program {
 
     // The publish-time prerenderer calls this hook too; keep runtime registrations shared.
     public static void ConfigureServices(IServiceCollection services, string baseAddress) {
+        LocalePreference locale = new();
+        locale.Initialize();
+        services.AddScoped<LocalePreference>();
         services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(baseAddress) });
         services.AddScoped<IDeckImportService, DeckImportService>();
         services.AddScoped<ISessionService, SessionService>();

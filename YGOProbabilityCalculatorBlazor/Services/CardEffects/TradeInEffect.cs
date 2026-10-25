@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -13,5 +14,5 @@ public sealed class TradeInEffect : ICardEffectDefinition {
         HandCost = 1, HandCostSelector = new NumericPropertyRange(NumericPropertyKind.Level, 8, 8).ToSelector()
     };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Remove a Level 8 card from hand before drawing 2.";
+    public string Summary => UiText.English("Effects.38120068.Summary");
 }

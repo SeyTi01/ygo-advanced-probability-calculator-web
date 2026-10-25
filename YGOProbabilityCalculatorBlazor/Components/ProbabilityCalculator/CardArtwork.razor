@@ -8,7 +8,7 @@
 
 <span @ref="_footprint" class="card-artwork @(Thumbnail ? "card-artwork-thumbnail" : "card-artwork-preview")">
     @if (_url is not null) {
-        <img src="@_url" alt="@(Thumbnail ? string.Empty : $"Card artwork for {Name}")"
+        <img src="@_url" alt="@(Thumbnail ? string.Empty : UiText.Format("Ui.CardArtworkFor0", Name))"
              width="268" height="391" decoding="async" />
     }
     else {

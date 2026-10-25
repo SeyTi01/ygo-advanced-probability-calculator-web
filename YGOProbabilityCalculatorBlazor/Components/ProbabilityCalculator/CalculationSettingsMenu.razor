@@ -8,8 +8,8 @@
     <button @ref="_trigger"
             type="button"
             class="btn btn-outline-secondary calculation-settings-trigger"
-            aria-label="Calculation settings"
-            title="Calculation settings"
+            aria-label="@(UiText.Get("Ui.CalculationSettings"))"
+            title="@(UiText.Get("Ui.CalculationSettings"))"
             aria-haspopup="dialog"
             aria-expanded="@(_isOpen ? "true" : "false")"
             aria-controls="calculationSettingsPanel"
@@ -22,33 +22,33 @@
              role="dialog"
              aria-labelledby="calculationSettingsHeading"
              hidden="@(!_isOpen)">
-        <h2 id="calculationSettingsHeading" class="h6 fw-bold text-center mb-3">Calculation settings</h2>
+        <h2 id="calculationSettingsHeading" class="h6 fw-bold text-center mb-3">@(UiText.Get("Ui.CalculationSettings"))</h2>
 
         <section aria-labelledby="drawSimulationHeading">
-            <h3 id="drawSimulationHeading" class="small fw-semibold mb-2">Card simulation</h3>
-            <label class="form-label mb-1" for="calculationModel">Calculation model</label>
+            <h3 id="drawSimulationHeading" class="small fw-semibold mb-2">@(UiText.Get("Ui.CardSimulation"))</h3>
+            <label class="form-label mb-1" for="calculationModel">@(UiText.Get("Ui.CalculationModel"))</label>
             <select @ref="_drawEffectsInput" id="calculationModel" class="form-select"
                     value="@(Model == CalculationModel.Fast && Strategy == FastExecutionStrategy.FastOnly ? "FastOnly" : Model.ToString())" aria-describedby="@(Model == CalculationModel.OpeningHand ? null : "drawEffectsHelp")" @onchange="OnModelChanged">
-                <option value="OpeningHand">No effect simulation</option>
-                <option value="Fast">Progressive (default)</option>
-                <option value="FastOnly">Fast only</option>
-                <option value="Exact">Exact only</option>
+                <option value="OpeningHand">@(UiText.Get("Ui.NoEffectSimulation"))</option>
+                <option value="Fast">@(UiText.Get("Ui.Progressivedefault"))</option>
+                <option value="FastOnly">@(UiText.Get("Ui.FastOnly"))</option>
+                <option value="Exact">@(UiText.Get("Ui.ExactOnly"))</option>
             </select>
             @if (Model != CalculationModel.OpeningHand) {
                 <p id="drawEffectsHelp" class="form-text mb-0" role="note">@ModelHelp</p>
             }
             <div class="mt-3">
-                <label class="form-label mb-1" for="drawActivationPriority">Draw activation priority</label>
+                <label class="form-label mb-1" for="drawActivationPriority">@(UiText.Get("Ui.DrawActivationPriority"))</label>
                 <select id="drawActivationPriority" class="form-select" value="@Priority.Mode" @onchange="OnPriorityModeChanged">
-                    <option value="EncounterOrder">Encounter order (default)</option>
-                    <option value="CustomPriority">Custom priority</option>
+                    <option value="EncounterOrder">@(UiText.Get("Ui.Encounterorderdefault"))</option>
+                    <option value="CustomPriority">@(UiText.Get("Ui.CustomPriority"))</option>
                 </select>
                 @if (Priority.Mode == DrawActivationMode.CustomPriority) {
-                    <div class="small text-body-secondary mt-2">Highest first</div>
+                    <div class="small text-body-secondary mt-2">@(UiText.Get("Ui.HighestFirst"))</div>
                     @if (_entries.Length == 0) {
-                        <p class="form-text mb-0">No draw effects configured.</p>
+                        <p class="form-text mb-0">@(UiText.Get("Ui.NoDrawEffectsConfigured"))</p>
                     }
-                    <ol class="draw-priority-list" aria-label="Draw activation priority, highest first">
+                    <ol class="draw-priority-list" aria-label="@(UiText.Get("Ui.DrawActivationPriorityHighestFirst"))">
                         @for (int i = 0; i < _entries.Length; i++) {
                             Card entry = _entries[i];
                             int index = i;
@@ -58,35 +58,33 @@
                                     @label
                                 </span>
                                 <button type="button" class="btn btn-outline-secondary" disabled="@(i == 0)"
-                                        aria-label="Move @label up" title="Move up" @onclick="() => MovePriority(index, -1)">↑</button>
+                                        aria-label="@(UiText.Format("Move.Up", label))" title="@(UiText.Get("Ui.MoveUp"))" @onclick="() => MovePriority(index, -1)">↑</button>
                                 <button type="button" class="btn btn-outline-secondary" disabled="@(i == _entries.Length - 1)"
-                                        aria-label="Move @label down" title="Move down" @onclick="() => MovePriority(index, 1)">↓</button>
+                                        aria-label="@(UiText.Format("Move.Down", label))" title="@(UiText.Get("Ui.MoveDown"))" @onclick="() => MovePriority(index, 1)">↓</button>
                                 <MoveToPosition Index="index" Count="_entries.Length" ItemLabel="@label" OnMove="MovePriorityTo" />
                             </li>
                         }
                     </ol>
                     <details class="small mt-2">
-                        <summary>About priority</summary>
-                        <p class="form-text mb-0">Chooses the highest legal effect after each completed resolution, including newly drawn effects.</p>
+                        <summary>@(UiText.Get("Ui.AboutPriority"))</summary>
+                        <p class="form-text mb-0">@(UiText.Get("Ui.ChoosesTheHighestLegalEffectAfterEachCompletedResolutionIncludingNewlyDrawnEffects"))</p>
                     </details>
                 }
             </div>
         </section>
 
         <div class="border-top mt-3 pt-3 calculation-settings-option">
-            <label class="form-label mb-1" for="storageSafetyTier">Storage safety limit</label>
+            <label class="form-label mb-1" for="storageSafetyTier">@(UiText.Get("Ui.StorageSafetyLimit"))</label>
             <select id="storageSafetyTier"
                     class="form-select"
                     value="@StorageTier"
                     aria-describedby="storageSafetyHelp"
                     @onchange="OnStorageTierChanged">
-                <option value="Standard">Standard (32,768 entries / 262,144 cells)</option>
-                <option value="High">High (65,536 entries / 524,288 cells)</option>
-                <option value="VeryHigh">Very high (131,072 entries / 1,048,576 cells)</option>
+                <option value="Standard">@(UiText.Get("Ui.Standard32768entries262144cells"))</option>
+                <option value="High">@(UiText.Get("Ui.High65536entries524288cells"))</option>
+                <option value="VeryHigh">@(UiText.Get("Ui.Veryhigh131072entries1048576cells"))</option>
             </select>
-            <p id="storageSafetyHelp" class="form-text mb-0">
-                Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy.
-            </p>
+            <p id="storageSafetyHelp" class="form-text mb-0">@(UiText.Get("Ui.Higherlimitsmayallowmorecomplexexactcalculationstocompleteandcanusesubstantiallymorebrowsermemorytheydonotchangeprobabilityaccuracy"))</p>
         </div>
     </section>
 </div>
@@ -133,9 +131,9 @@
     }
 
     private string EntryLabel(Card entry) {
-        string name = string.IsNullOrWhiteSpace(entry.Name) ? "Unnamed card" : entry.Name;
+        string name = string.IsNullOrWhiteSpace(entry.Name) ? UiText.Get("Ui.UnnamedCard") : entry.Name;
         Card[] sameName = _entries.Where(card => card.Name == entry.Name).OrderBy(card => card.Id, StringComparer.Ordinal).ToArray();
-        return sameName.Length > 1 ? $"{name} (entry {Array.IndexOf(sameName, entry) + 1})" : name;
+        return sameName.Length > 1 ? UiText.Format("Ui.0Entry1", name, Array.IndexOf(sameName, entry) + 1) : name;
     }
 
     private Task OnPriorityModeChanged(ChangeEventArgs eventArgs) {
@@ -169,9 +167,9 @@
     private ElementReference _drawEffectsInput;
     private string? ModelHelp => Model switch {
         CalculationModel.Fast => Strategy == FastExecutionStrategy.FastOnly
-            ? "Calculates probabilities quickly, but results may be approximate."
-            : "Shows Fast first, then attempts Exact.",
-        CalculationModel.Exact => "Calculates physical Deck-search survival exactly without a Work cutoff, subject to Storage limits and cancellation.",
+            ? UiText.Get("Ui.CalculatesProbabilitiesQuicklyButResultsMayBeApproximate")
+            : UiText.Get("Ui.ShowsFastFirstThenAttemptsExact"),
+        CalculationModel.Exact => UiText.Get("Ui.CalculatesPhysicalDeckSearchSurvivalExactlyWithoutAWorkCutoffSubjectToStorageLimitsAndCa"),
         CalculationModel.OpeningHand => null,
         _ => throw new ArgumentOutOfRangeException(nameof(Model))
     };

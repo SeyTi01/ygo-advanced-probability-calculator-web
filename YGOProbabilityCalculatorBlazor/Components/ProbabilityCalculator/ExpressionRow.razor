@@ -3,14 +3,14 @@
         <div class="requirement-interactive-summary" @onclick="OnEdit">
             <span class="requirement-description">@ChildContent</span>
             <button type="button" class="requirement-edit" @attributes="AdditionalAttributes" aria-label="@Label"
-                    aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @onclick:stopPropagation @ref="_button">Edit</button>
+                    aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @onclick:stopPropagation @ref="_button">@(UiText.Get("Ui.Edit"))</button>
         </div>
     }
     else {
         <button type="button" class="requirement-edit" @attributes="AdditionalAttributes" aria-label="@Label"
                 aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @ref="_button">
             <span class="requirement-description">@ChildContent</span>
-            <span class="requirement-edit-label">Edit</span>
+            <span class="requirement-edit-label">@(UiText.Get("Ui.Edit"))</span>
         </button>
     }
     @if (Controls is not null) { <div class="expression-row-controls">@Controls</div> }
@@ -18,7 +18,7 @@
 </div>
 
 @code {
-    [Parameter] public string Label { get; set; } = "Edit requirement";
+    [Parameter] public string Label { get; set; } = UiText.Get("Ui.EditRequirement");
     [Parameter] public bool Expanded { get; set; }
     [Parameter] public bool InteractiveSummary { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }

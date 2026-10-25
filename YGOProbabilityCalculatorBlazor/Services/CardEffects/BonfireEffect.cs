@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -12,7 +13,7 @@ public sealed class BonfireEffect : ICardEffectDefinition {
     public string Name => "Bonfire";
     public int Revision => 4;
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Search 1 Level 1–4 Pyro monster";
+    public string Summary => UiText.English("Effects.85106525.Summary");
     public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(LevelOneToFourPyro));
 }

@@ -1,8 +1,8 @@
 @using YGOProbabilityCalculatorBlazor.Models
 
 @if (Category.Rule is CardSelector rule) {
-    <div class="category-rule-summary" role="group" aria-label="Saved property rule for @Category.Name">
-        <span class="category-rule-summary-heading">Properties:</span>
+    <div class="category-rule-summary" role="group" aria-label="@(UiText.Format("Category.SavedRuleLabel", Category.Name))">
+        <span class="category-rule-summary-heading">@(UiText.Get("Ui.Properties"))</span>
         <span class="category-rule-expression">@Expression(rule)</span>
     </div>
 }
@@ -32,7 +32,7 @@
 
     private RenderFragment Expression(CardSelector selector) => @<span class="category-rule-expression-node">
         @if (selector.Kind is CardSelectorKind.Objective or CardSelectorKind.Not) {
-            <span class="category-rule-group">@(selector.Kind == CardSelectorKind.Objective ? "Objective" : "NOT") (@Expression(selector.Children[0]))</span>
+            <span class="category-rule-group">@(selector.Kind == CardSelectorKind.Objective ? UiText.Get("Expression.Objective") : UiText.Get("Expression.Not")) (@Expression(selector.Children[0]))</span>
         }
         else if (selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
             CardSelector[] terms = selector.Terms.ToArray();
@@ -61,8 +61,8 @@
         ? range.Key + ":0" : selector.CategoryIdentities[0][9..];
 
     private string Label(CardSelector selector) => NumericPropertyRange.TryFromSelector(selector, out NumericPropertyRange? range)
-        ? range.Description : _properties
-        .FirstOrDefault(property => property.Identity == selector.CategoryIdentities[0])?.Name
+        ? DisplayLabels.NumericRange(range) : DisplayLabels.CategoryOrNull(_properties
+        .FirstOrDefault(property => property.Identity == selector.CategoryIdentities[0]))
         ?? FallbackName(selector.CategoryIdentities[0]);
 
     private static string FallbackName(string identity) {

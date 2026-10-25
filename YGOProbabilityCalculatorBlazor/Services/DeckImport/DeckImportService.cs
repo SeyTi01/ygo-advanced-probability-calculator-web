@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using Microsoft.AspNetCore.Components.Forms;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -34,7 +35,7 @@ public class DeckImportService(ICardInfoService cardInfoService, IFileService fi
 
         foreach (uint cardId in deck.MainDeck) {
             if (cardId > int.MaxValue) {
-                throw new FormatException($"Card passcode {cardId} is outside the supported card ID range.");
+                throw new FormatException(UiText.Format("Ui.CardPasscode0IsOutsideTheSupportedCardIDRange", cardId));
             }
 
             mainCardIds.Add((int)cardId);

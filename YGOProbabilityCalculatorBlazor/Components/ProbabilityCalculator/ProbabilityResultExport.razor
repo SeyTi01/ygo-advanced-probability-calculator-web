@@ -9,8 +9,8 @@
         <button id="@_copyButtonId"
                 type="button"
                 class="@CopyButtonClass"
-                title="Copy results"
-                aria-label="Copy results"
+                title="@(UiText.Get("Ui.CopyResults"))"
+                aria-label="@(UiText.Get("Ui.CopyResults"))"
                 disabled="@(!CanCopy)"
                 aria-describedby="@(!CanCopy ? _unavailableMessageId : null)"
                 @onclick="CopyResultsAsync">
@@ -27,7 +27,7 @@
                     </svg>
                 }
             </span>
-            <span class="visually-hidden">Copy results</span>
+            <span class="visually-hidden">@(UiText.Get("Ui.CopyResults"))</span>
         </button>
         @if (!CanCopy) {
             <small id="@_unavailableMessageId" class="visually-hidden">
@@ -44,17 +44,17 @@
              role="group"
              aria-labelledby="@_fallbackHeadingId">
             <div class="probability-result-copy-fallback-heading">
-                <label id="@_fallbackHeadingId" for="@_fallbackTextId">Result summary</label>
+                <label id="@_fallbackHeadingId" for="@_fallbackTextId">@(UiText.Get("Ui.ResultSummary"))</label>
                 <button type="button"
                         class="btn btn-sm btn-outline-secondary"
-                        title="Close manual copy text"
-                        aria-label="Close copy fallback"
+                        title="@(UiText.Get("Ui.CloseManualCopyText"))"
+                        aria-label="@(UiText.Get("Ui.CloseCopyFallback"))"
                         @onclick="DismissFallback">
-                    Close
+                    @(UiText.Get("Ui.Close"))
                 </button>
             </div>
             <p id="@_fallbackInstructionId" class="form-text mb-1">
-                Clipboard copying was unavailable. Select the text below and copy it manually.
+                @(UiText.Get("Ui.ClipboardCopyingWasUnavailableSelectTheTextBelowAndCopyItManually"))
             </p>
             <textarea id="@_fallbackTextId"
                       class="form-control probability-result-copy-text"
@@ -118,8 +118,8 @@
         : "btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2";
 
     private string CopyUnavailableMessage => IsCalculating
-        ? "Wait for the calculation to finish before copying results."
-        : "The original result context is unavailable.";
+        ? UiText.Get("Ui.WaitForTheCalculationToFinishBeforeCopyingResults")
+        : UiText.Get("Ui.TheOriginalResultContextIsUnavailable");
 
     protected override void OnParametersSet() {
         bool parametersUnchanged = _hasObservedParameters
@@ -212,7 +212,7 @@
         }
 
         if (stale) {
-            summary = "Previous result — current inputs have changed.\n" + summary;
+            summary = UiText.Get("Ui.PreviousResultCurrentInputsHaveChanged") + summary;
         }
 
         CancelSuccessReset();
@@ -242,7 +242,7 @@
 
         if (copied) {
             _copySucceeded = true;
-            _feedback = "Results copied.";
+            _feedback = UiText.Get("Ui.ResultsCopied");
             StartSuccessReset(version, attemptVersion, result, handSize);
         }
         else {

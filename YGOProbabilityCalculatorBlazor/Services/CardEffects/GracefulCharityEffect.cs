@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -8,5 +9,5 @@ public sealed class GracefulCharityEffect : ICardEffectDefinition {
     public int Revision => 1;
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(3, false) with { RemovalCount = 2 };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Draw 3, then remove 2 cards from hand.";
+    public string Summary => UiText.English("Effects.79571449.Summary");
 }

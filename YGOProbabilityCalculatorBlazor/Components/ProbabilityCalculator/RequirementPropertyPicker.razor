@@ -3,31 +3,31 @@
 <div class="requirement-property-picker">
     <label for="@Id" class="form-label">@Label</label>
     <select id="@Id" class="form-select" aria-label="@AccessibleLabel" value="@Selection" @onchange="Select" @ref="_target">
-        <option value="">Choose…</option>
-        @if (AllowAny) { <option value="any">Any card (clear filter)</option> }
+        <option value="">@(UiText.Get("Ui.Choose"))</option>
+        @if (AllowAny) { <option value="any">@(UiText.Get("Ui.Anycardclearfilter"))</option> }
         @if (Cards.Count > 0) {
-            <optgroup label="Cards">@foreach (Card card in CardOrdering.Alphabetize(Cards)) { <option value="@($"card:{card.Id}")">@(CardLabel?.Invoke(card) ?? card.Name)</option> }</optgroup>
+            <optgroup label="@(UiText.Get("Ui.Cards"))">@foreach (Card card in CardOrdering.Alphabetize(Cards)) { <option value="@($"card:{card.Id}")">@(CardLabel?.Invoke(card) ?? card.Name)</option> }</optgroup>
         }
-        @if (Value.StartsWith("card:", StringComparison.Ordinal) && !Cards.Any(card => Value == $"card:{card.Id}")) { <option value="@Value">Missing card</option> }
+        @if (Value.StartsWith("card:", StringComparison.Ordinal) && !Cards.Any(card => Value == $"card:{card.Id}")) { <option value="@Value">@(UiText.Get("Ui.MissingCard"))</option> }
         @if (Selectable.Any(category => category.Source == CategorySource.User)) {
-            <optgroup label="Categories">@foreach (CategoryBase category in Selectable.Where(category => category.Source == CategorySource.User)) { <option value="@category.Identity">@category.Name</option> }</optgroup>
+            <optgroup label="@(UiText.Get("Ui.Categories"))">@foreach (CategoryBase category in Selectable.Where(category => category.Source == CategorySource.User)) { <option value="@category.Identity">@DisplayLabels.Category(category)</option> }</optgroup>
         }
         @if (Selectable.Any(category => category.Source == CategorySource.Metadata && (RelevantIdentities.Contains(category.Identity) || !CategoryCatalog.IsCommonMetadata(category)))) {
-            <optgroup label="Relevant properties">@foreach (CategoryBase category in Selectable.Where(category => category.Source == CategorySource.Metadata && (RelevantIdentities.Contains(category.Identity) || !CategoryCatalog.IsCommonMetadata(category)))) { <option value="@category.Identity">@category.Name</option> }</optgroup>
+            <optgroup label="@(UiText.Get("Ui.RelevantProperties"))">@foreach (CategoryBase category in Selectable.Where(category => category.Source == CategorySource.Metadata && (RelevantIdentities.Contains(category.Identity) || !CategoryCatalog.IsCommonMetadata(category)))) { <option value="@category.Identity">@DisplayLabels.Category(category)</option> }</optgroup>
         }
-        <optgroup label="Common properties">
-            @foreach (CategoryBase category in Selectable.Where(category => category.Source == CategorySource.Metadata && CategoryCatalog.IsCommonMetadata(category) && !RelevantIdentities.Contains(category.Identity))) { <option value="@category.Identity">@category.Name</option> }
-            <option value="numeric:level">Level</option><option value="numeric:rank">Rank</option><option value="numeric:link">Link</option>
+        <optgroup label="@(UiText.Get("Ui.CommonProperties"))">
+            @foreach (CategoryBase category in Selectable.Where(category => category.Source == CategorySource.Metadata && CategoryCatalog.IsCommonMetadata(category) && !RelevantIdentities.Contains(category.Identity))) { <option value="@category.Identity">@DisplayLabels.Category(category)</option> }
+            <option value="numeric:level">@(UiText.Get("Ui.Level"))</option><option value="numeric:rank">@(UiText.Get("Ui.Rank"))</option><option value="numeric:link">@(UiText.Get("Ui.Link"))</option>
         </optgroup>
         @if (Selection.Length > 0 && !Selection.StartsWith("numeric:", StringComparison.Ordinal) && !Selection.StartsWith("card:", StringComparison.Ordinal) && !Selectable.Any(category => category.Identity == Selection)) { <option value="@Selection">@Value</option> }
     </select>
     @if (_property is { } property) {
         <div class="requirement-numeric-fields">
-            <div><label for="@(Id + "-comparison")" class="form-label">Comparison</label>
-                <select id="@(Id + "-comparison")" class="form-select" aria-label="Comparison" value="@_comparison" @onchange="ChangeComparison"><option value="exact">Exactly</option><option value="minimum">At least</option><option value="maximum">At most</option><option value="range">Between</option></select></div>
+            <div><label for="@(Id + "-comparison")" class="form-label">@(UiText.Get("Ui.Comparison"))</label>
+                <select id="@(Id + "-comparison")" class="form-select" aria-label="@(UiText.Get("Ui.Comparison"))" value="@_comparison" @onchange="ChangeComparison"><option value="exact">@(UiText.Get("Ui.Exactly"))</option><option value="minimum">@(UiText.Get("Ui.AtLeast"))</option><option value="maximum">@(UiText.Get("Ui.AtMost"))</option><option value="range">@(UiText.Get("Ui.Between"))</option></select></div>
             <div><label for="@(Id + "-number")" class="form-label">@NumberLabel</label>
                 <input id="@(Id + "-number")" class="form-control" type="number" min="0" max="2147483647" step="1" aria-label="@NumberLabel" value="@_number" @oninput="ChangeNumber" @ref="_numberInput" /></div>
-            @if (_comparison == "range") { <div><label for="@(Id + "-maximum")" class="form-label">Maximum @property</label><input id="@(Id + "-maximum")" class="form-control" type="number" min="0" max="2147483647" step="1" aria-label="@($"Maximum {property}")" value="@_maximum" @oninput="ChangeMaximum" /></div> }
+            @if (_comparison == "range") { <div><label for="@(Id + "-maximum")" class="form-label">@(UiText.Format("Requirement.MaximumProperty", DisplayLabels.NumericProperty(property)))</label><input id="@(Id + "-maximum")" class="form-control" type="number" min="0" max="2147483647" step="1" aria-label="@(UiText.Format("Ui.Maximum0", DisplayLabels.NumericProperty(property)))" value="@_maximum" @oninput="ChangeMaximum" /></div> }
         </div>
     }
 </div>
@@ -36,7 +36,7 @@
     public sealed record Change(string Value, CategoryBase? Category, string? Error = null);
     [Parameter] public bool AllowAny { get; set; }
     [Parameter] public string Id { get; set; } = "requirement-target";
-    [Parameter] public string Label { get; set; } = "Requirement";
+    [Parameter] public string Label { get; set; } = UiText.Get("Ui.Requirement");
     [Parameter] public string? AccessibleLabel { get; set; }
     [Parameter] public string Value { get; set; } = "";
     [Parameter] public IReadOnlyList<CategoryBase> Categories { get; set; } = [];
@@ -55,9 +55,9 @@
     private bool _objectiveOnly;
     private bool _focusNumber;
     private string NumberLabel => _comparison switch {
-        "minimum" or "range" => $"Minimum {_property}",
-        "maximum" => $"Maximum {_property}",
-        _ => _property.ToString()!
+        "minimum" or "range" => UiText.Format("Ui.Minimum0", DisplayLabels.NumericProperty(_property!.Value)),
+        "maximum" => UiText.Format("Ui.Maximum0", DisplayLabels.NumericProperty(_property!.Value)),
+        _ => DisplayLabels.NumericProperty(_property!.Value)
     };
     private string Selection => _property is { } property ? "numeric:" + property.ToString().ToLowerInvariant() : Value;
     private IEnumerable<CategoryBase> Selectable => Categories.Where(category => !NumericPropertyRange.TryFromIdentity(category.Identity, out _));
@@ -95,7 +95,7 @@
     private Task PublishNumeric() {
         if (!int.TryParse(_number, out int number) || number < 0
             || _comparison == "range" && (!int.TryParse(_maximum, out int maximum) || maximum < number)) {
-            return OnChanged.InvokeAsync(new(Value, null, "Enter a non-negative whole number or an ordered range."));
+            return OnChanged.InvokeAsync(new(Value, null, UiText.Get("Ui.EnterANonNegativeWholeNumberOrAnOrderedRange")));
         }
         int? lower = _comparison == "maximum" ? null : number;
         int? upper = _comparison == "minimum" ? null : _comparison == "range" ? int.Parse(_maximum) : number;

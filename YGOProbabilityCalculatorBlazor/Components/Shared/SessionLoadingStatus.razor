@@ -2,7 +2,7 @@
     @if (RequestVersion is { } version) {
         <span @key="version" class="session-loading-content">
             <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-            <span>Loading session…</span>
+            <span>@(UiText.Get("Ui.LoadingSession"))</span>
         </span>
     }
 </div>

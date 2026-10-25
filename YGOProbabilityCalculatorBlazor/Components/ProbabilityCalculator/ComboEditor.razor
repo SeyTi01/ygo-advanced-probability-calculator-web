@@ -40,7 +40,7 @@
                             <span class="text-muted ms-2">(no requirements)</span>
                         }
                         @if (!Combo.Active) {
-                            <span class="badge text-bg-secondary ms-2">Inactive</span>
+                            <span class="badge text-bg-secondary ms-2">@(UiText.Get("Ui.Inactive"))</span>
                         }
                     </span>
                 </span>
@@ -48,7 +48,7 @@
 
         </h2>
         <div class="entry-actions">
-            <RowActionMenu Kind="combo" ItemLabel="@($"combo {ComboDisplayName}, row {Index + 1}")"
+            <RowActionMenu Kind="combo" ItemLabel="@(UiText.Format("Ui.Combo0Row1", ComboDisplayName, Index + 1))"
                            Index="Index" Count="Count" Active="Combo.Active"
                            OnMove="OnMove" OnDuplicate="() => OnDuplicateCombo.InvokeAsync(Index)"
                            OnToggle="() => ChangeActive(!Combo.Active)"
@@ -62,18 +62,18 @@
                 <DismissibleAlert Message="@_error" OnDismiss="@(() => _error = null)"/>
             }
             @if (Combo.AllCards.Any(card => !Cards.Any(row => row.Id == card.CardId))) {
-                <p class="text-danger" role="status">Missing card reference. Remove the missing requirement, then add another card if needed.</p>
+                <p class="text-danger" role="status">@(UiText.Get("Ui.MissingCardReferenceRemoveTheMissingRequirementThenAddAnotherCardIfNeeded"))</p>
             }
             <div class="combo-name-row mb-3">
                 <div class="combo-name-field">
-                    <label for="comboName@(Index)" class="form-label">Name</label>
+                    <label for="comboName@(Index)" class="form-label">@(UiText.Get("Ui.Name"))</label>
                     <input id="comboName@(Index)" class="form-control"
                            value="@(Combo.Name ?? string.Empty)"
                            @oninput="e => Rename(e.Value?.ToString())"/>
                 </div>
             </div>
 
-            <div class="requirement-list expanded-expression" aria-label="Combo requirements">
+            <div class="requirement-list expanded-expression" aria-label="@(UiText.Get("Ui.ComboRequirements"))">
                 @if (ConstraintCount > 0) {
                     <p class="requirement-explanation text-body-secondary">+ separates physical card requirements; AND/OR describe one card.</p>
                 }
@@ -88,7 +88,7 @@
                     else {
                         int groupIndex = position.Index;
                         ComboAlternativeGroup group = Combo.AlternativeGroups[groupIndex];
-                        <ExpressionGroup Label="@($"Alternative group {groupIndex + 1}")">
+                        <ExpressionGroup Label="@(UiText.Format("Ui.AlternativeGroup0", groupIndex + 1))">
                             @foreach ((int start, int count) in AlternativeTerms(group)) {
                                 @if (start > 0) { @GroupSeparator(groupIndex, boundary: start) }
                                 @if (count == 1 && IsComposite(group.Alternatives[start])) {
@@ -101,25 +101,25 @@
                 }
                 @if (ShowNewRequirementRow) {
                     @if (ConstraintCount > 0) { <ExpressionSeparator Operator="AND" Symbol="+" AllowedOperators="@(new[] { "+" })" /> }
-                    <ExpressionRow Label="Edit new requirement" Expanded="_editingNewRequirement" OnEdit="ToggleNewRequirement"
+                    <ExpressionRow Label="@(UiText.Get("Ui.EditNewRequirement"))" Expanded="_editingNewRequirement" OnEdit="ToggleNewRequirement"
                                    @ref="_newRequirementRow" data-new-requirement="true">
-                        <ChildContent><span class="text-body-secondary">Choose a card, category or property</span></ChildContent>
+                        <ChildContent><span class="text-body-secondary">@(UiText.Get("Ui.ChooseACardCategoryOrProperty"))</span></ChildContent>
                         <EditorContent>@if (_editingNewRequirement) { @RequirementForm() }</EditorContent>
                     </ExpressionRow>
                 }
             </div>
             @if (!ShowNewRequirementRow) {
-                <button type="button" class="btn btn-sm btn-outline-secondary add-top-level-group" title="Add a separate-copy requirement"
-                        @ref="_newRequirementButton" @onclick="BeginTopLevelRequirement">+ Add requirement</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary add-top-level-group" title="@(UiText.Get("Ui.AddASeparateCopyRequirement"))"
+                        @ref="_newRequirementButton" @onclick="BeginTopLevelRequirement">@(UiText.Get("Ui.AddRequirement"))</button>
             }
 
             <div class="combo-footer">
                 <div class="combo-group-field">
-                    <label for="comboGroup@(Index)" class="form-label">Result group</label>
+                    <label for="comboGroup@(Index)" class="form-label">@(UiText.Get("Ui.ResultGroup"))</label>
                     <select id="comboGroup@(Index)" class="form-select form-select-sm"
-                            aria-label="@($"Group for {ComboDisplayName}")" value="@Combo.GroupId"
+                            aria-label="@(UiText.Format("Ui.GroupFor0", ComboDisplayName))" value="@Combo.GroupId"
                             @onchange="e => AssignGroup(e.Value?.ToString())">
-                        <option value="">Ungrouped</option>
+                        <option value="">@(UiText.Get("Ui.Ungrouped"))</option>
                         @foreach (ComboGroup group in ComboGroups) {
                             <option value="@group.Id">@group.Name</option>
                         }
@@ -136,7 +136,7 @@
         @ref="_connectors[PeerKey(right)]" OnOperatorChanged="operation => BeginPeerConversion(right, operation)" />;
 
     private RenderFragment RequirementRow(ComboAlternative requirement, int index, int? groupIndex) => @<ExpressionRow
-        @key="TermIdentity(requirement, index, groupIndex)" Label="@($"Edit {AlternativeTargetLabel(requirement)}")" Expanded="IsOpenRow(requirement, index, groupIndex)"
+        @key="TermIdentity(requirement, index, groupIndex)" Label="@(UiText.Format("Ui.Edit0", AlternativeTargetLabel(requirement)))" Expanded="IsOpenRow(requirement, index, groupIndex)"
         InteractiveSummary="@(requirement.Category?.CategoryBases.Count > 1)"
         @ref="_rowButtons[RowKey(requirement, index, groupIndex)]" data-requirement="@RowKey(requirement, index, groupIndex)"
         OnEdit="() => BeginEdit(requirement, index, groupIndex)">
@@ -154,7 +154,7 @@
         @ref="_connectors[GroupKey(groupIndex)]" OnOperatorChanged="operation => ChangeAlternativeRowOperator(groupIndex, boundary, operation)" />;
 
     private RenderFragment AlternativeTerm(ComboAlternativeGroup group, int groupIndex, int start, int count) => @<ExpressionRow
-        @key="TermIdentity(group.Alternatives[start], start, groupIndex)" Label="@($"Edit alternatives in OR group {groupIndex + 1}")"
+        @key="TermIdentity(group.Alternatives[start], start, groupIndex)" Label="@(UiText.Format("Ui.EditAlternativesInORGroup0", groupIndex + 1))"
         Expanded="@Enumerable.Range(start, count).Any(index => IsOpenRow(group.Alternatives[index], index, groupIndex))"
         InteractiveSummary="true" @ref="_rowButtons[RowKey(group.Alternatives[start], start, groupIndex)]"
         OnEdit="() => ToggleAlternativeTerm(group, groupIndex, start, count)">
@@ -164,7 +164,7 @@
                 <OperandContent Context="offset">
                     @{ int leafIndex = start + offset; ComboAlternative leaf = group.Alternatives[leafIndex]; }
                     <ExpressionMember @ref="_alternativeButtons[RowKey(leaf, leafIndex, groupIndex)]" data-requirement="@RowKey(leaf, leafIndex, groupIndex)"
-                        Label="@($"Edit {AlternativeTargetLabel(leaf)}")" Expanded="IsOpenRow(leaf, leafIndex, groupIndex)" OnEdit="() => BeginEdit(leaf, leafIndex, groupIndex)">
+                        Label="@(UiText.Format("Ui.Edit0", AlternativeTargetLabel(leaf)))" Expanded="IsOpenRow(leaf, leafIndex, groupIndex)" OnEdit="() => BeginEdit(leaf, leafIndex, groupIndex)">
                         @AlternativeBadge(leaf, showParentheses: false)
                     </ExpressionMember>
                 </OperandContent>
@@ -185,14 +185,14 @@
         <OperandContent Context="position">
             <RequirementPropertyPicker @ref="_propertyPickers[position]" Id="@(position == 0 ? $"comboTarget{Index}" : $"comboProperty{Index}-{position}")"
                 Value="@(FormOperandCount > 1 ? _draftProperties[position].Identity : SelectedTarget)"
-                Label="Requirement"
-                AccessibleLabel="@(FormOperandCount > 1 ? $"Same-card property {position + 1}" : null)"
+                Label="@(UiText.Get("Ui.Requirement"))"
+                AccessibleLabel="@(FormOperandCount > 1 ? UiText.Format("Ui.SameCardProperty0", position + 1) : null)"
                 Categories="@(FormOperandCount > 1 ? _availableCategories : SelectableCategories.ToArray())" Cards="@(AndScope || FormOperandCount > 1 ? [] : Cards)"
                 RelevantIdentities="_categoryOptions.RelevantMetadataIdentities" CardLabel="card => CardSelectionLabel(card.Id)"
                 OnChanged="change => ChangeRequirementTarget(position, change)" />
         </OperandContent>
         <QuantityContent>
-            <label for="minCount@(Index)" class="form-label">At least</label>
+            <label for="minCount@(Index)" class="form-label">@(UiText.Get("Ui.AtLeast"))</label>
             <input id="minCount@(Index)" class="form-control" type="number" min="0" step="1" value="@_minCount"
                    @ref="_minimumInput"
                    @onkeydown="HandleCountKeyDown" @onkeydown:stopPropagation
@@ -200,13 +200,13 @@
         </QuantityContent>
         <AfterContent>
         <details class="requirement-bounds" open="@(_maxCount.Length > 0)">
-            <summary>Maximum: @(string.IsNullOrEmpty(_maxCount) ? "Any" : _maxCount)</summary>
+            <summary>Maximum: @(string.IsNullOrEmpty(_maxCount) ? UiText.Get("Ui.Any") : _maxCount)</summary>
             <div class="requirement-max">
-                <label for="maxCount@(Index)" class="form-label">At most</label>
-                <input id="maxCount@(Index)" class="form-control" type="number" min="0" step="1" placeholder="Any"
+                <label for="maxCount@(Index)" class="form-label">@(UiText.Get("Ui.AtMost"))</label>
+                <input id="maxCount@(Index)" class="form-control" type="number" min="0" step="1" placeholder="@(UiText.Get("Ui.Any"))"
                        @onkeydown="HandleCountKeyDown" @onkeydown:stopPropagation
-                       title="Leave empty for Any" value="@_maxCount" @oninput="e => _maxCount = e.Value?.ToString() ?? string.Empty" />
-                <small class="text-body-secondary">Leave empty for any number. Set both counts to 0 to exclude matching cards.</small>
+                       title="@(UiText.Get("Ui.LeaveEmptyForAny"))" value="@_maxCount" @oninput="e => _maxCount = e.Value?.ToString() ?? string.Empty" />
+                <small class="text-body-secondary">@(UiText.Get("Ui.LeaveEmptyForAnyNumberSetBothCountsTo0ToExcludeMatchingCards"))</small>
             </div>
         </details>
         </AfterContent>
@@ -279,7 +279,7 @@
     private IEnumerable<CategoryBase> SelectableCommonProperties => SelectableCategories
         .Where(category => CategoryCatalog.IsCommonMetadata(category) && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity));
     private string AlternativeLabel(ComboAlternative alternative) =>
-        alternative.Category?.DisplayName ?? $"Card: {CardDisplayName(alternative.Card!.CardId)}";
+        (alternative.Category is { } value ? DisplayLabels.Requirement(value) : null) ?? UiText.Format("Requirement.Card", CardDisplayName(alternative.Card!.CardId));
 
     private string AlternativeRange(ComboAlternative alternative) => alternative.Category is { } category
         ? RequirementRangeFormatter.Format(category.MinCount, category.MaxCount, category.MaximumMode)
@@ -289,15 +289,15 @@
         string subject;
 
         if (alternative.Card is { } card) {
-            subject = $"Card: {CardSelectionLabel(card.CardId)}";
+            subject = UiText.Format("Requirement.Card", CardSelectionLabel(card.CardId));
         }
         else {
             CategoryBase category = alternative.Category!.BaseCategory;
-            string categoryKind = category.Source == CategorySource.Metadata ? "Property" : "Category";
-            subject = $"{categoryKind}: {alternative.Category!.DisplayName}";
+            string categoryKind = category.Source == CategorySource.Metadata ? UiText.Get("Ui.Property") : UiText.Get("Ui.Category");
+            subject = UiText.Format("Requirement.Subject", categoryKind, DisplayLabels.Requirement(alternative.Category!));
         }
 
-        return $"{subject} ({AlternativeRange(alternative)})";
+        return UiText.Format("Requirement.WithRange", subject, AlternativeRange(alternative));
     }
 
     private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null, bool showParentheses = true) => @<span class="@(category.CategoryBases.Count > 1 ? (showParentheses ? "composite-alternative same-card-group" : "same-card-group") : "single-card-group")">
@@ -314,15 +314,15 @@
     </span>;
 
     private RenderFragment PropertyBadge(ComboCategory category, int index) => @<ExpressionBadge CssClass="@CategoryCssClass(category.CategoryBases[index])"
-        Title="@(category.CategoryBases[index].Source == CategorySource.Metadata ? "Card property" : null)">
-        @category.CategoryBases[index].Name
+        Title="@(category.CategoryBases[index].Source == CategorySource.Metadata ? UiText.Get("Ui.CardProperty") : null)">
+        @DisplayLabels.Category(category.CategoryBases[index])
         @if (index == category.CategoryBases.Count - 1) {
             <span class="same-card-range"> (@RequirementRangeFormatter.Format(category.MinCount, category.MaxCount, category.MaximumMode))</span>
         }
     </ExpressionBadge>;
 
     private RenderFragment CardBadge(ComboCard card) => @<ExpressionBadge CssClass="@($"combo-card-tag {(Cards.Any(row => row.Id == card.CardId) ? "" : "combo-missing-card")}")">
-        Card: @CardDisplayName(card.CardId) <span class="same-card-range">(@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))</span>
+        @(UiText.Format("Requirement.Card", CardDisplayName(card.CardId))) <span class="same-card-range">(@RequirementRangeFormatter.Format(card.MinCount, card.MaxCount, card.MaximumMode))</span>
     </ExpressionBadge>;
 
     private RenderFragment AlternativeBadge(ComboAlternative alternative, bool showParentheses = true) => @<text>
@@ -441,7 +441,7 @@
         }
 
         if (!int.TryParse(_minCount, out int minimum) || minimum < 0 || !TryMaximum(minimum, out int maximum)) {
-            _error = "Enter valid minimum and maximum counts.";
+            _error = UiText.Get("Ui.EnterValidMinimumAndMaximumCounts");
 
             return Task.CompletedTask;
         }
@@ -450,7 +450,7 @@
         if (category is not null && _andSeed!.CategoryBases.Any(existing => existing.Identity == category.Identity)) { category = null; }
 
         if (category is null) {
-            _error = "Select a category to add as an AND condition.";
+            _error = UiText.Get("Ui.SelectACategoryToAddAsAnANDCondition");
 
             return Task.CompletedTask;
         }
@@ -496,7 +496,7 @@
         }
 
         if (!int.TryParse(_minCount, out int minimum) || minimum < 0 || !TryMaximum(minimum, out int maximum)) {
-            _error = "Enter valid minimum and maximum counts.";
+            _error = UiText.Get("Ui.EnterValidMinimumAndMaximumCounts");
 
             return Task.CompletedTask;
         }
@@ -510,7 +510,7 @@
             leaf = ComboAlternative.For(new ComboCategory(category, minimum, maximum, MaximumMode));
         }
         else {
-            _error = "Select a target for this alternative.";
+            _error = UiText.Get("Ui.SelectATargetForThisAlternative");
 
             return Task.CompletedTask;
         }
@@ -652,7 +652,7 @@
         return OnReplaceCombo.InvokeAsync((Index, updated));
     }
 
-    private string ComboDisplayName => string.IsNullOrWhiteSpace(Combo.Name) ? $"Combo {Index + 1}" : Combo.Name;
+    private string ComboDisplayName => string.IsNullOrWhiteSpace(Combo.Name) ? UiText.Format("Ui.Combo0", Index + 1) : Combo.Name;
 
     private ComboGroup? AssignedGroup => Combo.GroupId is { Length: > 0 } groupId
         ? ComboGroups.FirstOrDefault(group => group.Id == groupId)
@@ -674,12 +674,12 @@
         int index = Cards.ToList().FindIndex(card => card.Id == cardId);
 
         if (index < 0) {
-            return $"Missing card ({cardId[..Math.Min(8, cardId.Length)]})";
+            return UiText.Format("Ui.MissingCard0", cardId[..Math.Min(8, cardId.Length)]);
         }
 
         string? cardName = Cards[index].Name;
 
-        return string.IsNullOrWhiteSpace(cardName) ? "Unnamed card" : cardName;
+        return string.IsNullOrWhiteSpace(cardName) ? UiText.Get("Ui.UnnamedCard") : cardName;
     }
 
     private string CardSelectionLabel(string cardId) {
@@ -734,7 +734,7 @@
         }
 
         if (string.IsNullOrWhiteSpace(_selectedCategory)) {
-            _error = "Please select a category to add.";
+            _error = UiText.Get("Ui.PleaseSelectACategoryToAdd");
 
             return Task.CompletedTask;
         }
@@ -742,19 +742,19 @@
         CategoryBase? categoryBase = FindRequirementCategory(_selectedCategory);
 
         if (categoryBase is null) {
-            _error = "Selected category not found.";
+            _error = UiText.Get("Ui.SelectedCategoryNotFound");
 
             return Task.CompletedTask;
         }
 
         if (!int.TryParse(_minCount, out int minimum) || minimum < 0) {
-            _error = "Minimum count must be a non-negative whole number.";
+            _error = UiText.Get("Ui.MinimumCountMustBeANonNegativeWholeNumber");
 
             return Task.CompletedTask;
         }
 
         if (!TryMaximum(minimum, out int maximum)) {
-            _error = "Maximum count must be a whole number at least equal to minimum count.";
+            _error = UiText.Get("Ui.MaximumCountMustBeAWholeNumberAtLeastEqualToMinimumCount");
 
             return Task.CompletedTask;
         }
@@ -781,19 +781,19 @@
 
     private Task AddCard() {
         if (string.IsNullOrEmpty(_selectedCardId) || !Cards.Any(card => card.Id == _selectedCardId)) {
-            _error = "Please select a card to add.";
+            _error = UiText.Get("Ui.PleaseSelectACardToAdd");
 
             return Task.CompletedTask;
         }
 
         if (!int.TryParse(_minCount, out int minimum) || minimum < 0) {
-            _error = "Minimum count must be a non-negative whole number.";
+            _error = UiText.Get("Ui.MinimumCountMustBeANonNegativeWholeNumber");
 
             return Task.CompletedTask;
         }
 
         if (!TryMaximum(minimum, out int maximum)) {
-            _error = "Maximum count must be a whole number at least equal to minimum count.";
+            _error = UiText.Get("Ui.MaximumCountMustBeAWholeNumberAtLeastEqualToMinimumCount");
 
             return Task.CompletedTask;
         }
