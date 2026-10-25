@@ -41,10 +41,9 @@
             if (raw) {
                 const record = JSON.parse(raw);
                 const reload = root.performance?.getEntriesByType('navigation')[0]?.type === 'reload';
-                const eligible = reload && !record.claimed && record.version === 1 && record.url === root.location.href
+                const eligible = reload && !record.claimed && record.version === 2 && record.url === root.location.href
                     && Date.now() >= record.created && Date.now() - record.created < 120000 && record.locale === locale && raw.length <= maxLength
-                    && typeof record.id === 'string' && record.states && typeof record.states === 'object'
-                    && !Array.isArray(record.states) && Object.values(record.states).every(value => typeof value === 'string');
+                    && typeof record.id === 'string' && (record.workspace === null || typeof record.workspace === 'string');
                 record.claimed = true;
                 checkedWrite(root.sessionStorage, handoffKey, JSON.stringify(record));
                 if (eligible) {
@@ -71,9 +70,15 @@
         downloadHandoff() {
             const raw = root.sessionStorage.getItem(handoffKey);
             if (!raw) return;
-            const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
+            let payload = raw;
+            let filename = 'language-workspace-checkpoint.json';
+            try {
+                const session = JSON.parse(JSON.parse(raw).workspace).Session;
+                if (typeof session === 'string') { payload = session; filename = 'language-workspace-session.json'; }
+            } catch { /* Keep malformed records available for diagnosis too. */ }
+            const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
             const link = root.document.createElement('a');
-            link.href = url; link.download = 'language-workspace-handoff.json'; link.click();
+            link.href = url; link.download = filename; link.click();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         },
         complete(id) {
@@ -81,14 +86,26 @@
             const record = JSON.parse(root.sessionStorage.getItem(handoffKey));
             if (record.id !== id) throw new Error('The language handoff changed.');
             root.sessionStorage.removeItem(handoffKey);
+            if (root.sessionStorage.getItem(handoffKey) !== null) throw new Error('The restored checkpoint could not be removed.');
             handoff = null;
         },
-        change(next, states, presentation) {
+        hasPendingEdits() {
+            const workspace = root.document.querySelector('.calculator-workspace');
+            if (!workspace) return false;
+            if (workspace.querySelector('[data-language-edit="true"], .simulation-editor, .category-rule-editor, .category-rename-input, .ydke-import-form')) return true;
+            const drafts = workspace.querySelectorAll('#quickCardName, .category-management .editor-add-row input, .combo-group-management .editor-add-row input, select[id^="cardCategory"]');
+            const numbers = workspace.querySelectorAll('#handSize, input[id^="cardCopies"]');
+            return [...drafts].some(input => input.value.length > 0)
+                || [...numbers].some(input => input.value === '' || !input.validity.valid);
+        },
+        change(next, workspace) {
+            if (root.ygoLocale.hasPendingEdits()) throw new Error('Save/apply or cancel the unfinished edit before changing language.');
+            if (workspace !== null && (typeof workspace !== 'string' || workspace.length === 0)) throw new Error('The accepted workspace could not be captured.');
             if (!locales.some(item => item.id === next)) throw new Error('This language is unavailable.');
             const previous = read();
             if (root.sessionStorage.getItem(handoffKey) !== null) throw new Error('A previous language handoff is still saved. Return to that workspace or save your work before clearing it.');
-            const record = JSON.stringify({ version: 1, id: root.crypto.randomUUID(), created: Date.now(),
-                url: root.location.href, locale: next, states, presentation,
+            const record = JSON.stringify({ version: 2, id: root.crypto.randomUUID(), created: Date.now(),
+                url: root.location.href, locale: next, workspace,
                 recovery: root.sessionRecovery?.captureLanguage() ?? null });
             if (record.length > maxLength) throw new Error('This workspace is too large for a language reload. Save your work first.');
             checkedWrite(root.sessionStorage, handoffKey, record);
@@ -103,27 +120,5 @@
             }
             root.location.reload();
         },
-        capturePresentation() {
-            const workspace = root.document.querySelector('.calculator-workspace');
-            if (!workspace) return null;
-            return {
-                details: [...workspace.querySelectorAll('details')].map(item => item.open),
-                controls: [...workspace.querySelectorAll('input:not([type=file]):not([readonly]),select,textarea:not([readonly])')]
-                    .map(item => ({ tag: item.tagName, type: item.type, value: item.value, checked: item.checked }))
-            };
-        },
-        restorePresentation(saved) {
-            if (!saved) return;
-            const workspace = root.document.querySelector('.calculator-workspace');
-            const details = [...workspace.querySelectorAll('details')];
-            const controls = [...workspace.querySelectorAll('input:not([type=file]):not([readonly]),select,textarea:not([readonly])')];
-            if (details.length !== saved.details.length || controls.length !== saved.controls.length
-                || controls.some((item, index) => item.tagName !== saved.controls[index].tag || item.type !== saved.controls[index].type)) {
-                throw new Error('Editor layout changed. Your language handoff is kept; do not clear browser data.');
-            }
-            details.forEach((item, index) => { item.open = saved.details[index]; });
-            // Binding ownership is restored by components. Never dispatch events that commit a form.
-            controls.forEach((item, index) => { item.value = saved.controls[index].value; item.checked = saved.controls[index].checked; });
-        }
     };
 })(globalThis);

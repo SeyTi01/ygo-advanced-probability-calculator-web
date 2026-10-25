@@ -5,11 +5,10 @@
     <button @ref="_downButton" type="button" class="reorder-button" disabled="@(Index >= Count - 1)"
             aria-label="@(Horizontal ? UiText.Format("Move.Right", ItemLabel) : UiText.Format("Move.Down", ItemLabel))" title="@(Horizontal ? UiText.Format("Move.Right", ItemLabel) : UiText.Format("Move.Down", ItemLabel))"
             @onclick="() => Move(1)">@NextGlyph</button>
-    <MoveToPosition LanguageKey="@LanguageKey" Index="Index" Count="Count" ItemLabel="@ItemLabel" OnMove="OnMove" />
+    <MoveToPosition Index="Index" Count="Count" ItemLabel="@ItemLabel" OnMove="OnMove" />
 </span>
 
 @code {
-    [Parameter] public string? LanguageKey { get; set; }
     [Parameter] public int Index { get; set; }
     [Parameter] public int Count { get; set; }
     [Parameter] public string ItemLabel { get; set; } = string.Empty;

@@ -4,7 +4,6 @@
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using Microsoft.AspNetCore.Components.Web
 
-<LanguageDraftBoundary Name="@($"card:{Card.Id}")" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="accordion-item card-editor @(Card.Active ? "" : "entry-inactive")">
     <div class="accordion-header entry-editor-header">
         <h2 class="entry-heading">
@@ -369,10 +368,4 @@
         return render;
     }
 
-
-    private string CaptureLanguageDraft() => LanguageDraftState.Pack((_selectedCategory, _error));
-    private void RestoreLanguageDraft(string json) {
-        (_selectedCategory, _error) = LanguageDraftState.Unpack<(string, string?)>(json);
-        _skipParameterRender = false;
-    }
 }

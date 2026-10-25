@@ -11,11 +11,10 @@
 @inject IBackgroundCalculator _backgroundCalculator
 @inject IJSRuntime SessionLoadingJS
 
-<LanguageDraftBoundary Name="workspace" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="calculator-workspace" @oninput="ObserveWorkspaceEdit">
     <div class="session-controls">
         <div class="session-toolbar">
-            <ActionMenu LanguageKey="import" @ref="_importMenu" Text="@(UiText.Get("Ui.Import"))" Label="@(UiText.Get("Ui.ImportDeck"))">
+            <ActionMenu @ref="_importMenu" Text="@(UiText.Get("Ui.Import"))" Label="@(UiText.Get("Ui.ImportDeck"))">
                 <label class="menu-command session-file-action" for="fileInput">
                     @(UiText.Get("Ui.ImportYDK"))
                     <InputFile OnChange="ImportDeckFromMenu" accept=".ydk" class="session-file-input" id="fileInput" aria-label="@(UiText.Get("Ui.ImportYDK"))"/>
@@ -28,7 +27,7 @@
                 <InputFile OnChange="@LoadSessionFile" accept=".json" class="session-file-input" id="sessionFileInput" aria-label="@(UiText.Get("Ui.LoadSession"))"/>
             </label>
             <SessionShareButton Compact="true" Snapshot="@_sessionService.SerializeSession(CaptureSession())" Capture="@(() => _sessionService.SerializeSession(CaptureSession()))" />
-            <ActionMenu LanguageKey="workspace" @ref="_workspaceMenu" Text="@(UiText.Get("Ui.More"))" Label="@(UiText.Get("Ui.MoreWorkspaceActions"))">
+            <ActionMenu @ref="_workspaceMenu" Text="@(UiText.Get("Ui.More"))" Label="@(UiText.Get("Ui.MoreWorkspaceActions"))">
                 <button type="button" class="menu-command menu-remove" @onclick="ClearFromMenu">@(UiText.Get("Ui.ClearWorkspace"))</button>
             </ActionMenu>
         </div>
@@ -94,7 +93,7 @@
         </section>
     }
     @if (_sessionInitialized) {
-        <SessionRecovery @ref="_sharingRecovery" Session="CaptureSession()" ReplacementVersion="_autosaveReplacementVersion" EditVersion="_workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" ApplyRecoveryPayload="ApplyRecoveryPayloadAsync" Suspended="@(_sharedFragment is not null || LanguageWorkspace?.Restoring == true)" OnInspectionComplete="@(() => StateHasChanged())" />
+        <SessionRecovery @ref="_sharingRecovery" Session="CaptureSession()" ReplacementVersion="_autosaveReplacementVersion" EditVersion="_workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" ApplyRecoveryPayload="ApplyRecoveryPayloadAsync" Suspended="@(_sharedFragment is not null || LanguageWorkspace?.Restoring == true)" OnInspectionComplete="RecoveryInspected" />
     }
 
     <CardListEditor @ref="_cardListEditor"

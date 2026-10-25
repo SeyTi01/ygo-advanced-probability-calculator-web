@@ -1,6 +1,8 @@
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -17,109 +19,94 @@ public sealed class LanguageWorkspaceTest : CalculatorEditorTestBase {
             .AddChildContent<ProbabilityCalculatorComponent>());
     }
 
-    [Test]
-    public async Task UnsavedWorkspaceAndUnsubmittedFormsRestoreWithoutCommittingTheirDrafts() {
-        SessionState session = new() {
-            HandSize = 1, Categories = [a], Cards = [new([a], 3, "Accepted card", id: "card")],
-            Combos = [new([new(a, 1, 1)], name: "Accepted combo")]
-        };
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task OneCheckpointRestoresAcceptedEmptyOrPopulatedWorkspace(bool populated) {
+        ISessionService codec = context.Services.GetRequiredService<ISessionService>();
+        SessionState? session = populated ? await codec.LoadSessionAsync(await File.ReadAllTextAsync(
+            Path.Combine(NUnit.Framework.TestContext.CurrentContext.TestDirectory, "Fixtures", "shipped_example_session_state.json"))) : null;
         LanguageWorkspace original = new();
         IRenderedComponent<CascadingValue<LanguageWorkspace>> first = RenderWorkspace(original, session);
-        await first.Find("#quickCardName").InputAsync(new() { Value = "Unsubmitted new card" });
-        await first.Find(".card-editor .accordion-button").ClickAsync(new());
-        OpenSimulation(first.FindComponent<CardEditor>());
-        await first.Find("#cardDraw0").ChangeAsync(new() { Value = "2" });
-        await first.Find(".combo-editor .accordion-button").ClickAsync(new());
-        await first.Find("button[data-requirement='category:0']").ClickAsync(new());
-        await first.Find("#minCount0").InputAsync(new() { Value = "0" });
-        Dictionary<string, string> states = await first.InvokeAsync(original.Capture);
-        Assert.That(states.Keys, Does.Contain("/quick-add"));
+        first.WaitForState(() => original.Capture is not null);
+        string checkpoint = await first.InvokeAsync(original.Capture!);
+        await first.InvokeAsync(() => first.FindComponent<ProbabilityCalculatorComponent>().Instance.DisposeAsync().AsTask());
         first.Dispose();
+        Assert.That(original.Capture, Is.Null, "Navigation must release the old calculator owner.");
 
         LanguageWorkspace restored = new();
-        restored.Begin(states);
+        restored.Begin(checkpoint);
         IRenderedComponent<CascadingValue<LanguageWorkspace>> second = RenderWorkspace(restored);
-        second.WaitForState(() => restored.Complete || restored.Failure is not null);
+        second.WaitForState(() => restored.Restored || restored.Failure is not null);
         Assert.That(restored.Failure, Is.Null);
-        Assert.That(second.Find("#quickCardName").GetAttribute("value"), Is.EqualTo("Unsubmitted new card"));
-        Assert.That(second.Find("#minCount0").GetAttribute("value"), Is.EqualTo("0"));
-        Assert.That(second.Find("#cardDraw0").GetAttribute("value"), Is.EqualTo("2"));
-        Card accepted = second.FindComponent<CardEditor>().Instance.Card;
-        Assert.That(accepted.DrawCount, Is.EqualTo(session.Cards[0].DrawCount), "The simulation draft must remain unsubmitted.");
-        Assert.That(second.FindComponent<ComboEditor>().Instance.Combo.Categories.Single().MinCount, Is.EqualTo(1));
-        Assert.That(accepted.Name, Is.EqualTo("Accepted card"));
+        restored.Finish();
+        Assert.That(await second.InvokeAsync(restored.Capture!), Is.EqualTo(checkpoint));
+        Assert.That(second.FindComponents<CardEditor>().Count, Is.EqualTo(session?.Cards.Count ?? 0));
     }
 
     [Test]
-    public async Task NestedEffectAndInvalidNumericDraftsRetainSeparateOwnership() {
-        Card card = new Card([a], 3, "Effect", id: "effect")
-            .WithDrawCount(2).WithPreDrawRemovalCount(1).WithPreDrawSelector(CardSelector.For(a))
-            .WithPostDrawDiscardCount(1).WithPostDrawSelector(CardSelector.For(a));
+    public async Task AcceptedExactResultAndManualPinSurviveTheCentralCheckpoint() {
         LanguageWorkspace original = new();
         IRenderedComponent<CascadingValue<LanguageWorkspace>> first = RenderWorkspace(original, new() {
-            Categories = [a], Cards = [card], HandSize = 1
+            HandSize = 1, Categories = [a], Cards = [new([a], 2, "Target", id: "a"), new([], 1, "Filler", id: "b")],
+            Combos = [new([new(a, 1, 1)], name: "Route")]
         });
-        await first.Find(".card-editor .accordion-button").ClickAsync(new());
-        IRenderedComponent<CardEditor> editor = first.FindComponent<CardEditor>();
-        OpenSimulation(editor);
-        await editor.FindComponents<SelectorExpressionEditor>()[0].Find(".requirement-edit").ClickAsync(new());
-        await editor.Find(".selector-expression form .requirement-property-picker > select").ChangeAsync(new() { Value = "numeric:level" });
-        await editor.Find(".selector-expression form .requirement-numeric-fields input").InputAsync(new() { Value = "" });
-        Dictionary<string, string> states = await first.InvokeAsync(original.Capture);
-        Assert.That(states.Keys.Count(key => key.StartsWith("/node:", StringComparison.Ordinal)), Is.EqualTo(2));
+        await Button(first, "Calculate").ClickAsync(new());
+        await Button(first, "Pin result").ClickAsync(new());
+        string checkpoint = await first.InvokeAsync(original.Capture!);
+        await first.InvokeAsync(() => first.FindComponent<ProbabilityCalculatorComponent>().Instance.DisposeAsync().AsTask());
         first.Dispose();
         LanguageWorkspace restored = new();
-        restored.Begin(states);
+        restored.Begin(checkpoint);
         IRenderedComponent<CascadingValue<LanguageWorkspace>> second = RenderWorkspace(restored);
-        second.WaitForState(() => restored.Complete || restored.Failure is not null);
+        second.WaitForState(() => restored.Restored || restored.Failure is not null);
         Assert.That(restored.Failure, Is.Null);
-        Assert.That(second.Find(".selector-expression form .requirement-numeric-fields input").GetAttribute("value"), Is.Empty);
-        Assert.That(second.Find(".simulation-save").HasAttribute("disabled"), Is.True);
-        Card accepted = second.FindComponent<CardEditor>().Instance.Card;
-        Assert.That(accepted.PreDrawSelector, Is.EqualTo(card.PreDrawSelector));
-        Assert.That(accepted.PostDrawSelector, Is.EqualTo(card.PostDrawSelector));
+        Assert.That(second.Find(".pinned-result").TextContent, Does.Contain("66"));
+        Assert.That(second.Find(".probability-total .probability-with-accuracy").GetAttribute("title"), Does.Contain("2/3"));
+        restored.Finish();
+        Assert.That(await second.InvokeAsync(restored.Capture!), Is.EqualTo(checkpoint));
     }
 
     [Test]
-    public void AChangedApplicationBuildCannotReplayPrivateEditorState() {
-        LanguageWorkspace original = new();
-        Dictionary<string, string> states = original.Capture();
-        states["$build"] = "different-build";
-        LanguageWorkspace restored = new();
-        restored.Begin(states);
-        Assert.That(restored.Failure, Is.Not.Null);
-        Assert.Throws<InvalidOperationException>(() => restored.Capture());
-    }
-
-    [Test]
-    public void EmptyWorkspaceWithoutActiveCombosRestores() {
-        LanguageWorkspace original = new();
-        IRenderedComponent<CascadingValue<LanguageWorkspace>> first = RenderWorkspace(original);
-        Dictionary<string, string> states = first.InvokeAsync(original.Capture).GetAwaiter().GetResult();
-        first.Dispose();
-        LanguageWorkspace restored = new();
-        restored.Begin(states);
-        IRenderedComponent<CascadingValue<LanguageWorkspace>> second = RenderWorkspace(restored);
-        second.WaitForState(() => restored.Complete);
-        Assert.That(second.FindComponents<ComboEditor>(), Is.Empty);
-        Assert.That(second.FindComponents<CardEditor>(), Is.Empty);
-    }
-
-    [Test]
-    public void ReplacedEditorCannotUnregisterTheNewOwnerAndRestoreFailureKeepsTheCheckpoint() {
+    public void MalformedCheckpointReportsFailureWithoutStartingAutosaveOrChangingAcceptedWork() {
         LanguageWorkspace workspace = new();
-        object first = new();
-        object second = new();
-        workspace.Register("key", first, () => "old", _ => { });
-        workspace.Register("key", second, () => "new", _ => { });
-        workspace.Remove("key", first);
-        Assert.That(workspace.Capture()["key"], Is.EqualTo("new"));
-        Dictionary<string, string> states = workspace.Capture();
-        states["key"] = "retained";
-        workspace.Begin(states);
-        workspace.Register("key", second, () => "new", _ => throw new InvalidOperationException("failed restoration"));
-        Assert.That(workspace.Complete, Is.False);
-        Assert.That(workspace.Failure, Is.EqualTo("failed restoration"));
-        Assert.Throws<InvalidOperationException>(() => workspace.Capture());
+        workspace.Begin("invalid checkpoint");
+        IRenderedComponent<CascadingValue<LanguageWorkspace>> cut = RenderWorkspace(workspace);
+        cut.WaitForState(() => workspace.Failure is not null);
+        Assert.That(workspace.Pending, Is.EqualTo("invalid checkpoint"));
+        Assert.That(workspace.Restoring, Is.True);
+        Assert.That(cut.FindComponents<CardEditor>(), Is.Empty);
+        Assert.That(cut.FindComponent<SessionRecovery>().Instance.Suspended, Is.True);
+    }
+
+    [Test]
+    public async Task PendingDeckImportBlocksCaptureUntilItsOwnedOperationFinishes() {
+        TaskCompletionSource<List<Card>> gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IDeckImportService> imports = new();
+        imports.Setup(service => service.ImportDeckFromYdkAsync(It.IsAny<IBrowserFile>())).Returns(() => { started.SetResult(); return gate.Task; });
+        context.Services.AddSingleton(imports.Object);
+        LanguageWorkspace workspace = new();
+        IRenderedComponent<CascadingValue<LanguageWorkspace>> cut = RenderWorkspace(workspace);
+        Task load = cut.InvokeAsync(() => cut.FindComponents<InputFile>().First().Instance.OnChange.InvokeAsync(
+            new InputFileChangeEventArgs([Mock.Of<IBrowserFile>()])));
+        await started.Task;
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await cut.InvokeAsync(workspace.Capture!));
+        gate.SetResult([new([], 1, "Imported", id: "imported")]);
+        await load;
+        Assert.That(await cut.InvokeAsync(workspace.Capture!), Does.Contain("imported"));
+    }
+
+    [Test]
+    public async Task RequirementDraftMarkerBlocksEvenACollapsedEditAndClearsAfterCancel() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
+            Categories = [a], Cards = [new([a], 1, "A", id: "a")], Combos = [new([new(a, 1, 1)])]
+        });
+        await cut.Find(".combo-editor .accordion-button").ClickAsync(new());
+        await cut.Find("button[data-requirement='category:0']").ClickAsync(new());
+        Assert.That(cut.Find(".combo-editor").GetAttribute("data-language-edit"), Is.EqualTo("true"));
+        await cut.Find(".combo-editor .accordion-button").ClickAsync(new());
+        Assert.That(cut.Find(".combo-editor").GetAttribute("data-language-edit"), Is.EqualTo("true"));
+        await cut.Find(".requirement-form button").ClickAsync(new());
+        Assert.That(cut.Find(".combo-editor").GetAttribute("data-language-edit"), Is.Null);
     }
 }

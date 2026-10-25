@@ -1,6 +1,5 @@
 @using YGOProbabilityCalculatorBlazor.Models
 
-<LanguageDraftBoundary Name="@($"node:{Path}")" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="selector-expression" data-selector-path="@Path">
     @if (IsGroup && Rows.Length > 1) {
         @if (IsEditing) { @EditForm() }
@@ -51,7 +50,7 @@
                 <button type="button" class="btn btn-outline-secondary w-100" @onclick="() => EditNested(position)">@Summary(group) <span class="small">@(UiText.Get("Ui.Edit"))</span></button>
             }
             else {
-                <RequirementPropertyPicker @key="operand" @ref="_entryInputs[position]" Id="@OperandId(position)" LanguageKey="@($"selector:{Path}:operand:{position}")" Value="@operand.Identity"
+                <RequirementPropertyPicker @key="operand" @ref="_entryInputs[position]" Id="@OperandId(position)" Value="@operand.Identity"
                     Categories="Available" RelevantIdentities="RelevantMetadataIdentities" OnChanged="change => ChangeIdentity(position, change)" />
             }
         </OperandContent>
@@ -517,5 +516,4 @@
             await FocusFirstRow();
         }
     }
-
 }
