@@ -28,6 +28,9 @@ back to English. Incorrect argument counts at the call site remain programming
 errors (`FormatException`). Resource newlines use LF, preserving copy/export
 bytes across build hosts. Formatting uses the caller's existing `CurrentCulture`;
 language resolution changes only `CurrentUICulture`.
+Unchanged/neutral text skips placeholder parsing. Translated text is validated
+once per resource manager, key and locale (and revalidated if its source text
+changes), in a bounded cache whose entries never retain discarded managers.
 The WASM project loads the full globalization dataset so changing the UI language
 during startup is supported while retaining the browser's numeric culture.
 

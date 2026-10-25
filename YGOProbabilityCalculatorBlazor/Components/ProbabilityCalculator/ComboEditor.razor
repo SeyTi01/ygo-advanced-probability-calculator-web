@@ -13,7 +13,7 @@
                     <span class="combo-header-identity">
                         <span class="combo-header-name">@ComboDisplayName</span>
                         @if (AssignedGroup is { } assignedGroup) {
-                            <small class="combo-group-membership text-body-secondary" aria-label="@($"Group: {assignedGroup.Name}")">
+                            <small class="combo-group-membership text-body-secondary" aria-label="@(UiText.Format("Combo.GroupLabel", assignedGroup.Name))">
                                 <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false">
                                     <path d="M2 2.5A1.5 1.5 0 0 1 3.5 1h9A1.5 1.5 0 0 1 14 2.5v1A1.5 1.5 0 0 1 12.5 5h-9A1.5 1.5 0 0 1 2 3.5zm1 0v1a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5m-1 4A1.5 1.5 0 0 1 3.5 5h9A1.5 1.5 0 0 1 14 6.5v1A1.5 1.5 0 0 1 12.5 9h-9A1.5 1.5 0 0 1 2 7.5zm1 0v1a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5m-1 4A1.5 1.5 0 0 1 3.5 9h9a1.5 1.5 0 0 1 1.5 1.5v1a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5zm1 0v1a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5" fill="currentColor"/>
                                 </svg>
@@ -33,11 +33,11 @@
                                 </span>
                             }
                             @if (HiddenHeaderCategoriesCount > 0) {
-                                <span class="badge bg-secondary ms-1">+@HiddenHeaderCategoriesCount more</span>
+                                <span class="badge bg-secondary ms-1">@(UiText.Format("Combo.MoreRequirements", HiddenHeaderCategoriesCount))</span>
                             }
                         }
                         else {
-                            <span class="text-muted ms-2">(no requirements)</span>
+                            <span class="text-muted ms-2">@(UiText.Get("Combo.NoRequirements"))</span>
                         }
                         @if (!Combo.Active) {
                             <span class="badge text-bg-secondary ms-2">@(UiText.Get("Ui.Inactive"))</span>
@@ -200,7 +200,7 @@
         </QuantityContent>
         <AfterContent>
         <details class="requirement-bounds" open="@(_maxCount.Length > 0)">
-            <summary>Maximum: @(string.IsNullOrEmpty(_maxCount) ? UiText.Get("Ui.Any") : _maxCount)</summary>
+            <summary>@(string.IsNullOrEmpty(_maxCount) ? UiText.Get("Requirement.MaximumAny") : UiText.Format("Requirement.MaximumCount", _maxCount))</summary>
             <div class="requirement-max">
                 <label for="maxCount@(Index)" class="form-label">@(UiText.Get("Ui.AtMost"))</label>
                 <input id="maxCount@(Index)" class="form-control" type="number" min="0" step="1" placeholder="@(UiText.Get("Ui.Any"))"

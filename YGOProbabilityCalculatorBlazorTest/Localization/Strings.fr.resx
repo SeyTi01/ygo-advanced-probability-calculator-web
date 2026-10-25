@@ -2,6 +2,16 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
+  <data name="Card.SearchPlaceholder" xml:space="preserve"><value>⟦Search cards⟧</value></data>
+  <data name="Combo.NoRequirements" xml:space="preserve"><value>⟦No requirements⟧</value></data>
+  <data name="Requirement.MaximumAny" xml:space="preserve"><value>⟦Unbounded maximum⟧</value></data>
+  <data name="Requirement.MaximumCount" xml:space="preserve"><value>⟦{0} is maximum⟧</value></data>
+  <data name="Effect.Advanced" xml:space="preserve"><value>⟦Advanced⟧</value></data>
+  <data name="Effect.AdvancedWithBanish" xml:space="preserve"><value>⟦Banish {0}; advanced⟧</value></data>
+  <data name="Result.DetailedDrawWarning" xml:space="preserve"><value>⟦Detailed draw warning⟧</value></data>
+  <data name="Effects.32807846.Summary" xml:space="preserve"><value>⟦Maintained search⟧</value></data>
+  <data name="Effects.32807846.Limitations" xml:space="preserve"><value>⟦Maintained search note⟧</value></data>
+  <data name="Ui.Search1CardFromDeck" xml:space="preserve"><value>⟦Generic search⟧</value></data>
   <data name="Deck.Count" xml:space="preserve"><value>⟦Deck {0}⟧</value></data>
   <data name="Ui.Add" xml:space="preserve"><value>⟦Add⟧</value></data>
   <data name="Ui.NewCategory" xml:space="preserve"><value>⟦New category⟧</value></data>

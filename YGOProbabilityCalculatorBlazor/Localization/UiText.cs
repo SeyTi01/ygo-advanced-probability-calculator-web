@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Resources;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace YGOProbabilityCalculatorBlazor.Localization;
@@ -11,6 +12,7 @@ public static class UiText {
     private static readonly AsyncLocal<ResourceManager?> ResourceOverride = new();
     private static readonly ResourceManager CanonicalResources = new(
         "YGOProbabilityCalculatorBlazor.Localization.Strings", typeof(UiText).Assembly);
+    private static readonly ConditionalWeakTable<ResourceManager, TranslationCache> ValidatedTranslations = new();
 
     public static ResourceManager Resources => ResourceOverride.Value ?? CanonicalResources;
 
@@ -38,13 +40,40 @@ public static class UiText {
         }
 
         string localized = resources.GetString(key, locale) ?? english;
-        if (!HasSameArguments(english, localized)) {
-            Trace.TraceWarning("Invalid localization placeholders for resource {0} ({1}).", key, locale.Name);
+        if (string.Equals(english, localized, StringComparison.Ordinal)) {
             return NormalizeLines(english);
         }
 
-        return NormalizeLines(localized);
+        return ValidatedTranslations.GetValue(resources, static _ => new()).Get(key, locale.Name, english, localized);
     }
+
+    // Resource sources have independent lifetimes. Bound each source's locale/key
+    // cache; eviction only repeats validation, and changed text is never reused.
+    private sealed class TranslationCache {
+        private const int Capacity = 1024;
+        private readonly Dictionary<(string Key, string Locale), ValidatedTranslation> _entries = [];
+
+        public string Get(string key, string locale, string english, string localized) {
+            lock (_entries) {
+                if (_entries.TryGetValue((key, locale), out ValidatedTranslation cached)
+                    && cached.English == english && cached.Localized == localized) {
+                    return cached.Text;
+                }
+
+                bool valid = HasSameArguments(english, localized);
+                if (!valid) {
+                    Trace.TraceWarning("Invalid localization placeholders for resource {0} ({1}).", key, locale);
+                }
+                string text = NormalizeLines(valid ? localized : english);
+                if (_entries.Count >= Capacity) { _entries.Clear(); }
+                _entries[(key, locale)] = new(english, localized, text);
+
+                return text;
+            }
+        }
+    }
+
+    private readonly record struct ValidatedTranslation(string English, string Localized, string Text);
 
     // CurrentCulture remains the caller's numeric formatting contract. Locale
     // selection changes only CurrentUICulture, never mathematical/JSON inputs.
