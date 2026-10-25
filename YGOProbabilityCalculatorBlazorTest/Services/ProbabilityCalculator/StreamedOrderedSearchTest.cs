@@ -48,6 +48,56 @@ public sealed class StreamedOrderedSearchTest {
         AssertParity(fixture, true, expectStream: true);
     }
 
+    [TestCase(1, "unrestricted")]
+    [TestCase(2, "opt")]
+    [TestCase(3, "limit")]
+    [TestCase(2, "first")]
+    [TestCase(3, "lock")]
+    public void MultipleSourceCopiesPreserveAllRowsAndCertificatePartitions(int copies, string allowance) {
+        CategoryBase first = new("First");
+        CategoryBase second = new("Second");
+        List<Card> cards = [new([first], copies, id: "draw", drawCount: 2, drawOncePerTurn: allowance == "opt",
+                postDrawDiscardCount: 1, postDrawDeckMillCount: allowance == "limit" ? 0 : 1, firstActivationOnly: allowance == "first",
+                blocksLaterDraws: allowance == "lock", activationLimit: allowance == "limit" ? 1 : null),
+            new([], id: "search", search: new(CardSelector.Any, false)),
+            new([first, second], 2, id: "target"), new([], 4 - copies, id: "filler")];
+        List<Combo> combos = [new([new(first, 1, 3), new(second, 1, 3)], "Distinct", groupId: "g"),
+            new([ComboCategory.SameCard([first, second], 1, 3)], "Same card", groupId: "g"),
+            new([new(first, 0, 0)], "Exclude first", groupId: "other"),
+            new([], "Unused or fetched draw source", cards: [new("draw", 1, 2)], groupId: "other"),
+            new([], "Exactly two sources", cards: [new("draw", 2, 2)], groupId: "other"),
+            new([], "Completed")];
+        SearchCertificateFixtures.Fixture fixture = new("multiple-" + copies + "-" + allowance, cards, 2, combos,
+            [new("g", "Targets"), new("other", "Other"), new("empty", "Empty")]);
+        ExactCalculationResult[] expected = AssertParity(fixture, true, expectStream: true);
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+        PostDrawCalculation calculation = new(cards, fixture.Hand, budget, deferIdentities: false);
+        ExactCalculationResult[] counted = [calculation.CalculateSearch(combos, fixture.Groups, false, new(cards, budget)),
+            calculation.CalculateSearchLower(combos, fixture.Groups, true),
+            calculation.CalculateSearchLower(combos, fixture.Groups, false),
+            calculation.CalculateSearchLower(combos, fixture.Groups, false, useKnownLoss: false)];
+        for (int pass = 0; pass < counted.Length; pass++) {
+            AssertRows(counted[pass], expected[pass], "Analytic source-absent partition/pass=" + pass);
+        }
+        // Enumerate every labeled permutation independently of the sampler,
+        // compiler and decision diagram, including unused and fetched sources.
+        // The independent scheduler expresses a one-activation allowance as OPT.
+        // For this single source with no hand cost, explicit limit one has the
+        // identical availability, source consumption and later-copy behavior.
+        List<Card> reference = allowance == "limit"
+            ? cards.Select(card => card.Id == "draw" ? card.WithOncePerTurn(true) : card).ToList() : cards;
+        SearchCertificateOracle.Counts truth = SearchCertificateOracle.Enumerate(reference, fixture.Hand, combos,
+            fixture.Groups, collapseIdenticalCopies: false);
+        for (int row = 0; row < Rows(counted[0]).Length; row++) {
+            ExactProbability upper = Rows(counted[0])[row];
+            ExactProbability lower = Rows(counted[2])[row];
+            ExactProbability witness = Rows(counted[1])[row];
+            Assert.That(upper.Numerator * truth.Outcomes, Is.GreaterThanOrEqualTo(truth.Wins[1][row] * upper.Denominator));
+            Assert.That(lower.Numerator * truth.Outcomes, Is.LessThanOrEqualTo(truth.Wins[1][row] * lower.Denominator));
+            Assert.That(witness.Numerator * truth.Outcomes, Is.EqualTo(truth.Wins[4][row] * witness.Denominator));
+        }
+    }
+
     [Test]
     public void TotalOnlyStillPreservesIndependentCertificateRows() {
         SearchCertificateFixtures.Fixture fixture = Create(3, 18);
@@ -64,7 +114,8 @@ public sealed class StreamedOrderedSearchTest {
     }
 
     [TestCase("first-opt-priority", true)]
-    [TestCase("two-copies", false)]
+    [TestCase("two-copies", true)]
+    [TestCase("repeatable-copies", false)]
     [TestCase("two-sources", false)]
     [TestCase("cost", false)]
     [TestCase("depleted", true)]
@@ -83,6 +134,9 @@ public sealed class StreamedOrderedSearchTest {
                 break;
             case "two-copies":
                 cards[0] = cards[0].WithCopies(2);
+                break;
+            case "repeatable-copies":
+                cards[0] = cards[0].WithCopies(2).WithOncePerTurn(false);
                 break;
             case "two-sources":
                 cards.Add(new([], id: "other", drawCount: 1));
@@ -138,9 +192,10 @@ public sealed class StreamedOrderedSearchTest {
         AssertRows(reused.CalculateSearchLower(fixture.Combos, [], false), expected[2], "Reused lower");
     }
 
-    [Test]
-    public void OptionalRefinementLimitRetainsCompletedPrimaryAndWitness() {
+    [TestCase(1), TestCase(2)]
+    public void OptionalRefinementLimitRetainsCompletedPrimaryAndWitness(int copies) {
         SearchCertificateFixtures.Fixture fixture = Create(3, 18);
+        fixture.Deck[0] = fixture.Deck[0].WithCopies(copies).WithOncePerTurn(true);
         // More copies than the conservative target-loss allowance forces the
         // second, optional source-present pass instead of the zero-target reuse.
         fixture.Deck[3] = fixture.Deck[3].WithCopies(5);

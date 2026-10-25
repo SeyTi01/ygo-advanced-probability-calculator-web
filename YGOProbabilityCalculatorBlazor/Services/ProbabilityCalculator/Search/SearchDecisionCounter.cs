@@ -69,6 +69,8 @@ internal sealed partial class SearchDecisionCounter {
 
     internal int Or(int first, int second) => Apply(true, first, second);
 
+    internal int And(int first, int second) => Apply(false, first, second);
+
     internal BigInteger Count(int root) => Count(root, 0, _handSize);
 
     // A fully observed hand follows exactly one edge at every retained variable.

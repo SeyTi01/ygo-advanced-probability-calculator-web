@@ -4,6 +4,7 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
+using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
@@ -71,17 +72,36 @@ internal sealed partial class PostDrawCalculation {
     ) {
         StreamedSearchPredicates counter = new(state.Cards, combos, budget, includeWitness: true);
         using IDisposable? measurement = budget.SearchDiagnostics?.Measure("streamed search");
+        bool countAbsent = ObserveTerminal is null;
+        if (countAbsent) {
+            try {
+                counter.CountAbsent(state.Source, handSize, state.Factorial, state.Primary[0], state.Witness[0], groups);
+            }
+            catch (ProbabilityCalculationLimitException exception) when (exception.Reason == ProbabilityCalculationLimitReason.Storage) {
+                // Counting a union may need more decision nodes than evaluating
+                // each row. Discard every partial sum and use the existing stream;
+                // all work already performed remains charged to this request.
+                budget.Spend(state.Primary[0].Length + state.Witness[0].Length);
+                Array.Clear(state.Primary[0]);
+                Array.Clear(state.Witness[0]);
+                countAbsent = false;
+                budget.SearchDiagnostics?.Add("streamed absent storage fallback");
+            }
+        }
         state.Resolver.TryEnumerateSingleSource(handSize, state.Factorial.Length - 1, state.Factorial, (values, remaining, weight) => {
             budget.SearchDiagnostics?.Add("streamed search terminals");
             ReadOnlySpan<int> held = values.AsSpan(state.Layout.HandStart, state.Cards.Count);
             int hidden = state.Layout.HasHiddenCount ? values[state.Layout.HiddenCount] : 0;
             bool[] success = counter.Evaluate(held, remaining - hidden, 0);
             BigInteger mass = StreamedMass(state, remaining, weight);
-            int partition = values[state.Source] == 0 ? 1 : 0;
+            // Observing at least one source causes the single permitted
+            // activation. Unused copies may remain held or unseen afterward;
+            // their count cannot identify this partition by a zero test.
+            int partition = values[state.Source] < state.Cards[state.Source].Copies ? 1 : 0;
             RecordStreamed(state.Primary[partition], success, mass, combos, groups);
             RecordStreamed(state.Witness[partition], counter.Witness, mass, combos, groups);
             ObserveTerminal?.Invoke(SearchTerminal.Create(values, state.Layout, remaining), mass);
-        });
+        }, sourcePresent: countAbsent ? true : null);
         return StreamedResult(state, state.Primary[0], state.Primary[1], combos.Count, totalOnly);
     }
 
@@ -222,19 +242,7 @@ internal sealed partial class PostDrawCalculation {
             int limit = Math.Min(size, Math.Max(0, capacity));
             (int Hand, int Capacity, int Loss) key = (size, limit, limit == 0 ? 0 : loss);
             if (_counter is null || key != _key) {
-                // A single bounded template, never a map indexed by terminal hands.
-                _counter = null;
-                _roots = [];
-                _witnessRoots = [];
-                _budget.SearchDiagnostics?.Add("streamed predicate compilations");
-                List<List<CompiledEvent?>> events = _search.Compile(_combos, size, _cards, limit, key.Loss);
-                SearchDecisionCounter counter = new(_cards, size, _budget);
-                _roots = events.Select(counter.Union).ToArray();
-                if (_includeWitness) {
-                    ComboEventCompiler compiler = new(_cards, size, _budget);
-                    _witnessRoots = _combos.Select(combo => counter.Union(compiler.CompileCombo(combo))).ToArray();
-                }
-                _counter = counter;
+                Compile(size, limit, key.Loss);
                 _key = key;
             }
             for (int combo = 0; combo < _success.Length; combo++) {
@@ -244,6 +252,92 @@ internal sealed partial class PostDrawCalculation {
                 }
             }
             return _success;
+        }
+
+        // With no source in the opening hand, there are no draws or removals.
+        // Compile against the original deck: a source excluded from this random
+        // hand can still be fetched by a search. Intersect each event with zero
+        // held sources. Each counted h-subset has h!(N-h)! permutations,
+        // so primary, witness and every existential union use the same N! mass.
+        internal void CountAbsent(
+            int source,
+            int size,
+            BigInteger[] factorial,
+            BigInteger[] primary,
+            BigInteger[] witness,
+            IReadOnlyList<ComboGroup>? groups
+        ) {
+            int remaining = factorial.Length - 1 - size;
+            BigInteger mass = BigInteger.Zero;
+            int absent = 0;
+            bool completed = false;
+            try {
+                int capacity = Math.Min(size, remaining);
+                Compile(size, capacity, 0);
+                _key = (size, capacity, 0);
+                _budget.Spend(_rows.Length);
+                int row = Array.IndexOf(_rows, source);
+                absent = _counter!.Union([new CompiledEvent([new(BigInteger.One << row, 0, 0)])]);
+                _budget.Spend((WorkBudget.IntegerCells(factorial[size]) + 1)
+                    * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
+                mass = factorial[size] * factorial[remaining];
+                CountRows(_roots, primary);
+                CountRows(_witnessRoots, witness);
+                _budget.SearchDiagnostics?.Add("streamed absent counts");
+                completed = true;
+            }
+            finally {
+                // Roots still describe the original full domains and can serve
+                // the activated hand too. Release incomplete graphs before the
+                // storage fallback retries the original streaming operation.
+                if (!completed) {
+                    _counter = null;
+                    _roots = [];
+                    _witnessRoots = [];
+                }
+            }
+
+            void CountRows(int[] roots, BigInteger[] wins) {
+                int total = 0;
+                for (int combo = 0; combo < roots.Length; combo++) {
+                    total = _counter!.Or(total, roots[combo]);
+                    wins[1 + combo] = Count(roots[combo]);
+                    _budget.SearchDiagnostics?.Add("streamed absent counted rows");
+                }
+                wins[0] = Count(total);
+                for (int group = 0; group < (groups?.Count ?? 0); group++) {
+                    int root = 0;
+                    for (int combo = 0; combo < roots.Length; combo++) {
+                        _budget.Spend(1);
+                        if (_combos[combo].GroupId == groups![group].Id) {
+                            root = _counter!.Or(root, roots[combo]);
+                        }
+                    }
+                    wins[1 + roots.Length + group] = Count(root);
+                }
+            }
+
+            BigInteger Count(int root) {
+                BigInteger subsets = _counter!.Count(_counter.And(root, absent));
+                _budget.Spend((WorkBudget.IntegerCells(subsets) + 1) * (WorkBudget.IntegerCells(mass) + 1));
+                return subsets * mass;
+            }
+        }
+
+        private void Compile(int size, int capacity, int loss) {
+            // A single bounded template, never a map indexed by terminal hands.
+            _counter = null;
+            _roots = [];
+            _witnessRoots = [];
+            _budget.SearchDiagnostics?.Add("streamed predicate compilations");
+            List<List<CompiledEvent?>> events = _search.Compile(_combos, size, _cards, capacity, loss);
+            SearchDecisionCounter counter = new(_cards, size, _budget);
+            _roots = events.Select(counter.Union).ToArray();
+            if (_includeWitness) {
+                ComboEventCompiler compiler = new(_cards, size, _budget);
+                _witnessRoots = _combos.Select(combo => counter.Union(compiler.CompileCombo(combo))).ToArray();
+            }
+            _counter = counter;
         }
     }
 }
