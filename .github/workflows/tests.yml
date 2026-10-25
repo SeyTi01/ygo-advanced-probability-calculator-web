@@ -69,6 +69,11 @@ jobs:
         run: |
           echo '{"sdk":{"version":"${{ steps.setup-dotnet.outputs.dotnet-version }}"}}' > global.json
 
+      - name: Install WebAssembly build tools
+        run: |
+          dotnet workload install wasm-tools --version 10.0.402
+          dotnet workload list
+
       - name: Restore
         run: dotnet restore YGOProbabilityCalculatorBlazor.sln
 
@@ -76,11 +81,6 @@ jobs:
       # publish. Build it here so this job can run independently of the suite.
       - name: Build SEO verifier
         run: dotnet build YGOProbabilityCalculatorBlazor.sln --no-restore
-
-      - name: Install WebAssembly build tools
-        run: |
-          dotnet workload install wasm-tools
-          dotnet workload list
 
       - name: Publish prerendered site
         run: dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release --no-restore
