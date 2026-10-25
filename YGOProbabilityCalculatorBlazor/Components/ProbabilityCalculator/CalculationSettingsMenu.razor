@@ -4,7 +4,6 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<LanguageDraftBoundary Name="settings" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="calculation-settings-menu" @onkeydown="HandleKeyDown" @onkeydown:stopPropagation="true">
     <button @ref="_trigger"
             type="button"
@@ -62,7 +61,7 @@
                                         aria-label="@(UiText.Format("Move.Up", label))" title="@(UiText.Get("Ui.MoveUp"))" @onclick="() => MovePriority(index, -1)">↑</button>
                                 <button type="button" class="btn btn-outline-secondary" disabled="@(i == _entries.Length - 1)"
                                         aria-label="@(UiText.Format("Move.Down", label))" title="@(UiText.Get("Ui.MoveDown"))" @onclick="() => MovePriority(index, 1)">↓</button>
-                                <MoveToPosition LanguageKey="@($"priority:{_entries[index].Id}")" Index="index" Count="_entries.Length" ItemLabel="@label" OnMove="MovePriorityTo" />
+                                <MoveToPosition Index="index" Count="_entries.Length" ItemLabel="@label" OnMove="MovePriorityTo" />
                             </li>
                         }
                     </ol>
@@ -257,7 +256,4 @@
 
         return StorageTierChanged.InvokeAsync(tier);
     }
-
-    private string CaptureLanguageDraft() => LanguageDraftState.Pack(_isOpen);
-    private void RestoreLanguageDraft(string json) { _isOpen = LanguageDraftState.Unpack<bool>(json); }
 }

@@ -76,47 +76,41 @@ metadata. JavaScript-disabled crawlers/readers retain canonical English HTML.
 Startup errors reveal the existing runtime-error UI. No translated card catalog
 is bundled; translations remain .resx satellites selected by startup.
 
-## Language reload and editor handoff
+## Language reload and accepted workspace
 
-A language change takes one reload of the **exact current URL**. The header
-briefly makes the live page inert, captures component-owned drafts and accepted
-workspace data, then rechecks that capture for concurrent changes. Active
-calculations require confirmation before the reload cancels them. Pending
-session/import work blocks a switch with an actionable message.
+A language change takes one reload of the **exact current URL**. Before switching,
+finish an open effect, requirement, rule or rename form by saving/applying or
+cancelling it. Clear or add nonempty quick-add/category/group text first. Invalid
+numeric input also blocks the switch. The shell reads these semantic edit markers
+and input states only to enforce the precondition; it never serializes form fields.
+Accepted inline name/copy/settings changes are already part of the workspace.
+Calculations and pending session/deck imports must finish or be cancelled first.
+Blocking leaves both the live page and the saved language preference unchanged.
 
-`LanguageDraftBoundary` is a non-rendering registration with a stable semantic
-key. It does not wrap editor rendering or replace EditorKeys/@key. Explicit
-snapshots retain quick-add text, category/rule/group drafts, combo requirement
-forms, numeric-picker invalid input, simulation plans and nested selector edits,
-move destinations and open menus. A separate presentation checkpoint retains
-native details state and raw uncommitted/invalid control values without firing
-commit events. Accepted results and manual pins are retained; computation in
-progress can end. New draft-owning controls must register a checkpoint and add a
-restoration test; never use translated labels or generated DOM IDs as keys.
+The calculator supplies **one top-level checkpoint** containing its existing
+SessionState JSON, resource setting, accepted result and manual pin. Session
+serialization is checked with the existing offline codec before navigation.
+No child editors participate. Expanded panels, menus, focus and move destinations
+are transient and are not restored.
 
-The handoff is separate sessionStorage under
-`ygo-calculator:language-handoff:v1` (at most 2 Mi UTF-16 code units). Each typed
-snapshot must round-trip locally. Both the handoff and persistent preference are
-written and read back **before** navigation. Storage failures abort in the live
-workspace. Existing handoffs are never overwritten. The record is tab-local,
-contains a build identity, and is eligible only on the immediately following
-reload of the exact URL/locale within two minutes. Any startup claims it once;
-unrelated visits and further reloads cannot replay it. A changed app build
-rejects restoration rather than interpreting a different draft format.
+The checkpoint uses a separate tab-scoped sessionStorage record at
+`ygo-calculator:language-handoff:v1`. Protocol version 2 contains one opaque
+accepted-workspace payload, not a component registry. Its record and the new
+website preference are both written and read back before reloading. A write or
+capture failure keeps the live workspace. A prior record is never overwritten.
+Only the immediately following reload of the same URL and resolved locale,
+within two minutes, can claim it. Any startup claims the record once; later or
+unrelated visits cannot replay it. Invalid, expired or earlier-version records
+are kept and reported rather than silently applied.
 
-Restoration waits for every registered snapshot and verifies the control layout
-before acknowledging/deleting the record. During restoration autosave is suspended.
-The existing recovery key is never used as the handoff store. The recovery client
-carries its expected record and paused status: only an unchanged owned record
-resumes without a recovery prompt. A foreign/preexisting record remains protected,
-as does a pending shared offer and its URL fragment. This handoff never invokes
-session enrichment, applies presets, consumes a shared link, or changes the
-session schema or the maintained-effect compatibility gate.
-
-If restoration fails or remains incomplete, a warning reveals the UI and offers
-**Download preserved handoff**; the tab record remains, and autosave stays
-suspended to protect the original. Download it before clearing browser data.
-Normal changes restore automatically without a file load or recovery prompt.
+On startup the calculator validates and applies the session offline before its
+first render, without catalog enrichment, default plans or share consumption.
+The shell consumes the checkpoint after successful restoration. Autosave stays
+suspended until acknowledgement. Recovery resumes without a prompt only when its
+expected owned record is unchanged; foreign/preexisting recovery drafts and
+incoming shared offers remain protected. On failure, the record remains in this
+tab with a clear error and **Download preserved handoff** action. This is separate
+from normal explicit recovery and never changes session schema or worker bytes.
 
 ## Published integration check
 
@@ -140,7 +134,7 @@ Playwright and a Chromium browser are external test dependencies; set
 The optional third browser-script argument is a frozen dev publish for startup
 transfer comparison. The script checks first visible interactive language,
 satellite requests, real reload/restoration, saved English on a German browser,
-invalid preferences, navigation, drafts/results, protected recovery/share state,
+invalid preferences, navigation, accepted results, blocked unfinished edits, protected recovery/share state,
 storage failure, and desktop/mobile header usability. Run the regular .NET/JS
 suites and `PublishedOutputSeoTest` against the production publish as well.
 

@@ -16,7 +16,6 @@
         watchOutside(panel, trigger, receiver) {
             dispose(panel);
             const outside = event => {
-                if (event.target.closest?.('#language-preference')) return;
                 if (panel.contains(event.target) || trigger.contains(event.target)) return;
                 dispose(panel);
                 receiver.invokeMethodAsync('Dismiss');
@@ -41,7 +40,6 @@
                 receiver.invokeMethodAsync('Dismiss');
             };
             const outside = event => {
-                if (event.target.closest?.('#language-preference')) return;
                 if (!panel.contains(event.target) && !trigger.contains(event.target)) dismiss();
             };
             const keydown = event => {

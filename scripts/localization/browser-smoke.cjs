@@ -26,6 +26,17 @@ async function change(page, locale) {
     assert.equal(await page.locator('.content > .alert[role=alert]').count(), 0, 'no language-handoff error');
 }
 
+async function blocked(page, locale, message) {
+    const before = page.url();
+    const saved = await page.evaluate(key => localStorage.getItem(key), preference);
+    await page.locator('#language-preference').selectOption(locale);
+    await page.locator('.content > .alert[role=alert]').filter({ hasText: message }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('.page').inert);
+    assert.equal(page.url(), before);
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), preference), saved);
+    assert.equal(await page.locator('#language-preference').inputValue(), await page.locator('html').getAttribute('lang'));
+}
+
 async function header(page) {
     await usable(page, page.locator('#language-preference'));
     assert.equal(await page.evaluate(() => {
@@ -120,6 +131,10 @@ async function main() {
         profile = await chromium.launchPersistentContext(profilePath, { ...launchOptions(), locale: 'de-DE' });
         profilePage = await profile.newPage(); track(profilePage);
         await profilePage.goto(testHost.url); await interactive(profilePage);
+        await profilePage.route('**/help', route => route.fulfill({ contentType: 'text/html', body: fs.readFileSync(path.join(process.argv[3], 'help.html')) }));
+        await profilePage.getByRole('link', { name: 'Help', exact: true }).click();
+        assert.equal(await profilePage.locator('#language-preference').inputValue(), 'en');
+        await profilePage.getByRole('link', { name: 'Back', exact: true }).click(); await interactive(profilePage);
         assert.equal(await profilePage.locator('#language-preference').inputValue(), 'en', 'English persists across an actual browser process restart');
         await profile.close();
 
@@ -129,119 +144,116 @@ async function main() {
                 { Id: 'b', Name: 'Filler', Copies: 1, Categories: [] }],
             Combos: [{ Name: 'Two thirds', Categories: [{ BaseCategory: role, MinCount: 1, MaxCount: 1 }] }], ComboGroups: [] };
         await load(p, session);
+        assert.equal(await p.locator('#language-preference').inputValue(), 'en', 'session load keeps explicit English');
+        await p.locator('.card-editor .accordion-button').first().click();
+        await p.locator('#cardCopies0').fill('3');
+        await p.locator('.combo-editor .accordion-button').click();
+        await p.locator('#comboName0').fill('Accepted rename');
+
+        await p.locator('#quickCardName').fill('Unsubmitted card draft');
+        await blocked(p, 'fr', /Save\/apply or cancel/);
+        assert.equal(await p.locator('#quickCardName').inputValue(), 'Unsubmitted card draft');
+        await p.locator('#quickCardName').fill('');
+        await p.locator('.simulation-edit').first().click();
+        await p.locator('#cardDraw0').selectOption('2');
+        await blocked(p, 'fr', /Save\/apply or cancel/);
+        assert.equal(await p.locator('#cardDraw0').inputValue(), '2');
+        await p.locator('.simulation-editor').getByRole('button', { name: 'Cancel', exact: true }).click();
+        await p.locator("button[data-requirement='category:0']").click();
+        await p.locator('#minCount0').fill('0');
+        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await p.locator('.requirement-form').getByRole('button', { name: 'Cancel', exact: true }).click();
+        await p.locator('.category-management > summary').click();
+        await p.getByRole('textbox', { name: 'Category name', exact: true }).fill('Unsubmitted role');
+        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await p.getByRole('textbox', { name: 'Category name', exact: true }).fill('');
+        await p.locator('.combo-group-management > summary').click();
+        await p.getByRole('textbox', { name: 'New combo group name', exact: true }).fill('Unsubmitted group');
+        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await p.getByRole('textbox', { name: 'New combo group name', exact: true }).fill('');
+        await p.locator('.category-management .category-name-trigger').first().click();
+        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await p.getByRole('button', { name: 'Cancel category edit', exact: true }).click();
+        await p.locator('#cardCopies0').fill('');
+        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await p.locator('#cardCopies0').fill('3');
+        assert.equal(await p.evaluate(() => ygoLocale.hasPendingEdits()), false);
+
         await p.getByRole('button', { name: 'Calculate', exact: true }).click();
         await p.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') === 'false'
             && document.querySelector('.probability-total-value'));
-        assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)2\/3(?!\d)/);
-        assert.match(await p.locator('.probability-total-value').innerText(), /66,67/, 'German numeric formatting is retained');
+        assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)3\/4(?!\d)/);
         await p.getByRole('button', { name: 'Pin result', exact: true }).click();
         const pinned = await p.locator('.pinned-result').innerText();
+        await p.waitForFunction(key => {
+            const saved = JSON.parse(JSON.parse(localStorage.getItem(key)).payload);
+            return saved.Cards[0].Copies === 3 && saved.Combos[0].Name === 'Accepted rename';
+        }, recovery);
         const accepted = await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery);
-        await p.locator('.card-editor .accordion-button').first().click();
-        await p.locator('.simulation-edit').first().click();
-        await p.locator('#cardDraw0').selectOption('2');
-        await p.locator('.combo-editor .accordion-button').click();
-        await p.locator("button[data-requirement='category:0']").click();
-        await p.locator('#minCount0').fill('0');
-        await p.locator('#quickCardName').fill('Unsubmitted card draft');
-        await p.locator('.category-management > summary').click();
-        await p.getByRole('textbox', { name: 'Category name', exact: true }).fill('Unsubmitted category draft');
-        await p.locator('.combo-group-management > summary').click();
-        await p.getByRole('textbox', { name: 'New combo group name', exact: true }).fill('Unsubmitted group draft');
-        await p.locator('.card-editor .action-menu-trigger').first().click();
-        await p.locator('.card-editor .move-position > button').first().click();
-        await p.locator('.move-position-panel input').fill('2');
-        await p.locator('#language-preference').focus();
-        assert.equal(await p.locator('.move-position-panel input').count(), 1, 'language focus does not dismiss a pending move');
         await change(p, 'fr');
-        assert.equal(await p.locator('#quickCardName').inputValue(), 'Unsubmitted card draft');
-        assert.equal(await p.locator('#cardDraw0').inputValue(), '2');
-        assert.equal(await p.locator('#minCount0').inputValue(), '0');
-        assert.equal(await p.locator('.move-position-panel input').inputValue(), '2');
-        await p.locator('.move-position-panel input').press('Escape');
-        assert.equal(await p.getByRole('textbox', { name: 'New combo group name', exact: true }).inputValue(), 'Unsubmitted group draft');
-        assert.equal(await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), accepted, 'drafts never commit during restoration');
-        assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)2\/3(?!\d)/);
-        assert.equal(await p.locator('.pinned-result').innerText(), pinned, 'manual pin retained');
+        assert.equal(await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), accepted);
+        assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)3\/4(?!\d)/);
+        assert.equal(await p.locator('.pinned-result').innerText(), pinned);
         assert.equal(await p.getByRole('button', { name: 'Restore previous session', exact: true }).count(), 0);
-        await p.screenshot({ path: path.resolve('bin/language-mobile.png'), fullPage: true });
-        await p.setViewportSize({ width: 1280, height: 900 });
-        await header(p);
+        for (const width of [320, 390, 1280]) { await p.setViewportSize({ width, height: 900 }); await header(p); }
         await p.screenshot({ path: path.resolve('bin/language-desktop.png'), fullPage: true });
-        for (const width of [320, 390, 768, 1024, 1920]) {
-            await p.setViewportSize({ width, height: 900 });
-            await header(p);
-        }
-        await p.locator('#theme-preference').selectOption('dark');
         await p.setViewportSize({ width: 390, height: 844 });
-        await header(p);
+        await p.locator('#theme-preference').selectOption('dark'); await header(p);
+        await p.screenshot({ path: path.resolve('bin/language-mobile.png'), fullPage: true });
 
-        // A foreign recovery record and a pending shared offer survive without replacement.
+        // A share offer and another tab's recovery are independent of the accepted checkpoint.
+        await change(p, 'en');
         const foreign = JSON.stringify({ version: 1, savedAt: '2026-10-25T00:00:00Z', payload: accepted });
         await p.evaluate(([key, value]) => localStorage.setItem(key, value), [recovery, foreign]);
-        await p.evaluate(() => { location.hash = 'ygo-session=invalid-offer'; });
-        await p.getByRole('button', { name: 'Dismiss shared link', exact: true }).waitFor();
-        await change(p, 'en');
+        await p.evaluate(() => { sessionSharing.copy = async text => { window.testShareLink = text; return true; }; });
+        await p.getByRole('button', { name: 'Copy share link', exact: true }).click();
+        await p.waitForFunction(() => window.testShareLink);
+        const shared = new URL(await p.evaluate(() => window.testShareLink)).hash;
+        await p.evaluate(fragment => { location.hash = fragment; }, shared);
+        await p.getByRole('button', { name: 'Load shared session', exact: true }).waitFor();
+        assert.equal(await p.locator('#language-preference').inputValue(), 'en');
+        await change(p, 'fr');
         assert.equal(await p.evaluate(key => localStorage.getItem(key), recovery), foreign);
-        assert.equal(await p.getByRole('button', { name: 'Dismiss shared link', exact: true }).count(), 1);
-
-        // Denied browser storage must retain the entire live workspace and avoid navigation.
+        assert.equal(await p.getByRole('button', { name: 'Load shared session', exact: true }).count(), 1);
+        await change(p, 'en');
         await p.evaluate(key => {
             const original = Storage.prototype.setItem;
             Storage.prototype.setItem = function (name, value) { if (name === key) throw new Error('Storage denied for test'); return original.call(this, name, value); };
         }, preference);
-        const beforeFailure = documents;
-        await p.locator('#language-preference').selectOption('fr');
-        await p.getByRole('alert').filter({ hasText: 'Language was not changed' }).waitFor();
-        assert.equal(documents, beforeFailure);
-        assert.equal(await p.locator('#quickCardName').inputValue(), 'Unsubmitted card draft');
+        await blocked(p, 'fr', /Language was not changed/);
         assert.equal(await p.evaluate(key => sessionStorage.getItem(key), handoff), null);
-        assert.equal(await p.evaluate(key => localStorage.getItem(key), preference), 'en');
         await test.close();
 
-        const busyContext = await browser.newContext({ locale: 'en-US' });
-        const busy = await busyContext.newPage();
-        track(busy);
-        await busy.goto(testHost.url); await interactive(busy); await load(busy, session);
-        await busy.evaluate(() => {
+        const work = await browser.newContext({ locale: 'en-US' });
+        const pending = await work.newPage(); track(pending);
+        await pending.goto(testHost.url); await interactive(pending); await load(pending, session);
+        await pending.evaluate(() => {
             const original = Worker.prototype.postMessage;
             Worker.prototype.postMessage = function (message, ...rest) {
                 if (message.json) { window.heldCalculation = true; return; }
                 return original.call(this, message, ...rest);
             };
-            window.confirm = message => { window.languageConfirmation = message; return window.allowLanguageCancel === true; };
         });
-        await busy.getByRole('button', { name: 'Calculate', exact: true }).click();
-        await busy.waitForFunction(() => window.heldCalculation);
-        await busy.locator('#language-preference').selectOption('fr');
-        await busy.waitForFunction(() => window.languageConfirmation);
-        assert.match(await busy.evaluate(() => window.languageConfirmation), /cancels the active calculation/);
-        assert.equal(await busy.evaluate(key => sessionStorage.getItem(key), handoff), null);
-        assert.equal(await busy.locator('.calculate-action > button').getAttribute('aria-busy'), 'true');
-        await busy.waitForFunction(() => !document.querySelector('.page').inert
-            && !document.querySelector('#language-preference').disabled && document.querySelector('#language-preference').value === 'en');
-        await busy.evaluate(() => { window.allowLanguageCancel = true; });
-        await change(busy, 'fr');
-        assert.equal(await busy.locator('.calculate-action > button').getAttribute('aria-busy'), 'false');
-        await busyContext.close();
-
-        const nestedContext = await browser.newContext({ locale: 'en-US' });
-        const nested = await nestedContext.newPage(); track(nested);
-        await nested.goto(testHost.url); await interactive(nested); await load(nested, session);
-        await nested.locator('.card-editor .accordion-button').first().click();
-        await nested.locator('.simulation-edit').first().click();
-        await nested.locator('#cardDraw0').selectOption('2');
-        await nested.locator('#cardCost0').selectOption('1');
-        await nested.locator('#cardCostEligibility0').selectOption('user:Target');
-        await nested.locator('#cardDiscard0').selectOption('1');
-        await nested.locator('#cardEligibility0').selectOption('user:Target');
-        await nested.locator('.selector-expression .requirement-edit').first().click();
-        await nested.locator('.selector-expression form .requirement-property-picker > select').selectOption('numeric:level');
-        await nested.locator('.selector-expression form .requirement-numeric-fields input').fill('');
-        await change(nested, 'fr');
-        assert.equal(await nested.locator('.selector-expression form .requirement-numeric-fields input').inputValue(), '');
-        assert.equal(await nested.locator('.simulation-save').isDisabled(), true, 'invalid nested draft remains unsubmitted');
-        await nestedContext.close();
+        await pending.getByRole('button', { name: 'Calculate', exact: true }).click();
+        await pending.waitForFunction(() => window.heldCalculation);
+        await blocked(pending, 'fr', /calculation to finish or cancel/);
+        await pending.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
+        await pending.waitForFunction(() => document.querySelector('.calculate-action > button').getAttribute('aria-busy') === 'false');
+        await pending.evaluate(() => {
+            const original = Blob.prototype.arrayBuffer;
+            Blob.prototype.arrayBuffer = function () {
+                const blob = this;
+                return new Promise(resolve => { window.releaseLoad = async () => { Blob.prototype.arrayBuffer = original; resolve(await original.call(blob)); }; });
+            };
+        });
+        const replacement = structuredClone(session); replacement.Cards[0].Name = 'Pending replacement';
+        await pending.locator('#sessionFileInput').setInputFiles({ name: 'pending.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(replacement)) });
+        await pending.waitForFunction(() => typeof releaseLoad === 'function');
+        await blocked(pending, 'fr', /session or deck import to finish/);
+        await pending.evaluate(() => releaseLoad());
+        await pending.waitForFunction(key => JSON.parse(JSON.parse(localStorage.getItem(key)).payload).Cards[0].Name === 'Pending replacement', recovery);
+        await change(pending, 'fr');
+        await work.close();
 
         // Browser detection, unsupported saved preference, and canonical Help transition.
         const automatic = await browser.newContext({ locale: 'fr-FR' });
@@ -268,7 +280,7 @@ async function main() {
             console.log(`Frozen dev English resource bodies: ${old} bytes; change: ${transfer - old} bytes (uncompressed local HTTP).`);
         }
         assert.deepEqual(errors, []);
-        console.log('Published locale lifecycle, selective satellites, first frame, one reload, drafts/results, recovery/share ownership, storage failure, keyboard/native select and mobile header passed.');
+        console.log('Published locale lifecycle, selective satellites, first frame, one reload, accepted work/results, blocked edits and pending operations, recovery/share ownership, storage failure and keyboard/mobile header passed.');
     } finally {
         await browser.close();
         for (const server of servers) await new Promise(resolve => server.close(resolve));

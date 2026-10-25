@@ -15,7 +15,7 @@
     }
     @if (Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
         <div class="mt-2" aria-label="@(UiText.Get("Ui.GroupedEligibilityFilter"))">
-            <SelectorExpressionEditor Path="@Id" Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
+            <SelectorExpressionEditor Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
                                       RelevantMetadataIdentities="_categoryOptions.RelevantMetadataIdentities" CategoryRename="CategoryRename" OnEditingChanged="OnEditingChanged"
                                       OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
         </div>

@@ -13,6 +13,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     private bool _sessionInitialized;
     private long _workspaceEditVersion;
     private long? _loadingSessionVersion;
+    private long? _pendingLanguageLoad;
 
     private void ObserveWorkspaceEdit() {
         _workspaceEditVersion++;
@@ -22,6 +23,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     private void InvalidateSessionLoad() {
         _sessionLoadVersion++;
         _loadingSessionVersion = null;
+        _pendingLanguageLoad = null;
         _sharedLoading = false;
     }
 
@@ -30,6 +32,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         await SessionLoadingJS.InvokeVoidAsync("sessionLoading.beforeWork");
 
     private void EndSessionLoad(SessionLoadRequest request) {
+        if (_pendingLanguageLoad == request.Version) { _pendingLanguageLoad = null; }
         if (_loadingSessionVersion == request.Version) {
             _loadingSessionVersion = null;
         }
@@ -111,6 +114,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         _isClearWorkspaceConfirmationOpen = false;
         InvalidateSessionLoad();
         _loadingSessionVersion = fullSession ? _sessionLoadVersion : null;
+        _pendingLanguageLoad = _sessionLoadVersion;
 
         return new(
             _sessionLoadVersion,
@@ -253,6 +257,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         }
 
         SharingNavigation.LocationChanged -= SharingLocationChanged;
+        if (LanguageWorkspace?.Capture?.Target == this) { LanguageWorkspace.Capture = null; }
         InvalidateSessionLoad();
         _disposed = true;
         StopCalculation();
@@ -282,6 +287,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
                 _importError = UiText.Format("Ui.FailedToImportDeck0", ex.Message);
             }
         }
+        finally { EndSessionLoad(request); }
     }
 
     private void OpenYdkeImport() {
@@ -329,6 +335,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
             }
         }
         finally {
+            EndSessionLoad(request);
             if (ReferenceEquals(_ydkeImportRequest, request)) {
                 _ydkeImportRequest = null;
             }
@@ -388,14 +395,21 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     }
 
     protected override async Task OnInitializedAsync() {
-        if (LanguageWorkspace is not null) { LanguageWorkspace.IsBusy = () => _isCalculating; }
+        if (LanguageWorkspace is not null) { LanguageWorkspace.Capture = CaptureLanguageWorkspace; }
         InitializeSharing();
 
         if (_sharedFragment is not null) {
             _pendingSessionService.PendingSession = null;
         }
 
-        if (_sharedFragment is null && _pendingSessionService.PendingSession is { } session) {
+        if (LanguageWorkspace?.Pending is { } checkpoint) {
+            try {
+                await RestoreLanguageWorkspaceAsync(checkpoint);
+                _languageWorkspaceApplied = true;
+            }
+            catch (Exception ex) { LanguageWorkspace.Reject(ex.Message); }
+        }
+        else if (_sharedFragment is null && _pendingSessionService.PendingSession is { } session) {
             SessionLoadRequest request = BeginSessionLoad(fullSession: true);
 
             try {

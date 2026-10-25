@@ -21,14 +21,14 @@ async function host({ saved, languages = ['de-DE'], local = new Map(), tab = new
     });
     const root = {
         fetch: async () => ({ ok: true, json: async () => available }),
-        document: { documentElement: { classList: { add: value => classes.add(value), remove: value => classes.delete(value) } } },
+        document: { querySelector: () => null, documentElement: { classList: { add: value => classes.add(value), remove: value => classes.delete(value) } } },
         localStorage: storage(local, 'local'), sessionStorage: storage(tab, 'tab'),
         navigator: { languages }, location: { href: 'https://example.test/#ygo-session=sentinel', reload: () => reloads++ },
         performance: { getEntriesByType: () => [{ type: navigation }] }, crypto: { randomUUID: () => 'handoff-id' }
     };
     vm.runInNewContext(source, root);
     await root.ygoLocale.ready;
-    return { api: root.ygoLocale, local, tab, classes, reloads: () => reloads };
+    return { document: root.document, api: root.ygoLocale, local, tab, classes, reloads: () => reloads };
 }
 
 test('saved English overrides a German browser, including a fresh browser context', async () => {
@@ -49,12 +49,12 @@ test('regional preferences, invalid/stale overrides, browser priority and Englis
 test('preference and tab handoff are verified before exactly one reload', async () => {
     const first = await host({ saved: 'de' });
     first.local.set('ygo-calculator:session-recovery:v1', 'other tab recovery');
-    first.api.change('en', { '/workspace': 'committed and draft state' }, null);
+    first.api.change('en', 'accepted workspace');
     assert.equal(first.local.get(preference), 'en');
     assert.equal(first.local.get('ygo-calculator:session-recovery:v1'), 'other tab recovery');
     assert.equal(first.reloads(), 1);
     const second = await host({ local: first.local, tab: first.tab, navigation: 'reload' });
-    assert.equal(second.api.getHandoff().states['/workspace'], 'committed and draft state');
+    assert.equal(second.api.getHandoff().workspace, 'accepted workspace');
     assert.equal(second.classes.has('locale-pending'), true);
     second.api.complete('handoff-id');
     assert.equal(second.tab.has(handoff), false);
@@ -63,7 +63,7 @@ test('preference and tab handoff are verified before exactly one reload', async 
 
 test('unrelated navigation and repeated reloads cannot replay an unconfirmed handoff', async () => {
     const first = await host();
-    first.api.change('fr', { '/workspace': 'kept' }, null);
+    first.api.change('fr', 'accepted workspace');
     const unrelated = await host({ local: first.local, tab: first.tab });
     assert.equal(unrelated.api.getHandoff(), null);
     assert.equal(first.tab.has(handoff), true);
@@ -71,14 +71,14 @@ test('unrelated navigation and repeated reloads cannot replay an unconfirmed han
     assert.equal(next.api.getHandoff(), null);
     const retry = await host({ local: first.local, tab: first.tab, navigation: 'reload' });
     assert.equal(retry.api.getHandoff(), null);
-    assert.throws(() => retry.api.change('en', {}, null), /previous language handoff/);
+    assert.throws(() => retry.api.change('en', 'accepted workspace'), /previous language handoff/);
 });
 
 for (const kind of ['local', 'tab']) {
     for (const mode of ['fail', 'silent']) {
         test(`${mode} ${kind} storage aborts before navigation and keeps live state`, async () => {
             const current = await host({ saved: 'de', [mode]: kind });
-            assert.throws(() => current.api.change('en', { '/workspace': 'live' }, null));
+            assert.throws(() => current.api.change('en', 'accepted workspace'));
             assert.equal(current.reloads(), 0);
             assert.equal(current.local.get(preference), 'de');
         });
@@ -88,7 +88,38 @@ for (const kind of ['local', 'tab']) {
 test('a preexisting handoff is never overwritten', async () => {
     const current = await host();
     current.tab.set(handoff, 'recoverable earlier record');
-    assert.throws(() => current.api.change('fr', {}, null), /previous language handoff/);
+    assert.throws(() => current.api.change('fr', 'accepted workspace'), /previous language handoff/);
     assert.equal(current.tab.get(handoff), 'recoverable earlier record');
     assert.equal(current.reloads(), 0);
+});
+
+for (const kind of ['open form', 'nonempty draft', 'incomplete number']) {
+    test(kind + ' blocks before storage or navigation', async () => {
+        const current = await host({ saved: 'en' });
+        current.document.querySelector = () => ({
+            querySelector: () => kind === 'open form' ? {} : null,
+            querySelectorAll: selector => selector.includes('#quickCardName')
+                ? (kind === 'nonempty draft' ? [{ value: 'Unsubmitted' }] : [])
+                : (kind === 'incomplete number' ? [{ value: '', validity: { valid: true } }] : [])
+        });
+        assert.throws(() => current.api.change('fr', 'accepted workspace'), /Save\/apply or cancel/);
+        assert.equal(current.local.get(preference), 'en');
+        assert.equal(current.tab.has(handoff), false);
+        assert.equal(current.reloads(), 0);
+    });
+}
+
+test('malformed, expired, mismatched or claimed checkpoints are kept without replay', async () => {
+    const first = await host();
+    first.api.change('en', 'accepted workspace');
+    const valid = JSON.parse(first.tab.get(handoff));
+    for (const raw of ['broken JSON', JSON.stringify({ ...valid, created: 0 }),
+        JSON.stringify({ ...valid, url: 'https://example.test/other' }), JSON.stringify({ ...valid, locale: 'fr' }),
+        JSON.stringify({ ...valid, workspace: {} }), JSON.stringify({ ...valid, claimed: true })]) {
+        const tab = new Map([[handoff, raw]]);
+        const next = await host({ saved: 'en', tab, navigation: 'reload' });
+        assert.equal(next.api.getHandoff(), null);
+        assert.equal(next.api.hasHandoff(), true);
+        assert.equal(next.reloads(), 0);
+    }
 });

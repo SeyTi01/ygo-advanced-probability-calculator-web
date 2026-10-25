@@ -2,7 +2,6 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<LanguageDraftBoundary Name="@($"menu:{LanguageKey}")" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="action-menu" @onkeydown="HandleKeyDown" @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
     <button @ref="_trigger" type="button" class="btn btn-outline-secondary action-menu-trigger"
             aria-label="@Label" title="@Label" aria-expanded="@(_open ? "true" : "false")" aria-controls="@_id"
@@ -22,7 +21,6 @@
 </div>
 
 @code {
-    [Parameter] public string LanguageKey { get; set; } = "actions";
     [Parameter] public string Label { get; set; } = UiText.Get("Ui.Actions");
     [Parameter] public string Text { get; set; } = UiText.Get("Ui.More");
     [Parameter] public bool Compact { get; set; }
@@ -77,6 +75,4 @@
         }
         _reference?.Dispose();
     }
-    private string CaptureLanguageDraft() => LanguageDraftState.Pack(_open);
-    private void RestoreLanguageDraft(string json) { _open = _attach = LanguageDraftState.Unpack<bool>(json); }
 }

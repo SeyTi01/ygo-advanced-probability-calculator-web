@@ -1,7 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<LanguageDraftBoundary Name="categories" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="mb-4">
     <div class="editor-add-row">
         <div class="editor-select-field">
@@ -52,7 +51,7 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </button>
-                    <ReorderControls LanguageKey="@($"category:{category.Identity}")" Horizontal="true" Index="index" Count="CategoryBases.Count" ItemLabel="@(UiText.Format("Ui.Category0", DisplayLabels.Category(category)))" OnMove="OnMoveCategory" />
+                    <ReorderControls Horizontal="true" Index="index" Count="CategoryBases.Count" ItemLabel="@(UiText.Format("Ui.Category0", DisplayLabels.Category(category)))" OnMove="OnMoveCategory" />
                     <button type="button" class="category-icon-button"
                             aria-label="@(UiText.Get("Ui.CancelCategoryEdit"))"
                             title="@(UiText.Get("Ui.CancelCategoryEdit"))"
@@ -365,16 +364,5 @@
         }
 
         return Task.CompletedTask;
-    }
-
-    private string CaptureLanguageDraft() => LanguageDraftState.Pack((_newCategoryName, _editingCategory?.Identity, _editingCategoryName, _ruleCategory?.Identity, _ruleRenameDraft, _ruleCategoryName, _pendingRemoval?.Identity, _colorPickerExpanded));
-    private void RestoreLanguageDraft(string json) {
-        (string? name, string? editing, string? editingName, string? rule, string? ruleDraft, string? ruleName, string? removal, bool color) = LanguageDraftState.Unpack<(string?, string?, string?, string?, string?, string?, string?, bool)>(json);
-        _newCategoryName = name; _editingCategoryName = editingName;
-        _editingCategory = CategoryBases.FirstOrDefault(category => category.Identity == editing);
-        _ruleCategory = CategoryBases.FirstOrDefault(category => category.Identity == rule);
-        _ruleRenameDraft = ruleDraft; _ruleCategoryName = ruleName;
-        _pendingRemoval = CategoryBases.FirstOrDefault(category => category.Identity == removal);
-        _colorPickerExpanded = color;
     }
 }

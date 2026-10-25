@@ -1758,11 +1758,12 @@
     <value>NOT</value>
   </data>
   <data name="Language.Label" xml:space="preserve"><value>Language</value></data>
-  <data name="Language.RestorationPending" xml:space="preserve"><value>Finish restoring the language workspace before switching again.</value></data>
-  <data name="Language.CaptureFailed" xml:space="preserve"><value>This editor state cannot be restored safely. Save or finish the current edit and try again.</value></data>
-  <data name="Language.CancelCalculation" xml:space="preserve"><value>Changing language reloads the app and cancels the active calculation. Continue?</value></data>
+  <data name="Language.CaptureFailed" xml:space="preserve"><value>The accepted workspace could not be captured safely. Save a session file and try again.</value></data>
   <data name="Language.ChangeFailed" xml:space="preserve"><value>Language was not changed. Your live workspace is retained. Save your work, check website storage, and try again. {0}</value></data>
   <data name="Language.RestoreFailed" xml:space="preserve"><value>The language workspace could not be completely restored. Its handoff is kept in this tab. Download it before clearing browser data. {0}</value></data>
   <data name="Language.DownloadHandoff" xml:space="preserve"><value>Download preserved handoff</value></data>
   <data name="Language.WaitForLoad" xml:space="preserve"><value>Wait for the current session or deck import to finish, then change language.</value></data>
+  <data name="Language.UnfinishedEdit" xml:space="preserve"><value>Save/apply or cancel the unfinished edit before changing language.</value></data>
+  <data name="Language.WaitForCalculation" xml:space="preserve"><value>Wait for the calculation to finish or cancel it before changing language.</value></data>
+  <data name="Language.UnrestoredCheckpoint" xml:space="preserve"><value>A previous language checkpoint was not restored. It is kept in this tab; download it before clearing browser data.</value></data>
 </root>

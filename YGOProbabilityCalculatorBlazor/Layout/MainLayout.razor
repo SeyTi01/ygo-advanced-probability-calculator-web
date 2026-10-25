@@ -69,19 +69,16 @@
     private bool _languageReady;
     private bool _switching;
     private bool _finishing;
-    private int _languageControlVersion;
-    private bool _disposed;
     private bool _hasHandoff;
+    private int _languageControlVersion;
 
     protected override async Task OnInitializedAsync() {
         _languageWorkspace.Changed += LanguageStateChanged;
         try {
             _handoff = await JSRuntime.InvokeAsync<LanguageHandoff?>("ygoLocale.getHandoff");
             _hasHandoff = await JSRuntime.InvokeAsync<bool>("ygoLocale.hasHandoff");
-            if (_handoff is not null) {
-                _languageWorkspace.Begin(_handoff.States);
-                _ = CheckLanguageRestoration();
-            }
+            if (_handoff?.Workspace is { } checkpoint) { _languageWorkspace.Begin(checkpoint); }
+            else if (_hasHandoff && _handoff is null) { _languageError = UiText.Get("Language.UnrestoredCheckpoint"); }
         }
         catch (InvalidOperationException) { /* Publish-time prerendering stays English. */ }
         catch (JSException) { /* Optional shell storage must not block startup. */ }
@@ -95,86 +92,49 @@
         if (_switching || next == System.Globalization.CultureInfo.CurrentUICulture.Name) { return; }
         _switching = true;
         _languageError = null;
+        bool reloading = false;
         try {
-            if (_languageWorkspace.IsBusy?.Invoke() == true
-                && !await JSRuntime.InvokeAsync<bool>("confirm", UiText.Get("Language.CancelCalculation"))) { return; }
-            Dictionary<string, string> states = _languageWorkspace.Capture();
-            if (!IsHelpPage && !states.ContainsKey("/workspace")) {
-                throw new InvalidOperationException(UiText.Get("Language.WaitForLoad"));
+            if (await JSRuntime.InvokeAsync<bool>("ygoLocale.hasPendingEdits")) {
+                _languageError = UiText.Get("Language.UnfinishedEdit");
+                return;
             }
-            System.Text.Json.JsonElement? presentation = await JSRuntime.InvokeAsync<System.Text.Json.JsonElement?>("ygoLocale.capturePresentation");
-            Dictionary<string, string> current = _languageWorkspace.Capture();
-            if (states.Count != current.Count || states.Any(entry => !current.TryGetValue(entry.Key, out string? value) || value != entry.Value)) {
-                throw new InvalidOperationException(UiText.Get("Language.CaptureFailed"));
-            }
-            await JSRuntime.InvokeVoidAsync("ygoLocale.change", next, states, presentation);
+            string? checkpoint = _languageWorkspace.Capture?.Invoke();
+            if (!IsHelpPage && checkpoint is null) { throw new InvalidOperationException(UiText.Get("Language.WaitForLoad")); }
+            await JSRuntime.InvokeVoidAsync("ygoLocale.change", next, checkpoint);
+            reloading = true;
         }
+        catch (InvalidOperationException ex) { _languageError = ex.Message; }
         catch (Exception ex) {
             _languageError = UiText.Format("Language.ChangeFailed", ex.Message);
             _hasHandoff = await JSRuntime.InvokeAsync<bool>("ygoLocale.hasHandoff");
         }
-        finally { _switching = false; _languageControlVersion++; }
+        finally {
+            if (!reloading) { _switching = false; _languageControlVersion++; }
+        }
     }
 
     private Task DownloadHandoff() => JSRuntime.InvokeVoidAsync("ygoLocale.downloadHandoff").AsTask();
-
-    private async Task CheckLanguageRestoration() {
-        await Task.Delay(TimeSpan.FromSeconds(15));
-        if (!_disposed && _languageWorkspace.Restoring && !_languageWorkspace.Complete) {
-            await InvokeAsync(async () => {
-                _languageError = UiText.Format("Language.RestoreFailed", _languageWorkspace.Failure ?? UiText.Get("Language.RestorationPending"));
-                await JSRuntime.InvokeVoidAsync("ygoLocale.show");
-                StateHasChanged();
-            });
-        }
-    }
-
-    public void Dispose() {
-        _disposed = true;
-        _languageWorkspace.Changed -= LanguageStateChanged;
-    }
-
-    public sealed record LanguageHandoff(string Id, Dictionary<string, string> States, System.Text.Json.JsonElement? Presentation);
+    public void Dispose() => _languageWorkspace.Changed -= LanguageStateChanged;
+    public sealed record LanguageHandoff(string Id, string? Workspace);
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!_finishing && _languageWorkspace.Failure is { } failure) {
+        if (!_finishing && _languageReady && (_handoff?.Workspace is null || _languageWorkspace.Restored || _languageWorkspace.Failure is not null)) {
             _finishing = true;
-            _languageError = UiText.Format("Language.RestoreFailed", failure);
+            try {
+                if (_languageWorkspace.Failure is { } failure) { throw new InvalidOperationException(failure); }
+                if (_handoff is not null) { await JSRuntime.InvokeVoidAsync("ygoLocale.complete", _handoff.Id); }
+                _languageWorkspace.Finish();
+            }
+            catch (Exception ex) { _languageError = UiText.Format("Language.RestoreFailed", ex.Message); }
             await JSRuntime.InvokeVoidAsync("ygoLocale.show");
             StateHasChanged();
         }
-        if (!_finishing && _languageReady && (_handoff is null || _languageWorkspace.Complete)) {
-            _finishing = true;
-            try {
-                if (_handoff is not null) {
-                    await JSRuntime.InvokeVoidAsync("sessionLoading.beforeWork");
-                    await JSRuntime.InvokeVoidAsync("ygoLocale.restorePresentation", _handoff.Presentation);
-                    await JSRuntime.InvokeVoidAsync("ygoLocale.complete", _handoff.Id);
-                    _languageWorkspace.Finish();
-                    StateHasChanged();
-                }
-                await JSRuntime.InvokeVoidAsync("ygoLocale.show");
-            }
-            catch (Exception ex) {
-                _languageError = UiText.Format("Language.RestoreFailed", ex.Message);
-                await JSRuntime.InvokeVoidAsync("ygoLocale.show");
-                StateHasChanged();
-            }
-        }
-        if (!firstRender) {
-            return;
-        }
-
+        if (!firstRender) { return; }
         try {
             string preference = NormalizeThemePreference(await JSRuntime.InvokeAsync<string>("ygoTheme.getPreference"));
-            if (ThemePreference != preference) {
-                ThemePreference = preference;
-                StateHasChanged();
-            }
+            if (ThemePreference != preference) { ThemePreference = preference; StateHasChanged(); }
         }
-        catch (JSException) {
-            // Theme initialization is optional; a storage or interop failure must not stop the calculator.
-        }
+        catch (JSException) { /* Theme storage is optional. */ }
     }
 
     private async Task ChangeThemePreference(ChangeEventArgs args) {

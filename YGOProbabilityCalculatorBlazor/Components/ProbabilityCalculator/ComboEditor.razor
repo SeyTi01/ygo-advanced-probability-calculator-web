@@ -1,8 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<LanguageDraftBoundary Name="@($"combo:{Index}")" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
-<div class="accordion-item combo-editor @(Combo.Active ? "" : "entry-inactive")">
+<div data-language-edit="@(HasUnsubmittedEdit ? "true" : null)" class="accordion-item combo-editor @(Combo.Active ? "" : "entry-inactive")">
     <div class="accordion-header entry-editor-header combo-editor-header">
         <h2 class="entry-heading">
             <button class="accordion-button flex-grow-1 @(Index == ActiveComboIndex ? "" : "collapsed")"
@@ -264,6 +263,10 @@
     private int _previousCategoryRenameVersion;
 
     private string CategoryCssClass(CategoryBase category) => CategoryChipPalette.GetCssClass(category, CategoryColorIndices);
+
+    // The shell blocks language reloads while this form owns unsubmitted state.
+    private bool HasUnsubmittedEdit => _editingRequirement is not null || AuthoringScope || _editingNewRequirement
+        || _selectedCategory.Length > 0 || _selectedCardId.Length > 0 || _minCount != "1" || _maxCount.Length > 0 || _propertyErrors.Count > 0;
 
     private bool AlternativeScope => _alternativeGroupIndex is not null || _alternativeSeed is not null;
     private bool AndScope => _andSeed is not null;
