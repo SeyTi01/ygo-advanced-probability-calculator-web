@@ -5,6 +5,7 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 public readonly record struct DrawEffectPresentation(string? HeaderText, string? InactiveMessage) {
     public static DrawEffectPresentation ForCard(Card card, bool drawEffectsEnabled) {
+        drawEffectsEnabled &= card.SimulationEnabled;
         if (card.EffectProfile.ExecutionModel != EffectExecutionModel.DrawSequenceV1) {
             return new(UiText.Get("Ui.UnsupportedEffect"), null);
         }

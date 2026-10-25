@@ -28,7 +28,8 @@ public sealed class SessionSchemaMigrator {
                 root[nameof(SessionState.FastExecutionStrategy)] = "Progressive";
                 SetSchemaVersion(root, 11);
             },
-            [11] = root => SetSchemaVersion(root, 12)
+            [11] = root => SetSchemaVersion(root, 12),
+            [12] = MigrateV12ToV13
         };
 
     public string MigrateToCurrent(string json) {
@@ -137,6 +138,19 @@ public sealed class SessionSchemaMigrator {
         }
 
         return version;
+    }
+
+    private static void MigrateV12ToV13(JsonObject root) {
+        // Older readers ignored this extension. Preserve their enabled behavior.
+        // Schema 13 prevents them from silently executing intentionally disabled plans.
+        JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
+        foreach (JsonObject card in cards?.OfType<JsonObject>() ?? []) {
+            foreach (string field in card.Select(property => property.Key)
+                .Where(name => name.Equals("SimulationEnabled", StringComparison.OrdinalIgnoreCase)).ToArray()) {
+                card.Remove(field);
+            }
+        }
+        SetSchemaVersion(root, 13);
     }
 
     private static void MigrateV0ToV1(JsonObject root) => SetSchemaVersion(root, 1);
