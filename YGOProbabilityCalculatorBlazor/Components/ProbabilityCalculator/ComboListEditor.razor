@@ -1,6 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
+<LanguageDraftBoundary Name="combos" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <div class="mb-4">
     <h4>@(UiText.Get("Ui.Combos"))</h4>
     <div class="accordion" id="combosAccordion">
@@ -76,7 +77,7 @@
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
                             </button>
-                            <ReorderControls Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@(UiText.Format("Ui.Group0", group.Name))" OnMove="OnMoveGroup" />
+                            <ReorderControls LanguageKey="@($"group:{group.Id}")" Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@(UiText.Format("Ui.Group0", group.Name))" OnMove="OnMoveGroup" />
                             <button type="button" class="category-icon-button"
                                     aria-label="@(UiText.Get("Ui.CancelGroupEdit"))" title="@(UiText.Get("Ui.CancelGroupEdit"))"
                                     @onclick="CancelGroupRename">
@@ -298,5 +299,13 @@
             _pendingGroupNameFocus = null;
             await button.FocusAsync();
         }
+    }
+
+    private string CaptureLanguageDraft() => LanguageDraftState.Pack((_newGroupName, _editingGroupId, _editingGroupName, _pendingRemoval?.Id, _groupError));
+    private void RestoreLanguageDraft(string json) {
+        (string name, string? editing, string? editingName, string? removal, string? error) = LanguageDraftState.Unpack<(string, string?, string?, string?, string?)>(json);
+        _newGroupName = name; _editingGroupId = editing; _editingGroupName = editingName; _groupError = error;
+        _pendingRemoval = ComboGroups.FirstOrDefault(group => group.Id == removal);
+        _skipParameterRender = false;
     }
 }

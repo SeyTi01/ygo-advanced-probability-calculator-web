@@ -19,6 +19,8 @@
     <base href="/"/>
     <meta name="color-scheme" content="light dark"/>
     <script src="js/theme.js"></script>
+    <style>html.locale-pending #app { visibility: hidden; }</style>
+    <script src="js/locale.js"></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="css/app.css"/>
     <link rel="icon" type="image/png" href="favicon.png"/>
@@ -43,7 +45,13 @@
 <script src="js/session-sharing.js"></script>
 <script src="js/session-loading.js"></script>
 <script src="js/workspace-menus.js"></script>
-<script src="_framework/blazor.webassembly.js"></script>
+<script src="_framework/blazor.webassembly.js" autostart="false"></script>
+<script>
+    ygoLocale.ready.then(applicationCulture => Blazor.start({ applicationCulture })).catch(() => {
+        ygoLocale.show();
+        document.getElementById('blazor-error-ui').style.display = 'block';
+    });
+</script>
 <script>
     const downloadFileFromStream = (fileName, base64String) => {
         const link = document.createElement('a');

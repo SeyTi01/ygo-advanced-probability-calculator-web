@@ -1,0 +1,25 @@
+@implements IDisposable
+
+@code {
+    [CascadingParameter] public LanguageWorkspace? Workspace { get; set; }
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public Func<string>? Capture { get; set; }
+    [Parameter] public Action<string>? Restore { get; set; }
+    [Parameter] public EventCallback OnRestored { get; set; }
+    private string _path = "";
+    private bool _restored;
+
+    protected override void OnParametersSet() {
+        string path = $"/{Name}";
+        if (_path != path) { Workspace?.Remove(_path, this); _path = path; }
+        if (Capture is not null && Restore is not null) {
+            _restored |= Workspace?.Register(_path, this, Capture, Restore) == true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_restored) { _restored = false; await OnRestored.InvokeAsync(); }
+    }
+
+    public void Dispose() => Workspace?.Remove(_path, this);
+}

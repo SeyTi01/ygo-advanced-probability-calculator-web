@@ -3,6 +3,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
+<LanguageDraftBoundary Name="@($"move:{LanguageKey ?? ItemLabel}:{Index}")" Capture="CaptureLanguageDraft" Restore="RestoreLanguageDraft" OnRestored="StateHasChanged" />
 <span class="move-position" @onclick:stopPropagation="true" @onkeydown:stopPropagation="@_open" @onkeydown="HandleKeyDown">
     <button @ref="_trigger" type="button" class="@(MenuCommand ? "menu-command" : "move-position-trigger")"
             disabled="@(Count < 2)" aria-label="@(UiText.Format("Move.ToPosition", ItemLabel))" title="@(UiText.Get("Ui.MoveToPosition"))"
@@ -28,6 +29,7 @@
 </span>
 
 @code {
+    [Parameter] public string? LanguageKey { get; set; }
     [Parameter] public int Index { get; set; }
     [Parameter] public int Count { get; set; }
     [Parameter] public string ItemLabel { get; set; } = string.Empty;
@@ -40,6 +42,7 @@
     private ElementReference _panel;
     private DotNetObjectReference<MoveToPosition>? _reference;
     private bool _attach;
+    private bool _languageRestorePending;
     private bool _open;
     private bool _focusInput;
     private bool _focusTrigger;
@@ -111,6 +114,12 @@
     private Task HandleInputKeyDown(KeyboardEventArgs args) => args.Key == "Enter" ? Apply() : Task.CompletedTask;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_languageRestorePending) {
+            _languageRestorePending = false;
+            _attach = _open;
+            StateHasChanged();
+            return;
+        }
         if (_attach) {
             _attach = false;
             _reference ??= DotNetObjectReference.Create(this);
@@ -124,5 +133,11 @@
             _focusTrigger = false;
             await _trigger.FocusAsync();
         }
+    }
+
+    private string CaptureLanguageDraft() => LanguageDraftState.Pack((_open, _destination, _error));
+    private void RestoreLanguageDraft(string json) {
+        (_open, _destination, _error) = LanguageDraftState.Unpack<(bool, string, string?)>(json);
+        _languageRestorePending = _open;
     }
 }

@@ -38,25 +38,117 @@ during startup is supported while retaining the browser's numeric culture.
 
 1. Add `Localization/Strings.<locale>.resx` with the same keys. Missing entries
    intentionally fall back to English. Verify every translated placeholder.
-2. Add the locale to `LocalePreference.SupportedLocales`. Its resolver accepts
-   an explicit shell preference first, followed by browser language preferences,
-   then English. Regional preferences can resolve to their supported language.
-3. Before enabling a second language, wire a shell-level preference store and
-   `navigator.languages` to `Initialize`, and rerender after an explicit change.
-   Store this preference separately from decks, sessions, recovery/share payloads
-   and calculation input. Resolve it before interactive rendering. Keep static
-   prerendering English, with matching initial HTML/lang and SEO; adding another
-   production locale requires deciding the corresponding prerender route policy.
-   There is deliberately no one-option language control or browser-storage read
-   for language preference today.
-4. Run the localization tests, existing editor/service suites, optimized publish,
-   prerendered SEO tests, and desktop/mobile published-app checks.
+2. Add its deployable language ID and readable native name to
+   `wwwroot/localization/locales.json`. This single file is served to startup
+   JavaScript and embedded in .NET. Register only locales whose satellite ships.
+   At two production locales the global header selector appears automatically
+   on both routes. English alone keeps the existing header.
+3. Run the localization/editor tests, optimized publish, prerendered SEO checks,
+   and the isolated published browser workflow described below.
+
+## Website preference and startup
+
+`ygo-calculator:language:v1` in localStorage contains an explicit website
+preference, independently of every deck, session, worker and share payload.
+Resolution is saved supported preference, then ordered `navigator.languages`,
+then English. Matching walks from a regional tag to registered parent tags.
+An explicit English selection overrides a supported German browser language.
+Unsupported/stale values are ignored; denied storage still allows startup.
+There is no language entry in Calculation settings or Browser default option.
+Clearing browser data resets the preference.
+
+The head script `js/locale.js` fetches the small registry before
+`Blazor.start({ applicationCulture })` (autostart is disabled). Program sets
+only the UI culture before `RunAsync`. .NET 10 loads satellites for **both**
+CurrentCulture and CurrentUICulture, so the browser numeric culture is retained
+in the shell preference and applied by App.OnInitialized **after** satellite
+loading but **before** the first route renders. The full ICU dataset stays
+configured. This prevents an unselected numeric-language satellite download,
+while retaining existing decimal formatting and invariant serialization.
+See the [Blazor startup culture documentation](https://learn.microsoft.com/en-us/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0#statically-set-the-client-side-culture).
+
+Static `/` and `/help` HTML, canonical routes and SEO remain English. A head-time
+visibility gate hides prerendered app labels until resolution; English immediately
+reveals its canonical HTML. For a non-English preference it keeps that HTML hidden
+until the correctly initialized interactive layout is ready. The document language
+then changes with the interactive UI. This does not translate or replace SEO
+metadata. JavaScript-disabled crawlers/readers retain canonical English HTML.
+Startup errors reveal the existing runtime-error UI. No translated card catalog
+is bundled; translations remain .resx satellites selected by startup.
+
+## Language reload and editor handoff
+
+A language change takes one reload of the **exact current URL**. The header
+briefly makes the live page inert, captures component-owned drafts and accepted
+workspace data, then rechecks that capture for concurrent changes. Active
+calculations require confirmation before the reload cancels them. Pending
+session/import work blocks a switch with an actionable message.
+
+`LanguageDraftBoundary` is a non-rendering registration with a stable semantic
+key. It does not wrap editor rendering or replace EditorKeys/@key. Explicit
+snapshots retain quick-add text, category/rule/group drafts, combo requirement
+forms, numeric-picker invalid input, simulation plans and nested selector edits,
+move destinations and open menus. A separate presentation checkpoint retains
+native details state and raw uncommitted/invalid control values without firing
+commit events. Accepted results and manual pins are retained; computation in
+progress can end. New draft-owning controls must register a checkpoint and add a
+restoration test; never use translated labels or generated DOM IDs as keys.
+
+The handoff is separate sessionStorage under
+`ygo-calculator:language-handoff:v1` (at most 2 Mi UTF-16 code units). Each typed
+snapshot must round-trip locally. Both the handoff and persistent preference are
+written and read back **before** navigation. Storage failures abort in the live
+workspace. Existing handoffs are never overwritten. The record is tab-local,
+contains a build identity, and is eligible only on the immediately following
+reload of the exact URL/locale within two minutes. Any startup claims it once;
+unrelated visits and further reloads cannot replay it. A changed app build
+rejects restoration rather than interpreting a different draft format.
+
+Restoration waits for every registered snapshot and verifies the control layout
+before acknowledging/deleting the record. During restoration autosave is suspended.
+The existing recovery key is never used as the handoff store. The recovery client
+carries its expected record and paused status: only an unchanged owned record
+resumes without a recovery prompt. A foreign/preexisting record remains protected,
+as does a pending shared offer and its URL fragment. This handoff never invokes
+session enrichment, applies presets, consumes a shared link, or changes the
+session schema or the maintained-effect compatibility gate.
+
+If restoration fails or remains incomplete, a warning reveals the UI and offers
+**Download preserved handoff**; the tab record remains, and autosave stays
+suspended to protect the original. Download it before clearing browser data.
+Normal changes restore automatically without a file load or recovery prompt.
+
+## Published integration check
+
+`node scripts/localization/prepare-test-host.cjs` makes an ignored source copy
+under `bin/localization-test-host`, adding the test-only pseudo satellite under
+`fr` and `de` plus an isolated registry. Neither pseudo resource nor registry
+is included in production. Publish that copy with the same optimized non-AOT
+configuration as the production app. Use `--refresh` to recreate a previously
+marked generated copy after source changes, then run:
+
+```sh
+node --test scripts/localization/locale.test.mjs
+dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release -o YGOProbabilityCalculatorBlazor/bin/language-publish
+node scripts/localization/prepare-test-host.cjs
+dotnet publish bin/localization-test-host/YGOProbabilityCalculatorBlazor.csproj -c Release -o bin/localization-test-publish
+node scripts/localization/browser-smoke.cjs YGOProbabilityCalculatorBlazor/bin/language-publish/wwwroot bin/localization-test-publish/wwwroot
+```
+
+Playwright and a Chromium browser are external test dependencies; set
+`YGO_BROWSER_EXECUTABLE` or `YGO_BROWSER_CHANNEL` as for the existing smoke tests.
+The optional third browser-script argument is a frozen dev publish for startup
+transfer comparison. The script checks first visible interactive language,
+satellite requests, real reload/restoration, saved English on a German browser,
+invalid preferences, navigation, drafts/results, protected recovery/share state,
+storage failure, and desktop/mobile header usability. Run the regular .NET/JS
+suites and `PublishedOutputSeoTest` against the production publish as well.
 
 The test project's `Localization/Strings.fr.resx` is an intentionally artificial
 pseudo locale with selected substitutions, omissions, and one invalid format.
 The test project links the neutral resources and uses its own satellite assembly
-through an internal, async-local resource scope. No pseudo resource or locale
-selection ships in the app. `UiText.English` always reads the production neutral
+through an internal, async-local resource scope. No pseudo resource or pseudo
+locale registration ships in the app. `UiText.English` always reads the production neutral
 resources, even inside that scope.
 
 ## Identity and optional label data

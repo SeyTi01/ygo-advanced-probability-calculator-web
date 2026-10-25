@@ -7,6 +7,8 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Shared;
 using YGOProbabilityCalculatorBlazor.Localization;
+using Microsoft.JSInterop;
+using System.Globalization;
 
 namespace YGOProbabilityCalculatorBlazor;
 
@@ -18,8 +20,20 @@ public static class Program {
 
         ConfigureServices(builder.Services, builder.HostEnvironment.BaseAddress);
 
-        await builder.Build().RunAsync();
+        WebAssemblyHost host = builder.Build();
+        IJSRuntime js = host.Services.GetRequiredService<IJSRuntime>();
+        StartupLocale startup = await js.InvokeAsync<StartupLocale>("ygoLocale.getStartup");
+        // Keep both cultures on applicationCulture until RunAsync has loaded satellites.
+        CultureInfo numeric;
+        try { numeric = CultureInfo.GetCultureInfo(startup.NumericCulture); }
+        catch (CultureNotFoundException) { numeric = CultureInfo.GetCultureInfo("en-US"); }
+        LocalePreference preference = host.Services.GetRequiredService<LocalePreference>();
+        preference.NumericCulture = numeric;
+        preference.Initialize(startup.Locale);
+        await host.RunAsync();
     }
+
+    public sealed record StartupLocale(string Locale, string NumericCulture);
 
     // The publish-time prerenderer calls this hook too; keep runtime registrations shared.
     public static void ConfigureServices(IServiceCollection services, string baseAddress) {

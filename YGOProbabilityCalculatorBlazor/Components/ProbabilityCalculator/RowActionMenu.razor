@@ -1,9 +1,9 @@
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
-<ActionMenu @ref="_menu" Compact="true" Label="@(UiText.Format("Ui.ActionsFor0", ItemLabel))">
+<ActionMenu LanguageKey="@($"{Kind}:{Index}")" @ref="_menu" Compact="true" Label="@(UiText.Format("Ui.ActionsFor0", ItemLabel))">
     <button type="button" class="menu-command" disabled="@(Index <= 0)" @onclick="() => Move(-1)">@(UiText.Get("Ui.MoveUp"))</button>
     <button type="button" class="menu-command" disabled="@(Index >= Count - 1)" @onclick="() => Move(1)">@(UiText.Get("Ui.MoveDown"))</button>
-    <MoveToPosition Index="Index" Count="Count" ItemLabel="@ItemLabel" MenuCommand="true" OnMove="MoveTo" />
+    <MoveToPosition LanguageKey="@($"{Kind}:{Index}")" Index="Index" Count="Count" ItemLabel="@ItemLabel" MenuCommand="true" OnMove="MoveTo" />
     <button type="button" class="menu-command" @onclick="() => Run(OnDuplicate)">@(UiText.Get("Ui.Duplicate"))</button>
     <button id="@($"{Kind}Active{Index}")" type="button" class="menu-command" @onclick="() => Run(OnToggle)">@(Active ? UiText.Get("Ui.Deactivate") : UiText.Get("Ui.Activate"))</button>
     <button type="button" class="menu-command menu-remove" @onclick="() => Run(OnRemove, true)">@(UiText.Get("Ui.Remove"))</button>

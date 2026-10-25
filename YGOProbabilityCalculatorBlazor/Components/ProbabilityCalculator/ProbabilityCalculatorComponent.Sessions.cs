@@ -388,6 +388,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     }
 
     protected override async Task OnInitializedAsync() {
+        if (LanguageWorkspace is not null) { LanguageWorkspace.IsBusy = () => _isCalculating; }
         InitializeSharing();
 
         if (_sharedFragment is not null) {
