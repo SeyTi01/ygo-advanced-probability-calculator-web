@@ -4,17 +4,17 @@
 <div class="mt-2">
     @if (HasVerifiedPredicate(Selector)) {
         <div class="small" role="note">@DrawEffectPresentation.DescribeSelector(Selector, CategoryBases)</div>
-        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">@(Selector.Kind == CardSelectorKind.Not && Selector.Children[0].Kind == CardSelectorKind.Any ? "Replace empty filter" : "Replace verified filter")</button>
+        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">@(Selector.Kind == CardSelectorKind.Not && Selector.Children[0].Kind == CardSelectorKind.Any ? UiText.Get("Ui.ReplaceEmptyFilter") : UiText.Get("Ui.ReplaceVerifiedFilter"))</button>
     }
     else if (!Grouped || Selector.Kind == CardSelectorKind.Any) {
-        <RequirementPropertyPicker Id="@Id" Label="Eligible" AccessibleLabel="Eligible" AllowAny="true" Categories="Available"
+        <RequirementPropertyPicker Id="@Id" Label="@(UiText.Get("Ui.Eligible"))" AccessibleLabel="@(UiText.Get("Ui.Eligible"))" AllowAny="true" Categories="Available"
             RelevantIdentities="_categoryOptions.RelevantMetadataIdentities" OnChanged="AddProperty" />
     }
     @if (Grouped && Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
-        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">Any card (clear filter)</button>
+        <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">@(UiText.Get("Ui.Anycardclearfilter"))</button>
     }
     @if (Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
-        <div class="mt-2" aria-label="Grouped eligibility filter">
+        <div class="mt-2" aria-label="@(UiText.Get("Ui.GroupedEligibilityFilter"))">
             <SelectorExpressionEditor Selector="Selector" Available="GroupedAvailable" CategoryColorIndices="CategoryColorIndices"
                                       RelevantMetadataIdentities="_categoryOptions.RelevantMetadataIdentities" CategoryRename="CategoryRename" OnEditingChanged="OnEditingChanged"
                                       OnChanged="PublishGrouped" OnRemove="Clear" OnValidation="Validate" />
@@ -28,7 +28,7 @@
 
 @code {
     [Parameter] public bool ShowHelp { get; set; } = true;
-    [Parameter] public string UnavailableMessage { get; set; } = "If unavailable: fail branch.";
+    [Parameter] public string UnavailableMessage { get; set; } = UiText.Get("Ui.IfUnavailableFailBranch");
     [Parameter] public string Id { get; set; } = "removalSelector";
     [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
@@ -93,7 +93,7 @@
             await PublishGrouped(create());
         }
         catch (ArgumentException) {
-            _error = "Filter is too large or too deeply grouped.";
+            _error = UiText.Get("Ui.FilterIsTooLargeOrTooDeeplyGrouped");
         }
     }
 

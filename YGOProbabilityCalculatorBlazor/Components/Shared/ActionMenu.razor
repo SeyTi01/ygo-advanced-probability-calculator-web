@@ -21,8 +21,8 @@
 </div>
 
 @code {
-    [Parameter] public string Label { get; set; } = "Actions";
-    [Parameter] public string Text { get; set; } = "More";
+    [Parameter] public string Label { get; set; } = UiText.Get("Ui.Actions");
+    [Parameter] public string Text { get; set; } = UiText.Get("Ui.More");
     [Parameter] public bool Compact { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     private readonly string _id = "actions-" + Guid.NewGuid().ToString("N");

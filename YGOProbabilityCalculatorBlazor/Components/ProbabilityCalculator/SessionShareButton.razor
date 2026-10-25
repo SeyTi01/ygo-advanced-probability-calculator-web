@@ -4,11 +4,11 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<button type="button" class="btn @(Compact ? "btn-outline-secondary session-share-compact" : "btn-secondary") d-inline-flex align-items-center gap-2" aria-label="Copy share link" title="Copy a link to the accepted session" @onclick="CopyAsync">
-    <span class="share-icon" aria-hidden="true">@(_copied ? "✓" : "↗")</span><span>@(Compact ? "Share" : "Copy share link")</span>
+<button type="button" class="btn @(Compact ? "btn-outline-secondary session-share-compact" : "btn-secondary") d-inline-flex align-items-center gap-2" aria-label="@(UiText.Get("Ui.CopyShareLink"))" title="@(UiText.Get("Ui.CopyALinkToTheAcceptedSession"))" @onclick="CopyAsync">
+    <span class="share-icon" aria-hidden="true">@(_copied ? "✓" : "↗")</span><span>@(Compact ? "Share" : UiText.Get("Ui.CopyShareLink"))</span>
 </button>
 @if (_copied) {
-    <span class="visually-hidden" role="status">Share link copied.</span>
+    <span class="visually-hidden" role="status">@(UiText.Get("Ui.ShareLinkCopied"))</span>
 }
 @if (_error is not null || _fallback is not null) {
     <div class="share-fallback alert alert-warning mb-0" role="status">
@@ -16,10 +16,10 @@
             <p class="mb-0">@_error</p>
         }
         @if (_fallback is not null) {
-            <label for="@_id">Clipboard access was denied. Select and copy this link:</label>
+            <label for="@_id">@(UiText.Get("Ui.ClipboardAccessWasDeniedSelectAndCopyThisLink"))</label>
             <textarea id="@_id" class="form-control mt-2" rows="3" readonly @onclick="SelectAsync">@_fallback</textarea>
         }
-        <button type="button" class="btn btn-sm btn-secondary mt-2" @onclick="Dismiss">Dismiss</button>
+        <button type="button" class="btn btn-sm btn-secondary mt-2" @onclick="Dismiss">@(UiText.Get("Ui.Dismiss"))</button>
     </div>
 }
 
@@ -58,7 +58,7 @@
         }
         catch {
             _link = null;
-            _preparationError = "This session is too large or unsupported for a share link. Share a normal session file instead.";
+            _preparationError = UiText.Get("Ui.ThisSessionIsTooLargeOrUnsupportedForAShareLinkShareANormalSessionFileInstead");
         }
     }
 

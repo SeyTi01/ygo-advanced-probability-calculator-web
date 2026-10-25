@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -7,8 +8,8 @@ public sealed class ChaoticElementsEffect : ICardEffectDefinition {
     public string Name => "Chaotic Elements";
     public int Revision => 3;
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Search 1 Level 5+ LIGHT/DARK Pyro/Aqua monster";
-    public string Limitations => "Main Deck search only; GY retrieval, optional field destruction and the GY effect are not modeled.";
+    public string Summary => UiText.English("Effects.92221402.Summary");
+    public string Limitations => UiText.English("Effects.92221402.Limitations");
 
     public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(CardSelector.AllOfSelectors([

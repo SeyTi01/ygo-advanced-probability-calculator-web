@@ -2,9 +2,9 @@
 
 @if (Certificate is { } certificate) {
     <details class="search-availability small mt-2">
-        <summary>@(certificate.Status == SearchAvailabilityStatus.Exact ? "" : "Deck-search availability: ")@SearchAvailabilityPresentation.Summary(certificate)</summary>
+        <summary>@(certificate.Status == SearchAvailabilityStatus.Exact ? "" : UiText.Get("Ui.DeckSearchAvailability"))@SearchAvailabilityPresentation.Summary(certificate)</summary>
         <p class="mb-1 mt-2">@certificate.Detail</p>
-        <p class="text-body-secondary mb-1">Bounds certify only Deck-search target survival under the fixed modeled draw/removal policy; not full gameplay or optimal play. Probability ranges are available on each result.</p>
+        <p class="text-body-secondary mb-1">@(UiText.Get("Ui.BoundscertifyonlyDecksearchtargetsurvivalunderthefixedmodeleddrawremovalpolicynotfullgameplayoroptimalplayProbabilityrangesareavailableoneachresult"))</p>
     </details>
 }
 

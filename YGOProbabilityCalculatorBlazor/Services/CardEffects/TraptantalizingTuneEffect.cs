@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -23,7 +24,7 @@ public sealed class TraptantalizingTuneEffect : ICardEffectDefinition {
         EffectProperties.Property("Normal Trap", "trap-type:normal")
     ];
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Discard 1 Level 4 Insect or Plant monster, or 1 Normal Trap, from hand to draw 2; once per turn.";
+    public string Summary => UiText.English("Effects.48805472.Summary");
 
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true) with {
         HandCost = 1,

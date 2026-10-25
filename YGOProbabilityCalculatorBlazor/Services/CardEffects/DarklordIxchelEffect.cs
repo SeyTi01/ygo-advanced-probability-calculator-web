@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -10,7 +11,7 @@ public sealed class DarklordIxchelEffect : ICardEffectDefinition {
     public int Revision => 1;
     public IReadOnlyList<CategoryBase> FilterProperties => [Darklord];
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Discard Ixchel and 1 other Darklord card from hand to draw 2; once per turn.";
+    public string Summary => UiText.English("Effects.52840267.Summary");
 
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true) with {
         HandCost = 1,

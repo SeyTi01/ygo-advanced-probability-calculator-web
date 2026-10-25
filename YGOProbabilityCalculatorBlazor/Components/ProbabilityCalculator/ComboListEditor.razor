@@ -2,7 +2,7 @@
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
 <div class="mb-4">
-    <h4>Combos</h4>
+    <h4>@(UiText.Get("Ui.Combos"))</h4>
     <div class="accordion" id="combosAccordion">
         @for (int index = 0; index < Combos.Count; index++) {
             <ComboEditor @key="_editorKeys[Combos[index]]"
@@ -27,23 +27,23 @@
     </div>
 
     <div class="mt-3">
-        <button id="addCombo" type="button" class="btn combo-add-action" aria-label="Add combo" title="Add combo" @onclick="() => OnAddNewCombo.InvokeAsync()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg> Combo
+        <button id="addCombo" type="button" class="btn combo-add-action" aria-label="@(UiText.Get("Ui.AddCombo"))" title="@(UiText.Get("Ui.AddCombo"))" @onclick="() => OnAddNewCombo.InvokeAsync()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg> @(UiText.Get("Ui.Combo"))
         </button>
     </div>
 
     <details class="combo-group-management workspace-management">
-        <summary>Combo groups <span class="text-body-secondary">· organize combos</span></summary>
+        <summary>@(UiText.Get("Ui.ComboGroups")) <span class="text-body-secondary">@(UiText.Get("Ui.OrganizeCombos"))</span></summary>
         <div class="mb-4">
             <div class="editor-add-row">
                 <div class="editor-select-field">
                     <input class="form-control" type="text"
-                           aria-label="New combo group name" placeholder="Group name"
+                           aria-label="@(UiText.Get("Ui.NewComboGroupName"))" placeholder="@(UiText.Get("Ui.GroupName"))"
                            @bind="_newGroupName" @bind:event="oninput"
                            @onkeyup="HandleAddGroupKeyUp" />
                 </div>
                 <div class="editor-add-action">
-                    <button class="btn btn-primary" type="button" aria-label="Add combo group" disabled="@string.IsNullOrWhiteSpace(_newGroupName)" @onclick="AddGroup">Add</button>
+                    <button class="btn btn-primary" type="button" aria-label="@(UiText.Get("Ui.AddComboGroup"))" disabled="@string.IsNullOrWhiteSpace(_newGroupName)" @onclick="AddGroup">@(UiText.Get("Ui.Add"))</button>
                 </div>
             </div>
             @if (_groupError is not null) {
@@ -52,8 +52,8 @@
                 </div>
             }
             @if (_pendingRemoval is { } pending) {
-                <DeletionConfirmation @key="pending.Id" Label="Confirm group deletion"
-                    Message="@($"Delete {pending.Name}? All member combos, including inactive ones, remain in their current order and become ungrouped.")"
+                <DeletionConfirmation @key="pending.Id" Label="@(UiText.Get("Ui.ConfirmGroupDeletion"))"
+                    Message="@(UiText.Format("Ui.Delete0AllMemberCombosIncludingInactiveOnesRemainInTheirCurrentOrderAndBecomeUngrouped", pending.Name))"
                     OnConfirm="ConfirmGroupRemoval" OnCancel="CancelGroupRemoval" />
             }
             <div class="mt-2">
@@ -63,12 +63,12 @@
                         @if (_editingGroupId == group.Id) {
                             <input @ref="_groupRenameInputReference"
                                    class="form-control form-control-sm category-rename-input"
-                                   aria-label="@($"New name for group {group.Name}")"
+                                   aria-label="@(UiText.Format("Ui.NewNameForGroup0", group.Name))"
                                    @bind="_editingGroupName"
                                    @bind:event="oninput"
                                    @onkeydown="HandleGroupRenameKeyDown" />
                             <button type="button" class="category-icon-button"
-                                    aria-label="Save group name" title="Save group name"
+                                    aria-label="@(UiText.Get("Ui.SaveGroupName"))" title="@(UiText.Get("Ui.SaveGroupName"))"
                                     @onclick="SaveGroupName">
                                 <svg class="category-action-icon" viewBox="0 0 24 24"
                                      fill="none" stroke="currentColor" stroke-width="2.5"
@@ -76,9 +76,9 @@
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
                             </button>
-                            <ReorderControls Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@($"group {group.Name}")" OnMove="OnMoveGroup" />
+                            <ReorderControls Horizontal="true" Index="index" Count="ComboGroups.Count" ItemLabel="@(UiText.Format("Ui.Group0", group.Name))" OnMove="OnMoveGroup" />
                             <button type="button" class="category-icon-button"
-                                    aria-label="Cancel group edit" title="Cancel group edit"
+                                    aria-label="@(UiText.Get("Ui.CancelGroupEdit"))" title="@(UiText.Get("Ui.CancelGroupEdit"))"
                                     @onclick="CancelGroupRename">
                                 <svg class="category-action-icon" viewBox="0 0 24 24"
                                      fill="none" stroke="currentColor" stroke-width="2.5"
@@ -90,13 +90,13 @@
                         else {
                             <button @ref="_groupNameButtonReferences[group.Id]"
                                     type="button" class="category-name-trigger"
-                                    aria-label="@($"Edit group {group.Name}")"
-                                    title="@($"Edit group {group.Name}")"
+                                    aria-label="@(UiText.Format("Ui.EditGroup0", group.Name))"
+                                    title="@(UiText.Format("Ui.EditGroup0", group.Name))"
                                     @onclick="() => BeginGroupRename(group)">@group.Name</button>
                         }
                         <ChipRemoveButton Class="category-delete-button"
-                                aria-label="@($"Remove group {group.Name}")"
-                                title="@($"Delete group {group.Name}")"
+                                aria-label="@(UiText.Format("Ui.RemoveGroup0", group.Name))"
+                                title="@(UiText.Format("Ui.DeleteGroup0", group.Name))"
                                 OnClick="() => RemoveGroup(group)" />
                     </span>
                 }
@@ -276,11 +276,11 @@
 
     private bool ValidateName(string name, string? excludingId = null) {
         if (string.IsNullOrWhiteSpace(name)) {
-            _groupError = "Group name cannot be empty.";
+            _groupError = UiText.Get("Ui.GroupNameCannotBeEmpty");
         }
         else {
             bool hasDuplicateName = ComboGroups.Any(group => group.Id != excludingId && string.Equals(group.Name, name, StringComparison.OrdinalIgnoreCase));
-            _groupError = hasDuplicateName ? "A group with that name already exists." : null;
+            _groupError = hasDuplicateName ? UiText.Get("Ui.AGroupWithThatNameAlreadyExists") : null;
         }
 
         return _groupError is null;

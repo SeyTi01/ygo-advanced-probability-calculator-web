@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -15,6 +16,6 @@ public sealed class RadiantTyphoonVisionEffect : ICardEffectDefinition {
         RemovalSelector = CardSelector.AnyOf([QuickPlay.Identity, RadiantTyphoon.Identity])
     };
     public EffectSupport Support => EffectSupport.Partial;
-    public string Summary => "Draw 2, then discard 1 eligible Quick-Play Spell or Radiant Typhoon card; once per turn.";
-    public string Limitations => "The alternative that adds Mystical Space Typhoon from the Deck or GY to the hand is not modeled.";
+    public string Summary => UiText.English("Effects.20508881.Summary");
+    public string Limitations => UiText.English("Effects.20508881.Limitations");
 }

@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -13,5 +14,5 @@ public sealed class AllureOfDarknessEffect : ICardEffectDefinition {
         RemovalCount = 1, RemovalSelector = CardSelector.For(Dark)
     };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Draw 2, then remove a DARK card from hand.";
+    public string Summary => UiText.English("Effects.1475311.Summary");
 }

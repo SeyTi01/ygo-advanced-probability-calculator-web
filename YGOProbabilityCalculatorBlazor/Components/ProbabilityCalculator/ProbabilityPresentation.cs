@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Numerics;
@@ -15,24 +16,24 @@ public sealed record ProbabilityDisplay(
     string? Evidence = null,
     string? FocusDetail = null
 ) {
-    public string Summary => $"{Value} {Accuracy}" + (Uninformative ? " · Uninformative" : "");
+    public string Summary => UiText.Format(Uninformative ? "Probability.UninformativeSummary" : "Probability.Summary", Value, Accuracy);
 }
 
 // Presentation only. The optimistic primary can exceed the certified upper endpoint.
 public static class ProbabilityPresentation {
     public static string? AutomaticExactDetail(AutomaticExactOutcome? outcome) => outcome switch {
-        AutomaticExactOutcome.Completed => "Fast completed a physical Exact calculation.",
-        AutomaticExactOutcome.Deadline => "The automatic Exact opportunity ended; the completed Fast result is retained. Select Exact only to allow more time.",
-        AutomaticExactOutcome.WorkLimit => "The automatic Exact attempt reached the remaining Work allowance; the completed Fast result is retained.",
-        AutomaticExactOutcome.StorageLimit => "The automatic Exact attempt reached the Storage limit; the completed Fast result is retained.",
-        AutomaticExactOutcome.Unsupported => "The automatic Exact route was unsupported; the completed Fast result is retained.",
-        AutomaticExactOutcome.Error => "The automatic Exact attempt could not complete; the completed Fast result is retained.",
-        AutomaticExactOutcome.NoTime => "Fast completed after the automatic Exact opportunity; no additional attempt was started. Select Exact only to allow more time.",
+        AutomaticExactOutcome.Completed => UiText.Get("Ui.FastCompletedAPhysicalExactCalculation"),
+        AutomaticExactOutcome.Deadline => UiText.Get("Ui.TheAutomaticExactOpportunityEndedTheCompletedFastResultIsRetainedSelectExactOnlyToAllowM"),
+        AutomaticExactOutcome.WorkLimit => UiText.Get("Ui.TheAutomaticExactAttemptReachedTheRemainingWorkAllowanceTheCompletedFastResultIsRetained"),
+        AutomaticExactOutcome.StorageLimit => UiText.Get("Ui.TheAutomaticExactAttemptReachedTheStorageLimitTheCompletedFastResultIsRetained"),
+        AutomaticExactOutcome.Unsupported => UiText.Get("Ui.TheAutomaticExactRouteWasUnsupportedTheCompletedFastResultIsRetained"),
+        AutomaticExactOutcome.Error => UiText.Get("Ui.TheAutomaticExactAttemptCouldNotCompleteTheCompletedFastResultIsRetained"),
+        AutomaticExactOutcome.NoTime => UiText.Get("Ui.FastCompletedAfterTheAutomaticExactOpportunityNoAdditionalAttemptWasStartedSelectExactOn"),
         _ => null
     };
 
-    public const string Legend = "± is an absolute change on the 0%–100% probability scale, not a relative percentage. Bounded values show a display midpoint with an outward-rounded radius covering the certified range; no value within that range is claimed more likely. This is not a statistical confidence interval.";
-    public const string AccuracyDetails = "Fast may simplify whether Deck-search targets survive when Exact counting is too expensive. Certified ± bounds describe model uncertainty, not a statistical confidence interval; Uncertified has no guaranteed bound. Exact (±0%) resolves this uncertainty within the modeled assumptions.";
+    public static string Legend => UiText.Get("Ui.IsAnAbsoluteChangeOnThe0100ProbabilityScaleNotARelativePercentageBoundedValuesShowADispl");
+    public static string AccuracyDetails => UiText.Get("Ui.FastMaySimplifyWhetherDeckSearchTargetsSurviveWhenExactCountingIsTooExpensiveCertifiedBo");
 
     public static ProbabilityDisplay Create(
         double primary,
@@ -48,12 +49,11 @@ public static class ProbabilityPresentation {
             ProbabilityRow.Combo => At(fractions.Combos, index),
             _ => At(fractions.Groups, index)
         } : null;
-        string? focusDetail = raw is not null && Read(raw, out _, out _) ? $"Modeled primary fraction: {Ratio(raw)}" : null;
+        string? focusDetail = raw is not null && Read(raw, out _, out _) ? UiText.Format("Ui.ModeledPrimaryFraction0", Ratio(raw)) : null;
         string value = primary.ToString("P2", culture);
-        string modeled = raw is null ? "" : $" Modeled primary fraction: {Ratio(raw)}.";
         if (contract is { Completion: CalculationCompletion.Success, Accuracy: CalculationAccuracy.Exact }
             && certificate?.Status != SearchAvailabilityStatus.Exact) {
-            return new(value, "±0%", "Exact within the accepted calculation scope." + modeled, FocusDetail: focusDetail);
+            return new(value, "±0%", WithPrimary(UiText.Get("Ui.ExactWithinTheAcceptedCalculationScope"), raw), FocusDetail: focusDetail);
         }
 
         SearchAvailabilityInterval? interval = certificate is null ? null : row switch {
@@ -66,28 +66,33 @@ public static class ProbabilityPresentation {
         if (hasProof && interval is not null && Read(interval.Lower, out BigInteger ln, out BigInteger ld)
             && Read(interval.Upper, out BigInteger un, out BigInteger ud) && ln * ud <= un * ld) {
             BigInteger width = un * ld - ln * ud;
-            string evidence = $"rational endpoints [{Ratio(interval.Lower)}, {Ratio(interval.Upper)}]; modeled optimistic primary: {Ratio(raw ?? interval.Upper)}";
-            string range = $"Certified range: [{Percent(ln, ld, false, culture)}, {Percent(un, ud, true, culture)}]; rational endpoints [{Ratio(interval.Lower)}, {Ratio(interval.Upper)}].";
+            string evidence = UiText.Format("Ui.RationalEndpoints01ModeledOptimisticPrimary2", Ratio(interval.Lower), Ratio(interval.Upper), Ratio(raw ?? interval.Upper));
+            string range = UiText.Format("Ui.CertifiedRange01RationalEndpoints23", Percent(ln, ld, false, culture), Percent(un, ud, true, culture), Ratio(interval.Lower), Ratio(interval.Upper));
             if (width.IsZero) {
-                return new(Printed(Round(ln * 10000, ld), culture), "±0%", range + modeled, Evidence: evidence, FocusDetail: focusDetail);
+                return new(Printed(Round(ln * 10000, ld), culture), "±0%", WithPrimary(range, raw), Evidence: evidence, FocusDetail: focusDetail);
             }
 
             // Round M to hundredths of a percent first. Then ceil BOTH exact
             // endpoint distances from that printed center, in the same units.
             BigInteger center = Round((ln * ud + un * ld) * 10000, 2 * ld * ud);
             BigInteger radius = BigInteger.Max(Ceiling(center * ld - ln * 10000, ld), Ceiling(un * 10000 - center * ud, ud));
-            string detail = range + " Display midpoint ± conservative absolute uncertainty; the retained optimistic primary may exceed the certified upper endpoint." + modeled;
-            return new(Printed(center, culture), "±" + Printed(radius, culture), detail + (ln.IsZero ? " Uninformative: the true probability could be zero." : ""), ln.IsZero, evidence, focusDetail);
+            string detail = WithPrimary(UiText.Format("Probability.BoundedDetail", range), raw);
+            if (ln.IsZero) { detail = UiText.Format("Probability.UninformativeDetail", detail); }
+            return new(Printed(center, culture), "±" + Printed(radius, culture), detail, ln.IsZero, evidence, focusDetail);
         }
 
-        string reason = certificate?.Status switch {
-            SearchAvailabilityStatus.Limited => "Certification limited: ",
-            SearchAvailabilityStatus.Error => "Certification error: ",
-            _ => "No complete valid interval: "
+        string reasonKey = certificate?.Status switch {
+            SearchAvailabilityStatus.Limited => "Probability.CertificationLimited",
+            SearchAvailabilityStatus.Error => "Probability.CertificationError",
+            _ => "Probability.NoInterval"
         };
-        return new(value, "⚠ Uncertified", reason + (certificate?.Detail ?? contract?.Reason ?? "Accuracy unavailable for this result.") + modeled,
-            Evidence: raw is null ? null : $"modeled primary fraction: {Ratio(raw)}", FocusDetail: focusDetail);
+        string reason = UiText.Format(reasonKey, certificate?.Detail ?? contract?.Reason ?? UiText.Get("Ui.AccuracyUnavailableForThisResult"));
+        return new(value, UiText.Get("Ui.Uncertified"), WithPrimary(reason, raw),
+            Evidence: raw is null ? null : UiText.Format("Ui.ModeledPrimaryFraction0.75f14642", Ratio(raw)), FocusDetail: focusDetail);
     }
+
+    private static string WithPrimary(string detail, ProbabilityFraction? raw) => raw is null
+        ? detail : UiText.Format("Probability.DetailWithPrimary", detail, Ratio(raw));
 
     public static int GroupIndex(IReadOnlyList<GroupProbabilityResult>? groups, string id) {
         for (int index = 0; index < (groups?.Count ?? 0); index++) {

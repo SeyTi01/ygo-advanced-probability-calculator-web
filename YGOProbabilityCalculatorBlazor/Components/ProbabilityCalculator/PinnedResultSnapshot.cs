@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using System.Collections.Immutable;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -13,14 +14,14 @@ public sealed record PinnedCalculationContext(
     FastExecutionStrategy Strategy = FastExecutionStrategy.Progressive
 ) {
     public string ModeDescription => (Model, Strategy) switch {
-        (CalculationModel.Fast, FastExecutionStrategy.FastOnly) => "Fast only",
-        (CalculationModel.Fast, _) => "Progressive",
-        (CalculationModel.Exact, _) => "Exact only",
-        (CalculationModel.OpeningHand, _) => "No effect simulation",
+        (CalculationModel.Fast, FastExecutionStrategy.FastOnly) => UiText.Get("Ui.FastOnly"),
+        (CalculationModel.Fast, _) => UiText.Get("Ui.Progressive"),
+        (CalculationModel.Exact, _) => UiText.Get("Ui.ExactOnly"),
+        (CalculationModel.OpeningHand, _) => UiText.Get("Ui.NoEffectSimulation"),
         _ => throw new ArgumentOutOfRangeException(nameof(Model))
     };
 
-    public string Description => $"Hand size {HandSize} · {Copies} cards";
+    public string Description => UiText.Format("Ui.HandSize01Cards", HandSize, Copies);
 
     internal static PinnedCalculationContext Capture(
         int handSize,
@@ -53,7 +54,7 @@ public sealed record PinnedResultSnapshot(
         ImmutableArray<PinnedComboRow> pinnedComboRows = result.ComboProbabilities
             .Select(combo => new PinnedComboRow(
                 combo.ComboIndex,
-                string.IsNullOrWhiteSpace(combo.ComboName) ? $"Unnamed combo {combo.ComboIndex + 1}" : combo.ComboName,
+                string.IsNullOrWhiteSpace(combo.ComboName) ? UiText.Format("Ui.UnnamedCombo0", combo.ComboIndex + 1) : combo.ComboName,
                 combo.Probability,
                 combo.GroupId))
             .ToImmutableArray();

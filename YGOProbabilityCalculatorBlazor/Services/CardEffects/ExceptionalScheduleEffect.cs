@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -12,8 +13,8 @@ public sealed class ExceptionalScheduleEffect : ICardEffectDefinition {
     public string Name => "Exceptional Schedule";
     public int Revision => 1;
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Search 1 Special Schedule or Urgent Schedule; once per turn.";
-    public string Limitations => "The optional Diagram Token summon is outside this Deck-search model.";
+    public string Summary => UiText.English("Effects.52782439.Summary");
+    public string Limitations => UiText.English("Effects.52782439.Limitations");
 
     public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(Targets));

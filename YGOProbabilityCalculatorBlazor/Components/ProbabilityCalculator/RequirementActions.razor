@@ -1,10 +1,10 @@
 @if (AllowedOperators.Contains("OR")) {
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="alternative" @onclick="OnAddAlternative">Add alternative (OR)</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="alternative" @onclick="OnAddAlternative">@(UiText.Get("Ui.AddAlternativeOR"))</button>
 }
 @if (AllowedOperators.Contains("AND")) {
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="property" @onclick="OnAddProperty">Add property (AND)</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="property" @onclick="OnAddProperty">@(UiText.Get("Ui.AddPropertyAND"))</button>
 }
-<button type="button" class="btn btn-sm btn-outline-danger" @onclick="OnRemove">Remove requirement</button>
+<button type="button" class="btn btn-sm btn-outline-danger" @onclick="OnRemove">@(UiText.Get("Ui.RemoveRequirement"))</button>
 
 @code {
     [Parameter] public IReadOnlyList<string> AllowedOperators { get; set; } = ["AND", "OR"];

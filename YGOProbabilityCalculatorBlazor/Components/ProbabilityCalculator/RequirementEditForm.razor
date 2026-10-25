@@ -1,17 +1,17 @@
 <ExpressionForm OnSubmit="OnSubmit" OnKeyDown="OnKeyDown" StopKeyPropagation="true">
     <div class="requirement-form-heading">
         <strong>@Title</strong>
-        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnCancel">Cancel</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnCancel">@(UiText.Get("Ui.Cancel"))</button>
     </div>
     <div class="requirement-edit-grid @(OperandCount > 1 ? "requirement-edit-multiple" : "") @(QuantityContent is null ? "requirement-edit-no-quantity" : "")">
         <div class="requirement-inputs">
             @for (int index = 0; index < OperandCount; index++) {
                 int position = index;
-                @if (index > 0) { <ExpressionSeparator Operator="@Operator" AllowedOperators="AllowedOperators" InputLabel="Row operator" OnOperatorChanged="ChangeOperator" /> }
+                @if (index > 0) { <ExpressionSeparator Operator="@Operator" AllowedOperators="AllowedOperators" InputLabel="@(UiText.Get("Requirement.RowOperator"))" OnOperatorChanged="ChangeOperator" /> }
                 <div class="requirement-operand" @key="OperandKey?.Invoke(index)">
                     @OperandContent(index)
                     @if (OnRemoveOperand.HasDelegate && OperandCount > 1) {
-                        <button type="button" class="btn btn-outline-secondary" aria-label="@($"Remove property {index + 1}")" @onclick="() => OnRemoveOperand.InvokeAsync(position)">×</button>
+                        <button type="button" class="btn btn-outline-secondary" aria-label="@(UiText.Format("Ui.RemoveProperty0", index + 1))" @onclick="() => OnRemoveOperand.InvokeAsync(position)">×</button>
                     }
                 </div>
             }
@@ -40,16 +40,16 @@
     [Parameter] public EventCallback OnAddProperty { get; set; }
     [Parameter] public EventCallback OnRemoveRequirement { get; set; }
     public string Title => Mode switch {
-        "AND" => "Another property · same card",
-        "OR" => "Add an alternative · OR",
-        "add" => "Add requirement",
-        _ => "Edit requirement"
+        "AND" => UiText.Get("Ui.AnotherPropertySameCard"),
+        "OR" => UiText.Get("Ui.AddAnAlternativeOR"),
+        "add" => UiText.Get("Ui.AddRequirement.2d4936b2"),
+        _ => UiText.Get("Ui.EditRequirement")
     };
-    public string SubmitLabel => UpdateExisting ? "Update requirement" : Mode switch {
-        "AND" => "Add property",
-        "OR" => "Add alternative",
-        "add" => "Add",
-        _ => "Save"
+    public string SubmitLabel => UpdateExisting ? UiText.Get("Ui.UpdateRequirement") : Mode switch {
+        "AND" => UiText.Get("Ui.AddProperty"),
+        "OR" => UiText.Get("Ui.AddAlternative"),
+        "add" => UiText.Get("Ui.Add"),
+        _ => UiText.Get("Ui.Save")
     };
     [Parameter] public string Operator { get; set; } = "AND";
     [Parameter] public IReadOnlyList<string> AllowedOperators { get; set; } = ["AND", "OR"];

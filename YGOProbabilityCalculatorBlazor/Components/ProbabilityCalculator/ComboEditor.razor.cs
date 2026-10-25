@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -184,7 +185,7 @@ public partial class ComboEditor {
         }
 
         if (!int.TryParse(_minCount, out int minimum) || minimum < 0 || !TryMaximum(minimum, out int maximum)) {
-            _error = "Enter valid minimum and maximum counts.";
+            _error = UiText.Get("Ui.EnterValidMinimumAndMaximumCounts");
             return false;
         }
 
@@ -200,7 +201,7 @@ public partial class ComboEditor {
             replacement = ComboAlternative.For(ComboCategory.SameCard(_draftProperties, minimum, maximum, MaximumMode));
         }
         else {
-            _error = "Choose a card, category or property.";
+            _error = UiText.Get("Ui.ChooseACardCategoryOrProperty.d85ff195");
             return false;
         }
 

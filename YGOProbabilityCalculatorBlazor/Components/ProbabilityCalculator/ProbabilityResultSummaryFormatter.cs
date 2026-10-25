@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using System.Globalization;
 using System.Text;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -18,18 +19,18 @@ public static class ProbabilityResultSummaryFormatter {
             .ToList();
 
         List<string> lines = [
-            "Probability results",
-            $"Hand size: {handSize}",
-            $"Any active combo: {Display(result.TotalProbability, ProbabilityRow.Total)}"
+            UiText.Get("Ui.ProbabilityResults"),
+            UiText.Format("Ui.HandSize0", handSize),
+            UiText.Format("Ui.AnyActiveCombo0", Display(result.TotalProbability, ProbabilityRow.Total))
         ];
 
         if (result.Contract is { } contract) {
             lines.InsertRange(1, [
                 $"Mode: {modeDescription ?? contract.RequestedMode.Description()}",
-                $"Accuracy: {contract.Accuracy}; completion: {contract.Completion}; contract v{contract.Version}",
+                UiText.Format("Ui.Accuracy0Completion1ContractV2", contract.Accuracy, contract.Completion, contract.Version),
                 $"Reference: {contract.Reference}",
                 $"Reason: {contract.Reason}",
-                "Effect scope: " + contract.Scope
+                UiText.Get("Ui.EffectScope") + contract.Scope
             ]);
             if (ProbabilityPresentation.AutomaticExactDetail(contract.AutomaticExact) is { } automaticDetail) {
                 lines.Add(automaticDetail);
@@ -38,14 +39,14 @@ public static class ProbabilityResultSummaryFormatter {
                 lines.Add(ProbabilityPresentation.Legend);
             }
             if (contract.Accuracy != CalculationAccuracy.Bounded && contract.Fractions is { } fractions) {
-                string fractionLabel = contract.Accuracy == CalculationAccuracy.Exact ? "Exact modeled fraction" : "Modeled primary fraction";
-                lines.Add($"{fractionLabel}, any active combo: {Ratio(fractions.Total)}");
+                string fractionLabel = contract.Accuracy == CalculationAccuracy.Exact ? UiText.Get("Ui.ExactModeledFraction") : UiText.Get("Ui.ModeledPrimaryFraction");
+                lines.Add(UiText.Format("Ui.0AnyActiveCombo1", fractionLabel, Ratio(fractions.Total)));
                 for (int index = 0; index < fractions.Combos.Length; index++) {
-                    lines.Add($"{fractionLabel}, combo {index + 1}: {Ratio(fractions.Combos[index])}");
+                    lines.Add(UiText.Format("Ui.0Combo12", fractionLabel, index + 1, Ratio(fractions.Combos[index])));
                 }
                 for (int index = 0; index < fractions.Groups.Length; index++) {
                     if (index < (result.GroupProbabilities?.Count ?? 0) && result.GroupProbabilities![index].ActiveComboCount > 0) {
-                        lines.Add($"{fractionLabel}, group {index + 1}: {Ratio(fractions.Groups[index])}");
+                        lines.Add(UiText.Format("Ui.0Group12", fractionLabel, index + 1, Ratio(fractions.Groups[index])));
                     }
                 }
             }
@@ -53,15 +54,15 @@ public static class ProbabilityResultSummaryFormatter {
 
         if (groups.Count == 0 && ungrouped.Count > 0) {
             lines.Add(string.Empty);
-            lines.Add("Individual combos:");
+            lines.Add(UiText.Get("Ui.IndividualCombos.dc8d9abb"));
             lines.AddRange(result.ComboProbabilities.Select(combo => FormatCombo(combo)));
         }
         else if (groups.Count > 0) {
             lines.Add(string.Empty);
-            lines.Add("Group probabilities:");
+            lines.Add(UiText.Get("Ui.GroupProbabilities"));
 
             foreach (GroupProbabilityResult group in groups) {
-                lines.Add($"- **{NormalizeLabel(group.GroupName)}** — {Display(group.Probability, ProbabilityRow.Group, ProbabilityPresentation.GroupIndex(result.GroupProbabilities, group.GroupId))} ({group.ActiveComboCount} active)");
+                lines.Add(UiText.Format("Ui.012Active", NormalizeLabel(group.GroupName), Display(group.Probability, ProbabilityRow.Group, ProbabilityPresentation.GroupIndex(result.GroupProbabilities, group.GroupId)), group.ActiveComboCount));
                 IEnumerable<ComboProbabilityResult> groupCombos = result.ComboProbabilities.Where(combo => StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId));
 
                 foreach (ComboProbabilityResult combo in groupCombos) {
@@ -71,7 +72,7 @@ public static class ProbabilityResultSummaryFormatter {
 
             if (ungrouped.Count > 0) {
                 lines.Add(string.Empty);
-                lines.Add("Ungrouped combos:");
+                lines.Add(UiText.Get("Ui.UngroupedCombos.ec9c0ff4"));
                 lines.AddRange(ungrouped.Select(combo => FormatCombo(combo)));
             }
         }
@@ -90,7 +91,7 @@ public static class ProbabilityResultSummaryFormatter {
         }
 
         string FormatCombo(ComboProbabilityResult combo, string indent = "") {
-            string name = string.IsNullOrWhiteSpace(combo.ComboName) ? $"Unnamed combo {combo.ComboIndex + 1}" : combo.ComboName;
+            string name = string.IsNullOrWhiteSpace(combo.ComboName) ? UiText.Format("Ui.UnnamedCombo0", combo.ComboIndex + 1) : combo.ComboName;
 
             return $"{indent}- **{NormalizeLabel(name)}** — {Display(combo.Probability, ProbabilityRow.Combo, combo.ComboIndex)}";
         }

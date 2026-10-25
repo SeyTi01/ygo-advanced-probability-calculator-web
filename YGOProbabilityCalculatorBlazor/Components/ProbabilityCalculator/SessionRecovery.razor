@@ -6,36 +6,36 @@
 @inject ISessionService Sessions
 
 @if (_hasRecovery && !_dismissed) {
-    <section class="alert alert-secondary mt-3" aria-label="Session recovery">
-        <p class="mb-2" role="status">@(_recoveryError ?? "A previous working session is saved locally.")
+    <section class="alert alert-secondary mt-3" aria-label="@(UiText.Get("Ui.SessionRecovery"))">
+        <p class="mb-2" role="status">@(_recoveryError ?? UiText.Get("Ui.APreviousWorkingSessionIsSavedLocally"))
             @if (_savedAt is { } time) {
-                <span class="ms-1">Last saved @time.ToLocalTime().ToString("g").</span>
+                <span class="ms-1">@(UiText.Format("Session.LastSaved", time.ToLocalTime().ToString("g")))</span>
             }
         </p>
         @if (_confirmReplacement) {
-            <p class="mb-2">Restoring will replace your current edits.</p>
+            <p class="mb-2">@(UiText.Get("Ui.RestoringWillReplaceYourCurrentEdits"))</p>
         }
         <div class="d-flex flex-wrap gap-2">
             @if (_recoveryPayload is not null && _recoveryError is null) {
-                <button type="button" class="btn btn-primary" disabled="@_restoring" @onclick="RestoreAsync">@(_confirmReplacement ? "Replace current work and restore" : "Restore previous session")</button>
+                <button type="button" class="btn btn-primary" disabled="@_restoring" @onclick="RestoreAsync">@(_confirmReplacement ? UiText.Get("Ui.ReplaceCurrentWorkAndRestore") : UiText.Get("Ui.RestorePreviousSession"))</button>
             }
-            <button type="button" class="btn btn-secondary" disabled="@_restoring" @onclick="DiscardAsync">Discard saved draft</button>
-            <button type="button" class="btn btn-link text-body" disabled="@_restoring" @onclick="Dismiss">Dismiss</button>
+            <button type="button" class="btn btn-secondary" disabled="@_restoring" @onclick="DiscardAsync">@(UiText.Get("Ui.DiscardSavedDraft"))</button>
+            <button type="button" class="btn btn-link text-body" disabled="@_restoring" @onclick="Dismiss">@(UiText.Get("Ui.Dismiss"))</button>
         </div>
-        <p class="form-text mb-0">Dismiss keeps the draft and pauses autosave. Discard deletes it; your next edit starts autosaving again.</p>
+        <p class="form-text mb-0">@(UiText.Get("Ui.DismisskeepsthedraftandpausesautosaveDiscarddeletesityournexteditstartsautosavingagain"))</p>
     </section>
 }
 else if (_hasRecovery) {
     <div class="mt-2 mb-3 d-flex flex-wrap gap-2 align-items-center session-recovery-dismissed">
-        <span class="form-text">Recovery draft kept; autosave paused.</span>
-        <button type="button" class="btn btn-sm btn-secondary" @onclick="Show">Show recovery</button>
-        <button type="button" class="btn btn-sm btn-secondary" @onclick="UseCurrentAsync">Use this workspace for recovery</button>
+        <span class="form-text">@(UiText.Get("Ui.Recoverydraftkeptautosavepaused"))</span>
+        <button type="button" class="btn btn-sm btn-secondary" @onclick="Show">@(UiText.Get("Ui.ShowRecovery"))</button>
+        <button type="button" class="btn btn-sm btn-secondary" @onclick="UseCurrentAsync">@(UiText.Get("Ui.UseThisWorkspaceForRecovery"))</button>
     </div>
 }
 @if (_status is not null) {
     <div class="alert alert-warning mt-2" role="status">
         <p class="mb-2">@_status</p>
-        <button type="button" class="btn btn-sm btn-secondary" @onclick="UseCurrentAsync">Use this workspace for recovery</button>
+        <button type="button" class="btn btn-sm btn-secondary" @onclick="UseCurrentAsync">@(UiText.Get("Ui.UseThisWorkspaceForRecovery"))</button>
     </div>
 }
 
@@ -118,7 +118,7 @@ else if (_hasRecovery) {
             }
         }
         catch {
-            _status = "Local recovery could not capture this session. Save a session file to keep your work.";
+            _status = UiText.Get("Ui.LocalRecoveryCouldNotCaptureThisSessionSaveASessionFileToKeepYourWork");
         }
     }
 
@@ -157,7 +157,7 @@ else if (_hasRecovery) {
                             await Sessions.LoadSessionAsync(_recoveryPayload);
                         }
                         catch {
-                            _recoveryError = "The local draft is invalid or from an unsupported session version. It is kept until you discard or replace it.";
+                            _recoveryError = UiText.Get("Ui.TheLocalDraftIsInvalidOrFromAnUnsupportedSessionVersionItIsKeptUntilYouDiscardOrReplaceI");
                         }
                     }
                 }
@@ -198,7 +198,7 @@ else if (_hasRecovery) {
             _appliedSuspension = Suspended;
             await OnInspectionComplete.InvokeAsync();
             _pending = false;
-            const string message = "Local recovery is unavailable. Save a session file to keep your work.";
+            string message = UiText.Get("Ui.LocalRecoveryIsUnavailableSaveASessionFileToKeepYourWork");
 
             if (_status != message) {
                 _status = message;
@@ -241,7 +241,7 @@ else if (_hasRecovery) {
             }
 
             if (!accepted) {
-                _status = "Current work changed while restoring. Review the draft and try again.";
+                _status = UiText.Get("Ui.CurrentWorkChangedWhileRestoringReviewTheDraftAndTryAgain");
                 return;
             }
 
@@ -251,7 +251,7 @@ else if (_hasRecovery) {
         }
         catch {
             if (!_disposed) {
-                _recoveryError = "The local draft could not be restored. Your current work and saved draft are kept.";
+                _recoveryError = UiText.Get("Ui.TheLocalDraftCouldNotBeRestoredYourCurrentWorkAndSavedDraftAreKept");
             }
         }
         finally {

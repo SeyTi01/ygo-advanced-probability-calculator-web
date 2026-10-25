@@ -12,11 +12,11 @@
                                  }
                              })"
                    class="form-control"
-                   aria-label="Category name"
-                   placeholder="Category name"/>
+                   aria-label="@(UiText.Get("Ui.CategoryName"))"
+                   placeholder="@(UiText.Get("Ui.CategoryName"))"/>
         </div>
         <div class="editor-add-action">
-            <button class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(_newCategoryName)" @onclick="AddCategoryBase">Add</button>
+            <button class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(_newCategoryName)" @onclick="AddCategoryBase">@(UiText.Get("Ui.Add"))</button>
         </div>
     </div>
 
@@ -37,13 +37,13 @@
                 @if (ReferenceEquals(_editingCategory, category)) {
                     <input @ref="_renameInputReference"
                            class="form-control form-control-sm category-rename-input"
-                           aria-label="@($"New name for category {category.Name}")"
+                           aria-label="@(UiText.Format("Ui.NewNameForCategory0", DisplayLabels.Category(category)))"
                            @bind="_editingCategoryName"
                            @bind:event="oninput"
                            @onkeydown="HandleRenameKeyDown"/>
                     <button type="button" class="category-icon-button"
-                            aria-label="Save category name"
-                            title="Save category name"
+                            aria-label="@(UiText.Get("Ui.SaveCategoryName"))"
+                            title="@(UiText.Get("Ui.SaveCategoryName"))"
                             @onclick="SaveCategoryName">
                         <svg class="category-action-icon" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor" stroke-width="2.5"
@@ -51,10 +51,10 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </button>
-                    <ReorderControls Horizontal="true" Index="index" Count="CategoryBases.Count" ItemLabel="@($"category {category.Name}")" OnMove="OnMoveCategory" />
+                    <ReorderControls Horizontal="true" Index="index" Count="CategoryBases.Count" ItemLabel="@(UiText.Format("Ui.Category0", DisplayLabels.Category(category)))" OnMove="OnMoveCategory" />
                     <button type="button" class="category-icon-button"
-                            aria-label="Cancel category edit"
-                            title="Cancel category edit"
+                            aria-label="@(UiText.Get("Ui.CancelCategoryEdit"))"
+                            title="@(UiText.Get("Ui.CancelCategoryEdit"))"
                             @onclick="CancelCategoryRename">
                         <svg class="category-action-icon" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor" stroke-width="2.5"
@@ -62,12 +62,12 @@
                             <path d="m6 6 12 12M6 18 18 6"></path>
                         </svg>
                     </button>
-                    <button type="button" class="category-name-trigger category-rule-trigger" aria-label="@(category.Rule is null ? "Define by properties" : "Edit rule")" @onclick="() => OpenRule(category)">
-                        @(category.Rule is null ? "Define by properties" : "Edit rule")
+                    <button type="button" class="category-name-trigger category-rule-trigger" aria-label="@(category.Rule is null ? UiText.Get("Ui.DefineByProperties") : UiText.Get("Ui.EditRule"))" @onclick="() => OpenRule(category)">
+                        @(category.Rule is null ? UiText.Get("Ui.DefineByProperties") : UiText.Get("Ui.EditRule"))
                     </button>
                     <button type="button" class="category-icon-button category-color-picker-trigger"
-                            aria-label="@($"Choose color for category {category.Name}")"
-                            title="@($"Choose color for category {category.Name}")"
+                            aria-label="@(UiText.Format("Ui.ChooseColorForCategory0", DisplayLabels.Category(category)))"
+                            title="@(UiText.Format("Ui.ChooseColorForCategory0", DisplayLabels.Category(category)))"
                             aria-expanded="@(_colorPickerExpanded ? "true" : "false")"
                             aria-controls="@($"categoryColorPalette{index}")"
                             @onclick="ToggleColorPicker">
@@ -78,13 +78,13 @@
                     <button @ref="_categoryNameButtonReferences[category.Name]"
                             type="button"
                             class="category-name-trigger"
-                            aria-label="@($"Edit category {category.Name}")"
-                            title="@($"Edit category {category.Name}")"
-                            @onclick="() => BeginCategoryRename(category)">@category.Name</button>
+                            aria-label="@(UiText.Format("Ui.EditCategory0", DisplayLabels.Category(category)))"
+                            title="@(UiText.Format("Ui.EditCategory0", DisplayLabels.Category(category)))"
+                            @onclick="() => BeginCategoryRename(category)">@DisplayLabels.Category(category)</button>
                 }
                 <ChipRemoveButton Class="category-delete-button"
-                        aria-label="@($"Remove category {category.Name}")"
-                        title="@($"Delete category {category.Name}")"
+                        aria-label="@(UiText.Format("Ui.RemoveCategory0", DisplayLabels.Category(category)))"
+                        title="@(UiText.Format("Ui.DeleteCategory0", DisplayLabels.Category(category)))"
                         OnClick="() => RemoveCategoryBase(category)" />
             </span>
             @if ((ReferenceEquals(_editingCategory, category) || ReferenceEquals(_ruleCategory, category)) && category.Rule is not null) {
@@ -92,12 +92,12 @@
             }
             @if (ReferenceEquals(_editingCategory, category) && _colorPickerExpanded) {
                 <div id="categoryColorPalette@(index)" class="category-color-palette mt-2" role="group"
-                     aria-label="@($"Choose a color for category {category.Name}")">
+                     aria-label="@(UiText.Format("Ui.ChooseAColorForCategory0", DisplayLabels.Category(category)))">
                     @foreach (CategoryColorOption color in CategoryColorPalette.Options) {
                         bool isSelected = SelectedColorIndex(category) == color.Index;
                         <button type="button" class="category-color-swatch @color.CssClass"
-                                aria-label="@($"Set {category.Name} color to {color.Name}")"
-                                title="@($"Set {category.Name} color to {color.Name}")"
+                                aria-label="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), color.Name))"
+                                title="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), color.Name))"
                                 aria-pressed="@(isSelected ? "true" : "false")"
                                 @onclick="() => ChangeCategoryColor(category, color.Index)">
                             @if (isSelected) {
@@ -112,8 +112,8 @@
         }
     </div>
     @if (_pendingRemoval is { } pending) {
-        <DeletionConfirmation @key="pending" Label="Confirm category deletion"
-            Message="@($"Delete {pending.Name} and remove every membership, combo requirement, and effect/search/removal reference, including inactive entries? Unrelated terms and combos remain. Emptied combos become inactive; emptied effect filters match no cards until edited. Property rules use metadata only and remain unchanged.")"
+        <DeletionConfirmation @key="pending" Label="@(UiText.Get("Ui.ConfirmCategoryDeletion"))"
+            Message="@(UiText.Format("Ui.Delete0AndRemoveEveryMembershipComboRequirementAndEffectSearchRemovalReferenceIncludingI", pending.Name))"
             OnConfirm="ConfirmRemoval" OnCancel="CancelRemoval" />
     }
     @if (_ruleCategory is not null) {
@@ -208,7 +208,7 @@
 
     private async Task AddCategoryBase() {
         if (string.IsNullOrWhiteSpace(_newCategoryName)) {
-            _categoryError = "Category name cannot be empty.";
+            _categoryError = UiText.Get("Ui.CategoryNameCannotBeEmpty");
 
             return;
         }
@@ -219,7 +219,7 @@
                 && category.Name.Equals(_newCategoryName, StringComparison.OrdinalIgnoreCase));
 
             if (hasDuplicateName) {
-                _categoryError = "A category with this name already exists.";
+                _categoryError = UiText.Get("Ui.ACategoryWithThisNameAlreadyExists");
 
                 return;
             }
@@ -310,7 +310,7 @@
         }
 
         if (string.IsNullOrWhiteSpace(_editingCategoryName)) {
-            _categoryError = "Category name cannot be empty.";
+            _categoryError = UiText.Get("Ui.CategoryNameCannotBeEmpty");
 
             return;
         }
@@ -321,7 +321,7 @@
             && category.Name.Equals(_editingCategoryName, StringComparison.OrdinalIgnoreCase));
 
         if (hasDuplicateName) {
-            _categoryError = "A category with this name already exists.";
+            _categoryError = UiText.Get("Ui.ACategoryWithThisNameAlreadyExists");
 
             return;
         }

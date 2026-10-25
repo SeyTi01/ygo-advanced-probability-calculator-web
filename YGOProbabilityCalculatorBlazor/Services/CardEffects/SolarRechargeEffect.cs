@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -16,6 +17,6 @@ public sealed class SolarRechargeEffect : ICardEffectDefinition {
         HiddenPostDrawMill = 2
     };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Discard 1 Lightsworn monster; draw 2, then send the top 2 deck cards to the GY. Requires 4 cards left.";
-    public string Limitations => "Milling depletes the Deck. Search-target survival follows result accuracy: Fast may be exact or uncertain; completed physical Exact accounts for it. GY-triggered effects are not simulated.";
+    public string Summary => UiText.English("Effects.691925.Summary");
+    public string Limitations => UiText.English("Effects.691925.Limitations");
 }

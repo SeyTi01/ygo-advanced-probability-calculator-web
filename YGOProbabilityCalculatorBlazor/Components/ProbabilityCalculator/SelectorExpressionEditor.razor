@@ -3,7 +3,7 @@
 <div class="selector-expression" data-selector-path="@Path">
     @if (IsGroup && Rows.Length > 1) {
         @if (IsEditing) { @EditForm() }
-        <ExpressionGroup Label="@(Selector.Kind == CardSelectorKind.AllOf ? "All eligibility rows match the same card" : "Any eligibility row may match")">
+        <ExpressionGroup Label="@(Selector.Kind == CardSelectorKind.AllOf ? UiText.Get("Ui.AllEligibilityRowsMatchTheSameCard") : UiText.Get("Ui.AnyEligibilityRowMayMatch"))">
             @for (int index = 0; index < Rows.Length; index++) {
                 int position = index;
                 SelectorRow currentRow = Rows[index];
@@ -20,14 +20,14 @@
         </ExpressionGroup>
     }
     else {
-        <ExpressionRow Label="@($"Edit {Description(Selector)}")" Expanded="IsEditing" OnEdit="ToggleEdit" InteractiveSummary="IsGroup" @ref="_row">
+        <ExpressionRow Label="@(UiText.Format("Ui.Edit0", Description(Selector)))" Expanded="IsEditing" OnEdit="ToggleEdit" InteractiveSummary="IsGroup" @ref="_row">
             <ChildContent>@Summary(Selector, true)</ChildContent>
             <EditorContent>@if (IsEditing) { @EditForm() }</EditorContent>
         </ExpressionRow>
     }
     @if (_nestedIndex is { } nestedIndex && nestedIndex < Terms.Length) {
-        <ExpressionGroup Label="Nested conditions" Nested="true">
-            <button type="button" class="btn btn-link btn-sm p-0" @onclick="Back">Back to row</button>
+        <ExpressionGroup Label="@(UiText.Get("Ui.NestedConditions"))" Nested="true">
+            <button type="button" class="btn btn-link btn-sm p-0" @onclick="Back">@(UiText.Get("Ui.BackToRow"))</button>
             <SelectorExpressionEditor Selector="Terms[nestedIndex]" IsRoot="false" @ref="_nestedEditor" Path="@($"{Path}.nested")"
                 Available="Available" CategoryColorIndices="CategoryColorIndices" RelevantMetadataIdentities="RelevantMetadataIdentities" CategoryRename="CategoryRename"
                 Session="EditorSession" ReplaceSelector="value => ReplaceTerm(nestedIndex, value)" OnRemove="() => RemoveTerm(nestedIndex)"
@@ -47,7 +47,7 @@
         <OperandContent Context="position">
             @{ OperandDraft operand = _operands[position]; }
             @if (operand.Group is { } group) {
-                <button type="button" class="btn btn-outline-secondary w-100" @onclick="() => EditNested(position)">@Summary(group) <span class="small">Edit</span></button>
+                <button type="button" class="btn btn-outline-secondary w-100" @onclick="() => EditNested(position)">@Summary(group) <span class="small">@(UiText.Get("Ui.Edit"))</span></button>
             }
             else {
                 <RequirementPropertyPicker @key="operand" @ref="_entryInputs[position]" Id="@OperandId(position)" Value="@operand.Identity"
@@ -132,21 +132,21 @@
 
     private string OperandId(int index) => $"{_fieldId}-{index}";
     private string IdentityLabel(string identity) {
-        if (Available.FirstOrDefault(category => category.Identity == identity) is { } category) { return category.Name; }
+        if (Available.FirstOrDefault(category => category.Identity == identity) is { } category) { return DisplayLabels.Category(category); }
         bool metadata = identity.StartsWith("metadata:", StringComparison.Ordinal);
         int separator = metadata ? identity.LastIndexOf(':') : identity.IndexOf(':');
         string value = Uri.UnescapeDataString(identity[(separator + 1)..]);
         return metadata ? System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(value) : value;
     }
     private string Description(CardSelector selector) => selector.Kind switch {
-        CardSelectorKind.AllOf => string.Join(" AND ", selector.AuthoredTerms.Select(Description)),
-        CardSelectorKind.AnyOf => string.Join(" OR ", selector.AuthoredTerms.Select(Description)),
-        CardSelectorKind.LevelAtLeast => $"Level >= {selector.MinimumLevel}",
-        CardSelectorKind.NumericRange => selector.NumericRange!.Description,
+        CardSelectorKind.AllOf => string.Join(UiText.Get("Expression.AndSeparator"), selector.AuthoredTerms.Select(Description)),
+        CardSelectorKind.AnyOf => string.Join(UiText.Get("Expression.OrSeparator"), selector.AuthoredTerms.Select(Description)),
+        CardSelectorKind.LevelAtLeast => UiText.Format("Ui.Level0", selector.MinimumLevel),
+        CardSelectorKind.NumericRange => DisplayLabels.NumericRange(selector.NumericRange!),
         _ => IdentityLabel(selector.CategoryIdentities.FirstOrDefault() ?? "")
     };
     private string FullLabel(CardSelector selector) => selector.Kind == CardSelectorKind.Category
-        ? Available.FirstOrDefault(category => category.Identity == selector.CategoryIdentities[0])?.Name ?? Description(selector) : Description(selector);
+        ? DisplayLabels.CategoryOrNull(Available.FirstOrDefault(category => category.Identity == selector.CategoryIdentities[0])) ?? Description(selector) : Description(selector);
     private string ChipClass(CardSelector selector) => selector.Kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.NumericRange
         ? "card-property-tag " + CardPropertyColorPalette.GetCssClass((selector.NumericRange?.Key ?? "level") + ":0")
         : Available.FirstOrDefault(category => category.Identity == selector.CategoryIdentities.FirstOrDefault()) is { } category
@@ -308,7 +308,7 @@
         if (EditorSession.ActiveSelector is { } active
             && (ContainsSelector(Selector, active) || Rows.Any(row => ContainsSelector(row.Value, active)))) {
             if (EditorSession.HasChanges?.Invoke() == true) {
-                _operatorError = "Save or cancel the pending row before changing its grouping.";
+                _operatorError = UiText.Get("Ui.SaveOrCancelThePendingRowBeforeChangingItsGrouping");
                 EditorSession.ClearOperatorError = () => InvokeAsync(() => { _operatorError = null; StateHasChanged(); });
                 return;
             }
@@ -389,7 +389,7 @@
         string? error = null;
         foreach (OperandDraft operand in _operands.Where(operand => operand.Group is null)) {
             if (operand.Error is not null) { error = operand.Error; break; }
-            if (operand.Identity.Length == 0) { error = "Choose a property or category."; break; }
+            if (operand.Identity.Length == 0) { error = UiText.Get("Ui.ChooseAPropertyOrCategory"); break; }
         }
         return SetError(error);
     }
@@ -430,7 +430,7 @@
     }
     private async Task<bool> Apply(Func<CardSelector> create) {
         try { await Publish(create()); await SetError(null); return true; }
-        catch (ArgumentException) { _retainedRows = null; await SetError("Filter is too large or too deeply grouped."); return false; }
+        catch (ArgumentException) { _retainedRows = null; await SetError(UiText.Get("Ui.FilterIsTooLargeOrTooDeeplyGrouped")); return false; }
     }
     private async Task ReplaceRow(int position, CardSelector value) {
         SelectorRow row = Rows[position];

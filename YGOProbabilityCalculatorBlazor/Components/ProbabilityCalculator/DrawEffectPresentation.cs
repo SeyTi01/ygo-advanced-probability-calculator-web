@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
@@ -5,11 +6,11 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 public readonly record struct DrawEffectPresentation(string? HeaderText, string? InactiveMessage) {
     public static DrawEffectPresentation ForCard(Card card, bool drawEffectsEnabled) {
         if (card.EffectProfile.ExecutionModel != EffectExecutionModel.DrawSequenceV1) {
-            return new("Unsupported effect", null);
+            return new(UiText.Get("Ui.UnsupportedEffect"), null);
         }
 
         if (card.Search is not null) {
-            return new(drawEffectsEnabled ? "Search 1" : "Search configured · Off", null);
+            return new(drawEffectsEnabled ? UiText.Get("Ui.Search1") : UiText.Get("Ui.SearchConfiguredOff"), null);
         }
         if (card.DrawCount is not { } drawCount) {
             return default;
@@ -17,22 +18,22 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
 
         if (!drawEffectsEnabled) {
             return new(
-                "Draw configured · Off",
-                "Draw simulation is off — this configured draw effect is currently ignored.");
+                UiText.Get("Ui.DrawConfiguredOff"),
+                UiText.Get("Ui.DrawSimulationIsOffThisConfiguredDrawEffectIsCurrentlyIgnored"));
         }
 
-        string headerText = $"Draw {drawCount}";
+        string headerText = UiText.Format("Ui.Draw0", drawCount);
         if (card.PreDrawDeckRemovalCount > 0) {
-            headerText = $"Banish {card.PreDrawDeckRemovalCount} · {headerText}";
+            headerText = UiText.Format("Ui.Banish01", card.PreDrawDeckRemovalCount, headerText);
         }
         if (card.PreDrawRemovalCount > 0) {
-            headerText = $"Cost {card.PreDrawRemovalCount} · {headerText}";
+            headerText = UiText.Format("Ui.Cost01", card.PreDrawRemovalCount, headerText);
         }
         if (card.PostDrawDeckMillCount > 0) {
-            headerText += $" · Mill {card.PostDrawDeckMillCount}";
+            headerText += UiText.Format("Ui.Mill0", card.PostDrawDeckMillCount);
         }
         if (card.PostDrawDiscardCount > 0) {
-            headerText += $" · Remove {card.PostDrawDiscardCount}";
+            headerText += UiText.Format("Ui.Remove0", card.PostDrawDiscardCount);
         }
 
         return new(headerText, null);
@@ -40,40 +41,40 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
 
     public static string DescribePlan(DrawEffectPlan plan, IReadOnlyList<CategoryBase> categories) {
         if (plan.DrawCount is null && plan.Search is null) {
-            return "No draw effect";
+            return UiText.Get("Ui.NoDrawEffect");
         }
 
         List<string> steps = [];
         if (plan.HandCost > 0) {
-            steps.Add($"Remove {plan.HandCost} from hand ({DescribeSelector(plan.HandCostSelector, categories)})");
+            steps.Add(UiText.Format("Ui.Remove0FromHand1", plan.HandCost, DescribeSelector(plan.HandCostSelector, categories)));
         }
         if (plan.HiddenDeckCost > 0) {
-            steps.Add($"Banish {plan.HiddenDeckCost} unseen deck cards");
+            steps.Add(UiText.Format("Ui.Banish0UnseenDeckCards", plan.HiddenDeckCost));
         }
-        steps.Add(plan.Search is null ? $"Draw {plan.DrawCount}" : $"Search 1 ({DescribeSelector(plan.Search.Selector, categories)})");
+        steps.Add(plan.Search is null ? UiText.Format("Ui.Draw0", plan.DrawCount) : UiText.Format("Ui.Search10", DescribeSelector(plan.Search.Selector, categories)));
         if (plan.HiddenPostDrawMill > 0) {
-            steps.Add($"send {plan.HiddenPostDrawMill} unseen top deck cards to the GY");
+            steps.Add(UiText.Format("Ui.Send0UnseenTopDeckCardsToTheGY", plan.HiddenPostDrawMill));
         }
         if (plan.RemovalCount > 0) {
-            steps.Add($"remove {plan.RemovalCount} from hand ({DescribeSelector(plan.RemovalSelector, categories)})");
+            steps.Add(UiText.Format("Ui.Remove0FromHand1.af3ec21f", plan.RemovalCount, DescribeSelector(plan.RemovalSelector, categories)));
         }
         if (plan.FirstActivationOnly) {
-            steps.Add("first draw activation only");
+            steps.Add(UiText.Get("Ui.FirstDrawActivationOnly"));
         }
         if (plan.BlocksLaterDraws) {
-            steps.Add("no further draws");
+            steps.Add(UiText.Get("Ui.NoFurtherDraws"));
         }
         if (plan.MinimumHandSize > 0) {
-            steps.Add($"at least {plan.MinimumHandSize} cards in hand before activation");
+            steps.Add(UiText.Format("Ui.AtLeast0CardsInHandBeforeActivation", plan.MinimumHandSize));
         }
         if (plan.Search?.Modes is { } modes) {
-            steps.Add(string.Join("; ", modes.Select(mode => $"{DescribeSelector(mode.Selector, categories)}: {mode.ActivationLimit?.ToString() ?? "unlimited"} per entry")));
+            steps.Add(string.Join("; ", modes.Select(mode => UiText.Format("Ui.01PerEntry", DescribeSelector(mode.Selector, categories), mode.ActivationLimit?.ToString() ?? UiText.Get("Ui.Unlimited")))));
         }
         if (plan.ActivationLimit is int limit) {
-            steps.Add($"up to {limit} activations per entry");
+            steps.Add(UiText.Format("Ui.UpTo0ActivationsPerEntry", limit));
         }
         else if (plan.OncePerTurn) {
-            steps.Add("once per turn");
+            steps.Add(UiText.Get("Ui.OncePerTurn.e31d0a49"));
         }
 
         return string.Join("; ", steps);
@@ -81,25 +82,25 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
 
     public static string DescribeSelector(CardSelector selector, IReadOnlyList<CategoryBase> categories) {
         if (selector.Kind == CardSelectorKind.Not && selector.Children[0].Kind == CardSelectorKind.Any) {
-            return "no eligible cards";
+            return UiText.Get("Ui.NoEligibleCards");
         }
         if (selector.Kind == CardSelectorKind.Any) {
-            return "any card";
+            return UiText.Get("Ui.AnyCard");
         }
 
         if (selector.Kind is CardSelectorKind.Objective or CardSelectorKind.Not) {
-            return (selector.Kind == CardSelectorKind.Objective ? "verified " : "except ") + DescribeSelector(selector.Children[0], categories);
+            return UiText.Format(selector.Kind == CardSelectorKind.Objective ? "Selector.Verified" : "Selector.Except", DescribeSelector(selector.Children[0], categories));
         }
-        if (selector.NumericRange is { } range) { return range.Description; }
+        if (selector.NumericRange is { } range) { return DisplayLabels.NumericRange(range); }
         if (selector.Kind == CardSelectorKind.LevelAtLeast) {
-            return $"Level >= {selector.MinimumLevel}";
+            return UiText.Format("Ui.Level0", selector.MinimumLevel);
         }
         if (selector.Kind == CardSelectorKind.Category) {
             string identity = selector.CategoryIdentities[0];
-            return categories.FirstOrDefault(candidate => candidate.Identity == identity)?.Name
+            return DisplayLabels.CategoryOrNull(categories.FirstOrDefault(candidate => candidate.Identity == identity))
                 ?? Uri.UnescapeDataString(identity[(identity.IndexOf(':') + 1)..]);
         }
-        string operation = selector.Kind == CardSelectorKind.AllOf ? " AND " : " OR ";
+        string operation = selector.Kind == CardSelectorKind.AllOf ? UiText.Get("Expression.AndSeparator") : UiText.Get("Expression.OrSeparator");
         return "(" + string.Join(operation, selector.AuthoredTerms.Select(term => DescribeSelector(term, categories))) + ")";
     }
 }

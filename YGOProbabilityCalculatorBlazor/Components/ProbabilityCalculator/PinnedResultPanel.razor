@@ -1,13 +1,13 @@
 <section class="alert alert-secondary mt-3 pinned-result" aria-labelledby="pinnedResultHeading">
     <div class="pinned-heading">
-        <h5 id="pinnedResultHeading">Pinned result</h5>
-        <button type="button" class="btn btn-sm btn-outline-secondary" title="Unpin result" aria-label="Unpin result" @onclick="OnClear"><PinIcon Slashed="true" /></button>
+        <h5 id="pinnedResultHeading">@(UiText.Get("Ui.PinnedResult"))</h5>
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="@(UiText.Get("Ui.UnpinResult"))" aria-label="@(UiText.Get("Ui.UnpinResult"))" @onclick="OnClear"><PinIcon Slashed="true" /></button>
     </div>
     <p class="small text-body-secondary mb-2">@Snapshot.Context.Description</p>
     <CalculationAccuracyResult ModeDescription="@Snapshot.Context.ModeDescription" Contract="Snapshot.Contract" />
 
     <div class="pinned-row pinned-total">
-        <span>Any active combo</span><ProbabilityValue Probability="Snapshot.Total" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" ValueClass="probability-total-value" />
+        <span>@(UiText.Get("Ui.AnyActiveCombo"))</span><ProbabilityValue Probability="Snapshot.Total" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" ValueClass="probability-total-value" />
     </div>
     @{
         List<PinnedGroupRow> visibleGroups = Snapshot.Groups.Where(group => group.ActiveCount > 0).ToList();
@@ -18,7 +18,7 @@
     @foreach (PinnedGroupRow group in visibleGroups) {
         <section class="pinned-group">
             <h6 class="pinned-row">
-                <span>@group.Label <small class="text-body-secondary fw-normal">(@group.ActiveCount active)</small></span>
+                <span>@group.Label <small class="text-body-secondary fw-normal">@(UiText.Format("Result.ActiveCount", group.ActiveCount))</small></span>
                 <ProbabilityValue Probability="group.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Group" Index="@Snapshot.Groups.IndexOf(group)" />
             </h6>
             <ol class="pinned-list pinned-members">
@@ -34,7 +34,7 @@
         </section>
     }
     @if (ungrouped.Count > 0) {
-        <h6>@(visibleGroups.Count == 0 ? "Individual combos" : "Ungrouped combos")</h6>
+        <h6>@(visibleGroups.Count == 0 ? UiText.Get("Ui.IndividualCombos") : UiText.Get("Ui.UngroupedCombos"))</h6>
         <ol class="pinned-list">
             @foreach (PinnedComboRow row in ungrouped) {
                 <li>

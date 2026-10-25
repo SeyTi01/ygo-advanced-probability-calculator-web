@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -7,8 +8,8 @@ public sealed class EmpireOfEndymionEffect : ICardEffectDefinition {
     public string Name => "Empire of Endymion";
     public int Revision => 1;
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Search Regulus, the Prince of Endymion or a monster that mentions it";
-    public string Limitations => "The optional Spellcaster Special Summon and destruction replacement effects are outside the opening-hand search model.";
+    public string Summary => UiText.English("Effects.34041788.Summary");
+    public string Limitations => UiText.English("Effects.34041788.Limitations");
 
     public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(CardSelector.AnyOfSelectors([
