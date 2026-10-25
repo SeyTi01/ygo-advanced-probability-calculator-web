@@ -179,8 +179,9 @@ public sealed partial class SearchEffectsTest {
                 session.Cards.Add(original.Duplicate().WithCopies(original.Copies - copies));
             }
         }
+        DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(session.Cards);
         WorkBudget budget = new(CalculationWorkPolicy.Default);
-        ExactCalculationResult result = new DrawEffectCalculation(session.Cards, 5, budget).Calculate(session.Combos, session.ComboGroups);
+        ExactCalculationResult result = new DrawEffectCalculation(session.Cards, 5, budget, priority).Calculate(session.Combos, session.ComboGroups);
         ExactProbability[] actual = [result.Total, .. result.Combos, .. result.Groups];
         string[] reference = expected[copies == 3 ? 2 : copies];
         for (int index = 0; index < reference.Length; index++) {
@@ -188,7 +189,7 @@ public sealed partial class SearchEffectsTest {
             AssertRatio(actual[index], fraction[0], fraction[1]);
         }
         Assert.That(budget.PeakCells, Is.LessThan(CalculationStoragePolicy.Standard.CellLimit));
-        ExactCalculationResult only = new DrawEffectCalculation(session.Cards, 5, new(CalculationWorkPolicy.Default))
+        ExactCalculationResult only = new DrawEffectCalculation(session.Cards, 5, new(CalculationWorkPolicy.Default), priority)
             .Calculate(session.Combos, session.ComboGroups, true);
         AssertRatio(only.Total, actual[0].Numerator, actual[0].Denominator);
         Assert.That(only.Combos, Is.Empty);

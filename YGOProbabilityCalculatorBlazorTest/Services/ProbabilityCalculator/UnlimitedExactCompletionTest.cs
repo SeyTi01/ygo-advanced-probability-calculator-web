@@ -17,7 +17,7 @@ public sealed class UnlimitedExactCompletionTest {
         cards.Add(new([], 1, id: "d", drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1, postDrawDeckMillCount: 1));
         cards.Add(new([], 19, id: "f"));
         List<Combo> combos = [new([new(target, 1, 2)], "One or two targets"), new([], "Direct", cards: [new("t0", 1, 5)])];
-        CalculationOptions options = new(Mode: CalculationModel.Exact);
+        CalculationOptions options = new(SearchProjectionTestPolicy.DrawFirst(cards), Mode: CalculationModel.Exact);
         ProbabilityCalculatorService service = new();
         WorkBudget capped = new(new(100));
         Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() =>

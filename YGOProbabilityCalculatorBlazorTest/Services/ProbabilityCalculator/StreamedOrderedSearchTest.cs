@@ -200,7 +200,7 @@ public sealed class StreamedOrderedSearchTest {
         // second, optional source-present pass instead of the zero-target reuse.
         fixture.Deck[3] = fixture.Deck[3].WithCopies(5);
         WorkBudget measure = new(CalculationWorkPolicy.Unlimited);
-        DrawEffectCalculation measured = new(fixture.Deck, fixture.Hand, measure);
+        DrawEffectCalculation measured = new(fixture.Deck, fixture.Hand, measure, SearchProjectionTestPolicy.DrawFirst(fixture.Deck));
         ExactCalculationResult expected = measured.Calculate(fixture.Combos, fixture.Groups);
         measured.DescribeCapability();
         ExactCalculationResult witness = measured.SearchExecution!.CalculateLower(fixture.Combos, fixture.Groups, true);
@@ -208,7 +208,7 @@ public sealed class StreamedOrderedSearchTest {
         bool limited = false;
         for (long allowance = completed + 1000; allowance < completed + 10_000; allowance += 1000) {
             WorkBudget budget = new(new(allowance));
-            DrawEffectCalculation calculation = new(fixture.Deck, fixture.Hand, budget);
+            DrawEffectCalculation calculation = new(fixture.Deck, fixture.Hand, budget, SearchProjectionTestPolicy.DrawFirst(fixture.Deck));
             ExactCalculationResult actual = calculation.Calculate(fixture.Combos, fixture.Groups);
             SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(fixture.Combos,
                 fixture.Groups, actual, budget, calculation);

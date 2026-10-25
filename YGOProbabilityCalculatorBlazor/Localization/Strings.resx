@@ -7,6 +7,9 @@
   <data name="Requirement.MaximumAny" xml:space="preserve"><value>Maximum: Any</value></data>
   <data name="Requirement.MaximumCount" xml:space="preserve"><value>Maximum: {0}</value></data>
   <data name="Effect.Advanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="Priority.Entry" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="Priority.Draw" xml:space="preserve"><value>Draw</value></data>
+  <data name="Priority.Search" xml:space="preserve"><value>Search</value></data>
   <data name="Effect.UnavailableWithConfiguredDraws" xml:space="preserve"><value>{0} Applied only with configured draw effects.</value></data>
   <data name="Effect.AdvancedWithBanish" xml:space="preserve"><value>Advanced · Banish {0} from deck</value></data>
   <data name="Result.DetailedDrawWarning" xml:space="preserve"><value>This calculation may require more time or exceed resource limits because its draw effects need detailed processing.</value></data>
@@ -932,10 +935,10 @@
     <value>Draw 3</value>
   </data>
   <data xml:space="preserve" name="Ui.DrawActivationPriority">
-    <value>Draw activation priority</value>
+    <value>Activation priority</value>
   </data>
   <data xml:space="preserve" name="Ui.DrawActivationPriorityHighestFirst">
-    <value>Draw activation priority, highest first</value>
+    <value>Activation priority, highest first</value>
   </data>
   <data xml:space="preserve" name="Ui.DrawConfiguredOff">
     <value>Draw configured · Off</value>
@@ -1268,7 +1271,7 @@
     <value>No draw effect</value>
   </data>
   <data xml:space="preserve" name="Ui.NoDrawEffectsConfigured">
-    <value>No draw effects configured.</value>
+    <value>No enabled draw or search effects.</value>
   </data>
   <data xml:space="preserve" name="Ui.NoEffectSimulation">
     <value>No effect simulation</value>

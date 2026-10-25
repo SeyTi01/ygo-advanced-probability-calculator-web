@@ -11,7 +11,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.BackgroundCalculation;
 public sealed class UnlimitedExactWireTest {
     private static string Input(CalculationModel mode, long work = 1) => CalculationSnapshot.Capture(
         ThreeCalculationModesTest.Counterexample("discard"), ThreeCalculationModesTest.Combos, 2,
-        ThreeCalculationModesTest.Groups, new(work), options: new(Mode: mode)).Json;
+        ThreeCalculationModesTest.Groups, new(work), options: new(new(DrawActivationMode.CustomPriority, ["d", "s"]), Mode: mode)).Json;
 
     [Test]
     public void ExplicitEntryPointsIgnoreFiniteRemainderButCompatibilityCallsStayBounded() {

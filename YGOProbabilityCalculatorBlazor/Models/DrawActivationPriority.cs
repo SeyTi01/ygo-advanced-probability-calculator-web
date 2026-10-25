@@ -41,7 +41,7 @@ public sealed class DrawActivationPriority {
         List<string> ids = CardIds.Where(existing.Contains).ToList();
         if (Mode == DrawActivationMode.CustomPriority) {
             HashSet<string> ranked = ids.ToHashSet(StringComparer.Ordinal);
-            ids.AddRange(entries.Where(card => card.DrawCount is not null && ranked.Add(card.Id))
+            ids.AddRange(entries.Where(card => card.HasEffect && ranked.Add(card.Id))
                 .Select(card => card.Id).Order(StringComparer.Ordinal));
         }
 
