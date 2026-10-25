@@ -86,7 +86,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public void SearchSummaryUsesMaintainedCopyOnlyForAnEquivalentPlan() {
+    public void SearchSummaryKeepsCustomPlansOnTheGenericFallback() {
         Card builtIn = SearchEffectsTest.Rota();
         Card custom = builtIn.WithEffect(builtIn.EffectPlan, builtIn.EffectProfile.AsCustom());
         Card changed = builtIn.WithSearch(new(CardSelector.Any, false));
@@ -97,7 +97,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
 
         Assert.That(builtInEditor.Find(".simulation-summary").TextContent, Is.EqualTo("Search 1 Level 1–4 Warrior monster"));
         Assert.That(customEditor.Find(".simulation-source").TextContent, Does.Contain("Custom simulation"));
-        Assert.That(customEditor.Find(".simulation-summary").TextContent, Is.EqualTo("Search 1 Level 1–4 Warrior monster"));
+        Assert.That(customEditor.Find(".simulation-summary").TextContent, Is.EqualTo("Search 1 card from Deck"));
         Assert.That(changedEditor.Find(".simulation-summary").TextContent, Is.EqualTo("Search 1 card from Deck"));
     }
 

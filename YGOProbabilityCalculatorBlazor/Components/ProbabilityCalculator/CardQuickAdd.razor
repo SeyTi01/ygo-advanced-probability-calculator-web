@@ -3,7 +3,7 @@
 
 <div class="quick-add mb-3">
     <div class="quick-add-row" @oninput:stopPropagation="true">
-        <CardSearchInput @ref="_search" Value="@_name" Label="@(UiText.Get("Ui.AddCardByName"))" Placeholder="Search cards or enter a name"
+        <CardSearchInput @ref="_search" Value="@_name" Label="@(UiText.Get("Ui.AddCardByName"))" Placeholder="@(UiText.Get("Card.SearchPlaceholder"))"
                          OnInput="NameChanged" OnSelected="AddCatalogCard" OnSubmit="AddManualCard" />
         <button type="button" class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(_name)"
                 @onclick="AddManualCard">@(UiText.Get("Ui.AddCard"))</button>

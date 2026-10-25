@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Resources;
+using System.Text;
 using Microsoft.JSInterop;
 using Moq;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,15 +44,97 @@ public sealed class LocalizationTest {
 
     [Test]
     public void EnglishInventoryAndAllMaintainedDefinitionsHaveValidResources() {
-        ResourceSet set = UiText.Resources.GetResourceSet(CultureInfo.InvariantCulture, true, true)!;
+        ResourceSet set = UiText.Resources.GetResourceSet(CultureInfo.InvariantCulture, true, false)!;
         foreach (DictionaryEntry resource in set) {
             string text = (string)resource.Value!;
             Assert.That(UiText.HasSameArguments(text, text), Is.True, (string)resource.Key);
         }
         foreach (MaintainedCardEffect effect in CardEffectRegistry.Default.All) {
+            string summary = RequiredNeutralResource(set, $"Effects.{effect.CanonicalCardId}.Summary");
+            string limitations = RequiredNeutralResource(set, $"Effects.{effect.CanonicalCardId}.Limitations");
+            Assert.That(summary, Is.Not.Empty);
+            Assert.That(CompositeFormat.Parse(summary).MinimumArgumentCount, Is.Zero);
+            Assert.That(CompositeFormat.Parse(limitations).MinimumArgumentCount, Is.Zero);
             Assert.That(UiText.English($"Effects.{effect.CanonicalCardId}.Summary"), Is.EqualTo(effect.Profile.Summary));
             Assert.That(UiText.English($"Effects.{effect.CanonicalCardId}.Limitations"), Is.EqualTo(effect.Profile.Limitations ?? ""));
         }
+    }
+
+    [Test]
+    public void MaintainedInventoryRejectsAnAbsentEntryInsteadOfAcceptingItsFallbackKey() {
+        ResourceSet set = UiText.Resources.GetResourceSet(CultureInfo.InvariantCulture, true, false)!;
+        const string missing = "Effects.MissingTestDefinition.Summary";
+        Assert.That(UiText.English(missing), Is.EqualTo(missing));
+        Assert.Throws<AssertionException>(() => RequiredNeutralResource(set, missing));
+    }
+
+    private static string RequiredNeutralResource(ResourceSet set, string key) {
+        string? value = set.GetString(key);
+        Assert.That(value, Is.Not.Null, $"Missing neutral resource: {key}");
+        return value!;
+    }
+
+    [TestCase("en")]
+    [TestCase("fr")]
+    public void RepeatedLabelLookupsDoNotAllocateFormatParsers(string language) {
+        ResourceManager resources = new TestResources();
+        CultureInfo culture = CultureInfo.GetCultureInfo(language);
+        for (int index = 0; index < 100; index++) { UiText.Get(resources, "Label", culture); }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int index = 0; index < 1000; index++) { UiText.Get(resources, "Label", culture); }
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.That(allocated, Is.Zero, "Warm label lookup should not allocate format parsers or placeholder sets.");
+    }
+
+    [Test]
+    public void CachedTranslationValidationFollowsResourceSourceCultureAndChangedText() {
+        TestResources first = new();
+        TestResources second = new() { Translation = "second {0}" };
+        CultureInfo french = CultureInfo.GetCultureInfo("fr");
+        CultureInfo english = CultureInfo.GetCultureInfo("en");
+        Assert.That(UiText.Get(first, "Label", french), Is.EqualTo("translated {0}"));
+        Assert.That(UiText.Get(second, "Label", french), Is.EqualTo("second {0}"));
+        Assert.That(UiText.Get(first, "Label", english), Is.EqualTo("English {0}"));
+        first.Translation = "invalid {1}";
+        Assert.That(UiText.Get(first, "Label", french), Is.EqualTo("English {0}"));
+        first.Translation = "repeated {0} {0}\r\n";
+        Assert.That(UiText.Get(first, "Label", french), Is.EqualTo("repeated {0} {0}\n"));
+        Assert.That(UiText.Get(first, "Label", french), Is.EqualTo("repeated {0} {0}\n"));
+        first.Neutral = "changed {0} {1}";
+        Assert.That(UiText.Get(first, "Label", french), Is.EqualTo("changed {0} {1}"));
+        using (UiText.UseResources(first)) {
+            using (UiText.UseResources(second)) {
+                Assert.That(UiText.Get(UiText.Resources, "Label", french), Is.EqualTo("second {0}"));
+            }
+            Assert.That(UiText.Get(UiText.Resources, "Label", french), Is.EqualTo("changed {0} {1}"));
+        }
+    }
+
+    [Test]
+    public void RepeatedSatelliteFormattingRetainsCallerNumericCulture() {
+        CultureInfo previous = CultureInfo.CurrentCulture;
+        try {
+            using PresentationLocale locale = new();
+            foreach (string language in new[] { "en-US", "de-DE" }) {
+                CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(language);
+                string expected = "⟦Deck " + 12.5m.ToString(CultureInfo.CurrentCulture) + "⟧";
+                for (int index = 0; index < 3; index++) {
+                    Assert.That(UiText.Format("Deck.Count", 12.5m), Is.EqualTo(expected));
+                    Assert.That(UiText.Get("Move.ToPosition"), Is.EqualTo("Move {0} to position"));
+                }
+            }
+        }
+        finally { CultureInfo.CurrentCulture = previous; }
+    }
+
+    private sealed class TestResources : ResourceManager {
+        public string Neutral { get; set; } = "English {0}";
+        public string Translation { get; set; } = "translated {0}";
+
+        public override string? GetString(string name, CultureInfo? culture) =>
+            culture?.Name == "fr" ? Translation : Neutral;
     }
 
     [Test]

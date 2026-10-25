@@ -194,7 +194,7 @@
 
         @if (CanCalculate && ExecutionAssessment.ElevatedRisk) {
             <p class="form-text mt-3 mb-0 draw-complexity-notice" role="note">
-                This calculation may require more time or exceed resource limits because its draw effects need detailed processing.
+                @UiText.Get("Result.DetailedDrawWarning")
                 @if (_performanceCandidateIndices.Length > 0) {
                     <span>@(UiText.Format("Result.PerformanceContributors", PerformanceCandidates))</span>
                 }
@@ -280,7 +280,7 @@
                             <section class="probability-group-container">
                                 <h6 class="combo-probability-row probability-group probability-group-heading">
                                     <span class="combo-probability-name">
-                                        @group.GroupName <small class="text-body-secondary fw-normal">(@group.ActiveComboCount active)</small>
+                                        @group.GroupName <small class="text-body-secondary fw-normal">@UiText.Format("Result.ActiveCount", group.ActiveComboCount)</small>
                                     </span>
                                     <span class="result-value-group">
                                         <ProbabilityValue Probability="group.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Group" Index="@ProbabilityPresentation.GroupIndex(result.GroupProbabilities, group.GroupId)" />

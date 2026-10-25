@@ -22,7 +22,7 @@
     }
     @if (_error is not null) { <div class="text-danger small" role="alert">@_error</div> }
     @if (ShowHelp) {
-        <div class="form-text">@UnavailableMessage Applied only with configured draw effects.</div>
+        <div class="form-text">@UiText.Format("Effect.UnavailableWithConfiguredDraws", UnavailableMessage)</div>
     }
 </div>
 

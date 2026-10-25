@@ -166,7 +166,7 @@
             }
             @if (_draft.DrawCount is not null) {
                 <details class="simulation-advanced mt-2">
-                    <summary>Advanced@(_draft.PreDrawDeckRemovalCount > 0 ? UiText.Format("Ui.Banish0FromDeck", _draft.PreDrawDeckRemovalCount) : "")</summary>
+                    <summary>@(_draft.PreDrawDeckRemovalCount > 0 ? UiText.Format("Effect.AdvancedWithBanish", _draft.PreDrawDeckRemovalCount) : UiText.Get("Effect.Advanced"))</summary>
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <label for="cardDeckCost@(Index)" class="form-label mb-0">@(UiText.Get("Ui.BanishFromDeck"))</label>
                         <input id="cardDeckCost@(Index)" class="form-control form-control-sm" type="number" min="0" max="60"
@@ -236,9 +236,8 @@
         ? UiText.Get("Ui.OpeningHandOnlySavedSimulationIsOff")
         : null;
 
-    private string SearchSummary(Card card) => _effect.Maintained is { } maintained
-        && maintained.Plan.Search is not null && card.EffectPlan == maintained.Plan
-            ? (_effect.UsesCurrentDescription ? _effect.Summary : maintained.Profile.Summary)
+    private string SearchSummary(Card card) => _effect.Source == EffectSource.BuiltIn && card.EffectPlan == Card.EffectPlan
+            ? _effect.Summary
             : UiText.Get("Ui.Search1CardFromDeck");
 
     private string[] SearchTargets(SearchEffectPlan search) {

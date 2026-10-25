@@ -1,5 +1,15 @@
 <?xml version='1.0' encoding='utf-8'?>
 <root>
+  <data name="Card.SearchPlaceholder" xml:space="preserve"><value>Search cards or enter a name</value></data>
+  <data name="Combo.GroupLabel" xml:space="preserve"><value>Group: {0}</value></data>
+  <data name="Combo.MoreRequirements" xml:space="preserve"><value>+{0} more</value></data>
+  <data name="Combo.NoRequirements" xml:space="preserve"><value>(no requirements)</value></data>
+  <data name="Requirement.MaximumAny" xml:space="preserve"><value>Maximum: Any</value></data>
+  <data name="Requirement.MaximumCount" xml:space="preserve"><value>Maximum: {0}</value></data>
+  <data name="Effect.Advanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="Effect.UnavailableWithConfiguredDraws" xml:space="preserve"><value>{0} Applied only with configured draw effects.</value></data>
+  <data name="Effect.AdvancedWithBanish" xml:space="preserve"><value>Advanced · Banish {0} from deck</value></data>
+  <data name="Result.DetailedDrawWarning" xml:space="preserve"><value>This calculation may require more time or exceed resource limits because its draw effects need detailed processing.</value></data>
   <data name="Ui.Actions" xml:space="preserve">
     <value>Actions</value>
   </data>
@@ -605,9 +615,6 @@
   </data>
   <data xml:space="preserve" name="Ui.Banish01">
     <value>Banish {0} · {1}</value>
-  </data>
-  <data xml:space="preserve" name="Ui.Banish0FromDeck">
-    <value> · Banish {0} from deck</value>
   </data>
   <data xml:space="preserve" name="Ui.Banish0UnseenDeckCards">
     <value>Banish {0} unseen deck cards</value>
