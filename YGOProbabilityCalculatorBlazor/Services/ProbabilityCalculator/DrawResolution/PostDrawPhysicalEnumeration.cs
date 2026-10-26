@@ -293,7 +293,7 @@ internal sealed class PhysicalSearchHandCounter {
     private readonly List<Combo> _combos;
     private readonly (int Source, int[] Targets)[] _sources;
     private readonly record struct HandBound(int[] Rows, int Minimum, int Maximum);
-    private int _compiledSize = -1;
+    private int _compiledHandSizeLimit = -1;
     private List<List<HandBound[]>> _events = [];
     private readonly int[] _hand;
     private readonly int[] _allowance;
@@ -323,7 +323,14 @@ internal sealed class PhysicalSearchHandCounter {
         int[] hand = _hand;
         original.CopyTo(hand);
         int size = hand.Sum();
-        if (size != _compiledSize) {
+        // A compiled hand-size bound H is valid for every actual size h <= H.
+        // Each witness replaces one source with one target, so its size stays h.
+        // Counts already lie in [0,h]: clamping fixed maxima at H and using H
+        // for unrestricted maxima cannot change their truth. Hall union minima
+        // still enforce distinct copies, including total demand greater than h.
+        // A route rejected as impossible at H is also impossible below H.
+        // Retain one immutable compilation; only a larger hand needs rebuilding.
+        if (size > _compiledHandSizeLimit) {
             _budget.SearchDiagnostics?.Add("physical event compilations");
             ComboEventCompiler compiler = new(_cards, size, _budget);
             List<List<HandBound[]>> events = [];
@@ -364,7 +371,7 @@ internal sealed class PhysicalSearchHandCounter {
                 events.Add(routes);
             }
             _events = events;
-            _compiledSize = size;
+            _compiledHandSizeLimit = size;
         }
         int[] allowance = _allowance;
         for (int index = 0; index < _sources.Length; index++) {
