@@ -20,34 +20,20 @@ public sealed class SearchAvailabilityCertificateTest {
     [TestCaseSource(nameof(Cases))]
     public void EveryLabeledShuffleAndEveryResultObeysFixedPolicyBounds(string name) {
         SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == name);
-        DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(fixture.Deck, fixture.Priority);
+        DrawActivationPriority? priority = fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority);
         WorkBudget budget = new(CalculationWorkPolicy.Default);
         DrawEffectCalculation execution = new(fixture.Deck, fixture.Hand, budget, priority);
         ExactCalculationResult upper = execution.Calculate(fixture.Combos, fixture.Groups);
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(
             fixture.Combos, fixture.Groups, upper, budget, execution);
-        CalculationCapability capability = execution.DescribeCapability();
-        if (capability.Route == SolverRoute.UnifiedActivation) {
-            // A searched target may pay a deferred draw even with draws ranked
-            // first. That chronological case needs the causal reference.
-            ProbabilityCalculationResult result = ProbabilityCalculatorService.CompleteResult(
-                fixture.Combos, fixture.Groups, CalculationModel.Fast, upper, budget, execution);
-            Assert.That(certificate.Status, Is.EqualTo(SearchAvailabilityStatus.Exact));
-            SearchProjectionTestPolicy.AssertCausalRows(result, fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, priority);
-            ProbabilityCalculationResult exact = new ProbabilityCalculatorService().CalculateProbabilityResults(
-                fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Interactive,
-                new(priority, Mode: CalculationModel.Exact));
-            Assert.That(exact.Contract!.Fractions, Is.EqualTo(result.Contract!.Fractions)
-                .Using<CalculationFractions>((left, right) => JsonSerializer.Serialize(left) == JsonSerializer.Serialize(right)));
-            return;
-        }
         // This oracle retains actual physical suffix identities. Its scheduling
         // dependency is the existing TEST-ONLY DrawSequenceOracle; its search,
         // selector and distinct-slot predicate share no production compiler/MDD.
         SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(
-            fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, priority.CardIds.ToArray(),
+            fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority,
             certificate.Total is null ? null : CheckTerminal);
         ExactProbability[] values = [upper.Total, .. upper.Combos, .. upper.Groups];
+        CalculationCapability capability = execution.DescribeCapability();
         for (int row = 0; row < values.Length; row++) {
             Assert.That(values[row].Numerator * physical.Outcomes,
                 Is.EqualTo(physical.Wins[2][row] * values[row].Denominator), $"optimistic row {row}");
@@ -96,15 +82,14 @@ public sealed class SearchAvailabilityCertificateTest {
     [TestCase("mill2", "4819127", "5593068", SearchAvailabilityStatus.Bounded)]
     public async Task FortyCardAllRowsAndWirePreservePrimary(string name, string numerator, string denominator, SearchAvailabilityStatus status) {
         SessionState session = await Example(name);
-        DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(session.Cards);
-        CalculationSnapshot off = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups, options: new(priority));
+        CalculationSnapshot off = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups);
         CalculationSnapshot on = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups,
-            options: new(priority, CertifySearchAvailability: true));
+            options: new(CertifySearchAvailability: true));
         ProbabilityCalculationResult plain = CalculationWire.ReadResult(CalculationWire.Execute(off.Json));
         ProbabilityCalculationResult certified = CalculationWire.ReadResult(CalculationWire.Execute(on.Json));
         AssertPrimary(plain, certified);
         SearchAvailabilityCertificate certificate = new ProbabilityCalculatorService().CalculateProbabilityResults(session.Cards, session.Combos,
-            session.HandSize, session.ComboGroups, CalculationWorkPolicy.Default, new(priority, CertifySearchAvailability: true)).SearchAvailability!;
+            session.HandSize, session.ComboGroups, CalculationWorkPolicy.Default, new(CertifySearchAvailability: true)).SearchAvailability!;
         Assert.That(certificate.Status, Is.EqualTo(status), certificate.Detail);
         Assert.That(certificate.Total!.Upper, Is.EqualTo(new ProbabilityFraction(numerator, denominator)));
         Assert.That(certificate.Combos.Length, Is.EqualTo(8));
@@ -123,18 +108,17 @@ public sealed class SearchAvailabilityCertificateTest {
     [Test]
     public async Task OptionalWorkExhaustionPreservesCompletePrimaryAndOldWireDefaults() {
         SessionState session = await Example("mill2");
-        DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(session.Cards);
         WorkBudget budget = new(CalculationWorkPolicy.Default);
-        ExactCalculationResult exact = new DrawEffectCalculation(session.Cards, session.HandSize, budget, priority).Calculate(session.Combos, session.ComboGroups);
+        ExactCalculationResult exact = new DrawEffectCalculation(session.Cards, session.HandSize, budget).Calculate(session.Combos, session.ComboGroups);
         ProbabilityCalculationResult expected = exact.ToPublic(session.Combos, session.ComboGroups, budget);
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups,
-            new(budget.Spent), options: new(priority, CertifySearchAvailability: true));
+            new(budget.Spent), options: new(CertifySearchAvailability: true));
         ProbabilityCalculationResult actual = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
         AssertPrimary(expected, actual);
         Assert.That(actual.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.Limited));
         Assert.That(actual.SearchAvailability.Total, Is.Null);
         Assert.That(actual.SearchAvailability.Detail, Does.Contain("Work"));
-        CalculationSnapshot legacy = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups, options: new(priority));
+        CalculationSnapshot legacy = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups);
         Assert.That(legacy.Json, Does.Not.Contain("CertifySearchAvailability"));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(legacy.Json)).Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Bounded));
     }
@@ -214,8 +198,7 @@ public sealed class SearchAvailabilityCertificateTest {
         Assert.That(SearchCertificateHandOracle.MatchesHand([filler], combos[1]), Is.True,
             "Choosing to discard A changes the policy and invalidates a universal gameplay upper claim.");
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
-            [draw, target, filler, search], combos, 2, null, CalculationWorkPolicy.Default,
-            new(SearchProjectionTestPolicy.DrawFirst([draw, target, filler, search]), CertifySearchAvailability: true));
+            [draw, target, filler, search], combos, 2, null, CalculationWorkPolicy.Default, new(CertifySearchAvailability: true));
         Assert.That(result.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.Bounded));
     }
 

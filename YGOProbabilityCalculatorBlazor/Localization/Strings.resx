@@ -7,9 +7,6 @@
   <data name="Requirement.MaximumAny" xml:space="preserve"><value>Maximum: Any</value></data>
   <data name="Requirement.MaximumCount" xml:space="preserve"><value>Maximum: {0}</value></data>
   <data name="Effect.Advanced" xml:space="preserve"><value>Advanced</value></data>
-  <data name="Priority.Entry" xml:space="preserve"><value>{0} · {1}</value></data>
-  <data name="Priority.Draw" xml:space="preserve"><value>Draw</value></data>
-  <data name="Priority.Search" xml:space="preserve"><value>Search</value></data>
   <data name="Effect.UnavailableWithConfiguredDraws" xml:space="preserve"><value>{0} Applied only with configured draw effects.</value></data>
   <data name="Effect.AdvancedWithBanish" xml:space="preserve"><value>Advanced · Banish {0} from deck</value></data>
   <data name="Result.DetailedDrawWarning" xml:space="preserve"><value>This calculation may require more time or exceed resource limits because its draw effects need detailed processing.</value></data>
@@ -758,7 +755,7 @@
     <value>Choose None, Remove 1, or Remove 2.</value>
   </data>
   <data xml:space="preserve" name="Ui.ChoosesTheHighestLegalEffectAfterEachCompletedResolutionIncludingNewlyDrawnEffects">
-    <value>Chooses the highest legal effect after each completed resolution, including newly drawn effects.</value>
+    <value>Resolve draw effects first, then search effects. Priority applies separately within each phase. Fetched effects do not activate.</value>
   </data>
   <data xml:space="preserve" name="Ui.Clear">
     <value>Clear</value>
@@ -1772,4 +1769,6 @@
   <data name="Ui.DisableSimulation" xml:space="preserve"><value>Disable simulation</value></data>
   <data name="Ui.EnableSimulation" xml:space="preserve"><value>Enable simulation</value></data>
   <data name="Ui.SimulationDisabled" xml:space="preserve"><value>Simulation disabled for this entry</value></data>
+  <data name="Priority.DrawEffects" xml:space="preserve"><value>Draw effects</value></data>
+  <data name="Priority.SearchEffects" xml:space="preserve"><value>Search effects</value></data>
 </root>

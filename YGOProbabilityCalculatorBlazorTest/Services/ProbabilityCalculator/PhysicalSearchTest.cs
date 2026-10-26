@@ -22,17 +22,11 @@ public sealed class PhysicalSearchTest {
     public void ExhaustiveExistingFixturesAllAgree() {
         int supportedLoss = 0;
         foreach (SearchCertificateFixtures.Fixture fixture in SearchCertificateFixtures.Fixtures()) {
-            DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(fixture.Deck, fixture.Priority);
-            SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, priority.CardIds.ToArray());
-            CalculationOptions options = new(priority, Mode: CalculationModel.Exact);
+            SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority);
+            CalculationOptions options = new(fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority), Mode: CalculationModel.Exact);
             ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
                 fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, options);
-            if (result.Contract!.SolverRoute == "UnifiedActivation") {
-                SearchProjectionTestPolicy.AssertCausalRows(result, fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, priority);
-            }
-            else {
-                AssertRows(result, oracle.Wins[1], oracle.Outcomes);
-            }
+            AssertRows(result, oracle.Wins[1], oracle.Outcomes);
             Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact), fixture.Name);
             if (result.Contract.SolverRoute == "SearchPhysicalCountState") {
                 supportedLoss++;
@@ -48,9 +42,9 @@ public sealed class PhysicalSearchTest {
         List<Card> deck = [new([], 1, "same", id: rename ? "zz" : "s", search: new(CardSelector.For(target), false)),
             new([target], copies, "same", id: rename ? "aa" : "d", drawCount: 1, drawOncePerTurn: opt), new([], 1, id: "f")];
         List<Combo> combos = [new([new(target, 1, 3)], "Target"), new([new(target, 0, 0)], "Excluded")];
-        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(deck, 1, combos, [], SearchProjectionTestPolicy.DrawFirst(deck).CardIds.ToArray());
+        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(deck, 1, combos, []);
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 1, null,
-            CalculationWorkPolicy.Default, new(SearchProjectionTestPolicy.DrawFirst(deck), Mode: CalculationModel.Exact));
+            CalculationWorkPolicy.Default, new(Mode: CalculationModel.Exact));
         AssertRows(result, oracle.Wins[1], oracle.Outcomes);
         if (copies == 1) {
             Assert.That(result.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "3")));
@@ -103,16 +97,16 @@ public sealed class PhysicalSearchTest {
             blocksLaterDraws: true, preDrawDeckRemovalCount: previous.PreDrawDeckRemovalCount,
             postDrawDeckMillCount: previous.PostDrawDeckMillCount);
         List<Combo> combos = [ThreeCalculationModesTest.Combos[0]];
-        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(deck, 2, combos, [], SearchProjectionTestPolicy.DrawFirst(deck).CardIds.ToArray());
+        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(deck, 2, combos, []);
         Assert.That(oracle.Outcomes, Is.EqualTo(new BigInteger(120)));
         Assert.That(oracle.Wins[1][0], Is.EqualTo(new BigInteger(92)));
         Card[] order = mill ? [deck[0], deck[3], deck[2], deck[1], deck[2]] : [deck[0], deck[3], deck[1], deck[2], deck[2]];
         IReadOnlyList<Card> rest = [];
-        List<Card> hand = DrawSequenceOracle.Resolve(order, 2, combos, SearchProjectionTestPolicy.DrawFirst(deck).CardIds.ToArray(), remainingDeck: cards => rest = cards)!;
+        List<Card> hand = DrawSequenceOracle.Resolve(order, 2, combos, remainingDeck: cards => rest = cards)!;
         Assert.That(rest.Any(card => card.Id == "a"), Is.False);
         Assert.That(SearchCertificateOracle.Search(deck, hand, deck.Select(card => rest.Count(value => value.Id == card.Id)).ToArray(), rest.Count, combos, []).Results[0], Is.False);
         ProbabilityCalculationResult exact = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 2, null,
-            CalculationWorkPolicy.Default, new(SearchProjectionTestPolicy.DrawFirst(deck), Mode: CalculationModel.Exact));
+            CalculationWorkPolicy.Default, new(Mode: CalculationModel.Exact));
         AssertRows(exact, oracle.Wins[1], oracle.Outcomes);
     }
 
@@ -123,9 +117,9 @@ public sealed class PhysicalSearchTest {
         Assert.That(session.Cards.Count(card => card.Search is not null), Is.EqualTo(3));
         ProbabilityCalculatorService service = new();
         ProbabilityCalculationResult fast = service.CalculateProbabilityResults(session.Cards, session.Combos, session.HandSize,
-            session.ComboGroups, CalculationWorkPolicy.Default, new(SearchProjectionTestPolicy.DrawFirst(session.Cards), Mode: CalculationModel.Fast));
+            session.ComboGroups, CalculationWorkPolicy.Default, new(Mode: CalculationModel.Fast));
         ProbabilityCalculationResult exact = service.CalculateProbabilityResults(session.Cards, session.Combos, session.HandSize,
-            session.ComboGroups, CalculationWorkPolicy.Default, new(SearchProjectionTestPolicy.DrawFirst(session.Cards), Mode: CalculationModel.Exact));
+            session.ComboGroups, CalculationWorkPolicy.Default, new(Mode: CalculationModel.Exact));
         Assert.That(exact.Contract!.SolverRoute, Is.EqualTo("SearchPhysicalCountState"));
         Assert.That(exact.SearchAvailability, Is.Null);
         ProbabilityFraction[] values = [exact.Contract.Fractions!.Total, .. exact.Contract.Fractions.Combos, .. exact.Contract.Fractions.Groups];
@@ -142,9 +136,9 @@ public sealed class PhysicalSearchTest {
         List<Card> deck = ThreeCalculationModesTest.Counterexample("banish");
         List<ComboGroup> groups = storage ? Enumerable.Range(0, 32768).Select(index => new ComboGroup("g" + index, "Group")).ToList() : [];
         WorkBudget complete = new(CalculationWorkPolicy.Default);
-        new DrawEffectCalculation(deck, 2, complete, SearchProjectionTestPolicy.DrawFirst(deck), physicalSearch: true).Calculate(ThreeCalculationModesTest.Combos, []);
+        new DrawEffectCalculation(deck, 2, complete, physicalSearch: true).Calculate(ThreeCalculationModesTest.Combos, []);
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, ThreeCalculationModesTest.Combos, 2, groups,
-            storage ? CalculationWorkPolicy.Default : new(complete.Spent / 2), options: new(SearchProjectionTestPolicy.DrawFirst(deck), Mode: CalculationModel.Exact));
+            storage ? CalculationWorkPolicy.Default : new(complete.Spent / 2), options: new(Mode: CalculationModel.Exact));
         CalculationResponse response = JsonSerializer.Deserialize(CalculationWire.Execute(snapshot.Json), CalculationJsonContext.Default.CalculationResponse)!;
         Assert.That(response.Result, Is.Null);
         Assert.That(response.Contract!.Fractions, Is.Null);

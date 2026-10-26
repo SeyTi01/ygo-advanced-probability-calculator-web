@@ -41,7 +41,7 @@ public sealed partial class SearchEffectsTest {
         Assert.That(total, Is.EqualTo(new BigInteger(120)));
         Assert.That(wins[0], Is.EqualTo(new BigInteger(100)));
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, 2, budget, SearchProjectionTestPolicy.DrawFirst(deck)).Calculate(combos, Groups);
+        ExactCalculationResult result = new DrawEffectCalculation(deck, 2, budget).Calculate(combos, Groups);
         TestContext.Out.WriteLine($"Pooling counterexample {sourceId}: actual {result.Total.Numerator}/{result.Total.Denominator}; oracle {wins[0]}/{total}");
         Compare(deck, combos, 2);
         deck.Reverse();
@@ -253,7 +253,7 @@ public sealed partial class SearchEffectsTest {
 
     [TestCase(1, 0.8629362147164005)]
     [TestCase(3, 0.9089511612294494)]
-    public async Task RepresentativeDrawFirstSearchKeepsCountStateAndStandardCapacity(int copies, double expected) {
+    public async Task RepresentativeMixedSearchKeepsCountStateAndStandardCapacity(int copies, double expected) {
         SessionState session = await LoadExample("rota_search_example_session_state.json");
         int row = session.Cards.FindIndex(card => card.Name == "Mulcharmy Fuwalos");
         Card original = session.Cards[row];
@@ -261,15 +261,12 @@ public sealed partial class SearchEffectsTest {
         if (copies < original.Copies) {
             session.Cards.Add(original.Duplicate().WithCopies(original.Copies - copies));
         }
-        // This fixture freezes the draw-then-search count-state route and its
-        // small storage footprint; chronological interleaving is measured separately.
-        DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(session.Cards);
         WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
-        ExactCalculationResult result = new DrawEffectCalculation(session.Cards, 5, budget, priority).Calculate(session.Combos, session.ComboGroups);
+        ExactCalculationResult result = new DrawEffectCalculation(session.Cards, 5, budget).Calculate(session.Combos, session.ComboGroups);
         Assert.That(result.Total.ToDouble(budget), Is.EqualTo(expected));
         Assert.That(budget.PeakCells, Is.LessThan(10_000));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(session.Cards,
-            session.Combos, 5, session.ComboGroups, options: new(priority)).Json)).TotalProbability, Is.EqualTo(expected));
+            session.Combos, 5, session.ComboGroups).Json)).TotalProbability, Is.EqualTo(expected));
     }
 
     [Test]
@@ -344,23 +341,12 @@ public sealed partial class SearchEffectsTest {
             File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", filename)));
 
     private static void Compare(List<Card> cards, List<Combo> combos, int handSize, DrawActivationPriority? priority = null) {
-        // Projection fixtures explicitly schedule draws first. A search that can
-        // pay a deferred draw requires the causal reference even in this order.
-        priority = SearchProjectionTestPolicy.DrawFirst(cards, priority?.CardIds);
+        (BigInteger denominator, BigInteger[] wins) = SearchAccessOracle.Count(cards, combos, handSize, Groups, priority?.CardIds);
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
         ExactCalculationResult result = new DrawEffectCalculation(cards, handSize, budget, priority).Calculate(combos, Groups);
         ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
-        if (UnifiedActivationRouting.Required(cards, handSize, priority, new(CalculationWorkPolicy.Interactive))) {
-            UnifiedActivationOracle.Rational[] expected = UnifiedActivationOracle.Count(cards, handSize, combos, Groups, priority);
-            for (int i = 0; i < rows.Length; i++) {
-                AssertRatio(rows[i], expected[i].Numerator, expected[i].Denominator);
-            }
-        }
-        else {
-            (BigInteger denominator, BigInteger[] wins) = SearchAccessOracle.Count(cards, combos, handSize, Groups, priority.CardIds);
-            for (int i = 0; i < rows.Length; i++) {
-                AssertRatio(rows[i], wins[i], denominator);
-            }
+        for (int i = 0; i < rows.Length; i++) {
+            AssertRatio(rows[i], wins[i], denominator);
         }
         ProbabilityCalculationResult service = new ProbabilityCalculatorService().CalculateProbabilityResults(cards, combos, handSize, Groups,
             CalculationWorkPolicy.Interactive, options: new(priority));

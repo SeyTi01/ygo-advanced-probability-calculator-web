@@ -3,8 +3,8 @@ namespace YGOProbabilityCalculatorBlazor.Models;
 // Versioned, bounded instruction set. V1 reserves the source, checks the complete
 // batch, pays hand/hidden-deck costs, draws FIFO, mills unseen top cards, then
 // performs mandatory hand removal. Optional zero counts preserve existing V1 plans.
-// Schema 6 adds an optional search-only source. Draw and search sources share
-// the selected activation order; a source cannot contain both operations.
+// Schema 6 adds an optional search-only source, executed in a separate phase
+// after all draws. A source cannot contain both operations.
 // Definitions cannot smuggle callbacks into count-state equivalence or worker JSON;
 // unsupported execution models still require a new compiler/interpreter.
 public enum EffectExecutionModel { DrawSequenceV1 = 1, Unsupported = 2 }

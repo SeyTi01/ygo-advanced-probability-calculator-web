@@ -5,6 +5,7 @@ namespace YGOProbabilityCalculatorBlazor.Models;
 public enum DrawActivationMode { EncounterOrder, CustomPriority }
 
 // Own the ordered IDs so UI edits and deserialization cannot mutate an in-flight policy.
+// One compatible saved list supplies independent relative draw/search orders.
 public sealed class DrawActivationPriority {
     public static DrawActivationPriority Default { get; } = new();
     public DrawActivationMode Mode { get; }

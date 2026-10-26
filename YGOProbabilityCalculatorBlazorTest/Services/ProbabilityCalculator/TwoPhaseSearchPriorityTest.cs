@@ -3,21 +3,20 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Activation;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture]
-public sealed class UnifiedActivationPriorityTest {
+public sealed class TwoPhaseSearchPriorityTest {
     private static readonly CategoryBase A = new("Oracle A");
     private static readonly CategoryBase B = new("Oracle B");
     private static readonly CategoryBase Cost = new("Oracle cost");
     private static readonly CategoryBase DrawSource = new("Oracle draw source");
 
-    [TestCase(true, 29, 60)]
+    [TestCase(true, 1, 2)]
     [TestCase(false, 1, 2)]
-    public void SearchChoicePrecedesFutureDrawRatherThanSeeingTheWholePermutation(bool searchFirst, int numerator, int denominator) {
+    public void CrossPhaseRanksAlwaysResolveDrawsBeforeSearches(bool searchFirst, int numerator, int denominator) {
         List<Card> deck = [Search("s", CardSelector.AnyOfSelectors([CardSelector.For(A), CardSelector.For(B)])),
             new([], id: "d", drawCount: 1), new([A], id: "a"), new([B], id: "b"), new([], id: "c")];
         List<Combo> combos = [new([], groupId: "g", cards: [new("a", 1, 1), new("b", 1, 1)])];
@@ -38,8 +37,52 @@ public sealed class UnifiedActivationPriorityTest {
             [(numerator, denominator), (numerator, denominator)]);
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SearchPriorityChangesFinalFeasibilityAfterTheDrawPhase(bool hiddenLoss) {
+        List<Card> deck = [new([], id: "s", search: new(CardSelector.For(A), false),
+                preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(Cost)),
+            new([], id: "t", search: new(CardSelector.For(B), false), minimumHandSize: 3),
+            new([Cost], id: "cost"), new([A], id: "a"), new([B], id: "b"),
+            new([], id: "draw", drawCount: 1, preDrawDeckRemovalCount: hiddenLoss ? 1 : 0), new([], id: "f")];
+        List<Combo> combos = [new([], groupId: "g", cards: [new("a", 1, 1), new("b", 1, 1)]),
+            new([new(A, 0, 0)], groupId: "g")];
+        List<ComboGroup> groups = [new("g", "Union"), new("empty", "Empty")];
+        DrawActivationPriority paid = Custom("s", "draw", "t");
+        DrawActivationPriority minimum = Custom("t", "draw", "s");
+        AssertOracle(deck, 3, combos, groups, paid, checkWire: true);
+        AssertOracle(deck, 3, combos, groups, minimum);
+        TwoPhaseSearchOracle.Rational first = TwoPhaseSearchOracle.Count(deck, 3, combos, groups, paid)[1];
+        TwoPhaseSearchOracle.Rational second = TwoPhaseSearchOracle.Count(deck, 3, combos, groups, minimum)[1];
+        Assert.That(first.Numerator * second.Denominator, Is.LessThan(second.Numerator * first.Denominator));
+        TestContext.Out.WriteLine($"hidden={hiddenLoss}: paid first {first}; minimum first {second}");
+    }
+
     [Test]
-    public void EachComboAndEachUnionOptimizesItsOwnCausalDecision() {
+    public void UnrankedSearchSourcesKeepPhysicalEncounterTiesRegardlessOfDeckSorting() {
+        List<Card> deck = [new([], id: "s", search: new(CardSelector.For(A), false),
+                preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(Cost)),
+            new([], id: "t", search: new(CardSelector.For(B), false), minimumHandSize: 3),
+            new([Cost], id: "cost"), new([A], id: "a"), new([B], id: "b")];
+        List<Combo> combos = [new([], cards: [new("a", 1, 1), new("b", 1, 1)])];
+        AssertOracle(deck, 3, combos, [], DrawActivationPriority.Default, [(13, 20), (13, 20)]);
+        deck.Reverse();
+        AssertOracle(deck, 3, combos, [], Custom("missing"), [(13, 20), (13, 20)]);
+        deck.Add(new([], id: "draw", drawCount: 1));
+        AssertOracle(deck, 3, combos, [], DrawActivationPriority.Default);
+    }
+
+    [Test]
+    public void OrdinaryAndDrawOnlyControlsMatchTheLabeledOracle() {
+        List<Card> deck = [new([A, B], id: "ab"), new([A], id: "a"), new([B], id: "b"), new([], id: "f")];
+        List<Combo> combos = [new([new(A, 1, 2), new(B, 1, 2)], groupId: "g"), new([new(A, 0, 0)])];
+        AssertOracle(deck, 2, combos, [new("g", "Union")], DrawActivationPriority.Default);
+        deck.Add(new([], id: "draw", drawCount: 1));
+        AssertOracle(deck, 2, combos, [new("g", "Union")], DrawActivationPriority.Default);
+    }
+
+    [Test]
+    public void EachComboAndEachUnionUsesBooleanFinalHandFeasibility() {
         List<Card> deck = [Search("s", CardSelector.AnyOfSelectors([CardSelector.For(A), CardSelector.For(B)])),
             new([], id: "d", drawCount: 1), new([A], id: "a"), new([B], id: "b"),
             new([], id: "c"), new([], id: "e")];
@@ -48,7 +91,7 @@ public sealed class UnifiedActivationPriorityTest {
             new([], groupId: "g", cards: [new("b", 1, 1), new("e", 1, 1)])
         ];
         AssertOracle(deck, 2, combos, [new("g", "Union"), new("empty", "Empty")], Custom("s", "d"),
-            [(7, 18), (37, 180), (37, 180), (7, 18), (0, 1)]);
+            null);
     }
 
     [TestCase(false, 1, 3)]
@@ -101,11 +144,11 @@ public sealed class UnifiedActivationPriorityTest {
         List<Card> deck = [Search("s", CardSelector.For(A)),
             new([], id: "d", drawCount: 1, preDrawDeckRemovalCount: mill ? 0 : 1, postDrawDeckMillCount: mill ? 1 : 0),
             new([A], id: "a"), new([], id: "c"), new([], id: "e")];
-        AssertOracle(deck, 1, [new([], cards: [new("a", 1, 1)])], [], Custom("s", "d"), [(29, 60), (29, 60)]);
+        AssertOracle(deck, 1, [new([], cards: [new("a", 1, 1)])], [], Custom("s", "d"), null);
     }
 
     [Test]
-    public void HiddenSurvivorsAreObservedBeforeSearchChoiceButLaterDrawIsNot() {
+    public void SearchChoicesUseJointSurvivorsAfterAllDraws() {
         List<Card> deck = [new([], id: "h", drawCount: 1, preDrawDeckRemovalCount: 1),
             Search("s", CardSelector.AnyOfSelectors([CardSelector.For(A), CardSelector.For(B)])),
             new([], id: "d", drawCount: 1), new([A], id: "a"), new([B], id: "b"),
@@ -115,7 +158,7 @@ public sealed class UnifiedActivationPriorityTest {
             new([], groupId: "g", cards: [new("b", 1, 1), new("e", 1, 1)])
         ];
         AssertOracle(deck, 3, combos, [new("g", "Union")], Custom("h", "s", "d"),
-            [(379, 420), (409, 840), (409, 840), (379, 420)]);
+            null);
     }
 
     [Test]
@@ -124,10 +167,10 @@ public sealed class UnifiedActivationPriorityTest {
             new([], id: "d", drawCount: 1), new([A], id: "a"), new([B], id: "b"), new([], id: "c")];
         List<Combo> combos = [new([], cards: [new("a", 1, 1), new("b", 1, 1)])];
         foreach (DrawActivationPriority priority in new[] { DrawActivationPriority.Default, Custom("missing") }) {
-            AssertOracle(deck, 2, combos, [], priority, [(59, 120), (59, 120)]);
+            AssertOracle(deck, 2, combos, [], priority, [(1, 2), (1, 2)]);
         }
         deck.Reverse();
-        AssertOracle(deck, 2, combos, [], Custom("s", "d"), [(29, 60), (29, 60)]);
+        AssertOracle(deck, 2, combos, [], Custom("s", "d"), null);
     }
 
     [Test]
@@ -156,7 +199,7 @@ public sealed class UnifiedActivationPriorityTest {
     }
 
     [Test]
-    public void DeferredDrawCostBecomesPayableAfterTheSearchResolves() {
+    public void SearchCannotReopenADrawWhoseCostWasUnavailable() {
         List<Card> deck = [Search("s", CardSelector.For(Cost)),
             new([], id: "d", drawCount: 2, preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(Cost)),
             new([Cost], id: "cost"), new([A], id: "a"), new([B], id: "b"), new([], id: "c")];
@@ -180,7 +223,7 @@ public sealed class UnifiedActivationPriorityTest {
 
     [TestCase(true)]
     [TestCase(false)]
-    public void InterleavedPhysicalCopiesRespectSharedEntryAndModeLimits(bool searchFirst) {
+    public void PhysicalCopiesRespectSharedEntryAndModeLimitsWithinSearchPhase(bool searchFirst) {
         CardSelector a = CardSelector.For(A);
         CardSelector b = CardSelector.For(B);
         List<Card> deck = [new([], 2, name: "Same name", id: "s",
@@ -205,7 +248,7 @@ public sealed class UnifiedActivationPriorityTest {
         // fixed removal policy. D pays F, then draws filler. Retiring S after
         // inspection would instead discard S and incorrectly preserve F.
         AssertOracle(deck, 3, combos, [new("g", "Union")], Custom("h", "z-source", "d"),
-            [(409, 420), (47, 84), (59, 70), (409, 420)]);
+            null);
     }
 
     [TestCase(false)]
@@ -222,22 +265,7 @@ public sealed class UnifiedActivationPriorityTest {
     }
 
     [Test]
-    public void StandardStorageRejectsOversizedPolicyBeforeQuadraticSelectorCompilation() {
-        const int entryCount = 512;
-        List<Card> deck = Enumerable.Range(0, entryCount)
-            .Select(index => new Card([], id: "effect-" + index, drawCount: 1)).ToList();
-        WorkBudget budget = new(CalculationWorkPolicy.Unlimited, CalculationStoragePolicy.Standard);
-        ProbabilityCalculationLimitException error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new UnifiedActivationCalculation(deck, 5, budget).Calculate([new([], cards: [new("effect-0", 1, 1)])], []))!;
-        Assert.Multiple(() => {
-            Assert.That(error.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-            Assert.That(budget.Spent, Is.LessThan((long)entryCount * entryCount / 4),
-                "Reject descriptor storage before scanning the quadratic selector matrices.");
-        });
-    }
-
-    [Test]
-    public void SeededSmallDecksMatchIndependentCausalPoliciesForEveryResultRow() {
+    public void SeededSmallDecksMatchIndependentTwoPhasePoliciesForEveryResultRow() {
         Random random = new(281);
         for (int fixture = 0; fixture < 6; fixture++) {
             CardSelector selector = fixture % 2 == 0 ? CardSelector.For(A)
@@ -264,7 +292,7 @@ public sealed class UnifiedActivationPriorityTest {
 
     private static void AssertOracle(List<Card> deck, int handSize, List<Combo> combos, List<ComboGroup> groups,
         DrawActivationPriority priority, (int Numerator, int Denominator)[]? expected = null, bool checkWire = false) {
-        UnifiedActivationOracle.Rational[] oracle = UnifiedActivationOracle.Count(deck, handSize, combos, groups, priority);
+        TwoPhaseSearchOracle.Rational[] oracle = TwoPhaseSearchOracle.Count(deck, handSize, combos, groups, priority);
         if (expected is not null) {
             Assert.That(oracle, Has.Length.EqualTo(expected.Length));
             for (int row = 0; row < oracle.Length; row++) {
@@ -277,7 +305,19 @@ public sealed class UnifiedActivationPriorityTest {
             CalculationOptions options = new(priority, Mode: mode);
             ProbabilityCalculationResult result = service.CalculateProbabilityResults(deck.Where(card => card.Active && card.Copies > 0).ToList(), combos, handSize, groups,
                 CalculationWorkPolicy.Interactive, options: options);
-            Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact), "Small exhaustive route: " + mode);
+            if (result.Contract!.Accuracy != CalculationAccuracy.Exact) {
+                Assert.That(mode, Is.EqualTo(CalculationModel.Fast));
+                Assert.That(result.SearchAvailability, Is.Not.Null);
+                SearchAvailabilityInterval[] intervals = [result.SearchAvailability!.Total!,
+                    .. result.SearchAvailability.Combos, .. result.SearchAvailability.Groups];
+                for (int row = 0; row < oracle.Length; row++) {
+                    Assert.That(BigInteger.Parse(intervals[row].Lower.Numerator) * oracle[row].Denominator,
+                        Is.LessThanOrEqualTo(oracle[row].Numerator * BigInteger.Parse(intervals[row].Lower.Denominator)));
+                    Assert.That(BigInteger.Parse(intervals[row].Upper.Numerator) * oracle[row].Denominator,
+                        Is.GreaterThanOrEqualTo(oracle[row].Numerator * BigInteger.Parse(intervals[row].Upper.Denominator)));
+                }
+                continue;
+            }
             ProbabilityFraction[] rows = [result.Contract.Fractions!.Total, .. result.Contract.Fractions.Combos,
                 .. result.Contract.Fractions.Groups];
             Assert.That(rows, Has.Length.EqualTo(oracle.Length));

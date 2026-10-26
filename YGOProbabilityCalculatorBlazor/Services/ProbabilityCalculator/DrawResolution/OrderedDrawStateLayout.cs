@@ -16,10 +16,13 @@ internal readonly struct OrderedDrawStateLayout {
     // 0 = no activation, 1 = activated, 2 = draws locked. Part of state identity.
     internal int ActivationState { get; }
     internal int QueueStart { get; }
+    internal int SearchQueueStart { get; }
+    internal int SearchQueueCapacity { get; }
+    internal bool HasSearchQueue => SearchQueueCapacity > 0;
     internal bool HasHiddenCount => HiddenCount >= 0;
     internal bool HasActivationState => ActivationState >= 0;
 
-    internal OrderedDrawStateLayout(IReadOnlyList<Card> cards) {
+    internal OrderedDrawStateLayout(IReadOnlyList<Card> cards, bool trackSearchOrder = false) {
         RowCount = cards.Count;
         _optSlots = new int[RowCount];
         Array.Fill(_optSlots, -1);
@@ -34,7 +37,28 @@ internal readonly struct OrderedDrawStateLayout {
         bool hasRestrictions = cards.Any(card => card.EffectPlan.HasActivationRestrictions);
         HiddenCount = hasHidden ? CompletionSource + 1 : -1;
         ActivationState = hasRestrictions ? CompletionSource + 1 + (hasHidden ? 1 : 0) : -1;
-        QueueStart = CompletionSource + 1 + (hasHidden ? 1 : 0) + (hasRestrictions ? 1 : 0);
+        SearchQueueStart = CompletionSource + 1 + (hasHidden ? 1 : 0) + (hasRestrictions ? 1 : 0);
+        SearchQueueCapacity = trackSearchOrder ? cards.Where(card => card.Search is not null).Sum(card => card.Copies) : 0;
+        QueueStart = SearchQueueStart + SearchQueueCapacity;
+    }
+
+    internal void EncounterSearch(int[] state, int row) {
+        for (int index = SearchQueueStart; index < QueueStart; index++) {
+            if (state[index] == 0) {
+                state[index] = row + 1;
+                return;
+            }
+        }
+    }
+
+    internal void RemoveSearch(int[] state, int row) {
+        for (int index = QueueStart - 1; index >= SearchQueueStart; index--) {
+            if (state[index] == row + 1) {
+                Array.Copy(state, index + 1, state, index, QueueStart - index - 1);
+                state[QueueStart - 1] = 0;
+                return;
+            }
+        }
     }
 
     internal int OptSlot(int entry) => _optSlots[entry];

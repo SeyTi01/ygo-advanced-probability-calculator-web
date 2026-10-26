@@ -45,12 +45,13 @@ public sealed class PhysicalEnumerationTest {
         List<Combo> combos = [new([new(target, 1, 2)], "One or two", groupId: "g"), new([new(target, 0, 0)], "None", groupId: "g"),
             new([], "No draw", cards: [new("e", 0, 0)])];
         List<ComboGroup> groups = [new("g", "Union"), new("empty", "Empty")];
-        DrawActivationPriority priority = custom ? new(DrawActivationMode.CustomPriority, ["e", "d", "s", "z"])
-            : DrawActivationPriority.Default;
+        string[]? priority = custom ? ["e", "d"] : null;
+        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(deck, 3, combos, groups, priority);
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 3, groups,
-            CalculationWorkPolicy.Default, new(priority, Mode: CalculationModel.Exact));
-        SearchProjectionTestPolicy.AssertCausalRows(result, deck, 3, combos, groups, priority);
-        Assert.That(result.Contract!.SolverRoute, Is.EqualTo("UnifiedActivation"));
+            CalculationWorkPolicy.Default, new(priority is null ? null : new(DrawActivationMode.CustomPriority, priority), Mode: CalculationModel.Exact));
+        PhysicalSearchTest.AssertRows(result, oracle.Wins[1], oracle.Outcomes);
+        Assert.That(result.Contract!.SolverRoute, Is.EqualTo("SearchPhysicalFrontier"));
+        TestContext.Out.WriteLine($"first={first} custom={custom}: [{string.Join(',', oracle.Wins[1])}]/{oracle.Outcomes}, failed={oracle.Failed}");
     }
 
     [TestCase(false), TestCase(true)]

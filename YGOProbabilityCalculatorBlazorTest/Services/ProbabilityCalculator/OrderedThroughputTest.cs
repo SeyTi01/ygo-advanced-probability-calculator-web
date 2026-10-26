@@ -104,12 +104,12 @@ public sealed class OrderedThroughputTest {
     public void LimitedRefinementPreservesCompletedPrimaryAndWitnessOnPackedRescue() {
         SessionState state = OrderedTerminalAggregationTest.Pressure(roles: 11);
         WorkBudget measure = new(new(1_000_000_000));
-        DrawEffectCalculation reference = new(state.Cards, state.HandSize, measure, SearchProjectionTestPolicy.DrawFirst(state.Cards));
+        DrawEffectCalculation reference = new(state.Cards, state.HandSize, measure);
         ExactCalculationResult upper = reference.Calculate(state.Combos, state.ComboGroups);
         reference.DescribeCapability();
         ExactCalculationResult witness = reference.SearchExecution!.CalculateLower(state.Combos, state.ComboGroups, true);
         WorkBudget limited = new(new(measure.Spent + 10_000));
-        DrawEffectCalculation execution = new(state.Cards, state.HandSize, limited, SearchProjectionTestPolicy.DrawFirst(state.Cards));
+        DrawEffectCalculation execution = new(state.Cards, state.HandSize, limited);
         ExactCalculationResult actual = execution.Calculate(state.Combos, state.ComboGroups);
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos,
             state.ComboGroups, actual, limited, execution);
