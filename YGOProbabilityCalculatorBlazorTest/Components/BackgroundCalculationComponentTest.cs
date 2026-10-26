@@ -58,11 +58,8 @@ public class BackgroundCalculationComponentTest {
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(
             Services.ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish"),
             Services.ProbabilityCalculator.ThreeCalculationModesTest.Combos, 2,
-            Services.ProbabilityCalculator.ThreeCalculationModesTest.Groups,
-            options: new(new(DrawActivationMode.CustomPriority, ["d", "s"])));
-        ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json), CalculationModel.Fast);
-        Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Bounded));
-        return result;
+            Services.ProbabilityCalculator.ThreeCalculationModesTest.Groups);
+        return CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json), CalculationModel.Fast);
     }
 
     private Task Progress(int index, ProbabilityCalculationResult result) => _cut.InvokeAsync(() => _calculator.Progress[index](result));
@@ -146,12 +143,8 @@ public class BackgroundCalculationComponentTest {
         PinnedResultSnapshot pin = _cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
         Task task = Start();
         await Progress(1, PreliminaryResult());
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(
-            Services.ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish"),
-            Services.ProbabilityCalculator.ThreeCalculationModesTest.Combos, 2,
-            Services.ProbabilityCalculator.ThreeCalculationModesTest.Groups,
-            options: new(new(DrawActivationMode.CustomPriority, ["d", "s"]), Mode: CalculationModel.Exact));
-        ProbabilityCalculationResult exact = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json), CalculationModel.Exact);
+        ProbabilityCalculationResult exact = Services.ProbabilityCalculator.ThreeCalculationModesTest.Run(
+            Services.ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish"), 2, CalculationModel.Exact);
         ProbabilityCalculationResult automatic = exact with { Contract = exact.Contract! with {
             RequestedMode = CalculationModel.Fast, ExecutedMode = CalculationModel.Fast, AutomaticExact = AutomaticExactOutcome.Completed
         } };

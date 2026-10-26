@@ -80,7 +80,14 @@ internal sealed partial class PostDrawCalculation {
         }
         int[] ranks = customPriority ? cards.Select(card => priority!.Rank(card.Id)).ToArray() : [];
         ReducedRows = n;
-        OrderedDrawStateLayout layout = new(cards);
+        bool boundedSearch = cards.Any(card => card.EffectPlan.RequiresSearchResolution
+            || (card.Search is not null && card.MinimumHandSize > 0));
+        // Only tied source ranks can observe encounter order. A complete custom
+        // order (or a single search entry) keeps the existing count/batch quotient.
+        int[] searchRanks = boundedSearch ? cards.Where(card => card.Search is not null)
+            .Select(card => priority?.Rank(card.Id) ?? int.MaxValue).ToArray() : [];
+        bool trackSearchOrder = searchRanks.Distinct().Count() < searchRanks.Length;
+        OrderedDrawStateLayout layout = new(cards, trackSearchOrder);
         int copies = 0;
         foreach (Card card in cards) {
             budget.Spend(1);

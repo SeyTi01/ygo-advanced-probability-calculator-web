@@ -1,27 +1,25 @@
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
 
-internal enum SolverRoute { Ordinary, CountState, Exchangeable, Ordered, OrderedDeferred, SearchOnly, SearchCountState, SearchOrdered, SearchOrderedDeferred, SearchPhysicalCountState, SearchPhysicalEnumeration, SearchPhysicalFrontier, SearchPhysicalDeferred, UnifiedActivation }
+internal enum SolverRoute { Ordinary, CountState, Exchangeable, Ordered, OrderedDeferred, SearchOnly, SearchCountState, SearchOrdered, SearchOrderedDeferred, SearchPhysicalCountState, SearchPhysicalEnumeration, SearchPhysicalFrontier, SearchPhysicalDeferred }
 internal enum PhysicalSearchAccuracy { ProvenExact, OptimisticSurvivalUnproven }
-internal enum CapabilityReason { NoActiveSearch, NoReachableSearchTarget, ZeroDeckCapacity, NoReachableSearchTargetLoss, ConsumedSearchTarget, HandCostMayRemoveTarget, HandRemovalMayRemoveTarget, HiddenDeckLossMayRemoveTarget, ConditionalPhysicalSurvivors, ExplicitPhysicalSurvivors, ConditionalSelectiveSurvivors, CausalSearchDecisions }
+internal enum CapabilityReason { NoActiveSearch, NoReachableSearchTarget, ZeroDeckCapacity, NoReachableSearchTargetLoss, ConsumedSearchTarget, HandCostMayRemoveTarget, HandRemovalMayRemoveTarget, HiddenDeckLossMayRemoveTarget, ConditionalPhysicalSurvivors, ExplicitPhysicalSurvivors, ConditionalSelectiveSurvivors }
 internal enum CertificationSupport { ReusePrimary, ElementaryCountStateLowerPass, OrderedTerminalLowerPass, Unsupported }
 
 // A value describing one COMPLETED execution, never a preflight risk estimate.
-// The reference keeps saved plans, activation order and removal policy fixed.
-// Search decisions optimize each result objective using current availability,
-// never future draws. Legacy survival certificates require a phase-equivalence
-// proof before dispatch; they do not certify a different activation policy.
+// The reference keeps the saved plans, materialized memberships, activation and
+// removal/searcher-retention policy fixed; only final search survivor capacity
+// differs. It makes no claim about optimal play or unmodeled game rules.
 internal readonly record struct CalculationCapability(
     SolverRoute Route,
     PhysicalSearchAccuracy Accuracy,
     CapabilityReason Reason,
     CertificationSupport Certification
 ) {
-    internal const string Reference = "Configured activation/removal policy with causal Deck-search choices and physical target availability (v2)";
+    internal const string Reference = "Deck-search target survival under fixed modeled draw/removal policy (v1)";
 
     internal string Explanation => Explain(Reason);
 
     internal static string Explain(CapabilityReason reason) => reason switch {
-        CapabilityReason.CausalSearchDecisions => "Physical chronological resolution with optimal search choices from current information, without future draw knowledge.",
         CapabilityReason.ExplicitPhysicalSurvivors => "Explicit ordered identities with joint conditional hidden losses under the fixed policy.",
         CapabilityReason.ConditionalPhysicalSurvivors => "Joint physical Deck-search survival counted conditionally on the proven draw count state.",
         CapabilityReason.ConditionalSelectiveSurvivors => "Joint physical Deck-search survival conditioned on observed sources, hand payments and exchangeable unseen copies.",

@@ -48,7 +48,6 @@ const card = (Id, Name, Copies, extra = {}) => ({ Id, Name, Copies, Categories: 
 // dealt Target = 2/5; physical search/draw/banish = 23/30; Fast primary = 5/6.
 const effectSession = {
     SchemaVersion: 12, CalculationModel: 'Fast', FastExecutionStrategy: 'Progressive', HandSize: 2,
-    DrawActivationPriority: { Mode: 'CustomPriority', CardIds: ['d', 's'] },
     Categories: [target], Cards: [
         card('s', 'Search target', 1, { Search: { Selector: { Kind: 'Category', Categories: ['user:Target'] }, ObjectiveMetadataOnly: false } }),
         card('a', 'Target', 1, { Categories: [target] }), card('f', 'Filler', 2),
@@ -57,21 +56,6 @@ const effectSession = {
     ComboGroups: [{ Id: 'g', Name: 'Target routes' }, { Id: 'empty', Name: 'Empty group sentinel' }],
     Combos: [{ Name: 'Target route', Active: true, GroupId: 'g', Categories: [{ BaseCategory: target, MinCount: 1, MaxCount: 6 }] },
         { Name: 'Impossible route', Active: true, Categories: [], Cards: [{ CardId: 'd', MinCount: 3, MaxCount: 6 }] }]
-};
-// Independent causal oracle: choose the search target before any later draw.
-// Across all 120 labeled five-card orders, search first wins 29/60; draw first
-// wins 1/2. A hindsight union would incorrectly return 1/2 for both priorities.
-const unifiedSession = {
-    SchemaVersion: 13, CalculationModel: 'Exact', FastExecutionStrategy: 'Progressive', HandSize: 2,
-    DrawActivationPriority: { Mode: 'CustomPriority', CardIds: ['s', 'd'] },
-    Categories: [target], Cards: [
-        card('s', 'Unified search source', 1, { Search: { Selector: { Kind: 'Category', Categories: ['user:Target'] }, ObjectiveMetadataOnly: false } }),
-        card('d', 'Unified draw source', 1, { DrawCount: 1 }),
-        card('a', 'A', 1, { Categories: [target] }), card('b', 'B', 1, { Categories: [target] }), card('f', 'Blank', 1)
-    ],
-    ComboGroups: [{ Id: 'g', Name: 'Both targets' }],
-    Combos: [{ Name: 'A plus B', Active: true, GroupId: 'g', Categories: [],
-        Cards: [{ CardId: 'a', MinCount: 1, MaxCount: 5 }, { CardId: 'b', MinCount: 1, MaxCount: 5 }] }]
 };
 
 async function main() {
@@ -235,43 +219,51 @@ async function main() {
         assert.equal(await page.locator('.pinned-result').innerText(), pin, 'editing preserves manual pin');
         evidence.controlled.push('edit revokes held request');
         evidence.layout = await require('./result-layout.cjs')(page, effectSession, { calculate, hold, release });
-
+        // Independent labeled-card fractions in TwoPhaseSearchPriorityTest.
+        const a = { Name: 'A', Source: 'User' }, b = { Name: 'B', Source: 'User' }, cost = { Name: 'Cost', Source: 'User' };
+        const selector = name => ({ Kind: 'Category', Categories: ['user:' + name] });
+        const prioritySession = {
+            SchemaVersion: 13, CalculationModel: 'Exact', FastExecutionStrategy: 'Progressive', HandSize: 3, Categories: [a, b, cost],
+            DrawActivationPriority: { Mode: 'CustomPriority', CardIds: ['s', 't'] },
+            Cards: [card('s', 'Paid search', 1, { Search: { Selector: selector('A'), ObjectiveMetadataOnly: false },
+                PreDrawRemovalCount: 1, PreDrawSelector: selector('Cost') }),
+                card('t', 'Minimum hand search', 1, { Search: { Selector: selector('B'), ObjectiveMetadataOnly: false }, MinimumHandSize: 3 }),
+                card('cost', 'Payment', 1, { Categories: [cost] }), card('a', 'A', 1, { Categories: [a] }),
+                card('b', 'B', 1, { Categories: [b] })],
+            Combos: [{ Name: 'A plus B', Active: true, Categories: [], Cards: [
+                { CardId: 'a', MinCount: 1, MaxCount: 1 }, { CardId: 'b', MinCount: 1, MaxCount: 1 }] }]
+        };
         await page.evaluate(() => { smoke.hold = null; smoke.held = []; });
-        await page.setViewportSize({ width: 390, height: 900 });
-        await load(page, unifiedSession);
-        async function checkUnified(numerator, denominator, ids) {
-            const start = await page.evaluate(() => smoke.requests.length);
-            await calculate();
-            const requests = await page.evaluate(start => smoke.requests.slice(start), start);
-            assert.equal(requests.length, 1, 'Exact uses one production worker request');
-            assert.deepEqual(requests[0].input.Options.DrawActivationPriority.CardIds, ids);
-            const contract = requests[0].response.Result.Contract;
-            const fraction = { Numerator: String(numerator), Denominator: String(denominator) };
-            assert.equal(contract.Accuracy, 0);
-            assert.deepEqual(contract.Fractions, { Total: fraction, Combos: [fraction], Groups: [fraction] });
-            assert.match(await page.locator('.probability-total .probability-with-accuracy').getAttribute('title'),
-                new RegExp(`(?<!\\d)${numerator}/${denominator}(?!\\d)`));
-            evidence.terminal.push({ selected: 'Unified ' + ids.join(' before '), requests });
-        }
-        await checkUnified(29, 60, ['s', 'd']);
+        await load(page, prioritySession);
+        await calculate();
+        assert.deepEqual(await page.evaluate(() => smoke.requests.at(-1).response.Result.Contract.Fractions.Total),
+            { Numerator: '3', Denominator: '5' });
+        evidence.terminal.push({ selected: 'search paid first' });
         await page.getByRole('button', { name: 'Calculation settings', exact: true }).click();
-        const priorityRows = page.locator('.draw-priority-list li');
-        assert.deepEqual(await priorityRows.evaluateAll(rows => rows.map(row => row.dataset.priorityId)), ['s', 'd']);
-        assert.match(await priorityRows.nth(0).innerText(), /Search/);
-        assert.match(await priorityRows.nth(1).innerText(), /Draw/);
-        const moveSearchDown = page.locator('[data-priority-id="s"]').getByRole('button', { name: /^Move .* down$/ });
-        await usable(page, moveSearchDown);
-        if (process.env.YGO_SMOKE_SCREENSHOT) {
-            await page.screenshot({ path: process.env.YGO_SMOKE_SCREENSHOT, fullPage: true });
-        }
-        await moveSearchDown.focus();
+        assert.equal(await page.locator('[data-priority-id="s"] > button').first().isDisabled(), true);
+        await page.getByRole('button', { name: 'Move Minimum hand search up', exact: true }).focus();
         await page.keyboard.press('Enter');
-        await page.waitForFunction(() => document.activeElement?.dataset.priorityId === 's');
-        assert.deepEqual(await priorityRows.evaluateAll(rows => rows.map(row => row.dataset.priorityId)), ['d', 's']);
+        assert.equal(await page.locator('[data-priority-id="t"]').evaluate(element => element === document.activeElement), true);
         await page.keyboard.press('Escape');
-        await page.waitForFunction(() => document.activeElement?.getAttribute('aria-controls') === 'calculationSettingsPanel');
-        await checkUnified(1, 2, ['d', 's']);
-        evidence.controlled.push('mixed priority keyboard movement and focus at 390px');
+        await calculate();
+        assert.deepEqual(await page.evaluate(() => smoke.requests.at(-1).response.Result.Contract.Fractions.Total),
+            { Numerator: '7', Denominator: '10' });
+        evidence.terminal.push({ selected: 'search minimum first' });
+        const separated = structuredClone(prioritySession);
+        separated.HandSize = 2;
+        separated.Cards = [card('s', 'Flexible search', 1, { Search: {
+            Selector: { Kind: 'AnyOf', Children: [selector('A'), selector('B')] }, ObjectiveMetadataOnly: false } }),
+            card('d', 'Draw one', 1, { DrawCount: 1 }), card('a', 'A', 1, { Categories: [a] }),
+            card('b', 'B', 1, { Categories: [b] }), card('f', 'Filler', 1)];
+        separated.DrawActivationPriority.CardIds = ['s', 'd'];
+        await load(page, separated);
+        await calculate();
+        assert.deepEqual(await page.evaluate(() => smoke.requests.at(-1).response.Result.Contract.Fractions.Total),
+            { Numerator: '1', Denominator: '2' });
+        await page.getByRole('button', { name: 'Calculation settings', exact: true }).click();
+        assert.deepEqual(await page.locator('.draw-priority-list li').evaluateAll(rows => rows.map(row => row.dataset.priorityId)), ['d', 's']);
+        assert.equal(await page.locator('.draw-priority-list li > button:enabled').count(), 0, 'movement cannot cross phases');
+        evidence.terminal.push({ selected: 'draw before search despite cross-phase saved ranks' });
         assert.deepEqual(evidence.pageErrors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
         if (process.argv[3]) fs.writeFileSync(process.argv[3], JSON.stringify(evidence, null, 2));

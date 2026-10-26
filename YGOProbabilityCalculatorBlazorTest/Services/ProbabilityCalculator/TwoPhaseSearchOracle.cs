@@ -3,11 +3,9 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
-// Exhaustive labeled physical permutations, grouped by the information available
-// when choosing an action. No production scheduler, compiler or fraction helper.
-// Each objective chooses its own causal policy. A search observes the remaining
-// multiset, never its order; its maximum precedes averaging future drawn cards.
-internal static class UnifiedActivationOracle {
+// Independent labeled-card oracle. Finish every fixed draw transition before
+// evaluating optional search witnesses, with no production scheduler or compiler.
+internal static class TwoPhaseSearchOracle {
     internal readonly record struct Rational(BigInteger Numerator, BigInteger Denominator) {
         internal static Rational Zero => new(0, 1);
         internal static Rational One => new(1, 1);
@@ -31,12 +29,13 @@ internal static class UnifiedActivationOracle {
         internal int NextEncounter;
         internal int DrawActivations;
         internal bool DrawLocked;
+        internal bool DrawComplete;
         internal bool Failed;
 
         internal World Clone() => new() {
             Hand = [.. Hand], Pending = [.. Pending], Deck = [.. Deck], Used = (int[])Used.Clone(),
             Modes = Modes.Select(mode => (int[])mode.Clone()).ToArray(), NextEncounter = NextEncounter,
-            DrawActivations = DrawActivations, DrawLocked = DrawLocked, Failed = Failed
+            DrawActivations = DrawActivations, DrawLocked = DrawLocked, DrawComplete = DrawComplete, Failed = Failed
         };
     }
 
@@ -101,7 +100,7 @@ internal static class UnifiedActivationOracle {
                 }).ToList();
                 known = worlds[0];
             }
-            foreach (Token candidate in known.Pending.OrderBy(token => Rank(cards[token.Row].Id)).ThenBy(token => token.Encounter)) {
+            foreach (Token candidate in known.Pending.Where(token => known.DrawComplete == (cards[token.Row].Search is not null)).OrderBy(token => Rank(cards[token.Row].Id)).ThenBy(token => token.Encounter)) {
                 Card effect = cards[candidate.Row];
                 if (known.Used[candidate.Row] >= effect.MaximumActivations || known.Hand.Count < effect.MinimumHandSize
                     || known.Hand.Count(token => token.Encounter != candidate.Encounter
@@ -155,6 +154,13 @@ internal static class UnifiedActivationOracle {
                     best = best.Max(AverageObserved(after, objective));
                 }
                 return best;
+            }
+            if (!known.DrawComplete) {
+                foreach (World world in worlds) {
+                    world.DrawComplete = true;
+                    world.Pending.RemoveAll(token => cards[token.Row].DrawCount is not null);
+                }
+                return Resolve(worlds, objective);
             }
             return objective(known.Hand.Select(token => cards[token.Row]).ToArray()) ? Rational.One : Rational.Zero;
         }
@@ -221,7 +227,7 @@ internal static class UnifiedActivationOracle {
                     ? Consumption(cards[reserved.Row]) : int.MaxValue;
                 foreach (Token pending in world.Pending) {
                     Card effect = cards[pending.Row];
-                    if (effect.DrawCount is null || !DrawTiming(world, effect) || Allowance(pending.Row) <= 0
+                    if (world.DrawComplete || effect.DrawCount is null || !DrawTiming(world, effect) || Allowance(pending.Row) <= 0
                         || Consumption(effect) > world.Deck.Count
                         || reserved is not null && cards[reserved.Row].DrawCount is not null
                             && (cards[reserved.Row].BlocksLaterDraws || effect.FirstActivationOnly)) {
@@ -300,7 +306,7 @@ internal static class UnifiedActivationOracle {
             : string.Join(',', world.Hand.Select(token => $"{token.Row}:{token.Encounter}")) + ";"
                 + string.Join(',', world.Pending.Select(token => token.Encounter)) + ";" + string.Join(',', world.Used) + ";"
                 + string.Join('|', world.Modes.Select(mode => string.Join(',', mode)))
-                + $";{world.NextEncounter};{world.DrawActivations};{world.DrawLocked};{world.Deck.Count}";
+                + $";{world.NextEncounter};{world.DrawActivations};{world.DrawLocked};{world.DrawComplete};{world.Deck.Count}";
     }
 
     private static bool SearchMatches(SearchEffectPlan search, CardSelector selector, Card card) =>

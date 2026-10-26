@@ -17,7 +17,6 @@ public partial class PinnedResultTest {
             Categories = [ThreeCalculationModesTest.Target],
             Combos = ThreeCalculationModesTest.Combos,
             ComboGroups = ThreeCalculationModesTest.Groups,
-            DrawActivationPriority = new(DrawActivationMode.CustomPriority, ["d", "s"]),
             HandSize = 2
         });
         Task calculation = Start();

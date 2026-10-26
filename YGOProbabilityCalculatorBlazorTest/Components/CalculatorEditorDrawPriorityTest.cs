@@ -14,7 +14,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
     private static SessionState PrioritySession() => new() {
-        Cards = [new([], name: "Duplicate name", id: "a", drawCount: 1), new([], name: "Duplicate name", id: "b", search: new(CardSelector.Any, false)), new([], 2, "Filler", id: "f")],
+        Cards = [new([], name: "Duplicate name", id: "a", drawCount: 1), new([], name: "Duplicate name", id: "b", drawCount: 2), new([], 2, "Filler", id: "f")],
         Combos = [new([], "Retained B", cards: [new("b", 1, 1)])], HandSize = 2
     };
 
@@ -27,12 +27,10 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
         await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
         Assert.That(cut.FindAll(".draw-priority-list li"), Has.Count.EqualTo(2));
         Assert.That(cut.FindComponent<SessionRecovery>().Instance.Session.DrawActivationPriority.CardIds, Is.EqualTo(Rows(cut)));
-        Assert.That(PriorityMove(cut, "a", "↑").HasAttribute("disabled"), Is.True);
-        Assert.That(PriorityMove(cut, "b", "↓").HasAttribute("disabled"), Is.True);
-        Assert.That(PriorityMove(cut, "a", "↑").GetAttribute("aria-label"), Does.Contain("Duplicate name (entry 1)").And.Contain("Draw"));
-        Assert.That(PriorityMove(cut, "b", "↑").GetAttribute("aria-label"), Does.Contain("Duplicate name (entry 2)").And.Contain("Search"));
+        Assert.That(Button(cut, "Move Duplicate name (entry 1) up").HasAttribute("disabled"), Is.True);
+        Assert.That(Button(cut, "Move Duplicate name (entry 2) down").HasAttribute("disabled"), Is.True);
         int focusCalls = context.JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count;
-        await PriorityMove(cut, "b", "↑").ClickAsync(new());
+        await Button(cut, "Move Duplicate name (entry 2) up").ClickAsync(new());
         Assert.That(Rows(cut), Is.EqualTo(new[] { "b", "a" }));
         Assert.That(context.JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count, Is.GreaterThan(focusCalls));
         await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "EncounterOrder" });
@@ -66,7 +64,7 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         await Button(cut, "Pin result").ClickAsync(new());
         await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
-        await PriorityMove(cut, "b", "↑").ClickAsync(new());
+        await Button(cut, "Move Duplicate name (entry 2) up").ClickAsync(new());
         AssertPreviousResult(cut);
         Assert.That(Button(cut, "Replace pin with current result").HasAttribute("disabled"), Is.False);
         Assert.That(Button(cut, "Replace pin with current result").HasAttribute("aria-describedby"), Is.False);
@@ -95,53 +93,27 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
     public async Task EntryLifecycleUsesWorkspaceIdsIndependentlyOfNamesAndVisualOrder() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(PrioritySession());
         await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
-        await PriorityMove(cut, "b", "↑").ClickAsync(new());
+        await Button(cut, "Move Duplicate name (entry 2) up").ClickAsync(new());
         CardListEditor list = cut.FindComponent<CardListEditor>().Instance;
         await cut.InvokeAsync(() => list.OnMoveCard.InvokeAsync((0, 1)));
         Assert.That(Rows(cut), Is.EqualTo(new[] { "b", "a" }));
         Card original = list.Cards.Single(card => card.Id == "b");
         await cut.InvokeAsync(() => list.OnReplaceCard.InvokeAsync((0, original.WithName("Renamed").WithActive(false))));
         Assert.That(Rows(cut), Is.EqualTo(new[] { "a" }));
-        Assert.That(StoredOrder(cut), Is.EqualTo(new[] { "b", "a" }));
-        Card replacement = new([], name: "Renamed", id: "b", externalCardId: 123, search: original.Search);
+        Assert.That(cut.FindComponent<SessionRecovery>().Instance.Session.DrawActivationPriority.CardIds, Is.EqualTo(new[] { "b", "a" }));
+        Card replacement = new([], name: "Renamed", id: "b", externalCardId: 123, drawCount: original.DrawCount);
         await cut.InvokeAsync(() => list.OnReplaceCard.InvokeAsync((0, replacement)));
         Assert.That(Rows(cut), Is.EqualTo(new[] { "b", "a" }));
         Assert.That(cut.Find("[data-priority-id='b']").TextContent, Does.Contain("Renamed"));
         await cut.InvokeAsync(() => list.OnDuplicateCard.InvokeAsync(0));
         Assert.That(Rows(cut).Take(2), Is.EqualTo(new[] { "b", "a" }));
         Assert.That(cut.FindComponent<SessionRecovery>().Instance.Session.DrawActivationPriority.CardIds, Is.EqualTo(Rows(cut)));
-        await cut.InvokeAsync(() => list.OnReplaceCard.InvokeAsync((0, original.WithSearch(null))));
+        await cut.InvokeAsync(() => list.OnReplaceCard.InvokeAsync((0, original.WithDrawCount(null))));
         Assert.That(Rows(cut), Does.Not.Contain("b"));
         await cut.InvokeAsync(() => list.OnReplaceCard.InvokeAsync((0, original)));
         Assert.That(Rows(cut)[0], Is.EqualTo("b"));
         await cut.InvokeAsync(() => list.OnRemoveCard.InvokeAsync(0));
         Assert.That(cut.FindComponent<SessionRecovery>().Instance.Session.DrawActivationPriority.CardIds, Does.Not.Contain("b"));
-    }
-
-    [Test]
-    public async Task MovingEnabledEffectsPreservesDormantSlotsAndReenabledSearchRank() {
-        SessionState session = PrioritySession();
-        session.Cards.Insert(1, new([], name: "Duplicate name", id: "hidden", search: new(CardSelector.Any, false)));
-        session.Cards.Add(new([], copies: 0, id: "zero", drawCount: 1));
-        session.Cards.Add(new([], active: false, id: "inactive", search: new(CardSelector.Any, false)));
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
-        await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
-        await PriorityMove(cut, "hidden", "↑").ClickAsync(new());
-        Assert.That(StoredOrder(cut), Is.EqualTo(new[] { "a", "hidden", "b", "inactive", "zero" }));
-        string searchLabel = PriorityMove(cut, "b", "↑").GetAttribute("aria-label")!;
-        IRenderedComponent<CardEditor> hidden = cut.FindComponents<CardEditor>().Single(editor => editor.Instance.Card.Id == "hidden");
-        await hidden.Find(".accordion-button").ClickAsync(new());
-        await hidden.Find(".simulation-toggle").ClickAsync(new());
-        Assert.That(Rows(cut), Is.EqualTo(new[] { "a", "b" }));
-        Assert.That(PriorityMove(cut, "b", "↑").GetAttribute("aria-label"), Is.EqualTo(searchLabel));
-        await PriorityMove(cut, "b", "↑").ClickAsync(new());
-        Assert.That(StoredOrder(cut), Is.EqualTo(new[] { "b", "hidden", "a", "inactive", "zero" }));
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
-        Assert.That(StoredOrder(cut), Is.EqualTo(new[] { "b", "hidden", "a", "inactive", "zero" }));
-        await hidden.Find(".simulation-toggle").ClickAsync(new());
-        Assert.That(Rows(cut), Is.EqualTo(new[] { "b", "hidden", "a" }));
-        await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
-        Assert.That(Rows(cut), Is.EqualTo(new[] { "b", "hidden", "a" }));
     }
 
     [Test]
@@ -169,16 +141,35 @@ public class CalculatorEditorDrawPriorityTest : CalculatorEditorTestBase {
         context.Services.AddSingleton(importer.Object);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(PrioritySession());
         await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
-        await PriorityMove(cut, "b", "↑").ClickAsync(new());
+        await Button(cut, "Move Duplicate name (entry 2) up").ClickAsync(new());
         cut.FindComponents<InputFile>()[0].UploadFiles(InputFileContent.CreateFromText("#main\n123\n!side", "deck.ydk"));
         cut.WaitForAssertion(() => Assert.That(cut.Find("#drawActivationPriority").GetAttribute("value"), Is.EqualTo("EncounterOrder")));
     }
 
-    private static IElement PriorityMove(IRenderedFragment cut, string id, string direction) =>
-        cut.FindAll($"[data-priority-id='{id}'] > button").Single(button => button.TextContent.Trim() == direction);
-
-    private static IReadOnlyList<string> StoredOrder(IRenderedFragment cut) =>
-        cut.FindComponent<SessionRecovery>().Instance.Session.DrawActivationPriority.CardIds;
+    [Test]
+    public async Task SearchControlsStayWithinTheirPhaseAndPreserveDormantSlots() {
+        SessionState session = PrioritySession();
+        session.Cards.Add(new([], name: "Search one", id: "s1", search: new(CardSelector.Any, false)));
+        session.Cards.Add(new([], name: "Search two", id: "s2", search: new(CardSelector.Any, false)));
+        session.Cards.Add(new([], active: false, id: "dormant", search: new(CardSelector.Any, false)));
+        session = new() { Cards = session.Cards, Combos = session.Combos, HandSize = session.HandSize,
+            DrawActivationPriority = new(DrawActivationMode.CustomPriority, ["s1", "a", "dormant", "s2", "b"]) };
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        Assert.That(Rows(cut), Is.EqualTo(new[] { "a", "b", "s1", "s2" }));
+        Assert.That(cut.FindAll(".draw-priority-list").Select(list => list.GetAttribute("aria-labelledby")),
+            Is.EqualTo(new[] { "drawPriorityHeading", "searchPriorityHeading" }));
+        Assert.That(Button(cut, "Move Duplicate name (entry 2) down").HasAttribute("disabled"), Is.True);
+        Assert.That(Button(cut, "Move Search one up").HasAttribute("disabled"), Is.True);
+        int focusCalls = context.JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count;
+        await Button(cut, "Move Search two up").ClickAsync(new());
+        Assert.That(Rows(cut), Is.EqualTo(new[] { "a", "b", "s2", "s1" }));
+        Assert.That(context.JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count, Is.GreaterThan(focusCalls));
+        Assert.That(cut.FindComponent<SessionRecovery>().Instance.Session.DrawActivationPriority.CardIds,
+            Is.EqualTo(new[] { "s2", "a", "dormant", "s1", "b" }));
+        CardListEditor list = cut.FindComponent<CardListEditor>().Instance;
+        await cut.InvokeAsync(() => list.OnMoveCard.InvokeAsync((2, 0)));
+        Assert.That(Rows(cut), Is.EqualTo(new[] { "a", "b", "s2", "s1" }));
+    }
 
     private static string[] Rows(IRenderedFragment cut) => cut.FindAll(".draw-priority-list li").Select(row => row.GetAttribute("data-priority-id")!).ToArray();
 }

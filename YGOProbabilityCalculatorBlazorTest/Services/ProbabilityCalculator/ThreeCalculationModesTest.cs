@@ -31,7 +31,7 @@ public sealed class ThreeCalculationModesTest {
 
     internal static ProbabilityCalculationResult Run(List<Card> cards, int hand, CalculationModel mode) =>
         CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(cards, Combos, hand, Groups,
-            options: new(cards.Any(card => card.Search is not null) ? SearchProjectionTestPolicy.DrawFirst(cards) : null, Mode: mode)).Json), mode);
+            options: new(Mode: mode)).Json), mode);
 
     [TestCase("consumed", 1, "1", "2", "1", "3", CalculationAccuracy.Bounded)]
     [TestCase("discard", 2, "1", "2", "1", "2", CalculationAccuracy.Exact)]
@@ -50,7 +50,7 @@ public sealed class ThreeCalculationModesTest {
         ProbabilityCalculationResult fast = Run(cards, hand, CalculationModel.Fast);
         Assert.That(fast.Contract!.Accuracy, Is.EqualTo(accuracy));
         Assert.That(fast.Contract.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction(upperN, upperD)));
-        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(cards, hand, Combos, Groups, SearchProjectionTestPolicy.DrawFirst(cards).CardIds.ToArray());
+        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(cards, hand, Combos, Groups);
         Assert.That(physical.Wins[1][1] * BigInteger.Parse(physicalD), Is.EqualTo(physical.Outcomes * BigInteger.Parse(physicalN)));
         ProbabilityFraction[] fractions = [fast.Contract.Fractions.Total, .. fast.Contract.Fractions.Combos, .. fast.Contract.Fractions.Groups];
         for (int row = 0; row < fractions.Length; row++) {
@@ -104,7 +104,7 @@ public sealed class ThreeCalculationModesTest {
     public async Task ThreeSourceSearchExampleUsesIdenticalProvenFractions(string name) {
         SessionState session = await SearchAvailabilityCertificateTest.Example(name);
         ProbabilityCalculationResult RunExample(CalculationModel mode) => new ProbabilityCalculatorService().CalculateProbabilityResults(
-            session.Cards, session.Combos, session.HandSize, session.ComboGroups, CalculationWorkPolicy.Interactive, new(SearchProjectionTestPolicy.DrawFirst(session.Cards), Mode: mode));
+            session.Cards, session.Combos, session.HandSize, session.ComboGroups, CalculationWorkPolicy.Interactive, new(Mode: mode));
         ProbabilityCalculationResult fast = RunExample(CalculationModel.Fast);
         ProbabilityCalculationResult exact = RunExample(CalculationModel.Exact);
         Assert.That(exact.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
@@ -119,7 +119,7 @@ public sealed class ThreeCalculationModesTest {
         List<Combo> combos = [new([new(cards[1].Categories[0], 1, 6)], "Target")];
         foreach (CalculationModel mode in new[] { CalculationModel.Fast, CalculationModel.Exact }) {
             ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(cards, combos, 2, null,
-                CalculationWorkPolicy.Default, new(SearchProjectionTestPolicy.DrawFirst(cards), Mode: mode));
+                CalculationWorkPolicy.Default, new(Mode: mode));
             Assert.That(result.Contract!.Fractions!.Total, Is.EqualTo(new ProbabilityFraction("9", "10")));
             Assert.That(result.Contract.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
             Assert.That(result.SearchAvailability, Is.Null);
@@ -171,9 +171,7 @@ public sealed class ThreeCalculationModesTest {
 
     [Test]
     public void WorkerRejectsTamperedModesAccuracyFractionsAndIncompleteBounds() {
-        List<Card> cards = Counterexample("consumed");
-        JsonObject response = JsonNode.Parse(CalculationWire.Execute(CalculationSnapshot.Capture(cards, Combos, 1, Groups,
-            options: new(SearchProjectionTestPolicy.DrawFirst(cards))).Json))!.AsObject();
+        JsonObject response = JsonNode.Parse(CalculationWire.Execute(CalculationSnapshot.Capture(Counterexample("consumed"), Combos, 1, Groups).Json))!.AsObject();
         foreach ((string field, JsonNode? value) in new (string, JsonNode?)[] {
             ("Version", JsonValue.Create(999)), ("RequestedMode", JsonValue.Create(999)),
             ("Accuracy", JsonValue.Create(999)), ("Reference", JsonValue.Create("other")), ("Fractions", null)
@@ -192,7 +190,7 @@ public sealed class ThreeCalculationModesTest {
         List<ComboGroup> manyGroups = Enumerable.Range(0, 17000).Select(index => new ComboGroup("g" + index, "Group")).ToList();
         List<Card> cards = Counterexample("consumed");
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, Combos, 1, manyGroups,
-            CalculationWorkPolicy.Interactive, options: new(SearchProjectionTestPolicy.DrawFirst(cards), Mode: CalculationModel.Fast));
+            CalculationWorkPolicy.Interactive, options: new(Mode: CalculationModel.Fast));
         ProbabilityCalculationResult fast = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
         Assert.That(fast.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Uncertified));
         Assert.That(fast.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.Limited));
@@ -231,10 +229,10 @@ public sealed class ThreeCalculationModesTest {
     public void SecondaryProofErrorPreservesEveryCompletedFastRow() {
         List<Card> cards = Counterexample("consumed");
         WorkBudget primaryBudget = new(CalculationWorkPolicy.Default);
-        ExactCalculationResult exact = new DrawEffectCalculation(cards, 1, primaryBudget, SearchProjectionTestPolicy.DrawFirst(cards)).Calculate(Combos, Groups);
+        ExactCalculationResult exact = new DrawEffectCalculation(cards, 1, primaryBudget).Calculate(Combos, Groups);
         // Simulate a defective secondary proof owner. It must never erase a
         // complete primary or turn an exception into an exactness claim.
-        DrawEffectCalculation incomplete = new(cards, 1, new(CalculationWorkPolicy.Default), SearchProjectionTestPolicy.DrawFirst(cards));
+        DrawEffectCalculation incomplete = new(cards, 1, new(CalculationWorkPolicy.Default));
         ProbabilityCalculationResult result = ProbabilityCalculatorService.CompleteResult(Combos, Groups,
             CalculationModel.Fast, exact, primaryBudget, incomplete);
         Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Uncertified));
@@ -249,10 +247,9 @@ public sealed class ThreeCalculationModesTest {
     [TestCase("zero-capacity"), TestCase("zero-target"), TestCase("inactive-zero"), TestCase("deferred-unobserved-targets")]
     public void BoundaryAndDeferredSearchProofsApplyToTheCompleteAcceptedRequest(string name) {
         SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == name);
-        DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(fixture.Deck, fixture.Priority);
-        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, priority.CardIds.ToArray());
+        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups);
         foreach (CalculationModel mode in new[] { CalculationModel.Fast, CalculationModel.Exact }) {
-            CalculationSnapshot snapshot = CalculationSnapshot.Capture(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, options: new(priority, Mode: mode));
+            CalculationSnapshot snapshot = CalculationSnapshot.Capture(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, options: new(Mode: mode));
             ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
             Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
             Assert.That(result.SearchAvailability, Is.Null);

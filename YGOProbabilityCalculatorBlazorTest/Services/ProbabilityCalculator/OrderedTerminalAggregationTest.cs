@@ -134,12 +134,12 @@ public sealed class OrderedTerminalAggregationTest {
     public void SecondaryWorkLimitRetainsTheCompletedWitnessOnARescuedRequest() {
         SessionState state = Pressure();
         WorkBudget measure = new(CalculationWorkPolicy.Interactive);
-        DrawEffectCalculation original = new(state.Cards, state.HandSize, measure, SearchProjectionTestPolicy.DrawFirst(state.Cards));
+        DrawEffectCalculation original = new(state.Cards, state.HandSize, measure);
         ExactCalculationResult upper = original.Calculate(state.Combos, state.ComboGroups);
         original.DescribeCapability();
         ExactCalculationResult witness = original.SearchExecution!.CalculateLower(state.Combos, state.ComboGroups, true);
         WorkBudget limited = new(new(measure.Spent + 10_000));
-        DrawEffectCalculation execution = new(state.Cards, state.HandSize, limited, SearchProjectionTestPolicy.DrawFirst(state.Cards));
+        DrawEffectCalculation execution = new(state.Cards, state.HandSize, limited);
         ExactCalculationResult actual = execution.Calculate(state.Combos, state.ComboGroups);
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos,
             state.ComboGroups, actual, limited, execution);

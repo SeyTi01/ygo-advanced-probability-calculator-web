@@ -92,6 +92,9 @@ internal sealed partial class PostDrawCalculation {
                         values.CopyTo(drawn, 0);
                         drawn[i]--;
                         drawn[layout.HandStart + i]++;
+                        if (layout.HasSearchQueue && cards[i].Search is not null) {
+                            layout.EncounterSearch(drawn, i);
+                        }
                         drawn[layout.DrawsLeft]--;
                         if (candidate) {
                             drawn[^1] = i;
@@ -389,6 +392,9 @@ internal sealed partial class PostDrawCalculation {
                 return false;
             }
             values[layout.HandStart + selected]--;
+            if (layout.HasSearchQueue && cards[selected].Search is not null) {
+                layout.RemoveSearch(values, selected);
+            }
             // Remove the latest copy of this identity, retaining FIFO priority.
             for (int q = values.Length - 1; q >= layout.QueueStart; q--) {
                 if (values[q] == selected) {

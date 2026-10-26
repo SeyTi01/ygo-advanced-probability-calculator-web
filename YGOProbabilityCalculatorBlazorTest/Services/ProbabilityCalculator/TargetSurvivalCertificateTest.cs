@@ -29,7 +29,6 @@ public sealed class TargetSurvivalCertificateTest {
                     effectProfile: new(EffectSource.Custom))
             ],
             Combos = [new([], "Combo", cards: [new("target", required, 5, RequirementMaximumMode.HandSize)])],
-            DrawActivationPriority = new(DrawActivationMode.CustomPriority, ["desires", "search"]),
             HandSize = 5
         };
     }
@@ -65,8 +64,8 @@ public sealed class TargetSurvivalCertificateTest {
         ExactProbability actualProbability = new(success, denominator);
         ProbabilityCalculatorService engine = new();
         foreach (CalculationWorkPolicy work in new[] { CalculationWorkPolicy.Default, CalculationWorkPolicy.Interactive }) {
-            ProbabilityCalculationResult fast = engine.CalculateProbabilityResults(state.Cards, state.Combos, 5, [], work, new(state.DrawActivationPriority));
-            ProbabilityCalculationResult exact = engine.CalculateProbabilityResults(state.Cards, state.Combos, 5, [], work, new(state.DrawActivationPriority, Mode: CalculationModel.Exact));
+            ProbabilityCalculationResult fast = engine.CalculateProbabilityResults(state.Cards, state.Combos, 5, [], work);
+            ProbabilityCalculationResult exact = engine.CalculateProbabilityResults(state.Cards, state.Combos, 5, [], work, new(Mode: CalculationModel.Exact));
             Assert.That(fast.Contract!.Fractions!.Total, Is.EqualTo(new ProbabilityFraction("1969", "1976")));
             Assert.That(exact.Contract!.Fractions!.Total, Is.EqualTo(actualProbability.ToFraction()));
             Assert.That(exact.Contract.Fractions.Total, Is.EqualTo(new ProbabilityFraction("35017811", "47851804")));
@@ -82,7 +81,7 @@ public sealed class TargetSurvivalCertificateTest {
         SessionState loaded = await codec.LoadSessionAsync(codec.SerializeSession(state));
         Assert.That(loaded.Cards.Single(card => card.Id == "search").Copies, Is.EqualTo(32));
         Assert.That(loaded.Cards.Single(card => card.Id == "target").ManualMetadataCategoryKeys, Does.Contain("kind:monster"));
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, loaded.HandSize, loaded.ComboGroups, options: new(loaded.DrawActivationPriority));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, loaded.HandSize, loaded.ComboGroups);
         ProbabilityCalculationResult wire = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
         Assert.That(wire.SearchAvailability!.Total!.Upper, Is.EqualTo(eventProbability.ToFraction()));
     }
@@ -116,9 +115,8 @@ public sealed class TargetSurvivalCertificateTest {
             new([], "Consumed source", cards: [new("d", deck.Single(card => card.Id == "d").Copies, 5)])];
         List<ComboGroup> groups = [new("all", "All"), new("mixed", "Mixed"), new("empty", "Empty")];
         if (variant % 2 != 0) { deck.Reverse(); }
-        DrawActivationPriority priority = SearchProjectionTestPolicy.DrawFirst(deck);
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        DrawEffectCalculation execution = new(deck, 2, budget, priority);
+        DrawEffectCalculation execution = new(deck, 2, budget);
         ExactCalculationResult primary = execution.Calculate(combos, groups);
         ExactCalculationResult baseline = execution.SearchExecution!.CalculateLower(combos, groups, false);
         if (execution.SearchExecution.CanRefineKnownSourceLoss()) {
@@ -132,7 +130,7 @@ public sealed class TargetSurvivalCertificateTest {
         List<Combo> oracleCombos = combos.Select(combo => combo.WithCards(combo.Cards
             .GroupBy(card => card.CardId, StringComparer.Ordinal)
             .Select(rows => new ComboCard(rows.Key, rows.Max(card => card.MinCount), rows.Min(card => card.MaxCount))))).ToList();
-        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(deck, 2, oracleCombos, groups, priority.CardIds.ToArray());
+        SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(deck, 2, oracleCombos, groups);
         Assert.That(certificate.Status, Is.AnyOf(SearchAvailabilityStatus.Bounded, SearchAvailabilityStatus.Exact), certificate.Detail);
         Assert.That(certificate.Detail, Does.Not.Contain("refinement failed"));
         SearchAvailabilityInterval[] intervals = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
@@ -153,10 +151,8 @@ public sealed class TargetSurvivalCertificateTest {
     [TestCase(0)] [TestCase(4096)] [TestCase(4500)] [TestCase(5000)] [TestCase(6000)] [TestCase(10000)]
     public void OptionalBudgetLimitRetainsCompletedPrimaryAndLower(int extra) {
         SessionState state = Motivating();
-        WorkBudget routing = new(CalculationWorkPolicy.Default);
-        Assert.That(UnifiedActivationRouting.Required(state.Cards, 5, state.DrawActivationPriority, routing), Is.False);
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
-            state.Cards, state.Combos, 5, [], new(7561 + routing.Spent + extra), new(state.DrawActivationPriority));
+            state.Cards, state.Combos, 5, [], new(7561 + extra));
         Assert.That(result.Contract!.Fractions!.Total, Is.EqualTo(new ProbabilityFraction("1969", "1976")));
         Assert.That(result.SearchAvailability!.Total!.Lower, Is.EqualTo(new ProbabilityFraction("17290681", "26100984")));
         Assert.That(result.SearchAvailability.Total.Upper, Is.AnyOf(new ProbabilityFraction("1969", "1976"), new ProbabilityFraction("1030859", "1407406")));
@@ -169,7 +165,7 @@ public sealed class TargetSurvivalCertificateTest {
         SessionState state = Motivating();
         state.Cards[2] = state.Cards[2].WithCopies(copies - 8);
         WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(state.Cards, 5, budget, state.DrawActivationPriority);
+        DrawEffectCalculation execution = new(state.Cards, 5, budget);
         ExactCalculationResult primary = execution.Calculate(state.Combos, []);
         SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos, [], primary, budget, execution);
         Assert.That(certificate.Total, Is.Not.Null);
@@ -201,7 +197,7 @@ public sealed class TargetSurvivalCertificateTest {
     public void WorkerStillRejectsInvalidAndReversedIntervals(string field, string numerator, string denominator) {
         SessionState state = Motivating();
         JsonObject response = JsonNode.Parse(CalculationWire.Execute(CalculationSnapshot.Capture(
-            state.Cards, state.Combos, 5, [], options: new(state.DrawActivationPriority)).Json))!.AsObject();
+            state.Cards, state.Combos, 5, []).Json))!.AsObject();
         response["Result"]!["SearchAvailability"]!["Total"]![field] = new JsonObject {
             ["Numerator"] = numerator, ["Denominator"] = denominator
         };
@@ -234,7 +230,8 @@ public sealed class TargetSurvivalCertificateTest {
             "deferred-loss-cost-True-first-False", "ordered-pooling-3-reversed-False" }) {
             SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == name);
             cases.Add((name, new() { Cards = fixture.Deck, HandSize = fixture.Hand, Combos = fixture.Combos,
-                ComboGroups = fixture.Groups, DrawActivationPriority = SearchProjectionTestPolicy.DrawFirst(fixture.Deck, fixture.Priority) }));
+                ComboGroups = fixture.Groups, DrawActivationPriority = fixture.Priority is null ? new()
+                    : new(DrawActivationMode.CustomPriority, fixture.Priority) }));
         }
         SessionState ordinary = Motivating();
         for (int row = 0; row < ordinary.Cards.Count; row++) {

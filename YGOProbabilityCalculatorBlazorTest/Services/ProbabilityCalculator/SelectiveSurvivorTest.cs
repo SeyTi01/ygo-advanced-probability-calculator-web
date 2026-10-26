@@ -17,7 +17,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 [TestFixture, NonParallelizable]
 public sealed class SelectiveSurvivorTest {
     [Test]
-    public async Task SuppliedSessionSelectiveKernelCompletesExactWithUnchangedInteractiveLimits() {
+    public async Task SuppliedSessionCompletesExactWithUnchangedInteractiveLimits() {
         SessionState state = await Source();
         Assert.That(state.Cards.Count, Is.EqualTo(22));
         Assert.That(state.Cards.Sum(card => card.Copies), Is.EqualTo(40));
@@ -28,13 +28,13 @@ public sealed class SelectiveSurvivorTest {
         Assert.That(state.Cards.Where(card => card.Search is not null).Any(card => card.Search!.Matches(payment)), Is.False);
         Assert.That(state.Combos.SelectMany(combo => combo.AllCategories).Any(requirement => requirement.Selector.Matches(payment)), Is.True);
         WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        // This frozen encounter-order reference exercises the retained selective
-        // survivor kernel directly. Public mixed encounter order now interleaves.
-        SearchAccessCalculation execution = new(state.Cards, state.HandSize, budget, state.DrawActivationPriority, physicalSearch: true);
-        ExactCalculationResult rows = execution.Calculate(state.Combos, state.ComboGroups, false);
-        CalculationCapability capability = execution.DescribeCapability();
-        Assert.That(capability.Accuracy, Is.EqualTo(PhysicalSearchAccuracy.ProvenExact));
-        Assert.That(capability.Route, Is.EqualTo(SolverRoute.SearchPhysicalDeferred));
+        DrawEffectCalculation execution = new(state.Cards, state.HandSize, budget, state.DrawActivationPriority, physicalSearch: true);
+        ExactCalculationResult rows = execution.Calculate(state.Combos, state.ComboGroups);
+        ProbabilityCalculationResult result = ProbabilityCalculatorService.CompleteResult(state.Combos, state.ComboGroups,
+            CalculationModel.Exact, rows, budget, execution);
+        Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
+        Assert.That(result.Contract.SolverRoute, Is.EqualTo("SearchPhysicalDeferred"));
+        Assert.That(result.SearchAvailability, Is.Null);
         Assert.That(budget.Spent, Is.LessThan(CalculationWorkPolicy.Interactive.WorkUnits));
         ProbabilityFraction[] expected = [
             new("404499773243054219", "436593827634307200"),

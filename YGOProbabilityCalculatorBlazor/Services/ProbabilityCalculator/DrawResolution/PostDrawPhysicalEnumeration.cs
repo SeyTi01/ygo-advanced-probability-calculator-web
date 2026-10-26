@@ -96,6 +96,9 @@ internal sealed partial class PostDrawCalculation {
                     values.CopyTo(drawn, 0);
                     drawn[i]--;
                     drawn[layout.HandStart + i]++;
+                    if (layout.HasSearchQueue && cards[i].Search is not null) {
+                        layout.EncounterSearch(drawn, i);
+                    }
                     drawn[layout.DrawsLeft]--;
                     if (candidate) {
                         drawn[^1] = i;
@@ -130,7 +133,7 @@ internal sealed partial class PostDrawCalculation {
         BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "physical results");
         BoundedSearchHandCounter? bounded = cards.Any(card => card.EffectPlan.RequiresSearchResolution || (card.Search is not null && card.MinimumHandSize > 0))
-            ? new(cards, combos, budget) : null;
+            ? new(cards, combos, budget, priority) : null;
         PhysicalSearchHandCounter? counter = bounded is null ? new(cards, combos, budget) : null;
         PhysicalSearchLossCounter? lossCounter = bounded is null && ObservePhysicalOutcome is null
             && cards.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0)
@@ -146,7 +149,7 @@ internal sealed partial class PostDrawCalculation {
         bool frontier = method == PhysicalEnumerationMethod.Frontier || (method == PhysicalEnumerationMethod.Auto
             && n <= 8 && handSize <= 5 && activations <= 4 && observations <= 12);
         Route = frontier ? SolverRoute.SearchPhysicalFrontier : SolverRoute.SearchPhysicalEnumeration;
-        if (cards.All(card => card.DrawCount is null)) {
+        if (!layout.HasSearchQueue && cards.All(card => card.DrawCount is null)) {
             // With no draw phase the order of the opening hand is unobservable.
             // Enumerate count vectors with physical binomial mass, not permutations.
             Route = SolverRoute.SearchOnly;
@@ -174,13 +177,13 @@ internal sealed partial class PostDrawCalculation {
         else if (frontier) {
             resolver.EnumerateFrontier(handSize, copies, factorial, CountTerminal);
         }
-        else if ((method == PhysicalEnumerationMethod.Auto || method == PhysicalEnumerationMethod.SingleSource)
+        else if (!layout.HasSearchQueue && (method == PhysicalEnumerationMethod.Auto || method == PhysicalEnumerationMethod.SingleSource)
             && resolver.TryEnumerateSingleSource(handSize, copies, factorial, CountTerminal)) {
             // The source-conditioned quotient has already counted both opening
             // partitions through the same physical terminal/search boundary.
         }
-        else if (method is PhysicalEnumerationMethod.BatchStreaming or PhysicalEnumerationMethod.SingleSource
-            || (method == PhysicalEnumerationMethod.Auto && AggregatePhysicalBatches)) {
+        else if (!layout.HasSearchQueue && (method is PhysicalEnumerationMethod.BatchStreaming or PhysicalEnumerationMethod.SingleSource
+            || (method == PhysicalEnumerationMethod.Auto && AggregatePhysicalBatches))) {
             resolver.EnumerateBatches(handSize, copies, factorial, CountTerminal);
         }
         else {
@@ -224,7 +227,9 @@ internal sealed partial class PostDrawCalculation {
                 budget.SearchDiagnostics?.Add("physical search evaluations");
                 ObservePhysicalOutcome?.Invoke(cards, (int[])state.Clone(), (int[])available.Clone(), mass);
                 bool[] success = bounded is null ? counter!.Evaluate(state.AsSpan(layout.HandStart, n), capacity ?? available)
-                    : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available);
+                    : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available,
+                        layout.HasSearchQueue ? state.AsSpan(layout.SearchQueueStart, layout.SearchQueueCapacity).ToArray()
+                            .Where(value => value > 0).Select(value => value - 1).ToArray() : null);
                 if (success.Any(value => value)) {
                     wins[0] += mass;
                 }
