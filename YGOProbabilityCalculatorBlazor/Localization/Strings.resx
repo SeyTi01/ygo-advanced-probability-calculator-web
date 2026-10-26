@@ -755,7 +755,7 @@
     <value>Choose None, Remove 1, or Remove 2.</value>
   </data>
   <data xml:space="preserve" name="Ui.ChoosesTheHighestLegalEffectAfterEachCompletedResolutionIncludingNewlyDrawnEffects">
-    <value>Resolve draw effects first, then search effects. Priority applies separately within each phase. Fetched effects do not activate.</value>
+    <value>Resolve draw effects first, then search effects. Priority applies separately within each phase.</value>
   </data>
   <data xml:space="preserve" name="Ui.Clear">
     <value>Clear</value>
