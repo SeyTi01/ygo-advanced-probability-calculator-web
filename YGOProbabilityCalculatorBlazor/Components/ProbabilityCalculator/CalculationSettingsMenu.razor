@@ -44,7 +44,6 @@
                     <option value="CustomPriority">@(UiText.Get("Ui.CustomPriority"))</option>
                 </select>
                 @if (Priority.Mode == DrawActivationMode.CustomPriority) {
-                    <div class="small text-body-secondary mt-2">@(UiText.Get("Ui.HighestFirst"))</div>
                     @if (_entries.Length == 0) {
                         <p class="form-text mb-0">@(UiText.Get("Ui.NoDrawEffectsConfigured"))</p>
                     }

@@ -755,7 +755,7 @@
     <value>Choose None, Remove 1, or Remove 2.</value>
   </data>
   <data xml:space="preserve" name="Ui.ChoosesTheHighestLegalEffectAfterEachCompletedResolutionIncludingNewlyDrawnEffects">
-    <value>Resolve draw effects first, then search effects. Priority applies separately within each phase.</value>
+    <value>Resolve draw effects first, then search effects. Within each phase, the highest-priority effect resolves first.</value>
   </data>
   <data xml:space="preserve" name="Ui.Clear">
     <value>Clear</value>
@@ -1089,9 +1089,6 @@
   </data>
   <data xml:space="preserve" name="Ui.Higherlimitsmayallowmorecomplexexactcalculationstocompleteandcanusesubstantiallymorebrowsermemorytheydonotchangeprobabilityaccuracy">
     <value>Higher limits may allow more complex exact calculations to complete and can use substantially more browser memory; they do not change probability accuracy.</value>
-  </data>
-  <data xml:space="preserve" name="Ui.HighestFirst">
-    <value>Highest first</value>
   </data>
   <data xml:space="preserve" name="Ui.IfUnavailableFailBranch">
     <value>If unavailable: fail branch.</value>
