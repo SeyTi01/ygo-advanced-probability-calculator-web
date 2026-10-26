@@ -1,6 +1,5 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
@@ -417,12 +416,9 @@ internal sealed partial class PostDrawCalculation {
             ref long cells,
             string structure
         ) {
-            // Existing states need one hash/comparison pass. A missing state
-            // still pays for insertion, after checking the prospective storage.
+            // Preserve the existing Work/Storage accounting for this update.
             budget.Spend(2L * key.Values.Length + WorkBudget.IntegerCells(increment) + 1);
-            ref BigInteger slot = ref CollectionsMarshal.GetValueRefOrNullRef(map, key);
-            bool exists = !Unsafe.IsNullRef(ref slot);
-            BigInteger previous = exists ? slot : BigInteger.Zero;
+            bool exists = map.TryGetValue(key, out BigInteger previous);
             budget.Spend(WorkBudget.IntegerCells(previous));
             BigInteger value = previous + increment;
             // Packed keys really own a shorter int[] (including its length word).
@@ -432,8 +428,9 @@ internal sealed partial class PostDrawCalculation {
             owner.PeakStates = Math.Max(owner.PeakStates, count);
             owner.CheckStorage(count, cells, structure);
             if (exists) {
-                // No map mutation between obtaining and using this reference.
-                slot = value;
+                // BigInteger addition can collect. Mono WASM AOT can lose an
+                // update through a dictionary value ref held across GC (#295).
+                map[key] = value;
             }
             else {
                 budget.Spend(2L * key.Values.Length);

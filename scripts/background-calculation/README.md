@@ -59,6 +59,39 @@ from browser correctness and do not add expensive smoke matrices to every push.
 
 ## Opt-in measurement tools
 
+`cold-worker-regression.cjs` is a separate correctness gate for issue #295. Run it
+against clean non-AOT, retained-IL AOT and stripped AOT publishes; verify the
+publish flags/logs separately. It does not build, change production AOT settings,
+or run as part of the routine smoke/CI suite.
+
+```sh
+node scripts/background-calculation/cold-worker-regression.cjs <published-wwwroot> <frozen-worker-inputs.json> bin/cold-worker-results.json 4
+```
+
+The input must be the saved `mixed-vision-custom-fast-40` entry from the original
+capture, a raw captured input object, or the `mixed-reproduction.json` wrapper.
+The gate requires canonical SHA-256
+`73449cb0ea76fca01d2a61959caab7df770001c61f4c3364171b8348b7f91177`;
+regenerating `MixedDeferredBenchmark.ExportExamples` is not the same capture.
+Keep the input and generated evidence local. An optional fifth argument supplies
+a complete reference response JSON; the reproduction wrapper's `reference` is
+also accepted automatically. The eleven stored reference fractions are checked
+with integer arithmetic, alongside route/proof/completion metadata and row
+identities. These stored references are regression expectations, not an
+independent probability oracle.
+
+Each of at least four fresh browser contexts creates a fresh production worker
+and sends the mixed request as its first calculation, followed by two repeats.
+The real page boots as in the original reproduction; its UI runtime is separate
+from the worker. The gate rejects any preliminary or additional page worker, and
+does not issue a dummy calculation. A failure exits nonzero and retains
+raw replies, request hashes and the worker/framework artifact manifest at the
+specified Git-ignored output path. Use external Playwright through `NODE_PATH`;
+Chromium defaults to Edge. Set `YGO_BROWSER_EXECUTABLE` or
+`YGO_BROWSER_CHANNEL` to override it, or `YGO_BROWSER_ENGINE=firefox` to use an
+installed Playwright Firefox. Worker-cold state is distinct from a fresh browser
+process or cold network cache; this gate makes no performance claims.
+
 These are explicit research/measurement entrypoints, outside normal discovery.
 Freeze the same exported fixture file for both revisions, record its hash, and
 run timing jobs alone without builds/tests/other calculations. Keep first calls
