@@ -50,6 +50,10 @@
                     }
                     @foreach (bool searchPhase in new[] { false, true }) {
                         Card[] entries = _entries.Where(card => (card.Search is not null) == searchPhase).ToArray();
+                        if (entries.Length == 0) {
+                            continue;
+                        }
+
                         string heading = searchPhase ? "searchPriorityHeading" : "drawPriorityHeading";
                         <h4 id="@heading" class="small fw-semibold mt-2">@UiText.Get(searchPhase ? "Priority.SearchEffects" : "Priority.DrawEffects")</h4>
                         <ol class="draw-priority-list" aria-labelledby="@heading">
