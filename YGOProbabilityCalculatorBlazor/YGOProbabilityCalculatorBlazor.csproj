@@ -23,6 +23,11 @@
         <BlazorWasmPrerenderingOutputStyle>AppendHtmlExtension</BlazorWasmPrerenderingOutputStyle>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <RunAOTCompilation>true</RunAOTCompilation>
+        <WasmStripILAfterAOT>true</WasmStripILAfterAOT>
+    </PropertyGroup>
+
     <ItemGroup>
         <EmbeddedResource Include="wwwroot/localization/locales.json" LogicalName="ProductionLocales.json" />
         <CustomAdditionalCompileInputs Include="$(IntermediateOutputPath)deployment-channel.txt" />

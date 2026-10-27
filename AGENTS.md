@@ -63,7 +63,7 @@ For Windows Codex tasks using the verified restricted environment:
 
 ### Release WebAssembly publishing
 
-Install SDK-scoped `wasm-tools` for the exact publishing SDK, as GitHub Actions and `YGOProbabilityCalculatorBlazor/build.sh` do. This enables normal WebAssembly optimizations without AOT.
+Install SDK-scoped `wasm-tools` for the exact publishing SDK, as GitHub Actions and `YGOProbabilityCalculatorBlazor/build.sh` do. Release publishing uses Mono WebAssembly AOT compilation with stripped IL; Debug builds remain non-AOT.
 
 ## C# style and readability
 
