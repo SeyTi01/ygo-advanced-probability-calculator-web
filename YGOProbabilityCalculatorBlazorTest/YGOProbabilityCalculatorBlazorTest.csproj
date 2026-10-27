@@ -24,6 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <EmbeddedResource Include="..\YGOProbabilityCalculatorBlazor\Localization\Strings.resx" Link="Localization\Strings.resx" />
       <ProjectReference Include="..\YGOProbabilityCalculatorBlazor\YGOProbabilityCalculatorBlazor.csproj" />
       <None Update="Fixtures\legacy_v1_2_example_session.json" CopyToOutputDirectory="PreserveNewest" />
       <None Update="Fixtures\example_session_state.json" CopyToOutputDirectory="PreserveNewest" />

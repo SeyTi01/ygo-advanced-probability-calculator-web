@@ -56,6 +56,7 @@ public sealed record CalculationSnapshot(string Json) {
         options = (options ?? new()) with { Mode = mode, CertifySearchAvailability = false };
         WorkerCard[] workerCards = CategoryMembership.Materialize(cards, categoryDefinitions ?? [])
             .Where(card => card.Active)
+            .Select(card => card.ForCalculation(effects))
             .Select(card => new WorkerCard(
                 card.Id,
                 card.Copies,

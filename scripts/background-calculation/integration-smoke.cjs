@@ -219,6 +219,51 @@ async function main() {
         assert.equal(await page.locator('.pinned-result').innerText(), pin, 'editing preserves manual pin');
         evidence.controlled.push('edit revokes held request');
         evidence.layout = await require('./result-layout.cjs')(page, effectSession, { calculate, hold, release });
+        // Independent labeled-card fractions in TwoPhaseSearchPriorityTest.
+        const a = { Name: 'A', Source: 'User' }, b = { Name: 'B', Source: 'User' }, cost = { Name: 'Cost', Source: 'User' };
+        const selector = name => ({ Kind: 'Category', Categories: ['user:' + name] });
+        const prioritySession = {
+            SchemaVersion: 13, CalculationModel: 'Exact', FastExecutionStrategy: 'Progressive', HandSize: 3, Categories: [a, b, cost],
+            DrawActivationPriority: { Mode: 'CustomPriority', CardIds: ['s', 't'] },
+            Cards: [card('s', 'Paid search', 1, { Search: { Selector: selector('A'), ObjectiveMetadataOnly: false },
+                PreDrawRemovalCount: 1, PreDrawSelector: selector('Cost') }),
+                card('t', 'Minimum hand search', 1, { Search: { Selector: selector('B'), ObjectiveMetadataOnly: false }, MinimumHandSize: 3 }),
+                card('cost', 'Payment', 1, { Categories: [cost] }), card('a', 'A', 1, { Categories: [a] }),
+                card('b', 'B', 1, { Categories: [b] })],
+            Combos: [{ Name: 'A plus B', Active: true, Categories: [], Cards: [
+                { CardId: 'a', MinCount: 1, MaxCount: 1 }, { CardId: 'b', MinCount: 1, MaxCount: 1 }] }]
+        };
+        await page.evaluate(() => { smoke.hold = null; smoke.held = []; });
+        await load(page, prioritySession);
+        await calculate();
+        assert.deepEqual(await page.evaluate(() => smoke.requests.at(-1).response.Result.Contract.Fractions.Total),
+            { Numerator: '3', Denominator: '5' });
+        evidence.terminal.push({ selected: 'search paid first' });
+        await page.getByRole('button', { name: 'Calculation settings', exact: true }).click();
+        assert.equal(await page.locator('[data-priority-id="s"] > button').first().isDisabled(), true);
+        await page.getByRole('button', { name: 'Move Minimum hand search up', exact: true }).focus();
+        await page.keyboard.press('Enter');
+        assert.equal(await page.locator('[data-priority-id="t"]').evaluate(element => element === document.activeElement), true);
+        await page.keyboard.press('Escape');
+        await calculate();
+        assert.deepEqual(await page.evaluate(() => smoke.requests.at(-1).response.Result.Contract.Fractions.Total),
+            { Numerator: '7', Denominator: '10' });
+        evidence.terminal.push({ selected: 'search minimum first' });
+        const separated = structuredClone(prioritySession);
+        separated.HandSize = 2;
+        separated.Cards = [card('s', 'Flexible search', 1, { Search: {
+            Selector: { Kind: 'AnyOf', Children: [selector('A'), selector('B')] }, ObjectiveMetadataOnly: false } }),
+            card('d', 'Draw one', 1, { DrawCount: 1 }), card('a', 'A', 1, { Categories: [a] }),
+            card('b', 'B', 1, { Categories: [b] }), card('f', 'Filler', 1)];
+        separated.DrawActivationPriority.CardIds = ['s', 'd'];
+        await load(page, separated);
+        await calculate();
+        assert.deepEqual(await page.evaluate(() => smoke.requests.at(-1).response.Result.Contract.Fractions.Total),
+            { Numerator: '1', Denominator: '2' });
+        await page.getByRole('button', { name: 'Calculation settings', exact: true }).click();
+        assert.deepEqual(await page.locator('.draw-priority-list li').evaluateAll(rows => rows.map(row => row.dataset.priorityId)), ['d', 's']);
+        assert.equal(await page.locator('.draw-priority-list li > button:enabled').count(), 0, 'movement cannot cross phases');
+        evidence.terminal.push({ selected: 'draw before search despite cross-phase saved ranks' });
         assert.deepEqual(evidence.pageErrors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
         if (process.argv[3]) fs.writeFileSync(process.argv[3], JSON.stringify(evidence, null, 2));

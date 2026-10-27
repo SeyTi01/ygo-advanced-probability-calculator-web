@@ -13,7 +13,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 public class DrawActivationPrioritySessionTest {
     private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
     private static SessionState Session(DrawActivationPriority priority) => new() {
-        Cards = [new([], id: "a", drawCount: 1), new([], id: "b", drawCount: 2), new([], 2, id: "f")],
+        Cards = [new([], id: "a", drawCount: 1), new([], id: "b", search: new(CardSelector.Any, false)), new([], 2, id: "f")],
         Combos = [new([], cards: [new("b", 1, 1)])], HandSize = 2, DrawActivationPriority = priority
     };
 
@@ -77,6 +77,21 @@ public class DrawActivationPrioritySessionTest {
         Assert.That(retained.CardIds, Is.EqualTo(new[] { "b", "a", duplicate.Id }));
         Assert.That(retained.Rank(duplicate.Id), Is.EqualTo(2));
         Assert.That(retained.ForWorkspace([a, duplicate]).CardIds, Is.EqualTo(new[] { "a", duplicate.Id }));
+    }
+
+    [Test]
+    public async Task LegacyDrawOnlyListAppendsSearchIdsWithoutReorderingAuthoredOrDormantEntries() {
+        SessionState session = Session(new(DrawActivationMode.CustomPriority, ["a"]));
+        session.Cards.Add(new([], id: "c", search: new(CardSelector.Any, false), simulationEnabled: false));
+        JsonObject document = JsonNode.Parse(Codec().SerializeSession(session))!.AsObject();
+        document[nameof(SessionState.DrawActivationPriority)]![nameof(DrawActivationPriority.CardIds)] = new JsonArray("a", "removed");
+        SessionState loaded = await Codec().LoadSessionAsync(document.ToJsonString());
+        DrawActivationPriority migrated = loaded.DrawActivationPriority.ForWorkspace(loaded.Cards.AsEnumerable().Reverse());
+        Assert.That(migrated.CardIds, Is.EqualTo(new[] { "a", "b", "c" }));
+        Assert.That(migrated.ForWorkspace(loaded.Cards).CardIds, Is.EqualTo(migrated.CardIds));
+        Card restored = loaded.Cards.Single(card => card.Id == "c").WithSimulationEnabled(true);
+        Assert.That(migrated.ForWorkspace([restored, .. loaded.Cards.Where(card => card.Id != "c")]).CardIds,
+            Is.EqualTo(migrated.CardIds));
     }
 
     [Test]

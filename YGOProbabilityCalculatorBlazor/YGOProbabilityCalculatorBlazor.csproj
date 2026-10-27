@@ -4,6 +4,17 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>annotations</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <!-- UI language resolves independently of the browser's numeric culture. -->
+        <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
+        <!-- Cloudflare Pages supplies CF_PAGES_BRANCH: main=stable, dev=dev, other branches=preview, unset=local. -->
+        <ApplicationDeploymentChannel Condition="'$(CF_PAGES_BRANCH)' == 'main'">Stable</ApplicationDeploymentChannel>
+        <ApplicationDeploymentChannel Condition="'$(CF_PAGES_BRANCH)' == 'dev'">Dev</ApplicationDeploymentChannel>
+        <ApplicationDeploymentChannel Condition="'$(CF_PAGES_BRANCH)' != '' and '$(CF_PAGES_BRANCH)' != 'main' and '$(CF_PAGES_BRANCH)' != 'dev'">Preview</ApplicationDeploymentChannel>
+        <ApplicationDeploymentChannel Condition="'$(CF_PAGES_BRANCH)' == ''">Local</ApplicationDeploymentChannel>
+        <DefineConstants Condition="'$(ApplicationDeploymentChannel)' == 'Stable'">$(DefineConstants);APP_DEPLOYMENT_CHANNEL_STABLE</DefineConstants>
+        <DefineConstants Condition="'$(ApplicationDeploymentChannel)' == 'Dev'">$(DefineConstants);APP_DEPLOYMENT_CHANNEL_DEV</DefineConstants>
+        <DefineConstants Condition="'$(ApplicationDeploymentChannel)' == 'Preview'">$(DefineConstants);APP_DEPLOYMENT_CHANNEL_PREVIEW</DefineConstants>
+        <DefineConstants Condition="'$(ApplicationDeploymentChannel)' == 'Local'">$(DefineConstants);APP_DEPLOYMENT_CHANNEL_LOCAL</DefineConstants>
         <!-- JSExport source generation emits unsafe interop stubs. -->
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <!-- Keep public routes in the publish output even if navigation links change. -->
@@ -12,10 +23,21 @@
         <BlazorWasmPrerenderingOutputStyle>AppendHtmlExtension</BlazorWasmPrerenderingOutputStyle>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <RunAOTCompilation>true</RunAOTCompilation>
+        <WasmStripILAfterAOT>true</WasmStripILAfterAOT>
+    </PropertyGroup>
+
     <ItemGroup>
+        <EmbeddedResource Include="wwwroot/localization/locales.json" LogicalName="ProductionLocales.json" />
+        <CustomAdditionalCompileInputs Include="$(IntermediateOutputPath)deployment-channel.txt" />
         <PackageReference Include="BlazorWasmPreRendering.Build" Version="10.0.0" PrivateAssets="all"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.12"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.12" PrivateAssets="all"/>
     </ItemGroup>
+
+    <Target Name="WriteDeploymentChannelCompileInput" BeforeTargets="CoreCompile">
+        <WriteLinesToFile File="$(IntermediateOutputPath)deployment-channel.txt" Lines="$(ApplicationDeploymentChannel)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    </Target>
 
 </Project>

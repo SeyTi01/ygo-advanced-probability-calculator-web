@@ -27,6 +27,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         if (options?.Mode is CalculationModel.OpeningHand or CalculationModel.Exact) {
             return CalculateProbabilityResults(deck, combos, handSize, null, workPolicy, storagePolicy, options).TotalProbability;
         }
+        deck = deck.Select(card => card.ForCalculation()).ToList();
         ValidateComboCount(combos);
         ValidateCardIds(deck);
         foreach (Card card in deck) {
@@ -95,17 +96,7 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         CalculationModel mode = options?.Mode ?? CalculationModel.Fast;
         ValidateComboCount(combos);
         ValidateCardIds(deck);
-        if (mode == CalculationModel.OpeningHand) {
-            deck = deck.Select(card => new Card(
-                card.Categories,
-                card.Copies,
-                card.Name,
-                card.Active,
-                card.Id,
-                card.ExternalCardId,
-                card.ManualMetadataCategoryKeys
-            )).ToList();
-        }
+        deck = deck.Select(card => card.ForCalculation(mode != CalculationModel.OpeningHand)).ToList();
         foreach (Card card in deck) {
             CardEffectCompiler.RequireExecutable(card);
         }

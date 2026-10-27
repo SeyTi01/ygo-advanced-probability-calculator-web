@@ -8,6 +8,7 @@ The [project overview](../README.md) introduces the calculator and the bundled e
 | [Calculation model](calculation-model.md) | Understand which saved rules execute and what gameplay is excluded. |
 | [Probability engine](probability-engine.md) | Follow physical-copy counting, overlaps, draws and searches, with a small enumerable example. |
 | [Accuracy and performance](accuracy-and-performance.md) | Interpret Exact/Bounded/Uncertified results and distinguish Work, Storage and worker lifecycle limits. |
+| [Localization contributions](localization.md) | Add presentation resources while preserving canonical identities, saved sessions and effect compatibility. |
 
 For a first visit, use Help, then read the model before treating a simulated effect as the printed card's complete behavior. For engine work, read the model, engine explanation and accuracy reference in that order.
 

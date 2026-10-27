@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
@@ -130,7 +131,7 @@ public partial class ComboEditor {
         string key = GroupKey(groupIndex);
         bool editsAffected = EditingPosition == position;
         if (AuthoringScope || editsAffected && EditingHasChanges) {
-            RefuseInline(key, "Save or cancel the pending row before changing its grouping.");
+            RefuseInline(key, UiText.Get("Ui.SaveOrCancelThePendingRowBeforeChangingItsGrouping"));
             return;
         }
         Combo updated = ComboOperatorEditing.SplitAlternatives(Combo, groupIndex, boundary);
@@ -159,7 +160,7 @@ public partial class ComboEditor {
         _connectorError = null;
         bool editsAffected = EditingPosition is { } position && positions.Contains(position);
         if (AuthoringScope || editsAffected && EditingHasChanges) {
-            RefuseInline(key, "Save or cancel the pending row before changing its grouping.");
+            RefuseInline(key, UiText.Get("Ui.SaveOrCancelThePendingRowBeforeChangingItsGrouping"));
             return;
         }
         try {

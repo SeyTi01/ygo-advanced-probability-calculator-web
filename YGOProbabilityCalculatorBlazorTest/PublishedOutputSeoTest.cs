@@ -63,7 +63,7 @@ public class PublishedOutputSeoTest {
         string? imageDescription = Single(document, "head meta[property='og:image:alt']").GetAttribute("content");
         Assert.That(imageDescription, Is.Not.Null.And.Not.Empty, "The social image needs a text alternative.");
         AssertAttribute(document, "head link[rel='canonical']", "href", canonical);
-        AssertSingle(document, "h1", relativePath == "index.html" ? AppTitle : $"{AppTitle} v{ProjectConstants.Version}");
+        AssertSingle(document, "h1", relativePath == "index.html" ? AppTitle : $"{AppTitle} {ProjectConstants.DisplayVersion}");
 
         Dictionary<string, string> metadata = new() {
             ["og:type"] = "website",

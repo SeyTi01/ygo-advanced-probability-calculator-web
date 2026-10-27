@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using System.Globalization;
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -6,16 +7,16 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 public static class SearchAvailabilityPresentation {
     public static string Summary(SearchAvailabilityCertificate certificate) => certificate.Status switch {
-        SearchAvailabilityStatus.Exact => "Exact with respect to Deck-search availability",
-        SearchAvailabilityStatus.NotApplicable => "No active Deck searches",
-        SearchAvailabilityStatus.Bounded => certificate.Total is { } total ? $"{Range(total)} · width {Width(total)}" : "Not certified",
-        _ => "Not certified"
+        SearchAvailabilityStatus.Exact => UiText.Get("Ui.ExactWithRespectToDeckSearchAvailability"),
+        SearchAvailabilityStatus.NotApplicable => UiText.Get("Ui.NoActiveDeckSearches"),
+        SearchAvailabilityStatus.Bounded => certificate.Total is { } total ? UiText.Format("Ui.0Width1", Range(total), Width(total)) : UiText.Get("Ui.NotCertified"),
+        _ => UiText.Get("Ui.NotCertified")
     };
 
     public static string Range(SearchAvailabilityInterval interval) => interval.IsExact
         ? $"≈ {Percent(interval.Lower, false)}% (exact)"
         : $"[{Percent(interval.Lower, false)}%, {Percent(interval.Upper, true)}%]"
-            + (interval.Informativeness == SearchAvailabilityRowStatus.Uninformative ? " (uninformative lower bound)" : "");
+            + (interval.Informativeness == SearchAvailabilityRowStatus.Uninformative ? UiText.Get("Ui.UninformativeLowerBound") : "");
 
     public static string Width(SearchAvailabilityInterval interval) {
         BigInteger lowerN = BigInteger.Parse(interval.Lower.Numerator, CultureInfo.InvariantCulture);
@@ -41,11 +42,11 @@ public static class SearchAvailabilityPresentation {
         certificate.Total is { } total ? new[] { total }.Concat(certificate.Combos).Concat(certificate.Groups) : [];
 
     public static IEnumerable<string> Export(SearchAvailabilityCertificate certificate) {
-        yield return certificate.Status == SearchAvailabilityStatus.Exact ? Summary(certificate) : $"Deck-search availability: {Summary(certificate)}";
+        yield return certificate.Status == SearchAvailabilityStatus.Exact ? Summary(certificate) : UiText.Format("Ui.DeckSearchAvailability0", Summary(certificate));
         yield return certificate.Reference;
         yield return certificate.Detail;
         foreach (SearchAvailabilityInterval row in Rows(certificate)) {
-            yield return $"- {row.Label}: [{row.Lower.Numerator}/{row.Lower.Denominator}, {row.Upper.Numerator}/{row.Upper.Denominator}]; width {Width(row)} ({row.Informativeness.ToString().ToLowerInvariant()})";
+            yield return UiText.Format("Ui.01234Width56", row.Label, row.Lower.Numerator, row.Lower.Denominator, row.Upper.Numerator, row.Upper.Denominator, Width(row), row.Informativeness.ToString().ToLowerInvariant());
         }
     }
 }

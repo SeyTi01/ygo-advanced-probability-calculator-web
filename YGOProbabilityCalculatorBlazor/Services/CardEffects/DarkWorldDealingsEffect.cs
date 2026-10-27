@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -8,5 +9,5 @@ public sealed class DarkWorldDealingsEffect : ICardEffectDefinition {
     public int Revision => 1;
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(1, false) with { RemovalCount = 1 };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Draw 1, then remove 1 card from hand.";
+    public string Summary => UiText.English("Effects.74117290.Summary");
 }

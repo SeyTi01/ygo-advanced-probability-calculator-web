@@ -76,9 +76,42 @@ async function main() {
         assert.equal(await page.locator('.card-editor').count(), 2);
         assert.equal(await page.locator('.combo-editor').count(), 2);
         await usable(page, page.getByRole('button', { name: 'Calculate', exact: true }));
+
+        await load(page, {
+            SchemaVersion: 13, CalculationModel: 'Fast', FastExecutionStrategy: 'Progressive', HandSize: 1,
+            Cards: [{ Id: 'draw', Name: 'Toggle source', Copies: 1, Categories: [], DrawCount: 1 },
+                { Id: 'target', Name: 'Toggle target', Copies: 1, Categories: [] },
+                { Id: 'blank', Name: 'Toggle blank', Copies: 1, Categories: [] }],
+            Combos: [{ Name: 'Target route', Categories: [], Cards: [{ CardId: 'target', MinCount: 1, MaxCount: 3 }] }]
+        });
+        const source = page.locator('.card-editor').first();
+        await source.locator('.accordion-button').click();
+        await source.locator('.simulation-edit').click();
+        await source.locator('#cardDraw0').selectOption('2');
+        const toggle = source.locator('.simulation-toggle');
+        await usable(page, toggle);
+        await toggle.focus(); await page.keyboard.press('Enter');
+        await source.getByRole('button', { name: 'Enable simulation', exact: true }).waitFor();
+        assert.equal(await source.locator('#cardDraw0').inputValue(), '2', 'toggle retains the editor draft');
+        await source.locator('.simulation-cancel').click();
+        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+        await page.waitForFunction(() => document.querySelector('.probability-total-value')?.closest('[aria-label]')?.getAttribute('aria-label').includes('1/3'));
+        const toggleDownload = page.waitForEvent('download');
+        await page.getByRole('button', { name: 'Save Session', exact: true }).click();
+        const disabled = JSON.parse(fs.readFileSync(await (await toggleDownload).path(), 'utf8'));
+        assert.equal(disabled.Cards[0].SimulationEnabled, false);
+        assert.equal(disabled.Cards[0].DrawCount, 1, 'draft was not saved by the toggle');
+        disabled.Cards[0].Name = 'Reloaded toggle source';
+        await load(page, disabled);
+        await source.locator('.accordion-button').click();
+        await source.getByRole('button', { name: 'Enable simulation', exact: true }).waitFor();
+        await toggle.focus(); await page.keyboard.press('Space');
+        await source.getByRole('button', { name: 'Disable simulation', exact: true }).waitFor();
+        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+        await page.waitForFunction(() => document.querySelector('.probability-total-value')?.closest('[aria-label]')?.getAttribute('aria-label').includes('1/2'));
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
-        console.log('Published workspace: keyboard editing, movement, deletion cancellation, drafts and file round trip passed at desktop/mobile sizes.');
+        console.log('Published workspace: keyboard editing, movement, drafts, per-entry simulation toggle, real worker results and file round trip passed at desktop/mobile sizes.');
     } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

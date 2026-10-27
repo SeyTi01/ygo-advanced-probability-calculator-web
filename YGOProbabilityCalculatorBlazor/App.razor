@@ -1,4 +1,6 @@
-﻿<Router AppAssembly="@typeof(App).Assembly">
+@inject LocalePreference Locale
+
+<Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
         <FocusOnNavigate RouteData="@routeData" Selector="h1"/>
@@ -10,3 +12,7 @@
         </LayoutView>
     </NotFound>
 </Router>
+@code {
+    // RunAsync selected satellites; restore numeric formatting before rendering a route.
+    protected override void OnInitialized() => Locale.RestoreNumericCulture();
+}

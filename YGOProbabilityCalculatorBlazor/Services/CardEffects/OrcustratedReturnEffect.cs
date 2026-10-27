@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -19,5 +20,5 @@ public sealed class OrcustratedReturnEffect : ICardEffectDefinition {
         ])
     };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Remove an Orcust or World Legacy monster from hand before drawing 2; once per turn.";
+    public string Summary => UiText.English("Effects.26845680.Summary");
 }

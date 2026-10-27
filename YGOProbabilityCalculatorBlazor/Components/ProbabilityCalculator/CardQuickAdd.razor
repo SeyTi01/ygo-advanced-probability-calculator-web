@@ -3,10 +3,10 @@
 
 <div class="quick-add mb-3">
     <div class="quick-add-row" @oninput:stopPropagation="true">
-        <CardSearchInput @ref="_search" Value="@_name" Label="Add card by name" Placeholder="Search cards or enter a name"
+        <CardSearchInput @ref="_search" Value="@_name" Label="@(UiText.Get("Ui.AddCardByName"))" Placeholder="@(UiText.Get("Card.SearchPlaceholder"))"
                          OnInput="NameChanged" OnSelected="AddCatalogCard" OnSubmit="AddManualCard" />
         <button type="button" class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(_name)"
-                @onclick="AddManualCard">Add card</button>
+                @onclick="AddManualCard">@(UiText.Get("Ui.AddCard"))</button>
     </div>
     @if (_status.Length > 0) {
         <span class="visually-hidden" role="status">@_status</span>
@@ -34,7 +34,7 @@
 
     private async Task Add(Card card) {
         await OnAdd.InvokeAsync(card);
-        _status = $"Added {card.Name}.";
+        _status = UiText.Format("Ui.Added0", card.Name);
         _name = string.Empty;
         if (_search is not null) {
             await _search.ResetAsync();

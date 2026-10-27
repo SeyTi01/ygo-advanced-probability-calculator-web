@@ -21,6 +21,13 @@ public class CardConverter : JsonConverter<Card> {
         string? name = root.GetProperty("Name").GetString();
         // Older session files predate Active; keep their entries enabled.
         bool active = !root.TryGetProperty("Active", out JsonElement activeProperty) || activeProperty.GetBoolean();
+        JsonProperty[] simulationFlags = root.EnumerateObject()
+            .Where(property => property.Name.Equals("SimulationEnabled", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (simulationFlags.Length > 1 || (simulationFlags.Length == 1
+            && simulationFlags[0].Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))) {
+            throw new JsonException("Simulation enablement must be a single boolean.");
+        }
+        bool simulationEnabled = simulationFlags.Length == 0 || simulationFlags[0].Value.GetBoolean();
         string? id = null;
 
         if (root.TryGetProperty("Id", out JsonElement idProperty)) {
@@ -216,7 +223,8 @@ public class CardConverter : JsonConverter<Card> {
                 search: search,
                 oncePerTurn: oncePerTurn,
                 activationLimit: ReadInteger("ActivationLimit"),
-                minimumHandSize: ReadInteger("MinimumHandSize") ?? 0
+                minimumHandSize: ReadInteger("MinimumHandSize") ?? 0,
+                simulationEnabled: simulationEnabled
             );
         }
         catch (ArgumentException exception) {
@@ -231,6 +239,7 @@ public class CardConverter : JsonConverter<Card> {
         writer.WriteNumber("Copies", value.Copies);
         writer.WriteString("Name", value.Name);
         writer.WriteBoolean("Active", value.Active);
+        writer.WriteBoolean("SimulationEnabled", value.SimulationEnabled);
         writer.WriteString("Id", value.Id);
 
         if (value.ExternalCardId is { } externalCardId) {

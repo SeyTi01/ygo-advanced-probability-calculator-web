@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -7,7 +8,7 @@ public sealed class RadiantTyphoonChantEffect : ICardEffectDefinition {
     public string Name => "Radiant Typhoon Chant";
     public int Revision => 3;
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Search a Level 1–4 Radiant Typhoon monster or Mystical Space Typhoon; each mode once per entry";
+    public string Summary => UiText.English("Effects.67115133.Summary");
 
     public DrawEffectPlan Compile() {
         CardSelector monster = CardSelector.AllOfSelectors([

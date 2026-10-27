@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -55,7 +56,7 @@ public partial class ProbabilityCalculatorComponent {
         _sharedLoading = false;
 
         if (tooLong) {
-            _sharedError = "This shared link is too large. Request a normal session file instead.";
+            _sharedError = UiText.Get("Ui.ThisSharedLinkIsTooLargeRequestANormalSessionFileInstead");
             return;
         }
 
@@ -69,7 +70,7 @@ public partial class ProbabilityCalculatorComponent {
             _sharedError = ex.Message;
         }
         catch {
-            _sharedError = "The shared session link is invalid or corrupted.";
+            _sharedError = UiText.Get("Ui.TheSharedSessionLinkIsInvalidOrCorrupted");
         }
     }
 
@@ -83,7 +84,7 @@ public partial class ProbabilityCalculatorComponent {
         }
         catch {
             if (OwnsSessionLoad(request)) {
-                _sharedError = "The shared session is invalid or uses an unsupported session version. Your work and saved draft are kept.";
+                _sharedError = UiText.Get("Ui.TheSharedSessionIsInvalidOrUsesAnUnsupportedSessionVersionYourWorkAndSavedDraftAreKept");
             }
         }
 
@@ -110,7 +111,7 @@ public partial class ProbabilityCalculatorComponent {
 
             if (!await RestoreSessionDataAsync(session, request)) {
                 if (OwnsSessionLoad(request)) {
-                    _sharedError = "Current work changed while loading. Review the shared session and load it again.";
+                    _sharedError = UiText.Get("Ui.CurrentWorkChangedWhileLoadingReviewTheSharedSessionAndLoadItAgain");
                 }
 
                 return;
@@ -118,7 +119,7 @@ public partial class ProbabilityCalculatorComponent {
         }
         catch {
             if (OwnsSessionLoad(request)) {
-                _sharedError = "The shared session is invalid or uses an unsupported session version. Your work and saved draft are kept.";
+                _sharedError = UiText.Get("Ui.TheSharedSessionIsInvalidOrUsesAnUnsupportedSessionVersionYourWorkAndSavedDraftAreKept");
             }
         }
         finally {

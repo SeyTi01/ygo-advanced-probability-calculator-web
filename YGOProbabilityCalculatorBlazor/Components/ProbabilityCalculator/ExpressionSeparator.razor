@@ -1,6 +1,6 @@
 <div class="expression-separator @(Operator == "OR" ? "alternative-separator" : "requirement-and-separator") @(Inline ? "expression-inline-separator" : "") @(Symbol == "+" ? "expression-copy-separator" : "")" role="@(OnOperatorChanged.HasDelegate ? "group" : "separator")" aria-label="@Label">
     @if (OnOperatorChanged.HasDelegate) {
-        <select id="@InputId" class="expression-operator" @ref="_select" aria-invalid="@(Error is not null ? "true" : null)" aria-label="@(InputLabel ?? $"Change {Symbol ?? Operator} operator")" @bind:get="Symbol ?? Operator" @bind:set="Change">
+        <select id="@InputId" class="expression-operator" @ref="_select" aria-invalid="@(Error is not null ? "true" : null)" aria-label="@(InputLabel ?? UiText.Format("Ui.Change0Operator", Symbol ?? Operator))" @bind:get="Symbol ?? Operator" @bind:set="Change">
             @foreach (string choice in AllowedOperators) {
                 <option value="@choice">@choice</option>
             }
@@ -25,9 +25,9 @@
     private ElementReference _select;
     public ValueTask FocusAsync() => _select.FocusAsync(preventScroll: true);
     private string Label => AccessibleLabel ?? ((Symbol ?? Operator) switch {
-        "+" => "+: separate card requirements",
-        "OR" => "OR: any alternative",
-        _ => "AND: same-card properties"
+        "+" => UiText.Get("Ui.SeparateCardRequirements"),
+        "OR" => UiText.Get("Ui.ORAnyAlternative"),
+        _ => UiText.Get("Ui.ANDSameCardProperties")
     });
     private Task Change(string value) => AllowedOperators.Contains(value)
         ? OnOperatorChanged.InvokeAsync(value) : Task.CompletedTask;

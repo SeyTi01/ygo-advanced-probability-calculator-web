@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.JSInterop;
@@ -13,7 +14,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
 
     public async Task SaveSessionAsync(SessionState session, string fileName) {
         if (string.IsNullOrWhiteSpace(fileName)) {
-            throw new ArgumentException("File name cannot be empty", nameof(fileName));
+            throw new ArgumentException(UiText.Get("Ui.FileNameCannotBeEmpty"), nameof(fileName));
         }
 
         if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) {
@@ -31,7 +32,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
     public string SerializeSession(SessionState session) {
         if (!Enum.IsDefined(session.CalculationModel) || !Enum.IsDefined(session.FastExecutionStrategy)
             || (session.CalculationModel != CalculationModel.Fast && session.FastExecutionStrategy != FastExecutionStrategy.Progressive)) {
-            throw new ArgumentOutOfRangeException(nameof(session), "Unknown calculation mode.");
+            throw new ArgumentOutOfRangeException(nameof(session), UiText.Get("Ui.UnknownCalculationMode"));
         }
         SessionState sessionToSave = new() {
             SchemaVersion = SessionState.CurrentSchemaVersion,
@@ -52,7 +53,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
     public Task<SessionState> LoadSessionAsync(string fileContent) {
         try {
             string migratedJson = _schemaMigrator.MigrateToCurrent(fileContent);
-            SessionState session = serializer.Deserialize<SessionState>(migratedJson, _serializerOptions) ?? throw new InvalidOperationException("Failed to deserialize session data");
+            SessionState session = serializer.Deserialize<SessionState>(migratedJson, _serializerOptions) ?? throw new InvalidOperationException(UiText.Get("Ui.FailedToDeserializeSessionData"));
 
             // Reject incomplete model graphs before any caller begins replacing its workspace.
             // Omitted collections retain defaults; optional legacy groups/colors may still be null.
@@ -65,7 +66,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
                 || session.ComboGroups?.Any(group => group is null) == true;
 
             if (hasMissingCollectionsOrEntries) {
-                throw new JsonException("Session contains missing model collections or entries.");
+                throw new JsonException(UiText.Get("Ui.SessionContainsMissingModelCollectionsOrEntries"));
             }
 
             bool hasMissingComboRequirements = session.Combos.Any(combo =>
@@ -73,7 +74,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             );
 
             if (hasMissingComboRequirements) {
-                throw new JsonException("Session contains missing combo requirements.");
+                throw new JsonException(UiText.Get("Ui.SessionContainsMissingComboRequirements"));
             }
 
             // These identities are rendered as sibling keys and used for editor references.
@@ -84,7 +85,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
                 .Count() != session.Categories.Count;
 
             if (hasDuplicateCategoryIdentities) {
-                throw new JsonException("Session contains duplicate category identities.");
+                throw new JsonException(UiText.Get("Ui.SessionContainsDuplicateCategoryIdentities"));
             }
 
             if (session.ComboGroups is { } groups) {
@@ -95,7 +96,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
                         .Count() != groups.Count;
 
                 if (hasInvalidComboGroup) {
-                    throw new JsonException("Session contains invalid or duplicate combo group identities.");
+                    throw new JsonException(UiText.Get("Ui.SessionContainsInvalidOrDuplicateComboGroupIdentities"));
                 }
             }
 
@@ -105,13 +106,13 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
                 .Count() != session.Cards.Count;
 
             if (hasDuplicateCardIds) {
-                throw new InvalidOperationException("Session contains duplicate card IDs.");
+                throw new InvalidOperationException(UiText.Get("Ui.SessionContainsDuplicateCardIDs"));
             }
 
             return Task.FromResult(session);
         }
         catch (JsonException ex) {
-            throw new InvalidOperationException("Invalid session file format", ex);
+            throw new InvalidOperationException(UiText.Get("Ui.InvalidSessionFileFormat"), ex);
         }
     }
 

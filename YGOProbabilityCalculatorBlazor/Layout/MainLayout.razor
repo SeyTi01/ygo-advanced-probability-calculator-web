@@ -1,65 +1,140 @@
 @inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@implements IDisposable
 
-<div class="page">
+<CascadingValue Value="_languageWorkspace" IsFixed="true">
+<div class="page" inert="@_switching">
     <main>
         <div class="top-row">
-            <div class="top-row-inner">
+            <div class="top-row-inner @(LocalePreference.Available.Count > 1 ? "has-languages" : "")">
                 @if (IsHelpPage) {
-                    <div class="h3 app-title mb-0">Yu-Gi-Oh! Advanced Probability Calculator</div>
+                    <div class="h3 app-title mb-0">@(UiText.Get("Ui.YuGiOhAdvancedProbabilityCalculator"))</div>
                 }
                 else {
-                    <h1 class="h3 app-title mb-0">Yu-Gi-Oh! Advanced Probability Calculator</h1>
+                    <h1 class="h3 app-title mb-0">@(UiText.Get("Ui.YuGiOhAdvancedProbabilityCalculator"))</h1>
                 }
                 <div class="top-row-controls">
-                    <label class="visually-hidden" for="theme-preference">Color theme preference</label>
+                    @if (LocalePreference.Available.Count > 1) {
+                        <label for="language-preference" class="visually-hidden">@UiText.Get("Language.Label")</label>
+                        <select @key="_languageControlVersion" id="language-preference" class="form-select form-select-sm language-select" aria-label="@UiText.Get("Language.Label")"
+                                title="@UiText.Get("Language.Label")" value="@System.Globalization.CultureInfo.CurrentUICulture.Name" disabled="@(_switching || !_languageReady || _languageWorkspace.Restoring)" @onchange="ChangeLanguage">
+                            @foreach (ProductionLocale locale in LocalePreference.Available) {
+                                <option value="@locale.Id">@locale.Name</option>
+                            }
+                        </select>
+                    }
+                    <label class="visually-hidden" for="theme-preference">@(UiText.Get("Ui.ColorThemePreference"))</label>
                     <select id="theme-preference"
                             class="form-select form-select-sm theme-select"
-                            aria-label="Color theme preference"
-                            title="Color theme preference"
+                            aria-label="@(UiText.Get("Ui.ColorThemePreference"))"
+                            title="@(UiText.Get("Ui.ColorThemePreference"))"
                             value="@ThemePreference"
                             @onchange="ChangeThemePreference">
-                        <option value="system">System</option>
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
+                        <option value="system">@(UiText.Get("Ui.System"))</option>
+                        <option value="light">@(UiText.Get("Ui.Light"))</option>
+                        <option value="dark">@(UiText.Get("Ui.Dark"))</option>
                     </select>
                     @if (IsHelpPage) {
-                        <a href="/" class="btn btn-outline-primary">Back</a>
+                        <a href="/" class="btn btn-outline-primary">@(UiText.Get("Ui.Back"))</a>
                     }
                     else {
-                        <a href="/help" class="btn btn-outline-primary">Help</a>
+                        <a href="/help" class="btn btn-outline-primary">@(UiText.Get("Ui.Help"))</a>
                     }
                 </div>
             </div>
         </div>
 
         <article class="content">
-            @Body
+            @if (_languageError is not null) {
+                <div class="alert alert-warning mt-2" role="alert">@_languageError
+                    @if (_hasHandoff) {
+                        <button type="button" class="btn btn-link" @onclick="DownloadHandoff">@UiText.Get("Language.DownloadHandoff")</button>
+                    }
+                </div>
+            }
+            @if (_languageReady) { @Body }
         </article>
     </main>
 </div>
+</CascadingValue>
 
 @code {
     private bool IsHelpPage => new Uri(NavigationManager.Uri).AbsolutePath.TrimEnd('/')
         .Equals("/help", StringComparison.OrdinalIgnoreCase);
     private string ThemePreference { get; set; } = "system";
+    private readonly LanguageWorkspace _languageWorkspace = new();
+    private LanguageHandoff? _handoff;
+    private string? _languageError;
+    private bool _languageReady;
+    private bool _switching;
+    private bool _finishing;
+    private bool _hasHandoff;
+    private int _languageControlVersion;
+
+    protected override async Task OnInitializedAsync() {
+        _languageWorkspace.Changed += LanguageStateChanged;
+        try {
+            _handoff = await JSRuntime.InvokeAsync<LanguageHandoff?>("ygoLocale.getHandoff");
+            _hasHandoff = await JSRuntime.InvokeAsync<bool>("ygoLocale.hasHandoff");
+            if (_handoff?.Workspace is { } checkpoint) { _languageWorkspace.Begin(checkpoint); }
+            else if (_hasHandoff && _handoff is null) { _languageError = UiText.Get("Language.UnrestoredCheckpoint"); }
+        }
+        catch (InvalidOperationException) { /* Publish-time prerendering stays English. */ }
+        catch (JSException) { /* Optional shell storage must not block startup. */ }
+        _languageReady = true;
+    }
+
+    private void LanguageStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private async Task ChangeLanguage(ChangeEventArgs args) {
+        string? next = args.Value?.ToString();
+        if (_switching || next == System.Globalization.CultureInfo.CurrentUICulture.Name) { return; }
+        _switching = true;
+        _languageError = null;
+        bool reloading = false;
+        try {
+            if (await JSRuntime.InvokeAsync<bool>("ygoLocale.hasPendingEdits")) {
+                _languageError = UiText.Get("Language.UnfinishedEdit");
+                return;
+            }
+            string? checkpoint = _languageWorkspace.Capture?.Invoke();
+            if (!IsHelpPage && checkpoint is null) { throw new InvalidOperationException(UiText.Get("Language.WaitForLoad")); }
+            await JSRuntime.InvokeVoidAsync("ygoLocale.change", next, checkpoint);
+            reloading = true;
+        }
+        catch (InvalidOperationException ex) { _languageError = ex.Message; }
+        catch (Exception ex) {
+            _languageError = UiText.Format("Language.ChangeFailed", ex.Message);
+            _hasHandoff = await JSRuntime.InvokeAsync<bool>("ygoLocale.hasHandoff");
+        }
+        finally {
+            if (!reloading) { _switching = false; _languageControlVersion++; }
+        }
+    }
+
+    private Task DownloadHandoff() => JSRuntime.InvokeVoidAsync("ygoLocale.downloadHandoff").AsTask();
+    public void Dispose() => _languageWorkspace.Changed -= LanguageStateChanged;
+    public sealed record LanguageHandoff(string Id, string? Workspace);
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender) {
-            return;
+        if (!_finishing && _languageReady && (_handoff?.Workspace is null || _languageWorkspace.Restored || _languageWorkspace.Failure is not null)) {
+            _finishing = true;
+            try {
+                if (_languageWorkspace.Failure is { } failure) { throw new InvalidOperationException(failure); }
+                if (_handoff is not null) { await JSRuntime.InvokeVoidAsync("ygoLocale.complete", _handoff.Id); }
+                _languageWorkspace.Finish();
+            }
+            catch (Exception ex) { _languageError = UiText.Format("Language.RestoreFailed", ex.Message); }
+            await JSRuntime.InvokeVoidAsync("ygoLocale.show");
+            StateHasChanged();
         }
-
+        if (!firstRender) { return; }
         try {
             string preference = NormalizeThemePreference(await JSRuntime.InvokeAsync<string>("ygoTheme.getPreference"));
-            if (ThemePreference != preference) {
-                ThemePreference = preference;
-                StateHasChanged();
-            }
+            if (ThemePreference != preference) { ThemePreference = preference; StateHasChanged(); }
         }
-        catch (JSException) {
-            // Theme initialization is optional; a storage or interop failure must not stop the calculator.
-        }
+        catch (JSException) { /* Theme storage is optional. */ }
     }
 
     private async Task ChangeThemePreference(ChangeEventArgs args) {

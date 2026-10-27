@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -8,6 +9,6 @@ public sealed class SekkasLightEffect : ICardEffectDefinition {
     public int Revision => 1;
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true);
     public EffectSupport Support => EffectSupport.Partial;
-    public string Summary => "Draw 2; once per turn.";
-    public string Limitations => "Assumes no Spells/Traps in the GY; its other Spell/Trap restriction and GY redraw effect are not modeled.";
+    public string Summary => UiText.English("Effects.24940422.Summary");
+    public string Limitations => UiText.English("Effects.24940422.Limitations");
 }

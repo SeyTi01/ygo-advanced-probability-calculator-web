@@ -96,6 +96,9 @@ internal sealed partial class PostDrawCalculation {
                     values.CopyTo(drawn, 0);
                     drawn[i]--;
                     drawn[layout.HandStart + i]++;
+                    if (layout.HasSearchQueue && cards[i].Search is not null) {
+                        layout.EncounterSearch(drawn, i);
+                    }
                     drawn[layout.DrawsLeft]--;
                     if (candidate) {
                         drawn[^1] = i;
@@ -130,7 +133,7 @@ internal sealed partial class PostDrawCalculation {
         BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "physical results");
         BoundedSearchHandCounter? bounded = cards.Any(card => card.EffectPlan.RequiresSearchResolution || (card.Search is not null && card.MinimumHandSize > 0))
-            ? new(cards, combos, budget) : null;
+            ? new(cards, combos, budget, priority) : null;
         PhysicalSearchHandCounter? counter = bounded is null ? new(cards, combos, budget) : null;
         PhysicalSearchLossCounter? lossCounter = bounded is null && ObservePhysicalOutcome is null
             && cards.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0)
@@ -146,7 +149,7 @@ internal sealed partial class PostDrawCalculation {
         bool frontier = method == PhysicalEnumerationMethod.Frontier || (method == PhysicalEnumerationMethod.Auto
             && n <= 8 && handSize <= 5 && activations <= 4 && observations <= 12);
         Route = frontier ? SolverRoute.SearchPhysicalFrontier : SolverRoute.SearchPhysicalEnumeration;
-        if (cards.All(card => card.DrawCount is null)) {
+        if (!layout.HasSearchQueue && cards.All(card => card.DrawCount is null)) {
             // With no draw phase the order of the opening hand is unobservable.
             // Enumerate count vectors with physical binomial mass, not permutations.
             Route = SolverRoute.SearchOnly;
@@ -174,13 +177,13 @@ internal sealed partial class PostDrawCalculation {
         else if (frontier) {
             resolver.EnumerateFrontier(handSize, copies, factorial, CountTerminal);
         }
-        else if ((method == PhysicalEnumerationMethod.Auto || method == PhysicalEnumerationMethod.SingleSource)
+        else if (!layout.HasSearchQueue && (method == PhysicalEnumerationMethod.Auto || method == PhysicalEnumerationMethod.SingleSource)
             && resolver.TryEnumerateSingleSource(handSize, copies, factorial, CountTerminal)) {
             // The source-conditioned quotient has already counted both opening
             // partitions through the same physical terminal/search boundary.
         }
-        else if (method is PhysicalEnumerationMethod.BatchStreaming or PhysicalEnumerationMethod.SingleSource
-            || (method == PhysicalEnumerationMethod.Auto && AggregatePhysicalBatches)) {
+        else if (!layout.HasSearchQueue && (method is PhysicalEnumerationMethod.BatchStreaming or PhysicalEnumerationMethod.SingleSource
+            || (method == PhysicalEnumerationMethod.Auto && AggregatePhysicalBatches))) {
             resolver.EnumerateBatches(handSize, copies, factorial, CountTerminal);
         }
         else {
@@ -224,7 +227,9 @@ internal sealed partial class PostDrawCalculation {
                 budget.SearchDiagnostics?.Add("physical search evaluations");
                 ObservePhysicalOutcome?.Invoke(cards, (int[])state.Clone(), (int[])available.Clone(), mass);
                 bool[] success = bounded is null ? counter!.Evaluate(state.AsSpan(layout.HandStart, n), capacity ?? available)
-                    : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available);
+                    : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available,
+                        layout.HasSearchQueue ? state.AsSpan(layout.SearchQueueStart, layout.SearchQueueCapacity).ToArray()
+                            .Where(value => value > 0).Select(value => value - 1).ToArray() : null);
                 if (success.Any(value => value)) {
                     wins[0] += mass;
                 }
@@ -288,7 +293,7 @@ internal sealed class PhysicalSearchHandCounter {
     private readonly List<Combo> _combos;
     private readonly (int Source, int[] Targets)[] _sources;
     private readonly record struct HandBound(int[] Rows, int Minimum, int Maximum);
-    private int _compiledSize = -1;
+    private int _compiledHandSizeLimit = -1;
     private List<List<HandBound[]>> _events = [];
     private readonly int[] _hand;
     private readonly int[] _allowance;
@@ -318,7 +323,14 @@ internal sealed class PhysicalSearchHandCounter {
         int[] hand = _hand;
         original.CopyTo(hand);
         int size = hand.Sum();
-        if (size != _compiledSize) {
+        // A compiled hand-size bound H is valid for every actual size h <= H.
+        // Each witness replaces one source with one target, so its size stays h.
+        // Counts already lie in [0,h]: clamping fixed maxima at H and using H
+        // for unrestricted maxima cannot change their truth. Hall union minima
+        // still enforce distinct copies, including total demand greater than h.
+        // A route rejected as impossible at H is also impossible below H.
+        // Retain one immutable compilation; only a larger hand needs rebuilding.
+        if (size > _compiledHandSizeLimit) {
             _budget.SearchDiagnostics?.Add("physical event compilations");
             ComboEventCompiler compiler = new(_cards, size, _budget);
             List<List<HandBound[]>> events = [];
@@ -359,7 +371,7 @@ internal sealed class PhysicalSearchHandCounter {
                 events.Add(routes);
             }
             _events = events;
-            _compiledSize = size;
+            _compiledHandSizeLimit = size;
         }
         int[] allowance = _allowance;
         for (int index = 0; index < _sources.Length; index++) {

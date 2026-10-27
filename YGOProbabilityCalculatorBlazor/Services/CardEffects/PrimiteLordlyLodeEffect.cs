@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -7,8 +8,8 @@ public sealed class PrimiteLordlyLodeEffect : ICardEffectDefinition {
     public string Name => "Primite Lordly Lode";
     public int Revision => 1;
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "On activation, search 1 other Primite card";
-    public string Limitations => "Models the on-activation Deck search; its separate Normal Monster Special Summon effect is outside scope.";
+    public string Summary => UiText.English("Effects.56506740.Summary");
+    public string Limitations => UiText.English("Effects.56506740.Limitations");
 
     public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(CardSelector.AllOfSelectors([

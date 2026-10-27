@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -65,7 +66,7 @@ public static class SessionShareCodec {
         }
 
         if (!fragment.StartsWith(Prefix, StringComparison.Ordinal)) {
-            throw new InvalidOperationException("Unsupported shared-link format version.");
+            throw new InvalidOperationException(UiText.Get("Ui.UnsupportedSharedLinkFormatVersion"));
         }
 
         string payload = fragment[Prefix.Length..];
@@ -217,8 +218,8 @@ public static class SessionShareCodec {
     }
 
     private static InvalidOperationException TooLarge() =>
-        new("This session is too large for a share link. Share a normal session file instead.");
+        new(UiText.Get("Ui.ThisSessionIsTooLargeForAShareLinkShareANormalSessionFileInstead"));
 
     private static InvalidOperationException Invalid() =>
-        new("The shared session link is invalid or corrupted.");
+        new(UiText.Get("Ui.TheSharedSessionLinkIsInvalidOrCorrupted"));
 }

@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -12,6 +13,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     private bool _sessionInitialized;
     private long _workspaceEditVersion;
     private long? _loadingSessionVersion;
+    private long? _pendingLanguageLoad;
 
     private void ObserveWorkspaceEdit() {
         _workspaceEditVersion++;
@@ -21,6 +23,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     private void InvalidateSessionLoad() {
         _sessionLoadVersion++;
         _loadingSessionVersion = null;
+        _pendingLanguageLoad = null;
         _sharedLoading = false;
     }
 
@@ -29,6 +32,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         await SessionLoadingJS.InvokeVoidAsync("sessionLoading.beforeWork");
 
     private void EndSessionLoad(SessionLoadRequest request) {
+        if (_pendingLanguageLoad == request.Version) { _pendingLanguageLoad = null; }
         if (_loadingSessionVersion == request.Version) {
             _loadingSessionVersion = null;
         }
@@ -110,6 +114,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         _isClearWorkspaceConfirmationOpen = false;
         InvalidateSessionLoad();
         _loadingSessionVersion = fullSession ? _sessionLoadVersion : null;
+        _pendingLanguageLoad = _sessionLoadVersion;
 
         return new(
             _sessionLoadVersion,
@@ -165,7 +170,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
 
     private async Task<List<Card>> PrepareSessionCardsAsync(SessionState session) {
         if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count) {
-            throw new InvalidOperationException("Session contains duplicate card IDs.");
+            throw new InvalidOperationException(UiText.Get("Ui.SessionContainsDuplicateCardIDs"));
         }
 
         // Resolve the same-origin bundle before applying saved objective memberships.
@@ -252,6 +257,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         }
 
         SharingNavigation.LocationChanged -= SharingLocationChanged;
+        if (LanguageWorkspace?.Capture?.Target == this) { LanguageWorkspace.Capture = null; }
         InvalidateSessionLoad();
         _disposed = true;
         StopCalculation();
@@ -270,7 +276,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
             }
 
             if (!CanApplySession(request)) {
-                _importError = "Current work changed during import. Import again to replace it.";
+                _importError = UiText.Get("Ui.CurrentWorkChangedDuringImportImportAgainToReplaceIt");
                 return;
             }
 
@@ -278,9 +284,10 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         }
         catch (Exception ex) {
             if (OwnsSessionLoad(request)) {
-                _importError = $"Failed to import deck: {ex.Message}";
+                _importError = UiText.Format("Ui.FailedToImportDeck0", ex.Message);
             }
         }
+        finally { EndSessionLoad(request); }
     }
 
     private void OpenYdkeImport() {
@@ -314,7 +321,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
             }
 
             if (!CanApplySession(request)) {
-                _importError = "Current work changed during import. Import again to replace it.";
+                _importError = UiText.Get("Ui.CurrentWorkChangedDuringImportImportAgainToReplaceIt");
                 return;
             }
 
@@ -324,10 +331,11 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         }
         catch (Exception ex) {
             if (OwnsSessionLoad(request)) {
-                _importError = $"Failed to import deck: {ex.Message}";
+                _importError = UiText.Format("Ui.FailedToImportDeck0", ex.Message);
             }
         }
         finally {
+            EndSessionLoad(request);
             if (ReferenceEquals(_ydkeImportRequest, request)) {
                 _ydkeImportRequest = null;
             }
@@ -350,7 +358,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
             await _sessionService.SaveSessionAsync(CaptureSession(), fileName);
         }
         catch (Exception ex) {
-            _errorMessage = $"Failed to save session: {ex.Message}";
+            _errorMessage = UiText.Format("Ui.FailedToSaveSession0", ex.Message);
         }
     }
 
@@ -367,13 +375,13 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
 
             if (!await RestoreSessionDataAsync(session, request)) {
                 if (OwnsSessionLoad(request)) {
-                    _errorMessage = "Current work changed while loading. Load the session again to replace it.";
+                    _errorMessage = UiText.Get("Ui.CurrentWorkChangedWhileLoadingLoadTheSessionAgainToReplaceIt");
                 }
             }
         }
         catch (Exception ex) {
             if (OwnsSessionLoad(request)) {
-                _errorMessage = $"Failed to load session: {ex.Message}";
+                _errorMessage = UiText.Format("Ui.FailedToLoadSession0", ex.Message);
             }
         }
         finally {
@@ -387,13 +395,21 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     }
 
     protected override async Task OnInitializedAsync() {
+        if (LanguageWorkspace is not null) { LanguageWorkspace.Capture = CaptureLanguageWorkspace; }
         InitializeSharing();
 
         if (_sharedFragment is not null) {
             _pendingSessionService.PendingSession = null;
         }
 
-        if (_sharedFragment is null && _pendingSessionService.PendingSession is { } session) {
+        if (LanguageWorkspace?.Pending is { } checkpoint) {
+            try {
+                await RestoreLanguageWorkspaceAsync(checkpoint);
+                _languageWorkspaceApplied = true;
+            }
+            catch (Exception ex) { LanguageWorkspace.Reject(ex.Message); }
+        }
+        else if (_sharedFragment is null && _pendingSessionService.PendingSession is { } session) {
             SessionLoadRequest request = BeginSessionLoad(fullSession: true);
 
             try {
@@ -401,12 +417,12 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
                 await BeforeSessionWorkAsync();
 
                 if (!await RestoreSessionDataAsync(session, request) && OwnsSessionLoad(request)) {
-                    _errorMessage = "Current work changed while loading the example. Load the example again to replace it.";
+                    _errorMessage = UiText.Get("Ui.CurrentWorkChangedWhileLoadingTheExampleLoadTheExampleAgainToReplaceIt");
                 }
             }
             catch (Exception ex) {
                 if (OwnsSessionLoad(request)) {
-                    _errorMessage = $"Failed to load example session: {ex.Message}";
+                    _errorMessage = UiText.Format("Ui.FailedToLoadExampleSession0", ex.Message);
                 }
             }
             finally {

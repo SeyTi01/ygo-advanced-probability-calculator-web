@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
@@ -28,8 +29,8 @@ public partial class ProbabilityCalculatorComponent {
 
     // Keep attribution bounded and names current without reassessing on name edits.
     private string PerformanceCandidates => string.Join(", ", _performanceCandidateIndices.Take(2)
-        .Select(index => string.IsNullOrWhiteSpace(_cards[index].Name) ? $"Card {index + 1}" : _cards[index].Name))
-        + (_performanceCandidateIndices.Length > 2 ? " and others" : "");
+        .Select(index => string.IsNullOrWhiteSpace(_cards[index].Name) ? UiText.Format("Ui.Card0", index + 1) : _cards[index].Name))
+        + (_performanceCandidateIndices.Length > 2 ? UiText.Get("Ui.AndOthers") : "");
 
     private void DismissCalculationError() {
         _errorMessage = null;

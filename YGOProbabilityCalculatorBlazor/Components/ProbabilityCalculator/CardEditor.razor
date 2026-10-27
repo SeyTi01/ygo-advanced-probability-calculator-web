@@ -23,21 +23,21 @@
 
                     @if (ManualUserCategories.Any() || ManualProperties.Any()) {
                         @foreach (CategoryBase category in ManualUserCategories) {
-                            <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">@category.Name</span>
+                            <span class="badge category-tag ms-1 @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">@DisplayLabels.Category(category)</span>
                         }
                         @foreach (CategoryBase property in ManualProperties) {
-                            <span class="badge category-tag card-property-tag ms-1 manual-property-header-badge @CardPropertyColorPalette.GetCssClass(property)">@property.Name</span>
+                            <span class="badge category-tag card-property-tag ms-1 manual-property-header-badge @CardPropertyColorPalette.GetCssClass(property)">@DisplayLabels.Category(property)</span>
                         }
                     }
                     @if (!Card.Active) {
-                        <span class="badge text-bg-secondary ms-2">Inactive</span>
+                        <span class="badge text-bg-secondary ms-2">@(UiText.Get("Ui.Inactive"))</span>
                     }
                 </span>
             </button>
 
         </h2>
         <div class="entry-actions">
-            <RowActionMenu Kind="card" ItemLabel="@($"card {CardDisplayName}, row {Index + 1}")"
+            <RowActionMenu Kind="card" ItemLabel="@(UiText.Format("Ui.Card0Row1", CardDisplayName, Index + 1))"
                            Index="Index" Count="Count" Active="Card.Active"
                            OnMove="OnMove" OnDuplicate="() => OnDuplicateCard.InvokeAsync(Index)"
                            OnToggle="() => ChangeActive(!Card.Active)"
@@ -56,13 +56,13 @@
                 }
                 <div class="card-identity-fields">
                     <div class="card-name-field">
-                        <label for="cardName@(Index)" class="form-label">Name</label>
+                        <label for="cardName@(Index)" class="form-label">@(UiText.Get("Ui.Name"))</label>
                         <CardSearchInput Id="@($"cardName{Index}")" Identity="@Card.Id" Value="@(Card.Name ?? string.Empty)"
                                          ResultsId="@($"cardSearchResults{Index}")" OptionPrefix="@($"cardSearchOption{Index}")"
                                          OnInput="RenameFromSearch" OnSelected="SelectCard" OnFinished="OnNameEditFinished" />
                     </div>
                     <div class="card-copies-field">
-                        <label for="cardCopies@(Index)" class="form-label">Copies</label>
+                        <label for="cardCopies@(Index)" class="form-label">@(UiText.Get("Ui.Copies"))</label>
                         <input id="cardCopies@(Index)" class="form-control" type="number" min="1"
                                value="@Card.Copies"
                                @oninput="e => ChangeCopies(e.Value)"/>
@@ -76,70 +76,70 @@
                                   OnChanged="card => OnReplaceCard.InvokeAsync((Index, card))" />
             <div class="editor-add-row mb-3">
                 <div class="editor-select-field">
-                    <label for="cardCategory@(Index)" class="form-label">Category</label>
+                    <label for="cardCategory@(Index)" class="form-label">@(UiText.Get("Ui.Category"))</label>
                     <select id="cardCategory@(Index)" class="form-select"
                             value="@_selectedCategory"
                             @onchange="e => _selectedCategory = e.Value?.ToString() ?? string.Empty">
-                        <option value="">Select category…</option>
+                        <option value="">@(UiText.Get("Ui.SelectCategory"))</option>
                         @if (AvailableUserCategoryOptions.Any()) {
-                            <optgroup label="User categories">
+                            <optgroup label="@(UiText.Get("Ui.UserCategories"))">
                                 @foreach (CategoryBase categoryBase in AvailableUserCategoryOptions) {
-                                    <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                                    <option value="@categoryBase.Identity">@DisplayLabels.Category(categoryBase)</option>
                                 }
                             </optgroup>
                         }
                         @if (AvailableRelevantPropertyOptions.Any()) {
-                            <optgroup label="Relevant properties">
+                            <optgroup label="@(UiText.Get("Ui.RelevantProperties"))">
                                 @foreach (CategoryBase categoryBase in AvailableRelevantPropertyOptions) {
-                                    <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                                    <option value="@categoryBase.Identity">@DisplayLabels.Category(categoryBase)</option>
                                 }
                             </optgroup>
                         }
                         @if (AvailableCommonPropertyOptions.Any()) {
-                            <optgroup label="Common properties">
+                            <optgroup label="@(UiText.Get("Ui.CommonProperties"))">
                                 @foreach (CategoryBase categoryBase in AvailableCommonPropertyOptions) {
-                                    <option value="@categoryBase.Identity">@categoryBase.Name</option>
+                                    <option value="@categoryBase.Identity">@DisplayLabels.Category(categoryBase)</option>
                                 }
                             </optgroup>
                         }
                     </select>
                 </div>
                 <div class="d-flex align-items-end">
-                    <button class="btn btn-primary w-100" @onclick="AddCategory">Add</button>
+                    <button class="btn btn-primary w-100" @onclick="AddCategory">@(UiText.Get("Ui.Add"))</button>
                 </div>
             </div>
 
             @if (AutomaticProperties.Any() || ManuallyAssignedProperties.Any()) {
                 <details class="card-property-inspector mt-3">
-                    <summary class="small fw-semibold">Card properties (@PropertyCount)</summary>
+                    <summary class="small fw-semibold">@(UiText.Format("Card.PropertiesCount", PropertyCount))</summary>
                     <div class="mt-2">
                         @if (AutomaticProperties.Any()) {
                             <div class="detected-card-properties mb-2">
-                                <div class="form-text mb-1">Automatic</div>
+                                <div class="form-text mb-1">@(UiText.Get("Ui.Automatic"))</div>
                                 <div class="d-flex flex-wrap">
                                     @foreach (CategoryBase property in AutomaticProperties) {
-                                        <span class="badge category-tag card-property-tag me-2 mb-1 detected-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">@property.Name</span>
+                                        <span class="badge category-tag card-property-tag me-2 mb-1 detected-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">@DisplayLabels.Category(property)</span>
                                     }
                                 </div>
                             </div>
                         }
                         @if (ManuallyAssignedProperties.Any()) {
                             <div class="manual-card-properties">
-                                <div class="form-text mb-1">Manual</div>
+                                <div class="form-text mb-1">@(UiText.Get("Ui.Manual"))</div>
                                 <div class="d-flex flex-wrap">
                                     @foreach (CategoryBase property in ManuallyAssignedProperties) {
                                         <span class="badge category-tag card-property-tag me-2 mb-1 manual-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">
-                                            @property.Name
+                                            @DisplayLabels.Category(property)
                                             @if (property.Source == CategorySource.User) {
                                                 <ChipRemoveButton Class="category-remove-button ms-1"
-                                                        aria-label="@($"Remove category {property.Name} from card {CardDisplayName}")"
-                                                        title="@($"Remove category {property.Name} from card {CardDisplayName}")"
+                                                        aria-label="@(UiText.Format("Ui.RemoveCategory0FromCard1", DisplayLabels.Category(property), CardDisplayName))"
+                                                        title="@(UiText.Format("Ui.RemoveCategory0FromCard1", DisplayLabels.Category(property), CardDisplayName))"
                                                         OnClick="() => RemoveCategory(property.Identity)" />
                                             }
                                             else {
                                                 <ChipRemoveButton Class="category-remove-button ms-1"
-                                                        aria-label="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
-                                                        title="@($"Remove manually added card property {property.Name} from card {CardDisplayName}")"
+                                                        aria-label="@(UiText.Format("Ui.RemoveManuallyAddedCardProperty0FromCard1", DisplayLabels.Category(property), CardDisplayName))"
+                                                        title="@(UiText.Format("Ui.RemoveManuallyAddedCardProperty0FromCard1", DisplayLabels.Category(property), CardDisplayName))"
                                                         OnClick="() => RemoveManualProperty(property.MetadataKey!)" />
                                             }
                                         </span>
@@ -231,7 +231,7 @@
         CategoryRenameNotice? CategoryRename
     );
 
-    private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? $"Card {Index + 1}" : Card.Name;
+    private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? UiText.Format("Ui.Card0", Index + 1) : Card.Name;
     private DrawEffectPresentation DrawPresentation =>
         DrawEffectPresentation.ForCard(Card, DrawEffectsEnabled);
     private Task ToggleCard() {
@@ -274,7 +274,7 @@
 
     private Task ChangeCopies(object? value) {
         if (!int.TryParse(value?.ToString(), out int copies) || copies < 1) {
-            _error = "Number of copies must be at least 1.";
+            _error = UiText.Get("Ui.NumberOfCopiesMustBeAtLeast1");
 
             return Task.CompletedTask;
         }
@@ -287,7 +287,7 @@
 
     private Task AddCategory() {
         if (string.IsNullOrWhiteSpace(_selectedCategory)) {
-            _error = "Please select a category to add.";
+            _error = UiText.Get("Ui.PleaseSelectACategoryToAdd");
 
             return Task.CompletedTask;
         }
@@ -295,13 +295,13 @@
         CategoryBase? chosen = CategoryBases.FirstOrDefault(category => category.Identity == _selectedCategory);
 
         if (chosen is null) {
-            _error = "Selected category not found.";
+            _error = UiText.Get("Ui.SelectedCategoryNotFound");
 
             return Task.CompletedTask;
         }
 
         if (Card.Categories.Any(category => category.Identity == chosen.Identity)) {
-            _error = "This category is already added to the card.";
+            _error = UiText.Get("Ui.ThisCategoryIsAlreadyAddedToTheCard");
 
             return Task.CompletedTask;
         }

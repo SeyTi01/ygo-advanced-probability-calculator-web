@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -7,8 +8,8 @@ public sealed class SpentaTheMagistusSealerEffect : ICardEffectDefinition {
     public string Name => "Spenta, the Magistus Sealer";
     public int Revision => 1;
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Discard this card; search 1 other Magistus monster";
-    public string Limitations => "Models the discard-and-search mode; its ATK-reduction and GY Equip effects are outside scope.";
+    public string Summary => UiText.English("Effects.42544773.Summary");
+    public string Limitations => UiText.English("Effects.42544773.Limitations");
 
     public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
         Search: new(CardSelector.AllOfSelectors([

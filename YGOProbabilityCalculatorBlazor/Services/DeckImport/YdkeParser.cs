@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using System.Buffers.Binary;
 
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
@@ -12,17 +13,17 @@ public static class YdkeParser {
         string trimmed = code.Trim();
 
         if (!trimmed.StartsWith(Scheme, StringComparison.OrdinalIgnoreCase)) {
-            throw new FormatException("YDKe code must start with 'ydke://'.");
+            throw new FormatException(UiText.Get("Ui.YDKeCodeMustStartWithYdke"));
         }
 
         string[] sections = trimmed[Scheme.Length..].Split('!');
 
         if (sections.Length != 4 || sections[3].Length != 0) {
-            throw new FormatException("YDKe code must contain exactly three Base64 sections, each followed by '!'.");
+            throw new FormatException(UiText.Get("Ui.YDKeCodeMustContainExactlyThreeBase64SectionsEachFollowedBy"));
         }
 
         if (sections[0].Length == 0) {
-            throw new FormatException("YDKe code must include a main-deck section.");
+            throw new FormatException(UiText.Get("Ui.YDKeCodeMustIncludeAMainDeckSection"));
         }
 
         return new YdkeDeck(
@@ -38,11 +39,11 @@ public static class YdkeParser {
             bytes = Convert.FromBase64String(encoded);
         }
         catch (FormatException exception) {
-            throw new FormatException($"The YDKe {sectionName}-deck section is not valid Base64.", exception);
+            throw new FormatException(UiText.Format("Ui.TheYDKe0DeckSectionIsNotValidBase64", sectionName), exception);
         }
 
         if (bytes.Length % sizeof(uint) != 0) {
-            throw new FormatException($"The decoded YDKe {sectionName}-deck section length must be divisible by four bytes.");
+            throw new FormatException(UiText.Format("Ui.TheDecodedYDKe0DeckSectionLengthMustBeDivisibleByFourBytes", sectionName));
         }
 
         uint[] cardIds = new uint[bytes.Length / sizeof(uint)];

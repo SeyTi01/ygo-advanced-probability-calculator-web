@@ -4,16 +4,16 @@
 
 <div class="mb-4">
     <div class="deck-header d-flex flex-wrap align-items-center justify-content-between mb-3">
-        <h4 class="mb-0">Deck (@ActiveCopies)</h4>
+        <h4 class="mb-0">@(UiText.Format("Deck.Count", ActiveCopies))</h4>
         <div class="deck-loading-status">
             <SessionLoadingStatus RequestVersion="LoadingSessionVersion" />
         </div>
         <button class="btn btn-outline-secondary btn-sm"
                 type="button"
-                aria-label="Sort deck A–Z"
-                title="Sort deck A–Z"
+                aria-label="@(UiText.Get("Ui.SortDeckAZ"))"
+                title="@(UiText.Get("Ui.SortDeckAZ"))"
                 @onclick="OnSortAlphabetically">
-            Sort A–Z
+            @(UiText.Get("Ui.SortAZ"))
         </button>
     </div>
     <CardQuickAdd @key="ResetVersion" OnAdd="OnAddCard" />

@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
@@ -7,9 +8,9 @@ public static class CalculationModelPresentation {
         draws ? CalculationModel.Fast : CalculationModel.OpeningHand;
 
     public static string Description(this CalculationModel model) => model switch {
-        CalculationModel.Fast => "Effects — fast",
-        CalculationModel.Exact => "Effects — exact",
-        CalculationModel.OpeningHand => "No effect simulation",
+        CalculationModel.Fast => UiText.Get("Ui.EffectsFast"),
+        CalculationModel.Exact => UiText.Get("Ui.EffectsExact"),
+        CalculationModel.OpeningHand => UiText.Get("Ui.NoEffectSimulation"),
         _ => throw new ArgumentOutOfRangeException(nameof(model))
     };
 }

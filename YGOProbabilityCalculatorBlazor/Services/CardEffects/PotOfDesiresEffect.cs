@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
@@ -8,6 +9,6 @@ public sealed class PotOfDesiresEffect : ICardEffectDefinition {
     public int Revision => 1;
     public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true) with { HiddenDeckCost = 10 };
     public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => "Banish 10 unseen deck cards, then draw 2; once per turn. Requires 12 cards left.";
-    public string Limitations => "Deck depletion is modeled. Search-target survival follows result accuracy: Fast may be exact or uncertain; completed physical Exact accounts for it. Banishment-triggered effects are not simulated.";
+    public string Summary => UiText.English("Effects.35261759.Summary");
+    public string Limitations => UiText.English("Effects.35261759.Limitations");
 }

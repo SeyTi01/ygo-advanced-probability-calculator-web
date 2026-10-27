@@ -12,16 +12,18 @@ internal sealed class BoundedSearchHandCounter {
     private readonly List<Card> _cards;
     private readonly List<Combo> _combos;
     private readonly WorkBudget _budget;
+    private readonly DrawActivationPriority _priority;
     private readonly bool[] _relevant;
     private readonly (int Source, int Limit, int[] Targets)[] _modes;
     private readonly record struct HandBound(int[] Rows, int Minimum, int Maximum);
     private readonly Dictionary<int, List<List<HandBound[]?>>> _events = [];
     private long _eventCells;
 
-    internal BoundedSearchHandCounter(List<Card> cards, List<Combo> combos, WorkBudget budget) {
+    internal BoundedSearchHandCounter(List<Card> cards, List<Combo> combos, WorkBudget budget, DrawActivationPriority? priority = null) {
         _cards = cards;
         _combos = combos;
         _budget = budget;
+        _priority = priority ?? DrawActivationPriority.Default;
         budget.Spend(cards.Sum(card => card.Categories.Count + 1L)
             * (combos.Sum(combo => combo.AllCategories.Sum(requirement => (long)requirement.Selector.EvaluationSize)
                 + combo.AllCards.Count() + 1L) + cards.Sum(card => (card.Search?.Selector.EvaluationSize ?? 0) + 1L)));
@@ -43,9 +45,12 @@ internal sealed class BoundedSearchHandCounter {
         budget.CheckStorage(_modes.Length + cards.Count, _modes.Sum(mode => (long)mode.Targets.Length + 2) + cards.Count);
     }
 
-    internal bool[] Evaluate(ReadOnlySpan<int> initial, int[] deck) {
+    internal bool[] Evaluate(ReadOnlySpan<int> initial, int[] deck, IReadOnlyList<int>? encounters = null) {
         int[] hand = initial.ToArray();
         int[] original = initial.ToArray();
+        List<int> pending = encounters?.ToList() ?? Enumerable.Range(0, _cards.Count)
+            .Where(row => _cards[row].Search is not null).SelectMany(row => Enumerable.Repeat(row, hand[row])).ToList();
+        int pendingCapacity = pending.Count;
         int[] used = new int[_cards.Count];
         int[] modeUses = new int[_modes.Length];
         bool[] success = new bool[_combos.Count];
@@ -55,7 +60,7 @@ internal sealed class BoundedSearchHandCounter {
 
         void Visit(int depth) {
             _budget.Spend(hand.Length + _modes.Length + 1L);
-            _budget.CheckStorage(depth + 1L, (depth + 1L) * (4L * hand.Length + modeUses.Length + 1));
+            _budget.CheckStorage(depth + 1L, (depth + 1L) * (5L * hand.Length + pendingCapacity + modeUses.Length + 1));
             int size = hand.Sum();
             if (!_events.TryGetValue(size, out List<List<HandBound[]?>>? events)) {
                 ComboEventCompiler compiler = new(_cards, size, _budget);
@@ -94,21 +99,52 @@ internal sealed class BoundedSearchHandCounter {
             if (success.All(value => value)) {
                 return;
             }
-            for (int modeIndex = 0; modeIndex < _modes.Length; modeIndex++) {
-                (int source, int limit, int[] targets) = _modes[modeIndex];
-                Card card = _cards[source];
-                if (original[source] == 0 || used[source] >= card.MaximumActivations
-                    || modeUses[modeIndex] >= limit || size < card.MinimumHandSize) {
+            // Optional target choice remains existential, but source order is fixed.
+            // Declining retires this opportunity; temporarily illegal sources wait.
+            int candidate = -1;
+            int bestRank = int.MaxValue;
+            for (int index = 0; index < pending.Count; index++) {
+                int row = pending[index];
+                Card source = _cards[row];
+                _budget.Spend(hand.Length + _modes.Sum(mode => mode.Targets.Length + 1L)
+                    + _cards.Sum(card => (source.PreDrawSelector.EvaluationSize + 1L) * (card.Categories.Count + 1L)));
+                if (used[row] >= source.MaximumActivations || size < source.MinimumHandSize
+                    || Enumerable.Range(0, hand.Length).Sum(other => source.PreDrawSelector.Matches(_cards[other])
+                        ? hand[other] - (other == row ? 1 : 0) : 0) < source.PreDrawRemovalCount
+                    || !_modes.Where((mode, index) => mode.Source == row && modeUses[index] < mode.Limit)
+                        .Any(mode => mode.Targets.Any(target => deck[target] > 0))) {
                     continue;
                 }
+                int rank = _priority.Rank(source.Id);
+                if (candidate < 0 || rank < bestRank) {
+                    candidate = index;
+                    bestRank = rank;
+                }
+            }
+            if (candidate < 0) {
+                return;
+            }
+            int selected = pending[candidate];
+            List<int> savedPending = new(pending);
+            pending.RemoveAt(candidate);
+            original[selected]--;
+            Visit(depth + 1);
+            original[selected]++;
+            pending = new(savedPending);
+            for (int modeIndex = 0; modeIndex < _modes.Length; modeIndex++) {
+                (int source, int limit, int[] targets) = _modes[modeIndex];
+                if (source != selected || modeUses[modeIndex] >= limit) {
+                    continue;
+                }
+                Card card = _cards[source];
                 foreach (int target in targets) {
-                    _budget.Spend(hand.Length * 3L + 1);
-                    // Legality is established before either resolution removal.
-                    if (deck[target] == 0 || size - 1 < card.PreDrawRemovalCount) {
+                    _budget.Spend(hand.Length * 3L + pending.Count + 1);
+                    if (deck[target] == 0) {
                         continue;
                     }
                     int[] savedHand = (int[])hand.Clone();
                     int[] savedOriginal = (int[])original.Clone();
+                    pending.RemoveAt(candidate);
                     hand[source]--;
                     original[source]--;
                     used[source]++;
@@ -124,6 +160,7 @@ internal sealed class BoundedSearchHandCounter {
                     }
                     savedHand.CopyTo(hand, 0);
                     savedOriginal.CopyTo(original, 0);
+                    pending = new(savedPending);
                     used[source]--;
                     modeUses[modeIndex]--;
                 }
@@ -168,7 +205,12 @@ internal sealed class BoundedSearchHandCounter {
                 hand[selected]--;
                 // Equivalent fetched copies are inert; preserve a usable original
                 // copy when both labels of the same entry are held.
-                original[selected] = Math.Min(original[selected], hand[selected]);
+                if (original[selected] > hand[selected]) {
+                    original[selected]--;
+                    if (_cards[selected].Search is not null) {
+                        pending.RemoveAt(pending.LastIndexOf(selected));
+                    }
+                }
             }
 
             return true;

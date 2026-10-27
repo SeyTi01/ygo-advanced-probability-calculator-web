@@ -1,8 +1,8 @@
 <div class="alert alert-warning mt-2" role="alertdialog" aria-modal="false" aria-label="@Label" @onkeydown="HandleKeyDown">
     <p class="mb-2">@Message</p>
     <div class="d-flex flex-wrap gap-2">
-        <button type="button" class="btn btn-sm btn-danger" @onclick="OnConfirm">Delete</button>
-        <button @ref="_cancelButton" type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnCancel">Cancel</button>
+        <button type="button" class="btn btn-sm btn-danger" @onclick="OnConfirm">@(UiText.Get("Ui.Delete"))</button>
+        <button @ref="_cancelButton" type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnCancel">@(UiText.Get("Ui.Cancel"))</button>
     </div>
 </div>
 

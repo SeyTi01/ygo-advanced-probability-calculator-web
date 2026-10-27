@@ -33,7 +33,7 @@ public sealed class PhysicalSingleSourceEnumerationTest {
         Assert.That(budget.PeakEntries, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.EntryLimit));
     }
 
-    [TestCase("empty"), TestCase("minimum"), TestCase("capacity"), TestCase("cost"), TestCase("copies"), TestCase("second")]
+    [TestCase("empty"), TestCase("minimum"), TestCase("capacity"), TestCase("cost"), TestCase("repeatable"), TestCase("limit-two"), TestCase("second")]
     public void IneligibleInputsRetainTheFullBatchFallback(string boundary) {
         SearchCertificateFixtures.Fixture original = Fixture(0);
         List<Card> cards = original.Deck.ToList();
@@ -52,8 +52,10 @@ public sealed class PhysicalSingleSourceEnumerationTest {
             case "cost":
                 cards[0] = new([], id: source.Id, drawCount: 2, preDrawRemovalCount: 1, postDrawDiscardCount: 1);
                 break;
-            case "copies":
-                cards[0] = source.WithCopies(2);
+            case "repeatable":
+            case "limit-two":
+                cards[0] = new([], 2, id: source.Id, drawCount: 2, drawOncePerTurn: false,
+                    postDrawDiscardCount: 1, activationLimit: boundary == "limit-two" ? 2 : null);
                 break;
             case "second":
                 cards.Add(new([], id: "other-draw", drawCount: 1, firstActivationOnly: true));
@@ -69,6 +71,43 @@ public sealed class PhysicalSingleSourceEnumerationTest {
         );
         Assert.That(diagnostics.Counts.GetValueOrDefault("primary/physical single-source frames"), Is.Zero);
         Assert.That(Rows(actual), Is.EqualTo(Rows(expected)));
+    }
+
+    [TestCase(1, 0), TestCase(2, 0), TestCase(3, 0)]
+    [TestCase(2, 1), TestCase(3, 1), TestCase(2, 2), TestCase(3, 2)]
+    [TestCase(2, 3), TestCase(3, 3)]
+    public void SourceCopyQuotientPreservesPhysicalDistributionAndFailureMass(int sourceCopies, int restriction) {
+        SearchCertificateFixtures.Fixture fixture = MultiCopyFixture(sourceCopies, restriction);
+        Dictionary<string, BigInteger> expectedMass = new(StringComparer.Ordinal);
+        Dictionary<string, BigInteger> actualMass = new(StringComparer.Ordinal);
+        ExactCalculationResult expected = Calculate(fixture, PhysicalEnumerationMethod.BatchStreaming,
+            new(CalculationWorkPolicy.Unlimited), expectedMass);
+        SearchCountingDiagnostics diagnostics = new();
+        WorkBudget budget = new(CalculationWorkPolicy.Unlimited) { SearchDiagnostics = diagnostics };
+        ExactCalculationResult actual = Calculate(fixture, PhysicalEnumerationMethod.SingleSource, budget, actualMass);
+        Assert.That(actualMass, Is.EquivalentTo(expectedMass), "Held, unseen, hidden and activation state retain identical labeled mass.");
+        Assert.That(Rows(actual), Is.EqualTo(Rows(expected)));
+        Assert.That(diagnostics.Counts["primary/physical single-source frames"], Is.EqualTo(sourceCopies + 1));
+
+        // The labeled reference models OPT and timing restrictions independently.
+        // Its older scheduler lacks explicit activation limits, so that boundary
+        // uses the full production batch route above rather than a false oracle.
+        if (restriction != 3) {
+            SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(
+                fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, collapseIdenticalCopies: false);
+            ExactProbability[] rows = Rows(actual);
+            for (int row = 0; row < rows.Length; row++) {
+                Assert.That(rows[row].Numerator * oracle.Outcomes,
+                    Is.EqualTo(oracle.Wins[1][row] * rows[row].Denominator), $"labeled physical row {row}");
+            }
+            Assert.That(actualMass.Values.Aggregate(BigInteger.Zero, (sum, mass) => sum + mass) + oracle.Failed,
+                Is.EqualTo(oracle.Outcomes), "Successful and mandatory-failure mass cover every labeled permutation.");
+            if (restriction == 2) {
+                Assert.That(oracle.Failed, Is.GreaterThan(BigInteger.Zero));
+            }
+        }
+        Assert.That(budget.PeakCells, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.CellLimit));
+        Assert.That(budget.PeakEntries, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.EntryLimit));
     }
 
     [Test]
@@ -178,6 +217,39 @@ public sealed class PhysicalSingleSourceEnumerationTest {
             ],
             [new("g", "Either"), new("empty", "Empty")],
             variant == 1 ? ["draw"] : null
+        );
+    }
+
+    private static SearchCertificateFixtures.Fixture MultiCopyFixture(int copies, int restriction) {
+        CategoryBase target = new("Target");
+        CategoryBase other = new("Other");
+        return new(
+            "source-copies-" + copies + "-" + restriction,
+            [
+                new([other], copies, id: "draw", drawCount: 2,
+                    drawOncePerTurn: restriction == 0,
+                    activationLimit: restriction == 3 ? 1 : null,
+                    firstActivationOnly: restriction == 1,
+                    blocksLaterDraws: restriction == 2,
+                    preDrawDeckRemovalCount: restriction == 1 ? 1 : 0,
+                    postDrawDeckMillCount: restriction >= 2 ? 1 : 0,
+                    postDrawDiscardCount: restriction == 2 ? 2 : 1,
+                    postDrawSelector: restriction == 2 ? CardSelector.For(target) : CardSelector.Any),
+                new([], id: "search", search: new(CardSelector.For(target), false)),
+                new([target], 2, id: "target"),
+                new([target, other], id: "both"),
+                new([], 3 - copies, id: "filler")
+            ],
+            2,
+            [
+                new([new(target, 1, 2)], groupId: "targets"),
+                new([new(target, 0, 0)], groupId: "targets"),
+                new([new(target, 1, 3), new(other, 1, 3)], groupId: "overlap"),
+                new([], cards: [new("draw", 1, 3)]),
+                new([], cards: [new("draw", 0, 0)]),
+                new([], "Completed")
+            ],
+            [new("targets", "Targets"), new("overlap", "Overlap"), new("empty", "Empty")]
         );
     }
 

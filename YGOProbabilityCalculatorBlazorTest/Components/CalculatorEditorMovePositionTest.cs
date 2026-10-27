@@ -15,7 +15,7 @@ public sealed class CalculatorEditorMovePositionTest : CalculatorEditorTestBase 
     [TestCase("priority")]
     public async Task DirectMovesPreserveIdentityPlansAndSavedOrder(string kind) {
         CategoryBase[] categories = Enumerable.Range(1, 4).Select(index => new CategoryBase($"Role {index}")).ToArray();
-        List<Card> cards = Enumerable.Range(1, 4).Select(index => new Card([categories[index - 1]], 1, $"Card {index}", active: index != 2, id: $"c{index}", drawCount: 1)).ToList();
+        List<Card> cards = Enumerable.Range(1, 4).Select(index => new Card([categories[index - 1]], 1, $"Card {index}", active: kind == "priority" || index != 2, id: $"c{index}", drawCount: 1)).ToList();
         List<Combo> combos = Enumerable.Range(1, 4).Select(index => new Combo([new(categories[index - 1], 1, 1)], $"Route {index}", active: index != 2, groupId: $"g{index}")).ToList();
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
             Categories = categories.ToList(), Cards = cards, Combos = combos,
@@ -57,7 +57,7 @@ public sealed class CalculatorEditorMovePositionTest : CalculatorEditorTestBase 
         }
         foreach (IRenderedComponent<CardEditor> editor in cut.FindComponents<CardEditor>()) {
             Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(plans[editor.Instance.Card.Id]));
-            Assert.That(editor.Instance.Card.Active, Is.EqualTo(editor.Instance.Card.Id != "c2"));
+            Assert.That(editor.Instance.Card.Active, Is.EqualTo(kind == "priority" || editor.Instance.Card.Id != "c2"));
         }
         Assert.That(cut.FindComponents<ComboEditor>().Single(editor => editor.Instance.Combo.Name == "Route 2").Instance.Combo.Active, Is.False);
         if (kind != "priority") {
@@ -139,7 +139,7 @@ public sealed class CalculatorEditorMovePositionTest : CalculatorEditorTestBase 
             "combo" => cut.FindComponents<ComboEditor>().Select(editor => editor.Instance.Combo.Name!),
             "category" => cut.FindComponent<CategoryListEditor>().Instance.CategoryBases.Select(category => category.Name),
             "group" => cut.FindComponent<ComboListEditor>().Instance.ComboGroups.Select(group => group.Name),
-            _ => cut.FindAll(".draw-priority-name").Select(row => row.TextContent.Trim())
+            _ => cut.FindAll("[data-priority-id]").Select(row => "Card " + row.GetAttribute("data-priority-id")![1..])
         };
         Assert.That(names.Select(name => int.Parse(name.Split(' ')[^1])), Is.EqualTo(expected));
     }
