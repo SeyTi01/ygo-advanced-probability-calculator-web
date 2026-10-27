@@ -117,7 +117,7 @@ from normal explicit recovery and never changes session schema or worker bytes.
 `node scripts/localization/prepare-test-host.cjs` makes an ignored source copy
 under `bin/localization-test-host`, adding the test-only pseudo satellite under
 `fr` and `de` plus an isolated registry. Neither pseudo resource nor registry
-is included in production. Publish that copy with the same optimized non-AOT
+is included in production. Publish that copy with the same stripped-IL AOT
 configuration as the production app. Use `--refresh` to recreate a previously
 marked generated copy after source changes, then run:
 
