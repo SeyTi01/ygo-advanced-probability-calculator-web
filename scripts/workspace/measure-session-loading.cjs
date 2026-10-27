@@ -6,6 +6,7 @@ const http = require('node:http');
 const path = require('node:path');
 const zlib = require('node:zlib');
 const { chromium } = require('playwright');
+const { launchOptions } = require('../background-calculation/browser-support.cjs');
 
 (async () => {
     const root = path.resolve(process.argv[2]);
@@ -15,7 +16,7 @@ const { chromium } = require('playwright');
     await fs.mkdir(evidence, { recursive: true });
     const sampleBytes = await fs.readFile(path.join(root, 'sample-data/example_session_state.json'));
     const sample = JSON.parse(sampleBytes);
-    assert.equal(sample.Cards.length, 25);
+    assert.equal(sample.Cards.length, 24);
     assert.equal(sample.Cards.reduce((sum, card) => sum + card.Copies, 0), 40);
     assert.equal(sample.Combos.length, 8);
     assert.equal(sample.ComboGroups.length, 2);
@@ -51,7 +52,7 @@ const { chromium } = require('playwright');
     let frozen = process.env.YGO_SESSION_EXPECTED
         ? JSON.parse(await fs.readFile(process.env.YGO_SESSION_EXPECTED, 'utf8')) : undefined;
     try {
-        browser = await chromium.launch({ channel: process.env.YGO_BROWSER_CHANNEL || 'msedge', headless: true });
+        browser = await chromium.launch(launchOptions());
         const metadata = { browser: browser.version(), trials, viewport: [1440, 1000], cpuThrottle: 1,
             catalogCards: JSON.parse(catalogBytes).cards.length, catalogJsonBytes: catalogBytes.length,
             catalogGzipBytes: compressedCatalog.length, cache: 'fresh contexts for cold, same live app for warm',
@@ -70,7 +71,7 @@ const { chromium } = require('playwright');
                     if (message.type() === 'error' && !message.text().includes('ERR_FAILED')) errors.push({ message: message.text(), location: message.location() });
                 });
                 page.on('request', request => { if (request.url().includes('db.ygoprodeck.com')) api.push(request.url()); });
-                await page.route('**/card-artwork/**', route => route.abort());
+                await page.route('**/*', route => route.request().resourceType() === 'image' ? route.abort() : route.continue());
                 await page.addInitScript(() => {
                     window.showSaveFilePicker = undefined;
                     window.sessionProbe = null;
@@ -96,6 +97,12 @@ const { chromium } = require('playwright');
                 const waitInput = () => page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
                 if (entry === 'example') await page.getByRole('button', { name: 'Try It with Example Data', exact: true }).waitFor();
                 else await waitInput();
+                const initialNetwork = await page.evaluate(() => {
+                    const entries = [...performance.getEntriesByType('navigation'), ...performance.getEntriesByType('resource')];
+                    return { requests: entries.length, transferredBytes: entries.reduce((sum, entry) => sum + entry.transferSize, 0),
+                        catalogRequests: entries.filter(entry => entry.name.endsWith('/data/card-catalog.v1.json')).length };
+                });
+                assert.equal(initialNetwork.catalogRequests, 0, 'catalog stays lazy until requested');
                 for (const temperature of ['cold', 'warm1', 'warm2']) {
                     if (entry === 'example' && temperature !== 'cold') {
                         await page.getByRole('link', { name: 'Help', exact: true }).click();
@@ -119,7 +126,7 @@ const { chromium } = require('playwright');
                     assert.equal(await page.locator('.alert-danger').count(), 0);
                     assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
                     assert.deepEqual(errors, []);
-                    const result = { entry, trial, temperature, ...timing, phases: [...phases], metadataApiRequests: [...api] };
+                    const result = { entry, trial, temperature, initialNetwork, ...timing, phases: [...phases], metadataApiRequests: [...api] };
                     results.push(result);
                     console.log(JSON.stringify(result));
                     await page.waitForTimeout(100);
