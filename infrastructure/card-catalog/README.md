@@ -88,10 +88,11 @@ This validates the names before replacing output; review the audit and update th
 coverage figures before publication. The tool itself never fetches the network.
 Normal builds, tests, publishing and startup never call the provider for names.
 
-Only a German card search with at least two non-space characters requests the
-name asset. The request is shared by concurrent searches and retained in memory,
-including a failed result, for the service lifetime. Label reads, Help, an empty
-calculator, imports, artwork and workspace language restoration do not request it.
+A German card search with at least two non-space characters or a populated deck
+requiring verified display labels requests the name asset. Concurrent search and
+display requests share the same load, including a failed result, for the service
+lifetime. Synchronous label reads, Help, an empty calculator, artwork and checkpoint
+capture do not request it. Rendering an imported/restored deck may request it.
 Searches while the UI language is English do not request it. A missing, invalid, oversized or timed-out
 name asset falls back to the existing English catalog search and manual entry.
 The service has an explicit supported-name-asset map (currently only `de`) and a
@@ -105,7 +106,10 @@ canonical card appears once. Matching is ordinal and case-insensitive, retaining
 umlauts and ß without accent stripping or ß/ss conflation. Distinct cards with
 identical localized names remain separate choices. Suggestions use `DisplayLabels`
 with the loaded German label; selecting one passes the original `CardInfo` to the
-existing import/effect path. Saved/editable `Card.Name`, user labels, objective
+existing import/effect path. Deck display labels require a verified external ID
+(exact canonical or unique artwork alias) and an exact stored canonical English
+name. Custom names retain their text. This presentation rule never mutates saved
+`Card.Name`; name-field focus/blur does not save a translation. User labels, objective
 metadata and English-derived memberships remain unchanged. The provider's
 abbreviations are retained (for example, `Blauäugiger w. Drache`), not expanded by
 guessing.

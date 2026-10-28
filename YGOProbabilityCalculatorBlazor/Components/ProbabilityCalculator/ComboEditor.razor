@@ -1,3 +1,4 @@
+@inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
@@ -681,7 +682,7 @@
             return UiText.Format("Ui.MissingCard0", cardId[..Math.Min(8, cardId.Length)]);
         }
 
-        string? cardName = Cards[index].Name;
+        string cardName = DisplayLabels.Card(Cards[index], CardInfoService.GetLocalizedCardName(Cards[index]));
 
         return string.IsNullOrWhiteSpace(cardName) ? UiText.Get("Ui.UnnamedCard") : cardName;
     }

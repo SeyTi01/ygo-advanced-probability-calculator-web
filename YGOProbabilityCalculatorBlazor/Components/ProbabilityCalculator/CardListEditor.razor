@@ -20,7 +20,7 @@
     <div class="accordion" id="cardsAccordion">
         @for (int index = 0; index < Cards.Count; index++) {
             <CardEditor @key="_editorKeys[Cards[index]]"
-                Index="index"
+                CardDisplayNamesRevision="CardDisplayNamesRevision" Index="index"
                 Card="Cards[index]" Deck="Cards"
                 DrawEffectsEnabled="DrawEffectsEnabled"
                 CategoryBases="_categoryOptions.All"
@@ -44,6 +44,7 @@
 </div>
 
 @code {
+    [Parameter] public long CardDisplayNamesRevision { get; set; }
     [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
     [Parameter] public IReadOnlyList<CategoryBase> CategoryBases { get; set; } = [];
     [Parameter] public IReadOnlyList<Combo> Combos { get; set; } = [];

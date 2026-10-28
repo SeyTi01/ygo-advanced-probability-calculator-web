@@ -40,14 +40,9 @@ main {
     gap: 0.75rem;
 }
 
-.theme-select {
+.theme-select, .language-select {
     flex: 0 0 auto;
     width: 6.5rem;
-}
-
-.language-select {
-    width: auto;
-    max-width: 7.5rem;
     min-height: 2.75rem;
 }
 

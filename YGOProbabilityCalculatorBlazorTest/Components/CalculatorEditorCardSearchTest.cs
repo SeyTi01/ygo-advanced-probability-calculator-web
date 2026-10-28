@@ -97,6 +97,10 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         service.Setup(info => info.SearchCardsAsync("Mein Name ß")).ReturnsAsync(Array.Empty<CardInfo>());
         service.Setup(info => info.GetLocalizedCardName(PotOfGreed)).Returns("Topf der Gier");
         service.Setup(info => info.GetLocalizedCardName(BlueEyes)).Returns("Blauäugiger w. Drache");
+        service.Setup(info => info.GetLocalizedCardNameAsync(It.IsAny<Card>()))
+            .ReturnsAsync((Card card) => card.ExternalCardId == PotOfGreedId && card.Name == PotOfGreed.Name ? "Topf der Gier" : null);
+        service.Setup(info => info.GetLocalizedCardName(It.IsAny<Card>()))
+            .Returns((Card card) => card.ExternalCardId == PotOfGreedId && card.Name == PotOfGreed.Name ? "Topf der Gier" : null);
         context.Services.RemoveAll<ICardInfoService>();
         context.Services.AddSingleton(service.Object);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new());
@@ -109,6 +113,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         await input.KeyDownAsync(new() { Key = "ArrowDown" });
         await input.KeyDownAsync(new() { Key = "Enter" });
         Card selected = cut.FindComponent<CardEditor>().Instance.Card;
+        Assert.That(cut.Find(".card-header-name").TextContent, Does.StartWith("Topf der Gier"));
         Assert.Multiple(() => {
             Assert.That(selected.Name, Is.EqualTo(PotOfGreed.Name));
             Assert.That(selected.ExternalCardId, Is.EqualTo(PotOfGreedId));
@@ -119,6 +124,68 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         Card manual = cut.FindComponents<CardEditor>()[1].Instance.Card;
         Assert.That(manual.Name, Is.EqualTo("Mein Name ß"));
         Assert.That(manual.ExternalCardId, Is.Null);
+    }
+
+    [Test]
+    public async Task GermanCardDisplayPreservesCanonicalSessionAndCustomRename() {
+        using PresentationLocale locale = new("de", production: true);
+        Card card = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [card] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        cut.WaitForAssertion(() => Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith("Topf der Gier")));
+        IElement input = editor.Find("#cardName0");
+        Assert.That(input.GetAttribute("value"), Is.EqualTo("Topf der Gier"));
+        string before = cut.FindComponent<SessionShareButton>().Instance.Capture();
+        await input.FocusAsync(new());
+        await input.BlurAsync(new());
+        Assert.That(cut.FindComponent<SessionShareButton>().Instance.Capture(), Is.EqualTo(before));
+        Assert.That(editor.Instance.Card.Name, Is.EqualTo("Pot of Greed"));
+        await input.InputAsync(new() { Value = "Pot of Greed" });
+        Assert.That(input.GetAttribute("value"), Is.EqualTo("Pot of Greed"), "a translated label must not replace an active typed draft");
+        await input.BlurAsync(new());
+        Assert.That(input.GetAttribute("value"), Is.EqualTo("Topf der Gier"));
+        Assert.That(cut.FindComponent<SessionShareButton>().Instance.Capture(), Is.EqualTo(before));
+        await input.InputAsync(new() { Value = "Mein eigener Name" });
+        await input.BlurAsync(new());
+        Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith("Mein eigener Name"));
+        Assert.That(input.GetAttribute("value"), Is.EqualTo("Mein eigener Name"));
+        Assert.That(editor.Instance.Card.Name, Is.EqualTo("Mein eigener Name"));
+        Assert.That(_handler.Requests.Count(address => address.AbsolutePath.EndsWith("card-names.de.v1.json")), Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task LateGermanDisplayDoesNotOverwriteAnEditedCardName() {
+        using PresentationLocale locale = new("de", production: true);
+        Mock<ICardInfoService> service = new();
+        TaskCompletionSource<string?> names = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Setup(info => info.GetLocalizedCardNameAsync(It.IsAny<Card>())).Returns(names.Task);
+        service.Setup(info => info.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
+        context.Services.RemoveAll<ICardInfoService>();
+        context.Services.AddSingleton(service.Object);
+        Card card = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [card] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        await editor.Find("#cardName0").InputAsync(new() { Value = "Mein Name" });
+        names.SetResult("Topf der Gier");
+        await cut.InvokeAsync(() => Task.CompletedTask);
+        Assert.That(editor.Instance.Card.Name, Is.EqualTo("Mein Name"));
+        Assert.That(editor.Find("#cardName0").GetAttribute("value"), Is.EqualTo("Mein Name"));
+        Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith("Mein Name"));
+    }
+
+    [Test]
+    public async Task GermanPriorityLabelsDisambiguateTranslatedAndCustomNames() {
+        using PresentationLocale locale = new("de", production: true);
+        Card canonical = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
+        Card custom = new([], name: "Topf der Gier", drawCount: 2);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [canonical, custom] });
+        await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
+        cut.WaitForAssertion(() => {
+            string[] labels = cut.FindAll(".draw-priority-name").Select(element => element.TextContent.Trim()).ToArray();
+            Assert.That(labels, Has.Length.EqualTo(2));
+            Assert.That(labels.All(label => label.StartsWith("Topf der Gier", StringComparison.Ordinal)), Is.True);
+            Assert.That(labels.Distinct().Count(), Is.EqualTo(2));
+        });
     }
 
     [TestCase(false)]
@@ -708,6 +775,8 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
             Requests.Add(address);
             HttpResponseMessage response = address.AbsolutePath.EndsWith("card-catalog.v1.json", StringComparison.Ordinal)
                 ? new(HttpStatusCode.OK) { Content = new StringContent(_catalogJson, Encoding.UTF8, "application/json") }
+                : address.AbsolutePath.EndsWith("card-names.de.v1.json", StringComparison.Ordinal)
+                ? new(HttpStatusCode.OK) { Content = new StringContent("{\"version\":1,\"locale\":\"de\",\"names\":[[55144522,\"Topf der Gier\"]]}", Encoding.UTF8, "application/json") }
                 : new(HttpStatusCode.NotFound);
             return Task.FromResult(response);
         }

@@ -102,6 +102,8 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         files.Setup(service => service.ReadAllTextAsync("sample-data/example_session_state.json")).ReturnsAsync(source);
         Mock<ICardInfoService> offline = new(MockBehavior.Strict);
         offline.Setup(service => service.GetCatalogCardsAsync()).ReturnsAsync(Array.Empty<CardInfo>());
+        offline.Setup(service => service.GetLocalizedCardName(It.IsAny<Card>())).Returns((string?)null);
+        offline.Setup(service => service.GetLocalizedCardNameAsync(It.IsAny<Card>())).ReturnsAsync((string?)null);
         context.Services.AddSingleton(files.Object);
         context.Services.AddSingleton(offline.Object);
         IRenderedComponent<YGOProbabilityCalculatorBlazor.Pages.Help> help = context.RenderComponent<YGOProbabilityCalculatorBlazor.Pages.Help>();
@@ -113,6 +115,8 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
             Does.Contain("Monster").And.Contain("Quick-Play Spell"));
         Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
         offline.Verify(service => service.GetCatalogCardsAsync(), Times.Once);
+        offline.Verify(service => service.GetLocalizedCardName(It.IsAny<Card>()), Times.AtLeastOnce);
+        offline.Verify(service => service.GetLocalizedCardNameAsync(It.IsAny<Card>()), Times.AtLeastOnce);
         offline.VerifyNoOtherCalls();
     }
 

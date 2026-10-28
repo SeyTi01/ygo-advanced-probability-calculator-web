@@ -11,6 +11,10 @@ public interface ICardInfoService {
     // Optional presentation only; this accessor must not fetch data or change CardInfo.Name.
     string? GetLocalizedCardName(CardInfo info) => null;
 
+    // Saved-card display remains separate from stored names and requires verified catalog identity.
+    string? GetLocalizedCardName(Card card) => null;
+    Task<string?> GetLocalizedCardNameAsync(Card card) => Task.FromResult<string?>(null);
+
     Task<string> GetCardNameAsync(int id);
 
     Task<CardInfo> GetCardInfoAsync(int id);

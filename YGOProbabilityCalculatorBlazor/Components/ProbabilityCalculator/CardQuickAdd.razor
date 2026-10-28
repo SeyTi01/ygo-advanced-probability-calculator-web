@@ -1,5 +1,6 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.DeckImport
+@inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 
 <div class="quick-add mb-3">
     <div class="quick-add-row" @oninput:stopPropagation="true">
@@ -26,15 +27,18 @@
         return Task.CompletedTask;
     }
 
-    private Task AddCatalogCard(CardInfo card) => Add(CuratedDrawEffectPresets.CreateImportedCard(card, 1, card.Id));
+    private Task AddCatalogCard(CardInfo card) => Add(
+        CuratedDrawEffectPresets.CreateImportedCard(card, 1, card.Id),
+        DisplayLabels.Card(card, CardInfoService.GetLocalizedCardName(card))
+    );
 
     private Task AddManualCard() => string.IsNullOrWhiteSpace(_name)
         ? Task.CompletedTask
         : Add(new Card([], name: _name.Trim()));
 
-    private async Task Add(Card card) {
+    private async Task Add(Card card, string? displayName = null) {
         await OnAdd.InvokeAsync(card);
-        _status = UiText.Format("Ui.Added0", card.Name);
+        _status = UiText.Format("Ui.Added0", displayName ?? card.Name);
         _name = string.Empty;
         if (_search is not null) {
             await _search.ResetAsync();

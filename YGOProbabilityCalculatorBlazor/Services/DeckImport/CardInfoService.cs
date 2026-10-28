@@ -171,7 +171,7 @@ public class CardInfoService : ICardInfoService {
         Task<IReadOnlyList<CardInfo>> catalogTask = _loadCatalogTask.Value;
         string? locale = GetNameLocale();
         Task<IReadOnlyDictionary<CardInfo, string>>? namesTask = locale is null ? null
-            : _localizedNameLoads.GetOrAdd(locale, nameLocale => new(() => LoadLocalizedNamesAsync(nameLocale))).Value;
+            : GetLocalizedNamesAsync(locale);
         IReadOnlyList<CardInfo> catalog = await catalogTask;
         if (namesTask is not null) {
             IReadOnlyDictionary<CardInfo, string> names = await namesTask;
@@ -242,7 +242,7 @@ public class CardInfoService : ICardInfoService {
         return name.Contains(query, StringComparison.OrdinalIgnoreCase) ? 2 : 3;
     }
 
-    // Reading a label never starts a request. Only a nontrivial search loads names.
+    // Synchronous label reads never start a request.
     public string? GetLocalizedCardName(CardInfo info) {
         string? locale = GetNameLocale();
         if (locale is not null && _localizedNameLoads.TryGetValue(locale, out Lazy<Task<IReadOnlyDictionary<CardInfo, string>>> load)
@@ -253,6 +253,44 @@ public class CardInfoService : ICardInfoService {
         }
         return null;
     }
+
+    public string? GetLocalizedCardName(Card card) {
+        if (GetNameLocale() is null || !_loadCatalogTask.IsValueCreated || !_loadCatalogTask.Value.IsCompletedSuccessfully) {
+            return null;
+        }
+        CardInfo? canonical = FindSavedCardForDisplay(card, _loadCatalogTask.Value.Result);
+        return canonical is null ? null : GetLocalizedCardName(canonical);
+    }
+
+    public async Task<string?> GetLocalizedCardNameAsync(Card card) {
+        string? locale = GetNameLocale();
+        if (locale is null || card.ExternalCardId is not > 0 || string.IsNullOrWhiteSpace(card.Name)) {
+            return null;
+        }
+
+        // Populated card display may demand-load the same-origin catalog and selected names.
+        // Never enrich via API/cache or rewrite a saved/custom name to establish a match.
+        IReadOnlyList<CardInfo>? catalog = await TryLoadCatalogAsync();
+        CardInfo? canonical = FindSavedCardForDisplay(card, catalog);
+        if (canonical is null) {
+            return null;
+        }
+
+        IReadOnlyDictionary<CardInfo, string> names = await GetLocalizedNamesAsync(locale);
+        return names.TryGetValue(canonical, out string name) ? name : null;
+    }
+
+    private static CardInfo? FindSavedCardForDisplay(Card card, IReadOnlyList<CardInfo>? catalog) {
+        if (card.ExternalCardId is not > 0 || string.IsNullOrWhiteSpace(card.Name)) {
+            return null;
+        }
+        CardInfo? canonical = FindCatalogCard(catalog, card.ExternalCardId.Value);
+        return canonical is not null && string.Equals(card.Name, canonical.Name, StringComparison.Ordinal)
+            ? canonical : null;
+    }
+
+    private Task<IReadOnlyDictionary<CardInfo, string>> GetLocalizedNamesAsync(string locale) =>
+        _localizedNameLoads.GetOrAdd(locale, nameLocale => new(() => LoadLocalizedNamesAsync(nameLocale))).Value;
 
     private async Task<IReadOnlyDictionary<CardInfo, string>> LoadLocalizedNamesAsync(string locale) {
         try {

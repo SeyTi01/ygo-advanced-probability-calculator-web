@@ -39,6 +39,10 @@ async function blocked(page, locale, message) {
 
 async function header(page) {
     await usable(page, page.locator('#language-preference'));
+    const language = await page.locator('#language-preference').boundingBox();
+    const theme = await page.locator('#theme-preference').boundingBox();
+    assert(Math.abs(language.width - theme.width) < 1 && Math.abs(language.height - theme.height) < 1,
+        'language and theme selectors have the same size');
     assert.equal(await page.evaluate(() => {
         const title = document.querySelector('.app-title').getBoundingClientRect();
         const controls = document.querySelector('.top-row-controls').getBoundingClientRect();
@@ -106,7 +110,8 @@ async function germanProduction(browser, url, track) {
     await page.waitForFunction(() => document.querySelectorAll('.card-editor').length === 24);
     await interactive(page);
     assert.equal(await page.locator('.combo-editor').count(), 8);
-    assert.equal(requests.some(value => /card-names\./.test(value)), false, 'example import must not preload names');
+    await page.waitForFunction(() => [...document.querySelectorAll('.card-header-name')].some(node => node.textContent.includes('Aschenblüte')));
+    assert.equal(requests.filter(value => /card-names\./.test(value)).length, 1, 'populated German deck loads display names once');
     await context.close();
 
     const searchContext = await browser.newContext({ locale: 'de-DE' });
@@ -140,7 +145,21 @@ async function germanProduction(browser, url, track) {
     assert.equal(imported.DrawCount, 2, 'canonical selection retains maintained draw plan');
     assert.equal(imported.PreDrawDeckRemovalCount, 10);
     assert.equal(imported.EffectProfile.CanonicalCardId, 35261759);
+    assert.equal(await search.locator('.card-header-name').first().innerText(), 'Topf der Begierden (1)');
+    const canonicalPayload = await search.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery);
+    await change(search, 'en');
+    assert.equal(await search.locator('.card-header-name').first().innerText(), 'Pot of Desires (1)');
+    await change(search, 'de');
+    await search.locator('.card-header-name').filter({ hasText: 'Topf der Begierden' }).waitFor();
+    assert.equal(await search.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), canonicalPayload);
     await search.locator('.card-editor .accordion-button').first().click();
+    assert.equal(await search.locator('#cardName0').inputValue(), germanName);
+    await search.locator('#cardName0').focus();
+    await search.locator('#cardName0').blur();
+    assert.equal(await search.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), canonicalPayload);
+    await search.setViewportSize({ width: 390, height: 900 });
+    await header(search);
+    await search.screenshot({ path: path.resolve('bin/german-card-names-mobile.png'), fullPage: true });
     await search.locator('#cardName0').fill('Mein eigener Name');
     await search.locator('#cardName0').press('Escape');
     for (const width of [1280, 390]) {

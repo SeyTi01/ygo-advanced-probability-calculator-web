@@ -155,8 +155,10 @@ supplies German search suggestions through the existing card service. See below.
 
 Catalog `CardInfo` results have verified identity and may use localized labels.
 Saved `Card.Name` has no reliable authorship provenance, so it always retains its
-stored text, even when it equals a catalog name. User card, category, combo and
-group names are never translated or rewritten. Keep canonical English default
+stored text. A display-only German label may replace a visible card name when its
+external ID resolves unambiguously in the local catalog and its stored name exactly
+matches that canonical English name. This is a display rule, not inferred authorship.
+Manual/custom names that differ, category, combo and group names retain their text. Keep canonical English default
 names used when duplicating authored entities independent of locale as well.
 
 Never change `CategoryBase.Identity`, `MetadataKey`, selector signatures, numeric
@@ -185,16 +187,20 @@ from arbitrary selectors.
 
 The [German terminology guide](localization-de.md) records presentation choices
 and intentional English fallbacks. `CardInfoService.SearchCardsAsync` loads the
-selected locale's registered name-only asset only for a search of two or more
-characters. Help, empty calculator startup, artwork, session enrichment and the
-language checkpoint do not initiate this request. Concurrent searches share the
-request; a failed optional asset leaves English search and manual entry usable.
+selected locale's registered name-only asset for a search of two or more characters
+or for a populated deck that needs verified translated display names. Help, empty
+calculator startup, artwork, session enrichment and checkpoint capture do not
+initiate this request. Rendering a restored deck may request names. Concurrent
+search and display requests share the same load; a failed optional asset leaves English search and manual entry usable.
 Reloading the page permits another attempt. No other language's name data loads.
 
 Suggestions use `DisplayLabels.Card` with a verified catalog label supplied by
 the same service. Both German and English queries return the canonical `CardInfo`;
 selection keeps canonical English `Name`, metadata and maintained effect plans.
-Saved/editable names stay verbatim. Matching is case-insensitive ordinal, with
+Stored names stay verbatim; card rows, name fields and related selectors use the
+verified presentation labels. Focusing or leaving a translated name field never
+writes its label back to the model. Explicit typing remains a custom name edit.
+Matching is case-insensitive ordinal, with
 exact names before prefixes before substrings, then existing English-name/ID
 ordering and a 20-result limit. Umlauts and ß remain distinct characters: there
 is no accent stripping or fuzzy identity join.

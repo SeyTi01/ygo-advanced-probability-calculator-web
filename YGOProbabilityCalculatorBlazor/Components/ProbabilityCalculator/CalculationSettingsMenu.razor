@@ -1,3 +1,4 @@
+@inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using Microsoft.JSInterop
 @using YGOProbabilityCalculatorBlazor.Models
@@ -139,8 +140,9 @@
     }
 
     private string EntryLabel(Card entry) {
-        string name = string.IsNullOrWhiteSpace(entry.Name) ? UiText.Get("Ui.UnnamedCard") : entry.Name;
-        Card[] sameName = Cards.Where(card => card.Name == entry.Name).OrderBy(card => card.Id, StringComparer.Ordinal).ToArray();
+        string name = string.IsNullOrWhiteSpace(entry.Name) ? UiText.Get("Ui.UnnamedCard") : DisplayLabels.Card(entry, CardInfoService.GetLocalizedCardName(entry));
+        Card[] sameName = Cards.Where(card => DisplayLabels.Card(card, CardInfoService.GetLocalizedCardName(card)) == DisplayLabels.Card(entry, CardInfoService.GetLocalizedCardName(entry)))
+            .OrderBy(card => card.Id, StringComparer.Ordinal).ToArray();
         if (sameName.Length > 1) {
             name = UiText.Format("Ui.0Entry1", name, Array.IndexOf(sameName, entry) + 1);
         }
