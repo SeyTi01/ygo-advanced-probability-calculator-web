@@ -12,9 +12,10 @@ async function serve(directory) {
     const server = http.createServer(async (request, response) => {
         try {
             const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+            if (pathname === '/help/') return response.writeHead(308, { Location: '/help' }).end();
             let file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
             if (!file.startsWith(root + path.sep)) return response.writeHead(403).end();
-            if (!path.extname(file)) file = path.join(root, 'index.html');
+            if (!path.extname(file)) file = path.join(root, pathname === '/help' ? 'help.html' : 'index.html');
             response.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
             response.end(await fs.readFile(file));
         } catch { response.writeHead(404).end(); }
