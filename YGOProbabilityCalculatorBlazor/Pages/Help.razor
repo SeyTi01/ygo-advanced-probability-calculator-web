@@ -4,6 +4,8 @@
 @using YGOProbabilityCalculatorBlazor.Constants
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 @using Microsoft.AspNetCore.Components.Routing
+@using System.Globalization
+@using System.Text.RegularExpressions
 @implements IAsyncDisposable
 @inject IJSRuntime SessionLoadingJS
 @inject NavigationManager NavigationManager
@@ -35,9 +37,9 @@
 <div class="help-content mt-4">
     <section class="mb-4">
         <h1>@UiText.Get("Ui.YuGiOhAdvancedProbabilityCalculator") <small class="text-muted">@ProjectConstants.DisplayVersion</small></h1>
-        <p>Calculate opening-hand combo probabilities, including supported draw and search effects. Start with your own deck or explore the example.</p>
+        <p>@UiText.Get("Help.Introduction.Overview")</p>
         <div class="example-session-action">
-            <p id="example-session-warning" class="small text-muted mb-2">Loading replaces your current workspace. Save a session first to keep it.</p>
+            <p id="example-session-warning" class="small text-muted mb-2">@UiText.Get("Help.Introduction.ReplaceWarning")</p>
             <button class="btn btn-primary" aria-describedby="example-session-warning" disabled="@_loadingExample" @onclick="LoadExampleSession">@UiText.Get("Help.TryExample")</button>
             <div class="example-session-status">
                 <SessionLoadingStatus RequestVersion="@(_loadingExample ? 1L : null)" />
@@ -49,164 +51,178 @@
     </section>
 
     <details id="getting-started" class="help-topic">
-        <summary><h2>How to start?</h2></summary>
+        <summary><h2>@UiText.Get("Help.GettingStarted.Question")</h2></summary>
         <div class="help-topic-body">
             <ol>
-                <li><strong>Add your deck.</strong> Import a <code>.ydk</code> file or YDKe code, or enter cards manually. Check the copy counts and hand size.</li>
-                <li><strong>Define a combo.</strong> Add the cards, categories or properties that a successful hand needs.</li>
-                <li><strong>Check card effects.</strong> Expand effect cards to inspect their configured simulations.</li>
-                <li><strong>Calculate.</strong> Start with <strong>Progressive</strong>, then check the accuracy label beside each result.</li>
+                <li>@Message("Help.GettingStarted.AddDeck", @<strong>@UiText.Get("Help.GettingStarted.AddDeck.Part0")</strong>, @<code>@UiText.Get("Help.GettingStarted.AddDeck.Part1")</code>)</li>
+                <li>@Message("Help.GettingStarted.DefineCombo", @<strong>@UiText.Get("Help.GettingStarted.DefineCombo.Part0")</strong>)</li>
+                <li>@Message("Help.GettingStarted.CheckEffects", @<strong>@UiText.Get("Help.GettingStarted.CheckEffects.Part0")</strong>)</li>
+                <li>@Message("Help.GettingStarted.Calculate", @<strong>@UiText.Get("Help.GettingStarted.Calculate.Part0")</strong>, @<strong>@UiText.Get("Help.GettingStarted.Calculate.Part1")</strong>)</li>
             </ol>
-            <p>Cards and combos can be deactivated temporarily without deleting them.</p>
+            <p>@UiText.Get("Help.GettingStarted.Deactivate")</p>
         </div>
     </details>
 
     <details id="properties" class="help-topic">
-        <summary><h2>How to use categories and properties?</h2></summary>
+        <summary><h2>@UiText.Get("Help.Properties.Question")</h2></summary>
         <div class="help-topic-body">
-            <p>Use <strong>properties</strong> for card characteristics and <strong>categories</strong> for roles you assign.</p>
+            <p>@Message("Help.Properties.RolesAndProperties", @<strong>@UiText.Get("Help.Properties.RolesAndProperties.Part0")</strong>, @<strong>@UiText.Get("Help.Properties.RolesAndProperties.Part1")</strong>)</p>
             <ul>
-                <li><strong>Properties:</strong> FIRE, Warrior, Level 4 and other values supplied by card data.</li>
-                <li><strong>Categories:</strong> Starter, Extender or any role useful to your deck.</li>
+                <li>@Message("Help.Properties.PropertyExamples", @<strong>@UiText.Get("Help.Properties.PropertyExamples.Part0")</strong>)</li>
+                <li>@Message("Help.Properties.CategoryExamples", @<strong>@UiText.Get("Help.Properties.CategoryExamples.Part0")</strong>)</li>
             </ul>
-            <p>A card can match several properties and categories at once. Custom role assignments do not change a built-in search effect’s eligibility rules.</p>
-            <p>Level, Rank and Link rating support numeric comparisons and inclusive ranges. For example, <code>Level 1–4 AND Warrior</code> selects individual Warriors within that level range. Cards without an applicable value do not match.</p>
+            <p>@UiText.Get("Help.Properties.Overlaps")</p>
+            <p>@Message("Help.Properties.NumericRanges", @<code>@UiText.Get("Help.Properties.NumericRanges.Part0")</code>)</p>
         </div>
     </details>
 
     <details id="requirements" class="help-topic">
-        <summary><h2>How to define combo requirements?</h2></summary>
+        <summary><h2>@UiText.Get("Help.Requirements.Question")</h2></summary>
         <div class="help-topic-body">
-            <p>Choose <strong>Add requirement</strong>, select a target, and set <strong>At least</strong>. Use <strong>Maximum</strong> to limit matching cards; set both counts to <code>0</code> to exclude them.</p>
-            <p>All requirements in a combo must be satisfied by the final hand after effects resolve.</p>
-            <h3>Combining requirements</h3>
+            <p>@Message("Help.Requirements.Create", @<strong>@UiText.Get("Help.Requirements.Create.Part0")</strong>, @<strong>@UiText.Get("Help.Requirements.Create.Part1")</strong>, @<strong>@UiText.Get("Help.Requirements.Create.Part2")</strong>, @<code>@UiText.Get("Help.Requirements.Create.Part3")</code>)</p>
+            <p>@UiText.Get("Help.Requirements.FinalHand")</p>
+            <h3>@UiText.Get("Help.Requirements.Combining")</h3>
             <table class="table">
-            <thead><tr><th scope="col">Expression</th><th scope="col">Meaning</th></tr></thead>
+            <thead><tr><th scope="col">@UiText.Get("Help.Requirements.Expression")</th><th scope="col">@UiText.Get("Help.Requirements.Meaning")</th></tr></thead>
             <tbody>
-                <tr><th scope="row"><code>Starter + FIRE</code></th><td>Two distinct copies: one Starter and one FIRE card. A single card matching both cannot fill both requirements.</td></tr>
-                <tr><th scope="row"><code>FIRE AND Warrior</code></th><td>Each matching card must have both properties.</td></tr>
-                <tr><th scope="row"><code>Razen + (FIRE OR DARK)</code></th><td>Razen plus a distinct copy satisfying either alternative.</td></tr>
+                <tr><th scope="row"><code>@UiText.Get("Help.Requirements.DistinctExample.Part0")</code></th><td>@UiText.Get("Help.Requirements.DistinctCopies")</td></tr>
+                <tr><th scope="row"><code>@UiText.Get("Help.Requirements.SameCardExample.Part0")</code></th><td>@UiText.Get("Help.Requirements.SameCard")</td></tr>
+                <tr><th scope="row"><code>@UiText.Get("Help.Requirements.AlternativesExample.Part0")</code></th><td>@UiText.Get("Help.Requirements.Alternatives")</td></tr>
             </tbody>
             </table>
-            <h3>Counting rules</h3>
+            <h3>@UiText.Get("Help.Requirements.Counting")</h3>
             <ul>
-                <li>A maximum counts <strong>every matching card</strong> in the final hand. An empty maximum means <strong>Any</strong>.</li>
-                <li>Each OR alternative keeps its own counts. <code>FIRE (2–2) OR DARK (2–2)</code> requires two of either kind.</li>
-                <li>To request multiple copies, increase <strong>At least</strong>. Repeating the same target intersects its bounds.</li>
+                <li>@Message("Help.Requirements.Maximum", @<strong>@UiText.Get("Help.Requirements.Maximum.Part0")</strong>, @<strong>@UiText.Get("Help.Requirements.Maximum.Part1")</strong>)</li>
+                <li>@Message("Help.Requirements.AlternativeCounts", @<code>@UiText.Get("Help.Requirements.AlternativeCounts.Part0")</code>)</li>
+                <li>@Message("Help.Requirements.RepeatedTarget", @<strong>@UiText.Get("Help.Requirements.RepeatedTarget.Part0")</strong>)</li>
             </ul>
-            <p>Select an existing requirement to edit it. <strong>Enter</strong> saves; <strong>Escape</strong> or <strong>Cancel</strong> discards the edit.</p>
+            <p>@Message("Help.Requirements.Editing", @<strong>@UiText.Get("Help.Requirements.Editing.Part0")</strong>, @<strong>@UiText.Get("Help.Requirements.Editing.Part1")</strong>, @<strong>@UiText.Get("Help.Requirements.Editing.Part2")</strong>)</p>
         </div>
     </details>
 
     <details id="simulations" class="help-topic">
-        <summary><h2>How to configure card effects?</h2></summary>
+        <summary><h2>@UiText.Get("Help.Simulations.Question")</h2></summary>
         <div class="help-topic-body">
-            <p>Expand a card to inspect its saved simulation and <strong>Model notes</strong>.</p>
+            <p>@Message("Help.Simulations.Inspect", @<strong>@UiText.Get("Help.Simulations.Inspect.Part0")</strong>)</p>
             <ul>
-                <li><strong>Built-in simulation:</strong> a maintained model for a supported effect.</li>
-                <li><strong>Partial:</strong> some printed-card behavior is omitted.</li>
-                <li><strong>Custom simulation:</strong> a plan saved through the effect editor.</li>
+                <li>@Message("Help.Simulations.BuiltIn", @<strong>@UiText.Get("Help.Simulations.BuiltIn.Part0")</strong>)</li>
+                <li>@Message("Help.Simulations.Partial", @<strong>@UiText.Get("Help.Simulations.Partial.Part0")</strong>)</li>
+                <li>@Message("Help.Simulations.Custom", @<strong>@UiText.Get("Help.Simulations.Custom.Part0")</strong>)</li>
             </ul>
-            <p>Choose <strong>Customize simulation</strong> or <strong>Configure simulation</strong>, make changes, then <strong>Save</strong>. <strong>Cancel</strong> keeps the previous plan. Choosing <strong>None</strong> treats the card as ordinary while keeping it in the deck.</p>
-            <p>Sessions preserve their saved effect settings. <strong>Restore built-in simulation</strong> explicitly replaces those settings with the current maintained plan.</p>
-            <p>Only configured effects execute. Check <strong>Model notes</strong> before treating a simulation as the card’s complete printed behavior.</p>
+            <p>@Message("Help.Simulations.Editing", @<strong>@UiText.Get("Help.Simulations.Editing.Part0")</strong>, @<strong>@UiText.Get("Help.Simulations.Editing.Part1")</strong>, @<strong>@UiText.Get("Help.Simulations.Editing.Part2")</strong>, @<strong>@UiText.Get("Help.Simulations.Editing.Part3")</strong>, @<strong>@UiText.Get("Help.Simulations.Editing.Part4")</strong>)</p>
+            <p>@Message("Help.Simulations.Restore", @<strong>@UiText.Get("Help.Simulations.Restore.Part0")</strong>)</p>
+            <p>@Message("Help.Simulations.Limitations", @<strong>@UiText.Get("Help.Simulations.Limitations.Part0")</strong>)</p>
         </div>
     </details>
 
     <details id="effect-resolution" class="help-topic">
-        <summary><h2>How are effects resolved?</h2></summary>
+        <summary><h2>@UiText.Get("Help.EffectResolution.Question")</h2></summary>
         <div class="help-topic-body">
-            <p>Effects follow a fixed policy with two phases.</p>
-            <h3>1. Draw effects</h3>
-            <p>Legal draw effects activate automatically, consuming their source. Each effect finishes its costs, draws and removals before another effect begins.</p>
-            <p><strong>Once per turn</strong> is shared by copies of the same card entry. Costs, activation restrictions and sufficient remaining deck capacity are checked before activation. A failed mandatory removal counts as a failed outcome.</p>
-            <h3>2. Search effects</h3>
-            <p>After draws finish, optional searches can consume held sources to fetch eligible remaining cards. Searches share the actual remaining copies and deck capacity. Fetched effects do not activate or restart either phase.</p>
-            <h3>Priority and card selection</h3>
-            <p>Encounter order is the default. Custom priority ranks effects within each phase; rearranging the displayed deck does not change that priority.</p>
-            <p>Hand costs and removals use a shared keep policy that protects combo pieces and usable effects. Changing the active combos can therefore change removal choices. Different result rows may use different legal search choices.</p>
-            <p>This models the configured policy, including its omissions. It does not determine optimal gameplay. See the <a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/calculation-model.md" target="_blank" rel="noopener noreferrer">calculation model</a> for supported operations and limitations.</p>
+            <p>@UiText.Get("Help.EffectResolution.Phases")</p>
+            <h3>@UiText.Get("Help.EffectResolution.DrawHeading")</h3>
+            <p>@UiText.Get("Help.EffectResolution.Draws")</p>
+            <p>@Message("Help.EffectResolution.Restrictions", @<strong>@UiText.Get("Help.EffectResolution.Restrictions.Part0")</strong>)</p>
+            <h3>@UiText.Get("Help.EffectResolution.SearchHeading")</h3>
+            <p>@UiText.Get("Help.EffectResolution.Searches")</p>
+            <h3>@UiText.Get("Help.EffectResolution.PriorityHeading")</h3>
+            <p>@UiText.Get("Help.EffectResolution.Priority")</p>
+            <p>@UiText.Get("Help.EffectResolution.KeepPolicy")</p>
+            <p>@Message("Help.EffectResolution.ModelScope", @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/calculation-model.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.EffectResolution.ModelScope.Part0")</a>)</p>
         </div>
     </details>
 
     <details id="modes" class="help-topic">
-        <summary><h2>Which calculation modes are available?</h2></summary>
+        <summary><h2>@UiText.Get("Help.Modes.Question")</h2></summary>
         <div class="help-topic-body">
-            <p><strong>Progressive</strong> is the default and a good starting point.</p>
+            <p>@Message("Help.Modes.Default", @<strong>@UiText.Get("Help.Modes.Default.Part0")</strong>)</p>
             <table class="table">
-            <thead><tr><th scope="col">Mode</th><th scope="col">Behavior</th></tr></thead>
+            <thead><tr><th scope="col">@UiText.Get("Help.Modes.Mode")</th><th scope="col">@UiText.Get("Help.Modes.Behavior")</th></tr></thead>
             <tbody>
-                <tr><th scope="row">Progressive</th><td>Shows a completed Fast result, then attempts Exact if needed.</td></tr>
-                <tr><th scope="row">Fast only</th><td>Runs Fast once. The result may be Exact, Bounded or Uncertified.</td></tr>
-                <tr><th scope="row">Exact only</th><td>Publishes new values only when physical Exact completes.</td></tr>
-                <tr><th scope="row">No effect simulation</th><td>Evaluates the dealt hand while ignoring configured effects. Saved effect settings remain unchanged.</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Modes.Progressive")</th><td>@UiText.Get("Help.Modes.ProgressiveDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Modes.Fast")</th><td>@UiText.Get("Help.Modes.FastDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Modes.Exact")</th><td>@UiText.Get("Help.Modes.ExactDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Modes.NoEffects")</th><td>@UiText.Get("Help.Modes.NoEffectsDescription")</td></tr>
             </tbody>
             </table>
-            <p>Canceling a Progressive upgrade keeps its completed Fast result.</p>
-            <p>Exact has no calculation deadline, but memory limits, unsupported configurations or failures can still prevent completion. See <a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/accuracy-and-performance.md" target="_blank" rel="noopener noreferrer">accuracy and performance</a> for resource limits.</p>
+            <p>@UiText.Get("Help.Modes.Cancel")</p>
+            <p>@Message("Help.Modes.Limits", @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/accuracy-and-performance.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Modes.Limits.Part0")</a>)</p>
         </div>
     </details>
 
     <details id="results" class="help-topic">
-        <summary><h2>How to read results?</h2></summary>
+        <summary><h2>@UiText.Get("Help.Results.Question")</h2></summary>
         <div class="help-topic-body">
-            <p>Each combo is evaluated independently. <strong>Any active combo</strong> counts success in at least one active combo; group totals do the same for their members.</p>
-            <p><strong>Overlapping successes count once. Do not add individual percentages.</strong></p>
-            <h3>Accuracy</h3>
+            <p>@Message("Help.Results.Union", @<strong>@UiText.Get("Help.Results.Union.Part0")</strong>)</p>
+            <p><strong>@UiText.Get("Help.Results.OverlapWarning.Part0")</strong></p>
+            <h3>@UiText.Get("Help.Results.Accuracy")</h3>
             <table class="table">
-            <thead><tr><th scope="col">Label</th><th scope="col">Meaning</th></tr></thead>
+            <thead><tr><th scope="col">@UiText.Get("Help.Results.Label")</th><th scope="col">@UiText.Get("Help.Results.Meaning")</th></tr></thead>
             <tbody>
-                <tr><th scope="row">Exact / ±0%</th><td>The probability is proven for the configured model.</td></tr>
-                <tr><th scope="row">Bounded / ±</th><td>The physical-model probability lies within a certified interval. The displayed percentage is its midpoint, with an outward-rounded radius.</td></tr>
-                <tr><th scope="row">Uncertified</th><td>A modeled result is available, but its physical error bound has not been established.</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Results.Exact")</th><td>@UiText.Get("Help.Results.ExactDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Results.Bounded")</th><td>@UiText.Get("Help.Results.BoundedDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Results.Uncertified")</th><td>@UiText.Get("Help.Results.UncertifiedDescription")</td></tr>
             </tbody>
             </table>
-            <p>Exactness applies to the configured model, including any omitted gameplay.</p>
-            <h3>Result state</h3>
+            <p>@UiText.Get("Help.Results.ModelScope")</p>
+            <h3>@UiText.Get("Help.Results.State")</h3>
             <ul>
-                <li><strong>Preliminary:</strong> a completed Fast result is awaiting a possible Exact upgrade.</li>
-                <li><strong>Inputs changed:</strong> the result describes an earlier workspace state.</li>
-                <li><strong>Pinned:</strong> the result keeps its captured inputs and accuracy for comparison.</li>
+                <li>@Message("Help.Results.Preliminary", @<strong>@UiText.Get("Help.Results.Preliminary.Part0")</strong>)</li>
+                <li>@Message("Help.Results.Stale", @<strong>@UiText.Get("Help.Results.Stale.Part0")</strong>)</li>
+                <li>@Message("Help.Results.Pinned", @<strong>@UiText.Get("Help.Results.Pinned.Part0")</strong>)</li>
             </ul>
-            <p>Hover or keyboard-focus a value to inspect its primary fraction. For Bounded results, that fraction comes from the primary model and can differ from the displayed midpoint—even exceeding the certified upper bound. Copy results with their accuracy context.</p>
+            <p>@UiText.Get("Help.Results.Fraction")</p>
         </div>
     </details>
 
     <details id="sessions" class="help-topic">
-        <summary><h2>How to save, share and recover work?</h2></summary>
+        <summary><h2>@UiText.Get("Help.Sessions.Question")</h2></summary>
         <div class="help-topic-body">
-            <h3>Save a session</h3>
-            <p>Choose <strong>Save Session</strong> to download your deck, requirements, groups, effect settings and calculation preferences. Save pending editor changes first. Unsaved drafts, results, artwork and theme preferences are not included.</p>
-            <h3>Share a setup</h3>
-            <p>Choose <strong>Copy share link</strong>. Opening the link offers a load choice before replacing the workspace. Anyone with the link can read its contents; large setups may require a session file instead.</p>
-            <h3>Recover local work</h3>
-            <p>Local recovery remembers workspace changes in this browser. Cleared or unavailable storage can prevent recovery, so keep session files for durable copies.</p>
-            <p>Multiple tabs may offer conflicting recovery records. Choose which workspace to keep; tabs do not synchronize edits automatically.</p>
+            <h3>@UiText.Get("Help.Sessions.SaveHeading")</h3>
+            <p>@Message("Help.Sessions.Save", @<strong>@UiText.Get("Help.Sessions.Save.Part0")</strong>)</p>
+            <h3>@UiText.Get("Help.Sessions.ShareHeading")</h3>
+            <p>@Message("Help.Sessions.Share", @<strong>@UiText.Get("Help.Sessions.Share.Part0")</strong>)</p>
+            <h3>@UiText.Get("Help.Sessions.RecoveryHeading")</h3>
+            <p>@UiText.Get("Help.Sessions.Recovery")</p>
+            <p>@UiText.Get("Help.Sessions.MultipleTabs")</p>
         </div>
     </details>
 
     <details id="example" class="help-topic">
-        <summary><h2>How does the Vanquish Soul / K9 example work?</h2></summary>
+        <summary><h2>@UiText.Get("Help.Example.Question")</h2></summary>
         <div class="help-topic-body">
-            <p>The example contains:</p>
+            <p>@UiText.Get("Help.Example.Contents")</p>
             <ul>
-                <li><strong>40 card copies</strong> across 24 entries, with a five-card opening hand.</li>
-                <li><strong>Eight combo definitions</strong>, organized into <strong>Full VS</strong> and <strong>Full K9</strong>.</li>
-                <li>Requirements based on card identities and properties, without custom categories.</li>
+                <li>@Message("Help.Example.Copies", @<strong>@UiText.Get("Help.Example.Copies.Part0")</strong>)</li>
+                <li>@Message("Help.Example.Groups", @<strong>@UiText.Get("Help.Example.Groups.Part0")</strong>, @<strong>@UiText.Get("Help.Example.Groups.Part1")</strong>, @<strong>@UiText.Get("Help.Example.Groups.Part2")</strong>)</li>
+                <li>@UiText.Get("Help.Example.Requirements")</li>
             </ul>
-            <p><code>VS Starter + (FIRE OR DARK)</code> demonstrates alternative requirements. Search effects fetch eligible remaining monsters, which contribute their own identities and properties.</p>
-            <p>With all eight combos active, the settled Progressive result is exact: <strong>85.92% (565375/658008)</strong> for <strong>Any active combo</strong>.</p>
+            <p>@Message("Help.Example.Alternatives", @<code>@UiText.Get("Help.Example.Alternatives.Part0")</code>)</p>
+            <p>@Message("Help.Example.Result", @<strong>@UiText.Get("Help.Example.Result.Part0")</strong>, @<strong>@UiText.Get("Help.Example.Result.Part1")</strong>)</p>
         </div>
     </details>
 
     <footer class="help-footer mt-3">
-        <h2>Further reading and credits</h2>
-        <p>Explore the <a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/calculation-model.md" target="_blank" rel="noopener noreferrer">calculation model</a>, <a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/probability-engine.md" target="_blank" rel="noopener noreferrer">worked probability example</a> and <a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/accuracy-and-performance.md" target="_blank" rel="noopener noreferrer">accuracy guide</a>. Documentation follows the development branch; the stable site may differ.</p>
-        <p>Created by <a href="https://github.com/SeyTi01" target="_blank" rel="noopener noreferrer">SeyTi01</a>. Card artwork is supplied by <a href="https://ygoprodeck.com/api-guide/" target="_blank" rel="noopener noreferrer">YGOPRODeck</a> and retained on project hosting. Missing artwork does not affect calculations; third-party artwork is outside the software license.</p>
+        <h2>@UiText.Get("Help.Footer.Heading")</h2>
+        <p>@Message("Help.Footer.Reading", @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/calculation-model.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Reading.Part0")</a>, @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/probability-engine.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Reading.Part1")</a>, @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/accuracy-and-performance.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Reading.Part2")</a>)</p>
+        <p>@Message("Help.Footer.Credits", @<a href="https://github.com/SeyTi01" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Credits.Part0")</a>, @<a href="https://ygoprodeck.com/api-guide/" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Credits.Part1")</a>)</p>
     </footer>
 </div>
 
 @code {
+    // Only numbered text placeholders are substituted. Emphasis, code and links
+    // remain Razor-owned fragments; resource text is always HTML-encoded.
+    private static RenderFragment Message(string key, params RenderFragment[] arguments) => builder => {
+        string message = UiText.Get(key);
+        int offset = 0;
+        foreach (Match placeholder in Regex.Matches(message, @"\{(\d+)\}")) {
+            builder.AddContent(0, message[offset..placeholder.Index]);
+            int argument = int.Parse(placeholder.Groups[1].Value, CultureInfo.InvariantCulture);
+            builder.AddContent(1, arguments[argument]);
+            offset = placeholder.Index + placeholder.Length;
+        }
+        builder.AddContent(2, message[offset..]);
+    };
+
     private string? _errorMessage;
     private bool _loadingExample;
     private bool _disposed;

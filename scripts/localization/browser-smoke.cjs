@@ -46,6 +46,142 @@ async function header(page) {
     }), true, 'title and language controls do not overlap');
 }
 
+async function germanProduction(browser, url, track) {
+    const context = await browser.newContext({ locale: 'de-DE', viewport: { width: 390, height: 844 } });
+    const page = await context.newPage(); track(page);
+    page.setDefaultTimeout(15000);
+    const requests = [];
+    page.on('request', request => requests.push(request.url()));
+    await page.goto(url + '/help');
+    await page.waitForFunction(() => document.documentElement.lang === 'de' && !document.documentElement.classList.contains('locale-pending'));
+    assert.equal(await page.locator('#language-preference').inputValue(), 'de');
+    assert.equal(await page.locator('details.help-topic').count(), 9);
+    assert.equal(requests.some(value => /card-names\./.test(value)), false, 'Help must not load names');
+    assert.equal(requests.some(value => /\/fr\/.*resources/.test(value)), false);
+    assert(requests.some(value => /\/de\/.*resources/.test(value)), 'German satellite selected');
+    assert.match(await page.locator('meta[name=description]').getAttribute('content'), /^Help and usage guide/);
+    assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'), 'https://ygo-calculator.pages.dev/help');
+    const topics = ['getting-started', 'properties', 'requirements', 'simulations', 'effect-resolution', 'modes', 'results', 'sessions', 'example'];
+    const headings = await page.locator('details.help-topic > summary').allTextContents();
+    assert(headings.every(text => !/How |What |Where |When /.test(text)), 'all nine FAQ headings translated');
+    for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const theme of ['light', 'dark']) {
+            await page.locator('#theme-preference').selectOption(theme);
+            await header(page);
+            for (const id of topics) {
+                const summary = page.locator(`#${id} > summary`);
+                await summary.focus(); await summary.press('Enter');
+                assert.equal(await page.locator(`#${id}`).evaluate(element => element.open), true);
+                assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+                await summary.press('Space');
+                assert.equal(await page.locator(`#${id}`).evaluate(element => element.open), false);
+            }
+            await page.locator('#requirements > summary').click();
+            await page.screenshot({ path: path.resolve(`bin/german-help-${width}-${theme}.png`), fullPage: true });
+            await page.locator('#requirements > summary').click();
+        }
+    }
+    for (const id of topics) {
+        await page.goto(url + '/help#' + id);
+        await page.waitForFunction(id => document.getElementById(id)?.open, id);
+    }
+    await page.evaluate(() => {
+        const link = document.createElement('a'); link.href = '/help#requirements'; link.id = 'german-fragment-test'; link.textContent = 'Fragment';
+        document.querySelector('.help-content').prepend(link);
+    });
+    await page.locator('#german-fragment-test').click();
+    await page.waitForFunction(() => document.getElementById('requirements').open);
+    await page.locator('#requirements > summary').click();
+    await page.goBack();
+    await page.waitForFunction(() => location.hash === '#example' && document.getElementById('example').open);
+    await page.goForward();
+    await page.waitForFunction(() => location.hash === '#requirements' && document.getElementById('requirements').open);
+    await page.locator('#requirements > summary').click();
+    await page.locator('#german-fragment-test').click();
+    await page.waitForFunction(() => document.getElementById('requirements').open);
+    await page.goto(url + '/help');
+    await page.waitForFunction(() => document.documentElement.lang === 'de' && !document.documentElement.classList.contains('locale-pending'));
+    await page.locator('.example-session-action > button').click();
+    await page.waitForFunction(() => document.querySelectorAll('.card-editor').length === 24);
+    await interactive(page);
+    assert.equal(await page.locator('.combo-editor').count(), 8);
+    assert.equal(requests.some(value => /card-names\./.test(value)), false, 'example import must not preload names');
+    await context.close();
+
+    const searchContext = await browser.newContext({ locale: 'de-DE' });
+    const search = await searchContext.newPage(); track(search);
+    const nameRequests = [];
+    search.on('request', request => { if (/card-names\./.test(request.url())) nameRequests.push(request.url()); });
+    await search.goto(url); await interactive(search);
+    assert.equal(nameRequests.length, 0, 'empty German calculator does not load names');
+    const initial = await search.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
+    const cold = Date.now();
+    await search.locator('#quickCardName').fill('Topf der Begierden');
+    await search.locator('#quickCardOption-35261759').waitFor();
+    console.log(`German startup encoded bodies: ${initial} bytes; cold name search: ${Date.now() - cold} ms.`);
+    assert.equal(nameRequests.length, 1);
+    const germanName = await search.locator('#quickCardOption-35261759').innerText();
+    assert.equal(germanName, 'Topf der Begierden');
+    await search.locator('#quickCardName').fill('');
+    await search.locator('#quickCardOption-35261759').waitFor({ state: 'detached' });
+    const warm = Date.now();
+    await search.locator('#quickCardName').fill('Pot of Desires');
+    await search.locator('#quickCardOption-35261759').waitFor();
+    assert.equal(await search.locator('#quickCardOption-35261759').innerText(), germanName);
+    console.log(`Warm English alias search: ${Date.now() - warm} ms; name requests: ${nameRequests.length}.`);
+    assert.equal(nameRequests.length, 1);
+    await search.locator('#quickCardOption-35261759').click();
+    await search.waitForFunction(key => {
+        try { return JSON.parse(JSON.parse(localStorage.getItem(key)).payload).Cards[0].Name === 'Pot of Desires'; } catch { return false; }
+    }, recovery);
+    const imported = await search.evaluate(key => JSON.parse(JSON.parse(localStorage.getItem(key)).payload).Cards[0], recovery);
+    assert.equal(imported.ExternalCardId, 35261759);
+    assert.equal(imported.DrawCount, 2, 'canonical selection retains maintained draw plan');
+    assert.equal(imported.PreDrawDeckRemovalCount, 10);
+    assert.equal(imported.EffectProfile.CanonicalCardId, 35261759);
+    await search.locator('.card-editor .accordion-button').first().click();
+    await search.locator('#cardName0').fill('Mein eigener Name');
+    await search.locator('#cardName0').press('Escape');
+    for (const width of [1280, 390]) {
+        await search.setViewportSize({ width, height: 900 });
+        for (const theme of ['light', 'dark']) {
+            await search.locator('#theme-preference').selectOption(theme); await header(search);
+            await search.screenshot({ path: path.resolve(`bin/german-calculator-${width}-${theme}.png`), fullPage: true });
+        }
+    }
+    await change(search, 'en');
+    assert.equal(await search.locator('.card-header-name').first().innerText(), 'Mein eigener Name (1)');
+    await change(search, 'de');
+    assert.equal(await search.locator('.card-header-name').first().innerText(), 'Mein eigener Name (1)');
+    await searchContext.close();
+
+    const failureContext = await browser.newContext({ locale: 'de-DE' });
+    const failure = await failureContext.newPage();
+    await failure.route('**/card-names.de.v1.json', route => route.fulfill({ status: 503, body: '' }));
+    await failure.goto(url); await interactive(failure);
+    await failure.locator('#quickCardName').fill('Pot of Desires');
+    await failure.locator('#quickCardOption-35261759').waitFor();
+    assert.equal(await failure.locator('#quickCardOption-35261759').innerText(), 'Pot of Desires');
+    await failure.locator('#quickCardName').fill('Eigene Karte ß');
+    await failure.locator('.quick-add-row > button').click();
+    await failure.locator('.card-header-name').filter({ hasText: 'Eigene Karte ß' }).waitFor();
+    await failureContext.close();
+
+    for (const saved of ['en', 'de', 'stale', 'denied']) {
+        const startup = await browser.newContext({ locale: 'de-DE' });
+        await startup.addInitScript(({ preference, saved }) => {
+            if (saved === 'denied') {
+                Storage.prototype.getItem = () => { throw new Error('Storage denied'); };
+            } else { localStorage.setItem(preference, saved); }
+        }, { preference, saved });
+        const p = await startup.newPage(); track(p); await p.goto(url); await interactive(p);
+        assert.equal(await p.locator('#language-preference').inputValue(), saved === 'en' ? 'en' : 'de');
+        await startup.close();
+    }
+    console.log('Real German production Help, native keyboard/history, example, demand-loaded bilingual search, canonical selection, authored names, fallback and desktop/mobile themes passed.');
+}
+
 async function main() {
     const browser = await chromium.launch(launchOptions());
     const servers = [];
@@ -58,18 +194,20 @@ async function main() {
     };
     try {
         const prod = await serve(process.argv[2]); servers.push(prod.server);
-        const context = await browser.newContext({ locale: 'de-DE', viewport: { width: 390, height: 844 } });
+        const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } });
         const page = await context.newPage();
         track(page);
         await page.goto(prod.url); await interactive(page);
-        assert.equal(await page.locator('#language-preference').count(), 0);
+        assert.equal(await page.locator('#language-preference').inputValue(), 'en');
         assert.equal(await page.locator('#quickCardName').getAttribute('placeholder'), 'Search cards or enter a name');
         const transfer = await page.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
         const productionRequests = await page.evaluate(() => performance.getEntriesByType('resource').map(item => item.name));
         assert.equal(productionRequests.some(url => /\/(fr|de)\/.*resources/.test(url)), false);
+        assert.equal(productionRequests.some(url => /card-names\./.test(url)), false);
         console.log(`Production English first visit encoded resource bodies: ${transfer} bytes.`);
         await usable(page, page.locator('#theme-preference'));
         await context.close();
+        await germanProduction(browser, prod.url, track);
 
         const testHost = await serve(process.argv[3]); servers.push(testHost.server);
         const test = await browser.newContext({ locale: 'de-DE', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
@@ -190,6 +328,23 @@ async function main() {
             return saved.Cards[0].Copies === 3 && saved.Combos[0].Name === 'Accepted rename';
         }, recovery);
         const accepted = await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery);
+        await change(p, 'de');
+        assert.equal(await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), accepted);
+        assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)3\/4(?!\d)/);
+        assert.equal(await p.locator('.pinned-result').count(), 1);
+        for (const width of [1280, 390]) {
+            await p.setViewportSize({ width, height: 900 });
+            for (const theme of ['light', 'dark']) {
+                await p.locator('#theme-preference').selectOption(theme); await header(p);
+                await p.screenshot({ path: path.resolve(`bin/german-results-${width}-${theme}.png`), fullPage: true });
+            }
+        }
+        await p.locator('.calculation-settings-trigger').click();
+        await usable(p, p.locator('#calculationModel'));
+        await p.screenshot({ path: path.resolve('bin/german-settings-mobile.png'), fullPage: true });
+        await p.locator('#calculationModel').press('Escape');
+        await change(p, 'en');
+        assert.equal(await p.locator('.pinned-result').innerText(), pinned);
         await change(p, 'fr');
         assert.equal(await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), accepted);
         assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)3\/4(?!\d)/);

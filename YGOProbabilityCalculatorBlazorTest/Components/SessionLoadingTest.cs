@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Components.Shared;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -12,6 +13,7 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Shared;
+using YGOProbabilityCalculatorBlazorTest.Localization;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
@@ -318,8 +320,10 @@ public class SessionLoadingTest {
         }
     }
 
-    [Test]
-    public void HelpKeepsOneExampleActionBeforeCollapsedSemanticTopics() {
+    [TestCase("en")]
+    [TestCase("de")]
+    public void HelpKeepsOneExampleActionBeforeCollapsedSemanticTopics(string language) {
+        using PresentationLocale locale = new(language, production: true);
         IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
         Assert.That(cut.FindAll(".example-session-action button"), Has.Count.EqualTo(1));
         Assert.That(cut.Find(".help-content > section .example-session-action"), Is.Not.Null);
@@ -328,6 +332,14 @@ public class SessionLoadingTest {
         Assert.That(cut.FindAll("details[open]"), Is.Empty);
         Assert.That(cut.FindAll("details > summary > h2"), Has.Count.EqualTo(9));
         Assert.That(cut.Find("footer a").GetAttribute("href"), Does.EndWith("/docs/calculation-model.md"));
+        string[] topics = ["GettingStarted", "Properties", "Requirements", "Simulations", "EffectResolution", "Modes", "Results", "Sessions", "Example"];
+        Assert.That(cut.FindAll("details > summary > h2").Select(heading => heading.TextContent),
+            Is.EqualTo(topics.Select(topic => UiText.Get($"Help.{topic}.Question"))));
+        Assert.That(cut.Find(".example-session-action button").TextContent, Is.EqualTo(UiText.Get("Help.TryExample")));
+        Assert.That(cut.Find("#effect-resolution .help-topic-body p:last-child a").TextContent,
+            Is.EqualTo(UiText.Get("Help.EffectResolution.ModelScope.Part0")));
+        Assert.That(cut.Find(".help-content").TextContent, Does.Not.Contain("{0}").And.Not.Contain("Help."));
+        Assert.That(cut.Find("#example .help-topic-body").TextContent, Does.Contain("565375/658008"));
     }
 
     [Test]

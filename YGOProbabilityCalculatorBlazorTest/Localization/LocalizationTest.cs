@@ -19,6 +19,21 @@ namespace YGOProbabilityCalculatorBlazorTest.Localization;
 
 public sealed class LocalizationTest {
     [Test]
+    public void GermanSatelliteCoversEveryNeutralMessageWithMatchingArguments() {
+        ResourceSet english = UiText.Resources.GetResourceSet(CultureInfo.InvariantCulture, true, false)!;
+        ResourceSet german = UiText.Resources.GetResourceSet(CultureInfo.GetCultureInfo("de"), true, false)!;
+        Assert.That(german, Is.Not.Null, "The production German satellite must exist without fallback.");
+        foreach (DictionaryEntry resource in english) {
+            string key = (string)resource.Key;
+            string original = (string)resource.Value!;
+            string? translated = german.GetString(key);
+            Assert.That(translated, Is.Not.Null, key);
+            Assert.That(UiText.HasSameArguments(original, translated!), Is.True, key);
+            if (original.Length > 0) { Assert.That(translated, Is.Not.Empty, key); }
+        }
+    }
+
+    [Test]
     public void RealSatelliteSubstitutionFallbackAndArguments() {
         using PresentationLocale locale = new();
         Assert.Multiple(() => {
@@ -159,15 +174,23 @@ public sealed class LocalizationTest {
         });
     }
 
-    [TestCase("current")]
-    [TestCase("canonical")]
-    [TestCase("revision")]
-    [TestCase("plan")]
-    [TestCase("support")]
-    [TestCase("execution")]
-    [TestCase("custom")]
-    [TestCase("legacy")]
-    public void OnlyFullyCompatibleEffectsReceiveLocalizedMaintainedDescriptions(string difference) {
+    [TestCase("current", "fr")]
+    [TestCase("canonical", "fr")]
+    [TestCase("revision", "fr")]
+    [TestCase("plan", "fr")]
+    [TestCase("support", "fr")]
+    [TestCase("execution", "fr")]
+    [TestCase("custom", "fr")]
+    [TestCase("legacy", "fr")]
+    [TestCase("current", "de")]
+    [TestCase("canonical", "de")]
+    [TestCase("revision", "de")]
+    [TestCase("plan", "de")]
+    [TestCase("support", "de")]
+    [TestCase("execution", "de")]
+    [TestCase("custom", "de")]
+    [TestCase("legacy", "de")]
+    public void OnlyFullyCompatibleEffectsReceiveLocalizedMaintainedDescriptions(string difference, string language) {
         MaintainedCardEffect maintained = CardEffectRegistry.Default.Find(35261759)!;
         EffectProfile profile = maintained.Profile with { Summary = "Historical summary", Limitations = "Historical limits" };
         DrawEffectPlan plan = maintained.Plan;
@@ -185,12 +208,12 @@ public sealed class LocalizationTest {
         EffectiveCardEffect canonical = CardEffectRegistry.Default.Describe(saved);
         SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
         string savedJson = codec.SerializeSession(new() { Cards = [saved] });
-        using PresentationLocale locale = new();
+        using PresentationLocale locale = new(language, production: language == "de");
         EffectiveCardEffect display = EffectDescriptions.Describe(saved);
         Assert.Multiple(() => {
             Assert.That(display.UsesCurrentDescription, Is.EqualTo(difference == "current"));
-            Assert.That(display.Summary, Is.EqualTo(difference == "current" ? "⟦Maintained draw⟧" : canonical.Summary));
-            Assert.That(display.Limitations, Is.EqualTo(difference == "current" ? "⟦Maintained model note⟧" : canonical.Limitations));
+            Assert.That(display.Summary, Is.EqualTo(difference == "current" ? UiText.Get("Effects.35261759.Summary") : canonical.Summary));
+            Assert.That(display.Limitations, Is.EqualTo(difference == "current" ? UiText.Get("Effects.35261759.Limitations") : canonical.Limitations));
             Assert.That(display.Plan, Is.EqualTo(plan));
             Assert.That(saved.EffectProfile, Is.EqualTo(profile));
             Assert.That(display.CanExecute, Is.EqualTo(canonical.CanExecute));
@@ -199,8 +222,9 @@ public sealed class LocalizationTest {
         });
     }
 
-    [Test]
-    public async Task SessionsShareLinksWorkerBytesAndExactFractionRemainLocaleIndependent() {
+    [TestCase("fr")]
+    [TestCase("de")]
+    public async Task SessionsShareLinksWorkerBytesAndExactFractionRemainLocaleIndependent(string language) {
         SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
         CategoryBase monster = new("Monster", CategorySource.Metadata, "kind:monster");
         CategoryBase authored = new("My role");
@@ -215,7 +239,7 @@ public sealed class LocalizationTest {
         CalculationOptions options = new() { Mode = CalculationModel.OpeningHand };
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, 1, [], options: options);
         ProbabilityCalculationResult english = new ProbabilityCalculatorService().CalculateProbabilityResults(session.Cards, session.Combos, 1, [], CalculationWorkPolicy.Default, options);
-        using PresentationLocale locale = new();
+        using PresentationLocale locale = new(language, production: language == "de");
         SessionState loaded = await codec.LoadSessionAsync(before);
         DisplayLabels.Category(monster);
         ProbabilityCalculationResult translated = new ProbabilityCalculatorService().CalculateProbabilityResults(loaded.Cards, loaded.Combos, 1, [], CalculationWorkPolicy.Default, options);
@@ -232,18 +256,20 @@ public sealed class LocalizationTest {
     }
 
     [Test, NonParallelizable]
-    public void ShellInitializationIsEnglishForPrerenderAndInteractiveWithoutChangingNumericCulture() {
+    public void ShellResolvesGermanAndExplicitEnglishWithoutChangingNumericCulture() {
         CultureInfo previous = CultureInfo.CurrentUICulture;
         CultureInfo? previousDefault = CultureInfo.DefaultThreadCurrentUICulture;
         CultureInfo numbers = CultureInfo.CurrentCulture;
         try {
             LocalePreference preference = new();
             preference.Initialize("fr", ["de-DE", "en-GB"]);
-            Assert.That(preference.Locale, Is.EqualTo("en"));
-            Assert.That(CultureInfo.CurrentUICulture.Name, Is.EqualTo("en"));
+            Assert.That(preference.Locale, Is.EqualTo("de"));
+            Assert.That(CultureInfo.CurrentUICulture.Name, Is.EqualTo("de"));
             Assert.That(CultureInfo.CurrentCulture, Is.SameAs(numbers));
-            Assert.That(LocalePreference.Resolve("xx", ["de"]), Is.EqualTo("en"));
-            Assert.That(LocalePreference.SupportedLocales, Is.EqualTo(new[] { "en" }));
+            Assert.That(LocalePreference.Resolve("xx", ["de"]), Is.EqualTo("de"));
+            Assert.That(LocalePreference.Resolve("en", ["de-DE"]), Is.EqualTo("en"));
+            Assert.That(LocalePreference.Resolve(), Is.EqualTo("en"));
+            Assert.That(LocalePreference.SupportedLocales, Is.EqualTo(new[] { "en", "de" }));
             ServiceCollection services = new();
             YGOProbabilityCalculatorBlazor.Program.ConfigureServices(services, "https://example.test/");
             using ServiceProvider provider = services.BuildServiceProvider();
@@ -253,6 +279,34 @@ public sealed class LocalizationTest {
         finally {
             CultureInfo.CurrentUICulture = previous;
             CultureInfo.DefaultThreadCurrentUICulture = previousDefault;
+        }
+    }
+
+    [TestCase(CalculationModel.Exact)]
+    [TestCase(CalculationModel.Fast)]
+    public void GermanPresentationPreservesExistingPhysicalFixtureFractionsAndCertificates(CalculationModel mode) {
+        Services.ProbabilityCalculator.SearchCertificateFixtures.Fixture fixture =
+            Services.ProbabilityCalculator.SearchCertificateFixtures.Fixtures().Single(value => value.Name == "minimal-hidden-only-target");
+        CalculationOptions options = new(Mode: mode);
+        ProbabilityCalculationResult english;
+        string request;
+        using (PresentationLocale locale = new("en", production: true)) {
+            request = CalculationSnapshot.Capture(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, options: options).Json;
+            english = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, options);
+        }
+        using (PresentationLocale locale = new("de", production: true)) {
+            ProbabilityCalculationResult german = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, options);
+            Assert.That(CalculationSnapshot.Capture(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, options: options).Json, Is.EqualTo(request));
+            Assert.That(System.Text.Json.JsonSerializer.Serialize(german.Contract!.Fractions),
+                Is.EqualTo(System.Text.Json.JsonSerializer.Serialize(english.Contract!.Fractions)));
+            Assert.That(System.Text.Json.JsonSerializer.Serialize(german.SearchAvailability),
+                Is.EqualTo(System.Text.Json.JsonSerializer.Serialize(english.SearchAvailability)));
+            if (mode == CalculationModel.Exact) {
+                Assert.That(german.Contract.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("23", "30")));
+            }
+            else { Assert.That(german.SearchAvailability, Is.Not.Null); }
         }
     }
 }

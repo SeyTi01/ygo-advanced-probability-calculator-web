@@ -1,6 +1,6 @@
 # Localization contributors
 
-English is the only production locale. Presentation uses the platform's
+English and German (`de`, Deutsch) are production locales. Presentation uses the platform's
 `ResourceManager` and keyed `.resx` satellites in `Localization/Strings.resx`.
 This avoids an additional package and works equally in Razor, static C#
 presentation helpers, WebAssembly, and the publish-time prerenderer.
@@ -73,8 +73,7 @@ reveals its canonical HTML. For a non-English preference it keeps that HTML hidd
 until the correctly initialized interactive layout is ready. The document language
 then changes with the interactive UI. This does not translate or replace SEO
 metadata. JavaScript-disabled crawlers/readers retain canonical English HTML.
-Startup errors reveal the existing runtime-error UI. No translated card catalog
-is bundled; translations remain .resx satellites selected by startup.
+Startup errors reveal the existing runtime-error UI. UI translations remain .resx satellites selected by startup. German card names are a separate on-demand asset; see the card-name section below.
 
 ## Language reload and accepted workspace
 
@@ -116,8 +115,8 @@ from normal explicit recovery and never changes session schema or worker bytes.
 
 `node scripts/localization/prepare-test-host.cjs` makes an ignored source copy
 under `bin/localization-test-host`, adding the test-only pseudo satellite under
-`fr` and `de` plus an isolated registry. Neither pseudo resource nor registry
-is included in production. Publish that copy with the same stripped-IL AOT
+`fr` plus an isolated registry, preserving the real production `de` satellite.
+Neither pseudo resource nor registry is included in production. Publish that copy with the same stripped-IL AOT
 configuration as the production app. Use `--refresh` to recreate a previously
 marked generated copy after source changes, then run:
 
@@ -152,7 +151,7 @@ resources, even inside that scope.
 `Archetypes.<canonical name>`, and `NumericProperty.<enum name>`. Missing optional
 labels retain the canonical English display value. Numeric requirement rendering
 uses parameterized `NumericRange.*` messages. Another offline label/alias source
-can be integrated here later; no additional catalog is supplied by this change.
+supplies German search suggestions through the existing card service. See below.
 
 Catalog `CardInfo` results have verified identity and may use localized labels.
 Saved `Card.Name` has no reliable authorship provenance, so it always retains its
@@ -182,6 +181,29 @@ No profiles/plans are mutated. Wording-only corrections need no semantic revisio
 bump. Author each maintained card's translation explicitly; do not synthesize it
 from arbitrary selectors.
 
+## German card-name search
+
+The [German terminology guide](localization-de.md) records presentation choices
+and intentional English fallbacks. `CardInfoService.SearchCardsAsync` loads the
+selected locale's registered name-only asset only for a search of two or more
+characters. Help, empty calculator startup, artwork, session enrichment and the
+language checkpoint do not initiate this request. Concurrent searches share the
+request; a failed optional asset leaves English search and manual entry usable.
+Reloading the page permits another attempt. No other language's name data loads.
+
+Suggestions use `DisplayLabels.Card` with a verified catalog label supplied by
+the same service. Both German and English queries return the canonical `CardInfo`;
+selection keeps canonical English `Name`, metadata and maintained effect plans.
+Saved/editable names stay verbatim. Matching is case-insensitive ordinal, with
+exact names before prefixes before substrings, then existing English-name/ID
+ordering and a 20-result limit. Umlauts and ß remain distinct characters: there
+is no accent stripping or fuzzy identity join.
+
+The [catalog documentation](../infrastructure/card-catalog/README.md#german-search-names)
+records the retained provider snapshot, deterministic offline generation,
+coverage and size evidence. Add later locale assets only after equivalent source
+and identity review; normal builds/tests/publish never fetch the provider.
+
 ## Coverage and deferred English
 
 Resources cover the calculator's card/category/combo editors, rule and effect
@@ -189,12 +211,13 @@ editors, import/session/recovery/share actions and their parser errors, settings
 results/accuracy and export messages, dialogs, shell/theme controls, accessible
 names, titles and tooltips, plus all maintained summaries/notes.
 
-The deliberate later translation pass consists of:
+Interactive Help is translated, including all nine FAQ entries and the example
+action. Its `Message` helper renders numbered placeholders as Razor-owned inline
+emphasis/links; resource text is encoded, never trusted HTML. Use simple `{0}`
+placeholders for these rich messages, without formatting/alignment or escaped
+braces.
 
-- The Help article's getting-started, requirements, simulations, modes, results,
-  sessions, example and credits prose, headings and topic navigation. The page
-  title and example action/errors establish `Help.*`; continue extracting complete
-  paragraphs around the existing semantic markup rather than cloning the page.
+The intentional English boundaries are:
 - The canonical English SEO descriptions/social-image alternatives in
   `Pages/Index.razor` and `Pages/Help.razor`, plus the static host's initial loading,
   fatal runtime-error and noscript text in `wwwroot/index.html`.

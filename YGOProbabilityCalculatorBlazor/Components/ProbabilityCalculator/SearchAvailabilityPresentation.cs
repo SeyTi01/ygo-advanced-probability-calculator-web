@@ -14,7 +14,7 @@ public static class SearchAvailabilityPresentation {
     };
 
     public static string Range(SearchAvailabilityInterval interval) => interval.IsExact
-        ? $"≈ {Percent(interval.Lower, false)}% (exact)"
+        ? UiText.Format("Accuracy.ExactRange", Percent(interval.Lower, false))
         : $"[{Percent(interval.Lower, false)}%, {Percent(interval.Upper, true)}%]"
             + (interval.Informativeness == SearchAvailabilityRowStatus.Uninformative ? UiText.Get("Ui.UninformativeLowerBound") : "");
 

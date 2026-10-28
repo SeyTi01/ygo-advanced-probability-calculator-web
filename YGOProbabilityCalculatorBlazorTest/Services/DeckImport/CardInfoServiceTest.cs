@@ -10,6 +10,92 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 [TestFixture]
 public class CardInfoServiceTests {
     [Test]
+    [SetUICulture("de-DE")]
+    public async Task GermanSearchSharesDemandLoadAndKeepsCanonicalNamesMetadataAndEffects() {
+        CardInfo[] cards = [
+            new() { Id = 35261759, CanonicalCardId = 35261759, Name = "Pot of Desires", Type = "Spell Card",
+                ArtworkMetadataKnown = true, ArtworkImageIds = [35261759, 99], ResolvedArchetypes = [] },
+            new() { Id = 2, Name = "White Dragon", Type = "Effect Monster", ArtworkMetadataKnown = true,
+                ArtworkImageIds = [2, 99], ResolvedArchetypes = ["Blue-Eyes"] },
+            new() { Id = 3, Name = "Another White Dragon", Type = "Effect Monster", ArtworkMetadataKnown = true },
+            new() { Id = 4, Name = "Missing Translation", Type = "Spell Card", ArtworkMetadataKnown = true }
+        ];
+        string catalog = JsonSerializer.Serialize(new { version = 2, cards }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        TaskCompletionSource<HttpResponseMessage> pendingNames = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        RecordingHttpMessageHandler handler = new((request, _) => request.RequestUri!.AbsolutePath.EndsWith("card-names.de.v1.json")
+            ? pendingNames.Task : Task.FromResult(Response(HttpStatusCode.OK, catalog)));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client);
+
+        Assert.That(service.GetLocalizedCardName(cards[0]), Is.Null);
+        Assert.That(await service.SearchCardsAsync(" T "), Is.Empty);
+        await service.GetCatalogCardsAsync();
+        Assert.That(handler.Requests, Has.Length.EqualTo(1), "catalog/import use must not load names");
+        Task<IReadOnlyList<CardInfo>> germanSearch = service.SearchCardsAsync("Topf der Begierden");
+        Task<IReadOnlyList<CardInfo>> englishSearch = service.SearchCardsAsync("Pot of Desires");
+        pendingNames.SetResult(Response(HttpStatusCode.OK, """
+            {"version":1,"locale":"de","names":[[35261759,"Topf der Begierden"],[2,"Weißer Drache"],
+             [3,"Weißer Drache"],[99,"Falscher Bildname"],[123,"Unbekannt"]]}
+            """));
+        CardInfo german = (await germanSearch).Single();
+        CardInfo english = (await englishSearch).Single();
+        Assert.That(german, Is.SameAs(english));
+        Assert.That(german.Name, Is.EqualTo("Pot of Desires"));
+        Assert.That(service.GetLocalizedCardName(german), Is.EqualTo("Topf der Begierden"));
+        Assert.That(service.GetLocalizedCardName(german with { }), Is.Null, "an unverified clone/ID cannot acquire a data label");
+        Assert.That(service.GetLocalizedCardName(new CardInfo { Id = 99, Name = "Artwork" }), Is.Null);
+        Card imported = CuratedDrawEffectPresets.CreateImportedCard(german, 1, german.Id);
+        Assert.That(imported.Name, Is.EqualTo("Pot of Desires"));
+        Assert.That((imported.DrawCount, imported.PreDrawDeckRemovalCount), Is.EqualTo(((int?)2, 10)));
+        Assert.That((await service.SearchCardsAsync("begier")).Select(card => card.Id), Is.EqualTo(new[] { 35261759 }));
+        Assert.That((await service.SearchCardsAsync("WEIßER")).Select(card => card.Id), Is.EqualTo(new[] { 3, 2 }));
+        Assert.That((await service.SearchCardsAsync("White Dragon")).Select(card => card.Id), Is.EqualTo(new[] { 2, 3 }));
+        Assert.That(await service.SearchCardsAsync("Weisser"), Is.Empty, "do not fold distinct spellings or IDs");
+        Assert.That(await service.SearchCardsAsync("Falscher"), Is.Empty, "artwork aliases never join names");
+        Assert.That(await service.SearchCardsAsync("Unbekannt"), Is.Empty);
+        Assert.That((await service.SearchCardsAsync("Missing")).Single().Name, Is.EqualTo("Missing Translation"));
+        Assert.That((await service.SearchCardsAsync("White Dragon")).Single(card => card.Id == 2).ResolvedArchetypes,
+            Is.EqualTo(new[] { "Blue-Eyes" }));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2), "both overlapping and warm searches share the name request");
+    }
+
+    [TestCase(null)]
+    [TestCase("{bad json")]
+    [TestCase("{\"version\":1,\"locale\":\"fr\",\"names\":[[1,\"Äther\"]]}")]
+    [TestCase("{\"version\":1,\"locale\":\"de\",\"names\":[[1,\"Äther\"],[1,\"Anders\"]]}")]
+    [SetUICulture("de")]
+    public async Task FailedGermanNamesKeepEnglishSearchAndCacheFailure(string? names) {
+        CardInfo[] cards = [new() { Id = 1, Name = "Aether", ArtworkMetadataKnown = true }];
+        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(
+            request.RequestUri!.AbsolutePath.EndsWith("card-names.de.v1.json")
+                ? Response(names is null ? HttpStatusCode.NotFound : HttpStatusCode.OK, names ?? "")
+                : Response(HttpStatusCode.OK, CreateLocalCatalogJson(cards))));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client);
+        Assert.That((await service.SearchCardsAsync("Aether")).Single().Id, Is.EqualTo(1));
+        Assert.That((await service.SearchCardsAsync("Aeth")).Single().Name, Is.EqualTo("Aether"));
+        Assert.That(service.GetLocalizedCardName(cards[0]), Is.Null);
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+    }
+
+    [Test]
+    [SetUICulture("de")]
+    public async Task GermanSearchRanksBothLanguagesAndCapsDeduplicatedCanonicalResults() {
+        CardInfo[] cards = Enumerable.Range(1, 30).Select(index => new CardInfo {
+            Id = index, Name = $"Äther {index:00}", ArtworkMetadataKnown = true
+        }).ToArray();
+        string names = JsonSerializer.Serialize(new {
+            version = 1, locale = "de", names = cards.Select(card => new object[] { card.Id, card.Name })
+        });
+        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            request.RequestUri!.AbsolutePath.EndsWith("card-names.de.v1.json") ? names : CreateLocalCatalogJson(cards))));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client);
+        Assert.That((await service.SearchCardsAsync("äTH")).Select(card => card.Id), Is.EqualTo(Enumerable.Range(1, 20)));
+        Assert.That((await service.SearchCardsAsync("äther 29")).Single().Id, Is.EqualTo(29));
+    }
+
+    [Test]
     public async Task VerifiedCatalogMembershipWinsForSearchImportCanonicalAndArtworkIds() {
         CardInfo[] cards = [
             new() { Id = 691925, CanonicalCardId = 691925, Name = "Solar Recharge", Type = "Spell Card",

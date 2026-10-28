@@ -15,6 +15,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Localization;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
@@ -85,6 +86,40 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
 
     [SetUp]
     public void UseLocalSearchCatalog() => RegisterCardInfoService(new SearchCatalogHandler());
+
+    [Test]
+    public async Task GermanSuggestionsIgnoreStaleQueriesAndSelectCanonicalEffectsWhileManualNamesStayAuthored() {
+        using PresentationLocale locale = new("de", production: true);
+        Mock<ICardInfoService> service = new();
+        TaskCompletionSource<IReadOnlyList<CardInfo>> oldQuery = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Setup(info => info.SearchCardsAsync("Blau")).Returns(oldQuery.Task);
+        service.Setup(info => info.SearchCardsAsync("Topf")).ReturnsAsync(new[] { PotOfGreed });
+        service.Setup(info => info.SearchCardsAsync("Mein Name ß")).ReturnsAsync(Array.Empty<CardInfo>());
+        service.Setup(info => info.GetLocalizedCardName(PotOfGreed)).Returns("Topf der Gier");
+        service.Setup(info => info.GetLocalizedCardName(BlueEyes)).Returns("Blauäugiger w. Drache");
+        context.Services.RemoveAll<ICardInfoService>();
+        context.Services.AddSingleton(service.Object);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new());
+        IElement input = cut.Find("#quickCardName");
+        Task pending = input.InputAsync(new() { Value = "Blau" });
+        await input.InputAsync(new() { Value = "Topf" });
+        oldQuery.SetResult(new[] { BlueEyes });
+        await pending;
+        Assert.That(cut.FindAll(".card-search-result").Select(result => result.TextContent.Trim()), Is.EqualTo(new[] { "Topf der Gier" }));
+        await input.KeyDownAsync(new() { Key = "ArrowDown" });
+        await input.KeyDownAsync(new() { Key = "Enter" });
+        Card selected = cut.FindComponent<CardEditor>().Instance.Card;
+        Assert.Multiple(() => {
+            Assert.That(selected.Name, Is.EqualTo(PotOfGreed.Name));
+            Assert.That(selected.ExternalCardId, Is.EqualTo(PotOfGreedId));
+            Assert.That(selected.EffectPlan, Is.EqualTo(CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId).EffectPlan));
+        });
+        await input.InputAsync(new() { Value = "Mein Name ß" });
+        await cut.Find(".quick-add-row > button").ClickAsync(new());
+        Card manual = cut.FindComponents<CardEditor>()[1].Instance.Card;
+        Assert.That(manual.Name, Is.EqualTo("Mein Name ß"));
+        Assert.That(manual.ExternalCardId, Is.Null);
+    }
 
     [TestCase(false)]
     [TestCase(true)]

@@ -7,7 +7,7 @@ const path = require('node:path');
 async function serve(directory) {
     const root = path.resolve(directory);
     await fs.access(path.join(root, '_framework', 'dotnet.js'));
-    const types = { '.js': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm',
+    const types = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm',
         '.html': 'text/html', '.css': 'text/css' };
     const server = http.createServer(async (request, response) => {
         try {

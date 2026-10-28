@@ -43,3 +43,71 @@ Run the generator's offline tests with:
 ```sh
 node --test infrastructure/card-catalog/*.test.mjs
 ```
+
+## German search names
+
+`prepare-localized-names.mjs` joins the German endpoint's top-level passcodes to
+the existing canonical catalog by **exact ID only**. It never joins by translated
+name, `name_en`, or artwork ID, and never derives archetype/name-rule membership
+from German. The runtime asset contains only `[canonical ID, German name]` pairs.
+These names act as search aliases for the canonical English entries; they are
+not a second card metadata catalog.
+
+The October 28, 2026 response from
+[`cardinfo.php?language=de`](https://db.ygoprodeck.com/api/v7/cardinfo.php?language=de)
+contained 11,769 records (18,992,044 response bytes). All 11,769 match exact IDs in
+the checked-in 14,607-card catalog: 2,838 canonical cards have no German record.
+There were zero duplicate IDs, duplicate German names, unknown IDs or artwork-only
+ID matches. All records supplied `name_en`; eight differ from the canonical
+English spelling (seven capitalization differences and Cu/Cú Chulainn). These are
+reported for review, never used to override identity. 631 supplied German names
+equal their English names; this does **not** establish whether each is an official
+unchanged name or an untranslated provider record. No complete/native-speaker
+translation-coverage claim is made. The [provider guide](https://ygoprodeck.com/api-guide/)
+documents incomplete foreign-language coverage and English artwork.
+
+`snapshots/names.de.2026-10-28.json` retains the original `id`, `name` and `name_en`
+fields plus endpoint, retrieval time, original byte count and SHA-256. It is a
+**name-only projection** of the downloaded response, not its full card text.
+Descriptions, images, prices, set data and foreign rule metadata are deliberately
+not retained or deployed. The adjacent audit records missing IDs, spelling
+differences and ambiguous/unknown identity candidates. The projection has 924,993
+bytes; the deployable `card-names.de.v1.json` has 412,046 UTF-8 bytes (173,885 gzip,
+135,945 Brotli using Node's defaults; actual host compression may differ).
+
+Regenerate byte-identical runtime names and audit entirely offline:
+
+```sh
+node infrastructure/card-catalog/prepare-localized-names.mjs --snapshot infrastructure/card-catalog/snapshots/names.de.2026-10-28.json --catalog YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json --audit infrastructure/card-catalog/snapshots/names.de.2026-10-28.audit.json
+node --test infrastructure/card-catalog/prepare-localized-names.test.mjs
+```
+
+To refresh, download the documented German endpoint once to a local file, then
+add `--provider PATH_TO_RESPONSE.json` and choose a new dated snapshot/audit path.
+This validates the names before replacing output; review the audit and update the
+coverage figures before publication. The tool itself never fetches the network.
+Normal builds, tests, publishing and startup never call the provider for names.
+
+Only a German card search with at least two non-space characters requests the
+name asset. The request is shared by concurrent searches and retained in memory,
+including a failed result, for the service lifetime. Label reads, Help, an empty
+calculator, imports, artwork and workspace language restoration do not request it.
+Searches while the UI language is English do not request it. A missing, invalid, oversized or timed-out
+name asset falls back to the existing English catalog search and manual entry.
+The service has an explicit supported-name-asset map (currently only `de`) and a
+shared lazy task per locale. Regional UI cultures resolve through their parents;
+a future reviewed locale can reuse this loader by adding its own map entry and
+asset. Merely registering a UI locale never guesses or downloads a name asset.
+
+German search ranks exact, then prefix, then substring matches across both names,
+with the existing canonical English name/ID tie order and 20-result limit. Each
+canonical card appears once. Matching is ordinal and case-insensitive, retaining
+umlauts and ß without accent stripping or ß/ss conflation. Distinct cards with
+identical localized names remain separate choices. Suggestions use `DisplayLabels`
+with the loaded German label; selecting one passes the original `CardInfo` to the
+existing import/effect path. Saved/editable `Card.Name`, user labels, objective
+metadata and English-derived memberships remain unchanged. The provider's
+abbreviations are retained (for example, `Blauäugiger w. Drache`), not expanded by
+guessing.
+The data-label accessor accepts only the original verified catalog objects;
+matching IDs on unverified live/cache objects do not confer a translated label.
