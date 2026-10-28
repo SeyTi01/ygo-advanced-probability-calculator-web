@@ -42,6 +42,25 @@
     padding: 1rem;
 }
 
+.help-topic-body h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+}
+
+.help-topic-body > h3:first-child {
+    margin-top: 0;
+}
+
+.help-topic-body table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.help-topic-body th:first-child {
+    width: 35%;
+}
+
 .help-topic-body > :last-child,
 .help-footer > :last-child {
     margin-bottom: 0;

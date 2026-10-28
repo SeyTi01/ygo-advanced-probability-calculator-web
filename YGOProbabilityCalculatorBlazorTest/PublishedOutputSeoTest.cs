@@ -88,7 +88,7 @@ public class PublishedOutputSeoTest {
         Assert.That(document.QuerySelector("#app main"), Is.Not.Null, "The page body must be prerendered inside the normal app root.");
         Assert.That(document.QuerySelectorAll("script[src='_framework/blazor.webassembly.js']"), Has.Length.EqualTo(1));
         if (relativePath == "help.html") {
-            foreach (string id in new[] { "getting-started", "requirements", "simulations", "modes", "results", "sessions", "example" }) {
+            foreach (string id in new[] { "getting-started", "properties", "requirements", "simulations", "effect-resolution", "modes", "results", "sessions", "example" }) {
                 IElement topic = Single(document, $"details.help-topic#{id}");
                 Assert.That(topic.QuerySelector("summary h2"), Is.Not.Null);
                 Assert.That(topic.QuerySelector(".help-topic-body")?.TextContent, Is.Not.Null.And.Not.Empty,

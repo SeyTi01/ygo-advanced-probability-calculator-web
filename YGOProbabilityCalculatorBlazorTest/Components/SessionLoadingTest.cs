@@ -324,10 +324,10 @@ public class SessionLoadingTest {
         Assert.That(cut.FindAll(".example-session-action button"), Has.Count.EqualTo(1));
         Assert.That(cut.Find(".help-content > section .example-session-action"), Is.Not.Null);
         Assert.That(cut.Find("button").GetAttribute("aria-describedby"), Is.EqualTo("example-session-warning"));
-        Assert.That(cut.FindAll("details.help-topic"), Has.Count.EqualTo(7));
+        Assert.That(cut.FindAll("details.help-topic"), Has.Count.EqualTo(9));
         Assert.That(cut.FindAll("details[open]"), Is.Empty);
-        Assert.That(cut.FindAll("details > summary > h2"), Has.Count.EqualTo(7));
-        Assert.That(cut.Find("footer a").GetAttribute("href"), Does.EndWith("/docs/README.md"));
+        Assert.That(cut.FindAll("details > summary > h2"), Has.Count.EqualTo(9));
+        Assert.That(cut.Find("footer a").GetAttribute("href"), Does.EndWith("/docs/calculation-model.md"));
     }
 
     [Test]

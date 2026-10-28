@@ -112,7 +112,7 @@ async function main() {
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
         await page.getByRole('link', { name: 'Help', exact: true }).click();
-        const topics = ['getting-started', 'requirements', 'simulations', 'modes', 'results', 'sessions', 'example'];
+        const topics = ['getting-started', 'properties', 'requirements', 'simulations', 'effect-resolution', 'modes', 'results', 'sessions', 'example'];
         await page.locator('details.help-topic').first().waitFor();
         assert.equal(await page.locator('details.help-topic[open]').count(), 0);
         const example = page.getByRole('button', { name: 'Try It with Example Data', exact: true });
@@ -130,6 +130,8 @@ async function main() {
                     await summary.focus();
                     await summary.press('Enter');
                     assert.equal(await page.locator(`#${id}`).evaluate(element => element.open), true);
+                    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true,
+                        'expanded Help content must fit the viewport');
                     await summary.press('Space');
                     assert.equal(await page.locator(`#${id}`).evaluate(element => element.open), false);
                 }
@@ -170,7 +172,7 @@ async function main() {
         await page.waitForFunction(() => document.querySelectorAll('.card-editor').length === 24);
         assert.equal(await page.locator('.combo-editor').count(), 8);
         assert.deepEqual(errors, []);
-        console.log('Published Help: seven native disclosures, Enter/Space, hidden-link tab order, all direct fragments, links/back/forward, one real example load, desktop/mobile and light/dark passed.');
+        console.log('Published Help: nine native disclosures, Enter/Space, hidden-link tab order, all direct fragments, links/back/forward, one real example load, desktop/mobile and light/dark passed.');
         console.log('Published workspace: keyboard editing, movement, drafts, per-entry simulation toggle, real worker results and file round trip passed at desktop/mobile sizes.');
     } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }
