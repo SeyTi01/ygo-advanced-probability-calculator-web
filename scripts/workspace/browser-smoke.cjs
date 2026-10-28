@@ -111,6 +111,66 @@ async function main() {
         await page.waitForFunction(() => document.querySelector('.probability-total-value')?.closest('[aria-label]')?.getAttribute('aria-label').includes('1/2'));
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
+        await page.getByRole('link', { name: 'Help', exact: true }).click();
+        const topics = ['getting-started', 'requirements', 'simulations', 'modes', 'results', 'sessions', 'example'];
+        await page.locator('details.help-topic').first().waitFor();
+        assert.equal(await page.locator('details.help-topic[open]').count(), 0);
+        const example = page.getByRole('button', { name: 'Try It with Example Data', exact: true });
+        assert.equal(await example.count(), 1);
+        for (const width of [1280, 390]) {
+            await page.setViewportSize({ width, height: 900 });
+            for (const theme of ['Light', 'Dark']) {
+                await page.getByLabel('Color theme preference').selectOption({ label: theme });
+                await usable(page, example);
+                const actionBox = await example.boundingBox();
+                assert(actionBox.y + actionBox.height < 900, 'example is prominent in the initial view');
+                for (const id of topics) {
+                    const summary = page.locator(`#${id} > summary`);
+                    await usable(page, summary);
+                    await summary.focus();
+                    await summary.press('Enter');
+                    assert.equal(await page.locator(`#${id}`).evaluate(element => element.open), true);
+                    await summary.press('Space');
+                    assert.equal(await page.locator(`#${id}`).evaluate(element => element.open), false);
+                }
+                // Native closed disclosures remove body links from keyboard navigation.
+                await page.locator('#sessions > summary').focus();
+                await page.keyboard.press('Tab');
+                assert.equal(await page.locator('#example > summary').evaluate(element => element === document.activeElement), true);
+            }
+        }
+        for (const id of topics) {
+            await page.goto('about:blank');
+            await page.goto(`${url}/help#${id}`);
+            await page.waitForFunction(id => document.getElementById(id)?.open, id);
+            assert.equal(await page.locator('details.help-topic[open]').count(), 1);
+            await page.waitForFunction(id => {
+                const box = document.querySelector(`#${id} > summary`)?.getBoundingClientRect();
+                return box && box.top >= 0 && box.bottom <= innerHeight;
+            }, id);
+        }
+        // Real same-page links go through Blazor navigation; history must reveal closed topics again.
+        await page.evaluate(() => {
+            const link = document.createElement('a');
+            link.href = '/help#requirements'; link.textContent = 'Fragment test'; link.id = 'fragment-test';
+            document.querySelector('.help-content').prepend(link);
+        });
+        await page.locator('#fragment-test').click();
+        await page.waitForFunction(() => document.getElementById('requirements').open);
+        await page.locator('#requirements > summary').click();
+        await page.goBack();
+        await page.waitForFunction(() => location.hash === '#example' && document.getElementById('example').open);
+        await page.goForward();
+        await page.waitForFunction(() => location.hash === '#requirements' && document.getElementById('requirements').open);
+        await page.locator('#requirements > summary').click();
+        await page.locator('#fragment-test').click();
+        await page.waitForFunction(() => document.getElementById('requirements').open);
+        await page.goto(`${url}/help`);
+        await example.click();
+        await page.waitForFunction(() => document.querySelectorAll('.card-editor').length === 24);
+        assert.equal(await page.locator('.combo-editor').count(), 8);
+        assert.deepEqual(errors, []);
+        console.log('Published Help: seven native disclosures, Enter/Space, hidden-link tab order, all direct fragments, links/back/forward, one real example load, desktop/mobile and light/dark passed.');
         console.log('Published workspace: keyboard editing, movement, drafts, per-entry simulation toggle, real worker results and file round trip passed at desktop/mobile sizes.');
     } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }

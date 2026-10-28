@@ -293,8 +293,11 @@ public class SessionLoadingTest {
         IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
         Task load = cut.Find("button").ClickAsync(new());
         Loading(cut, true);
+        Assert.That(cut.Find("button").HasAttribute("disabled"), Is.True);
+        await cut.Find("button").ClickAsync(new());
+        _files.Verify(service => service.ReadAllTextAsync("sample-data/example_session_state.json"), Times.Once);
         if (action == "navigate") {
-            await cut.InvokeAsync(cut.Instance.Dispose);
+            await cut.InvokeAsync(async () => await cut.Instance.DisposeAsync());
         }
         if (action == "error") {
             gate.SetException(new IOException("Fixture file failure"));
@@ -310,6 +313,36 @@ public class SessionLoadingTest {
         if (action == "error") {
             Assert.That(cut.Markup, Does.Contain("Fixture file failure"));
         }
+        if (action == "success") {
+            Assert.That(Navigation.Uri, Is.EqualTo(Navigation.BaseUri));
+        }
+    }
+
+    [Test]
+    public void HelpKeepsOneExampleActionBeforeCollapsedSemanticTopics() {
+        IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
+        Assert.That(cut.FindAll(".example-session-action button"), Has.Count.EqualTo(1));
+        Assert.That(cut.Find(".help-content > section .example-session-action"), Is.Not.Null);
+        Assert.That(cut.Find("button").GetAttribute("aria-describedby"), Is.EqualTo("example-session-warning"));
+        Assert.That(cut.FindAll("details.help-topic"), Has.Count.EqualTo(7));
+        Assert.That(cut.FindAll("details[open]"), Is.Empty);
+        Assert.That(cut.FindAll("details > summary > h2"), Has.Count.EqualTo(7));
+        Assert.That(cut.Find("footer a").GetAttribute("href"), Does.EndWith("/docs/README.md"));
+    }
+
+    [Test]
+    public async Task HelpRevealsInitialAndSubsequentFragmentsAndUnsubscribesOnDisposal() {
+        BunitJSModuleInterop module = _context.JSInterop.SetupModule("./Pages/Help.razor.js");
+        module.SetupVoid("revealTopic", _ => true).SetVoidResult();
+        Navigation.NavigateTo("/help#requirements");
+        IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
+        Assert.That(module.Invocations["revealTopic"].Last().Arguments[0], Is.EqualTo("#requirements"));
+        await cut.InvokeAsync(() => Navigation.NavigateTo("/help#sessions"));
+        Assert.That(module.Invocations["revealTopic"].Last().Arguments[0], Is.EqualTo("#sessions"));
+        await cut.InvokeAsync(async () => await cut.Instance.DisposeAsync());
+        int calls = module.Invocations["revealTopic"].Count;
+        await cut.InvokeAsync(() => Navigation.NavigateTo("/help#results"));
+        Assert.That(module.Invocations["revealTopic"], Has.Count.EqualTo(calls));
     }
 
     private sealed class GatedStream(string json) : MemoryStream(Encoding.UTF8.GetBytes(json)) {
