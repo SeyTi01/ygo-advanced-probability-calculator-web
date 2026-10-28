@@ -29,7 +29,7 @@
 
     private Task AddCatalogCard(CardInfo card) => Add(
         CuratedDrawEffectPresets.CreateImportedCard(card, 1, card.Id),
-        DisplayLabels.Card(card, CardInfoService.GetLocalizedCardName(card))
+        DisplayLabels.Card(card, CardInfoService)
     );
 
     private Task AddManualCard() => string.IsNullOrWhiteSpace(_name)

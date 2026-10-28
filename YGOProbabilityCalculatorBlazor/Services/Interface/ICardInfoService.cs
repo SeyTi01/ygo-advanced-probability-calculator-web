@@ -13,7 +13,7 @@ public interface ICardInfoService {
 
     // Saved-card display remains separate from stored names and requires verified catalog identity.
     string? GetLocalizedCardName(Card card) => null;
-    Task<string?> GetLocalizedCardNameAsync(Card card) => Task.FromResult<string?>(null);
+    Task EnsureLocalizedCardNamesAsync(IReadOnlyList<Card> cards) => Task.CompletedTask;
 
     Task<string> GetCardNameAsync(int id);
 

@@ -47,7 +47,7 @@
         else {
             <strong>@(_matches.Length == 1 ? UiText.Format("Category.OneMatch", _matches.Length, _matches.Sum(card => (long)card.Copies)) : UiText.Format("Category.ManyMatches", _matches.Length, _matches.Sum(card => (long)card.Copies)))</strong>
             @if (_matches.Length > 0) {
-                <div class="category-rule-preview mt-1">@string.Join(", ", _matches.Select(card => string.IsNullOrWhiteSpace(card.Name) ? UiText.Get("Ui.UnnamedCard") : DisplayLabels.Card(card, CardInfoService.GetLocalizedCardName(card))))</div>
+                <div class="category-rule-preview mt-1">@string.Join(", ", _matches.Select(card => string.IsNullOrWhiteSpace(card.Name) ? UiText.Get("Ui.UnnamedCard") : DisplayLabels.Card(card, CardInfoService)))</div>
             }
         }
     </div>

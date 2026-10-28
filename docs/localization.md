@@ -194,6 +194,25 @@ initiate this request. Rendering a restored deck may request names. Concurrent
 search and display requests share the same load; a failed optional asset leaves English search and manual entry usable.
 Reloading the page permits another attempt. No other language's name data loads.
 
+`EnsureLocalizedCardNamesAsync` prepares a whole display batch through the same
+service/cache as search. For a cold deck with external IDs it starts catalog and
+selected-language downloads together. Once the catalog is available, batches
+containing only custom or unverified names skip the name asset. A single canonical-ID
+and unambiguous-artwork index is built from the validated catalog and reused by
+display and metadata lookups. `DisplayLabels.Card(card, service)` centralizes the
+presentation lookup/fallback for both suggestions and saved cards, regardless of locale.
+
+The display loader starts preparation when locale or card identity/name inputs
+change, before rendering the rows. Copy-count, category and effect edits reuse that
+preparation. Cold completion refreshes through the existing parent render path
+after rendering, retaining editor drafts and keys. Warm labels are synchronous;
+the first uncached language download remains asynchronous and uses English fallback.
+No session migration or persisted translation cache is needed: sessions already
+carry external IDs and canonical/custom names. Persisting localized names would
+duplicate catalog data, become stale and make session bytes language-dependent;
+a migration cannot reconstruct historical custom-name provenance or remove the
+first download of a new language.
+
 Suggestions use `DisplayLabels.Card` with a verified catalog label supplied by
 the same service. Both German and English queries return the canonical `CardInfo`;
 selection keeps canonical English `Name`, metadata and maintained effect plans.

@@ -58,7 +58,7 @@
                 <div class="card-identity-fields">
                     <div class="card-name-field">
                         <label for="cardName@(Index)" class="form-label">@(UiText.Get("Ui.Name"))</label>
-                        <CardSearchInput Id="@($"cardName{Index}")" Identity="@Card.Id" Value="@DisplayLabels.Card(Card, CardInfoService.GetLocalizedCardName(Card))"
+                        <CardSearchInput Id="@($"cardName{Index}")" Identity="@Card.Id" Value="@DisplayLabels.Card(Card, CardInfoService)"
                                          ResultsId="@($"cardSearchResults{Index}")" OptionPrefix="@($"cardSearchOption{Index}")"
                                          OnInput="RenameFromSearch" OnSelected="SelectCard" OnFinished="OnNameEditFinished" />
                     </div>
@@ -234,7 +234,7 @@
         long CardDisplayNamesRevision
     );
 
-    private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? UiText.Format("Ui.Card0", Index + 1) : DisplayLabels.Card(Card, CardInfoService.GetLocalizedCardName(Card));
+    private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? UiText.Format("Ui.Card0", Index + 1) : DisplayLabels.Card(Card, CardInfoService);
     private DrawEffectPresentation DrawPresentation =>
         DrawEffectPresentation.ForCard(Card, DrawEffectsEnabled);
     private Task ToggleCard() {

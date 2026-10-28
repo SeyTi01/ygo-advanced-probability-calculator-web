@@ -103,7 +103,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Mock<ICardInfoService> offline = new(MockBehavior.Strict);
         offline.Setup(service => service.GetCatalogCardsAsync()).ReturnsAsync(Array.Empty<CardInfo>());
         offline.Setup(service => service.GetLocalizedCardName(It.IsAny<Card>())).Returns((string?)null);
-        offline.Setup(service => service.GetLocalizedCardNameAsync(It.IsAny<Card>())).ReturnsAsync((string?)null);
+        offline.Setup(service => service.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>())).Returns(Task.CompletedTask);
         context.Services.AddSingleton(files.Object);
         context.Services.AddSingleton(offline.Object);
         IRenderedComponent<YGOProbabilityCalculatorBlazor.Pages.Help> help = context.RenderComponent<YGOProbabilityCalculatorBlazor.Pages.Help>();
@@ -116,7 +116,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         Assert.That(context.Services.GetRequiredService<IPendingSessionService>().PendingSession, Is.Null);
         offline.Verify(service => service.GetCatalogCardsAsync(), Times.Once);
         offline.Verify(service => service.GetLocalizedCardName(It.IsAny<Card>()), Times.AtLeastOnce);
-        offline.Verify(service => service.GetLocalizedCardNameAsync(It.IsAny<Card>()), Times.AtLeastOnce);
+        offline.Verify(service => service.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>()), Times.AtLeastOnce);
         offline.VerifyNoOtherCalls();
     }
 

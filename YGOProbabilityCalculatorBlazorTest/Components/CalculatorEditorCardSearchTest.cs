@@ -97,8 +97,6 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         service.Setup(info => info.SearchCardsAsync("Mein Name ß")).ReturnsAsync(Array.Empty<CardInfo>());
         service.Setup(info => info.GetLocalizedCardName(PotOfGreed)).Returns("Topf der Gier");
         service.Setup(info => info.GetLocalizedCardName(BlueEyes)).Returns("Blauäugiger w. Drache");
-        service.Setup(info => info.GetLocalizedCardNameAsync(It.IsAny<Card>()))
-            .ReturnsAsync((Card card) => card.ExternalCardId == PotOfGreedId && card.Name == PotOfGreed.Name ? "Topf der Gier" : null);
         service.Setup(info => info.GetLocalizedCardName(It.IsAny<Card>()))
             .Returns((Card card) => card.ExternalCardId == PotOfGreedId && card.Name == PotOfGreed.Name ? "Topf der Gier" : null);
         context.Services.RemoveAll<ICardInfoService>();
@@ -158,7 +156,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         using PresentationLocale locale = new("de", production: true);
         Mock<ICardInfoService> service = new();
         TaskCompletionSource<string?> names = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        service.Setup(info => info.GetLocalizedCardNameAsync(It.IsAny<Card>())).Returns(names.Task);
+        service.Setup(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>())).Returns(names.Task);
         service.Setup(info => info.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
         context.Services.RemoveAll<ICardInfoService>();
         context.Services.AddSingleton(service.Object);
@@ -171,6 +169,33 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Card.Name, Is.EqualTo("Mein Name"));
         Assert.That(editor.Find("#cardName0").GetAttribute("value"), Is.EqualTo("Mein Name"));
         Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith("Mein Name"));
+    }
+
+    [Test]
+    public void DisplayPreparationIgnoresUnchangedNamesWhileARequestIsPendingOrComplete() {
+        using PresentationLocale locale = new("de", production: true);
+        Mock<ICardInfoService> service = new();
+        TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Setup(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>())).Returns(ready.Task);
+        service.Setup(info => info.GetLocalizedCardName(It.IsAny<Card>()))
+            .Returns((Card card) => ready.Task.IsCompleted && card.Name == PotOfGreed.Name ? "Topf der Gier" : null);
+        context.Services.RemoveAll<ICardInfoService>();
+        context.Services.AddSingleton(service.Object);
+        Card original = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
+        int updates = 0;
+        IRenderedComponent<LocalizedCardNames> cut = context.RenderComponent<LocalizedCardNames>(parameters => parameters
+            .Add(component => component.Cards, new[] { original })
+            .Add(component => component.OnChanged, _ => updates++));
+
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.Cards, new[] { original.WithCopies(3) }));
+        service.Verify(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>()), Times.Once);
+        ready.SetResult();
+        cut.WaitForAssertion(() => Assert.That(updates, Is.EqualTo(1)));
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.Cards, new[] { original.WithCategories([a]) }));
+        service.Verify(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>()), Times.Once);
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.Cards, new[] { original.WithName("My name") }));
+        cut.WaitForAssertion(() => Assert.That(updates, Is.EqualTo(2)));
+        service.Verify(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>()), Times.Exactly(2));
     }
 
     [Test]

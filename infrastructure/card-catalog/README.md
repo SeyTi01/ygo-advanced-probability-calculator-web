@@ -100,6 +100,14 @@ shared lazy task per locale. Regional UI cultures resolve through their parents;
 a future reviewed locale can reuse this loader by adding its own map entry and
 asset. Merely registering a UI locale never guesses or downloads a name asset.
 
+Populated display preparation uses one batch API and overlaps cold catalog/name
+downloads. Empty/manual-only decks still fetch neither; with a warm catalog,
+custom or unverified names do not request the language asset. Validated catalog
+records build a shared canonical-ID/artwork-alias index once. Exact canonical IDs
+take precedence, repeated artwork IDs on one record remain unique, and aliases
+owned by multiple records remain unresolved. All languages reuse this index and
+the same display fallback path; no localized fields are added to sessions.
+
 German search ranks exact, then prefix, then substring matches across both names,
 with the existing canonical English name/ID tie order and 20-result limit. Each
 canonical card appears once. Matching is ordinal and case-insensitive, retaining

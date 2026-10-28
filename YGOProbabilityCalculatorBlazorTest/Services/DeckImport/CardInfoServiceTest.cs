@@ -14,8 +14,9 @@ public class CardInfoServiceTests {
     public async Task SavedCardDisplayVerifiesIdentityAndNameWithoutChangingTheSession() {
         CardInfo[] catalogCards = [
             new() { Id = 35261759, CanonicalCardId = 35261759, Name = "Pot of Desires", Type = "Spell Card",
-                ArtworkMetadataKnown = true, ArtworkImageIds = [35261759, 91, 99], ResolvedArchetypes = [] },
-            new() { Id = 2, Name = "Other", ArtworkMetadataKnown = true, ArtworkImageIds = [2, 99] }
+                ArtworkMetadataKnown = true, ArtworkImageIds = [35261759, 91, 91, 99, 2], ResolvedArchetypes = [] },
+            new() { Id = 2, Name = "Other", ArtworkMetadataKnown = true, ArtworkImageIds = [2, 99] },
+            new() { Id = 3, Name = "Missing", ArtworkMetadataKnown = true }
         ];
         TaskCompletionSource<HttpResponseMessage> pendingNames = new(TaskCreationOptions.RunContinuationsAsynchronously);
         RecordingHttpMessageHandler handler = new((request, _) => request.RequestUri!.AbsolutePath.EndsWith("card-names.de.v1.json")
@@ -28,35 +29,49 @@ public class CardInfoServiceTests {
         Card artwork = new([], name: "Pot of Desires", externalCardId: 91);
         Card customName = new([], name: "My favourite Pot", externalCardId: 35261759);
         Card manual = new([], name: "Pot of Desires");
+        Card ambiguousArtwork = new([], name: "Pot of Desires", externalCardId: 99);
+        Card unknown = new([], name: "Pot of Desires", externalCardId: 123);
+        Card changedCase = new([], name: "pot of desires", externalCardId: 35261759);
+        Card wrongArtworkOwner = new([], name: "Pot of Desires", externalCardId: 2);
+        Card otherCanonical = new([], name: "Other", externalCardId: 2);
+        Card missingTranslation = new([], name: "Missing", externalCardId: 3);
         SessionState session = new() { Cards = [canonical, artwork, customName, manual], Categories = [customCategory] };
         YGOProbabilityCalculatorBlazor.Services.Session.SessionService codec = new(
             Moq.Mock.Of<Microsoft.JSInterop.IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
         string before = codec.SerializeSession(session);
 
         Assert.That(service.GetLocalizedCardName(canonical), Is.Null);
-        Assert.That(await service.GetLocalizedCardNameAsync(manual), Is.Null);
+        await service.EnsureLocalizedCardNamesAsync([]);
+        await service.EnsureLocalizedCardNamesAsync([manual, new Card([], name: " ", externalCardId: 35261759)]);
+        Assert.That(service.GetLocalizedCardName(manual), Is.Null);
         Assert.That(handler.Requests, Is.Empty, "manual names and synchronous reads must not start a request");
-        Assert.That(await service.GetLocalizedCardNameAsync(customName), Is.Null);
-        Assert.That(await service.GetLocalizedCardNameAsync(new Card([], name: "Pot of Desires", externalCardId: 99)), Is.Null,
+        await service.GetCatalogCardsAsync();
+        await service.EnsureLocalizedCardNamesAsync([customName, ambiguousArtwork, unknown, changedCase, wrongArtworkOwner]);
+        Assert.That(service.GetLocalizedCardName(customName), Is.Null);
+        Assert.That(service.GetLocalizedCardName(ambiguousArtwork), Is.Null,
             "ambiguous artwork cannot borrow a canonical name");
-        Assert.That(await service.GetLocalizedCardNameAsync(new Card([], name: "Pot of Desires", externalCardId: 123)), Is.Null);
-        Assert.That(await service.GetLocalizedCardNameAsync(new Card([], name: "pot of desires", externalCardId: 35261759)), Is.Null,
+        Assert.That(service.GetLocalizedCardName(unknown), Is.Null);
+        Assert.That(service.GetLocalizedCardName(changedCase), Is.Null,
             "case changes may be authored and must remain verbatim");
+        Assert.That(service.GetLocalizedCardName(wrongArtworkOwner), Is.Null,
+            "an exact canonical ID takes precedence over another card's artwork alias");
         Assert.That(handler.Requests, Has.Length.EqualTo(1), "unverified/custom names do not demand-load localized names");
 
-        Task<string?> canonicalDisplay = service.GetLocalizedCardNameAsync(canonical);
-        Task<string?> artworkDisplay = service.GetLocalizedCardNameAsync(artwork);
+        Task display = service.EnsureLocalizedCardNamesAsync([canonical, artwork, otherCanonical, missingTranslation]);
         Task<IReadOnlyList<CardInfo>> search = service.SearchCardsAsync("Topf");
-        pendingNames.SetResult(Response(HttpStatusCode.OK, """{"version":1,"locale":"de","names":[[35261759,"Topf der Begierden"]]}"""));
-        Assert.That(await canonicalDisplay, Is.EqualTo("Topf der Begierden"));
-        Assert.That(await artworkDisplay, Is.EqualTo("Topf der Begierden"));
+        pendingNames.SetResult(Response(HttpStatusCode.OK, """{"version":1,"locale":"de","names":[[35261759,"Topf der Begierden"],[2,"Andere"]]}"""));
+        await display;
         Assert.That(service.GetLocalizedCardName(canonical), Is.EqualTo("Topf der Begierden"));
         Assert.That(service.GetLocalizedCardName(canonical.WithCategories([new("Rule membership")])), Is.EqualTo("Topf der Begierden"),
             "category-rule materialization must retain the verified display name");
-        Assert.That(service.GetLocalizedCardName(artwork), Is.EqualTo("Topf der Begierden"));
+        Assert.That(service.GetLocalizedCardName(artwork), Is.EqualTo("Topf der Begierden"),
+            "repeated artwork IDs on one canonical record must not count as multiple owners");
+        Assert.That(service.GetLocalizedCardName(otherCanonical), Is.EqualTo("Andere"));
+        Assert.That(service.GetLocalizedCardName(wrongArtworkOwner), Is.Null);
+        Assert.That(service.GetLocalizedCardName(ambiguousArtwork), Is.Null);
         Assert.That(service.GetLocalizedCardName(customName), Is.Null);
         Assert.That(service.GetLocalizedCardName(manual), Is.Null);
-        Assert.That(await service.GetLocalizedCardNameAsync(new Card([], name: "Other", externalCardId: 2)), Is.Null,
+        Assert.That(service.GetLocalizedCardName(missingTranslation), Is.Null,
             "a verified card without a supplied German name keeps its stored English name");
         Assert.That(service.GetLocalizedCardName((await search).Single()), Is.EqualTo("Topf der Begierden"));
         Assert.That(handler.Requests, Has.Length.EqualTo(2), "saved display and search share the same name request");
@@ -66,13 +81,43 @@ public class CardInfoServiceTests {
     }
 
     [Test]
+    [SetUICulture("de")]
+    public async Task ColdSavedCardDisplayStartsCatalogAndNamesTogetherAndSharesThemWithSearch() {
+        TaskCompletionSource<HttpResponseMessage> pendingCatalog = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<HttpResponseMessage> pendingNames = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        RecordingHttpMessageHandler handler = new((request, _) => request.RequestUri!.AbsolutePath.EndsWith("card-names.de.v1.json")
+            ? pendingNames.Task : pendingCatalog.Task);
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client);
+        Card card = new([], name: "Pot of Desires", externalCardId: 35261759);
+
+        Task display = service.EnsureLocalizedCardNamesAsync([card]);
+        Assert.That(handler.Requests.Select(url => new Uri(url).AbsolutePath), Is.EquivalentTo(new[] {
+            "/data/card-catalog.v1.json", "/data/card-names.de.v1.json"
+        }), "both requests must start while the controlled catalog response remains pending");
+        Task<IReadOnlyList<CardInfo>> search = service.SearchCardsAsync("Topf");
+        Task repeatedDisplay = service.EnsureLocalizedCardNamesAsync([card]);
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+        pendingNames.SetResult(Response(HttpStatusCode.OK,
+            """{"version":1,"locale":"de","names":[[35261759,"Topf der Begierden"]]}"""));
+        pendingCatalog.SetResult(Response(HttpStatusCode.OK, CreateLocalCatalogJson([
+            new CardInfo { Id = 35261759, Name = "Pot of Desires", ArtworkMetadataKnown = true }
+        ])));
+        await Task.WhenAll(display, repeatedDisplay);
+
+        Assert.That(service.GetLocalizedCardName(card), Is.EqualTo("Topf der Begierden"));
+        Assert.That((await search).Single().Id, Is.EqualTo(35261759));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+    }
+
+    [Test]
     [SetUICulture("en")]
     public async Task EnglishSavedCardDisplayDoesNotLoadCatalogOrNames() {
         RecordingHttpMessageHandler handler = HandlerWithStatus(HttpStatusCode.ServiceUnavailable);
         using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
         CardInfoService service = new(new TestLocalStorage(null), client);
         Card card = new([], name: "Pot of Desires", externalCardId: 35261759);
-        Assert.That(await service.GetLocalizedCardNameAsync(card), Is.Null);
+        await service.EnsureLocalizedCardNamesAsync([card]);
         Assert.That(service.GetLocalizedCardName(card), Is.Null);
         Assert.That(handler.Requests, Is.Empty);
     }
@@ -89,11 +134,11 @@ public class CardInfoServiceTests {
         TestLocalStorage storage = new(null);
         CardInfoService service = new(storage, client);
         Card card = new([], name: "Pot of Desires", externalCardId: 35261759);
-        Assert.That(await service.GetLocalizedCardNameAsync(card), Is.Null);
-        Assert.That(await service.GetLocalizedCardNameAsync(card), Is.Null);
+        await service.EnsureLocalizedCardNamesAsync([card]);
+        await service.EnsureLocalizedCardNamesAsync([card]);
         Assert.That(service.GetLocalizedCardName(card), Is.Null);
         Assert.That(card.Name, Is.EqualTo("Pot of Desires"));
-        Assert.That(handler.Requests, Has.Length.EqualTo(catalogUnavailable ? 1 : 2));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
         Assert.That(handler.Requests.All(url => url.StartsWith("https://calculator.test/data/", StringComparison.Ordinal)), Is.True);
         Assert.That(storage.WriteCount, Is.Zero);
     }

@@ -682,7 +682,7 @@
             return UiText.Format("Ui.MissingCard0", cardId[..Math.Min(8, cardId.Length)]);
         }
 
-        string cardName = DisplayLabels.Card(Cards[index], CardInfoService.GetLocalizedCardName(Cards[index]));
+        string cardName = DisplayLabels.Card(Cards[index], CardInfoService);
 
         return string.IsNullOrWhiteSpace(cardName) ? UiText.Get("Ui.UnnamedCard") : cardName;
     }

@@ -278,7 +278,7 @@
         ? $"catalog:{card.ExternalCardId.Value}"
         : $"entry:{card.Id}";
 
-    private string TargetName(Card card) => string.IsNullOrWhiteSpace(card.Name) ? UiText.Get("Ui.UnnamedCard") : DisplayLabels.Card(card, CardInfoService.GetLocalizedCardName(card));
+    private string TargetName(Card card) => string.IsNullOrWhiteSpace(card.Name) ? UiText.Get("Ui.UnnamedCard") : DisplayLabels.Card(card, CardInfoService);
 
     private void ToggleEditor() {
         if (_draft is not null) {
