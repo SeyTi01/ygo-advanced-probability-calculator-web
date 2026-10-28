@@ -57,6 +57,8 @@ public class PublishedOutputSeoTest {
     }
 
     private static void AssertSeo(IDocument document, string relativePath, string title, string canonical) {
+        Assert.That(document.DocumentElement.TextContent, Does.Not.Contain("\uFFFD"),
+            "Published text must not contain replacement characters from invalid source encoding.");
         AssertSingle(document, "head title", title);
         string? description = Single(document, "head meta[name='description']").GetAttribute("content");
         Assert.That(description, Is.Not.Null.And.Not.Empty, "The published route needs a description before JavaScript runs.");
