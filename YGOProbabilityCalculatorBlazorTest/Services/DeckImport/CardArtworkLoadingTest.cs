@@ -106,6 +106,55 @@ public class CardArtworkLoadingTest {
         storage.Verify(x => x.SetItemAsync(It.IsAny<string>(), It.IsAny<object>()), Times.Never);
     }
 
+    [Test]
+    public async Task ArtworkStorageDoesNotHoldMetadataGateAndKeepsItsCapturedEnvelope() {
+        TaskCompletionSource saving = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? artworkJson = null;
+        string? metadataJson = null;
+        int writes = 0;
+        DeferredStorage storage = new(async value => {
+            if (++writes == 1) {
+                saving.SetResult();
+                await release.Task;
+                artworkJson = JsonSerializer.Serialize(value);
+            }
+            else {
+                metadataJson = JsonSerializer.Serialize(value);
+            }
+        });
+        using Handler handler = new(request => request.RequestUri!.Query switch {
+            "?id=1" => Response(HttpStatusCode.OK, Json),
+            "?id=2" => Response(HttpStatusCode.OK, """{"data":[{"id":2,"name":"Other","type":"Spell Card","race":"Normal"}]}"""),
+            _ => Response(HttpStatusCode.NotFound)
+        });
+        using HttpClient http = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        CardInfoService service = new(storage, http);
+        Task<CardInfo> artwork = service.GetCardArtworkInfoAsync(1);
+        await saving.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        try {
+            CardInfo metadata = await service.GetCardInfoAsync(2).WaitAsync(TimeSpan.FromSeconds(1));
+            Assert.That(metadata.Name, Is.EqualTo("Other"));
+        }
+        finally {
+            release.TrySetResult();
+        }
+        await artwork;
+
+        using JsonDocument artworkDocument = JsonDocument.Parse(artworkJson!);
+        using JsonDocument metadataDocument = JsonDocument.Parse(metadataJson!);
+        Assert.That(artworkDocument.RootElement.GetProperty("Cards").EnumerateObject().Select(card => card.Name), Is.EqualTo(new[] { "1" }));
+        Assert.That(metadataDocument.RootElement.GetProperty("Cards").EnumerateObject().Select(card => card.Name), Is.EqualTo(new[] { "1", "2" }));
+        Assert.That(artworkDocument.RootElement.GetProperty("SchemaVersion").GetInt32(), Is.EqualTo(2));
+        Assert.That(artworkDocument.RootElement.GetProperty("LastFullRefreshUtc").ValueKind, Is.EqualTo(JsonValueKind.Null));
+    }
+
+    private sealed class DeferredStorage(Func<object, Task> save) : ILocalStorageService {
+        public Task<T?> GetItemAsync<T>(string key) => Task.FromResult<T?>(default);
+        public Task<string?> GetRawItemAsync(string key) => Task.FromResult<string?>(null);
+        public Task SetItemAsync<T>(string key, T value) => save(value!);
+    }
+
     private sealed class GateHandler : HttpMessageHandler {
         public TaskCompletionSource<HttpResponseMessage> Response { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
