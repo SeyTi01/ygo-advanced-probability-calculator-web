@@ -23,19 +23,14 @@ public static class SearchAvailabilityPresentation {
         BigInteger lowerD = BigInteger.Parse(interval.Lower.Denominator, CultureInfo.InvariantCulture);
         BigInteger upperN = BigInteger.Parse(interval.Upper.Numerator, CultureInfo.InvariantCulture);
         BigInteger upperD = BigInteger.Parse(interval.Upper.Denominator, CultureInfo.InvariantCulture);
-        return Percent(new((upperN * lowerD - lowerN * upperD).ToString(CultureInfo.InvariantCulture),
-            (upperD * lowerD).ToString(CultureInfo.InvariantCulture)), true) + "%";
+        return RationalPercentage.FormatOutward(upperN * lowerD - lowerN * upperD, upperD * lowerD, true, CultureInfo.CurrentCulture) + "%";
     }
 
-    // Six decimal places, rounded OUTWARD using integers, never a rounded double.
     private static string Percent(ProbabilityFraction fraction, bool roundUp) {
         BigInteger numerator = BigInteger.Parse(fraction.Numerator, CultureInfo.InvariantCulture);
         BigInteger denominator = BigInteger.Parse(fraction.Denominator, CultureInfo.InvariantCulture);
-        BigInteger scaled = BigInteger.DivRem(numerator * 100_000_000, denominator, out BigInteger remainder);
-        if (roundUp && !remainder.IsZero) {
-            scaled++;
-        }
-        return ((decimal)scaled / 1_000_000m).ToString("0.000000", CultureInfo.CurrentCulture);
+
+        return RationalPercentage.FormatOutward(numerator, denominator, roundUp, CultureInfo.CurrentCulture);
     }
 
     public static IEnumerable<SearchAvailabilityInterval> Rows(SearchAvailabilityCertificate certificate) =>

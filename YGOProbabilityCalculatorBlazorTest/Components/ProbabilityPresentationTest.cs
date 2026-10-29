@@ -24,6 +24,22 @@ public sealed class ProbabilityPresentationTest {
         Assert.That(Encloses(display.Value, display.Accuracy, "1", "2", "17", "30"), Is.True);
     }
 
+    [TestCase("en-US", "[33.333333%, 66.666667%]", "33.333334%")]
+    [TestCase("de-DE", "[33,333333%, 66,666667%]", "33,333334%")]
+    public void CertificateRangeAndWidthRetainOutwardRoundingAndNumericCulture(string culture, string range, string width) {
+        CultureInfo previous = CultureInfo.CurrentCulture;
+        try {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+            SearchAvailabilityInterval interval = new("Total", new("1", "3"), new("2", "3"));
+
+            Assert.That(SearchAvailabilityPresentation.Range(interval), Is.EqualTo(range));
+            Assert.That(SearchAvailabilityPresentation.Width(interval), Is.EqualTo(width));
+        }
+        finally {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
     [TestCase("1", "3", "2", "3")]
     [TestCase("0", "1", "1", "100000000000000000000000000000000000000000000000000")]
     [TestCase("99999999999999999999999999999999999999999999999999", "100000000000000000000000000000000000000000000000000", "1", "1")]

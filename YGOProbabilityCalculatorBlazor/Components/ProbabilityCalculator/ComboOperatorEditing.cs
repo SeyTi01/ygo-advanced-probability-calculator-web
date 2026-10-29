@@ -18,20 +18,9 @@ public static class ComboOperatorEditing {
         int authoredPosition = combo.RequirementOrder.ToList().IndexOf(position);
         Combo updated = combo.WithoutRequirement(position);
         foreach (ComboAlternative[] segment in new[] { group.Alternatives.Take(boundary).ToArray(), group.Alternatives.Skip(boundary).ToArray() }) {
-            ComboRequirementPosition added;
-            if (segment.Length > 1) {
-                updated = updated.WithAlternativeGroups(updated.AlternativeGroups.Append(new(segment)));
-                added = new(ComboRequirementKind.Group, updated.AlternativeGroups.Count - 1);
-            }
-            else if (segment[0].Category is { } category) {
-                updated = updated.WithCategories(updated.Categories.Append(category));
-                added = new(ComboRequirementKind.Category, updated.Categories.Count - 1);
-            }
-            else {
-                updated = updated.WithCards(updated.Cards.Append(segment[0].Card!));
-                added = new(ComboRequirementKind.Card, updated.Cards.Count - 1);
-            }
-            updated = updated.WithRequirementAt(added, authoredPosition++);
+            updated = segment.Length > 1
+                ? ComboRequirementEditing.AppendGroup(updated, segment, authoredPosition++)
+                : ComboRequirementEditing.Append(updated, segment[0], authoredPosition++);
         }
         return updated;
     }
@@ -91,21 +80,11 @@ public static class ComboOperatorEditing {
             updated = updated.WithoutRequirement(position);
         }
         if (edit.Operator == "OR") {
-            updated = updated.WithAlternativeGroups(updated.AlternativeGroups.Append(new(edit.Operands.ToArray())));
-            return updated.WithRequirementAt(new(ComboRequirementKind.Group, updated.AlternativeGroups.Count - 1), authoredPosition);
+            return ComboRequirementEditing.AppendGroup(updated, edit.Operands, authoredPosition);
         }
         IReadOnlyList<ComboAlternative> requirements = sameCard is null ? edit.Operands : [ComboAlternative.For(sameCard)];
         foreach (ComboAlternative operand in requirements) {
-            ComboRequirementPosition added;
-            if (operand.Category is { } category) {
-                updated = updated.WithCategories(updated.Categories.Append(category));
-                added = new(ComboRequirementKind.Category, updated.Categories.Count - 1);
-            }
-            else {
-                updated = updated.WithCards(updated.Cards.Append(operand.Card!));
-                added = new(ComboRequirementKind.Card, updated.Cards.Count - 1);
-            }
-            updated = updated.WithRequirementAt(added, authoredPosition++);
+            updated = ComboRequirementEditing.Append(updated, operand, authoredPosition++);
         }
         return updated;
     }

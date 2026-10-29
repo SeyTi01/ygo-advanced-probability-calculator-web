@@ -144,6 +144,37 @@ public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase
     }
 
     [Test]
+    public async Task ChangingOneRepeatedRequirementKindPreservesStorageOrderAndSavedAnyBound() {
+        ComboCategory shared = new(a, 0, 3, RequirementMaximumMode.HandSize);
+        ComboCard existing = new("physical", 0, 0);
+        Combo combo = new([shared, shared], cards: [existing],
+            requirementOrder: [new(ComboRequirementKind.Category, 1), new(ComboRequirementKind.Card, 0), new(ComboRequirementKind.Category, 0)]);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
+            Categories = [a], Cards = [new([a], 3, "Physical", id: "physical"), new([], 2, "Replacement", id: "replacement")],
+            Combos = [combo], HandSize = 5
+        });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+
+        await EditRequirement(editor, "category:1");
+        await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:replacement" });
+        await Button(editor, "Save").ClickAsync(new());
+
+        Combo edited = editor.Instance.Combo;
+        Assert.That(edited.Categories.Single(), Is.SameAs(shared));
+        Assert.That(edited.Cards[0], Is.SameAs(existing));
+        Assert.That(edited.Cards[1].CardId, Is.EqualTo("replacement"));
+        Assert.That((edited.Cards[1].MinCount, edited.Cards[1].MaxCount, edited.Cards[1].MaximumMode),
+            Is.EqualTo((0, 3, RequirementMaximumMode.HandSize)));
+        Assert.That(RowKinds(editor), Is.EqualTo(new[] { "card:1", "card:0", "category:0" }));
+
+        await Button(cut, "Save Session").ClickAsync(new());
+        SessionState loaded = await context.Services.GetRequiredService<ISessionService>().LoadSessionAsync(SavedSessionJson());
+        Assert.That(loaded.Combos.Single().RequirementOrder, Is.EqualTo(edited.RequirementOrder));
+        Assert.That(loaded.Combos.Single().Cards.Select(card => card.CardId), Is.EqualTo(new[] { "physical", "replacement" }));
+        Assert.That(loaded.Combos.Single().Cards[1].MaxCount, Is.EqualTo(3));
+    }
+
+    [Test]
     public async Task RepeatedGroupObjectsRenderAndUnwrapTheSelectedOccurrenceInPlace() {
         ComboAlternativeGroup shared = new([ComboAlternative.For(new ComboCategory(a, 1, 2)), ComboAlternative.For(new ComboCategory(b, 1, 2))]);
         Combo combo = new([], cards: [new("physical", 1, 2)], alternativeGroups: [shared, shared],
