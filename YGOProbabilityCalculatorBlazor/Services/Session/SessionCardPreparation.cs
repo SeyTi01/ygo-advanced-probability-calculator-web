@@ -21,7 +21,7 @@ internal static class SessionCardPreparation {
         IReadOnlyList<CardInfo> catalog = [];
         try {
             if (preparedCards.Any(card => card.ExternalCardId is not null || !string.IsNullOrWhiteSpace(card.Name))) {
-                catalog = await cardInfoService.GetCatalogCardsAsync() ?? [];
+                catalog = await cardInfoService.GetCatalogCardsAsync();
                 CatalogArchetypeReconciler.Reconcile(preparedCards, catalog);
             }
         }

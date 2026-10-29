@@ -34,6 +34,7 @@ public class SessionRecoveryTest {
         _context.Services.AddSingleton(Mock.Of<IDeckImportService>());
         _context.Services.AddSingleton(Mock.Of<ICardArtworkService>());
         Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.GetCatalogCardsAsync()).ReturnsAsync(Array.Empty<CardInfo>());
         cardInfo.Setup(service => service.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
         _context.Services.AddSingleton(cardInfo.Object);
         _enricher = new Mock<ILegacyCardMetadataEnricher>();

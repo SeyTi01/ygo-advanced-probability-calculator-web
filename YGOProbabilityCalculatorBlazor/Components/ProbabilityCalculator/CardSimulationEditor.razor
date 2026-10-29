@@ -186,7 +186,7 @@
             <div class="d-flex gap-2 mt-3">
                 <button type="button" class="btn btn-primary btn-sm simulation-save" disabled="@(Error is not null || _filterEdits.Count > 0)"
                         title="@(_filterEdits.Count > 0 ? UiText.Get("Ui.SaveOrCancelTheConditionEditFirst") : null)" @onclick="Save">@(UiText.Get("Ui.Save"))</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm simulation-cancel" @onclick="Cancel">@(UiText.Get("Ui.Cancel"))</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm simulation-cancel" @onclick="CloseEditor">@(UiText.Get("Ui.Cancel"))</button>
             </div>
         </div>
     }
@@ -300,8 +300,6 @@
         _filterEdits.Clear();
         _focusEdit = true;
     }
-
-    private void Cancel() => CloseEditor();
 
     private async Task Save() {
         if (_draft is null || Error is not null || _filterEdits.Count > 0) {

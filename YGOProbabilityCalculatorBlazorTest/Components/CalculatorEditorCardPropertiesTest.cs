@@ -32,6 +32,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
             """;
         TaskCompletionSource<IReadOnlyDictionary<string, CardInfo>> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Mock<ICardInfoService> cardInfo = new();
+        cardInfo.Setup(service => service.GetCatalogCardsAsync()).ReturnsAsync(Array.Empty<CardInfo>());
         cardInfo.Setup(service => service.GetCardInfoByExactNamesAsync(It.IsAny<IEnumerable<string>>())).Returns(release.Task);
         context.Services.AddSingleton(cardInfo.Object);
         IRenderedComponent<ProbabilityCalculatorComponent> cut;

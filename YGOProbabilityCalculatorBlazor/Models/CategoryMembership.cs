@@ -6,8 +6,7 @@ public static class CategoryMembership {
     public const int MaximumAlternatives = 16;
     public const int MaximumPropertiesPerAlternative = 16;
 
-    public static void ValidateRule(CardSelector rule) {
-        ArgumentNullException.ThrowIfNull(rule);
+    internal static void ValidateRule(CardSelector rule) {
         bool IsProperty(CardSelector selector) => selector.Kind is CardSelectorKind.NumericRange or CardSelectorKind.LevelAtLeast
             || selector.Kind == CardSelectorKind.Category
                 && selector.CategoryIdentities[0].StartsWith("metadata:", StringComparison.Ordinal)

@@ -175,7 +175,7 @@ public class CardArtworkLoadingTest {
         CardInfoService service = new(Storage(cache).Object, http);
         Task<CardInfo> pending = service.GetCardArtworkInfoAsync(1);
         await handler.Started.Task;
-        Assert.That(await service.GetCardNameAsync(2).WaitAsync(TimeSpan.FromSeconds(1)), Is.EqualTo("Other"));
+        Assert.That((await service.GetCardInfoAsync(2).WaitAsync(TimeSpan.FromSeconds(1))).Name, Is.EqualTo("Other"));
         Assert.That((await service.GetCardArtworkInfoAsync(2).WaitAsync(TimeSpan.FromSeconds(1))).ArtworkImageIds, Is.EqualTo(new[] { 2 }));
         IReadOnlyDictionary<string, CardInfo> names = await service.GetCardInfoByExactNamesAsync(new[] { "Other" }).WaitAsync(TimeSpan.FromSeconds(1));
         Assert.That(names.Keys, Is.EqualTo(new[] { "Other" }));

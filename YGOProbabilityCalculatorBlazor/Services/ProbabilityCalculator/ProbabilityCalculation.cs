@@ -1,5 +1,4 @@
 using YGOProbabilityCalculatorBlazor.Models;
-using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
@@ -15,17 +14,8 @@ internal sealed class ProbabilityCalculation {
     private readonly ComboEventCompiler _compiler;
     private readonly EventUnionEvaluator _unionEvaluator;
     private readonly ScenarioConditioner? _conditioner;
-    private readonly WorkBudget _budget;
-
-    internal ProbabilityCalculation(
-        List<Card> deck,
-        int handSize,
-        CalculationWorkPolicy workPolicy,
-        CalculationStoragePolicy? storagePolicy = null
-    ) : this(deck, handSize, new WorkBudget(workPolicy, storagePolicy)) { }
 
     internal ProbabilityCalculation(List<Card> deck, int handSize, WorkBudget budget, List<Card>? retained = null) {
-        _budget = budget;
         bool hasRetainedCards = retained is { Count: > 0 };
         List<Card> compilationDeck = hasRetainedCards ? [.. deck, .. retained!] : deck;
         int finalHandSize = checked(handSize + (retained?.Sum(card => card.Copies) ?? 0));
@@ -39,8 +29,6 @@ internal sealed class ProbabilityCalculation {
             _conditioner = new(deck.Count, handSize, retained!, budget);
         }
     }
-
-    internal double CalculateUnion(List<Combo> combos) => CalculateUnionExact(combos).ToDouble(_budget);
 
     internal ExactProbability CalculateUnionExact(List<Combo> combos) =>
         _unionEvaluator.UnionExact(combos.SelectMany(Compile).ToList());

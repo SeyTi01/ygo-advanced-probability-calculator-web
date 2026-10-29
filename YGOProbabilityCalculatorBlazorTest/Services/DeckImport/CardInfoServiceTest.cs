@@ -776,7 +776,7 @@ public class CardInfoServiceTests {
         CardInfo info = await service.GetCardInfoAsync(1234);
         Assert.That(info.Id, Is.EqualTo(1234));
         Assert.That(info.Name, Is.EqualTo("Alternate passcode"));
-        Assert.That(await service.GetCardNameAsync(1234), Is.EqualTo(info.Name));
+        Assert.That((await service.GetCardInfoAsync(1234)).Name, Is.EqualTo(info.Name));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
     }
 
@@ -788,7 +788,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Blue-Eyes White Dragon"));
         Assert.That(handler.Requests, Is.Empty);
@@ -802,7 +802,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Updated Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -820,7 +820,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Stale Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -837,7 +837,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        Assert.That(await service.GetCardNameAsync(1234), Is.EqualTo("Stale Name"));
+        Assert.That((await service.GetCardInfoAsync(1234)).Name, Is.EqualTo("Stale Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
         Assert.That(storage.RawCache, Is.EqualTo(originalJson));
         Assert.That(storage.WriteCount, Is.Zero);
@@ -851,7 +851,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Refreshed Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -866,7 +866,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Legacy Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -881,7 +881,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -897,7 +897,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -912,7 +912,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -927,7 +927,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        Assert.That(await service.GetCardNameAsync(5678), Is.EqualTo("Dark Magician"));
+        Assert.That((await service.GetCardInfoAsync(5678)).Name, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
         AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
     }
@@ -944,7 +944,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -963,7 +963,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("New Card"));
         AssertPersistedCache(storage.RawCache, refreshedAt, (1234, "Known Card"), (5678, "New Card"));
@@ -979,7 +979,7 @@ public class CardInfoServiceTests {
 
         using (HttpClient firstHttpClient = new(firstHandler)) {
             CardInfoService firstService = new(storage, firstHttpClient, new TestTimeProvider(Now));
-            Assert.That(await firstService.GetCardNameAsync(5678), Is.EqualTo("New Card"));
+            Assert.That((await firstService.GetCardInfoAsync(5678)).Name, Is.EqualTo("New Card"));
         }
 
         using (JsonDocument document = JsonDocument.Parse(storage.RawCache!)) {
@@ -994,7 +994,7 @@ public class CardInfoServiceTests {
         using HttpClient nextHttpClient = new(nextHandler);
         CardInfoService nextService = new(storage, nextHttpClient, new TestTimeProvider(Now));
 
-        Assert.That(await nextService.GetCardNameAsync(1234), Is.EqualTo("Refreshed Name"));
+        Assert.That((await nextService.GetCardInfoAsync(1234)).Name, Is.EqualTo("Refreshed Name"));
         Assert.That(nextHandler.Requests, Has.Length.EqualTo(1));
     }
 
@@ -1006,7 +1006,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(9999);
+        string result = (await service.GetCardInfoAsync(9999)).Name;
 
         Assert.That(result, Is.EqualTo("9999"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -1020,7 +1020,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -1035,9 +1035,9 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string[] results = await Task.WhenAll(service.GetCardNameAsync(1234), service.GetCardNameAsync(5678));
+        CardInfo[] results = await Task.WhenAll(service.GetCardInfoAsync(1234), service.GetCardInfoAsync(5678));
 
-        Assert.That(results, Is.EqualTo(new[] { "New A", "New B" }));
+        Assert.That(results.Select(card => card.Name), Is.EqualTo(new[] { "New A", "New B" }));
         Assert.That(handler.Requests.Select(request => new Uri(request).Query),
             Is.EquivalentTo(new[] { "?id=1234", "?id=5678" }));
     }

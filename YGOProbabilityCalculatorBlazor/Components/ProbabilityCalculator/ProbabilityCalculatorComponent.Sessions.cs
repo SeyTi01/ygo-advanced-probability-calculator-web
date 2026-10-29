@@ -64,8 +64,6 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
 
     private void CancelClearWorkspace() => _isClearWorkspaceConfirmationOpen = false;
 
-    private void ConfirmClearWorkspace() => ClearWorkspace();
-
     private void ClearWorkspace() {
         _isClearWorkspaceConfirmationOpen = false;
         InvalidateSessionLoad();
@@ -220,7 +218,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         if (LanguageWorkspace?.Capture?.Target == this) { LanguageWorkspace.Capture = null; }
         InvalidateSessionLoad();
         _disposed = true;
-        StopCalculation();
+        _calculation.Stop();
         await _backgroundCalculator.DisposeAsync();
     }
 

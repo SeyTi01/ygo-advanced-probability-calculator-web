@@ -59,27 +59,25 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
             await using (IJSObjectReference job = await owner.InvokeAsync<IJSObjectReference>("createJob")) {
                 try {
                     token.ThrowIfCancellationRequested();
-                    string response;
                     if (onPreliminary is not null && snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast) {
                         PresentationStage stage = await job.InvokeAsync<PresentationStage>("runProgressive", token, snapshot.Json, true);
                         token.ThrowIfCancellationRequested();
-                        ProbabilityCalculationResult initial = CalculationWire.ReadResult(stage.Response, snapshot.RequestedMode);
+                        result = CalculationWire.ReadResult(stage.Response, snapshot.RequestedMode);
                         if (stage.IsPreliminary) {
-                            CalculationResponseReader.ValidatePreliminary(initial);
-                            await onPreliminary(initial).WaitAsync(token);
+                            CalculationResponseReader.ValidatePreliminary(result);
+                            await onPreliminary(result).WaitAsync(token);
                             token.ThrowIfCancellationRequested();
-                            response = await job.InvokeAsync<string>("finish", token);
-                        }
-                        else {
-                            response = stage.Response;
+                            string response = await job.InvokeAsync<string>("finish", token);
+                            token.ThrowIfCancellationRequested();
+                            result = CalculationWire.ReadResult(response, snapshot.RequestedMode);
                         }
                     }
                     else {
-                        response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast,
+                        string response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast,
                             snapshot.RequestedMode == CalculationModel.Exact);
+                        token.ThrowIfCancellationRequested();
+                        result = CalculationWire.ReadResult(response, snapshot.RequestedMode);
                     }
-                    token.ThrowIfCancellationRequested();
-                    result = CalculationWire.ReadResult(response, snapshot.RequestedMode);
                     token.ThrowIfCancellationRequested();
                     // Errors (including valid Work/Storage/Input responses) never
                     // acknowledge the lease or retain a possibly enlarged heap.

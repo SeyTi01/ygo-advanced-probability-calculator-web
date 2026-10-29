@@ -25,7 +25,7 @@ public class ConvolutionBoundsTest {
                         )
                     ];
                     foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-                        ExactCalculationResult actual = new ProbabilityCalculation(order, hand, CalculationWorkPolicy.Interactive)
+                        ExactCalculationResult actual = new ProbabilityCalculation(order, hand, new(CalculationWorkPolicy.Interactive))
                             .CalculateExactResults(combos, [new("g", "Group")]);
                         AssertFraction(actual.Total, SmallDeckOracle.EnumerateCounts(deck, combos, hand));
                         AssertFraction(actual.Groups[0], SmallDeckOracle.EnumerateCounts(deck, combos.Take(2).ToList(), hand));

@@ -195,8 +195,8 @@ public class ComboConverter : JsonConverter<Combo> {
             writer.WriteEndArray();
         }
 
-        Combo legacyOrder = new(value.Categories, value.Name, value.Active, value.GroupId, value.Cards, value.AlternativeGroups);
-        if (!value.RequirementOrder.SequenceEqual(legacyOrder.RequirementOrder)) {
+        IEnumerable<ComboRequirementPosition> defaultOrder = Combo.DefaultOrder(value.Categories.Count, value.Cards.Count, value.AlternativeGroups.Count);
+        if (!value.RequirementOrder.SequenceEqual(defaultOrder)) {
             writer.WriteStartArray("RequirementOrder");
             foreach (ComboRequirementPosition position in value.RequirementOrder) {
                 writer.WriteStartObject();
