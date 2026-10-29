@@ -1,13 +1,12 @@
-using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
-public sealed class PotOfGreedEffect : ICardEffectDefinition {
-    public int CanonicalCardId => 55144522;
-    public string Name => "Pot of Greed";
-    public int Revision => 1;
-    public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, false);
-    public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => UiText.English("Effects.55144522.Summary");
+public sealed class PotOfGreedEffect : CardEffectDefinition {
+    public override int CanonicalCardId => 55144522;
+    public override string Name => "Pot of Greed";
+    public override int Revision => 1;
+
+    public override DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, false);
+    public override EffectSupport Support => EffectSupport.ModeledWithinRules;
 }
