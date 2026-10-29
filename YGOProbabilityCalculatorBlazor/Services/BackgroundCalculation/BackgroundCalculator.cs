@@ -65,9 +65,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
                         token.ThrowIfCancellationRequested();
                         ProbabilityCalculationResult initial = CalculationWire.ReadResult(stage.Response, snapshot.RequestedMode);
                         if (stage.IsPreliminary) {
-                            if (initial.Contract is not { Accuracy: not CalculationAccuracy.Exact, AutomaticExact: null }) {
-                                throw new InvalidOperationException("Invalid preliminary Fast result.");
-                            }
+                            CalculationResponseReader.ValidatePreliminary(initial);
                             await onPreliminary(initial).WaitAsync(token);
                             token.ThrowIfCancellationRequested();
                             response = await job.InvokeAsync<string>("finish", token);

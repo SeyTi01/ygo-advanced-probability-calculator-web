@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -134,7 +135,27 @@ public class CalculationWireTest {
     public void OrdinaryAndMalformedResponsesNeverBecomeZeroResults() {
         string response = CalculationWire.Execute("not JSON");
         Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(response));
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult("{}"));
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult("{}"));
         Assert.Throws<JsonException>(() => CalculationWire.ReadResult("not JSON"));
+    }
+
+    [TestCase("null", CalculationProtocolFailureReason.MissingResponse)]
+    [TestCase("{}", CalculationProtocolFailureReason.MissingResult)]
+    [TestCase("{\"Error\":\"conflict\",\"LimitReason\":1,\"FailureKind\":1}", CalculationProtocolFailureReason.InvalidResponse)]
+    public void ProtocolFailuresCarryAReasonWithoutImpersonatingWorkerFailures(string response, CalculationProtocolFailureReason reason) {
+        CalculationProtocolException exception = Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response))!;
+        Assert.That(exception.Reason, Is.EqualTo(reason));
+        Assert.That(exception.RowIndex, Is.Null);
+    }
+
+    [Test]
+    public void InvalidRationalReportsItsFlattenedRowWithoutChangingOtherRows() {
+        string snapshot = CalculationSnapshot.Capture([new([], 2, id: "card")],
+            [new([], cards: [new("card", 1, 1)])], 1, []).Json;
+        JsonNode response = JsonNode.Parse(CalculationWire.Execute(snapshot))!;
+        response["Result"]!["Contract"]!["Fractions"]!["Combos"]![0]!["Denominator"] = "0";
+        CalculationProtocolException exception = Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response.ToJsonString()))!;
+        Assert.That(exception.Reason, Is.EqualTo(CalculationProtocolFailureReason.InvalidRationalValue));
+        Assert.That(exception.RowIndex, Is.EqualTo(1));
     }
 }
