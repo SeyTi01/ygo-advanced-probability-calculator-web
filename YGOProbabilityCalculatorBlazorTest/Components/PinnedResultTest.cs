@@ -85,7 +85,9 @@ public partial class PinnedResultTest {
 
     private PinnedResultSnapshot Pinned => _cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
 
-    private PinnedResultSnapshot Accepted => Field<PinnedResultSnapshot>("_acceptedResultSnapshot");
+    private CalculationResultState Calculation => Field<CalculationResultState>("_calculation");
+
+    private PinnedResultSnapshot Accepted => Calculation.Snapshot!;
 
     private (string Current, string Pinned) ContextDescriptions() => (
         _cut.Find(".probability-results > p.result-model").TextContent.Trim(),
@@ -189,7 +191,7 @@ public partial class PinnedResultTest {
         await Accept();
         Assert.That(_cut.FindAll(".pinned-result"), Is.Empty);
         string before = _sessions.SerializeSession(FieldSession());
-        long version = Field<long>("_calculationVersion");
+        long version = Calculation.InputVersion;
         int writes = _context.JSInterop.Invocations["sessionRecovery.update"].Count;
         await Pin();
         Assert.That(_cut.Find(".probability-results-heading .pin-result-action").GetAttribute("title"), Is.EqualTo("Replace pin with current result"));
@@ -208,7 +210,7 @@ public partial class PinnedResultTest {
         await Clear();
         Assert.That(_cut.FindAll(".pinned-result"), Is.Empty);
         Assert.That(_sessions.SerializeSession(FieldSession()), Is.EqualTo(before));
-        Assert.That(Field<long>("_calculationVersion"), Is.EqualTo(version));
+        Assert.That(Calculation.InputVersion, Is.EqualTo(version));
         Assert.That(_context.JSInterop.Invocations["sessionRecovery.update"], Has.Count.EqualTo(writes));
     }
 
@@ -454,7 +456,7 @@ public partial class PinnedResultTest {
         Assert.That(_cut.FindAll("[role='alert']"), Is.Empty);
         _worker.Jobs[2].SetResult(Result(2, .842));
         await current;
-        Assert.That(Field<PinnedResultSnapshot>("_acceptedResultSnapshot").Context.HandSize, Is.EqualTo(6));
+        Assert.That(Accepted.Context.HandSize, Is.EqualTo(6));
         Assert.That(Pinned.Context.HandSize, Is.EqualTo(2));
     }
 
@@ -655,7 +657,7 @@ public partial class PinnedResultTest {
         await Call("LoadSharedSessionAsync");
         Assert.That(Pinned, Is.SameAs(pin));
         Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
-        Assert.That(typeof(ProbabilityCalculatorComponent).GetField("_acceptedResultSnapshot", Private)!.GetValue(_cut.Instance), Is.Null);
+        Assert.That(Accepted, Is.Null);
         _worker.Jobs[1].SetResult(Result(1, .1));
         await oldWork;
         delayed.SetResult(false);
@@ -675,7 +677,7 @@ public partial class PinnedResultTest {
         await Accept();
         await Pin();
         PinnedResultSnapshot pin = Pinned;
-        PinnedResultSnapshot accepted = Field<PinnedResultSnapshot>("_acceptedResultSnapshot");
+        PinnedResultSnapshot accepted = Accepted;
         NavigationManager navigation = _context.Services.GetRequiredService<NavigationManager>();
         SessionState replacement = Workspace(6);
         replacement.Combos[0] = replacement.Combos[0].WithName("Obsolete shared route");
@@ -704,7 +706,7 @@ public partial class PinnedResultTest {
         gate.SetResult();
         await loading;
         Assert.That(Pinned, Is.SameAs(pin));
-        Assert.That(Field<PinnedResultSnapshot>("_acceptedResultSnapshot"), Is.SameAs(accepted));
+        Assert.That(Accepted, Is.SameAs(accepted));
         Assert.That(_cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
         Assert.That(_sessions.SerializeSession(FieldSession()), Does.Not.Contain("Obsolete shared route"));
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
@@ -714,7 +716,7 @@ public partial class PinnedResultTest {
     [Test]
     public async Task MissingAcceptedContextFailsClosedRatherThanExportingLiveHandSize() {
         await Accept();
-        typeof(ProbabilityCalculatorComponent).GetField("_acceptedResultSnapshot", Private)!.SetValue(_cut.Instance, null);
+        Calculation.Restore(Calculation.Result, Calculation.IsStale, null);
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.True);
         Assert.That(_clipboard.Invocations["copyText"], Is.Empty);
