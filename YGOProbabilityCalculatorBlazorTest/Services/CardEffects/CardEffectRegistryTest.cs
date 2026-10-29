@@ -150,6 +150,51 @@ public class CardEffectRegistryTest {
     }
 
     [Test]
+    public void OrdinaryCardEditsPreserveCompleteSavedEffectAndSimulationPreference() {
+        CategoryBase role = new("Role");
+        CategoryBase metadata = new("FIRE", CategorySource.Metadata, "attribute:fire");
+        DrawEffectPlan plan = DrawEffectPlan.Draw(3, false) with {
+            HandCost = 1,
+            HandCostSelector = CardSelector.For(role),
+            HiddenDeckCost = 2,
+            RemovalCount = 1,
+            RemovalSelector = CardSelector.For(role),
+            HiddenPostDrawMill = 2,
+            FirstActivationOnly = true,
+            BlocksLaterDraws = true,
+            ActivationLimit = 2,
+            MinimumHandSize = 3
+        };
+        EffectProfile profile = new(EffectSource.Custom, 55144522);
+        Card original = new Card([role], 2, "Named", false, "entry", 55144522, simulationEnabled: false)
+            .WithEffect(plan, profile).WithManualMetadataCategory(metadata);
+        Card[] edits = [
+            original.WithName(null),
+            original.WithActive(true),
+            original.WithCopies(3),
+            original.WithCategories([role, metadata, new("Another role")]),
+            original.WithoutManualMetadataCategory(metadata.MetadataKey!),
+            original.WithObjectiveMetadata([metadata], 99),
+            original.Duplicate()
+        ];
+
+        foreach (Card edited in edits) {
+            Assert.Multiple(() => {
+                Assert.That(edited.EffectPlan, Is.EqualTo(plan));
+                Assert.That(edited.EffectProfile, Is.EqualTo(profile));
+                Assert.That(edited.SimulationEnabled, Is.False);
+                Assert.That(edited.Categories, Is.Not.SameAs(original.Categories));
+            });
+        }
+        Assert.That(edits[0].Name, Is.Null);
+        Assert.That(edits[^1].Id, Is.Not.EqualTo(original.Id));
+        Assert.That(edits[..^1].Select(card => card.Id), Is.All.EqualTo(original.Id));
+        Assert.That(original.WithPreDrawRemovalCount(0).PreDrawSelector, Is.EqualTo(CardSelector.Any));
+        Assert.That(original.WithPostDrawDiscardCount(0).PostDrawSelector, Is.EqualTo(CardSelector.Any));
+        Assert.Throws<ArgumentOutOfRangeException>(() => original.WithPostDrawDiscardCount(3));
+    }
+
+    [Test]
     public async Task ChangedOrRemovedDefinitionCannotRewriteSavedBuiltInOrCustomSnapshots() {
         CardEffectRegistry old = new([new AdditionalEffect()]);
         CardEffectRegistry changed = new([new AdditionalEffect(3, 2)]);

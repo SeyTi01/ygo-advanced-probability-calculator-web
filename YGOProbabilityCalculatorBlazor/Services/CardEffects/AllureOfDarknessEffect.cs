@@ -1,18 +1,17 @@
-using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
-public sealed class AllureOfDarknessEffect : ICardEffectDefinition {
+public sealed class AllureOfDarknessEffect : CardEffectDefinition {
     private static readonly CategoryBase Dark = EffectProperties.Property("Attribute: DARK", "attribute:dark");
 
-    public IReadOnlyList<CategoryBase> FilterProperties => [Dark];
-    public int CanonicalCardId => 1475311;
-    public string Name => "Allure of Darkness";
-    public int Revision => 1;
-    public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, false) with {
+    public override IReadOnlyList<CategoryBase> FilterProperties => [Dark];
+    public override int CanonicalCardId => 1475311;
+    public override string Name => "Allure of Darkness";
+    public override int Revision => 1;
+
+    public override DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, false) with {
         RemovalCount = 1, RemovalSelector = CardSelector.For(Dark)
     };
-    public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => UiText.English("Effects.1475311.Summary");
+    public override EffectSupport Support => EffectSupport.ModeledWithinRules;
 }

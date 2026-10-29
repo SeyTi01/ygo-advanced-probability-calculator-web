@@ -1,21 +1,18 @@
-using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
-public sealed class NightTrainBlueTravelerEffect : ICardEffectDefinition {
+public sealed class NightTrainBlueTravelerEffect : CardEffectDefinition {
     private static readonly CardSelector Targets = CardSelector.AnyOfSelectors([
         CardSelector.CatalogIdentity(60879050),
         CardSelector.CatalogIdentity(76136345)
     ]);
 
-    public int CanonicalCardId => 81101309;
-    public string Name => "Night Train Blue Traveler";
-    public int Revision => 1;
-    public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => UiText.English("Effects.81101309.Summary");
-    public string Limitations => UiText.English("Effects.81101309.Limitations");
+    public override int CanonicalCardId => 81101309;
+    public override string Name => "Night Train Blue Traveler";
+    public override int Revision => 1;
+    public override EffectSupport Support => EffectSupport.ModeledWithinRules;
+    public override string Limitations => ResourceText("Limitations");
 
-    public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
-        Search: new(Targets));
+    public override DrawEffectPlan Compile() => DrawEffectPlan.SearchCards(new(Targets), true);
 }

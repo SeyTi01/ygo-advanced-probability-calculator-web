@@ -1,9 +1,8 @@
-using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
-public sealed class TraptantalizingTuneEffect : ICardEffectDefinition {
+public sealed class TraptantalizingTuneEffect : CardEffectDefinition {
     private static readonly CardSelector LevelFourInsectOrPlant = CardSelector.AllOfSelectors([
         new NumericPropertyRange(NumericPropertyKind.Level, 4, 4).ToSelector(),
         CardSelector.AnyOf([
@@ -13,20 +12,19 @@ public sealed class TraptantalizingTuneEffect : ICardEffectDefinition {
     ]);
     private static readonly CardSelector NormalTrap = CardSelector.For(EffectProperties.Property("Normal Trap", "trap-type:normal"));
 
-    public int CanonicalCardId => 48805472;
-    public string Name => "Traptantalizing Tune";
-    public int Revision => 3;
-    public IReadOnlyList<CategoryBase> FilterProperties => [
+    public override int CanonicalCardId => 48805472;
+    public override string Name => "Traptantalizing Tune";
+    public override int Revision => 3;
+    public override IReadOnlyList<CategoryBase> FilterProperties => [
         EffectProperties.Property("Level 4", "level:4"),
         EffectProperties.Property("Insect", "monster-race:insect"),
         EffectProperties.Property("Plant", "monster-race:plant"),
         EffectProperties.Property("Trap", "kind:trap"),
         EffectProperties.Property("Normal Trap", "trap-type:normal")
     ];
-    public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => UiText.English("Effects.48805472.Summary");
+    public override EffectSupport Support => EffectSupport.ModeledWithinRules;
 
-    public DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true) with {
+    public override DrawEffectPlan Compile() => DrawEffectPlan.Draw(2, true) with {
         HandCost = 1,
         HandCostSelector = CardSelector.Objective(CardSelector.AnyOfSelectors([
             LevelFourInsectOrPlant,
