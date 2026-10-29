@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -15,13 +16,19 @@ public class CardInfoService : ICardInfoService {
     private const int SearchResultLimit = 20;
     private const int MaximumCatalogBytes = 20 * 1024 * 1024;
     private const int MaximumCatalogCards = 30_000;
+    private const int MaximumLocalizedNamesBytes = 4 * 1024 * 1024;
     private static readonly JsonSerializerOptions CatalogJsonOptions = new(JsonSerializerDefaults.Web);
+    // Register only reviewed, deployed name assets. English needs no additional data.
+    private static readonly IReadOnlyDictionary<string, string> LocalizedNameAssets = new Dictionary<string, string>();
+    private readonly IReadOnlyDictionary<string, string> _localizedNameAssets;
 
     private readonly HttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
     private readonly TimeProvider _timeProvider;
     private readonly Lazy<Task> _loadCacheTask;
     private readonly Lazy<Task<IReadOnlyList<CardInfo>>> _loadCatalogTask;
+    private CardCatalogIndex? _catalogIndex;
+    private readonly ConcurrentDictionary<string, Lazy<Task<IReadOnlyDictionary<CardInfo, string>>>> _localizedNameLoads = new();
     private CardMetadataCache _cache = new();
     private readonly SemaphoreSlim _singleLookupGate = new(1, 1);
     private readonly HashSet<int> _singleLookups = [];
@@ -36,7 +43,8 @@ public class CardInfoService : ICardInfoService {
 
         if (_loadCatalogTask.IsValueCreated) {
             try {
-                CardInfo? catalogCard = (await _loadCatalogTask.Value).FirstOrDefault(card => card.Id == id);
+                await _loadCatalogTask.Value;
+                CardInfo? catalogCard = _catalogIndex!.CanonicalCards.GetValueOrDefault(id);
 
                 if (catalogCard is not null) {
                     return catalogCard;
@@ -162,7 +170,27 @@ public class CardInfoService : ICardInfoService {
             return Array.Empty<CardInfo>();
         }
 
-        IReadOnlyList<CardInfo> catalog = await _loadCatalogTask.Value;
+        Task<IReadOnlyList<CardInfo>> catalogTask = _loadCatalogTask.Value;
+        string? locale = GetNameLocale();
+        Task<IReadOnlyDictionary<CardInfo, string>>? namesTask = locale is null ? null
+            : GetLocalizedNamesAsync(locale);
+        IReadOnlyList<CardInfo> catalog = await catalogTask;
+        if (namesTask is not null) {
+            IReadOnlyDictionary<CardInfo, string> names = await namesTask;
+            if (names.Count > 0) {
+                return catalog
+                    .Select(card => (Card: card, Rank: Math.Min(SearchRank(card.Name, normalizedQuery),
+                        names.TryGetValue(card, out string name) ? SearchRank(name, normalizedQuery) : 3)))
+                    .Where(match => match.Rank < 3)
+                    .OrderBy(match => match.Rank)
+                    .ThenBy(match => match.Card.Name, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(match => match.Card.Name, StringComparer.Ordinal)
+                    .ThenBy(match => match.Card.Id)
+                    .Take(SearchResultLimit)
+                    .Select(match => match.Card)
+                    .ToArray();
+            }
+        }
         // The secondary order is prepared once. Exact matches precede other
         // prefixes in this order; locate their range without scanning the catalog.
         int lower = 0;
@@ -203,10 +231,122 @@ public class CardInfoService : ICardInfoService {
         return matches.ToArray();
     }
 
+    private string? GetNameLocale() {
+        for (CultureInfo culture = CultureInfo.CurrentUICulture; culture.Name.Length > 0; culture = culture.Parent) {
+            if (_localizedNameAssets.ContainsKey(culture.Name)) { return culture.Name; }
+        }
+        return null;
+    }
+
+    private static int SearchRank(string name, string query) {
+        if (name.Equals(query, StringComparison.OrdinalIgnoreCase)) { return 0; }
+        if (name.StartsWith(query, StringComparison.OrdinalIgnoreCase)) { return 1; }
+        return name.Contains(query, StringComparison.OrdinalIgnoreCase) ? 2 : 3;
+    }
+
+    // Synchronous label reads never start a request.
+    public string? GetLocalizedCardName(CardInfo info) {
+        string? locale = GetNameLocale();
+        if (locale is not null && _localizedNameLoads.TryGetValue(locale, out Lazy<Task<IReadOnlyDictionary<CardInfo, string>>> load)
+            && load.IsValueCreated && load.Value.IsCompletedSuccessfully) {
+            // Only the original verified catalog object receives a data label. A live/cache
+            // object with the same ID or an artwork alias is not identity evidence here.
+            return load.Value.Result.TryGetValue(info, out string name) ? name : null;
+        }
+        return null;
+    }
+
+    public string? GetLocalizedCardName(Card card) {
+        if (GetNameLocale() is null || !_loadCatalogTask.IsValueCreated || !_loadCatalogTask.Value.IsCompletedSuccessfully) {
+            return null;
+        }
+        CardInfo? canonical = FindSavedCardForDisplay(card);
+        return canonical is null ? null : GetLocalizedCardName(canonical);
+    }
+
+    public async Task EnsureLocalizedCardNamesAsync(IReadOnlyList<Card> cards) {
+        string? locale = GetNameLocale();
+        if (locale is null || !cards.Any(card => card.ExternalCardId is > 0 && !string.IsNullOrWhiteSpace(card.Name))) {
+            return;
+        }
+
+        // Start both same-origin requests together. Once the catalog is warm, custom
+        // or unknown entries can be rejected without requesting an unused name asset.
+        Task<IReadOnlyList<CardInfo>> catalog = _loadCatalogTask.Value;
+        if (catalog.IsCompletedSuccessfully && !cards.Any(card => FindSavedCardForDisplay(card) is not null)) {
+            return;
+        }
+
+        try {
+            await Task.WhenAll(catalog, GetLocalizedNamesAsync(locale));
+        }
+        catch {
+            // Optional display preparation must leave the stored names usable.
+        }
+    }
+
+    private CardInfo? FindSavedCardForDisplay(Card card) {
+        if (card.ExternalCardId is not > 0 || string.IsNullOrWhiteSpace(card.Name)) {
+            return null;
+        }
+        CardInfo? canonical = _catalogIndex?.Find(card.ExternalCardId.Value);
+        return canonical is not null && string.Equals(card.Name, canonical.Name, StringComparison.Ordinal)
+            ? canonical : null;
+    }
+
+    private Task<IReadOnlyDictionary<CardInfo, string>> GetLocalizedNamesAsync(string locale) =>
+        _localizedNameLoads.GetOrAdd(locale, nameLocale => new(() => LoadLocalizedNamesAsync(nameLocale))).Value;
+
+    private async Task<IReadOnlyDictionary<CardInfo, string>> LoadLocalizedNamesAsync(string locale) {
+        try {
+            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+            using HttpResponseMessage response = await _httpClient.GetAsync(_localizedNameAssets[locale], timeout.Token);
+            response.EnsureSuccessStatusCode();
+            if (response.Content.Headers.ContentLength is > MaximumLocalizedNamesBytes) {
+                throw new InvalidDataException("The localized card names exceed the supported size.");
+            }
+            await using Stream stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+            byte[] json = await ReadCatalogBytesAsync(stream, MaximumLocalizedNamesBytes, timeout.Token);
+            using JsonDocument document = JsonDocument.Parse(json);
+            JsonElement root = document.RootElement;
+            if (root.GetProperty("version").GetInt32() != 1 || root.GetProperty("locale").GetString() != locale) {
+                throw new InvalidDataException("Unsupported localized card names.");
+            }
+            JsonElement entries = root.GetProperty("names");
+            if (entries.ValueKind != JsonValueKind.Array || entries.GetArrayLength() > MaximumCatalogCards) {
+                throw new InvalidDataException("Invalid localized card names.");
+            }
+            await _loadCatalogTask.Value;
+            IReadOnlyDictionary<int, CardInfo> canonicalCards = _catalogIndex!.CanonicalCards;
+            HashSet<int> seen = [];
+            Dictionary<CardInfo, string> names = new(ReferenceEqualityComparer.Instance);
+            foreach (JsonElement entry in entries.EnumerateArray()) {
+                if (entry.ValueKind != JsonValueKind.Array || entry.GetArrayLength() != 2) {
+                    throw new InvalidDataException("Invalid localized name record.");
+                }
+                int id = entry[0].GetInt32();
+                string? name = entry[1].GetString();
+                if (id <= 0 || !seen.Add(id) || string.IsNullOrWhiteSpace(name) || name.Length > 512) {
+                    throw new InvalidDataException("Invalid localized name identity.");
+                }
+                // Only exact canonical IDs join. Artwork IDs and names never establish identity.
+                if (canonicalCards.TryGetValue(id, out CardInfo card)) {
+                    names.Add(card, name);
+                }
+            }
+            return names;
+        }
+        catch {
+            // An optional asset failure leaves English search and manual entry usable.
+            // Cache the failure for this service lifetime to avoid repeated failed requests.
+        }
+        return new Dictionary<CardInfo, string>(ReferenceEqualityComparer.Instance);
+    }
+
     public async Task<CardInfo> GetCardInfoAsync(int id) {
         await _loadCacheTask.Value;
-        IReadOnlyList<CardInfo>? catalog = await TryLoadCatalogAsync();
-        CardInfo? catalogCard = FindCatalogCard(catalog, id);
+        await TryLoadCatalogAsync();
+        CardInfo? catalogCard = _catalogIndex?.Find(id);
 
         if (catalogCard is not null) {
             return catalogCard.Id == id ? catalogCard : catalogCard with { Id = id };
@@ -227,7 +367,7 @@ public class CardInfoService : ICardInfoService {
             }
 
             return _cache.Cards.TryGetValue(id, out card)
-                ? WithCatalogMembership(card, catalog)
+                ? WithCatalogMembership(card)
                 : new CardInfo { Id = id, Name = id.ToString(CultureInfo.InvariantCulture) };
         }
         finally {
@@ -235,7 +375,16 @@ public class CardInfoService : ICardInfoService {
         }
     }
 
-    public CardInfoService(ILocalStorageService localStorage, HttpClient? httpClient = null, TimeProvider? timeProvider = null) {
+    public CardInfoService(ILocalStorageService localStorage, HttpClient? httpClient = null, TimeProvider? timeProvider = null)
+        : this(localStorage, httpClient, timeProvider, LocalizedNameAssets) { }
+
+    internal CardInfoService(
+        ILocalStorageService localStorage,
+        HttpClient? httpClient,
+        TimeProvider? timeProvider,
+        IReadOnlyDictionary<string, string> localizedNameAssets
+    ) {
+        _localizedNameAssets = localizedNameAssets;
         _localStorage = localStorage;
         _httpClient = httpClient ?? new HttpClient();
         _timeProvider = timeProvider ?? TimeProvider.System;
@@ -247,18 +396,8 @@ public class CardInfoService : ICardInfoService {
 
     public async Task<IReadOnlyList<CardInfo>> GetCatalogCardsAsync() => await TryLoadCatalogAsync() ?? [];
 
-    private static CardInfo? FindCatalogCard(IReadOnlyList<CardInfo>? catalog, int id) {
-        CardInfo? canonical = catalog?.FirstOrDefault(card => card.Id == id);
-        if (canonical is not null || catalog is null) {
-            return canonical;
-        }
-
-        CardInfo[] artworkMatches = catalog.Where(card => card.ArtworkImageIds.Contains(id)).Take(2).ToArray();
-        return artworkMatches.Length == 1 ? artworkMatches[0] : null;
-    }
-
-    private static CardInfo WithCatalogMembership(CardInfo info, IReadOnlyList<CardInfo>? catalog) {
-        CardInfo? canonical = FindCatalogCard(catalog, info.CanonicalCardId ?? info.Id);
+    private CardInfo WithCatalogMembership(CardInfo info) {
+        CardInfo? canonical = _catalogIndex?.Find(info.CanonicalCardId ?? info.Id);
         return canonical is null ? info : info with {
             ResolvedArchetypes = canonical.ResolvedArchetypes,
             ResolvedNames = canonical.ResolvedNames,
@@ -293,7 +432,7 @@ public class CardInfoService : ICardInfoService {
                 }
 
                 if (matches.Length == 1 && HasMetadata(matches[0])) {
-                    resolved[name] = WithCatalogMembership(matches[0], catalog);
+                    resolved[name] = WithCatalogMembership(matches[0]);
                 }
             }
 
@@ -302,7 +441,7 @@ public class CardInfoService : ICardInfoService {
                 CardInfo? info = await FetchExactNameAsync(name);
 
                 if (info is not null) {
-                    resolved[name] = WithCatalogMembership(info, catalog);
+                    resolved[name] = WithCatalogMembership(info);
                 }
             }
 
@@ -416,21 +555,28 @@ public class CardInfoService : ICardInfoService {
             }
         }
 
-        return document.Cards
+        CardInfo[] cards = document.Cards
             .Select(card => document.Version == 1 ? card with { ResolvedArchetypes = null } : card)
             .OrderBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(card => card.Name, StringComparer.Ordinal)
             .ThenBy(card => card.Id)
             .ToArray();
+        _catalogIndex = new(cards);
+
+        return cards;
     }
 
-    private static async Task<byte[]> ReadCatalogBytesAsync(Stream stream) {
+    private static async Task<byte[]> ReadCatalogBytesAsync(
+        Stream stream,
+        int maximumBytes = MaximumCatalogBytes,
+        CancellationToken cancellationToken = default
+    ) {
         using MemoryStream buffer = new();
         byte[] chunk = new byte[81_920];
         int read;
 
-        while ((read = await stream.ReadAsync(chunk)) > 0) {
-            if (buffer.Length + read > MaximumCatalogBytes) {
+        while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0) {
+            if (buffer.Length + read > maximumBytes) {
                 throw new InvalidDataException("The local card catalog exceeds the supported size.");
             }
 

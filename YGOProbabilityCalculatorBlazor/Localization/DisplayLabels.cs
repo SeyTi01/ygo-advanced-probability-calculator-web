@@ -1,14 +1,19 @@
 using System.Globalization;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
+using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Localization;
 
 public static class DisplayLabels {
-    // CardInfo is verified catalog data. Card.Name has no authorship provenance:
-    // even an exact English-name match is insufficient permission to replace it.
-    public static string Card(CardInfo info) => Optional($"Cards.{CardEffectId(info)}.Name", info.Name);
-    public static string Card(Card card) => card.Name ?? "";
+    public static string Color(string name) => Optional("Color." + name, name);
+
+    // Localized labels are presentation only; stored names are never rewritten.
+    public static string Card(CardInfo info, string? localizedName = null) =>
+        Optional($"Cards.{CardEffectId(info)}.Name", localizedName ?? info.Name);
+    public static string Card(Card card, string? localizedName = null) => localizedName ?? card.Name ?? "";
+    public static string Card(Card card, ICardInfoService service) => Card(card, service.GetLocalizedCardName(card));
+    public static string Card(CardInfo card, ICardInfoService service) => Card(card, service.GetLocalizedCardName(card));
 
     public static string Category(CategoryBase category) {
         if (category.Source != CategorySource.Metadata) { return category.Name; }

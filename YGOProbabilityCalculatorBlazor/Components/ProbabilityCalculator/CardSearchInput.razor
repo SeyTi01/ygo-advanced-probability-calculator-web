@@ -6,7 +6,7 @@
 
 <div class="card-name-field">
     <input @ref="_input" id="@Id" aria-label="@Label" placeholder="@Placeholder" class="form-control"
-           value="@Value"
+           value="@(_inputDraft ?? Value)"
            role="combobox" aria-autocomplete="list" aria-haspopup="listbox"
            aria-expanded="@(_searchOpen && _searchResults.Length > 0)"
            aria-controls="@ResultsId"
@@ -33,7 +33,7 @@
                     role="option" aria-selected="@(currentResultIndex == _activeSuggestionIndex ? "true" : "false")"
                     @onmousedown:preventDefault="true"
                     @onclick="() => SelectCard(result)">
-                    @result.Name
+                    @DisplayLabels.Card(result, CardInfoService)
                 </li>
             }
         </ul>
@@ -58,6 +58,8 @@
     private ElementReference _input;
     private CardInfo[] _searchResults = [];
     private string _searchQuery = string.Empty;
+    private string? _inputDraft;
+    private string? _draftIdentity;
     private string? _searchError;
     private int _activeSuggestionIndex = -1;
     private long _searchRequestVersion;
@@ -72,7 +74,8 @@
 
     private async Task SearchCards(ChangeEventArgs args) {
         string query = args.Value?.ToString() ?? string.Empty;
-        Value = _searchQuery = query;
+        _inputDraft = query;
+        _searchQuery = query;
         _searchOpen = true;
         _activeSuggestionIndex = -1;
         _searchResults = [];
@@ -95,6 +98,7 @@
     }
 
     private Task CloseSearch(FocusEventArgs args) {
+        _inputDraft = null;
         _searchOpen = false;
         _searchRequestVersion++;
         _activeSuggestionIndex = -1;
@@ -182,6 +186,7 @@
         }
 
         _searchRequestVersion++;
+        _inputDraft = null;
         _searchOpen = false;
         _catalogLoading = false;
         _searchError = null;
@@ -196,6 +201,13 @@
         await CloseSearch(new FocusEventArgs());
         await _input.FocusAsync();
         StateHasChanged();
+    }
+
+    protected override void OnParametersSet() {
+        if (_draftIdentity != Identity) {
+            _inputDraft = null;
+            _draftIdentity = Identity;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

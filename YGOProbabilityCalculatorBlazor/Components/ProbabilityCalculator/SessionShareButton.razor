@@ -5,7 +5,7 @@
 @implements IDisposable
 
 <button type="button" class="btn @(Compact ? "btn-outline-secondary session-share-compact" : "btn-secondary") d-inline-flex align-items-center gap-2" aria-label="@(UiText.Get("Ui.CopyShareLink"))" title="@(UiText.Get("Ui.CopyALinkToTheAcceptedSession"))" @onclick="CopyAsync">
-    <span class="share-icon" aria-hidden="true">@(_copied ? "✓" : "↗")</span><span>@(Compact ? "Share" : UiText.Get("Ui.CopyShareLink"))</span>
+    <span class="share-icon" aria-hidden="true">@(_copied ? "✓" : "↗")</span><span>@(Compact ? UiText.Get("Ui.Share") : UiText.Get("Ui.CopyShareLink"))</span>
 </button>
 @if (_copied) {
     <span class="visually-hidden" role="status">@(UiText.Get("Ui.ShareLinkCopied"))</span>

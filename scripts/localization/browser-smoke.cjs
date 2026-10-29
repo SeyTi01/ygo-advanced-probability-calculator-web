@@ -67,6 +67,7 @@ async function main() {
         const transfer = await page.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
         const productionRequests = await page.evaluate(() => performance.getEntriesByType('resource').map(item => item.name));
         assert.equal(productionRequests.some(url => /\/(fr|de)\/.*resources/.test(url)), false);
+        assert.equal(productionRequests.some(url => /card-names\./.test(url)), false);
         console.log(`Production English first visit encoded resource bodies: ${transfer} bytes.`);
         await usable(page, page.locator('#theme-preference'));
         await context.close();

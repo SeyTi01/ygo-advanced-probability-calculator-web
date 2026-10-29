@@ -11,6 +11,7 @@
 @inject IBackgroundCalculator _backgroundCalculator
 @inject IJSRuntime SessionLoadingJS
 
+<LocalizedCardNames Cards="_cards" OnChanged="revision => _cardDisplayNamesRevision = revision" />
 <div class="calculator-workspace" @oninput="ObserveWorkspaceEdit">
     <div class="session-controls">
         <div class="session-toolbar">
@@ -96,7 +97,7 @@
         <SessionRecovery @ref="_sharingRecovery" Session="CaptureSession()" ReplacementVersion="_autosaveReplacementVersion" EditVersion="_workspaceEditVersion" ApplyRecovery="ApplyRecoveryAsync" ApplyRecoveryPayload="ApplyRecoveryPayloadAsync" Suspended="@(_sharedFragment is not null || LanguageWorkspace?.Restoring == true)" OnInspectionComplete="RecoveryInspected" />
     }
 
-    <CardListEditor @ref="_cardListEditor"
+    <CardListEditor CardDisplayNamesRevision="_cardDisplayNamesRevision" @ref="_cardListEditor"
         LoadingSessionVersion="_loadingSessionVersion"
         Cards="_cards"
         Combos="_combos"
@@ -329,6 +330,7 @@
 </div>
 
 @code {
+    private long _cardDisplayNamesRevision;
     private ActionMenu? _importMenu;
     private ActionMenu? _workspaceMenu;
 

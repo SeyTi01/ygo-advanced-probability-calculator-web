@@ -1,0 +1,60 @@
+@using YGOProbabilityCalculatorBlazor.Models
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+@implements IDisposable
+@inject ICardInfoService CardInfoService
+
+@code {
+    [Parameter] public IReadOnlyList<Card> Cards { get; set; } = [];
+    [Parameter] public EventCallback<long> OnChanged { get; set; }
+    private Dictionary<(string Id, int? ExternalId, string? Name), string> _names = new();
+    private long _requestVersion;
+    private long _loadedVersion;
+    private long _revision;
+    private string? _locale;
+    private Card[] _requestedCards = [];
+    private Task _preparation = Task.CompletedTask;
+
+    protected override void OnParametersSet() {
+        string locale = System.Globalization.CultureInfo.CurrentUICulture.Name;
+        if (_locale == locale && Cards.Count == _requestedCards.Length
+            && Cards.Select(Identity).SequenceEqual(_requestedCards.Select(Identity))) {
+            return;
+        }
+
+        _locale = locale;
+        _requestedCards = Cards.ToArray();
+        _requestVersion++;
+        // Begin during parameter delivery, before rows render. Warm labels are
+        // available immediately; cold completion still refreshes after rendering.
+        _preparation = CardInfoService.EnsureLocalizedCardNamesAsync(_requestedCards);
+    }
+
+    private static (string Id, int? ExternalId, string? Name) Identity(Card card) =>
+        (card.Id, card.ExternalCardId, card.Name);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_loadedVersion == _requestVersion) { return; }
+        long version = _loadedVersion = _requestVersion;
+        Card[] cards = _requestedCards;
+        await _preparation;
+        if (version != _requestVersion) {
+            return;
+        }
+
+        Dictionary<(string Id, int? ExternalId, string? Name), string> names = new();
+        foreach (Card card in cards) {
+            if (CardInfoService.GetLocalizedCardName(card) is { } label) {
+                names[Identity(card)] = label;
+            }
+        }
+
+        if (names.Count != _names.Count || names.Any(entry => !_names.TryGetValue(entry.Key, out string? previous) || previous != entry.Value)) {
+            _names = names;
+            // Refresh through the existing parent render path after editors receive
+            // their current models, preserving their draft and key lifecycle.
+            await OnChanged.InvokeAsync(++_revision);
+        }
+    }
+
+    public void Dispose() => _requestVersion++;
+}

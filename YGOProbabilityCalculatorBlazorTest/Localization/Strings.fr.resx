@@ -25,4 +25,6 @@
   <data name="NumericProperty.Level" xml:space="preserve"><value>⟦Level⟧</value></data>
   <!-- Deliberately malformed to exercise runtime fallback. -->
   <data name="Move.ToPosition" xml:space="preserve"><value>⟦Move {1}⟧</value></data>
+  <data name="Help.GettingStarted.Question" xml:space="preserve"><value>⟦Getting started⟧</value></data>
+  <data name="Help.Properties.RolesAndProperties" xml:space="preserve"><value>⟦Use {1} and {0}; &lt;pseudo&gt;⟧</value></data>
 </root>

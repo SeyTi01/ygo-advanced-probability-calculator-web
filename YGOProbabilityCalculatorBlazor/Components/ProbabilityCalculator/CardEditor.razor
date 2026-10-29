@@ -1,3 +1,4 @@
+@inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 @using YGOProbabilityCalculatorBlazor.Services.DeckImport
@@ -57,7 +58,7 @@
                 <div class="card-identity-fields">
                     <div class="card-name-field">
                         <label for="cardName@(Index)" class="form-label">@(UiText.Get("Ui.Name"))</label>
-                        <CardSearchInput Id="@($"cardName{Index}")" Identity="@Card.Id" Value="@(Card.Name ?? string.Empty)"
+                        <CardSearchInput Id="@($"cardName{Index}")" Identity="@Card.Id" Value="@DisplayLabels.Card(Card, CardInfoService)"
                                          ResultsId="@($"cardSearchResults{Index}")" OptionPrefix="@($"cardSearchOption{Index}")"
                                          OnInput="RenameFromSearch" OnSelected="SelectCard" OnFinished="OnNameEditFinished" />
                     </div>
@@ -155,6 +156,7 @@
 </div>
 
 @code {
+    [Parameter] public long CardDisplayNamesRevision { get; set; }
     [Parameter] public IReadOnlyList<Card> Deck { get; set; } = [];
     [Parameter] public int Index { get; set; }
     [Parameter] public int Count { get; set; }
@@ -228,10 +230,11 @@
         IReadOnlyList<CategoryBase> CategoryBases,
         IReadOnlySet<string> RelevantMetadataCategoryIdentities,
         IReadOnlyDictionary<string, int> CategoryColorIndices,
-        CategoryRenameNotice? CategoryRename
+        CategoryRenameNotice? CategoryRename,
+        long CardDisplayNamesRevision
     );
 
-    private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? UiText.Format("Ui.Card0", Index + 1) : Card.Name;
+    private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? UiText.Format("Ui.Card0", Index + 1) : DisplayLabels.Card(Card, CardInfoService);
     private DrawEffectPresentation DrawPresentation =>
         DrawEffectPresentation.ForCard(Card, DrawEffectsEnabled);
     private Task ToggleCard() {
@@ -339,7 +342,8 @@
             CategoryBases,
             RelevantMetadataCategoryIdentities,
             CategoryColorIndices,
-            CategoryRename
+            CategoryRename,
+            CardDisplayNamesRevision
         );
         bool colorsUnchanged = CategoryColorIndices.Count == _previousCategoryColors.Count
             && CategoryColorIndices.All(color => _previousCategoryColors.TryGetValue(color.Key, out int previous) && previous == color.Value);

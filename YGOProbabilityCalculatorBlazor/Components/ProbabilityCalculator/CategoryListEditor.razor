@@ -96,8 +96,8 @@
                     @foreach (CategoryColorOption color in CategoryColorPalette.Options) {
                         bool isSelected = SelectedColorIndex(category) == color.Index;
                         <button type="button" class="category-color-swatch @color.CssClass"
-                                aria-label="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), color.Name))"
-                                title="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), color.Name))"
+                                aria-label="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), DisplayLabels.Color(color.Name)))"
+                                title="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), DisplayLabels.Color(color.Name)))"
                                 aria-pressed="@(isSelected ? "true" : "false")"
                                 @onclick="() => ChangeCategoryColor(category, color.Index)">
                             @if (isSelected) {
