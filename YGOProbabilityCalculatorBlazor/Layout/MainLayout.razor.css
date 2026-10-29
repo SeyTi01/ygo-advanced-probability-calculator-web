@@ -43,7 +43,6 @@ main {
 .theme-select, .language-select {
     flex: 0 0 auto;
     width: 6.5rem;
-    min-height: 2.75rem;
 }
 
 .top-row ::deep a, .top-row ::deep .btn-link {
@@ -85,7 +84,7 @@ article {
         gap: 0.5rem;
     }
 
-    .theme-select, .top-row a {
+    .theme-select, .language-select, .top-row a {
         min-height: 2.75rem;
     }
 }
