@@ -90,7 +90,7 @@ public sealed class AdaptiveFastRouteTest {
         }) {
             JsonObject corrupt = response.DeepClone().AsObject();
             corrupt["Result"]!["Contract"]![field] = value;
-            Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(corrupt.ToJsonString(), CalculationModel.Fast), field);
+            Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(corrupt.ToJsonString(), CalculationModel.Fast), field);
         }
     }
 

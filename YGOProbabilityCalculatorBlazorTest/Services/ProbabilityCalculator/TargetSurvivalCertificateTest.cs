@@ -201,7 +201,7 @@ public sealed class TargetSurvivalCertificateTest {
         response["Result"]!["SearchAvailability"]!["Total"]![field] = new JsonObject {
             ["Numerator"] = numerator, ["Denominator"] = denominator
         };
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(response.ToJsonString()));
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response.ToJsonString()));
     }
 
     [Test]

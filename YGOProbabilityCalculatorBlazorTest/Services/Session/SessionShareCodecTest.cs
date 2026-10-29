@@ -89,21 +89,26 @@ public class SessionShareCodecTest {
         Assert.That(loaded.Combos[0].Cards[0].MaxCount, Is.Zero);
     }
 
-    [TestCase("#ygo-session=v2.abc")]
-    [TestCase("#ygo-session=v1.%41")]
-    [TestCase("#ygo-session=v1.!")]
-    [TestCase("#ygo-session=v1.a")]
-    [TestCase("#ygo-session=v1.")]
-    public void RejectsUnsupportedMalformedAndPercentEncodedFragments(string fragment) =>
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(fragment));
+    [TestCase("#ygo-session=v2.abc", SessionShareFailureReason.UnsupportedVersion)]
+    [TestCase("#ygo-session=v1.%41", SessionShareFailureReason.InvalidPayload)]
+    [TestCase("#ygo-session=v1.!", SessionShareFailureReason.InvalidPayload)]
+    [TestCase("#ygo-session=v1.a", SessionShareFailureReason.InvalidPayload)]
+    [TestCase("#ygo-session=v1.", SessionShareFailureReason.InvalidPayload)]
+    public void RejectsUnsupportedMalformedAndPercentEncodedFragments(string fragment, SessionShareFailureReason reason) {
+        SessionShareException exception = Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(fragment))!;
+        Assert.That(exception.Reason, Is.EqualTo(reason));
+    }
 
     [Test]
     public void RejectsCorruptionTruncationOversizedEncodingAndInvalidUtf8() {
         string fragment = Payload("{\"HandSize\":5}");
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(fragment[..^3]));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(fragment[..^8] + "AAAAAAAA"));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(SessionShareCodec.Prefix + new string('a', SessionShareCodec.MaxUrlLength)));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(Payload([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x31, 0x7d])));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(fragment[..^3]));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(fragment[..^8] + "AAAAAAAA"));
+        SessionShareException oversized = Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(SessionShareCodec.Prefix + new string('a', SessionShareCodec.MaxUrlLength)))!;
+        Assert.That(oversized.Reason, Is.EqualTo(SessionShareFailureReason.TooLarge));
+        SessionShareException invalidUtf8 = Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(Payload([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x31, 0x7d])))!;
+        Assert.That(invalidUtf8.Reason, Is.EqualTo(SessionShareFailureReason.InvalidPayload));
+        Assert.That(invalidUtf8.InnerException, Is.TypeOf<DecoderFallbackException>());
     }
 
     [Test]
@@ -111,9 +116,9 @@ public class SessionShareCodecTest {
         byte[] bomb = Encoding.UTF8.GetBytes("{\"x\":\"" + new string('a', SessionShareCodec.MaxJsonBytes * 8) + "\"}");
         string fragment = Payload(bomb);
         Assert.That(fragment.Length, Is.LessThan(SessionShareCodec.MaxUrlLength));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(fragment));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(Payload(bomb, 32)));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(Payload(bomb, 32, forgeTrailer: true)));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(fragment));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(Payload(bomb, 32)));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(Payload(bomb, 32, forgeTrailer: true)));
     }
 
     [TestCase("[]")]
@@ -122,13 +127,13 @@ public class SessionShareCodecTest {
     [TestCase("{\"Combos\":[{\"Categories\":[{\"BaseCategory\":null}]}]}")]
     [TestCase("{\"Cards\":[{\"Categories\":[],\"Copies\":2147483647}]}")]
     [TestCase("{\"SchemaVersion\":2,\"schemaversion\":2}")]
-    public void RejectsInvalidStructures(string json) => Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(Payload(json)));
+    public void RejectsInvalidStructures(string json) => Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(Payload(json)));
 
     [Test]
     public void RejectsExcessiveDepthStringsAndCollections() {
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(Payload("{\"x\":" + new string('[', 33) + "0" + new string(']', 33) + "}")));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(Payload("{\"x\":\"" + new string('a', 4097) + "\"}")));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.Decode(Payload("{\"Cards\":[" + string.Join(',', Enumerable.Repeat("{}", 2049)) + "]}")));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(Payload("{\"x\":" + new string('[', 33) + "0" + new string(']', 33) + "}")));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(Payload("{\"x\":\"" + new string('a', 4097) + "\"}")));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.Decode(Payload("{\"Cards\":[" + string.Join(',', Enumerable.Repeat("{}", 2049)) + "]}")));
     }
 
     [Test]
@@ -156,7 +161,7 @@ public class SessionShareCodecTest {
         string fragment = Fragment(big);
         string baseAtLimit = "https://example.test/" + new string('a', SessionShareCodec.MaxUrlLength - fragment.Length - "https://example.test/".Length);
         Assert.That(SessionShareCodec.CreateLink(baseAtLimit, _sessions.SerializeSession(larger)).Length, Is.EqualTo(SessionShareCodec.MaxUrlLength));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.CreateLink(baseAtLimit + "a", _sessions.SerializeSession(larger)));
-        Assert.Throws<InvalidOperationException>(() => SessionShareCodec.CreateLink("https://example.test/", new string('x', SessionShareCodec.MaxJsonBytes + 1)));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.CreateLink(baseAtLimit + "a", _sessions.SerializeSession(larger)));
+        Assert.Throws<SessionShareException>(() => SessionShareCodec.CreateLink("https://example.test/", new string('x', SessionShareCodec.MaxJsonBytes + 1)));
     }
 }
