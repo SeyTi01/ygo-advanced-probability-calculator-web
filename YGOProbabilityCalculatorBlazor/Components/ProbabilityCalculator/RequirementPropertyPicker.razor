@@ -1,3 +1,4 @@
+@inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Models
 @using Microsoft.AspNetCore.Components.Web
 <div class="requirement-property-picker">
@@ -6,7 +7,7 @@
         <option value="">@(UiText.Get("Ui.Choose"))</option>
         @if (AllowAny) { <option value="any">@(UiText.Get("Ui.Anycardclearfilter"))</option> }
         @if (Cards.Count > 0) {
-            <optgroup label="@(UiText.Get("Ui.Cards"))">@foreach (Card card in CardOrdering.Alphabetize(Cards)) { <option value="@($"card:{card.Id}")">@(CardLabel?.Invoke(card) ?? card.Name)</option> }</optgroup>
+            <optgroup label="@(UiText.Get("Ui.Cards"))">@foreach (Card card in CardOrdering.Alphabetize(Cards)) { <option value="@($"card:{card.Id}")">@(CardLabel?.Invoke(card) ?? DisplayLabels.Card(card, CardInfoService))</option> }</optgroup>
         }
         @if (Value.StartsWith("card:", StringComparison.Ordinal) && !Cards.Any(card => Value == $"card:{card.Id}")) { <option value="@Value">@(UiText.Get("Ui.MissingCard"))</option> }
         @if (Selectable.Any(category => category.Source == CategorySource.User)) {

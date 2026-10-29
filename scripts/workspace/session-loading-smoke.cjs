@@ -10,7 +10,7 @@ async function main() {
     const { server, url } = await serve(process.argv[2]);
     const browser = await chromium.launch(launchOptions()).catch(error => { server.close(); throw error; });
     try {
-        const page = await browser.newPage({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' });
+        const page = await browser.newPage({ viewport: { width: 390, height: 900 }, locale: 'en-US', reducedMotion: 'reduce' });
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(url);
