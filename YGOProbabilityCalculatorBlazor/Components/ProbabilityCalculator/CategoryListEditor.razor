@@ -172,6 +172,11 @@
     }
 
     protected override void OnParametersSet() {
+        HashSet<string> names = CategoryBases.Where(category => category.Source == CategorySource.User)
+            .Select(category => category.Name).ToHashSet(StringComparer.Ordinal);
+        foreach (string removed in _categoryNameButtonReferences.Keys.Where(name => !names.Contains(name)).ToArray()) {
+            _categoryNameButtonReferences.Remove(removed);
+        }
         if (_ruleCategory is not null && !CategoryBases.Any(category => ReferenceEquals(category, _ruleCategory))) {
             _ruleCategory = null;
         }

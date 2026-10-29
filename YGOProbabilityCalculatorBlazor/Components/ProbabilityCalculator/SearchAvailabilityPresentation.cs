@@ -33,7 +33,7 @@ public static class SearchAvailabilityPresentation {
         return RationalPercentage.FormatOutward(numerator, denominator, roundUp, CultureInfo.CurrentCulture);
     }
 
-    public static IEnumerable<SearchAvailabilityInterval> Rows(SearchAvailabilityCertificate certificate) =>
+    private static IEnumerable<SearchAvailabilityInterval> Rows(SearchAvailabilityCertificate certificate) =>
         certificate.Total is { } total ? new[] { total }.Concat(certificate.Combos).Concat(certificate.Groups) : [];
 
     public static IEnumerable<string> Export(SearchAvailabilityCertificate certificate) {

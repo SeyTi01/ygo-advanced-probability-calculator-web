@@ -1,9 +1,9 @@
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
-namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
+namespace YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 
-public sealed record CuratedDrawEffectPreset(
+internal sealed record CuratedDrawEffectPreset(
     int CardId,
     string Name,
     int DrawCount,
@@ -19,9 +19,9 @@ public sealed record CuratedDrawEffectPreset(
     bool BlocksLaterDraws = false
 );
 
-// Compatibility view for existing callers. Definitions live only in the registry.
-public static class CuratedDrawEffectPresets {
-    public static IReadOnlyList<CategoryBase> FilterProperties => CardEffectRegistry.Default.FilterProperties;
+// Legacy fixture support for existing assertions and benchmarks. Production
+// consumers use the registry directly; maintained definitions still live there.
+internal static class CuratedDrawEffectPresets {
     public static IReadOnlyList<CuratedDrawEffectPreset> All { get; } = Array.AsReadOnly(
         CardEffectRegistry.Default.All.Where(effect => effect.Plan.DrawCount is not null).Select(ToPreset).ToArray());
 

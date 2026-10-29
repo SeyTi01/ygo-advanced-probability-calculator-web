@@ -2,6 +2,7 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
+  <data name="Ui.RequirementOrGroupExpressionGroupNested" xml:space="preserve"><value>⟦Translated class tokens must not control layout⟧</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve"><value>⟦Search cards⟧</value></data>
   <data name="Combo.NoRequirements" xml:space="preserve"><value>⟦No requirements⟧</value></data>
   <data name="Requirement.MaximumAny" xml:space="preserve"><value>⟦Unbounded maximum⟧</value></data>

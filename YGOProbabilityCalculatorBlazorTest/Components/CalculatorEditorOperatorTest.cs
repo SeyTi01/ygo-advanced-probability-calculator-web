@@ -11,6 +11,20 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [TestFixture]
 public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
     [Test]
+    public void OperatorAvailabilityPreservesSelectorConstructionLimits() {
+        ComboAlternative[] operands = Enumerable.Range(0, CardSelector.MaximumCategoryReferences + 1)
+            .Select(index => ComboAlternative.For(new ComboCategory(new CategoryBase($"Property {index}"), 1, 1)))
+            .ToArray();
+        Combo original = new([], alternativeGroups: [new(operands)]);
+        ComboRequirementPosition[] positions = [new(ComboRequirementKind.Group, 0)];
+        ComboGroupEdit edit = new("AND", operands);
+
+        Assert.That(ComboOperatorEditing.CanApply(original, positions, edit), Is.False);
+        Assert.That(() => ComboOperatorEditing.Apply(original, positions, edit), Throws.ArgumentException);
+        Assert.That(original.AlternativeGroups.Single().Alternatives, Is.EqualTo(operands));
+    }
+
+    [Test]
     public async Task ReversibleConnectorsCommitImmediatelyAndKeepSameCardMeaning() {
         List<Card> deck = [new([a, b], 1, "Both"), new([a], 1, "A only"), new([], 1, "Neither")];
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {

@@ -161,7 +161,7 @@
             @if (_draft.MinimumHandSize > 0) {
                 <div class="form-text">@(UiText.Format("Effect.PreservedHandSize", _draft.MinimumHandSize))</div>
             }
-            @if (_draft.Search?.Modes is { } modes) {
+            @if (_draft.Search?.Modes is not null) {
                 <div class="form-text">@DrawEffectPresentation.DescribePlan(_draft.EffectPlan, CategoryBases)</div>
             }
             else if (_draft.Search is { } draftSearch) {

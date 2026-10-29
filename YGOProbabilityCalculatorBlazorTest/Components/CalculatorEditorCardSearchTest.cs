@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using System.Net;
 using System.Text;
@@ -822,7 +823,6 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     }
 
     private sealed class EmptyLocalStorage : ILocalStorageService {
-        public Task<T?> GetItemAsync<T>(string key) => Task.FromResult<T?>(default);
         public Task<string?> GetRawItemAsync(string key) => Task.FromResult<string?>(null);
         public Task SetItemAsync<T>(string key, T value) => Task.CompletedTask;
     }

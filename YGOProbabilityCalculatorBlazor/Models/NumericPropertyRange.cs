@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace YGOProbabilityCalculatorBlazor.Models;
@@ -32,7 +33,7 @@ public sealed record NumericPropertyRange {
     public static CardSelector SelectorFor(CategoryBase category) => category.MetadataKey?.StartsWith("numeric:", StringComparison.Ordinal) == true
         && TryFromIdentity(category.Identity, out NumericPropertyRange? range) ? range.ToSelector() : CardSelector.For(category);
 
-    public static bool TryFromSelector(CardSelector selector, out NumericPropertyRange? range) {
+    public static bool TryFromSelector(CardSelector selector, [NotNullWhen(true)] out NumericPropertyRange? range) {
         range = selector.NumericRange;
         if (range is not null) { return true; }
         if (selector.Kind == CardSelectorKind.LevelAtLeast) {
@@ -42,7 +43,7 @@ public sealed record NumericPropertyRange {
         return selector.Kind == CardSelectorKind.Category && TryFromIdentity(selector.CategoryIdentities[0], out range);
     }
 
-    public static bool TryFromIdentity(string identity, out NumericPropertyRange? range) {
+    public static bool TryFromIdentity(string identity, [NotNullWhen(true)] out NumericPropertyRange? range) {
         range = null;
         if (!identity.StartsWith("metadata:", StringComparison.Ordinal)) { return false; }
         string[] parts = identity[9..].Split(':');

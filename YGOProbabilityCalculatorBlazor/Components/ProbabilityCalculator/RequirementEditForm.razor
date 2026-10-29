@@ -39,13 +39,13 @@
     [Parameter] public EventCallback OnAddAlternative { get; set; }
     [Parameter] public EventCallback OnAddProperty { get; set; }
     [Parameter] public EventCallback OnRemoveRequirement { get; set; }
-    public string Title => Mode switch {
+    private string Title => Mode switch {
         "AND" => UiText.Get("Ui.AnotherPropertySameCard"),
         "OR" => UiText.Get("Ui.AddAnAlternativeOR"),
         "add" => UiText.Get("Ui.AddRequirement.2d4936b2"),
         _ => UiText.Get("Ui.EditRequirement")
     };
-    public string SubmitLabel => UpdateExisting ? UiText.Get("Ui.UpdateRequirement") : Mode switch {
+    private string SubmitLabel => UpdateExisting ? UiText.Get("Ui.UpdateRequirement") : Mode switch {
         "AND" => UiText.Get("Ui.AddProperty"),
         "OR" => UiText.Get("Ui.AddAlternative"),
         "add" => UiText.Get("Ui.Add"),

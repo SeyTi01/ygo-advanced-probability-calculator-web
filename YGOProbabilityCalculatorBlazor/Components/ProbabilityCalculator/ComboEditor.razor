@@ -277,15 +277,6 @@
     private IEnumerable<CategoryBase> SelectableCategories => AndScope && _andSeed is { } seed
         ? _availableCategories.Where(category => !seed.Selector.CategoryIdentities.Contains(category.Identity, StringComparer.Ordinal))
         : _availableCategories;
-    private IEnumerable<CategoryBase> SelectableUserCategories => SelectableCategories
-        .Where(static category => category.Source == CategorySource.User);
-    private IEnumerable<CategoryBase> SelectableRelevantProperties => SelectableCategories
-        .Where(category => category.Source == CategorySource.Metadata && _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity));
-    private IEnumerable<CategoryBase> SelectableCommonProperties => SelectableCategories
-        .Where(category => CategoryCatalog.IsCommonMetadata(category) && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity));
-    private string AlternativeLabel(ComboAlternative alternative) =>
-        (alternative.Category is { } value ? DisplayLabels.Requirement(value) : null) ?? UiText.Format("Requirement.Card", CardDisplayName(alternative.Card!.CardId));
-
     private string AlternativeRange(ComboAlternative alternative) => alternative.Category is { } category
         ? RequirementRangeFormatter.Format(category.MinCount, category.MaxCount, category.MaximumMode)
         : RequirementRangeFormatter.Format(alternative.Card!.MinCount, alternative.Card.MaxCount, alternative.Card.MaximumMode);
@@ -466,9 +457,9 @@
             maximum,
             MaximumMode
         );
-        Combo updated = Combo;
+        Combo updated;
 
-        if (_andGroup is ComboAlternativeGroup group && _andGroupIndex is int groupIndex && _andAlternativeIndex is int alternativeIndex) {
+        if (_andGroup is not null && _andGroupIndex is int groupIndex && _andAlternativeIndex is int alternativeIndex) {
             updated = ComboRequirementEditing.ReplaceAlternative(Combo, groupIndex, alternativeIndex, ComboAlternative.For(updatedRequirement));
         }
         else if (_andSeedIndex is int seedIndex) {
@@ -623,7 +614,6 @@
         : Combo.Categories.Any(category => category.CategoryBases.Count == 1 && category.BaseCategory.Identity == _selectedCategory);
 
     private int ConstraintCount => Combo.RequirementCount;
-    private IEnumerable<Card> AlphabeticalCards => CardOrdering.Alphabetize(Cards);
     private int HiddenHeaderCategoriesCount => Math.Max(0, ConstraintCount - MaxHeaderBadges);
 
     private RequirementMaximumMode MaximumMode => string.IsNullOrWhiteSpace(_maxCount)

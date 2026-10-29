@@ -1,5 +1,5 @@
 @using YGOProbabilityCalculatorBlazor.Models
-@using YGOProbabilityCalculatorBlazor.Services.DeckImport
+@using YGOProbabilityCalculatorBlazor.Services.CardEffects
 @inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 
 <div class="quick-add mb-3">
@@ -28,7 +28,7 @@
     }
 
     private Task AddCatalogCard(CardInfo card) => Add(
-        CuratedDrawEffectPresets.CreateImportedCard(card, 1, card.Id),
+        CardEffectRegistry.Default.CreateImportedCard(card, 1, card.Id),
         DisplayLabels.Card(card, CardInfoService)
     );
 
