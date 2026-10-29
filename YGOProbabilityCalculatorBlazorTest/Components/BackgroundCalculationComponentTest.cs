@@ -65,6 +65,24 @@ public class BackgroundCalculationComponentTest {
     private Task Progress(int index, ProbabilityCalculationResult result) => _cut.InvokeAsync(() => _calculator.Progress[index](result));
 
     [Test]
+    public async Task DuplicateAndCompletedRunProgressCannotReplaceAcceptedResults() {
+        Task calculation = Start();
+        ProbabilityCalculationResult first = PreliminaryResult();
+        await Progress(0, first);
+        ProbabilityCalculationResult accepted = _cut.FindComponent<ProbabilityResultExport>().Instance.Result;
+        await Progress(0, Result("duplicate progress"));
+        Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.Result, Is.SameAs(accepted));
+
+        _calculator.Jobs[0].SetResult(Result("completed result"));
+        await calculation;
+        Assert.That(_calculator.Tokens[0].IsCancellationRequested, Is.True);
+        await Progress(0, Result("late progress"));
+        Assert.That(_cut.Markup, Does.Contain("completed result").And.Not.Contain("late progress"));
+        Assert.That(_cut.FindComponent<ProbabilityResultExport>().Instance.IsCalculating, Is.False);
+        Assert.That(_cut.FindAll(".probability-result-status"), Is.Empty);
+    }
+
+    [Test]
     public async Task PreliminaryIsVisibleBeforeFinalAndKeepsPinExportAndRetryDisabled() {
         Task task = Start();
         Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
@@ -212,9 +230,10 @@ public class BackgroundCalculationComponentTest {
         Task current = Start();
         _calculator.Jobs[2].SetResult(Result("current"));
         await current;
-        PinnedResultSnapshot currentSnapshot = (PinnedResultSnapshot)typeof(ProbabilityCalculatorComponent)
-            .GetField("_acceptedResultSnapshot", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+        CalculationResultState calculation = (CalculationResultState)typeof(ProbabilityCalculatorComponent)
+            .GetField("_calculation", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .GetValue(_cut.Instance)!;
+        PinnedResultSnapshot currentSnapshot = calculation.Snapshot!;
         Assert.That(currentSnapshot, Is.Not.SameAs(pin));
         Assert.That(_cut.FindAll(".result-priority-difference, .comparison-model-difference, .result-difference, .result-row-comparison, .pinned-match"), Is.Empty);
     }

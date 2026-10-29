@@ -44,7 +44,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         || _combos.Count > 0
         || _comboGroups.Count > 0
         || _handSize != 5
-        || _calculationResult is not null
+        || _calculation.Result is not null
         || _pinnedResult is not null
         || _isYdkeImportOpen
         || _ydkeCode.Length > 0

@@ -162,13 +162,13 @@
             <div class="calculate-action">
                 <button type="button"
                         @ref="_calculationAction"
-                        class="btn btn-lg w-100 @(_isCalculating ? "btn-outline-secondary" : "btn-primary")"
-                        aria-label="@(_isCalculating ? CalculationCancelLabel : null)"
-                        title="@(_isCalculating ? CalculationCancelLabel : null)"
-                        aria-busy="@(_isCalculating ? "true" : "false")"
+                        class="btn btn-lg w-100 @(_calculation.IsCalculating ? "btn-outline-secondary" : "btn-primary")"
+                        aria-label="@(_calculation.IsCalculating ? CalculationCancelLabel : null)"
+                        title="@(_calculation.IsCalculating ? CalculationCancelLabel : null)"
+                        aria-busy="@(_calculation.IsCalculating ? "true" : "false")"
                         @onclick="HandleCalculationAction"
-                        disabled="@(!_isCalculating && !CanCalculate)">
-                    @if (_isCalculating) {
+                        disabled="@(!_calculation.IsCalculating && !CanCalculate)">
+                    @if (_calculation.IsCalculating) {
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                         <span class="ms-1">@(UiText.Get("Ui.Cancel"))</span>
                     }
@@ -211,7 +211,7 @@
         }
 
         <div class="@(_pinnedResult is null ? null : "result-panels")">
-        @if (_calculationResult is { } result) {
+        @if (_calculation.Result is { } result) {
             <section class="alert alert-primary mt-3 probability-results"
                      role="region"
                      aria-labelledby="probabilityResultsHeading">
@@ -222,9 +222,9 @@
                             <span class="probability-result-status-placeholder" aria-hidden="true">
                                 <span class="probability-result-status-chip probability-result-status-neutral">@(UiText.Get("Ui.InputsChanged"))</span>
                             </span>
-                            @if (_isPreliminary || _calculationResultIsStale) {
-                                <span class="probability-result-status probability-result-status-chip @(_isPreliminary ? "probability-result-status-preliminary" : "probability-result-status-neutral")">
-                                    @if (_isPreliminary) {
+                            @if (_calculation.IsPreliminary || _calculation.IsStale) {
+                                <span class="probability-result-status probability-result-status-chip @(_calculation.IsPreliminary ? "probability-result-status-preliminary" : "probability-result-status-neutral")">
+                                    @if (_calculation.IsPreliminary) {
                                         <span>@(UiText.Get("Ui.Preliminary"))</span>
                                     }
                                     else {
@@ -245,14 +245,14 @@
                     </button>
                     <span id="pinUnavailableReason" class="visually-hidden">@PinUnavailableReason</span>
                     <ProbabilityResultExport Result="result"
-                                             ModelDescription="@(_acceptedResultSnapshot?.Context.ModeDescription)"
-                                             HandSize="@(_acceptedResultSnapshot?.Context.HandSize ?? 0)"
-                                             IsStale="_calculationResultIsStale"
-                                             IsCalculating="_isCalculating" />
+                                             ModelDescription="@(_calculation.Snapshot?.Context.ModeDescription)"
+                                             HandSize="@(_calculation.Snapshot?.Context.HandSize ?? 0)"
+                                             IsStale="_calculation.IsStale"
+                                             IsCalculating="_calculation.IsCalculating" />
                 </div>
-                <CalculationAccuracyResult Contract="result.Contract" ModeDescription="@(_acceptedResultSnapshot?.Context.ModeDescription)" />
+                <CalculationAccuracyResult Contract="result.Contract" ModeDescription="@(_calculation.Snapshot?.Context.ModeDescription)" />
 
-                @if (_acceptedResultSnapshot is { } accepted) {
+                @if (_calculation.Snapshot is { } accepted) {
                     <p class="small text-body-secondary mb-2 result-model">@accepted.Context.Description</p>
                 }
                 <div class="combo-probability-row probability-total">
@@ -378,20 +378,14 @@
     private CalculationModel _selectedModel = CalculationModel.Fast;
     private DrawActivationPriority _drawActivationPriority = DrawActivationPriority.Default;
     private CalculationStorageTier _storageTier = CalculationStorageTier.Standard;
-    private bool _isCalculating;
-    private bool _isPreliminary;
+    private readonly CalculationResultState _calculation = new();
     private bool _deferNameEditRendering;
     private bool _isClearWorkspaceConfirmationOpen;
-    private long _calculationVersion;
-    private long _calculationRequestId;
-    private CancellationTokenSource? _calculationCancellation;
     private bool _disposed;
     private string? _errorMessage;
     private string? _importError;
     private bool _isYdkeImportOpen;
     private string _ydkeCode = string.Empty;
-    private ProbabilityCalculationResult? _calculationResult;
-    private bool _calculationResultIsStale;
 
     private int ActiveCardCount => _cards.Count(card => card.Active);
     private long ActiveCardCopies => _cards.Where(card => card.Active).Sum(card => (long)card.Copies);
@@ -457,8 +451,8 @@
     }
 
     private async Task RenameCard((int Index, Card NewCard) payload) {
-        bool visibleStatusChanged = _isCalculating || _errorMessage is not null
-            || (_calculationResult is not null && !_calculationResultIsStale);
+        bool visibleStatusChanged = _calculation.IsCalculating || _errorMessage is not null
+            || (_calculation.Result is not null && !_calculation.IsStale);
         _cards[payload.Index] = payload.NewCard;
         InvalidateCalculation(reassess: false);
 
@@ -873,24 +867,17 @@
         ReconcileCategoryColorIndices();
     }
 
-    private string CalculationCancelLabel => _isPreliminary ? UiText.Get("Ui.CancelExactUpgrade") : UiText.Get("Ui.CancelCalculation");
+    private string CalculationCancelLabel => _calculation.IsPreliminary ? UiText.Get("Ui.CancelExactUpgrade") : UiText.Get("Ui.CancelCalculation");
 
     private Task Calculate() => CalculateModel(SelectedModel);
 
     private async Task CalculateModel(CalculationModel model) {
-        if (_disposed || _isCalculating || !CanCalculate) {
+        if (_disposed || _calculation.IsCalculating || !CanCalculate) {
             return;
         }
 
-        long requestVersion = _calculationVersion;
-        long requestId = ++_calculationRequestId;
-        using CancellationTokenSource cancellation = new();
-        _calculationCancellation = cancellation;
-        bool OwnsRequest() => !_disposed && requestId == _calculationRequestId && requestVersion == _calculationVersion;
-        ProbabilityCalculationResult? preliminary = null;
+        using CalculationResultState.Run request = _calculation.Begin();
         try {
-            _isCalculating = true;
-            _isPreliminary = false;
             _errorMessage = null;
             StateHasChanged();
 
@@ -907,86 +894,51 @@
             );
             snapshot = snapshot with { AllowAutomaticExact = _fastStrategy == FastExecutionStrategy.Progressive };
             PinnedCalculationContext resultContext = CaptureResultContext(model);
-            void Accept(ProbabilityCalculationResult result) {
-                ProbabilityCalculationResult acceptedResult = result with {
-                    ComboProbabilities = result.ComboProbabilities.ToArray(),
-                    GroupProbabilities = result.GroupProbabilities?.ToArray()
-                };
-                _acceptedResultSnapshot = PinnedResultSnapshot.Capture(resultContext, acceptedResult);
-                _calculationResult = acceptedResult;
-                _calculationResultIsStale = false;
-            }
             Task PresentPreliminary(ProbabilityCalculationResult result) => InvokeAsync(() => {
-                if (OwnsRequest() && !cancellation.IsCancellationRequested && preliminary is null && model == CalculationModel.Fast) {
-                    Accept(result);
-                    preliminary = _calculationResult;
-                    _isPreliminary = true;
+                if (_calculation.TryAcceptPreliminary(request, resultContext, result)) {
                     StateHasChanged();
                 }
             });
             ProbabilityCalculationResult result = _backgroundCalculator is IProgressiveBackgroundCalculator progressive
-                ? await progressive.CalculateProgressivelyAsync(snapshot, PresentPreliminary, cancellation.Token)
-                : await _backgroundCalculator.CalculateAsync(snapshot, cancellation.Token);
-            if (OwnsRequest()) {
-                Accept(result);
-            }
+                ? await progressive.CalculateProgressivelyAsync(snapshot, PresentPreliminary, request.Token)
+                : await _backgroundCalculator.CalculateAsync(snapshot, request.Token);
+            _calculation.AcceptFinal(request, resultContext, result);
         }
         catch (OperationCanceledException) {
             // Cancellation, edits, replacement and disposal are quiet.
         }
-        catch (Exception ex) when (preliminary is not null) {
-            if (OwnsRequest()) {
-                // A broken final transport/contract cannot invalidate completed
-                // Fast values. Record the failed upgrade in the accuracy detail.
-                AutomaticExactOutcome outcome = ex switch {
-                    ProbabilityCalculationLimitException { Reason: ProbabilityCalculationLimitReason.Work } => AutomaticExactOutcome.WorkLimit,
-                    ProbabilityCalculationLimitException { Reason: ProbabilityCalculationLimitReason.Storage } => AutomaticExactOutcome.StorageLimit,
-                    UnsupportedExactCalculationException => AutomaticExactOutcome.Unsupported,
-                    _ => AutomaticExactOutcome.Error
-                };
-                ProbabilityCalculationResult retained = preliminary with {
-                    Contract = preliminary.Contract! with { AutomaticExact = outcome }
-                };
-                _calculationResult = retained;
-                _acceptedResultSnapshot = PinnedResultSnapshot.Capture(_acceptedResultSnapshot!.Context, retained);
-            }
+        catch (Exception ex) when (request.HasPreliminary) {
+            // A broken final transport/contract cannot invalidate completed
+            // Fast values. Record the failed upgrade in the accuracy detail.
+            AutomaticExactOutcome outcome = ex switch {
+                ProbabilityCalculationLimitException { Reason: ProbabilityCalculationLimitReason.Work } => AutomaticExactOutcome.WorkLimit,
+                ProbabilityCalculationLimitException { Reason: ProbabilityCalculationLimitReason.Storage } => AutomaticExactOutcome.StorageLimit,
+                UnsupportedExactCalculationException => AutomaticExactOutcome.Unsupported,
+                _ => AutomaticExactOutcome.Error
+            };
+            _calculation.RetainPreliminaryFailure(request, outcome);
         }
         catch (ProbabilityCalculationLimitException ex) {
-            if (OwnsRequest()) {
+            if (_calculation.Owns(request)) {
                 _errorMessage = ex.Message + UiText.Get("Ui.NoProbabilityWasCalculatedForThisRequest");
             }
         }
         catch (UnsupportedExactCalculationException ex) {
-            if (OwnsRequest()) {
+            if (_calculation.Owns(request)) {
                 _errorMessage = ex.Message + UiText.Get("Ui.NoProbabilityWasReturnedForThisRequest");
             }
         }
         catch (Exception ex) {
-            if (OwnsRequest()) {
+            if (_calculation.Owns(request)) {
                 _errorMessage = UiText.Format("Ui.CalculationFailed0", ex.Message);
             }
         }
-        finally {
-            cancellation.Cancel();
-            if (OwnsRequest()) {
-                _calculationCancellation = null;
-                _isCalculating = false;
-                _isPreliminary = false;
-            }
-        }
     }
 
-    private void StopCalculation() {
-        _calculationRequestId++;
-        CancellationTokenSource? cancellation = _calculationCancellation;
-        _calculationCancellation = null;
-        _isCalculating = false;
-        _isPreliminary = false;
-        cancellation?.Cancel();
-    }
+    private void StopCalculation() => _calculation.Stop();
 
     private Task HandleCalculationAction() {
-        if (!_isCalculating) {
+        if (!_calculation.IsCalculating) {
             return Calculate();
         }
 
@@ -1045,17 +997,7 @@
         _deferNameEditRendering = false;
         _assessmentDirty |= reassess;
         ObserveWorkspaceEdit();
-        StopCalculation();
-        _calculationVersion++;
-
-        if (clearPreviousResult) {
-            _calculationResult = null;
-            _acceptedResultSnapshot = null;
-            _calculationResultIsStale = false;
-        }
-        else if (_calculationResult is not null) {
-            _calculationResultIsStale = true;
-        }
+        _calculation.Invalidate(clearPreviousResult);
 
         _errorMessage = null;
     }

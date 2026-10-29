@@ -612,9 +612,9 @@ public class SessionSharingTest {
         .ToArray();
 
     private static PinnedResultSnapshot AcceptedResultSnapshot(IRenderedComponent<ProbabilityCalculatorComponent> cut) =>
-        (PinnedResultSnapshot)typeof(ProbabilityCalculatorComponent)
-            .GetField("_acceptedResultSnapshot", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .GetValue(cut.Instance)!;
+        ((CalculationResultState)typeof(ProbabilityCalculatorComponent)
+            .GetField("_calculation", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(cut.Instance)!).Snapshot!;
 
     private static PinnedObservation PinnedValues(PinnedResultSnapshot pin) => new(
         pin.Total,
