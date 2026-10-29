@@ -72,6 +72,7 @@ internal static class TargetSurvivalUpperBound {
         }
 
         ExactCalculationResult? Calculate() {
+            CalculationResultRows resultRows = new(combos, groups);
             budget.Spend(cards.Count + combos.Count + 1L);
             int copies = cards.Sum(card => card.Copies);
             if (copies > MaximumCopies) {
@@ -154,7 +155,7 @@ internal static class TargetSurvivalUpperBound {
                 total = total.Add(sums[row], budget);
                 for (int group = 0; group < grouped.Length; group++) {
                     budget.Spend(1);
-                    if (combos[row].GroupId == groups![group].Id) {
+                    if (resultRows.GroupContains(group, row)) {
                         grouped[group] = grouped[group].Add(sums[row], budget);
                     }
                 }

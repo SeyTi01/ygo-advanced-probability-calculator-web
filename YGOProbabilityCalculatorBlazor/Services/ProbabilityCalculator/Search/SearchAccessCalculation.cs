@@ -124,6 +124,7 @@ internal sealed class SearchAccessCalculation(
         bool declineSearch,
         ExactCalculationResult? improve = null
     ) {
+        CalculationResultRows resultRows = new(combos, groups);
         if (_ordered is not null) {
             return _ordered.CalculateSearchLower(combos, groups, declineSearch);
         }
@@ -132,8 +133,8 @@ internal sealed class SearchAccessCalculation(
         List<Card> ordinary = Cards.Where(card => !Effects.Contains(card)).ToList();
         int copies = Cards.Sum(card => card.Copies);
         ExactProbability[] sums = improve is null
-            ? Enumerable.Repeat(ExactProbability.Zero, 1 + combos.Count + (groups?.Count ?? 0)).ToArray()
-            : [improve.Total, .. improve.Combos, .. improve.Groups];
+            ? Enumerable.Repeat(ExactProbability.Zero, resultRows.Count).ToArray()
+            : improve.ToRows();
         foreach ((DrawComposition composition, ExactProbability weight) in resolution.Scenarios) {
             budget.Spend(Cards.Count + sums.Length + Effects.Count + 1L);
             List<Card> retained = Effects.Select((card, row) => card.WithCopies(composition.EffectCounts[row]))
@@ -149,14 +150,14 @@ internal sealed class SearchAccessCalculation(
                 continue;
             }
             ExactCalculationResult lower = Count(losses);
-            ExactProbability[] values = [lower.Total, .. lower.Combos, .. lower.Groups];
+            ExactProbability[] values = lower.ToRows();
             if (improve is not null) {
                 // Replace only affected conditional contributions. Unaffected
                 // scenarios reuse the completed elementary aggregate; no cache
                 // or second draw distribution is retained. Publish only after
                 // every delta completes, so limits retain the old certificate.
                 ExactCalculationResult previous = Count(null);
-                ExactProbability[] old = [previous.Total, .. previous.Combos, .. previous.Groups];
+                ExactProbability[] old = previous.ToRows();
                 for (int row = 0; row < values.Length; row++) {
                     values[row] = values[row].Add(new(-old[row].Numerator, old[row].Denominator), budget);
                 }
@@ -171,7 +172,7 @@ internal sealed class SearchAccessCalculation(
                 .Calculate(combos, groups, false);
         }
 
-        return new(sums[0], sums.Skip(1).Take(combos.Count).ToArray(), sums.Skip(1 + combos.Count).ToArray());
+        return resultRows.ToResult(sums);
     }
 
     internal ExactCalculationResult? TightenSurvivalUpper(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, ExactCalculationResult upper) =>

@@ -47,6 +47,7 @@ internal static class SearchAvailabilityCertification {
         WorkBudget budget,
         DrawEffectCalculation? execution
     ) {
+        CalculationResultRows resultRows = new(combos, groups);
         CalculationCapability capability = execution?.DescribeCapability() ?? ProbabilityCalculation.Capability;
         if (capability.Reason == CapabilityReason.NoActiveSearch) {
             return Complete(upper, SearchAvailabilityStatus.NotApplicable, "No active Deck searches in the executed model.");
@@ -131,7 +132,7 @@ internal static class SearchAvailabilityCertification {
             ExactCalculationResult? tightened = null
         ) {
             ExactCalculationResult endpoint = tightened ?? upper;
-            budget.Spend(1L + combos.Count + (groups?.Count ?? 0));
+            budget.Spend(resultRows.Count);
             SearchAvailabilityInterval total = Interval("Any active combo", lower.Total, endpoint.Total);
             ImmutableArray<SearchAvailabilityInterval> individual = combos.Select((combo, index) =>
                 Interval(string.IsNullOrWhiteSpace(combo.Name) ? $"Unnamed combo {index + 1}" : combo.Name,
@@ -152,7 +153,7 @@ internal static class SearchAvailabilityCertification {
         SearchAvailabilityInterval Interval(string label, ExactProbability lower, ExactProbability upperValue) {
             long cells = lower.Cells + upperValue.Cells + 1;
             budget.Spend(cells * cells + label.Length + 1);
-            budget.CheckStorage(1 + combos.Count + (groups?.Count ?? 0), cells * (1 + combos.Count + (groups?.Count ?? 0)) * 4);
+            budget.CheckStorage(resultRows.Count, cells * (resultRows.Count) * 4);
             if (lower.Denominator <= 0 || upperValue.Denominator <= 0 || lower.Numerator < 0
                 || upperValue.Numerator > upperValue.Denominator
                 || lower.Numerator * upperValue.Denominator > upperValue.Numerator * lower.Denominator) {

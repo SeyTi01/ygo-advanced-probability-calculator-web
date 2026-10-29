@@ -70,6 +70,7 @@ internal sealed partial class PostDrawCalculation {
         IReadOnlyList<ComboGroup>? groups,
         bool totalOnly
     ) {
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
         StreamedSearchPredicates counter = new(state.Cards, combos, budget, includeWitness: true);
         using IDisposable? measurement = budget.SearchDiagnostics?.Measure("streamed search");
         bool countAbsent = ObserveTerminal is null;
@@ -98,11 +99,11 @@ internal sealed partial class PostDrawCalculation {
             // activation. Unused copies may remain held or unseen afterward;
             // their count cannot identify this partition by a zero test.
             int partition = values[state.Source] < state.Cards[state.Source].Copies ? 1 : 0;
-            RecordStreamed(state.Primary[partition], success, mass, combos, groups);
-            RecordStreamed(state.Witness[partition], counter.Witness, mass, combos, groups);
+            RecordStreamed(state.Primary[partition], success, mass, resultRows);
+            RecordStreamed(state.Witness[partition], counter.Witness, mass, resultRows);
             ObserveTerminal?.Invoke(SearchTerminal.Create(values, state.Layout, remaining), mass);
         }, sourcePresent: countAbsent ? true : null);
-        return StreamedResult(state, state.Primary[0], state.Primary[1], combos.Count, totalOnly);
+        return StreamedResult(state, state.Primary[0], state.Primary[1], resultRows);
     }
 
     private ExactCalculationResult CountStreamedLower(
@@ -112,8 +113,9 @@ internal sealed partial class PostDrawCalculation {
         bool declineSearch,
         bool useKnownLoss
     ) {
+        CalculationResultRows resultRows = new(combos, groups);
         if (declineSearch) {
-            return StreamedResult(state, state.Witness[0], state.Witness[1], combos.Count, false);
+            return StreamedResult(state, state.Witness[0], state.Witness[1], resultRows);
         }
         Card source = state.Cards[state.Source];
         // A mandatory discard larger than the available hand has no successful
@@ -137,7 +139,7 @@ internal sealed partial class PostDrawCalculation {
             }
         }
         if (!anyTarget) {
-            return StreamedResult(state, state.Primary[0], state.Witness[1], combos.Count, false);
+            return StreamedResult(state, state.Primary[0], state.Witness[1], resultRows);
         }
 
         BigInteger[] wins = new BigInteger[state.Primary[0].Length];
@@ -149,9 +151,9 @@ internal sealed partial class PostDrawCalculation {
             ReadOnlySpan<int> held = values.AsSpan(state.Layout.HandStart, state.Cards.Count);
             int hidden = state.Layout.HasHiddenCount ? values[state.Layout.HiddenCount] : 0;
             bool[] success = counter.Evaluate(held, remaining - hidden, loss);
-            RecordStreamed(wins, success, StreamedMass(state, remaining, weight), combos, groups);
+            RecordStreamed(wins, success, StreamedMass(state, remaining, weight), resultRows);
         }, sourcePresent: true);
-        return StreamedResult(state, state.Primary[0], wins, combos.Count, false);
+        return StreamedResult(state, state.Primary[0], wins, resultRows);
     }
 
     private BigInteger StreamedMass(StreamedSearchState state, int remaining, BigInteger weight) {
@@ -165,27 +167,23 @@ internal sealed partial class PostDrawCalculation {
         BigInteger[] wins,
         bool[] success,
         BigInteger mass,
-        List<Combo> combos,
-        IReadOnlyList<ComboGroup>? groups
+        CalculationResultRows resultRows
     ) {
         long cells = WorkBudget.IntegerCells(mass);
-        budget.Spend(combos.Count + cells);
+        budget.Spend(resultRows.ComboCount + cells);
         if (success.Any(value => value)) {
             wins[0] += mass;
         }
-        for (int combo = 0; combo < combos.Count; combo++) {
+        for (int combo = 0; combo < resultRows.ComboCount; combo++) {
             budget.Spend(cells + 1);
             if (success[combo]) {
-                wins[1 + combo] += mass;
+                wins[resultRows.ComboRow(combo)] += mass;
             }
         }
-        for (int group = 0; group < (groups?.Count ?? 0); group++) {
-            budget.Spend(combos.Count + cells);
-            for (int combo = 0; combo < combos.Count; combo++) {
-                if (success[combo] && combos[combo].GroupId == groups![group].Id) {
-                    wins[1 + combos.Count + group] += mass;
-                    break;
-                }
+        for (int group = 0; group < resultRows.GroupCount; group++) {
+            budget.Spend(resultRows.ComboCount + cells);
+            if (resultRows.GroupMatches(group, success)) {
+                wins[resultRows.GroupRow(group)] += mass;
             }
         }
     }
@@ -194,13 +192,11 @@ internal sealed partial class PostDrawCalculation {
         StreamedSearchState state,
         BigInteger[] first,
         BigInteger[] second,
-        int combos,
-        bool totalOnly
+        CalculationResultRows resultRows
     ) {
         budget.Spend(first.Length * (WorkBudget.IntegerCells(state.Factorial[^1]) + 1));
         ExactProbability[] results = first.Select((win, row) => new ExactProbability(win + second[row], state.Factorial[^1])).ToArray();
-        return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos).ToArray(),
-            totalOnly ? [] : results.Skip(1 + combos).ToArray());
+        return resultRows.ToResult(results);
     }
 
     private sealed class StreamedSearchPredicates {
@@ -267,6 +263,7 @@ internal sealed partial class PostDrawCalculation {
             BigInteger[] witness,
             IReadOnlyList<ComboGroup>? groups
         ) {
+            CalculationResultRows resultRows = new(_combos, groups);
             int remaining = factorial.Length - 1 - size;
             BigInteger mass = BigInteger.Zero;
             int absent = 0;
@@ -301,7 +298,7 @@ internal sealed partial class PostDrawCalculation {
                 int total = 0;
                 for (int combo = 0; combo < roots.Length; combo++) {
                     total = _counter!.Or(total, roots[combo]);
-                    wins[1 + combo] = Count(roots[combo]);
+                    wins[resultRows.ComboRow(combo)] = Count(roots[combo]);
                     _budget.SearchDiagnostics?.Add("streamed absent counted rows");
                 }
                 wins[0] = Count(total);
@@ -309,11 +306,11 @@ internal sealed partial class PostDrawCalculation {
                     int root = 0;
                     for (int combo = 0; combo < roots.Length; combo++) {
                         _budget.Spend(1);
-                        if (_combos[combo].GroupId == groups![group].Id) {
+                        if (resultRows.GroupContains(group, combo)) {
                             root = _counter!.Or(root, roots[combo]);
                         }
                     }
-                    wins[1 + roots.Length + group] = Count(root);
+                    wins[resultRows.GroupRow(group)] = Count(root);
                 }
             }
 
