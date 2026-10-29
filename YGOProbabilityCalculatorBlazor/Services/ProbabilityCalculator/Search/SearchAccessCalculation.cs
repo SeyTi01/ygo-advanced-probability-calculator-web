@@ -23,10 +23,9 @@ internal sealed class SearchAccessCalculation(
     private SolverRoute _route;
     private PostDrawCalculation? _ordered;
     private DrawResolutionResult? _resolution;
-    internal List<Card> Cards { get; private set; } = null!;
-    internal List<Card> Effects { get; private set; } = null!;
-    internal SearchAccessPlan Search { get; private set; } = null!;
-    internal int HandSize => handSize;
+    private List<Card> Cards { get; set; } = null!;
+    private List<Card> Effects { get; set; } = null!;
+    private SearchAccessPlan Search { get; set; } = null!;
 
     internal CalculationCapability DescribeCapability() => _capability ??=
         CalculationCapability.Search(_route, _targetLossReason ?? Search.TargetLossReason(Effects, handSize));
@@ -44,7 +43,7 @@ internal sealed class SearchAccessCalculation(
         Effects = effects;
         Search = search;
         List<Card> ordinary = cards.Where(card => !effects.Contains(card)).ToList();
-        if (cards.Any(card => card.EffectPlan.RequiresSearchResolution || (card.Search is not null && card.MinimumHandSize > 0))) {
+        if (cards.Any(card => card.EffectPlan.RequiresSearchResolution)) {
             // Hand loss and mode allowances invalidate the substitution projection
             // and its survival certificate. Both modes use physical counting.
             PostDrawCalculation bounded = new(cards, handSize, budget, priority);

@@ -13,10 +13,6 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
     private long _cachedIntegerCells;
     private BigInteger? _totalWays;
 
-    internal double Probability(CompiledEvent? predicate) => ProbabilityExact(predicate).ToDouble(budget);
-
-    internal double ToProbability(BigInteger successes) => ProbabilityRatio.ToDouble(successes, _totalWays!.Value, budget);
-
     internal ExactProbability Fraction(BigInteger successes) => new(successes, _totalWays!.Value);
 
     internal ExactProbability ProbabilityExact(CompiledEvent? predicate) {

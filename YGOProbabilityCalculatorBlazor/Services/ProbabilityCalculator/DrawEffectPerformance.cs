@@ -11,7 +11,7 @@ public static class DrawEffectPerformance {
         }
 
         if (plan.DrawCount is null) {
-            return plan.RequiresSearchResolution || (plan.Search is not null && plan.MinimumHandSize > 0);
+            return plan.RequiresSearchResolution;
         }
 
         // OPT can make activation restrictions redundant in a single-entry workspace.

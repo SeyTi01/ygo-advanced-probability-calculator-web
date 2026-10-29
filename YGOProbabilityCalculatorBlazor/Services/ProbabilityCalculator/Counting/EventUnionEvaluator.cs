@@ -13,8 +13,6 @@ internal sealed class EventUnionEvaluator(
     ComboEventCompiler compiler,
     ExactHandCounter counter
 ) {
-    internal double Union(List<CompiledEvent?> events) => UnionExact(events).ToDouble(budget);
-
     internal ExactProbability UnionExact(List<CompiledEvent?> events) {
         budget.Spend(events.Count + 1L);
         CompiledEvent? universal = events.FirstOrDefault(static compiledEvent => compiledEvent is { Constraints.Length: 0 });

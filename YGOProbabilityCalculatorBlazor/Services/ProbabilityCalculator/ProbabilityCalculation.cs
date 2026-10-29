@@ -45,9 +45,6 @@ internal sealed class ProbabilityCalculation {
     internal ExactProbability CalculateUnionExact(List<Combo> combos) =>
         _unionEvaluator.UnionExact(combos.SelectMany(Compile).ToList());
 
-    internal ProbabilityCalculationResult CalculateResults(List<Combo> combos, IReadOnlyList<ComboGroup>? groups) =>
-        CalculateExactResults(combos, groups).ToPublic(combos, groups, _budget);
-
     internal ExactCalculationResult CalculateExactResults(List<Combo> combos, IReadOnlyList<ComboGroup>? groups) {
         CalculationResultRows rows = new(combos, groups);
         List<List<CompiledEvent?>> ownedEvents = combos.Select(Compile).ToList();

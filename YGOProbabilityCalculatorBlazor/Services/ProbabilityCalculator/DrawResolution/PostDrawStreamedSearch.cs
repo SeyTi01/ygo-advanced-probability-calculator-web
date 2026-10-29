@@ -30,8 +30,7 @@ internal sealed partial class PostDrawCalculation {
     ) {
         source = resolver.SingleSource(handSize, copies);
         budget.Spend(cards.Count);
-        if (source < 0 || cards.Any(card => card.EffectPlan.RequiresSearchResolution
-            || (card.Search is not null && card.MinimumHandSize > 0))) {
+        if (source < 0 || cards.Any(card => card.EffectPlan.RequiresSearchResolution)) {
             return false;
         }
         // Existing classes already preserve direct IDs, search and removal

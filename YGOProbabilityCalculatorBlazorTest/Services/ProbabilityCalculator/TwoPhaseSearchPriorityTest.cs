@@ -14,6 +14,19 @@ public sealed class TwoPhaseSearchPriorityTest {
     private static readonly CategoryBase Cost = new("Oracle cost");
     private static readonly CategoryBase DrawSource = new("Oracle draw source");
 
+    [TestCase(1)]
+    [TestCase(2)]
+    public void MinimumHandSizeAloneRequiresPhysicalSearchEligibility(int minimumHandSize) {
+        List<Card> deck = [
+            new([], id: "source", search: new(CardSelector.For(A), false), minimumHandSize: minimumHandSize),
+            new([A], id: "target"),
+            new([], id: "filler")
+        ];
+        List<Combo> combos = [new([], cards: [new("target", 1, 1)])];
+
+        AssertOracle(deck, 1, combos, [], DrawActivationPriority.Default, checkWire: true);
+    }
+
     [TestCase(true, 1, 2)]
     [TestCase(false, 1, 2)]
     public void CrossPhaseRanksAlwaysResolveDrawsBeforeSearches(bool searchFirst, int numerator, int denominator) {
