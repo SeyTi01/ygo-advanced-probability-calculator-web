@@ -97,7 +97,7 @@ public sealed class CardEffectRegistry {
 
     public MaintainedCardEffect? Find(CardInfo info) => Find(CanonicalIdentity(info));
 
-    public static int CanonicalIdentity(CardInfo info) => info.CanonicalCardId is > 0 ? info.CanonicalCardId.Value : info.Id;
+    private static int CanonicalIdentity(CardInfo info) => info.CanonicalCardId is > 0 ? info.CanonicalCardId.Value : info.Id;
 
     public Card CreateImportedCard(CardInfo info, int copies, int importedId) => ApplyCurrent(
         new(CardPropertyProvider.GetCategories(info), copies, info.Name, externalCardId: importedId), info);

@@ -10,6 +10,18 @@ using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorLocalizationTest : CalculatorEditorTestBase {
+    [Test]
+    public void NestedExpressionStructureDoesNotUseTranslatedCssTokens() {
+        using PresentationLocale locale = new();
+        IRenderedComponent<ExpressionGroup> group = context.RenderComponent<ExpressionGroup>(parameters => parameters
+            .Add(component => component.Nested, true)
+            .Add(component => component.Label, "Nested alternatives")
+            .AddChildContent("Requirements"));
+
+        Assert.That(group.Find(".requirement-or-group.expression-group-nested[role=group]").TextContent, Is.EqualTo("Requirements"));
+        Assert.That(group.Find("[role=group]").GetAttribute("aria-label"), Is.EqualTo("Nested alternatives"));
+    }
+
     [TestCase("current")]
     [TestCase("historical")]
     [TestCase("custom")]

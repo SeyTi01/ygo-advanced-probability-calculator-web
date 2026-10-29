@@ -150,7 +150,6 @@ public class CardArtworkLoadingTest {
     }
 
     private sealed class DeferredStorage(Func<object, Task> save) : ILocalStorageService {
-        public Task<T?> GetItemAsync<T>(string key) => Task.FromResult<T?>(default);
         public Task<string?> GetRawItemAsync(string key) => Task.FromResult<string?>(null);
         public Task SetItemAsync<T>(string key, T value) => save(value!);
     }

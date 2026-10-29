@@ -163,11 +163,6 @@ code {
     white-space: normal;
 }
 
-.entry-editor-active-checkbox {
-    float: none;
-    margin: 0;
-}
-
 body.input-mode-mouse *:focus {
     outline: none !important;
     box-shadow: none !important;

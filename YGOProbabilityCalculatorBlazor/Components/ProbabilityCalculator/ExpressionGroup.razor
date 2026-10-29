@@ -1,4 +1,4 @@
-<div class="@(Nested ? UiText.Get("Ui.RequirementOrGroupExpressionGroupNested") : "requirement-or-group")" role="group" aria-label="@Label">
+<div class="requirement-or-group @(Nested ? "expression-group-nested" : null)" role="group" aria-label="@Label">
     @ChildContent
 </div>
 

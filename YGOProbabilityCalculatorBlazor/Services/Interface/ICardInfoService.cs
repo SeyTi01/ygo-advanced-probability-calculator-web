@@ -15,8 +15,6 @@ public interface ICardInfoService {
     string? GetLocalizedCardName(Card card) => null;
     Task EnsureLocalizedCardNamesAsync(IReadOnlyList<Card> cards) => Task.CompletedTask;
 
-    Task<string> GetCardNameAsync(int id);
-
     Task<CardInfo> GetCardInfoAsync(int id);
 
     Task<CardInfo> GetCardArtworkInfoAsync(int id) => GetCardInfoAsync(id);

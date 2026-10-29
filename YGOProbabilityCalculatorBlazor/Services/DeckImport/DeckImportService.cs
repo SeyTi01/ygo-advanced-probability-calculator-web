@@ -1,6 +1,7 @@
 using YGOProbabilityCalculatorBlazor.Localization;
 using Microsoft.AspNetCore.Components.Forms;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
@@ -73,7 +74,7 @@ public class DeckImportService(ICardInfoService cardInfoService, IFileService fi
                 };
             }
 
-            cards.Add(CuratedDrawEffectPresets.CreateImportedCard(info, cardCounts[id], id));
+            cards.Add(CardEffectRegistry.Default.CreateImportedCard(info, cardCounts[id], id));
         }
 
         return cards;

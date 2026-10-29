@@ -92,7 +92,6 @@ public sealed class CategoryCatalogOptions(
 ) {
     public static CategoryCatalogOptions Empty { get; } = new([], [], []);
 
-    public IReadOnlyList<CategoryBase> UserCategories { get; } = userCategories;
     public IReadOnlyList<CategoryBase> RelevantMetadata { get; } = relevantMetadata;
     public IReadOnlyList<CategoryBase> RemainingCommonMetadata { get; } = remainingCommonMetadata;
     public IReadOnlyList<CategoryBase> All { get; } = [.. userCategories, .. relevantMetadata, .. remainingCommonMetadata];

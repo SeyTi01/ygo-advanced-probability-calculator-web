@@ -4,12 +4,6 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 
 public class LocalStorageService(IJSRuntime jsRuntime, ISerializer serializer) : ILocalStorageService {
-    public async Task<T?> GetItemAsync<T>(string key) {
-        string json = await jsRuntime.InvokeAsync<string>("localStorage.getItem", key);
-
-        return serializer.Deserialize<T>(json);
-    }
-
     public async Task<string?> GetRawItemAsync(string key) =>
         await jsRuntime.InvokeAsync<string?>("localStorage.getItem", key);
 

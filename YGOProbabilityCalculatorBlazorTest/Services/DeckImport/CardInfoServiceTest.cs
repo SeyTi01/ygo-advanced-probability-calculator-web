@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
@@ -565,7 +566,6 @@ public class CardInfoServiceTests {
             return Result.Task;
         }
 
-        public Task<string> GetCardNameAsync(int id) => throw new NotSupportedException();
 
         public Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names) => throw new NotSupportedException();
     }
@@ -1098,9 +1098,6 @@ public class CardInfoServiceTests {
         public bool ThrowOnRead { get; init; }
         public bool ThrowOnWrite { get; init; }
         public int WriteCount { get; private set; }
-
-        public Task<T?> GetItemAsync<T>(string key) =>
-            Task.FromResult(RawCache is null ? default : JsonSerializer.Deserialize<T>(RawCache));
 
         public Task<string?> GetRawItemAsync(string key) {
             if (ThrowOnRead) {

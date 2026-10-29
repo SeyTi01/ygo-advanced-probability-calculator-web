@@ -100,7 +100,7 @@
 
         _copied = true;
         _reset = FeedbackTimeProvider.CreateTimer(
-            _ => { _ = ResetFeedbackAsync(version); },
+            delegate { _ = ResetFeedbackAsync(version); },
             null,
             TimeSpan.FromSeconds(2),
             Timeout.InfiniteTimeSpan
