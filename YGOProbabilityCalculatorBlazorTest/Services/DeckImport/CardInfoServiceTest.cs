@@ -10,6 +10,34 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 [TestFixture]
 public class CardInfoServiceTests {
     [Test]
+    [SetUICulture("fr")]
+    public async Task ArtworkSharesPendingCatalogWithoutWaitingForLocalizedNames() {
+        TaskCompletionSource<HttpResponseMessage> pendingCatalog = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<HttpResponseMessage> pendingNames = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        RecordingHttpMessageHandler handler = new((request, _) => request.RequestUri!.AbsolutePath.EndsWith("card-names.fr.test.json")
+            ? pendingNames.Task : pendingCatalog.Task);
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        TestLocalStorage storage = new(null);
+        CardInfoService service = new(storage, client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+
+        Task<IReadOnlyList<CardInfo>> catalog = service.GetCatalogCardsAsync();
+        Task<CardInfo> artwork = service.GetCardArtworkInfoAsync(1);
+        Task display = service.EnsureLocalizedCardNamesAsync([new Card([], name: "Card", externalCardId: 1)]);
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+        pendingCatalog.SetResult(Response(HttpStatusCode.OK, CreateLocalCatalogJson([
+            new CardInfo { Id = 1, Name = "Card", ArtworkMetadataKnown = true, ArtworkImageIds = [1] }
+        ])));
+
+        Assert.That(await artwork.WaitAsync(TimeSpan.FromSeconds(1)), Is.SameAs((await catalog).Single()));
+        Assert.That(service.GetLocalizedCardName(await artwork), Is.Null);
+        pendingNames.SetResult(Response(HttpStatusCode.OK, """{"version":1,"locale":"fr","names":[[1,"Label"]]}"""));
+        await display;
+        Assert.That(service.GetLocalizedCardName(await artwork), Is.EqualTo("Label"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+        Assert.That(storage.WriteCount, Is.Zero);
+    }
+
+    [Test]
     [SetUICulture("fr-CA")]
     public async Task SavedCardDisplayVerifiesIdentityAndNameWithoutChangingTheSession() {
         CardInfo[] catalogCards = [
