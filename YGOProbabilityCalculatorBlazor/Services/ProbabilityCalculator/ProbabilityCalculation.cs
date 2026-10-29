@@ -8,21 +8,6 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 
-internal sealed record ExactCalculationResult(
-    ExactProbability Total,
-    ExactProbability[] Combos,
-    ExactProbability[] Groups
-) {
-    internal ProbabilityCalculationResult ToPublic(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, WorkBudget budget) {
-        List<ComboProbabilityResult> comboResults = combos.Select((combo, index) =>
-            new ComboProbabilityResult(index, combo.Name, Combos[index].ToDouble(budget), combo.GroupId)).ToList();
-        List<GroupProbabilityResult> groupResults = (groups ?? []).Select((group, index) =>
-            new GroupProbabilityResult(group.Id, group.Name, Groups[index].ToDouble(budget),
-                combos.Count(combo => combo.GroupId == group.Id))).ToList();
-        return new(Total.ToDouble(budget), comboResults.AsReadOnly(), groupResults.AsReadOnly());
-    }
-}
-
 // One fixed sample space. Scenario instances share the request's cumulative budget,
 // but release their compilation/count caches before evaluating the next scenario.
 internal sealed class ProbabilityCalculation {
@@ -64,11 +49,12 @@ internal sealed class ProbabilityCalculation {
         CalculateExactResults(combos, groups).ToPublic(combos, groups, _budget);
 
     internal ExactCalculationResult CalculateExactResults(List<Combo> combos, IReadOnlyList<ComboGroup>? groups) {
+        CalculationResultRows rows = new(combos, groups);
         List<List<CompiledEvent?>> ownedEvents = combos.Select(Compile).ToList();
         ExactProbability total = _unionEvaluator.UnionExact(ownedEvents.SelectMany(events => events).ToList());
         ExactProbability[] individual = ownedEvents.Select(_unionEvaluator.UnionExact).ToArray();
-        ExactProbability[] grouped = (groups ?? []).Select(group => _unionEvaluator.UnionExact(
-            ownedEvents.Where((_, index) => combos[index].GroupId == group.Id).SelectMany(events => events).ToList())).ToArray();
+        ExactProbability[] grouped = (groups ?? []).Select((group, groupIndex) => _unionEvaluator.UnionExact(
+            ownedEvents.Where((_, index) => rows.GroupContains(groupIndex, index)).SelectMany(events => events).ToList())).ToArray();
         return new(total, individual, grouped);
     }
 

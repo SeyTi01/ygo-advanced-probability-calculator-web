@@ -109,7 +109,7 @@ internal sealed partial class PostDrawCalculation {
 
         if (StreamSearchTerminals && deferred.Count == 0
             && CanStreamSearch(cards, identities, combos, resolver, copies, out int source)) {
-            int rows = 1 + combos.Count + (groups?.Count ?? 0);
+            int rows = new CalculationResultRows(combos, groups).Count;
             CheckStorage(4L * rows, 4L * rows * (WorkBudget.IntegerCells(factorial[copies]) + 1), "streamed search results");
             StreamedSearchState state = new(
                 cards,
@@ -318,7 +318,8 @@ internal sealed partial class PostDrawCalculation {
         int[]? lossBudgets = null
     ) {
         int copies = lower ? pools.Sum(pool => pool.Sum(card => card.Copies)) : 0;
-        BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
+        BigInteger[] wins = new BigInteger[resultRows.Count];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(denominator) + 1), "result accumulators");
         foreach ((State hand, BigInteger mass) in terminal) {
             int[] counts = hand.Values;
@@ -353,7 +354,7 @@ internal sealed partial class PostDrawCalculation {
             SearchProbabilityCalculation calculation = new(random.SelectMany(pool => pool.Cards).ToList(),
                 random.Sum(pool => pool.Held), retained, search, declineSearch ? 0 : counts[^1], budget, random, loss, template: template);
             ExactCalculationResult result = calculation.Calculate(combos, groups, totalOnly);
-            ExactProbability[] values = [result.Total, .. result.Combos, .. result.Groups];
+            ExactProbability[] values = result.ToRows();
             for (int i = 0; i < values.Length; i++) {
                 ExactProbability probability = values[i];
                 budget.Spend((WorkBudget.IntegerCells(mass) + probability.Cells + 1) * (probability.Cells + 1));
@@ -370,8 +371,7 @@ internal sealed partial class PostDrawCalculation {
         }
         ExactProbability[] results = wins.Select(win => new ExactProbability(win, denominator)).ToArray();
 
-        return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos.Count).ToArray(),
-            totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
+        return resultRows.ToResult(results);
     }
 
     internal ExactCalculationResult CalculateSearchLower(

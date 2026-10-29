@@ -124,7 +124,8 @@ internal sealed partial class PostDrawCalculation {
             }
             tests.Add(compiled);
         }
-        BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
+        BigInteger[] wins = new BigInteger[resultRows.Count];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "result accumulators");
         int[] hand = new int[cards.Count];
         List<int> occupied = [];
@@ -146,7 +147,7 @@ internal sealed partial class PostDrawCalculation {
             occupied.Clear();
         }
         ExactProbability[] results = wins.Select(win => new ExactProbability(win, factorial[copies])).ToArray();
-        return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos.Count).ToArray(), totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
+        return resultRows.ToResult(results);
 
         bool Settle(int[] values, int remaining) {
             if (values[6] > 0) {
@@ -241,7 +242,7 @@ internal sealed partial class PostDrawCalculation {
                 }));
                 budget.Spend(WorkBudget.IntegerCells(mass) + 1);
                 if (!totalOnly && matches[i]) {
-                    wins[i + 1] += mass;
+                    wins[resultRows.ComboRow(i)] += mass;
                 }
             }
             budget.Spend(WorkBudget.IntegerCells(mass) + matches.Length + 1);
@@ -250,8 +251,8 @@ internal sealed partial class PostDrawCalculation {
             }
             for (int g = 0; !totalOnly && g < (groups?.Count ?? 0); g++) {
                 budget.Spend(matches.Length + WorkBudget.IntegerCells(mass) + 1);
-                if (combos.Where((combo, index) => matches[index] && combo.GroupId == groups![g].Id).Any()) {
-                    wins[1 + combos.Count + g] += mass;
+                if (resultRows.GroupMatches(g, matches)) {
+                    wins[resultRows.GroupRow(g)] += mass;
                 }
             }
         }

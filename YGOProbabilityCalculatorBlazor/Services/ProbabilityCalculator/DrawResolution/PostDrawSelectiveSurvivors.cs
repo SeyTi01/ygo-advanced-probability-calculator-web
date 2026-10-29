@@ -39,7 +39,8 @@ internal sealed partial class PostDrawCalculation {
         TerminalStates = terminal.Count;
         List<Card> explicitRows = cards.Take(cards.Count - 1).ToList();
         List<Card> originals = [.. explicitRows, .. deferred];
-        BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
+        BigInteger[] wins = new BigInteger[resultRows.Count];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "physical results");
         foreach ((State state, BigInteger mass) in terminal) {
             int[] terminalValues = state.Values;
@@ -67,7 +68,6 @@ internal sealed partial class PostDrawCalculation {
             CheckStorage(wins.Length, wins.Sum(WorkBudget.IntegerCells), "physical results");
         }
         ExactProbability[] results = wins.Select(win => new ExactProbability(win, factorial[copies])).ToArray();
-        return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos.Count).ToArray(),
-            totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
+        return resultRows.ToResult(results);
     }
 }

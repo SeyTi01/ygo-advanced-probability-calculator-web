@@ -104,7 +104,8 @@ internal sealed class PhysicalSearchCalculation(
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         int ordinary = cards.Where(card => !effects.Contains(card)).Sum(card => card.Copies);
         DrawResolutionResult resolution = DrawEffectResolver.Resolve<PhysicalSearchComposition>(ordinary, effects, handSize, budget);
-        int rowCount = 1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0));
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
+        int rowCount = resultRows.Count;
         budget.CheckStorage(rowCount, 2L * rowCount);
         ExactProbability[] totals = Enumerable.Repeat(ExactProbability.Zero, rowCount).ToArray();
         foreach ((DrawComposition composition, ExactProbability weight) in resolution.Scenarios) {
@@ -115,8 +116,7 @@ internal sealed class PhysicalSearchCalculation(
             }
             budget.CheckStorage(totals.Length, totals.Sum(value => value.Cells));
         }
-        return new(totals[0], totalOnly ? [] : totals.Skip(1).Take(combos.Count).ToArray(),
-            totalOnly ? [] : totals.Skip(1 + combos.Count).ToArray());
+        return resultRows.ToResult(totals);
     }
 
     internal static ExactProbability[] CountScenario(
@@ -128,6 +128,7 @@ internal sealed class PhysicalSearchCalculation(
         WorkBudget budget,
         bool conditionObserved = false
     ) {
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
         using IDisposable? stage = budget.SearchDiagnostics?.Stage("physical");
         budget.SearchDiagnostics?.BeginScenario();
         budget.SearchDiagnostics?.Add("physical scenarios");
@@ -147,7 +148,7 @@ internal sealed class PhysicalSearchCalculation(
         SearchDecisionCounter diagram = new(scenario.Domains, scenario.Domains.DefaultIfEmpty(0).Max(), budget, singleSample: false);
         int[] roots = events.Select(diagram.Union).ToArray();
         int union = roots.Aggregate(0, diagram.Or);
-        int[] groupRoots = totalOnly ? [] : (groups ?? []).Select(group => roots.Where((_, index) => combos[index].GroupId == group.Id)
+        int[] groupRoots = totalOnly ? [] : (groups ?? []).Select((group, groupIndex) => roots.Where((_, index) => resultRows.GroupContains(groupIndex, index))
             .Aggregate(0, diagram.Or)).ToArray();
         construction?.Dispose();
         using IDisposable? counting = budget.SearchDiagnostics?.Measure("weighted counting");

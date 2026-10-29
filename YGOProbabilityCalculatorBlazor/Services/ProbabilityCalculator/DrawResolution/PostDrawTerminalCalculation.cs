@@ -18,7 +18,8 @@ internal sealed partial class PostDrawCalculation {
         bool totalOnly
     ) {
         int n = cards.Count;
-        int resultCount = 1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0));
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
+        int resultCount = resultRows.Count;
         long resultIntegerCells = WorkBudget.IntegerCells(denominator);
         CheckStorage(resultCount, resultCount * (resultIntegerCells + 1), "result accumulators");
         BigInteger[] wins = new BigInteger[resultCount];
@@ -36,19 +37,19 @@ internal sealed partial class PostDrawCalculation {
                 if (!totalOnly) {
                     for (int i = 0; i < combos.Count; i++) {
                         if (matches[i]) {
-                            wins[i + 1] += weight;
+                            wins[resultRows.ComboRow(i)] += weight;
                         }
                     }
                     for (int g = 0; g < (groups?.Count ?? 0); g++) {
-                        if (combos.Where((combo, index) => matches[index] && combo.GroupId == groups![g].Id).Any()) {
-                            wins[1 + combos.Count + g] += weight;
+                        if (resultRows.GroupMatches(g, matches)) {
+                            wins[resultRows.GroupRow(g)] += weight;
                         }
                     }
                 }
             }
         }
         ExactProbability[] results = wins.Select(win => new ExactProbability(win, denominator)).ToArray();
-        return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos.Count).ToArray(), totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
+        return resultRows.ToResult(results);
 
         bool Matches(CompiledEvent route, int[] hand) {
             foreach (CountBound bound in route.Constraints) {

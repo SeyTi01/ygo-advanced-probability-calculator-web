@@ -88,7 +88,8 @@ internal sealed partial class PostDrawCalculation {
         // Failed removals contribute no wins but remain in the original N! space.
         // The ordinary counter projects ALL combo constraints onto this subset;
         // the resolver's removal policy always used the full original combo list.
-        BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
+        BigInteger[] wins = new BigInteger[resultRows.Count];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(denominator) + 1), "result accumulators");
         foreach ((State hand, BigInteger mass) in terminal) {
             List<Card> retained = [];
@@ -105,10 +106,10 @@ internal sealed partial class PostDrawCalculation {
                 : calculation.CalculateExactResults(combos, groups);
             Add(0, result.Total);
             for (int i = 0; i < result.Combos.Length; i++) {
-                Add(1 + i, result.Combos[i]);
+                Add(resultRows.ComboRow(i), result.Combos[i]);
             }
             for (int i = 0; i < result.Groups.Length; i++) {
-                Add(1 + combos.Count + i, result.Groups[i]);
+                Add(resultRows.GroupRow(i), result.Groups[i]);
             }
 
             void Add(int index, ExactProbability probability) {
@@ -121,7 +122,6 @@ internal sealed partial class PostDrawCalculation {
             }
         }
         ExactProbability[] results = wins.Select(win => new ExactProbability(win, denominator)).ToArray();
-        return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos.Count).ToArray(),
-            totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
+        return resultRows.ToResult(results);
     }
 }
