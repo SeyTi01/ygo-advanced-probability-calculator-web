@@ -220,35 +220,12 @@ public partial class ComboEditor {
         }
         int index = _editingIndex!.Value;
         if (_editingGroupIndex is int groupIndex) {
-            List<ComboAlternativeGroup> groups = Combo.AlternativeGroups.ToList();
-            List<ComboAlternative> leaves = groups[groupIndex].Alternatives.ToList();
-            leaves[index] = replacement;
-            groups[groupIndex] = new(leaves);
-            return Combo.WithAlternativeGroups(groups);
+            return ComboRequirementEditing.ReplaceAlternative(Combo, groupIndex, index, replacement);
         }
 
-        List<ComboCategory> categories = Combo.Categories.ToList();
-        List<ComboCard> cards = Combo.Cards.ToList();
-        if (_editingRequirement!.Category is not null) {
-            if (replacement.Category is { } category) { categories[index] = category; }
-            else { categories.RemoveAt(index); cards.Add(replacement.Card!); }
-        }
-        else {
-            if (replacement.Card is { } card) { cards[index] = card; }
-            else { cards.RemoveAt(index); categories.Add(replacement.Category!); }
-        }
+        ComboRequirementKind kind = _editingRequirement!.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
 
-        Combo updated = Combo.WithCategories(categories).WithCards(cards);
-        ComboRequirementKind previousKind = _editingRequirement.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
-        ComboRequirementPosition previous = new(previousKind, index);
-        ComboRequirementKind nextKind = replacement.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
-        int nextIndex = previousKind == nextKind ? index : replacement.Category is not null ? categories.Count - 1 : cards.Count - 1;
-        if (previousKind != nextKind) {
-            updated = Combo.WithoutRequirement(previous);
-            updated = replacement.Category is { } nextCategory ? updated.WithCategories(updated.Categories.Append(nextCategory))
-                : updated.WithCards(updated.Cards.Append(replacement.Card!));
-        }
-        return updated.WithRequirementAt(new(nextKind, nextIndex), Combo.RequirementOrder.ToList().IndexOf(previous));
+        return ComboRequirementEditing.Replace(Combo, new(kind, index), replacement);
     }
 
     private Task CommitEdit() {
