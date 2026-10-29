@@ -44,9 +44,7 @@ internal sealed partial class PostDrawCalculation(
     internal Action<IReadOnlyList<Card>, int[], int[], BigInteger>? ObservePhysicalOutcome { get; init; }
     // Optional terminal-distribution audit; observers receive copies, never keys.
     internal Action<int[], BigInteger>? ObserveTerminal { get; init; }
-    // Internal reference switch for paired algorithm tests and diagnostic runs.
-    // Forced Streaming always retains the original entry-word implementation.
-    internal bool AggregatePhysicalBatches { get; init; } = true;
+    // Paired tests retain the frontier path as a reference for streaming.
     internal bool StreamSearchTerminals { get; init; } = true;
 
     private void CheckStorage(long entries, long cells, string structure) {

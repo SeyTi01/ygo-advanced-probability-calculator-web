@@ -1,6 +1,4 @@
 using System.Collections.Immutable;
-using System.Globalization;
-using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
@@ -67,7 +65,7 @@ internal static class SearchAvailabilityCertification {
             Enumerable.Repeat(ExactProbability.Zero, groups?.Count ?? 0).ToArray());
         SearchAvailabilityCertificate completed = Complete(zero, SearchAvailabilityStatus.Bounded,
             "Uninformative: only the fixed-policy optimistic upper bound is available.");
-        ExactCalculationResult completedLower = zero;
+        ExactCalculationResult completedLower;
         if (completed.Status == SearchAvailabilityStatus.Exact) {
             return completed with { Detail = "All optimistic endpoints are zero, so physical success is also zero under the fixed policy." };
         }
@@ -79,7 +77,6 @@ internal static class SearchAvailabilityCertification {
                 ExactCalculationResult witness = searchExecution.CalculateLower(combos, groups, declineSearch: true);
                 completed = Complete(witness, SearchAvailabilityStatus.Bounded,
                     "Guaranteed interval from declining optional searches after the same draw/removal policy.");
-                completedLower = witness;
                 if (completed.Status == SearchAvailabilityStatus.Exact) {
                     return completed;
                 }
@@ -159,14 +156,7 @@ internal static class SearchAvailabilityCertification {
                 || lower.Numerator * upperValue.Denominator > upperValue.Numerator * lower.Denominator) {
                 throw new InvalidOperationException("Search certificate interval invariant failed.");
             }
-            return new(label, Fraction(lower), Fraction(upperValue));
+            return new(label, lower.ToFraction(), upperValue.ToFraction());
         }
-
-        static ProbabilityFraction Fraction(ExactProbability value) {
-            BigInteger divisor = BigInteger.GreatestCommonDivisor(value.Numerator, value.Denominator);
-            return new((value.Numerator / divisor).ToString(CultureInfo.InvariantCulture),
-                (value.Denominator / divisor).ToString(CultureInfo.InvariantCulture));
-        }
-
     }
 }

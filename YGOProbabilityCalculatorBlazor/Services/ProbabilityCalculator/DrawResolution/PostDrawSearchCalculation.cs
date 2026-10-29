@@ -55,14 +55,13 @@ internal sealed partial class PostDrawCalculation {
         // Only removable searchers need policy target counts. Unrelated targets
         // can still join the deferred pool when no removal can observe them.
         bool compactPhysical = physical && method == PhysicalEnumerationMethod.Auto && deferIdentities
-            && cards.All(card => !card.EffectPlan.RequiresSearchResolution && (card.Search is null || card.MinimumHandSize == 0));
+            && cards.All(card => !card.EffectPlan.RequiresSearchResolution);
         // The same whole-trace exchangeability proof applies to optimistic and
         // lower counting: expand original source identities only in the final
         // conditional pool. Bounded hand operations and activation restrictions
         // retain their existing partition; removal material and observed targets
         // remain explicit in DeferUnobservedIdentities.
-        bool compactFast = !physical && deferSearchers && cards.All(card => !card.EffectPlan.RequiresSearchResolution
-            && (card.Search is null || card.MinimumHandSize == 0));
+        bool compactFast = !physical && deferSearchers && cards.All(card => !card.EffectPlan.RequiresSearchResolution);
         HashSet<string> observed = SearchPolicyObservedRows(cards, deferUnremovableSearchers: compactPhysical || compactFast);
         List<Card> deferred = (!physical || compactPhysical) && deferIdentities ? DeferUnobservedIdentities(ref cards, observed) : [];
         compactPhysical &= deferred.Count > 0;
@@ -72,8 +71,7 @@ internal sealed partial class PostDrawCalculation {
             budget.SearchDiagnostics?.Add("physical quotient rows", cards.Count);
         }
         Route = deferred.Count > 0 ? SolverRoute.SearchOrderedDeferred : SolverRoute.SearchOrdered;
-        bool boundedSearch = cards.Any(card => card.EffectPlan.RequiresSearchResolution
-            || (card.Search is not null && card.MinimumHandSize > 0));
+        bool boundedSearch = cards.Any(card => card.EffectPlan.RequiresSearchResolution);
         // Only tied source ranks can observe encounter order. A complete custom
         // order (or a single search entry) keeps the existing count/batch quotient.
         int[] searchRanks = boundedSearch ? cards.Where(card => card.Search is not null)

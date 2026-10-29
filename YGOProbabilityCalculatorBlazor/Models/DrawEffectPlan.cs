@@ -65,7 +65,10 @@ public readonly record struct DrawEffectPlan(
 
     public bool HasActivationRestrictions => FirstActivationOnly || BlocksLaterDraws || MinimumHandSize > 0;
 
-    public bool RequiresSearchResolution => Search is not null && (RequiresHandResolution || Search.Modes is { Count: > 0 });
+    // These rules inspect the changing search hand or per-mode allowances;
+    // they cannot use the simple optional-substitution projection.
+    public bool RequiresSearchResolution => Search is not null
+        && (RequiresHandResolution || Search.Modes is { Count: > 0 } || MinimumHandSize > 0);
 
     public bool RequiresHandResolution => HandCost > 0 || RemovalCount > 0;
 

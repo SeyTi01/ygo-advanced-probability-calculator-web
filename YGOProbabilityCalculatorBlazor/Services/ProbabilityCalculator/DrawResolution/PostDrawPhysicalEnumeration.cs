@@ -133,7 +133,7 @@ internal sealed partial class PostDrawCalculation {
         CalculationResultRows resultRows = new(combos, groups, totalOnly);
         BigInteger[] wins = new BigInteger[resultRows.Count];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "physical results");
-        BoundedSearchHandCounter? bounded = cards.Any(card => card.EffectPlan.RequiresSearchResolution || (card.Search is not null && card.MinimumHandSize > 0))
+        BoundedSearchHandCounter? bounded = cards.Any(card => card.EffectPlan.RequiresSearchResolution)
             ? new(cards, combos, budget, priority) : null;
         PhysicalSearchHandCounter? counter = bounded is null ? new(cards, combos, budget) : null;
         PhysicalSearchLossCounter? lossCounter = bounded is null && ObservePhysicalOutcome is null
@@ -183,8 +183,8 @@ internal sealed partial class PostDrawCalculation {
             // The source-conditioned quotient has already counted both opening
             // partitions through the same physical terminal/search boundary.
         }
-        else if (!layout.HasSearchQueue && (method is PhysicalEnumerationMethod.BatchStreaming or PhysicalEnumerationMethod.SingleSource
-            || (method == PhysicalEnumerationMethod.Auto && AggregatePhysicalBatches))) {
+        else if (!layout.HasSearchQueue
+            && method is PhysicalEnumerationMethod.BatchStreaming or PhysicalEnumerationMethod.SingleSource or PhysicalEnumerationMethod.Auto) {
             resolver.EnumerateBatches(handSize, copies, factorial, CountTerminal);
         }
         else {
