@@ -61,14 +61,14 @@ public class SameCardSelectorTest {
         Combo combo = new([ComboCategory.SameCard([longIdentity, B], 1, 1)]);
         List<Card> deck = [new([longIdentity, B])];
         ProbabilityCalculationLimitException? storage = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculation(deck, 1, CalculationWorkPolicy.Interactive).CalculateUnionExact([combo]));
+            new ProbabilityCalculation(deck, 1, new(CalculationWorkPolicy.Interactive)).CalculateUnionExact([combo]));
         Assert.That(storage!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
         foreach (CalculationStorageTier tier in Enum.GetValues<CalculationStorageTier>()) {
             ProbabilityCalculationLimitException? work = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-                new ProbabilityCalculation(deck, 1, new CalculationWorkPolicy(1), CalculationStoragePolicy.ForTier(tier)).CalculateUnionExact([combo]));
+                new ProbabilityCalculation(deck, 1, new(new CalculationWorkPolicy(1), CalculationStoragePolicy.ForTier(tier))).CalculateUnionExact([combo]));
             Assert.That(work!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
         }
-        AssertExact(new ProbabilityCalculation(deck, 1, CalculationWorkPolicy.Interactive, CalculationStoragePolicy.High)
+        AssertExact(new ProbabilityCalculation(deck, 1, new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.High))
             .CalculateUnionExact([combo]), (1, 1));
     }
 
@@ -106,7 +106,7 @@ public class SameCardSelectorTest {
         Card all = new([A, B, C]);
         foreach (List<Card> hand in new List<Card>[] { [new([A])], [new([B])], [new([A]), new([B])] }) {
             Assert.That(SmallDeckOracle.MatchesHand(hand, new([ab])), Is.False);
-            AssertExact(new ProbabilityCalculation(hand, hand.Count, CalculationWorkPolicy.Interactive).CalculateUnionExact([new([ab])]), (0, 1));
+            AssertExact(new ProbabilityCalculation(hand, hand.Count, new(CalculationWorkPolicy.Interactive)).CalculateUnionExact([new([ab])]), (0, 1));
         }
         Assert.That(SmallDeckOracle.MatchesHand([all], new([ab])), Is.True);
         Assert.That(SmallDeckOracle.MatchesHand([all], new([ab, new(C, 1, 2)])), Is.False);

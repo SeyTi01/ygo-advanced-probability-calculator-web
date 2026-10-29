@@ -183,8 +183,6 @@ public class CardInfoService : ICardInfoService {
         _catalog = new(_httpClient, localizedNameAssets);
     }
 
-    public async Task<string> GetCardNameAsync(int id) => (await GetCardInfoAsync(id)).Name;
-
     public async Task<IReadOnlyList<CardInfo>> GetCatalogCardsAsync() => await _catalog.TryLoadAsync() ?? [];
 
     private CardInfo WithCatalogMembership(CardInfo info) {

@@ -53,7 +53,7 @@
         @if (_isClearWorkspaceConfirmationOpen) {
             <div class="clear-workspace-confirmation" role="group" aria-label="@(UiText.Get("Ui.ConfirmClearingWorkspace"))">
                 <span>@(UiText.Get("Ui.Clearthecurrentdeckcategoriesandcombos"))</span>
-                <button type="button" class="btn btn-danger" @onclick="ConfirmClearWorkspace">@(UiText.Get("Ui.Clear"))</button>
+                <button type="button" class="btn btn-danger" @onclick="ClearWorkspace">@(UiText.Get("Ui.Clear"))</button>
                 <button type="button" class="btn btn-outline-secondary" @onclick="CancelClearWorkspace">@(UiText.Get("Ui.Cancel"))</button>
             </div>
         }
@@ -793,7 +793,7 @@
 
     private void HandleCategoriesChanged() {
         ReconcileCategoryColorIndices();
-        OnCategoriesChanged();
+        InvalidateCalculation();
         StateHasChanged();
     }
 
@@ -935,20 +935,14 @@
         }
     }
 
-    private void StopCalculation() => _calculation.Stop();
-
     private Task HandleCalculationAction() {
         if (!_calculation.IsCalculating) {
             return Calculate();
         }
 
-        CancelCalculation();
+        _calculation.Stop();
 
         return Task.CompletedTask;
-    }
-
-    private void CancelCalculation() {
-        StopCalculation();
     }
 
     private void OnHandSizeChanged() => InvalidateCalculation();
@@ -989,8 +983,6 @@
         _storageTier = tier;
         InvalidateCalculation();
     }
-
-    private void OnCategoriesChanged() => InvalidateCalculation();
 
     private void InvalidateCalculation(bool clearPreviousResult = false, bool reassess = true) {
         _drawActivationPriority = _drawActivationPriority.ForWorkspace(_cards);

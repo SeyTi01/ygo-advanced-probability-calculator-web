@@ -176,7 +176,7 @@ public class ComboAlternativeReductionTest {
         for (int hand = 0; hand <= deck.Sum(card => card.Copies); hand++) {
             foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
                 List<Combo> permuted = combos.Select(combo => combo.WithAlternativeGroups(combo.AlternativeGroups.AsEnumerable().Reverse())).ToList();
-                ExactCalculationResult actual = new ProbabilityCalculation(order, hand, CalculationWorkPolicy.Interactive)
+                ExactCalculationResult actual = new ProbabilityCalculation(order, hand, new(CalculationWorkPolicy.Interactive))
                     .CalculateExactResults(permuted, [new("g", "Group")]);
                 AssertFraction(actual.Total, SmallDeckOracle.EnumerateCounts(deck, combos, hand));
                 AssertFraction(actual.Groups[0], SmallDeckOracle.EnumerateCounts(deck, combos.Where(combo => combo.GroupId == "g").ToList(), hand));

@@ -32,7 +32,6 @@ internal sealed partial class PostDrawCalculation {
         int copies = 0;
         foreach (Card card in cards) {
             budget.Spend(1);
-            ArgumentOutOfRangeException.ThrowIfNegative(card.Copies);
             copies = checked(copies + card.Copies);
         }
         if (handSize < 0 || handSize > copies) {

@@ -378,8 +378,6 @@
         _error = null;
     }
 
-    private void CancelAlternative() => CancelScopedAuthoring();
-
     private void BeginAlternativeDraft(
         ComboAlternative? seed,
         int? seedIndex,
@@ -480,7 +478,7 @@
 
     private Task CommitAlternative() {
         if (!AlternativeScope || !AlternativeTargetIsCurrent) {
-            CancelAlternative();
+            CancelScopedAuthoring();
 
             return Task.CompletedTask;
         }
@@ -526,7 +524,7 @@
             TransferRowIdentities(updated);
             _termIdentities[RowIdentity(leaf, insertedIndex, savedGroup)] = term;
         }
-        CancelAlternative();
+        CancelScopedAuthoring();
 
         return OnReplaceCombo.InvokeAsync((Index, updated));
     }
@@ -597,7 +595,7 @@
         Combo updated = ComboRequirementEditing.RemoveAlternative(Combo, groupIndex, leafIndex);
 
         if (_alternativeGroupIndex == groupIndex && ReferenceEquals(_alternativeGroup, group)) {
-            CancelAlternative();
+            CancelScopedAuthoring();
         }
 
         return OnReplaceCombo.InvokeAsync((Index, updated));
@@ -776,7 +774,7 @@
         }
 
         if (ReferenceEquals(_alternativeSeed?.Card, card) && _alternativeSeedIndex == index) {
-            CancelAlternative();
+            CancelScopedAuthoring();
         }
 
         return OnReplaceCombo.InvokeAsync((Index, Combo.WithoutRequirement(new(ComboRequirementKind.Card, index))));
@@ -803,7 +801,7 @@
         }
 
         if (ReferenceEquals(_alternativeSeed?.Category, category) && _alternativeSeedIndex == index) {
-            CancelAlternative();
+            CancelScopedAuthoring();
         }
 
         return OnReplaceCombo.InvokeAsync((Index, Combo.WithoutRequirement(new(ComboRequirementKind.Category, index))));

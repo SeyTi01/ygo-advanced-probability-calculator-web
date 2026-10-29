@@ -5,18 +5,11 @@ namespace YGOProbabilityCalculatorBlazor.Services.Shared;
 
 public class FileService(HttpClient httpClient) : IFileService {
     public async Task<string[]> ReadAllLinesAsync(IBrowserFile file) {
-        string content = await ReadAllTextAsync(file);
+        using StreamReader streamReader = new(file.OpenReadStream());
+        string content = await streamReader.ReadToEndAsync();
 
         return content.Split(["\r\n", "\n"], StringSplitOptions.None);
     }
 
-    public async Task<string> ReadAllTextAsync(string path) {
-        return await httpClient.GetStringAsync(path);
-    }
-
-    private static async Task<string> ReadAllTextAsync(IBrowserFile file) {
-        using StreamReader streamReader = new(file.OpenReadStream());
-
-        return await streamReader.ReadToEndAsync();
-    }
+    public Task<string> ReadAllTextAsync(string path) => httpClient.GetStringAsync(path);
 }

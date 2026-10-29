@@ -21,12 +21,12 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
         CalculationStoragePolicy storagePolicy,
         CalculationOptions? options = null
     ) {
-        ArgumentNullException.ThrowIfNull(workPolicy);
-        ArgumentNullException.ThrowIfNull(storagePolicy);
-        ValidateMode(options);
         if (options?.Mode is CalculationModel.OpeningHand or CalculationModel.Exact) {
             return CalculateProbabilityResults(deck, combos, handSize, null, workPolicy, storagePolicy, options).TotalProbability;
         }
+        ArgumentNullException.ThrowIfNull(workPolicy);
+        ArgumentNullException.ThrowIfNull(storagePolicy);
+        ValidateMode(options);
         deck = deck.Select(card => card.ForCalculation()).ToList();
         ValidateComboCount(combos);
         ValidateCardIds(deck);
@@ -34,14 +34,14 @@ public class ProbabilityCalculatorService : IProbabilityCalculatorService {
             CardEffectCompiler.RequireExecutable(card);
         }
 
+        WorkBudget budget = new(workPolicy, storagePolicy);
         if (!deck.Any(card => card.HasEffect)) {
-            return new ProbabilityCalculation(deck, handSize, workPolicy, storagePolicy).CalculateUnion(combos);
+            return new ProbabilityCalculation(deck, handSize, budget).CalculateUnionExact(combos).ToDouble(budget);
         }
 
         // Omitted options retain the historical scalar optimistic projection.
         // Explicit Fast uses the same adaptive policy as all-row results, without
         // paying for per-row results or optional certification.
-        WorkBudget budget = new(workPolicy, storagePolicy);
         return new DrawEffectCalculation(
             deck,
             handSize,
