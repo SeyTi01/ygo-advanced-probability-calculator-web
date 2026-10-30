@@ -19,7 +19,9 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         editor.Find(".accordion-button").Click();
-        Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("target"));
+        Assert.That(editor.Find("details.simulation-targets").HasAttribute("open"), Is.False);
+        Assert.That(editor.Find("details.simulation-targets > summary").TextContent, Is.EqualTo("Targets in this deck"));
+        Assert.That(editor.Find(".simulation-targets [role=status]").TextContent, Does.Contain("target"));
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Not.Contain("29302858"));
         await cut.InvokeAsync(() => cut.FindComponent<CardListEditor>().Instance.ReplaceCard((1, target.WithActive(false))));
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));

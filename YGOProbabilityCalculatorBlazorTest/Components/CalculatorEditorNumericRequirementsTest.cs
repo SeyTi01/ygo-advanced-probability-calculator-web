@@ -46,7 +46,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
         simulation.Find(".requirement-property-picker > select").Change(target);
         SetRange(simulation, property, "3", "5");
         simulation.Find($"input[aria-label='Maximum {property}']").Input("2");
-        Assert.That(simulation.Find(".requirement-submit button").HasAttribute("disabled"), Is.True);
+        Assert.That(simulation.Find(".requirement-context-actions button[type=submit]").HasAttribute("disabled"), Is.True);
         simulation.Find("form").Submit();
         Assert.That(selector, Is.EqualTo(CardSelector.For(a)));
         Button(simulation, "Cancel").Click();

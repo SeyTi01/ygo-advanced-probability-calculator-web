@@ -69,6 +69,19 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
         AssertDisclosure(cut);
     }
 
+    [Test]
+    public void ContextUsesPhysicalCopiesAndKeepsModeAndAccuracyDisclosure() {
+        PinnedCalculationContext input = new(5, 40, 24);
+        IRenderedComponent<CalculationAccuracyResult> cut = context.RenderComponent<CalculationAccuracyResult>(parameters => parameters
+            .Add(component => component.Context, input)
+            .Add(component => component.ModeDescription, input.ModeDescription)
+            .Add(component => component.Contract, ProbabilityPresentationTest.Contract(CalculationAccuracy.Exact)));
+        Assert.That(cut.Find(".result-model").Children.Select(child => child.TextContent),
+            Is.EqualTo(new[] { "Hand size: 5", "Deck size: 40 cards" }));
+        Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
+        AssertDisclosure(cut);
+    }
+
     private static void AssertStatus(IRenderedFragment cut, CalculationResultContract contract) {
         string expected = $"Mode: {contract.RequestedMode.Description()}";
 

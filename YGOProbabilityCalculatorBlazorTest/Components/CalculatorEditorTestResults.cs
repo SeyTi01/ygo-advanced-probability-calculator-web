@@ -90,7 +90,7 @@ public sealed class CalculatorEditorTestResults : CalculatorEditorTestBase {
             Assert.That(totalRow.ParentElement!.ClassList.Contains("probability-results"), Is.True,
                 "the summary row must sit outside the numbered combo list");
             Assert.That(totalRow.QuerySelector(".combo-probability-name")!.TextContent.Trim(),
-                Is.EqualTo("Any active combo"));
+                Is.EqualTo("Any combo"));
             Assert.That(totalRow.QuerySelector(".combo-probability-value")!.TextContent,
                 Is.EqualTo(expectedTotal.ToString("P2")));
 

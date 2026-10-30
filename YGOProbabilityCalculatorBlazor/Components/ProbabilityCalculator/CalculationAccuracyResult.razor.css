@@ -1,0 +1,7 @@
+.result-metadata, .result-model { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1rem; }
+.result-metadata > *, .result-model > * { min-width: 0; overflow-wrap: anywhere; }
+.result-model { gap: .25rem 1rem; }
+.accuracy-details { flex: 1 1 auto; }
+.accuracy-details summary { cursor: pointer; width: fit-content; }
+.accuracy-details[open] { flex-basis: 100%; }
+summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 3px; }

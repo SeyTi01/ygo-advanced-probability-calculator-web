@@ -18,8 +18,19 @@ public static class DisplayLabels {
     public static string Category(CategoryBase category) {
         if (category.Source != CategorySource.Metadata) { return category.Name; }
         string fallback = NumericPropertyRange.TryFromIdentity(category.Identity, out NumericPropertyRange? range)
-            ? NumericRange(range) : category.Name;
+            ? NumericRange(range) : AutomaticCategoryName(category);
         return Optional("Metadata." + category.MetadataKey, fallback);
+    }
+
+    private static string AutomaticCategoryName(CategoryBase category) {
+        (string Prefix, string Label)? abbreviation = category.MetadataKey switch {
+            string key when key.StartsWith("catalog-id:", StringComparison.Ordinal) => ("Card identity: ", "Identity: "),
+            string key when key.StartsWith("card-name:", StringComparison.Ordinal) => ("Card name: ", "Name: "),
+            string key when key.StartsWith("monster-race:", StringComparison.Ordinal) => ("Monster Type: ", "Type: "),
+            _ => null
+        };
+        return abbreviation is { } label && category.Name.StartsWith(label.Prefix, StringComparison.Ordinal)
+            ? label.Label + category.Name[label.Prefix.Length..] : category.Name;
     }
 
     public static string? CategoryOrNull(CategoryBase? category) => category is null ? null : Category(category);

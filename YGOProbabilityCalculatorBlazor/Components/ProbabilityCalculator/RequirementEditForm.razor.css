@@ -16,3 +16,6 @@
     .requirement-edit-multiple .requirement-quantity { grid-column: 1; }
     .requirement-submit { justify-self: end; }
 }
+
+.requirement-edit-action-submit.requirement-edit-no-quantity { grid-template-columns: minmax(0, 1fr); }
+.requirement-action-submit { margin-inline-start: auto; }

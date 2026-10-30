@@ -50,7 +50,7 @@ public class ProbabilityResultExportTest {
 
         string summary = ProbabilityResultSummaryFormatter.Format(result, 7, CultureInfo.GetCultureInfo("en-US"));
 
-        Assert.That(summary, Does.StartWith("Probability results\nHand size: 7\nAny active combo: 12.35%"));
+        Assert.That(summary, Does.StartWith("Probability results\nHand size: 7\nAny combo: 12.35%"));
         Assert.That(summary, Does.Contain("Individual combos:"));
         Assert.That(summary, Does.Contain("Unnamed combo 3"));
         Assert.That(summary.IndexOf("Unnamed combo 3", StringComparison.Ordinal), Is.LessThan(summary.IndexOf("Second route", StringComparison.Ordinal)));
@@ -78,7 +78,7 @@ public class ProbabilityResultExportTest {
         string summary = ProbabilityResultSummaryFormatter.Format(result, 6, CultureInfo.GetCultureInfo("en-US"));
 
         Assert.That(summary, Does.Contain("Hand size: 6"));
-        Assert.That(summary, Does.Contain("Any active combo: 87.00%"));
+        Assert.That(summary, Does.Contain("Any combo: 87.00%"));
         Assert.That(Occurrences(summary, "**Route group**"), Is.EqualTo(2));
         Assert.That(summary, Does.Contain("**Route group** — 61.00% ⚠ Uncertified (1 active)\n  - **Second group route** — 40.00%"));
         Assert.That(summary, Does.Contain("**Route group** — 50.00% ⚠ Uncertified (2 active)\n  - **Same route** — 75.00% ⚠ Uncertified\n  - **Same route** — 50.00%"));
@@ -103,13 +103,13 @@ public class ProbabilityResultExportTest {
         string english = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("en-US"));
         string german = ProbabilityResultSummaryFormatter.Format(result, 5, CultureInfo.GetCultureInfo("de-DE"));
 
-        Assert.That(english, Does.Contain("Any active combo: 12.50%"));
+        Assert.That(english, Does.Contain("Any combo: 12.50%"));
         Assert.That(english, Does.Contain("Below rounding boundary** — 12.34%"));
         Assert.That(english, Does.Contain("Above rounding boundary** — 12.35%"));
         Assert.That(english, Does.Contain("**Zero** — 0.00%"));
         Assert.That(english, Does.Contain("**One** — 100.00%"));
         Assert.That(english, Does.Contain("**Small** — 0.01%"));
-        Assert.That(german, Does.Contain("Any active combo: 12,50 %"));
+        Assert.That(german, Does.Contain("Any combo: 12,50 %"));
         Assert.That(german, Does.Contain("Below rounding boundary** — 12,34 %"));
         Assert.That(german, Does.Contain("Above rounding boundary** — 12,35 %"));
     }
@@ -327,7 +327,7 @@ public class ProbabilityResultExportTest {
         IRenderedComponent<ProbabilityResultExport> cut = Render(Result(.42, "Old route"), handSize: 5, isStale: true);
         Task action = cut.Find("button").ClickAsync(new());
         string probability = .42.ToString("P2", CultureInfo.CurrentCulture) + " ⚠ Uncertified";
-        string expected = $"Previous result — current inputs have changed.\nProbability results\nHand size: 5\nAny active combo: {probability}\n\nIndividual combos:\n- **Old route** — {probability}";
+        string expected = $"Previous result — current inputs have changed.\nProbability results\nHand size: 5\nAny combo: {probability}\n\nIndividual combos:\n- **Old route** — {probability}";
         Assert.That(_clipboard.LastCopiedText, Is.EqualTo(expected));
         // Re-rendering an unchanged historical snapshot must not invalidate its copy feedback.
         cut.SetParametersAndRender(parameters => parameters.Add(component => component.IsStale, true));
@@ -536,7 +536,7 @@ public class ProbabilityResultExportTest {
     private static string ExpectedGermanSummary() => string.Join('\n', new[] {
         "Probability results",
         "Hand size: 5",
-        "Any active combo: 83,61 % ⚠ Uncertified",
+        "Any combo: 83,61 % ⚠ Uncertified",
         "",
         "Group probabilities:",
         "- **Full VS** — 61,07 % ⚠ Uncertified (6 active)",

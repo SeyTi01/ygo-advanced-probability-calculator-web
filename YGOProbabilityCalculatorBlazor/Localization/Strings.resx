@@ -437,7 +437,7 @@
     <value>{0}: {1} per entry</value>
   </data>
   <data xml:space="preserve" name="Ui.0AnyActiveCombo1">
-    <value>{0}, any active combo: {1}</value>
+    <value>{0}, any combo: {1}</value>
   </data>
   <data xml:space="preserve" name="Ui.0Combo12">
     <value>{0}, combo {1}: {2}</value>
@@ -503,7 +503,7 @@
     <value>Activate</value>
   </data>
   <data xml:space="preserve" name="Ui.ActivateAtLeastOneCardToCalculate">
-    <value>Activate at least one card to calculate.</value>
+    <value>Add or enable at least one deck card to calculate.</value>
   </data>
   <data xml:space="preserve" name="Ui.ActivateAtLeastOneComboToCalculate">
     <value>Activate at least one combo to calculate.</value>
@@ -578,10 +578,10 @@
     <value>Any</value>
   </data>
   <data xml:space="preserve" name="Ui.AnyActiveCombo">
-    <value>Any active combo</value>
+    <value>Any combo</value>
   </data>
   <data xml:space="preserve" name="Ui.AnyActiveCombo0">
-    <value>Any active combo: {0}</value>
+    <value>Any combo: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.AnyCard">
     <value>any card</value>
@@ -1870,7 +1870,7 @@
   <data name="Help.Modes.Limits.Part0" xml:space="preserve"><value>accuracy and performance</value></data>
   <data name="Help.Modes.Limits" xml:space="preserve"><value>Exact has no calculation deadline, but memory limits, unsupported configurations or failures can still prevent completion. See {0} for resource limits.</value></data>
   <data name="Help.Results.Question" xml:space="preserve"><value>How to read results?</value></data>
-  <data name="Help.Results.Union.Part0" xml:space="preserve"><value>Any active combo</value></data>
+  <data name="Help.Results.Union.Part0" xml:space="preserve"><value>Any combo</value></data>
   <data name="Help.Results.Union" xml:space="preserve"><value>Each combo is evaluated independently. {0} counts success in at least one active combo; group totals do the same for their members.</value></data>
   <data name="Help.Results.OverlapWarning.Part0" xml:space="preserve"><value>Overlapping successes count once. Do not add individual percentages.</value></data>
   <data name="Help.Results.Accuracy" xml:space="preserve"><value>Accuracy</value></data>
@@ -1913,7 +1913,7 @@
   <data name="Help.Example.Alternatives.Part0" xml:space="preserve"><value>VS Starter + (FIRE OR DARK)</value></data>
   <data name="Help.Example.Alternatives" xml:space="preserve"><value>{0} demonstrates alternative requirements. Search effects fetch eligible remaining monsters, which contribute their own identities and properties.</value></data>
   <data name="Help.Example.Result.Part0" xml:space="preserve"><value>85.92% (565375/658008)</value></data>
-  <data name="Help.Example.Result.Part1" xml:space="preserve"><value>Any active combo</value></data>
+  <data name="Help.Example.Result.Part1" xml:space="preserve"><value>Any combo</value></data>
   <data name="Help.Example.Result" xml:space="preserve"><value>With all eight combos active, the settled Progressive result is exact: {0} for {1}.</value></data>
   <data name="Help.Footer.Heading" xml:space="preserve"><value>Further reading and credits</value></data>
   <data name="Help.Footer.Reading.Part0" xml:space="preserve"><value>calculation model</value></data>
@@ -1925,4 +1925,13 @@
   <data name="Help.Footer.Credits" xml:space="preserve"><value>Created by {0}. Card artwork is supplied by {1} and retained on project hosting. Missing artwork does not affect calculations; third-party artwork is outside the software license.</value></data>
   <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exact)</value></data>
   <data name="Ui.Share" xml:space="preserve"><value>Share</value></data>
+  <data name="Ui.TargetsInThisDeck" xml:space="preserve">
+    <value>Targets in this deck</value>
+  </data>
+  <data name="Result.HandSize" xml:space="preserve">
+    <value>Hand size: {0}</value>
+  </data>
+  <data name="Result.DeckSize" xml:space="preserve">
+    <value>Deck size: {0} cards</value>
+  </data>
 </root>
