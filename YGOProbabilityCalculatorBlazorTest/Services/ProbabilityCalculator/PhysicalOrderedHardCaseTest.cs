@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Reflection;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
@@ -72,6 +73,89 @@ public sealed class PhysicalOrderedHardCaseTest {
         ExactCalculationResult result = Calculate(fixture, PhysicalEnumerationMethod.SingleSource, true);
         AssertRows(result, oracle, "reversed encounter order");
         Assert.That(result.Groups[^1].Numerator, Is.EqualTo(BigInteger.Zero), "An authored empty group has no successful witness.");
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void TerminalOutcomeSumsFlushWithoutLosingMassOrDuplicatingGroupUnions(bool totalOnly) {
+        const int comboCount = 16;
+        List<Combo> combos = Enumerable.Range(0, comboCount)
+            .Select(index => new Combo([], groupId: index % 2 == 0 ? "even" : "odd")).ToList();
+        List<ComboGroup> groups = [new("even", "Even rows"), new("odd", "Odd rows"), new("empty", "Empty")];
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+        PostDrawCalculation calculation = new([], 0, budget);
+        BigInteger[] factorial = [1, 1, 2, 6];
+        PostDrawCalculation.TerminalAccumulator accumulator = new(calculation, budget, factorial,
+            new(combos, groups, totalOnly), totalOnly);
+        BigInteger[] actual = new BigInteger[totalOnly ? 1 : 1 + comboCount + groups.Count];
+        BigInteger[] expected = new BigInteger[actual.Length];
+
+        // The real Standard entry limit forces a flush. Different suffix
+        // lengths and wide prefix weights must retain their own factorials.
+        for (int mask = 1; mask <= CalculationStoragePolicy.Standard.EntryLimit + 1; mask++) {
+            bool[] success = Enumerable.Range(0, comboCount).Select(index => (mask & (1 << index)) != 0).ToArray();
+            int remaining = mask % factorial.Length;
+            BigInteger prefix = (BigInteger.One << 40) + mask;
+            Add(success, remaining, prefix);
+            if (mask % 128 == 0) {
+                Add(success, remaining, prefix + 1);
+            }
+        }
+        accumulator.Add(new bool[comboCount], 3, BigInteger.One << 50, actual);
+        Assert.That(actual[0], Is.GreaterThan(BigInteger.Zero), "Crossing the Standard entry limit flushed completed mass.");
+        accumulator.Flush(actual);
+        Assert.That(actual, Is.EqualTo(expected), "Every total, combo and group union retains its complete weighted mass.");
+        accumulator.Flush(actual);
+        Assert.That(actual, Is.EqualTo(expected), "An empty second flush cannot count prior outcomes again.");
+        Assert.That(budget.PeakEntries, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.EntryLimit));
+        Assert.That(budget.PeakCells, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.CellLimit));
+
+        void Add(bool[] success, int remaining, BigInteger prefix) {
+            accumulator.Add(success, remaining, prefix, actual);
+            BigInteger mass = prefix * factorial[remaining];
+            expected[0] += mass;
+            if (totalOnly) {
+                return;
+            }
+            bool even = false;
+            bool odd = false;
+            for (int combo = 0; combo < comboCount; combo++) {
+                if (success[combo]) {
+                    expected[1 + combo] += mass;
+                    even |= combo % 2 == 0;
+                    odd |= combo % 2 != 0;
+                }
+            }
+            if (even) {
+                expected[1 + comboCount] += mass;
+            }
+            if (odd) {
+                expected[2 + comboCount] += mass;
+            }
+        }
+    }
+
+    [Test]
+    public void TerminalOutcomeSumGrowthFlushesThePreviousMassExactlyOnce() {
+        ConstructorInfo constructor = typeof(CalculationStoragePolicy).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null, types: [typeof(CalculationStorageTier), typeof(long), typeof(long)], modifiers: null)!;
+        CalculationStoragePolicy storage = (CalculationStoragePolicy)constructor.Invoke([CalculationStorageTier.Standard, 1L, 3L]);
+        WorkBudget budget = new(CalculationWorkPolicy.Interactive, storage);
+        PostDrawCalculation calculation = new([], 0, budget);
+        PostDrawCalculation.TerminalAccumulator accumulator = new(calculation, budget, [1, 1, 2],
+            new([new([])], [], totalOnly: true), totalOnly: true);
+        BigInteger[] wins = [BigInteger.Zero];
+        BigInteger prefix = (BigInteger.One << 32) - 1;
+        accumulator.Add([true], 2, prefix, wins);
+        Assert.That(wins[0], Is.EqualTo(BigInteger.Zero));
+        // The existing sum grows from one to two integer cells, crossing the
+        // limit without adding a key. Flush its old value before retaining 1.
+        accumulator.Add([true], 2, BigInteger.One, wins);
+        Assert.That(wins[0], Is.EqualTo(prefix * 2));
+        accumulator.Flush(wins);
+        Assert.That(wins[0], Is.EqualTo(BigInteger.One << 33));
+        accumulator.Flush(wins);
+        Assert.That(wins[0], Is.EqualTo(BigInteger.One << 33));
     }
 
     private static Fixture Create(string name) {

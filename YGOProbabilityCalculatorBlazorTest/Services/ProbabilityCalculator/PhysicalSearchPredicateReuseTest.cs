@@ -11,6 +11,68 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture]
 public sealed class PhysicalSearchPredicateReuseTest {
+    [TestCase(false), TestCase(true)]
+    public void TerminalCachePreservesSharedTargetsEntryAllowancesAndBorrowedResults(bool oncePerTurn) {
+        CategoryBase target = new("Target");
+        List<Card> cards = [
+            new([], 2, id: "first", search: new(CardSelector.For(target), false), oncePerTurn: oncePerTurn),
+            new([], id: "second", search: new(CardSelector.For(target), false), oncePerTurn: oncePerTurn),
+            new([target], 3, id: "target"), new([], 3, id: "filler")
+        ];
+        List<Combo> combos = [new([new(target, 2, 5)]), new([new(target, 3, 5)]), new([new(target, 0, 0)]),
+            new([], cards: [new("first", 0, 0)])];
+        WorkBudget budget = new(CalculationWorkPolicy.Unlimited);
+        PhysicalSearchHandCounter counter = new(cards, combos, budget, memoize: true);
+        for (int first = 0; first <= 2; first++) {
+            for (int second = 0; second <= 1; second++) {
+                for (int held = 0; held <= 1; held++) {
+                    int allowance = (oncePerTurn ? Math.Min(first, 1) : first) + second;
+                    for (int available = 0; available <= 3 - held; available++) {
+                        int maximumTargets = held + Math.Min(available, allowance);
+                        bool canRemoveFirst = first == 0 || (available >= first && (!oncePerTurn || first == 1));
+                        bool[] expected = [maximumTargets >= 2, maximumTargets >= 3, held == 0, canRemoveFirst];
+                        int[] hand = [first, second, held, 1];
+                        // Non-target capacity changes cannot affect searches. Target
+                        // capacity below the shared allowance must remain observable.
+                        foreach (int filler in new[] { 0, 2, 0 }) {
+                            Assert.That(counter.Evaluate(hand, [0, 0, available, filler]), Is.EqualTo(expected));
+                        }
+                        // Evaluate returns a borrowed buffer; changing it must not
+                        // mutate the request cache's independently owned result.
+                        bool[] borrowed = counter.Evaluate(hand, [0, 0, available, 0]);
+                        Array.Fill(borrowed, false);
+                        Assert.That(counter.Evaluate(hand, [0, 0, available, 0]), Is.EqualTo(expected));
+                    }
+                }
+            }
+        }
+        Assert.That(budget.PeakCells, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.CellLimit));
+    }
+
+    [Test]
+    public void FullTerminalCacheContinuesEvaluatingWithoutExceedingStorage() {
+        CategoryBase target = new("Target");
+        List<Card> cards = [new([], id: "search", search: new(CardSelector.For(target), false)),
+            new([target], id: "target"), .. Enumerable.Range(0, 6).Select(row => new Card([], 5, id: $"filler-{row}"))];
+        WorkBudget budget = new(CalculationWorkPolicy.Unlimited);
+        PhysicalSearchHandCounter counter = new(cards, [new([new(target, 1, 32)])], budget, memoize: true);
+        int[] hand = new int[cards.Count];
+        hand[0] = 1;
+        for (int scenario = 0; scenario < 25_000; scenario++) {
+            int remaining = scenario;
+            for (int row = 2; row < hand.Length; row++) {
+                hand[row] = remaining % 6;
+                remaining /= 6;
+            }
+            Assert.That(counter.Evaluate(hand, [0, 1, 0, 0, 0, 0, 0, 0]), Is.EqualTo(new[] { true }));
+        }
+        Assert.That(budget.PeakCells, Is.InRange(CalculationStoragePolicy.Standard.CellLimit - 32,
+            CalculationStoragePolicy.Standard.CellLimit));
+        // The late unseen capacity-zero key still uses the exact uncached path.
+        Assert.That(counter.Evaluate(hand, new int[cards.Count]), Is.EqualTo(new[] { false }));
+        Assert.That(counter.Evaluate(hand, [0, 1, 0, 0, 0, 0, 0, 0]), Is.EqualTo(new[] { true }));
+    }
+
     [Test]
     public void GrowingCompilationBoundPreservesEverySmallerPhysicalHandAndNormalizedRoute() {
         CategoryBase a = new("A");

@@ -5,6 +5,7 @@ using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
@@ -338,6 +339,69 @@ public sealed class TwoPhaseSearchPriorityTest {
 
     [TestCase(false)]
     [TestCase(true)]
+    public void DangerEquivalentLabelsPreserveUnequalCopiesAndDirectZeroConstraints(bool directZero) {
+        List<Card> deck = [Danger("first", copies: 2), Danger("second", 70711847), Danger("third", 52350806),
+            new([A], id: "a"), new([B], id: "b")];
+        List<Combo> combos = [new([new(A, 1, 1)], groupId: "g"), new([new(B, 0, 0)], groupId: "g"),
+            new([new(A, 1, 1), new(B, 1, 1)])];
+        if (directZero) {
+            combos.Add(new([], cards: [new("first", 0, 0)]));
+        }
+        // The independent oracle visits every physical FIFO word, including
+        // interleavings of both copies of first with the other identities.
+        AssertOracle(deck, 3, combos, [new("g", "Survivor union")], DrawActivationPriority.Default,
+            checkWire: true, verifiedIdentities: Identities(deck));
+    }
+
+    [TestCase("fifo")]
+    [TestCase("ranked")]
+    [TestCase("bounded")]
+    public void DangerStreamingPreservesSearchTargetsRanksAndBoundedCosts(string variant) {
+        List<Card> deck = [Danger("first", copies: 2).WithCategories([DrawSource, Cost]),
+            Danger("second", 70711847).WithCategories([DrawSource]), Danger("third", 52350806).WithCategories([DrawSource]),
+            new([], id: "search", search: new(CardSelector.For(Cost), false),
+                preDrawRemovalCount: variant == "bounded" ? 1 : 0),
+            new([A], id: "a"), new([B], id: "b")];
+        List<Combo> combos = [new([new(DrawSource, 1, 2)], groupId: "g"),
+            new([new(A, 1, 1), new(B, 1, 1)], groupId: "g"), new([new(DrawSource, 0, 0)]),
+            new([new(A, 0, 0)]), new([new(B, 0, 0)])];
+        DrawActivationPriority priority = variant == "ranked" ? Custom("third", "first", "second", "search") : DrawActivationPriority.Default;
+        AssertOracle(deck, 3, combos, [new("g", "Search survivor union")], priority,
+            checkWire: true, verifiedIdentities: Identities(deck));
+    }
+
+    [Test]
+    public void DangerStreamingKeepsOrdinaryCanonicalSiblingsObservable() {
+        List<Card> deck = [Danger("first", copies: 2), new([A], id: "same", externalCardId: 43316238),
+            Danger("second", 70711847), Danger("third", 52350806), new([B], id: "b")];
+        List<Combo> combos = [new([new(A, 1, 1)], groupId: "g"), new([new(B, 0, 0)], groupId: "g"),
+            new([new(A, 1, 1), new(B, 1, 1)])];
+        AssertOracle(deck, 3, combos, [new("g", "Identity-sensitive union")], DrawActivationPriority.Default,
+            checkWire: true, verifiedIdentities: Identities(deck));
+    }
+
+    [Test]
+    public void DangerStreamingPreservesOrdinaryDrawsAndMandatoryRemoval() {
+        List<Card> deck = [Danger("first", copies: 2), Danger("second", 70711847),
+            new([], id: "ordinary", drawCount: 2, postDrawDiscardCount: 1),
+            new([A], id: "a"), new([B], id: "b")];
+        List<Combo> combos = [new([new(A, 1, 1)], groupId: "g"), new([new(B, 0, 0)], groupId: "g"),
+            new([new(A, 1, 1), new(B, 1, 1)]), new([], cards: [new("ordinary", 0, 0)])];
+        AssertOracle(deck, 3, combos, [new("g", "Completed removal union")], DrawActivationPriority.Default,
+            checkWire: true, verifiedIdentities: Identities(deck));
+    }
+
+    [Test]
+    public void DangerFrontierChunkSizesPreserveEveryOracleRow() {
+        List<Card> deck = [Danger("first", copies: 2), Danger("second", 70711847), new([A], id: "a"), new([B], id: "b")];
+        List<Combo> combos = [new([new(A, 1, 1)], groupId: "g"), new([new(B, 0, 0)], groupId: "g"),
+            new([new(A, 1, 1), new(B, 1, 1)])];
+        AssertOracle(deck, 3, combos, [new("g", "Cached union")], DrawActivationPriority.Default,
+            checkWire: true, verifiedIdentities: Identities(deck), compareDangerChunkLimits: true);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
     public void DangerRandomDiscardPreservesPhysicalFifoForDuplicateOncePerTurnSources(bool removal) {
         List<Card> deck = [Danger("danger"), new([], 2, id: "once", drawCount: 1,
                 postDrawDiscardCount: removal ? 1 : 0),
@@ -390,6 +454,88 @@ public sealed class TwoPhaseSearchPriorityTest {
             AssertOracle(deck, variant == "minimum" ? 3 : 2, combos, [new("g", "Union")], priority,
                 checkWire: variant == "hidden", verifiedIdentities: Identities(deck));
         }
+    }
+
+    [TestCase(1, false)]
+    [TestCase(2, false)]
+    [TestCase(2, true)]
+    public void DangerRandomDiscardFollowsOrdinaryHandGrowthBeforeOrBetweenReveals(int handSize, bool firstDangerBeforeGrowth) {
+        List<Card> deck = [Danger("first"), Danger("second", 70711847),
+            new([], id: "growth", drawCount: 3), new([A, B], id: "ab"), new([A], id: "a"), new([], id: "blank")];
+        List<Combo> combos = [new([new(A, 1, 2), new(B, 1, 1)], groupId: "g"),
+            new([new(B, 0, 0)], groupId: "g"), new([], cards: [new("first", 0, 0)]),
+            new([], cards: [new("growth", 1, 1)]), new([], name: "Complete probability mass")];
+        DrawActivationPriority priority = firstDangerBeforeGrowth
+            ? Custom("first", "growth", "second") : Custom("growth", "first", "second");
+        // Draw three increases the settled hand by two. Some worlds reveal
+        // both Danger identities, with growth before or between their discards.
+        AssertOracle(deck, handSize, combos, [new("g", "Overlapping outcomes")], priority,
+            checkWire: true, verifiedIdentities: Identities(deck));
+    }
+
+    [TestCase(false, null)]
+    [TestCase(true, null)]
+    [TestCase(false, 2)]
+    public void DangerRandomDiscardPreservesRepeatableAndLimitedHandGrowth(bool oncePerTurn, int? activationLimit) {
+        List<Card> deck = [Danger("danger", copies: 2),
+            new([], 3, id: "growth", drawCount: 2, oncePerTurn: oncePerTurn, activationLimit: activationLimit),
+            new([A, B], id: "ab"), new([A], id: "a")];
+        List<Combo> combos = [new([new(A, 1, 2), new(B, 1, 1)], groupId: "g"),
+            new([new(B, 0, 0)], groupId: "g"), new([], cards: [new("danger", 0, 0)]),
+            new([], cards: [new("growth", 1, 2)]), new([], name: "Complete probability mass")];
+        // Three physical copies offer one, two or three possible positive
+        // hand gains. OPT leftovers still participate in random discard.
+        AssertOracle(deck, 1, combos, [new("g", "Growth outcomes")], Custom("growth", "danger"),
+            checkWire: true, verifiedIdentities: Identities(deck));
+    }
+
+    [TestCase(1, 0)]
+    [TestCase(0, 1)]
+    [TestCase(0, 2)]
+    [TestCase(1, 1)]
+    public void DangerRandomDiscardFollowsNetHandGrowthAfterCostsAndMandatoryRemovals(int handCost, int removal) {
+        List<Card> deck = [Danger("first"), Danger("second", 70711847),
+            new([], id: "growth", drawCount: 3, preDrawRemovalCount: handCost, postDrawDiscardCount: removal),
+            new([A], id: "a"), new([B], id: "b"), new([], id: "blank")];
+        List<Combo> combos = [new([new(A, 1, 1), new(B, 1, 1)], groupId: "g"),
+            new([new(A, 0, 0)], groupId: "g"), new([], cards: [new("first", 0, 0)]),
+            new([], cards: [new("growth", 1, 1)]), new([], name: "Complete probability mass")];
+        // Random discard sees the settled hand only: the source, chosen cost
+        // and mandatory removal have already reduced the draw-three gain.
+        AssertOracle(deck, 2, combos, [new("g", "Settled hand outcomes")], Custom("growth", "first", "second"),
+            checkWire: true, verifiedIdentities: Identities(deck));
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    public void DangerRandomDiscardWithZeroOrOneOpeningCardCanOnlyUseEncounteredGrowth(int handSize) {
+        List<Card> deck = [Danger("danger", copies: 2), new([], id: "growth", drawCount: 3),
+            new([A, B], id: "ab"), new([A], id: "a"), new([], id: "blank")];
+        List<Combo> combos = [new([], name: "Complete probability mass", groupId: "g"),
+            new([], cards: [new("danger", 0, 0)], groupId: "g"),
+            new([new(A, 1, 2)]), new([new(B, 1, 1)])];
+        (int, int)[]? expected = handSize == 0
+            ? [(1, 1), (1, 1), (1, 1), (0, 1), (0, 1), (1, 1)] : null;
+        AssertOracle(deck, handSize, combos, [new("g", "Complete mass")], Custom("growth", "danger"),
+            expected, checkWire: true, verifiedIdentities: Identities(deck));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DangerMixedHiddenLossAndFilteredRemovalPreserveSearchSurvivorCorrelation(bool customPriority) {
+        CategoryBase dark = new("DARK", CategorySource.Metadata, "attribute:dark");
+        List<Card> deck = [Danger("first").WithCategories([dark]), Danger("second", 70711847).WithCategories([dark]),
+            new([], id: "filtered", drawCount: 2, postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(dark)),
+            new([], id: "hidden", drawCount: 2, preDrawDeckRemovalCount: 1), Search("search", CardSelector.For(A)),
+            new([A, B, dark], id: "target"), new([B], id: "filler")];
+        List<Combo> combos = [new([new(A, 1, 1), new(B, 1, 2)], groupId: "g"),
+            new([new(B, 0, 0)], groupId: "g"), new([], cards: [new("target", 1, 1)]),
+            new([], cards: [new("search", 1, 1)]), new([], cards: [new("first", 0, 0)]),
+            new([], name: "All non-failed outcomes")];
+        DrawActivationPriority priority = customPriority
+            ? Custom("second", "filtered", "first", "hidden", "search") : DrawActivationPriority.Default;
+        AssertOracle(deck, 3, combos, [new("g", "Correlated outcomes")], priority,
+            checkWire: true, verifiedIdentities: Identities(deck));
     }
 
     [TestCase(false)]
@@ -452,13 +598,40 @@ public sealed class TwoPhaseSearchPriorityTest {
     private static DrawActivationPriority Custom(params string[] ids) => new(DrawActivationMode.CustomPriority, ids);
 
     private static void AssertOracle(List<Card> deck, int handSize, List<Combo> combos, List<ComboGroup> groups,
-        DrawActivationPriority priority, (int Numerator, int Denominator)[]? expected = null, bool checkWire = false, IReadOnlyDictionary<string, int?>? verifiedIdentities = null) {
+        DrawActivationPriority priority, (int Numerator, int Denominator)[]? expected = null, bool checkWire = false, IReadOnlyDictionary<string, int?>? verifiedIdentities = null, bool compareDangerChunkLimits = false) {
         TwoPhaseSearchOracle.Rational[] oracle = TwoPhaseSearchOracle.Count(deck, handSize, combos, groups, priority, verifiedIdentities);
         if (expected is not null) {
             Assert.That(oracle, Has.Length.EqualTo(expected.Length));
             for (int row = 0; row < oracle.Length; row++) {
                 Assert.That(oracle[row].Numerator * expected[row].Denominator,
                     Is.EqualTo(expected[row].Numerator * oracle[row].Denominator), "Independent physical oracle row " + row);
+            }
+        }
+        ProbabilityFraction[]? physicalReference = null;
+        if (verifiedIdentities is not null) {
+            List<Card> active = deck.Where(card => card.Active && card.Copies > 0).Select(card => card.ForCalculation()).ToList();
+            List<(PhysicalEnumerationMethod Method, long ChunkLimit)> executions = [
+                (PhysicalEnumerationMethod.Frontier, CalculationStoragePolicy.Standard.CellLimit),
+                (PhysicalEnumerationMethod.Streaming, CalculationStoragePolicy.Standard.CellLimit)];
+            if (compareDangerChunkLimits) {
+                executions.Add((PhysicalEnumerationMethod.Streaming, 0));
+                executions.Add((PhysicalEnumerationMethod.Streaming, 64));
+            }
+            foreach ((PhysicalEnumerationMethod method, long chunkLimit) in executions) {
+                WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+                SearchAccessPlan search = new(active, budget);
+                PostDrawCalculation calculation = new(active, handSize, budget, priority) { DangerFrontierCellTarget = chunkLimit };
+                ProbabilityFraction[] physical = calculation.CalculateSearch(combos, groups, false, search, physical: true, method: method)
+                    .ToRows().Select(value => value.ToFraction()).ToArray();
+                if (chunkLimit == 0) {
+                    Assert.That(calculation.DangerFrontierFlushes, Is.GreaterThan(0), "The forced tiny chunks must exercise draining.");
+                }
+                if (physicalReference is null) {
+                    physicalReference = physical;
+                }
+                else {
+                    Assert.That(physical, Is.EqualTo(physicalReference), "Streamed physical resolution matches the retained frontier with chunk target " + chunkLimit);
+                }
             }
         }
         ProbabilityCalculatorService service = new();
@@ -482,6 +655,9 @@ public sealed class TwoPhaseSearchPriorityTest {
             ProbabilityFraction[] rows = [result.Contract.Fractions!.Total, .. result.Contract.Fractions.Combos,
                 .. result.Contract.Fractions.Groups];
             Assert.That(rows, Has.Length.EqualTo(oracle.Length));
+            if (physicalReference is not null) {
+                Assert.That(rows, Is.EqualTo(physicalReference), mode + " matches the retained physical frontier");
+            }
             for (int row = 0; row < rows.Length; row++) {
                 Assert.That(BigInteger.Parse(rows[row].Numerator) * oracle[row].Denominator,
                     Is.EqualTo(oracle[row].Numerator * BigInteger.Parse(rows[row].Denominator)), mode + " row " + row);

@@ -11,11 +11,13 @@ internal sealed partial class PostDrawCalculation {
         private BigInteger? _randomScale;
         private int?[]? _dangerIdentities;
 
-        // A random discard has denominator at most N. Every activation removes
-        // at least one copy of an active Danger identity. If there are D such
-        // physical copies, LCM(1..N)^D supplies an integer unit for every path,
+        // Only settled hands can activate Danger. Ordinary activations add at
+        // most their positive net hand gain; every Danger activation shrinks the
+        // hand by one and removes a copy of an active Danger identity. With H the
+        // opening hand plus all possible positive gains, and D those identity
+        // copies, LCM(1..min(N,H))^min(D,H) covers every random denominator,
         // independently of visible deck depth. Ordinary requests retain N! units.
-        internal BigInteger RandomScale(int copies) {
+        private BigInteger RandomScale(int copies, int handSize) {
             if (_randomScale is { } existing) {
                 return existing;
             }
@@ -29,9 +31,18 @@ internal sealed partial class PostDrawCalculation {
             int maximumActivations = Enumerable.Range(0, cards.Count)
                 .Where(row => _dangerIdentities[row] is int identity && sourceIdentities.Contains(identity))
                 .Sum(row => cards[row].Copies);
-            budget.Spend(cards.Count * 2L);
+            long maximumHand = handSize;
+            foreach (Card card in cards) {
+                if (card.HasDrawEffect && !card.IsDangerReveal) {
+                    long gain = Math.Max(0L, (long)card.DrawBatchSize - 1 - card.PreDrawRemovalCount - card.PostDrawDiscardCount);
+                    maximumHand += gain * Math.Min(card.Copies, card.MaximumActivations);
+                }
+            }
+            int bound = (int)Math.Min(copies, maximumHand);
+            maximumActivations = (int)Math.Min(maximumActivations, maximumHand);
+            budget.Spend(cards.Count * 3L);
             BigInteger lcm = BigInteger.One;
-            for (int divisor = 2; divisor <= copies; divisor++) {
+            for (int divisor = 2; divisor <= bound; divisor++) {
                 budget.Spend(WorkBudget.IntegerCells(lcm) + 1);
                 lcm = lcm / BigInteger.GreatestCommonDivisor(lcm, divisor) * divisor;
             }
@@ -45,8 +56,8 @@ internal sealed partial class PostDrawCalculation {
             return scale;
         }
 
-        internal BigInteger Denominator(BigInteger[] factorial) {
-            BigInteger scale = RandomScale(factorial.Length - 1);
+        internal BigInteger Denominator(BigInteger[] factorial, int handSize) {
+            BigInteger scale = RandomScale(factorial.Length - 1, handSize);
             if (scale.IsOne) {
                 return factorial[^1];
             }
@@ -61,7 +72,7 @@ internal sealed partial class PostDrawCalculation {
             int compactFrontierThreshold,
             bool packTerminals
         ) where TTerminal : struct, ITerminalHand {
-            BigInteger scale = RandomScale(copies);
+            BigInteger scale = RandomScale(copies, handSize);
             for (int row = 0; row < cards.Count; row++) {
                 if (cards[row].IsDangerReveal && _dangerIdentities[row] is null) {
                     throw new ArgumentException("Danger! activation requires a verified canonical card identity.");
@@ -126,7 +137,7 @@ internal sealed partial class PostDrawCalculation {
                 currentCells = nextCells;
                 currentPacked = nextPacked;
 
-                void AddSettled(int[] settled, BigInteger mass) {
+                void AddSettled(int[] settled, BigInteger mass, int settledDepth, long settledCells) {
                     if (settled[layout.DrawsLeft] == 0) {
                         RecordTerminal(settled, remaining - 1, mass);
                         return;
@@ -162,7 +173,7 @@ internal sealed partial class PostDrawCalculation {
             BigInteger weight,
             int depth,
             long parentCells,
-            Action<int[], BigInteger> settled
+            Action<int[], BigInteger, int, long> settled
         ) {
             long cells = parentCells + values.Length + WorkBudget.IntegerCells(weight) + 4;
             owner.CheckStorage(depth + 1L, cells, "random discard stack");
@@ -173,7 +184,7 @@ internal sealed partial class PostDrawCalculation {
                     throw new InvalidOperationException("An activated draw batch exceeds the remaining deck size.");
                 }
                 if (values[layout.DrawsLeft] > 0) {
-                    settled(values, weight);
+                    settled(values, weight, depth, cells);
                     return;
                 }
                 if (CompleteBatch(ref values, ref remaining) == ResolutionOutcome.RemovalUnavailable) {
@@ -185,7 +196,7 @@ internal sealed partial class PostDrawCalculation {
                         budget.Spend(values.Length);
                         values = values.AsSpan(0, layout.QueueStart).ToArray();
                     }
-                    settled(values, weight);
+                    settled(values, weight, depth, cells);
                     return;
                 }
                 if (!cards[values[selected]].IsDangerReveal) {
@@ -204,7 +215,7 @@ internal sealed partial class PostDrawCalculation {
             BigInteger weight,
             int depth,
             long parentCells,
-            Action<int[], BigInteger> settled
+            Action<int[], BigInteger, int, long> settled
         ) {
             int source = values[selected];
             int handSize = 0;
@@ -289,7 +300,7 @@ internal sealed partial class PostDrawCalculation {
                 }
                 // Same identity removes only the random copy. The unchanged
                 // FIFO tokens preserve every surviving reveal opportunity.
-                SettleDanger(branch, remaining, unit * multiplicity, depth + 1, parentCells, settled);
+                SettleDanger(branch, remaining, unit * multiplicity, depth + 1, parentCells + WorkBudget.IntegerCells(unit) + 4, settled);
             }
         }
     }
