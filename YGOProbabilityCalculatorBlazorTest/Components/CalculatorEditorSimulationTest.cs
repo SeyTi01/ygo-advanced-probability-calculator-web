@@ -14,6 +14,70 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 public sealed class CalculatorEditorSimulationTest : CalculatorEditorTestBase {
     private static Card BuiltIn(int id) => CardEffectRegistry.Default.RestoreBuiltIn(new([], 3, externalCardId: id));
 
+    [TestCase(43316238)]
+    [TestCase(90807199)]
+    [TestCase(26302107)]
+    [TestCase(99745551)]
+    [TestCase(16209941)]
+    [TestCase(52350806)]
+    [TestCase(70711847)]
+    [TestCase(43694650)]
+    [TestCase(83518674)]
+    public async Task DangerEditorPreservesFixedOperationDraftsDisableRestoreAndRecovery(int identity) {
+        Card original = BuiltIn(identity).WithName("Edited label");
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [original] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        Assert.That(editor.Find(".accordion-button").TextContent, Does.Contain("Danger! reveal"));
+        Assert.That(editor.FindAll(".simulation-summary"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".simulation-status"), Has.Count.EqualTo(original.EffectProfile.Support == EffectSupport.Partial ? 1 : 0));
+        OpenSimulation(editor);
+        Assert.That(editor.Find("#cardDraw0").GetAttribute("value"), Is.EqualTo("danger"));
+        Assert.That(editor.FindAll("#cardDrawOnce0, #cardCost0, #cardDiscard0, #cardDeckCost0"), Is.Empty);
+        Assert.That(editor.FindAll(".simulation-danger-note"), Has.Count.EqualTo(1));
+        Assert.That(editor.Find("label[for='cardDraw0']"), Is.Not.Null);
+        await editor.Find(".simulation-save").ClickAsync(new());
+        Assert.That(editor.Instance.Card, Is.SameAs(original), "No-op Save retains maintained provenance.");
+
+        OpenSimulation(editor);
+        await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "1" });
+        Assert.That(editor.FindAll("#cardDrawOnce0, #cardCost0, #cardDiscard0"), Has.Count.EqualTo(3));
+        await editor.Find(".simulation-cancel").ClickAsync(new());
+        Assert.That(editor.Instance.Card, Is.SameAs(original));
+        OpenSimulation(editor);
+        await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "" });
+        await editor.Find(".simulation-save").ClickAsync(new());
+        Assert.That(editor.Instance.Card.HasEffect, Is.False);
+        Assert.That(editor.Instance.Card.EffectPlan.Operation, Is.EqualTo(DrawOperation.Ordinary));
+        await editor.Find(".simulation-restore").ClickAsync(new());
+        Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(original.EffectPlan));
+        Assert.That(editor.Instance.Card.EffectProfile, Is.EqualTo(original.EffectProfile));
+        await editor.Find(".simulation-toggle").ClickAsync(new());
+        Assert.That(editor.Instance.Card.SimulationEnabled, Is.False);
+        Assert.That(editor.Find(".accordion-button").TextContent, Does.Contain("Danger! reveal · Off"));
+
+        await Button(cut, "Save Session").ClickAsync(new());
+        ISessionService codec = context.Services.GetRequiredService<ISessionService>();
+        foreach (string json in new[] { SavedSessionJson(), cut.FindComponent<SessionShareButton>().Instance.Snapshot,
+            context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!.ToString()! }) {
+            Card loaded = (await codec.LoadSessionAsync(json)).Cards.Single();
+            Assert.Multiple(() => {
+                Assert.That(loaded.EffectPlan, Is.EqualTo(original.EffectPlan));
+                Assert.That(loaded.EffectProfile, Is.EqualTo(original.EffectProfile));
+                Assert.That(loaded.SimulationEnabled, Is.False);
+                Assert.That(loaded.Name, Is.EqualTo("Edited label"));
+            });
+        }
+        await editor.Find(".simulation-toggle").ClickAsync(new());
+        OpenSimulation(editor);
+        await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "search" });
+        await editor.Find(".simulation-save").ClickAsync(new());
+        Assert.That(editor.Instance.Card.EffectPlan.Operation, Is.EqualTo(DrawOperation.Ordinary));
+        Assert.That(editor.Instance.Card.Search, Is.Not.Null);
+        Assert.That(editor.Instance.Card.EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
+        await editor.Find(".simulation-restore").ClickAsync(new());
+        Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(original.EffectPlan));
+    }
+
     [TestCase(38120068, "cardCost")]
     [TestCase(1475311, "cardDiscard")]
     [TestCase(35261759, "cardDeckCost")]

@@ -36,7 +36,8 @@ public sealed record EffectiveCardEffect(
 }
 
 // Definitions compile once at registry construction. Only immutable resolved values
-// enter cards, sessions and workers. Calculation never consults current definitions.
+// enter cards, sessions and workers. Calculation executes those saved plans;
+// maintained IDs/aliases separately provide verified identity for Danger comparisons.
 public sealed class CardEffectRegistry {
     private readonly FrozenDictionary<int, MaintainedCardEffect> _byIdentity;
 
@@ -63,7 +64,8 @@ public sealed class CardEffectRegistry {
         new DarklordIxchelEffect(), new TraptantalizingTuneEffect(),
         new BrandedOpeningEffect(), new FiendsmithTractEffect(), new KewlTuneSynchroEffect(), new RadiantTyphoonChantEffect(),
         new EmpireOfEndymionEffect(), new FairyTailBallEffect(), new FutureSilenceEffect(),
-        new NightTrainBlueTravelerEffect(), new ExceptionalScheduleEffect(), new LunalightBlackSheepEffect()
+        new NightTrainBlueTravelerEffect(), new ExceptionalScheduleEffect(), new LunalightBlackSheepEffect(),
+        .. DangerBaseEffect.Definitions
     ]);
 
     public IReadOnlyList<MaintainedCardEffect> All { get; }
@@ -168,6 +170,12 @@ public sealed class CardEffectRegistry {
 // execution model cannot fall through to Draw N.
 public static class CardEffectCompiler {
     public static void RequireExecutable(Card card) {
+        if (!Enum.IsDefined(card.EffectPlan.Operation)) {
+            throw new ArgumentException($"Unsupported saved draw operation: {card.EffectPlan.Operation}.");
+        }
+        if (card.IsDangerReveal) {
+            DangerCardIdentity.RequireSource(card);
+        }
         if (card.EffectProfile.ExecutionModel != EffectExecutionModel.DrawSequenceV1) {
             throw new ArgumentException($"Unsupported saved effect execution model: {card.EffectProfile.ExecutionModel}.");
         }

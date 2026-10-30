@@ -10,6 +10,10 @@ public static class DrawEffectPerformance {
             return false;
         }
 
+        if (plan.Operation == DrawOperation.DangerReveal) {
+            return true;
+        }
+
         if (plan.DrawCount is null) {
             return plan.RequiresSearchResolution;
         }

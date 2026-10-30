@@ -6,6 +6,17 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.Converter;
 
 [TestFixture]
 public class CardConverterTests {
+    [TestCase("null")]
+    [TestCase("1")]
+    [TestCase("\"1\"")]
+    [TestCase("\"dangerreveal\"")]
+    [TestCase("\"Unknown\"")]
+    [TestCase("\"DangerReveal\",\"drawoperation\":\"Ordinary\"")]
+    public void UnknownMalformedAndDuplicatedDrawOperationsFailExplicitly(string operation) {
+        string json = $$"""{"Categories":[],"Copies":1,"Name":"Source","DrawOperation":{{operation}}}""";
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Card>(json, _options));
+    }
+
     private JsonSerializerOptions _options = null!;
     private CardConverter _converter = null!;
 

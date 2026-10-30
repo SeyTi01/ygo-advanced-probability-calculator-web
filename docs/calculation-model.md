@@ -18,7 +18,7 @@ Customizing and saving creates a custom plan. Manually restoring equivalent valu
 
 ## Draw resolution is a fixed policy
 
-Configured draw effects activate automatically when legal. The source is consumed; an entry's once-per-turn allowance is shared by its copies, while separate entries have independent allowances. Non-OPT newly drawn copies can activate. The full draw batch, pre-draw banish and post-draw mill must fit in the remaining deck; hand costs and the saved activation restrictions must also be satisfied before activation. Otherwise the source remains in hand and the allowance/cost is not consumed. Such an outcome remains in the probability denominator.
+Configured draw effects activate automatically when legal. Ordinary draw sources are consumed; an entry's once-per-turn allowance is shared by its copies, while separate entries have independent allowances. Non-OPT newly drawn copies can activate. The full draw batch, pre-draw banish and post-draw mill must fit in the remaining deck; hand costs and the saved activation restrictions must also be satisfied before activation. Otherwise the source remains in hand and the allowance/cost is not consumed. Such an outcome remains in the probability denominator.
 
 Encounter order is the default activation order. Custom priority ranks workspace entries separately within **Draw effects** and **Search effects**, highest first, while preserving physical encounter order for ties. Cross-phase rank positions have no execution meaning. A selected activation finishes its draw batch, mill and mandatory removal before selecting another effect. Newly drawn higher-priority effects can overtake waiting ones. An effect lacking eligible cost material is deferred and retried after another activation; a pass without activation ends resolution. A deck-size-blocked batch cannot become legal later because deck capacity only decreases.
 
@@ -27,6 +27,18 @@ Supported hand costs remove one or two eligible cards before drawing; supported 
 The deterministic keep policy protects held positive combo pieces and searches with plausible access to them, then other usable searches/draw cards, potentially usable cost-deferred draws, and other cards. Stable requirement membership and card identity break ties. Maximum-only constraints do not protect cards. The policy uses all active routes, so changing active combos can change removal choices. It is shared by individual, group and total rows; it does not optimize separately for each row. Visual deck sorting does not change these tie-breaks. Search protection is local: it neither reserves competing targets nor promises survival through later operations.
 
 Hidden top-deck banish and milling reduce deck capacity. Completed physical Exact also accounts for surviving target identities, including ordered draws, costs and removals. Banished-card and GY effects/recovery are not inferred. Fast may prove the same outcome exact, or require a certificate; do not infer accuracy merely from the presence of Desires or a draw effect.
+
+## Danger! base reveal operation
+
+All nine maintained Danger! presets share a repeatable reveal operation. One physical card is selected uniformly from the entire current hand, including the revealed source. If its verified canonical identity matches the source, only the selected copy leaves the hand and no card is drawn. Otherwise both the discarded copy and the revealed source leave the hand, then one card is drawn. The latter hand removal represents the source being summoned; field state is not modeled. Surviving copies retain their activation opportunities under the same encounter/custom-priority policy.
+
+Canonical identity comes from verified maintained card IDs and artwork aliases, never visible names or saved profile claims. An unverified reveal source is rejected. Unknown/manual cards do not acquire a Danger! identity from their labels. The checked-in catalog currently lists no alternate artwork IDs for these nine presets; future aliases need verified registry entries.
+
+The operation is skipped without changing the hand when draws are locked or no draw is available. This is the calculator's deliberate draw-availability policy even where printed rules allow a discard-only outcome. Same-identity no-draw outcomes remain valid combo outcomes. Random selection is independent of the deterministic policy used for ordinary chosen costs/removals, and discarded pending sources lose their physical activation opportunities. Searches still occur only after all draws.
+
+Every separate Danger! discard/GY trigger is omitted, regardless of discard cause or prior activation. Bigfoot, Thunderbird, Dogman, Tsuchinoko and Chupacabra omit effects outside this hand/Deck model. Mothman omits its additional draw/discard, Nessie its search, and Jackalope/Ogopogo their selected Deck removal; those four presets are explicitly partial. These omissions are not numerical Fast uncertainty. Exact is exact for the base-only model.
+
+Danger! requests use weighted ordered hand states and physical search survivors in both Fast and Exact. A completed result is exact for that model; existing Work/Storage limits can prevent completion. Ordinary decks retain their specialized routes. The saved operation is distinct from an unconditional Draw 1 or chosen discard, and its editor exposes no unsupported cost/once-per-turn controls. Schema 14 preserves the operation; older plans are not upgraded to Danger! implicitly.
 
 ## Optional searches after draws
 

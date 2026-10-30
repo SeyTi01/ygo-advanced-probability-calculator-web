@@ -14,7 +14,7 @@ internal static class DrawEffectFeasibility {
         int handSize,
         WorkBudget? budget = null
     ) {
-        if (handSize < 0 || handSize > totalCopies) {
+        if (handSize < 0 || handSize > totalCopies || deck.Any(card => card.IsDangerReveal)) {
             return null;
         }
 

@@ -35,6 +35,81 @@ public class CardEffectRegistryTest {
         public string Limitations => "Test-only definition";
     }
 
+    private sealed class DangerAliasEffect : ICardEffectDefinition {
+        public int CanonicalCardId => 900001;
+        public IReadOnlyList<int> Aliases => [900002];
+        public string Name => "Test Danger alias";
+        public int Revision => 1;
+        public DrawEffectPlan Compile() => DrawEffectPlan.DangerReveal();
+        public EffectSupport Support => EffectSupport.ModeledWithinRules;
+        public string Summary => "Synthetic verified alias fixture";
+    }
+
+    [Test]
+    public void DangerIdentityUsesVerifiedCanonicalPasscodesAndAliasesWithoutTrustingLabelsOrSavedProfiles() {
+        CardEffectRegistry aliasRegistry = new([new DangerAliasEffect()]);
+        Card canonical = new([], externalCardId: 900001, name: "First label");
+        Card alias = new([], externalCardId: 900002, name: "Renamed");
+        Assert.That(DangerCardIdentity.Resolve(canonical, aliasRegistry), Is.EqualTo(900001));
+        Assert.That(DangerCardIdentity.Resolve(alias, aliasRegistry), Is.EqualTo(900001));
+
+        Card bigfoot = Registry.CreateImportedCard(new() { Id = 43316238, Name = "Same label" }, 1, 43316238);
+        Card nessie = Registry.CreateImportedCard(new() { Id = 70711847, Name = "Same label" }, 1, 70711847);
+        Assert.That(DangerCardIdentity.Resolve(bigfoot.WithName("Changed")), Is.EqualTo(43316238));
+        Assert.That(DangerCardIdentity.Resolve(nessie), Is.EqualTo(70711847));
+        Card forged = new Card([], externalCardId: 999, name: "Danger! Bigfoot!")
+            .WithEffect(DrawEffectPlan.DangerReveal(), bigfoot.EffectProfile);
+        Card metadataOnly = new([new("Danger! Bigfoot!", CategorySource.Metadata, "catalog-id:43316238")]);
+        Assert.That(DangerCardIdentity.Resolve(forged), Is.Null);
+        Assert.That(DangerCardIdentity.Resolve(metadataOnly), Is.Null);
+        Assert.Throws<ArgumentException>(() => DangerCardIdentity.RequireSource(forged));
+    }
+
+    [Test]
+    public void DangerPlanRejectsOrdinarySettingsAndUnknownOperationsInsteadOfDroppingThem() {
+        DrawEffectPlan danger = DrawEffectPlan.DangerReveal();
+        (string Setting, DrawEffectPlan Plan)[] invalid = [
+            ("draw count", danger with { DrawCount = 1 }),
+            ("search", danger with { Search = new(CardSelector.Any, false) }),
+            ("chosen hand cost", danger with { HandCost = 1 }),
+            ("mandatory removal", danger with { RemovalCount = 1 }),
+            ("once per turn", danger with { OncePerTurn = true }),
+            ("activation limit", danger with { ActivationLimit = 1 }),
+            ("minimum hand", danger with { MinimumHandSize = 1 }),
+            ("hidden deck cost", danger with { HiddenDeckCost = 1 }),
+            ("hidden post-draw mill", danger with { HiddenPostDrawMill = 1 }),
+            ("first activation only", danger with { FirstActivationOnly = true }),
+            ("draw lock", danger with { BlocksLaterDraws = true }),
+            ("cost selector", danger with { HandCostSelector = CardSelector.For(new CategoryBase("Role")) }),
+            ("removal selector", danger with { RemovalSelector = CardSelector.For(new CategoryBase("Role")) })
+        ];
+        Card source = new([], externalCardId: 43316238);
+        foreach ((string setting, DrawEffectPlan plan) in invalid) {
+            Assert.That(() => source.WithEffect(plan, EffectProfile.Legacy), Throws.InstanceOf<ArgumentException>(), setting);
+        }
+        Assert.Throws<ArgumentOutOfRangeException>(() => source.WithEffect(danger with { Operation = (DrawOperation)99 }, EffectProfile.Legacy));
+    }
+
+    [Test]
+    public void DangerDisabledAndOpeningHandProjectionsKeepSavedPlanWithoutExecutingIt() {
+        Card source = Registry.CreateImportedCard(new() { Id = 43316238 }, 2, 43316238);
+        Card disabled = source.WithSimulationEnabled(false);
+        foreach (Card projected in new[] { source.ForCalculation(false), disabled.ForCalculation() }) {
+            Assert.Multiple(() => {
+                Assert.That(projected.HasEffect, Is.False);
+                Assert.That(projected.EffectPlan.Operation, Is.EqualTo(DrawOperation.Ordinary));
+                Assert.That(projected.Id, Is.EqualTo(source.Id));
+                Assert.That(projected.ExternalCardId, Is.EqualTo(source.ExternalCardId));
+                Assert.That(projected.Copies, Is.EqualTo(source.Copies));
+            });
+            Assert.DoesNotThrow(() => CardEffectCompiler.RequireExecutable(projected));
+        }
+        Assert.That(disabled.EffectPlan, Is.EqualTo(source.EffectPlan));
+        Assert.That(disabled.EffectProfile, Is.EqualTo(source.EffectProfile));
+        Assert.That(disabled.WithSimulationEnabled(true).ForCalculation().IsDangerReveal, Is.True);
+        Assert.That(source.ForCalculation(), Is.SameAs(source));
+    }
+
     [Test]
     public void AdditionalDefinitionDeterminesImportSelectionWorkerAndExactComputation() {
         AdditionalEffect definition = new();
@@ -106,6 +181,44 @@ public class CardEffectRegistryTest {
             CalculationInput wire = JsonSerializer.Deserialize<CalculationInput>(CalculationSnapshot.Capture([loaded], [], 1, []).Json)!;
             Assert.That(wire.Cards[0].EffectProfile, Is.EqualTo(variant.EffectProfile));
         }
+    }
+
+    [TestCase(43316238, EffectSupport.ModeledWithinRules)]
+    [TestCase(90807199, EffectSupport.ModeledWithinRules)]
+    [TestCase(26302107, EffectSupport.ModeledWithinRules)]
+    [TestCase(99745551, EffectSupport.ModeledWithinRules)]
+    [TestCase(16209941, EffectSupport.ModeledWithinRules)]
+    [TestCase(52350806, EffectSupport.Partial)]
+    [TestCase(70711847, EffectSupport.Partial)]
+    [TestCase(43694650, EffectSupport.Partial)]
+    [TestCase(83518674, EffectSupport.Partial)]
+    public void DangerImportSelectionAndRestoreUseOneRepeatableBaseOperation(int id, EffectSupport support) {
+        CardInfo info = new() { Id = id, CanonicalCardId = id, Name = "Renamed card" };
+        Card imported = Registry.CreateImportedCard(info, 2, id);
+        Card selected = Registry.ApplyForExplicitSelection(new([], id: "selection"), new([], id: "selection"), info);
+        Card historical = new Card([], externalCardId: id, drawCount: 2);
+        Card custom = imported.WithEffect(DrawEffectPlan.Draw(1, true), imported.EffectProfile.AsCustom());
+
+        foreach (Card card in new[] { imported, selected, Registry.RestoreBuiltIn(custom), Registry.RestoreBuiltIn(historical) }) {
+            EffectiveCardEffect description = Registry.Describe(card);
+            Assert.Multiple(() => {
+                Assert.That(card.EffectPlan, Is.EqualTo(DrawEffectPlan.DangerReveal()));
+                Assert.That(card.HasEffect, Is.True);
+                Assert.That(card.DrawCount, Is.Null, "The conditional draw is not ordinary Draw N.");
+                Assert.That(card.OncePerTurn, Is.False);
+                Assert.That(card.MaximumActivations, Is.EqualTo(int.MaxValue));
+                Assert.That(description.Support, Is.EqualTo(support));
+                Assert.That(description.Capabilities, Is.EqualTo(EffectCapabilities.Draw | EffectCapabilities.RandomHandDiscard));
+                Assert.That(description.CanExecute && description.CanRestore, Is.True);
+                Assert.That(description.Summary, Is.Not.Empty);
+                Assert.That(description.Limitations, Is.Not.Empty);
+            });
+        }
+        Assert.That(Registry.ApplyForExplicitSelection(custom, custom, info).EffectPlan, Is.EqualTo(custom.EffectPlan));
+        Assert.That(Registry.Describe(historical).Plan, Is.EqualTo(DrawEffectPlan.Draw(2, true)));
+        Assert.That(historical.EffectProfile.Source, Is.EqualTo(EffectSource.LegacySnapshot));
+        Assert.That(selected.Id, Is.EqualTo("selection"));
+        Assert.That(Registry.CreateImportedCard(new() { Id = 999, Name = Registry.Find(id)!.Name }, 1, 999).HasEffect, Is.False);
     }
 
     [Test]

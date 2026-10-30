@@ -12,7 +12,10 @@ public class Card {
     public int? ExternalCardId { get; }
     public DrawEffectPlan EffectPlan { get; }
     public SearchEffectPlan? Search => EffectPlan.Search;
-    public bool HasEffect => DrawCount is not null || Search is not null;
+    public bool IsDangerReveal => EffectPlan.Operation == DrawOperation.DangerReveal;
+    public bool HasDrawEffect => DrawCount is not null || IsDangerReveal;
+    public int DrawBatchSize => IsDangerReveal ? 1 : DrawCount ?? 0;
+    public bool HasEffect => HasDrawEffect || Search is not null;
     public EffectProfile EffectProfile { get; }
     public bool FirstActivationOnly => EffectPlan.FirstActivationOnly;
     public bool BlocksLaterDraws => EffectPlan.BlocksLaterDraws;
@@ -55,8 +58,18 @@ public class Card {
         bool? oncePerTurn = null,
         int? activationLimit = null,
         int minimumHandSize = 0,
-        bool simulationEnabled = true
+        bool simulationEnabled = true,
+        DrawOperation drawOperation = DrawOperation.Ordinary
     ) {
+        if (!Enum.IsDefined(drawOperation)) {
+            throw new ArgumentOutOfRangeException(nameof(drawOperation), "Unsupported saved draw operation.");
+        }
+        if (drawOperation == DrawOperation.DangerReveal && (drawCount is not null || search is not null
+            || (oncePerTurn ?? drawOncePerTurn) || activationLimit is not null || minimumHandSize != 0
+            || preDrawRemovalCount != 0 || postDrawDiscardCount != 0 || preDrawDeckRemovalCount != 0
+            || postDrawDeckMillCount != 0 || firstActivationOnly || blocksLaterDraws)) {
+            throw new ArgumentException("Danger reveal is a repeatable base operation and cannot contain ordinary draw/search settings.", nameof(drawOperation));
+        }
         if (drawCount is not null and not (>= 1 and <= 3)) {
             throw new ArgumentOutOfRangeException(nameof(drawCount), "Draw count must be 1, 2, 3, or absent.");
         }
@@ -104,7 +117,7 @@ public class Card {
         // The old draw flag was ignored for searches. Only an explicit shared
         // flag opts a search snapshot into OPT; absent values stay unrestricted.
         EffectPlan = new(drawCount, oncePerTurn ?? (search is null && drawOncePerTurn), preDrawRemovalCount, preDrawSelector ?? CardSelector.Any,
-            preDrawDeckRemovalCount, postDrawDiscardCount, postDrawSelector ?? CardSelector.Any, postDrawFailureBehavior, postDrawDeckMillCount, firstActivationOnly, blocksLaterDraws, search, activationLimit, minimumHandSize);
+            preDrawDeckRemovalCount, postDrawDiscardCount, postDrawSelector ?? CardSelector.Any, postDrawFailureBehavior, postDrawDeckMillCount, firstActivationOnly, blocksLaterDraws, search, activationLimit, minimumHandSize, drawOperation);
         EffectProfile = effectProfile ?? EffectProfile.Legacy;
         if (!Enum.IsDefined(EffectProfile.Source) || !Enum.IsDefined(EffectProfile.Support)
             || EffectProfile.CanonicalCardId is <= 0 || EffectProfile.Revision is <= 0
@@ -161,7 +174,8 @@ public class Card {
         plan.OncePerTurn,
         plan.ActivationLimit,
         plan.MinimumHandSize,
-        simulationEnabled
+        simulationEnabled,
+        plan.Operation
     ) { }
 
     public Card Duplicate() => new(Categories, Copies, Name, Active, null, ExternalCardId, ManualMetadataCategoryKeys, EffectPlan, EffectProfile, SimulationEnabled);

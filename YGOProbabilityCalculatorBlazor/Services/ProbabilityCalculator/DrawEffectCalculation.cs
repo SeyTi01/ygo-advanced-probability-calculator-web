@@ -59,8 +59,7 @@ internal sealed class DrawEffectCalculation(
             budget.Spend(1);
             ArgumentOutOfRangeException.ThrowIfNegative(card.Copies);
             deckCopies = checked(deckCopies + card.Copies);
-
-            if (card.DrawCount is not null && card.Copies > 0) {
+            if (card.HasDrawEffect && card.Copies > 0) {
                 effects.Add(card);
             }
             else {

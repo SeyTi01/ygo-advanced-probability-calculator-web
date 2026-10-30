@@ -149,8 +149,8 @@ internal sealed partial class PostDrawCalculation {
         int copies = cards.Sum(card => card.Copies);
         CalculationResultRows resultRows = new(combos, groups, totalOnly);
         BigInteger[] wins = new BigInteger[resultRows.Count];
-        CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "physical results");
-
+        BigInteger denominator = resolver.Denominator(factorial);
+        CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(denominator) + 1), "physical results");
         BoundedSearchHandCounter? bounded = cards.Any(card => card.EffectPlan.RequiresSearchResolution)
             ? new(cards, combos, budget, priority)
             : null;
@@ -171,10 +171,10 @@ internal sealed partial class PostDrawCalculation {
         // conservative structural domain, stream rather than speculate/ retry.
         // This is a selection estimate, not a promise to fit: both routes charge
         // actual work and storage and report typed failure at unchanged limits.
-        bool frontier = method == PhysicalEnumerationMethod.Frontier || (method == PhysicalEnumerationMethod.Auto && n <= 8 && handSize <= 5 && activations <= 4 && observations <= 12);
+        bool frontier = cards.Any(card => card.IsDangerReveal) || method == PhysicalEnumerationMethod.Frontier || (method == PhysicalEnumerationMethod.Auto
+            && n <= 8 && handSize <= 5 && activations <= 4 && observations <= 12);
         Route = frontier ? SolverRoute.SearchPhysicalFrontier : SolverRoute.SearchPhysicalEnumeration;
-
-        if (!layout.HasSearchQueue && cards.All(card => card.DrawCount is null)) {
+        if (!layout.HasSearchQueue && cards.All(card => !card.HasDrawEffect)) {
             // With no draw phase the order of the opening hand is unobservable.
             // Enumerate count vectors with physical binomial mass, not permutations.
             Route = SolverRoute.SearchOnly;
@@ -218,8 +218,7 @@ internal sealed partial class PostDrawCalculation {
         else {
             resolver.Enumerate(handSize, copies, CountTerminal);
         }
-
-        ExactProbability[] result = wins.Select(win => new ExactProbability(win, factorial[copies])).ToArray();
+        ExactProbability[] result = wins.Select(win => new ExactProbability(win, denominator)).ToArray();
 
         return resultRows.ToResult(result);
 

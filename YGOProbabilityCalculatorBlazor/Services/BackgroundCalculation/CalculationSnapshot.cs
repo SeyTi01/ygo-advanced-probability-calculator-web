@@ -78,7 +78,8 @@ public sealed record CalculationSnapshot(string Json) {
                 effects ? card.Search : null,
                 effects && card.Search is not null ? card.OncePerTurn : null,
                 effects ? card.EffectPlan.ActivationLimit : null,
-                effects ? card.MinimumHandSize : 0
+                effects ? card.MinimumHandSize : 0,
+                effects ? card.EffectPlan.Operation : DrawOperation.Ordinary
             ))
             .ToArray();
 
@@ -95,7 +96,8 @@ public sealed record CalculationSnapshot(string Json) {
 
         ComboGroup[] workerGroups = groups.ToArray();
         long workUnits = (workPolicy ?? CalculationWorkPolicy.Default).WorkUnits;
-        CalculationInput input = new(workerCards, workerCombos, handSize, workerGroups, workUnits, storagePolicy?.Tier, options);
+        CalculationInput input = new(workerCards, workerCombos, handSize, workerGroups, workUnits, storagePolicy?.Tier, options,
+            workerCards.Any(card => card.DrawOperation == DrawOperation.DangerReveal) ? 1 : null);
         string json = JsonSerializer.Serialize(input, CalculationJsonContext.Default.CalculationInput);
 
         return new(json);
@@ -124,7 +126,8 @@ public sealed record WorkerCard(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SearchEffectPlan? Search = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? OncePerTurn = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? ActivationLimit = null,
-    int MinimumHandSize = 0
+    int MinimumHandSize = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] DrawOperation DrawOperation = DrawOperation.Ordinary
 );
 
 public sealed record WorkerCombo(
@@ -143,7 +146,10 @@ public sealed record CalculationInput(
     ComboGroup[] Groups,
     long? WorkUnits = null,
     CalculationStorageTier? StorageTier = null,
-    CalculationOptions? Options = null
+    CalculationOptions? Options = null,
+    // Older workers reject unknown top-level fields. Only the new operation
+    // emits this marker, preserving ordinary wire fixtures byte-for-byte.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? DrawOperationVersion = null
 );
 
 public enum CalculationFailureKind { Input = 1, Error = 2, Unsupported = 3, Cancelled = 4 }
@@ -195,6 +201,10 @@ public static class CalculationWire {
             ValidateOptions(json);
             CalculationInput input = JsonSerializer.Deserialize(json, CalculationJsonContext.Default.CalculationInput)
                 ?? throw new InvalidOperationException("Calculation input is missing.");
+            if (input.DrawOperationVersion is not null and not 1
+                || (input.Cards.Any(card => card.DrawOperation == DrawOperation.DangerReveal) && input.DrawOperationVersion != 1)) {
+                throw new ArgumentException("Unsupported or missing worker draw operation version.");
+            }
             mode = input.Options?.Mode ?? CalculationModel.Fast;
             if (!Enum.IsDefined(mode)) {
                 throw new ArgumentException("Unknown calculation mode.");
@@ -231,7 +241,8 @@ public static class CalculationWire {
                     card.Search,
                     card.OncePerTurn,
                     card.ActivationLimit,
-                    card.MinimumHandSize
+                    card.MinimumHandSize,
+                    drawOperation: card.DrawOperation
                 ))
                 .ToList();
 
@@ -308,6 +319,18 @@ public static class CalculationWire {
         foreach (JsonProperty property in document.RootElement.EnumerateObject()) {
             if (!inputNames.Add(property.Name)) {
                 throw new JsonException("Duplicated worker calculation field: " + property.Name);
+            }
+        }
+        if (document.RootElement.TryGetProperty("Cards", out JsonElement cards) && cards.ValueKind == JsonValueKind.Array) {
+            foreach (JsonElement card in cards.EnumerateArray()) {
+                if (card.ValueKind != JsonValueKind.Object) {
+                    continue;
+                }
+                JsonProperty[] operations = card.EnumerateObject()
+                    .Where(property => property.Name.Equals("DrawOperation", StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (operations.Length > 1 || (operations.Length == 1 && operations[0].Name != "DrawOperation")) {
+                    throw new JsonException("Unknown or duplicated worker draw operation field.");
+                }
             }
         }
         if (document.RootElement.TryGetProperty("Options", out JsonElement options) && options.ValueKind == JsonValueKind.Object) {
