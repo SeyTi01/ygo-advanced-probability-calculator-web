@@ -104,6 +104,9 @@ public class CardEffectProfileBenchmark {
     // to promote a tier or alter the fixed activation policy.
     [Test]
     public void MeasureDanger() {
+        int trials = int.TryParse(Environment.GetEnvironmentVariable("YGO_DANGER_BENCHMARK_TRIALS"), out int requestedTrials)
+            ? Math.Clamp(requestedTrials, 1, 10) : 3;
+        string? caseFilter = Environment.GetEnvironmentVariable("YGO_DANGER_BENCHMARK_CASE");
         CategoryBase starter = new("Starter");
         CategoryBase extender = new("Extender");
         CategoryBase dark = new("DARK", CategorySource.Metadata, "attribute:dark");
@@ -129,6 +132,11 @@ public class CardEffectProfileBenchmark {
                     new([starter, extender, dark], 3, id: "overlap"),
                     new([], size - 15 - effects.Sum(card => card.Copies), id: "filler"), .. effects];
                 foreach (CalculationModel mode in new[] { CalculationModel.Fast, CalculationModel.Exact }) {
+                    string name = $"danger-{shape}-{size}-{mode.ToString().ToLowerInvariant()}";
+                    if (caseFilter is not null && !name.Contains(caseFilter, StringComparison.OrdinalIgnoreCase)) {
+                        continue;
+                    }
+                    TestContext.Progress.WriteLine($"Measuring {name}");
                     CalculationOptions options = new(Mode: mode);
                     CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, combos, 5, groups,
                         CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.Standard, options: options);
@@ -138,7 +146,7 @@ public class CardEffectProfileBenchmark {
                     List<long> cells = [];
                     ProbabilityCalculationResult? result = null;
                     ProbabilityCalculationLimitReason? limit = null;
-                    for (int trial = 0; trial < 3; trial++) {
+                    for (int trial = 0; trial < trials; trial++) {
                         WorkBudget budget = new(mode == CalculationModel.Exact
                             ? CalculationWorkPolicy.Unlimited : CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
                         Stopwatch timer = Stopwatch.StartNew();
@@ -149,6 +157,7 @@ public class CardEffectProfileBenchmark {
                             limit = exception.Reason;
                         }
                         timer.Stop();
+                        TestContext.Progress.WriteLine($"{name} native sample {trial + 1}: {limit?.ToString() ?? "Success"}, {timer.Elapsed.TotalMilliseconds:F2} ms");
                         milliseconds.Add(timer.Elapsed.TotalMilliseconds);
                         work.Add(budget.Spent);
                         entries.Add(budget.PeakEntries);
@@ -163,13 +172,35 @@ public class CardEffectProfileBenchmark {
                     Assert.That(work.Distinct().Count(), Is.EqualTo(1));
                     Assert.That(entries.Distinct().Count(), Is.EqualTo(1));
                     Assert.That(cells.Distinct().Count(), Is.EqualTo(1));
+                    if (shape == "heavy" && mode == CalculationModel.Exact) {
+                        Assert.That(limit, Is.Null, "The heavy Exact calculation must complete at Standard Storage.");
+                        // Frozen from the original full physical frontier with diagnostic-only
+                        // larger storage; small independent oracles also cover the streamed route.
+                        string[] expected = size == 40 ? [
+                            "19155694438132844204083/22830578417398752000000",
+                            "111099644933409857/165035354964480000",
+                            "159817660221030078031/304407712231983360000",
+                            "34400725571562104809/203844450155346000000",
+                            "660816141258725116781/913223136695950080000",
+                            "34400725571562104809/203844450155346000000"
+                        ] : [
+                            "1452870058184223003498319/2218129686429392736000000",
+                            "4935584606343002860291/12779347987659052800000",
+                            "1130830528179953545339391/3105381561001149830400000",
+                            "38681233721651543104931/188695060130278201500000",
+                            "10584126355376122068727271/21737670927008048812800000",
+                            "38681233721651543104931/188695060130278201500000"
+                        ];
+                        CalculationFractions fractions = wire.Result!.Contract!.Fractions!;
+                        Assert.That(new[] { fractions.Total }.Concat(fractions.Combos).Concat(fractions.Groups)
+                            .Select(value => $"{value.Numerator}/{value.Denominator}"), Is.EqualTo(expected));
+                    }
                     if (limit is not null) {
                         Assert.That(wire.Contract!.Fractions, Is.Null);
                         Assert.That(wire.Contract.Accuracy, Is.Null);
                         Assert.That(wire.Contract.Completion, Is.EqualTo(limit == ProbabilityCalculationLimitReason.Storage
                             ? CalculationCompletion.StorageLimit : CalculationCompletion.WorkLimit));
                     }
-                    string name = $"danger-{shape}-{size}-{mode.ToString().ToLowerInvariant()}";
                     output.Add(new {
                         Name = name, Mode = mode.ToString(), DeckSize = size, HandSize = 5, Shape = shape,
                         Storage = "Standard", Outcome = limit?.ToString() ?? "Success",
@@ -177,7 +208,7 @@ public class CardEffectProfileBenchmark {
                         Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json),
                         Response = JsonSerializer.Deserialize<JsonElement>(wireJson)
                     });
-                    TestContext.Out.WriteLine($"{name}: {limit?.ToString() ?? "Success"}; "
+                    TestContext.Progress.WriteLine($"{name}: {limit?.ToString() ?? "Success"}; "
                         + $"ms={string.Join(',', milliseconds)}; Work={string.Join(',', work)}; "
                         + $"entries={string.Join(',', entries)}; cells={string.Join(',', cells)}");
                 }

@@ -21,7 +21,9 @@ public class DrawFrontierPackingTest {
         TwoPhaseSearchOracle.Rational[] expected = TwoPhaseSearchOracle.Count(deck, 2, combos, groups,
             DrawActivationPriority.Default, new Dictionary<string, int?> { ["danger"] = 43316238 });
         foreach (int threshold in new[] { 0, int.MaxValue }) {
-            PostDrawCalculation calculation = new(deck, 2, new(CalculationWorkPolicy.Interactive), compactFrontierThreshold: threshold);
+            PostDrawCalculation calculation = new(deck, 2, new(CalculationWorkPolicy.Interactive), compactFrontierThreshold: threshold) {
+                StreamDanger = false
+            };
             ExactCalculationResult actual = calculation.Calculate(combos, groups);
             ExactProbability[] rows = [actual.Total, .. actual.Combos, .. actual.Groups];
             for (int row = 0; row < rows.Length; row++) {

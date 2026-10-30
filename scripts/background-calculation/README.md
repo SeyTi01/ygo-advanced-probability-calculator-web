@@ -72,6 +72,18 @@ and a narrow viewport. Optional second and third arguments supply the local
 then every complete native worker response, including fractions and proof metadata,
 is compared with the actual published worker. Export that benchmark with
 `YGO_DANGER_BENCHMARK_OUTPUT` and keep generated evidence outside tracked source.
+The default is three native samples plus a complete worker-wire comparison per case.
+For long Exact measurements, `YGO_DANGER_BENCHMARK_TRIALS=1` reduces native
+samples; `YGO_DANGER_BENCHMARK_CASE=heavy-40-exact` selects matching case names.
+Record these settings when reporting timings. Neither setting changes calculation
+Work or Storage limits.
+
+The browser replay allows 600,000 ms per fresh worker, including startup.
+For longer Exact cases, set `YGO_DANGER_WORKER_TIMEOUT_MS=1800000` for a
+30-minute harness timeout; the value must be a positive finite safe integer.
+Evidence records the selected timeout and each replay's wall milliseconds
+alongside its unchanged complete response. This timeout does not change the
+production calculation Work or Storage limits.
 
 ## Opt-in measurement tools
 

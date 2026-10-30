@@ -49,6 +49,10 @@ internal sealed partial class PostDrawCalculation(
     internal Action<int[], BigInteger>? ObserveTerminal { get; init; }
     // Paired tests retain the frontier path as a reference for streaming.
     internal bool StreamSearchTerminals { get; init; } = true;
+    // Reference/chunk checks exercise the same exact transitions.
+    internal bool StreamDanger { get; init; } = true;
+    internal long DangerFrontierCellTarget { get; init; } = long.MaxValue;
+    internal int DangerFrontierFlushes { get; private set; }
 
     private void CheckStorage(long entries, long cells, string structure) {
         if (cells > PeakCells) {
@@ -115,14 +119,28 @@ internal sealed partial class PostDrawCalculation(
             removalEligibility,
             costEligibility
         );
-
+        if (StreamDanger && cards.Any(card => card.IsDangerReveal) && PreferStreamedDanger(cards)
+            && ObserveTerminal is null && ObservePhysicalOutcome is null) {
+            ExactCalculationResult result = CountPhysicalSearch(cards, layout, resolver, factorial, combos, groups, totalOnly,
+                PhysicalEnumerationMethod.Auto);
+            Route = SolverRoute.Ordered;
+            return result;
+        }
         Dictionary<State, BigInteger> terminal = resolver.Resolve(handSize, copies, factorial, compactFrontierThreshold);
         TerminalStates = terminal.Count;
-        BigInteger denominator = resolver.Denominator(factorial);
+        BigInteger denominator = resolver.Denominator(factorial, handSize);
 
         return deferred.Count > 0
             ? CountDeferredHands(cards, deferred, terminal, denominator, combos, groups, totalOnly)
             : CountTerminalHands(cards, terminal, denominator, combos, groups, totalOnly);
+    }
+
+    // Keep the inexpensive frontier for small schedules; both representations
+    // follow exactly the same physical policy and retain the same resource caps.
+    private bool PreferStreamedDanger(List<Card> cards) {
+        long activations = cards.Where(card => card.HasDrawEffect).Sum(card => (long)Math.Min(card.MaximumActivations, card.Copies));
+        long observations = handSize + cards.Sum(card => (long)card.DrawBatchSize * Math.Min(card.MaximumActivations, card.Copies));
+        return cards.Count > 8 || handSize > 5 || activations > 4 || observations > 12;
     }
 
     private List<Card> ReduceDeck(List<Combo> combos) {

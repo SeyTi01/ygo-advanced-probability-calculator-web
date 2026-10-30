@@ -48,9 +48,12 @@ const session = {
 
 async function main() {
     assert(process.argv[2], 'Provide a clean optimized published wwwroot directory');
+    const workerTimeoutMs = Number(process.env.YGO_DANGER_WORKER_TIMEOUT_MS ?? 600000);
+    assert(Number.isSafeInteger(workerTimeoutMs) && workerTimeoutMs > 0,
+        'YGO_DANGER_WORKER_TIMEOUT_MS must be a positive finite safe integer');
     const { server, url } = await serve(process.argv[2]);
     const browser = await chromium.launch(launchOptions()).catch(error => { server.close(); throw error; });
-    const evidence = { browser: browser.version(), terminal: [], benchmark: [], errors: [] };
+    const evidence = { browser: browser.version(), workerTimeoutMs, terminal: [], benchmark: [], errors: [] };
     try {
         const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: 'en-US' });
         page.setDefaultTimeout(30000);
@@ -120,9 +123,10 @@ async function main() {
         if (process.argv[3]) {
             const cases = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
             for (const fixture of cases) {
-                const actual = await page.evaluate(input => new Promise((resolve, reject) => {
+                const started = performance.now();
+                const actual = await page.evaluate(({ input, timeoutMs }) => new Promise((resolve, reject) => {
                     const worker = new Worker('/js/calculation-worker.js', { type: 'module' });
-                    const timer = setTimeout(() => { worker.terminate(); reject(Error('Danger worker timeout')); }, 600000);
+                    const timer = setTimeout(() => { worker.terminate(); reject(Error('Danger worker timeout')); }, timeoutMs);
                     worker.onerror = event => { clearTimeout(timer); worker.terminate(); reject(Error(event.message)); };
                     worker.onmessage = ({ data }) => {
                         if (data.ready) return worker.postMessage({ id: 'danger-parity', json: JSON.stringify(input),
@@ -130,10 +134,11 @@ async function main() {
                         clearTimeout(timer); worker.terminate();
                         if (data.error) reject(Error(data.error)); else resolve(JSON.parse(data.response));
                     };
-                }), fixture.Input);
+                }), { input: fixture.Input, timeoutMs: workerTimeoutMs });
+                const milliseconds = performance.now() - started;
                 assert.deepEqual(actual, fixture.Response, fixture.Name + ': full result, fraction, row order and proof metadata');
-                evidence.benchmark.push({ Name: fixture.Name, Response: actual });
-                console.log(`${fixture.Name}: ${fixture.Outcome}`);
+                evidence.benchmark.push({ Name: fixture.Name, Milliseconds: milliseconds, Response: actual });
+                console.log(`${fixture.Name}: ${fixture.Outcome}, ${milliseconds.toFixed(2)} ms`);
             }
         }
         assert.deepEqual(evidence.errors, []);
