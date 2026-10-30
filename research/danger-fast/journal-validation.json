@@ -1,0 +1,69 @@
+{
+  "Date": "2026-10-30",
+  "Status": "Passed",
+  "Execution": "Approved dotnet test; existing lead build",
+  "CaseCount": 4,
+  "RecordCount": 16,
+  "AggregateSha256": "d3bcba09fe70272a72c0f8d7164de9dddbff80ca5f7d24cc7e55ec747bb086d9",
+  "JournalSha256": "e63ce6a8ea209b254863f6b53c5f53deb5effb04bc5c7835c13ce65e25b2837c",
+  "Reproduction": {
+    "YGO_DANGER_BENCHMARK_CASE": "control",
+    "YGO_DANGER_BENCHMARK_TRIALS": "1",
+    "YGO_DANGER_BENCHMARK_OUTPUT": "research/danger-fast/journal-verification.json",
+    "Command": "dotnet test YGOProbabilityCalculatorBlazor.sln --no-build --filter FullyQualifiedName~CardEffectProfileBenchmark.MeasureDanger"
+  },
+  "Cases": [
+    {
+      "Name": "danger-control-40-fast",
+      "Phases": [
+        "Started",
+        "Completed",
+        "WireStarted",
+        "WireCompleted"
+      ],
+      "Outcome": "Success",
+      "Work": 2838,
+      "PeakEntries": 13,
+      "PeakCells": 65
+    },
+    {
+      "Name": "danger-control-40-exact",
+      "Phases": [
+        "Started",
+        "Completed",
+        "WireStarted",
+        "WireCompleted"
+      ],
+      "Outcome": "Success",
+      "Work": 2838,
+      "PeakEntries": 13,
+      "PeakCells": 65
+    },
+    {
+      "Name": "danger-control-60-fast",
+      "Phases": [
+        "Started",
+        "Completed",
+        "WireStarted",
+        "WireCompleted"
+      ],
+      "Outcome": "Success",
+      "Work": 2838,
+      "PeakEntries": 13,
+      "PeakCells": 65
+    },
+    {
+      "Name": "danger-control-60-exact",
+      "Phases": [
+        "Started",
+        "Completed",
+        "WireStarted",
+        "WireCompleted"
+      ],
+      "Outcome": "Success",
+      "Work": 2838,
+      "PeakEntries": 13,
+      "PeakCells": 65
+    }
+  ]
+}

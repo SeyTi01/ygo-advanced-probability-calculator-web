@@ -104,6 +104,9 @@ public class CardEffectProfileBenchmark {
     // to promote a tier or alter the fixed activation policy.
     [Test]
     public void MeasureDanger() {
+        string outputPath = Environment.GetEnvironmentVariable("YGO_DANGER_BENCHMARK_OUTPUT")
+            ?? throw new InvalidOperationException("Set YGO_DANGER_BENCHMARK_OUTPUT.");
+        bool exportOnly = Environment.GetEnvironmentVariable("YGO_DANGER_BENCHMARK_EXPORT_ONLY") == "1";
         int trials = int.TryParse(Environment.GetEnvironmentVariable("YGO_DANGER_BENCHMARK_TRIALS"), out int requestedTrials)
             ? Math.Clamp(requestedTrials, 1, 10) : 3;
         string? caseFilter = Environment.GetEnvironmentVariable("YGO_DANGER_BENCHMARK_CASE");
@@ -136,10 +139,18 @@ public class CardEffectProfileBenchmark {
                     if (caseFilter is not null && !name.Contains(caseFilter, StringComparison.OrdinalIgnoreCase)) {
                         continue;
                     }
-                    TestContext.Progress.WriteLine($"Measuring {name}");
+                    TestContext.Progress.WriteLine($"{(exportOnly ? "Exporting" : "Measuring")} {name}");
                     CalculationOptions options = new(Mode: mode);
                     CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, combos, 5, groups,
                         CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.Standard, options: options);
+                    if (exportOnly) {
+                        output.Add(new {
+                            Name = name, Mode = mode.ToString(), DeckSize = size, HandSize = 5, Shape = shape,
+                            Storage = "Standard", Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json)
+                        });
+                        SaveDangerCheckpoint(outputPath, output);
+                        continue;
+                    }
                     List<double> milliseconds = [];
                     List<long> work = [];
                     List<long> entries = [];
@@ -147,8 +158,12 @@ public class CardEffectProfileBenchmark {
                     ProbabilityCalculationResult? result = null;
                     ProbabilityCalculationLimitReason? limit = null;
                     for (int trial = 0; trial < trials; trial++) {
+                        result = null;
+                        limit = null;
                         WorkBudget budget = new(mode == CalculationModel.Exact
                             ? CalculationWorkPolicy.Unlimited : CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
+                        AppendDangerSample(outputPath, new { Name = name, Trial = trial + 1, Phase = "Started" });
+                        long allocationStart = GC.GetAllocatedBytesForCurrentThread();
                         Stopwatch timer = Stopwatch.StartNew();
                         try {
                             result = new ProbabilityCalculatorService().CalculateWithBudget(cards, combos, 5, groups, budget, options);
@@ -156,15 +171,33 @@ public class CardEffectProfileBenchmark {
                         catch (ProbabilityCalculationLimitException exception) {
                             limit = exception.Reason;
                         }
+                        catch (Exception exception) {
+                            AppendDangerSample(outputPath, new {
+                                Name = name, Trial = trial + 1, Phase = "Failed", Exception = exception.GetType().Name,
+                                Milliseconds = timer.Elapsed.TotalMilliseconds, Work = budget.Spent,
+                                PeakEntries = budget.PeakEntries, PeakCells = budget.PeakCells
+                            });
+                            throw;
+                        }
                         timer.Stop();
+                        AppendDangerSample(outputPath, new {
+                            Name = name, Trial = trial + 1, Phase = "Completed",
+                            Outcome = limit?.ToString() ?? "Success", Milliseconds = timer.Elapsed.TotalMilliseconds,
+                            Work = budget.Spent, PeakEntries = budget.PeakEntries, PeakCells = budget.PeakCells,
+                            AllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart, Result = result
+                        });
                         TestContext.Progress.WriteLine($"{name} native sample {trial + 1}: {limit?.ToString() ?? "Success"}, {timer.Elapsed.TotalMilliseconds:F2} ms");
                         milliseconds.Add(timer.Elapsed.TotalMilliseconds);
                         work.Add(budget.Spent);
                         entries.Add(budget.PeakEntries);
                         cells.Add(budget.PeakCells);
                     }
+                    AppendDangerSample(outputPath, new { Name = name, Phase = "WireStarted" });
                     string wireJson = mode == CalculationModel.Exact
                         ? CalculationWire.ExecuteInteractiveExact(snapshot.Json) : CalculationWire.Execute(snapshot.Json);
+                    AppendDangerSample(outputPath, new {
+                        Name = name, Phase = "WireCompleted", Response = JsonSerializer.Deserialize<JsonElement>(wireJson)
+                    });
                     CalculationResponse wire = JsonSerializer.Deserialize<CalculationResponse>(wireJson)!;
                     Assert.That(wire.LimitReason, Is.EqualTo(limit));
                     Assert.That(JsonSerializer.Serialize(wire.Result), Is.EqualTo(JsonSerializer.Serialize(result)),
@@ -208,20 +241,34 @@ public class CardEffectProfileBenchmark {
                         Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json),
                         Response = JsonSerializer.Deserialize<JsonElement>(wireJson)
                     });
+                    SaveDangerCheckpoint(outputPath, output);
                     TestContext.Progress.WriteLine($"{name}: {limit?.ToString() ?? "Success"}; "
                         + $"ms={string.Join(',', milliseconds)}; Work={string.Join(',', work)}; "
                         + $"entries={string.Join(',', entries)}; cells={string.Join(',', cells)}");
                 }
             }
         }
-        File.WriteAllText(Environment.GetEnvironmentVariable("YGO_DANGER_BENCHMARK_OUTPUT")
-            ?? throw new InvalidOperationException("Set YGO_DANGER_BENCHMARK_OUTPUT."), JsonSerializer.Serialize(output));
+        SaveDangerCheckpoint(outputPath, output);
 
         Card Preset(int id, int copies) {
             MaintainedCardEffect effect = CardEffectRegistry.Default.Find(id)!;
             List<CategoryBase> properties = effect.Plan.Operation == DrawOperation.DangerReveal ? [dark] : [];
             return new Card(properties, copies, effect.Name, id: id.ToString(), externalCardId: id).WithEffect(effect.Plan, effect.Profile);
         }
+    }
+
+    private static void SaveDangerCheckpoint(string path, List<object> output) {
+        string pendingPath = path + ".pending";
+        File.WriteAllText(pendingPath, JsonSerializer.Serialize(output));
+        File.Move(pendingPath, path, true);
+    }
+
+    private static void AppendDangerSample(string path, object sample) {
+        using FileStream stream = new(path + ".samples.jsonl", FileMode.Append, FileAccess.Write, FileShare.Read);
+        using StreamWriter writer = new(stream, leaveOpen: true);
+        writer.WriteLine(JsonSerializer.Serialize(sample));
+        writer.Flush();
+        stream.Flush(flushToDisk: true);
     }
 
     private static Card Effect(int id, int copies) => CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(
