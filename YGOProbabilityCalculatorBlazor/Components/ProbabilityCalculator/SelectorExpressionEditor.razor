@@ -39,7 +39,7 @@
 @code {
     private RenderFragment EditForm() => @<RequirementEditForm @key="_mode" @ref="_editForm"
         Mode="@(_mode == "edit" ? "edit" : _operation == CardSelectorKind.AnyOf ? "OR" : "AND")"
-        ShowActions="@(_mode == "edit")" OnAddAlternative="() => Add(CardSelectorKind.AnyOf)"
+        SubmitWithActions="true" ShowActions="@(_mode == "edit")" OnAddAlternative="() => Add(CardSelectorKind.AnyOf)"
         OnAddProperty="() => Add(CardSelectorKind.AllOf)" OnRemoveRequirement="RemoveSelf"
         OperandCount="_operands.Count" OperandKey="index => _operands[index]" Operator="@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@_error"
         OnSubmit="Save" OnCancel="Cancel" OnKeyDown="HandleKeyDown" OnRemoveOperand="RemoveOperand"

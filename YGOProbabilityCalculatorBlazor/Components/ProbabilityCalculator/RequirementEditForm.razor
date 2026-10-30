@@ -3,7 +3,7 @@
         <strong>@Title</strong>
         <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnCancel">@(UiText.Get("Ui.Cancel"))</button>
     </div>
-    <div class="requirement-edit-grid @(OperandCount > 1 ? "requirement-edit-multiple" : "") @(QuantityContent is null ? "requirement-edit-no-quantity" : "")">
+    <div class="requirement-edit-grid @(SubmitInActionBar ? "requirement-edit-action-submit" : "") @(OperandCount > 1 ? "requirement-edit-multiple" : "") @(QuantityContent is null ? "requirement-edit-no-quantity" : "")">
         <div class="requirement-inputs">
             @for (int index = 0; index < OperandCount; index++) {
                 int position = index;
@@ -17,9 +17,9 @@
             }
         </div>
         @if (QuantityContent is not null) { <div class="requirement-quantity">@QuantityContent</div> }
-        <div class="requirement-submit">
-            <button type="submit" class="btn btn-primary" @ref="_submit" disabled="@(Error is not null)" @onclick="OnSubmit" @onclick:preventDefault>@SubmitLabel</button>
-        </div>
+        @if (!SubmitInActionBar) {
+            <div class="requirement-submit">@SubmitButton</div>
+        }
     </div>
     @AfterContent
     @if (Error is not null) { <div class="text-danger small mt-2" role="alert">@Error</div> }
@@ -27,6 +27,9 @@
         <div class="requirement-context-actions">
             <RequirementActions AllowedOperators="ActionOperators" OnAddAlternative="OnAddAlternative"
                 OnAddProperty="OnAddProperty" OnRemove="OnRemoveRequirement" />
+            @if (SubmitInActionBar) {
+                <div class="requirement-action-submit">@SubmitButton</div>
+            }
         </div>
     }
 </ExpressionForm>
@@ -35,6 +38,9 @@
     [Parameter] public string Mode { get; set; } = "edit";
     [Parameter] public bool UpdateExisting { get; set; }
     [Parameter] public bool ShowActions { get; set; }
+    [Parameter] public bool SubmitWithActions { get; set; }
+    private bool SubmitInActionBar => ShowActions && SubmitWithActions;
+    private RenderFragment SubmitButton => @<button type="submit" class="btn btn-primary" @ref="_submit" disabled="@(Error is not null)" @onclick="OnSubmit" @onclick:preventDefault>@SubmitLabel</button>;
     [Parameter] public IReadOnlyList<string> ActionOperators { get; set; } = ["AND", "OR"];
     [Parameter] public EventCallback OnAddAlternative { get; set; }
     [Parameter] public EventCallback OnAddProperty { get; set; }

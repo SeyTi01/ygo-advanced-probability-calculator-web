@@ -90,8 +90,8 @@ public partial class PinnedResultTest {
     private PinnedResultSnapshot Accepted => Calculation.Snapshot!;
 
     private (string Current, string Pinned) ContextDescriptions() => (
-        _cut.Find(".probability-results > p.result-model").TextContent.Trim(),
-        _cut.FindComponent<PinnedResultPanel>().Find(".pinned-result > p.small").TextContent.Trim());
+        string.Join(" · ", _cut.Find(".probability-results .result-model").Children.Select(item => item.TextContent)),
+        string.Join(" · ", _cut.FindComponent<PinnedResultPanel>().Find(".pinned-result .result-model").Children.Select(item => item.TextContent)));
 
     private void AssertContextDescriptions(string current, string pinned) {
         (string Current, string Pinned) actual = ContextDescriptions();
@@ -200,7 +200,7 @@ public partial class PinnedResultTest {
         Assert.That(_cut.Find(".pinned-heading [aria-label='Unpin result']").GetAttribute("title"), Is.EqualTo("Unpin result"));
         Assert.That(_cut.FindAll(".pinned-heading svg path"), Has.Count.EqualTo(2));
         PinnedResultSnapshot first = Pinned;
-        AssertContextDescriptions("Hand size 2 · 8 cards", "Hand size 2 · 8 cards");
+        AssertContextDescriptions("Hand size: 2 · Deck size: 8 cards", "Hand size: 2 · Deck size: 8 cards");
         await Accept(.842);
         Assert.That(Pinned, Is.SameAs(first));
         Assert.That(Accepted.Total, Is.EqualTo(.842));
@@ -475,7 +475,7 @@ public partial class PinnedResultTest {
         Assert.That(current.Combos[2].Probability, Is.EqualTo(.842));
         Assert.That(current.Total, Is.EqualTo(.842));
         Assert.That(Pinned, Is.SameAs(original));
-        AssertContextDescriptions("Hand size 2 · 7 cards", "Hand size 2 · 8 cards");
+        AssertContextDescriptions("Hand size: 2 · Deck size: 7 cards", "Hand size: 2 · Deck size: 8 cards");
         Assert.That(Pinned.Combos.Select(c => c.Label), Is.EqualTo(new[] { "Duplicate", "Duplicate", "Unnamed combo 3" }));
     }
 
@@ -483,24 +483,24 @@ public partial class PinnedResultTest {
     public async Task CurrentAndPinnedContextSummariesKeepTheSameCapturedFieldsAcrossEditsAndRecalculation() {
         await Accept(.814);
         await Pin();
-        AssertContextDescriptions("Hand size 2 · 8 cards", "Hand size 2 · 8 cards");
+        AssertContextDescriptions("Hand size: 2 · Deck size: 8 cards", "Hand size: 2 · Deck size: 8 cards");
         Assert.That(Pinned.Context.Copies, Is.EqualTo(8));
         Assert.That(Pinned.Context.CardCount, Is.EqualTo(2));
 
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
-        AssertContextDescriptions("Hand size 2 · 8 cards", "Hand size 2 · 8 cards");
+        AssertContextDescriptions("Hand size: 2 · Deck size: 8 cards", "Hand size: 2 · Deck size: 8 cards");
         await Accept(.842);
-        AssertContextDescriptions("Hand size 3 · 8 cards", "Hand size 2 · 8 cards");
+        AssertContextDescriptions("Hand size: 3 · Deck size: 8 cards", "Hand size: 2 · Deck size: 8 cards");
 
         await Call("ReplaceCard", (0, Field<List<Card>>("_cards")[0].WithCopies(3)));
         await Call("ReplaceCard", (1, Field<List<Card>>("_cards")[1].WithActive(false)));
         // Pending edits do not leak into the last accepted result or the explicit pin.
-        AssertContextDescriptions("Hand size 3 · 8 cards", "Hand size 2 · 8 cards");
+        AssertContextDescriptions("Hand size: 3 · Deck size: 8 cards", "Hand size: 2 · Deck size: 8 cards");
         await Accept(.786);
-        AssertContextDescriptions("Hand size 3 · 3 cards", "Hand size 2 · 8 cards");
+        AssertContextDescriptions("Hand size: 3 · Deck size: 3 cards", "Hand size: 2 · Deck size: 8 cards");
 
         await Pin();
-        AssertContextDescriptions("Hand size 3 · 3 cards", "Hand size 3 · 3 cards");
+        AssertContextDescriptions("Hand size: 3 · Deck size: 3 cards", "Hand size: 3 · Deck size: 3 cards");
     }
 
     [TestCase("requirement")]
@@ -566,9 +566,9 @@ public partial class PinnedResultTest {
         Assert.That(current.Total, Is.EqualTo(.842));
         Assert.That(Pinned, Is.SameAs(pin));
         string currentContext = load == "ydk"
-            ? "Hand size 2 · 8 cards"
-            : "Hand size 3 · 8 cards";
-        AssertContextDescriptions(currentContext, "Hand size 2 · 8 cards");
+            ? "Hand size: 2 · Deck size: 8 cards"
+            : "Hand size: 3 · Deck size: 8 cards";
+        AssertContextDescriptions(currentContext, "Hand size: 2 · Deck size: 8 cards");
     }
 
     [Test]
@@ -629,7 +629,7 @@ public partial class PinnedResultTest {
         await Accept(.842);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
         string fresh = (string)_clipboard.Invocations["copyText"].Last().Arguments[0]!;
-        Assert.That(fresh, Does.StartWith("Probability results\nMode: Progressive").And.Contain("Hand size: 6\nAny active combo: 84.20%"));
+        Assert.That(fresh, Does.StartWith("Probability results\nMode: Progressive").And.Contain("Hand size: 6\nAny combo: 84.20%"));
         Assert.That(fresh, Does.Contain("Edited route").And.Not.Contain("Previous result"));
     }
 
@@ -666,7 +666,7 @@ public partial class PinnedResultTest {
         Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
         await Accept(.842);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
-        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.StartWith("Probability results\nMode: Progressive").And.Contain("Hand size: 6\nAny active combo: 84.20%"));
+        Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Does.StartWith("Probability results\nMode: Progressive").And.Contain("Hand size: 6\nAny combo: 84.20%"));
         string? shared = _cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         Assert.That(shared, Is.EqualTo(_sessions.SerializeSession(FieldSession())));
         Assert.That(shared, Does.Not.Contain("acceptedResultSnapshot").And.Not.Contain("pinnedResult").And.Not.Contain("Previous result").And.Not.Contain("84.20%"));
@@ -731,8 +731,8 @@ public partial class PinnedResultTest {
         await Pin();
         PinnedResultSnapshot pinnedOn = Pinned;
         Assert.That((pinnedOn.Context.Model != CalculationModel.OpeningHand), Is.True);
-        AssertContextDescriptions("Hand size 2 · 8 cards",
-            "Hand size 2 · 8 cards");
+        AssertContextDescriptions("Hand size: 2 · Deck size: 8 cards",
+            "Hand size: 2 · Deck size: 8 cards");
 
         await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
@@ -742,8 +742,8 @@ public partial class PinnedResultTest {
         CalculationInput offInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs.Last().Json)!;
         Assert.That(offInput.Cards[0].DrawCount, Is.Null);
         Assert.That((cards[0].DrawCount, cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
-        AssertContextDescriptions("Hand size 2 · 8 cards",
-            "Hand size 2 · 8 cards");
+        AssertContextDescriptions("Hand size: 2 · Deck size: 8 cards",
+            "Hand size: 2 · Deck size: 8 cards");
         Assert.That(Pinned.Context, Is.SameAs(pinnedOn.Context));
         Assert.That((Pinned.Context.Model != CalculationModel.OpeningHand), Is.True);
         Assert.That((Accepted.Context.Model != CalculationModel.OpeningHand), Is.False);

@@ -250,11 +250,8 @@
                                              IsStale="_calculation.IsStale"
                                              IsCalculating="_calculation.IsCalculating" />
                 </div>
-                <CalculationAccuracyResult Contract="result.Contract" ModeDescription="@(_calculation.Snapshot?.Context.ModeDescription)" />
-
-                @if (_calculation.Snapshot is { } accepted) {
-                    <p class="small text-body-secondary mb-2 result-model">@accepted.Context.Description</p>
-                }
+                <CalculationAccuracyResult Contract="result.Contract" Context="_calculation.Snapshot?.Context"
+                    ModeDescription="@(_calculation.Snapshot?.Context.ModeDescription)" />
                 <div class="combo-probability-row probability-total">
                     <span class="combo-probability-name">@(UiText.Get("Ui.AnyActiveCombo"))</span>
                     <div class="result-value-group">

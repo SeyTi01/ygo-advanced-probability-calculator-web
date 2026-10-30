@@ -27,6 +27,9 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             row.Find(".requirement-edit").Click();
             Assert.That(editor.FindAll(".requirement-edit-grid .requirement-operand"), Has.Count.EqualTo(expectedCounts[index]));
             Assert.That(editor.FindAll(".requirement-inputs > .expression-separator select"), Has.Count.EqualTo(expectedCounts[index++] - 1));
+            Assert.That(editor.FindAll(".requirement-form button[type=submit]"), Has.Count.EqualTo(1));
+            Assert.That(editor.Find(".requirement-context-actions button[type=submit]").TextContent, Is.EqualTo("Save"));
+            Assert.That(editor.Find(".requirement-form-heading button").TextContent, Is.EqualTo("Cancel"));
             SaveRow(editor);
         }
         editor.Find(".simulation-save").Click();
