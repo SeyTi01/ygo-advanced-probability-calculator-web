@@ -1,0 +1,886 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Card.SearchPlaceholder" xml:space="preserve"><value>Karten suchen oder Namen eingeben</value></data>
+  <data name="Combo.GroupLabel" xml:space="preserve"><value>Gruppe: {0}</value></data>
+  <data name="Combo.MoreRequirements" xml:space="preserve"><value>+{0} weitere</value></data>
+  <data name="Combo.NoRequirements" xml:space="preserve"><value>(keine Anforderungen)</value></data>
+  <data name="Requirement.MaximumAny" xml:space="preserve"><value>Maximum: Beliebig</value></data>
+  <data name="Requirement.MaximumCount" xml:space="preserve"><value>Maximum: {0}</value></data>
+  <data name="Effect.Advanced" xml:space="preserve"><value>Erweitert</value></data>
+  <data name="Effect.UnavailableWithConfiguredDraws" xml:space="preserve"><value>{0} Wird nur bei konfigurierten Zieheffekten angewendet.</value></data>
+  <data name="Effect.AdvancedWithBanish" xml:space="preserve"><value>Erweitert · {0} vom Deck verbannen</value></data>
+  <data name="Result.DetailedDrawWarning" xml:space="preserve"><value>Diese Berechnung kann länger dauern oder Ressourcengrenzen überschreiten, da ihre Zieheffekte eine detaillierte Verarbeitung erfordern.</value></data>
+  <data name="Ui.Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Card.PropertiesCount" xml:space="preserve"><value>Karteneigenschaften ({0})</value></data>
+  <data name="Category.ManyMatches" xml:space="preserve"><value>{0} passende Einträge ({1} Exemplare)</value></data>
+  <data name="Category.OneMatch" xml:space="preserve"><value>{0} passender Eintrag ({1} Exemplare)</value></data>
+  <data name="Category.RuleHeading" xml:space="preserve"><value>Eigenschaften für {0}</value></data>
+  <data name="Category.RuleLabel" xml:space="preserve"><value>Regel für {0}</value></data>
+  <data name="Category.SavedRuleLabel" xml:space="preserve"><value>Gespeicherte Eigenschaftsregel für {0}</value></data>
+  <data name="Deck.Count" xml:space="preserve"><value>Deck ({0})</value></data>
+  <data name="Effect.AfterDrawing" xml:space="preserve"><value>Nach dem Ziehen</value></data>
+  <data name="Effect.AfterDrawingRemoval" xml:space="preserve"><value>Nach dem Ziehen: aus der Hand entfernen</value></data>
+  <data name="Effect.AfterSearching" xml:space="preserve"><value>Nach der Suche</value></data>
+  <data name="Effect.AfterSearchingRemoval" xml:space="preserve"><value>Nach der Suche: aus der Hand entfernen</value></data>
+  <data name="Effect.BeforeDrawing" xml:space="preserve"><value>Vor dem Ziehen</value></data>
+  <data name="Effect.BeforeDrawingRemoval" xml:space="preserve"><value>Vor dem Ziehen: aus der Hand entfernen</value></data>
+  <data name="Effect.BeforeSearching" xml:space="preserve"><value>Vor der Suche</value></data>
+  <data name="Effect.BeforeSearchingRemoval" xml:space="preserve"><value>Vor der Suche: aus der Hand entfernen</value></data>
+  <data name="Effect.PreservedAllowance" xml:space="preserve"><value>Bis zu {0} Aktivierungen pro Eintrag. Dieses Limit bleibt beim Speichern erhalten.</value></data>
+  <data name="Effect.PreservedHandSize" xml:space="preserve"><value>Vor der Aktivierung sind mindestens {0} Handkarten erforderlich. Diese Anforderung bleibt beim Speichern erhalten.</value></data>
+  <data name="Effect.PreservedMill" xml:space="preserve"><value>Nach dem Ziehen werden weiterhin die obersten {0} Deckkarten auf den Friedhof gelegt. Wähle „Keiner“, um den gesamten Zieheffekt zu entfernen.</value></data>
+  <data name="Effect.SavedRevision" xml:space="preserve"><value>Gespeicherte integrierte Version {0}</value></data>
+  <data name="Effect.Targets" xml:space="preserve"><value>Suchziele in diesem Deck: {0}</value></data>
+  <data name="Effects.11317977.Limitations" xml:space="preserve"><value>Modelliert die Suche nach Polymerisation; die separate Rücknahme vom Friedhof wird nicht berücksichtigt.</value></data>
+  <data name="Effects.11317977.Summary" xml:space="preserve"><value>Wirf diese Karte ab, um Polymerisation vom Deck der Hand hinzuzufügen; nicht auf einmal pro Spielzug begrenzt.</value></data>
+  <data name="Effects.1475311.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.1475311.Summary" xml:space="preserve"><value>Ziehe 2, entferne dann eine FINSTERNIS-Karte aus der Hand.</value></data>
+  <data name="Effects.20508881.Limitations" xml:space="preserve"><value>Die Alternative, Mystischer Raum-Taifun vom Deck oder Friedhof der Hand hinzuzufügen, wird nicht modelliert.</value></data>
+  <data name="Effects.20508881.Summary" xml:space="preserve"><value>Ziehe 2, wirf dann 1 zulässige Schnellzauber- oder Radiant Typhoon-Karte ab; einmal pro Spielzug.</value></data>
+  <data name="Effects.24940422.Limitations" xml:space="preserve"><value>Setzt voraus, dass keine Zauber/Fallen im Friedhof liegen; die weitere Zauber-/Fallenbeschränkung und der erneute Zieheffekt im Friedhof werden nicht modelliert.</value></data>
+  <data name="Effects.24940422.Summary" xml:space="preserve"><value>Ziehe 2; einmal pro Spielzug.</value></data>
+  <data name="Effects.26845680.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.26845680.Summary" xml:space="preserve"><value>Entferne ein Orcust- oder Weltvermächtnis-Monster aus der Hand, bevor du 2 ziehst; einmal pro Spielzug.</value></data>
+  <data name="Effects.32807846.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.32807846.Summary" xml:space="preserve"><value>Suche 1 Krieger-Monster der Stufe 1–4</value></data>
+  <data name="Effects.33782437.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.33782437.Summary" xml:space="preserve"><value>Ziehe 1.</value></data>
+  <data name="Effects.34041788.Limitations" xml:space="preserve"><value>Die optionale Spezialbeschwörung eines Hexers und der Ersatzeffekt bei Zerstörung liegen außerhalb des Suchmodells für die Starthand.</value></data>
+  <data name="Effects.34041788.Summary" xml:space="preserve"><value>Suche Regulus, the Prince of Endymion oder ein Monster, das diese Karte erwähnt</value></data>
+  <data name="Effects.35261759.Limitations" xml:space="preserve"><value>Die Verringerung des Decks wird modelliert. Ob Suchziele im Deck verbleiben, wird entsprechend der Ergebnisgenauigkeit berücksichtigt: Schnell kann exakt oder unsicher sein; eine abgeschlossene physische Exakt-Berechnung berücksichtigt dies vollständig. Durch Verbannen ausgelöste Effekte werden nicht simuliert.</value></data>
+  <data name="Effects.35261759.Summary" xml:space="preserve"><value>Verbanne 10 unbekannte Deckkarten, ziehe dann 2; einmal pro Spielzug. Erfordert 12 verbleibende Karten.</value></data>
+  <data name="Effects.36637374.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.36637374.Summary" xml:space="preserve"><value>Suche ein Despia-Monster, nachdem du 1 andere Karte abgeworfen hast</value></data>
+  <data name="Effects.38120068.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.38120068.Summary" xml:space="preserve"><value>Entferne eine Karte der Stufe 8 aus der Hand, bevor du 2 ziehst.</value></data>
+  <data name="Effects.38943357.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.38943357.Summary" xml:space="preserve"><value>Suche 1 Endymion-Karte</value></data>
+  <data name="Effects.42544773.Limitations" xml:space="preserve"><value>Modelliert das Abwerfen mit anschließender Suche; die ATK-Senkung und die Ausrüstungseffekte im Friedhof werden nicht berücksichtigt.</value></data>
+  <data name="Effects.42544773.Summary" xml:space="preserve"><value>Wirf diese Karte ab; suche 1 anderes Magistus-Monster</value></data>
+  <data name="Effects.45171524.Limitations" xml:space="preserve"><value>Modelliert die Suche ohne Tribut; die alternative Schadens- und Spezialbeschwörungsoption wird nicht berücksichtigt.</value></data>
+  <data name="Effects.45171524.Summary" xml:space="preserve"><value>Suche 1 Mitsurugi-Monster</value></data>
+  <data name="Effects.48805472.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.48805472.Summary" xml:space="preserve"><value>Wirf 1 Insekt- oder Pflanze-Monster der Stufe 4 oder 1 Normale Falle aus der Hand ab, um 2 zu ziehen; einmal pro Spielzug.</value></data>
+  <data name="Effects.49238328.Limitations" xml:space="preserve"><value>Setzt voraus, dass für die Option „Ziehe 2“ 6 Karten vom Extra Deck verbannt werden können.</value></data>
+  <data name="Effects.49238328.Summary" xml:space="preserve"><value>Nur als erste Ziehaktivierung; ziehe 2; danach kein weiteres Ziehen.</value></data>
+  <data name="Effects.52782439.Limitations" xml:space="preserve"><value>Die optionale Beschwörung der Spielmarke „Diagram Token“ liegt außerhalb dieses Decksuchmodells.</value></data>
+  <data name="Effects.52782439.Summary" xml:space="preserve"><value>Suche 1 Sonderfahrplan oder Knapper Fahrplan; einmal pro Spielzug.</value></data>
+  <data name="Effects.52840267.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.52840267.Summary" xml:space="preserve"><value>Wirf Ixchel und 1 andere Finsterlord-Karte aus der Hand ab, um 2 zu ziehen; einmal pro Spielzug.</value></data>
+  <data name="Effects.55144522.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.55144522.Summary" xml:space="preserve"><value>Ziehe 2.</value></data>
+  <data name="Effects.56506740.Limitations" xml:space="preserve"><value>Modelliert die Decksuche bei Aktivierung; der separate Effekt zur Spezialbeschwörung eines Normalen Monsters wird nicht berücksichtigt.</value></data>
+  <data name="Effects.56506740.Summary" xml:space="preserve"><value>Suche bei Aktivierung 1 andere Primite-Karte</value></data>
+  <data name="Effects.56673480.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.56673480.Summary" xml:space="preserve"><value>Ziehe 1; einmal pro Spielzug.</value></data>
+  <data name="Effects.56725612.Limitations" xml:space="preserve"><value>Modelliert die Decksuche; die Verbannungsoption und weitere Spielfeldzaubereffekte liegen außerhalb des Starthandmodells.</value></data>
+  <data name="Effects.56725612.Summary" xml:space="preserve"><value>Suche ein Märchenschweif-Monster oder Märchenschweif-Geschichten</value></data>
+  <data name="Effects.57103969.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.57103969.Summary" xml:space="preserve"><value>Suche 1 Ungeheuer-Krieger-Monster der Stufe 1–4</value></data>
+  <data name="Effects.60764609.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.60764609.Summary" xml:space="preserve"><value>Suche 1 Fiendsmith-Zauber/Falle</value></data>
+  <data name="Effects.6153210.Limitations" xml:space="preserve"><value>Die vom Gegner abhängige Fusionsbeschwörung liegt außerhalb des Suchmodells für die Starthand.</value></data>
+  <data name="Effects.6153210.Summary" xml:space="preserve"><value>Suche 1 Dracotail-Monster</value></data>
+  <data name="Effects.63166095.Limitations" xml:space="preserve"><value>Setzt voraus, dass sich keine Monster in deinen Main-Monsterzonen befinden; das optionale Ziehen bei mindestens 3 Zaubern im Friedhof liegt außerhalb dieses Suchmodells.</value></data>
+  <data name="Effects.63166095.Summary" xml:space="preserve"><value>Suche 1 andere Himmelsjäger-Karte vom Deck; nicht auf einmal pro Spielzug begrenzt.</value></data>
+  <data name="Effects.67115133.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.67115133.Summary" xml:space="preserve"><value>Suche ein Radiant Typhoon-Monster der Stufe 1–4 oder Mystischer Raum-Taifun; jede Option einmal pro Eintrag</value></data>
+  <data name="Effects.67616300.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.67616300.Summary" xml:space="preserve"><value>Ziehe 1.</value></data>
+  <data name="Effects.691925.Limitations" xml:space="preserve"><value>Das Ablegen auf den Friedhof verringert das Deck. Ob Suchziele im Deck verbleiben, wird entsprechend der Ergebnisgenauigkeit berücksichtigt: Schnell kann exakt oder unsicher sein; eine abgeschlossene physische Exakt-Berechnung berücksichtigt dies vollständig. Im Friedhof ausgelöste Effekte werden nicht simuliert.</value></data>
+  <data name="Effects.691925.Summary" xml:space="preserve"><value>Wirf 1 Lichtverpflichtet-Monster ab; ziehe 2, lege dann die obersten 2 Deckkarten auf den Friedhof. Erfordert 4 verbleibende Karten.</value></data>
+  <data name="Effects.70368879.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.70368879.Summary" xml:space="preserve"><value>Ziehe 1.</value></data>
+  <data name="Effects.72323266.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.72323266.Summary" xml:space="preserve"><value>Suche 1 Unterweltler-Empfängermonster der Stufe 1–3</value></data>
+  <data name="Effects.74117290.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.74117290.Summary" xml:space="preserve"><value>Ziehe 1, entferne dann 1 Karte aus der Hand.</value></data>
+  <data name="Effects.78058681.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.78058681.Summary" xml:space="preserve"><value>Suche eine andere Kewl Tune-Karte; bis zu zweimal pro Eintrag</value></data>
+  <data name="Effects.78679226.Limitations" xml:space="preserve"><value>Das bedingte Ziehen in der Battle Phase liegt außerhalb des Starthandmodells, das nur die Suche berücksichtigt.</value></data>
+  <data name="Effects.78679226.Summary" xml:space="preserve"><value>Suche 1 Monster, das Shining Sarcophagus erwähnt</value></data>
+  <data name="Effects.7925734.Limitations" xml:space="preserve"><value>Setzt voraus, dass das Vorzeigen aus dem Extra Deck das Ziehen erlaubt.</value></data>
+  <data name="Effects.7925734.Summary" xml:space="preserve"><value>Ziehe 1; einmal pro Spielzug.</value></data>
+  <data name="Effects.79571449.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.79571449.Summary" xml:space="preserve"><value>Ziehe 3, entferne dann 2 Karten aus der Hand.</value></data>
+  <data name="Effects.80181649.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.80181649.Summary" xml:space="preserve"><value>Suche 1 K9-Monster</value></data>
+  <data name="Effects.80845034.Limitations" xml:space="preserve"><value>Modelliert nur die Suche im Main Deck; das Hinzufügen aus dem Friedhof und der separate Zieheffekt im Friedhof werden nicht berücksichtigt.</value></data>
+  <data name="Effects.80845034.Summary" xml:space="preserve"><value>Suche 1 Diabellstar-Monster aus dem Main Deck</value></data>
+  <data name="Effects.81101309.Limitations" xml:space="preserve"><value>Die Zielzone Friedhof und der separate Effekt, der einmal pro Duell verwendbar ist, liegen außerhalb des Suchmodells für die Starthand.</value></data>
+  <data name="Effects.81101309.Summary" xml:space="preserve"><value>Wirf diese Karte ab, um Wagenkupplung oder Drehscheiben-Bahnhof vom Deck der Hand hinzuzufügen; einmal pro Spielzug.</value></data>
+  <data name="Effects.85106525.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.85106525.Summary" xml:space="preserve"><value>Suche 1 Pyro-Monster der Stufe 1–4</value></data>
+  <data name="Effects.92221402.Limitations" xml:space="preserve"><value>Nur Suche im Main Deck; das Zurückholen vom Friedhof, die optionale Zerstörung auf dem Spielfeld und der Friedhofseffekt werden nicht modelliert.</value></data>
+  <data name="Effects.92221402.Summary" xml:space="preserve"><value>Suche 1 LICHT-/FINSTERNIS-Monster vom Typ Pyro/Aqua der Stufe 5 oder höher</value></data>
+  <data name="Effects.93946239.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.93946239.Summary" xml:space="preserve"><value>Ziehe 1, wenn du mindestens 3 Handkarten hast.</value></data>
+  <data name="Effects.96729612.Limitations" xml:space="preserve"><value>Das optionale Zurückholen eines Ritualzaubers vom Friedhof liegt außerhalb dieses Decksuchmodells.</value></data>
+  <data name="Effects.96729612.Summary" xml:space="preserve"><value>Suche 1 Ritualmonster der Stufe 1–7</value></data>
+  <data name="Effects.98567237.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.98567237.Summary" xml:space="preserve"><value>Suche einen LICHT-Unterweltler, wirf dann 1 Karte ab</value></data>
+  <data name="Move.CurrentPosition" xml:space="preserve"><value>(aktuell: {0})</value></data>
+  <data name="Move.Down" xml:space="preserve"><value>{0} nach unten verschieben</value></data>
+  <data name="Move.Left" xml:space="preserve"><value>{0} nach links verschieben</value></data>
+  <data name="Move.PositionRange" xml:space="preserve"><value>Position 1–{0}</value></data>
+  <data name="Move.Reorder" xml:space="preserve"><value>{0} umordnen</value></data>
+  <data name="Move.Right" xml:space="preserve"><value>{0} nach rechts verschieben</value></data>
+  <data name="Move.ToPosition" xml:space="preserve"><value>{0} an Position verschieben</value></data>
+  <data name="Move.Up" xml:space="preserve"><value>{0} nach oben verschieben</value></data>
+  <data name="NumericProperty.Level" xml:space="preserve"><value>Stufe</value></data>
+  <data name="NumericProperty.Link" xml:space="preserve"><value>Linkzahl</value></data>
+  <data name="NumericProperty.Rank" xml:space="preserve"><value>Rang</value></data>
+  <data name="NumericRange.Between" xml:space="preserve"><value>{0} {1}–{2}</value></data>
+  <data name="NumericRange.Exact" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="NumericRange.Maximum" xml:space="preserve"><value>{0} &lt;= {1}</value></data>
+  <data name="NumericRange.Minimum" xml:space="preserve"><value>{0} &gt;= {1}</value></data>
+  <data name="Requirement.Card" xml:space="preserve"><value>Karte: {0}</value></data>
+  <data name="Requirement.MaximumProperty" xml:space="preserve"><value>Maximum {0}</value></data>
+  <data name="Requirement.RowOperator" xml:space="preserve"><value>Zeilenoperator</value></data>
+  <data name="Requirement.Subject" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Requirement.WithRange" xml:space="preserve"><value>{0} ({1})</value></data>
+  <data name="Result.ActiveCount" xml:space="preserve"><value>({0} aktiv)</value></data>
+  <data name="Result.Mode" xml:space="preserve"><value>Modus: {0}</value></data>
+  <data name="Result.PerformanceContributors" xml:space="preserve"><value>Mögliche Ursachen: {0}. Siehe die Modellhinweise (Rechenaufwand).</value></data>
+  <data name="Selector.Except" xml:space="preserve"><value>außer {0}</value></data>
+  <data name="Selector.Verified" xml:space="preserve"><value>verifiziert: {0}</value></data>
+  <data name="Session.LastSaved" xml:space="preserve"><value>Zuletzt gespeichert: {0}.</value></data>
+  <data name="Ui.01234Width56" xml:space="preserve"><value>- {0}: [{1}/{2}, {3}/{4}]; Breite {5} ({6})</value></data>
+  <data name="Ui.012Active" xml:space="preserve"><value>- **{0}** — {1} ({2} aktiv)</value></data>
+  <data name="Ui.01PerEntry" xml:space="preserve"><value>{0}: {1} pro Eintrag</value></data>
+  <data name="Ui.0AnyActiveCombo1" xml:space="preserve"><value>{0}, mindestens eine Kombo: {1}</value></data>
+  <data name="Ui.0Combo12" xml:space="preserve"><value>{0}, Kombo {1}: {2}</value></data>
+  <data name="Ui.0Custom1" xml:space="preserve"><value>{0} (benutzerdefiniert: {1})</value></data>
+  <data name="Ui.0Entry1" xml:space="preserve"><value>{0} (Eintrag {1})</value></data>
+  <data name="Ui.0Group12" xml:space="preserve"><value>{0}, Gruppe {1}: {2}</value></data>
+  <data name="Ui.0MatchingEntries" xml:space="preserve"><value>0 passende Einträge</value></data>
+  <data name="Ui.0Max" xml:space="preserve"><value>{0} Max</value></data>
+  <data name="Ui.0Min" xml:space="preserve"><value>{0} Min</value></data>
+  <data name="Ui.0Width1" xml:space="preserve"><value>{0} · Breite {1}</value></data>
+  <data name="Ui.ACategoryWithThisNameAlreadyExists" xml:space="preserve"><value>Eine Kategorie mit diesem Namen existiert bereits.</value></data>
+  <data name="Ui.AGroupWithThatNameAlreadyExists" xml:space="preserve"><value>Eine Gruppe mit diesem Namen existiert bereits.</value></data>
+  <data name="Expression.AndSeparator" xml:space="preserve"><value> UND </value></data>
+  <data name="Ui.ANDSameCardProperties" xml:space="preserve"><value>UND: Eigenschaften derselben Karte</value></data>
+  <data name="Ui.APreviousWorkingSessionIsSavedLocally" xml:space="preserve"><value>Eine frühere Sitzung ist lokal gespeichert.</value></data>
+  <data name="Ui.ASelectedCategoryWasRemovedUpdateTheEligibilityFilter" xml:space="preserve"><value>Eine ausgewählte Kategorie wurde entfernt. Aktualisiere den Auswahlfilter.</value></data>
+  <data name="Ui.ASharedSessionIsAvailable" xml:space="preserve"><value>Eine geteilte Sitzung ist verfügbar.</value></data>
+  <data name="Ui.AboutPriority" xml:space="preserve"><value>Zur Priorität</value></data>
+  <data name="Ui.Accuracy0Completion1ContractV2" xml:space="preserve"><value>Genauigkeit: {0}; Abschluss: {1}; Vertrag v{2}</value></data>
+  <data name="Ui.AccuracyDetails" xml:space="preserve"><value>Details zur Genauigkeit</value></data>
+  <data name="Ui.AccuracyUnavailableForThisResult" xml:space="preserve"><value>Für dieses Ergebnis ist keine Genauigkeit verfügbar.</value></data>
+  <data name="Ui.ActionsFor0" xml:space="preserve"><value>Aktionen für {0}</value></data>
+  <data name="Ui.Activate" xml:space="preserve"><value>Aktivieren</value></data>
+  <data name="Ui.ActivateAtLeastOneCardToCalculate" xml:space="preserve"><value>Füge mindestens eine Deckkarte hinzu oder aktiviere sie, um zu berechnen.</value></data>
+  <data name="Ui.ActivateAtLeastOneComboToCalculate" xml:space="preserve"><value>Aktiviere mindestens eine Kombo, um zu berechnen.</value></data>
+  <data name="Ui.Add" xml:space="preserve"><value>Hinzufügen</value></data>
+  <data name="Ui.AddANDPropertyToAlternative0" xml:space="preserve"><value>UND-Eigenschaft zu Alternative {0} hinzufügen</value></data>
+  <data name="Ui.AddASeparateCopyRequirement" xml:space="preserve"><value>Anforderung für ein separates Exemplar hinzufügen</value></data>
+  <data name="Ui.AddAlternative" xml:space="preserve"><value>Alternative hinzufügen</value></data>
+  <data name="Ui.AddAlternativeOR" xml:space="preserve"><value>Alternative hinzufügen (ODER)</value></data>
+  <data name="Ui.AddAnAlternativeOR" xml:space="preserve"><value>Alternative hinzufügen · ODER</value></data>
+  <data name="Ui.AddCard" xml:space="preserve"><value>Karte hinzufügen</value></data>
+  <data name="Ui.AddCardByName" xml:space="preserve"><value>Karte nach Namen hinzufügen</value></data>
+  <data name="Ui.AddCombo" xml:space="preserve"><value>Kombo hinzufügen</value></data>
+  <data name="Ui.AddComboGroup" xml:space="preserve"><value>Kombogruppe hinzufügen</value></data>
+  <data name="Ui.AddProperty" xml:space="preserve"><value>Eigenschaft hinzufügen</value></data>
+  <data name="Ui.AddPropertyAND" xml:space="preserve"><value>Eigenschaft hinzufügen (UND)</value></data>
+  <data name="Ui.AddRequirement" xml:space="preserve"><value>+ Anforderung hinzufügen</value></data>
+  <data name="Ui.AddRequirement.2d4936b2" xml:space="preserve"><value>Anforderung hinzufügen</value></data>
+  <data name="Ui.AddRuleAlternative" xml:space="preserve"><value>Regelalternative hinzufügen</value></data>
+  <data name="Ui.Added0" xml:space="preserve"><value>{0} hinzugefügt.</value></data>
+  <data name="Ui.AllEligibilityRowsMatchTheSameCard" xml:space="preserve"><value>Alle Filterzeilen müssen auf dieselbe Karte zutreffen</value></data>
+  <data name="Ui.AlternativeGroup" xml:space="preserve"><value>Alternativengruppe</value></data>
+  <data name="Ui.AlternativeGroup0" xml:space="preserve"><value>Alternativengruppe {0}</value></data>
+  <data name="Ui.AnActiveComboHasAMissingCardReferenceRepairOrRemoveItOrDeactivateTheCombo" xml:space="preserve"><value>In einer aktiven Kombo fehlt ein Kartenverweis. Korrigiere oder entferne ihn oder deaktiviere die Kombo.</value></data>
+  <data name="Ui.AndOthers" xml:space="preserve"><value> und weitere</value></data>
+  <data name="Ui.AnotherPropertySameCard" xml:space="preserve"><value>Weitere Eigenschaft · dieselbe Karte</value></data>
+  <data name="Ui.Any" xml:space="preserve"><value>Beliebig</value></data>
+  <data name="Ui.AnyActiveCombo" xml:space="preserve"><value>Mindestens eine Kombo</value></data>
+  <data name="Ui.AnyActiveCombo0" xml:space="preserve"><value>Mindestens eine Kombo: {0}</value></data>
+  <data name="Ui.AnyCard" xml:space="preserve"><value>beliebige Karte</value></data>
+  <data name="Ui.AnyEligibilityRowMayMatch" xml:space="preserve"><value>Mindestens eine Filterzeile muss zutreffen</value></data>
+  <data name="Ui.Anycardclearfilter" xml:space="preserve"><value>Filter löschen</value></data>
+  <data name="Ui.ApplyRule" xml:space="preserve"><value>Regel anwenden</value></data>
+  <data name="Ui.AtLeast" xml:space="preserve"><value>Mindestens</value></data>
+  <data name="Ui.AtLeast0CardsInHandBeforeActivation" xml:space="preserve"><value>mindestens {0} Handkarten vor der Aktivierung</value></data>
+  <data name="Ui.AtMost" xml:space="preserve"><value>Höchstens</value></data>
+  <data name="Ui.Automatic" xml:space="preserve"><value>Automatisch</value></data>
+  <data name="Ui.Back" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Ui.BackToRow" xml:space="preserve"><value>Zurück zur Zeile</value></data>
+  <data name="Ui.Banish01" xml:space="preserve"><value>{0} verbannen · {1}</value></data>
+  <data name="Ui.Banish0UnseenDeckCards" xml:space="preserve"><value>{0} unbekannte Deckkarten verbannen</value></data>
+  <data name="Ui.BanishFromDeck" xml:space="preserve"><value>Vom Deck verbannen</value></data>
+  <data name="Ui.Between" xml:space="preserve"><value>Zwischen</value></data>
+  <data name="Ui.BoundscertifyonlyDecksearchtargetsurvivalunderthefixedmodeleddrawremovalpolicynotfullgameplayoroptimalplayProbabilityrangesareavailableoneachresult" xml:space="preserve"><value>Die Grenzen garantieren nur, ob Decksuchziele unter der festen modellierten Zieh-/Entfernungsstrategie verfügbar bleiben; sie gelten nicht für vollständige Spielabläufe oder optimales Spiel. Jedes Ergebnis zeigt seinen Wahrscheinlichkeitsbereich.</value></data>
+  <data name="Ui.BuiltInSimulation" xml:space="preserve"><value>Integrierte Simulation</value></data>
+  <data name="Ui.Calculate" xml:space="preserve"><value>Berechnen</value></data>
+  <data name="Ui.CalculateAValidResultBeforePinning" xml:space="preserve"><value>Berechne ein gültiges Ergebnis, bevor du es anheftest.</value></data>
+  <data name="Ui.CalculateWithAtMost0ActiveCombosDeactivateOrRemoveExtraCombos" xml:space="preserve"><value>Berechne mit höchstens {0} aktiven Kombos. Deaktiviere oder entferne weitere Kombos.</value></data>
+  <data name="Ui.CalculatesPhysicalDeckSearchSurvivalExactlyWithoutAWorkCutoffSubjectToStorageLimitsAndCa" xml:space="preserve"><value>Berechnet exakt anhand physischer Kartenexemplare, welche Decksuchziele verfügbar bleiben, ohne Begrenzung der Rechenschritte. Speichergrenzen und Abbruch gelten weiterhin.</value></data>
+  <data name="Ui.CalculatesProbabilitiesQuicklyButResultsMayBeApproximate" xml:space="preserve"><value>Berechnet Wahrscheinlichkeiten schnell, aber Ergebnisse können Näherungen sein.</value></data>
+  <data name="Ui.CalculationFailed0" xml:space="preserve"><value>Berechnung fehlgeschlagen: {0}</value></data>
+  <data name="Ui.CalculationIsRunning" xml:space="preserve"><value>Berechnung läuft.</value></data>
+  <data name="Ui.CalculationModel" xml:space="preserve"><value>Berechnungsmodell</value></data>
+  <data name="Ui.CalculationSettings" xml:space="preserve"><value>Berechnungseinstellungen</value></data>
+  <data name="Ui.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Ui.CancelCalculation" xml:space="preserve"><value>Berechnung abbrechen</value></data>
+  <data name="Ui.CancelCategoryEdit" xml:space="preserve"><value>Kategoriebearbeitung abbrechen</value></data>
+  <data name="Ui.CancelExactUpgrade" xml:space="preserve"><value>Exakt-Nachberechnung abbrechen</value></data>
+  <data name="Ui.CancelGroupEdit" xml:space="preserve"><value>Gruppenbearbeitung abbrechen</value></data>
+  <data name="Ui.Card0" xml:space="preserve"><value>Karte {0}</value></data>
+  <data name="Ui.Card0Row1" xml:space="preserve"><value>Karte {0}, Zeile {1}</value></data>
+  <data name="Ui.CardArtworkFor0" xml:space="preserve"><value>Kartenbild für {0}</value></data>
+  <data name="Ui.CardPasscode0IsOutsideTheSupportedCardIDRange" xml:space="preserve"><value>Die Kartennummer {0} liegt außerhalb des unterstützten ID-Bereichs.</value></data>
+  <data name="Ui.CardProperty" xml:space="preserve"><value>Karteneigenschaft</value></data>
+  <data name="Ui.CardSearchIsUnavailableYouCanStillEnterAManualCard" xml:space="preserve"><value>Die Kartensuche ist nicht verfügbar. Du kannst weiterhin eine Karte manuell eingeben.</value></data>
+  <data name="Ui.CardSearchResults" xml:space="preserve"><value>Ergebnisse der Kartensuche</value></data>
+  <data name="Ui.CardSimulation" xml:space="preserve"><value>Kartensimulation</value></data>
+  <data name="Ui.Cards" xml:space="preserve"><value>Karten</value></data>
+  <data name="Ui.Categories" xml:space="preserve"><value>Kategorien</value></data>
+  <data name="Ui.Category" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="Ui.Category0" xml:space="preserve"><value>Kategorie {0}</value></data>
+  <data name="Ui.CategoryName" xml:space="preserve"><value>Kategoriename</value></data>
+  <data name="Ui.CategoryNameCannotBeEmpty" xml:space="preserve"><value>Der Kategoriename darf nicht leer sein.</value></data>
+  <data name="Ui.CategoryRemoveButtonMs1" xml:space="preserve"><value>category-remove-button ms-1</value></data>
+  <data name="Ui.CertifiedRange01RationalEndpoints23" xml:space="preserve"><value>Garantierter Bereich: [{0}, {1}]; rationale Grenzwerte [{2}, {3}].</value></data>
+  <data name="Ui.Change0Operator" xml:space="preserve"><value>Operator für {0} ändern</value></data>
+  <data name="Ui.Choose" xml:space="preserve"><value>Auswählen…</value></data>
+  <data name="Ui.ChooseACardCategoryOrProperty" xml:space="preserve"><value>Karte, Kategorie oder Eigenschaft auswählen</value></data>
+  <data name="Ui.ChooseACardCategoryOrProperty.d85ff195" xml:space="preserve"><value>Wähle eine Karte, Kategorie oder Eigenschaft.</value></data>
+  <data name="Ui.ChooseAColorForCategory0" xml:space="preserve"><value>Farbe für Kategorie {0} auswählen</value></data>
+  <data name="Ui.ChooseADeckBanishCountFrom0To60" xml:space="preserve"><value>Wähle eine Anzahl von 0 bis 60 zum Verbannen vom Deck.</value></data>
+  <data name="Ui.ChooseAProperty" xml:space="preserve"><value>Eigenschaft auswählen</value></data>
+  <data name="Ui.ChooseAPropertyOrCategory" xml:space="preserve"><value>Wähle eine Eigenschaft oder Kategorie.</value></data>
+  <data name="Ui.ChooseColorForCategory0" xml:space="preserve"><value>Farbe für Kategorie {0} auswählen</value></data>
+  <data name="Ui.ChooseNoneDraw13OrSearch1" xml:space="preserve"><value>Wähle „Keiner“, „Ziehe 1–3“ oder „Suche 1“.</value></data>
+  <data name="Ui.ChooseNoneRemove1OrRemove2" xml:space="preserve"><value>Wähle „Keiner“, „1 entfernen“ oder „2 entfernen“.</value></data>
+  <data name="Ui.ChoosesTheHighestLegalEffectAfterEachCompletedResolutionIncludingNewlyDrawnEffects" xml:space="preserve"><value>Zieheffekte werden zuerst aufgelöst, danach Sucheffekte. Innerhalb jeder Phase wird der Effekt mit der höchsten Priorität zuerst aufgelöst.</value></data>
+  <data name="Ui.Clear" xml:space="preserve"><value>Leeren</value></data>
+  <data name="Ui.ClearWorkspace" xml:space="preserve"><value>Arbeitsbereich leeren</value></data>
+  <data name="Ui.Clearthecurrentdeckcategoriesandcombos" xml:space="preserve"><value>Aktuelles Deck, Kategorien und Kombos löschen?</value></data>
+  <data name="Ui.ClipboardAccessWasDeniedSelectAndCopyThisLink" xml:space="preserve"><value>Der Zugriff auf die Zwischenablage wurde verweigert. Markiere und kopiere diesen Link:</value></data>
+  <data name="Ui.ClipboardCopyingWasUnavailableSelectTheTextBelowAndCopyItManually" xml:space="preserve"><value>Kopieren in die Zwischenablage war nicht möglich. Markiere den folgenden Text und kopiere ihn manuell.</value></data>
+  <data name="Ui.Close" xml:space="preserve"><value>Schließen</value></data>
+  <data name="Ui.CloseCopyFallback" xml:space="preserve"><value>Kopierhilfe schließen</value></data>
+  <data name="Ui.CloseEditor" xml:space="preserve"><value>Editor schließen</value></data>
+  <data name="Ui.CloseManualCopyText" xml:space="preserve"><value>Text zum manuellen Kopieren schließen</value></data>
+  <data name="Ui.ColorThemePreference" xml:space="preserve"><value>Farbschema</value></data>
+  <data name="Ui.Combo" xml:space="preserve"><value>Kombo</value></data>
+  <data name="Ui.Combo0" xml:space="preserve"><value>Kombo {0}</value></data>
+  <data name="Ui.Combo0Row1" xml:space="preserve"><value>Kombo {0}, Zeile {1}</value></data>
+  <data name="Ui.ComboGroups" xml:space="preserve"><value>Kombogruppen</value></data>
+  <data name="Ui.ComboRequirements" xml:space="preserve"><value>Komboanforderungen</value></data>
+  <data name="Ui.Combos" xml:space="preserve"><value>Kombos</value></data>
+  <data name="Ui.CommonProperties" xml:space="preserve"><value>Häufige Eigenschaften</value></data>
+  <data name="Ui.Comparison" xml:space="preserve"><value>Vergleich</value></data>
+  <data name="Ui.CompleteOrDeactivateEveryIncompleteActiveComboBeforeCalculating" xml:space="preserve"><value>Vervollständige oder deaktiviere vor der Berechnung jede unvollständige aktive Kombo.</value></data>
+  <data name="Ui.ConfigureSimulation" xml:space="preserve"><value>Simulation konfigurieren</value></data>
+  <data name="Ui.ConfirmCategoryDeletion" xml:space="preserve"><value>Löschen der Kategorie bestätigen</value></data>
+  <data name="Ui.ConfirmClearingWorkspace" xml:space="preserve"><value>Leeren des Arbeitsbereichs bestätigen</value></data>
+  <data name="Ui.ConfirmGroupDeletion" xml:space="preserve"><value>Löschen der Gruppe bestätigen</value></data>
+  <data name="Ui.Copies" xml:space="preserve"><value>Exemplare</value></data>
+  <data name="Ui.CopyALinkToTheAcceptedSession" xml:space="preserve"><value>Link zur übernommenen Sitzung kopieren</value></data>
+  <data name="Ui.CopyResults" xml:space="preserve"><value>Ergebnisse kopieren</value></data>
+  <data name="Ui.CopyShareLink" xml:space="preserve"><value>Link zum Teilen kopieren</value></data>
+  <data name="Ui.Cost01" xml:space="preserve"><value>Kosten {0} · {1}</value></data>
+  <data name="Ui.Costcandependoneffectcombinationsanddeckconstraintsnoindividualeffectisidentified" xml:space="preserve"><value>Der Rechenaufwand kann von Effektkombinationen und Deckbedingungen abhängen; kein einzelner Effekt wurde als Ursache identifiziert.</value></data>
+  <data name="Ui.CurrentResult" xml:space="preserve"><value>Aktuelles Ergebnis</value></data>
+  <data name="Ui.CurrentSearchTargets" xml:space="preserve"><value>Aktuelle Suchziele</value></data>
+  <data name="Ui.CurrentWorkChangedDuringImportImportAgainToReplaceIt" xml:space="preserve"><value>Der Arbeitsbereich wurde während des Imports geändert. Importiere erneut, um ihn zu ersetzen.</value></data>
+  <data name="Ui.CurrentWorkChangedWhileLoadingLoadTheSessionAgainToReplaceIt" xml:space="preserve"><value>Der Arbeitsbereich wurde während des Ladens geändert. Lade die Sitzung erneut, um ihn zu ersetzen.</value></data>
+  <data name="Ui.CurrentWorkChangedWhileLoadingReviewTheSharedSessionAndLoadItAgain" xml:space="preserve"><value>Der Arbeitsbereich wurde während des Ladens geändert. Prüfe die geteilte Sitzung und lade sie erneut.</value></data>
+  <data name="Ui.CurrentWorkChangedWhileLoadingTheExampleLoadTheExampleAgainToReplaceIt" xml:space="preserve"><value>Der Arbeitsbereich wurde beim Laden des Beispiels geändert. Lade das Beispiel erneut, um ihn zu ersetzen.</value></data>
+  <data name="Ui.CurrentWorkChangedWhileRestoringReviewTheDraftAndTryAgain" xml:space="preserve"><value>Der Arbeitsbereich wurde während der Wiederherstellung geändert. Prüfe den Entwurf und versuche es erneut.</value></data>
+  <data name="Ui.CustomPriority" xml:space="preserve"><value>Eigene Priorität</value></data>
+  <data name="Ui.CustomSimulation" xml:space="preserve"><value>Eigene Simulation</value></data>
+  <data name="Ui.CustomizeSimulation" xml:space="preserve"><value>Simulation anpassen</value></data>
+  <data name="Ui.Dark" xml:space="preserve"><value>Dunkel</value></data>
+  <data name="Ui.Deactivate" xml:space="preserve"><value>Deaktivieren</value></data>
+  <data name="Ui.DeckSearchAvailability" xml:space="preserve"><value>Verfügbarkeit bei der Decksuche: </value></data>
+  <data name="Ui.DeckSearchAvailability0" xml:space="preserve"><value>Verfügbarkeit bei der Decksuche: {0}</value></data>
+  <data name="Ui.Deckdepletionismodeledsearchtargetsurvivalfollowsthereportedresultaccuracy" xml:space="preserve"><value>Die Verringerung des Decks wird modelliert; ob Suchziele im Deck verbleiben, wird entsprechend der angegebenen Ergebnisgenauigkeit berücksichtigt.</value></data>
+  <data name="Ui.DefineByProperties" xml:space="preserve"><value>Über Eigenschaften definieren</value></data>
+  <data name="Ui.Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Ui.Delete0AllMemberCombosIncludingInactiveOnesRemainInTheirCurrentOrderAndBecomeUngrouped" xml:space="preserve"><value>{0} löschen? Alle zugehörigen Kombos, auch inaktive, behalten ihre Reihenfolge und werden keiner Gruppe mehr zugeordnet.</value></data>
+  <data name="Ui.Delete0AndRemoveEveryMembershipComboRequirementAndEffectSearchRemovalReferenceIncludingI" xml:space="preserve"><value>{0} löschen und alle Zuordnungen, Komboanforderungen und Effekt-/Such-/Entfernungsverweise entfernen, auch in inaktiven Einträgen? Andere Bedingungen und Kombos bleiben bestehen. Leere Kombos werden inaktiv; leere Effektfilter passen bis zur Bearbeitung auf keine Karte. Eigenschaftsregeln verwenden nur Metadaten und bleiben unverändert.</value></data>
+  <data name="Ui.DeleteCategory0" xml:space="preserve"><value>Kategorie {0} löschen</value></data>
+  <data name="Ui.DeleteGroup0" xml:space="preserve"><value>Gruppe {0} löschen</value></data>
+  <data name="Ui.DiscardSavedDraft" xml:space="preserve"><value>Gespeicherten Entwurf verwerfen</value></data>
+  <data name="Ui.Dismiss" xml:space="preserve"><value>Ausblenden</value></data>
+  <data name="Ui.DismissSharedLink" xml:space="preserve"><value>Geteilten Link ausblenden</value></data>
+  <data name="Ui.DismisskeepsthedraftandpausesautosaveDiscarddeletesityournexteditstartsautosavingagain" xml:space="preserve"><value>Ausblenden behält den Entwurf und pausiert das automatische Speichern. Verwerfen löscht ihn; mit deiner nächsten Änderung beginnt das automatische Speichern wieder.</value></data>
+  <data name="Ui.Draw0" xml:space="preserve"><value>Ziehe {0}</value></data>
+  <data name="Ui.Draw1" xml:space="preserve"><value>Ziehe 1</value></data>
+  <data name="Ui.Draw2" xml:space="preserve"><value>Ziehe 2</value></data>
+  <data name="Ui.Draw3" xml:space="preserve"><value>Ziehe 3</value></data>
+  <data name="Ui.DrawActivationPriority" xml:space="preserve"><value>Aktivierungspriorität</value></data>
+  <data name="Ui.DrawActivationPriorityHighestFirst" xml:space="preserve"><value>Aktivierungspriorität, höchste zuerst</value></data>
+  <data name="Ui.DrawConfiguredOff" xml:space="preserve"><value>Zieheffekt konfiguriert · Aus</value></data>
+  <data name="Ui.DrawSimulationIsOffThisConfiguredDrawEffectIsCurrentlyIgnored" xml:space="preserve"><value>Die Ziehsimulation ist aus — dieser konfigurierte Zieheffekt wird derzeit ignoriert.</value></data>
+  <data name="Ui.Duplicate" xml:space="preserve"><value>Duplizieren</value></data>
+  <data name="Ui.EachActiveCardMustHaveAtLeastOneCopyOrBeDeactivated" xml:space="preserve"><value>Jede aktive Karte muss mindestens ein Exemplar haben oder deaktiviert werden.</value></data>
+  <data name="Ui.Edit" xml:space="preserve"><value>Bearbeiten</value></data>
+  <data name="Ui.Edit0" xml:space="preserve"><value>{0} bearbeiten</value></data>
+  <data name="Ui.EditAlternativesInORGroup0" xml:space="preserve"><value>Alternativen in ODER-Gruppe {0} bearbeiten</value></data>
+  <data name="Ui.EditCategory0" xml:space="preserve"><value>Kategorie {0} bearbeiten</value></data>
+  <data name="Ui.EditGroup0" xml:space="preserve"><value>Gruppe {0} bearbeiten</value></data>
+  <data name="Ui.EditNewRequirement" xml:space="preserve"><value>Neue Anforderung bearbeiten</value></data>
+  <data name="Ui.EditRequirement" xml:space="preserve"><value>Anforderung bearbeiten</value></data>
+  <data name="Ui.EditRule" xml:space="preserve"><value>Regel bearbeiten</value></data>
+  <data name="Ui.Effect" xml:space="preserve"><value>Effekt</value></data>
+  <data name="Ui.EffectScope" xml:space="preserve"><value>Effektumfang: </value></data>
+  <data name="Ui.EffectsExact" xml:space="preserve"><value>Effekte — exakt</value></data>
+  <data name="Ui.EffectsFast" xml:space="preserve"><value>Effekte — schnell</value></data>
+  <data name="Ui.Eligible" xml:space="preserve"><value>Zulässig</value></data>
+  <data name="Ui.Encounterorderdefault" xml:space="preserve"><value>Reihenfolge des Auftretens (Standard)</value></data>
+  <data name="Ui.EnterANonNegativeWholeNumberOrAnOrderedRange" xml:space="preserve"><value>Gib eine nicht negative ganze Zahl oder einen Bereich mit aufsteigenden Grenzen ein.</value></data>
+  <data name="Ui.EnterAWholeNumberFrom1To0" xml:space="preserve"><value>Gib eine ganze Zahl von 1 bis {0} ein.</value></data>
+  <data name="Ui.EnterValidMinimumAndMaximumCounts" xml:space="preserve"><value>Gib gültige Mindest- und Höchstzahlen ein.</value></data>
+  <data name="Ui.ExactModeledFraction" xml:space="preserve"><value>Exakter modellierter Bruch</value></data>
+  <data name="Ui.ExactOnly" xml:space="preserve"><value>Nur Exakt</value></data>
+  <data name="Ui.ExactWithRespectToDeckSearchAvailability" xml:space="preserve"><value>Exakt hinsichtlich der Verfügbarkeit bei der Decksuche</value></data>
+  <data name="Ui.ExactWithinTheAcceptedCalculationScope" xml:space="preserve"><value>Exakt innerhalb des übernommenen Berechnungsumfangs.</value></data>
+  <data name="Ui.Exactly" xml:space="preserve"><value>Genau</value></data>
+  <data name="Ui.FailedToDeserializeSessionData" xml:space="preserve"><value>Die Sitzungsdaten konnten nicht eingelesen werden</value></data>
+  <data name="Ui.FailedToImportDeck0" xml:space="preserve"><value>Deckimport fehlgeschlagen: {0}</value></data>
+  <data name="Ui.FailedToLoadExampleSession0" xml:space="preserve"><value>Laden der Beispielsitzung fehlgeschlagen: {0}</value></data>
+  <data name="Ui.FailedToLoadSession0" xml:space="preserve"><value>Laden der Sitzung fehlgeschlagen: {0}</value></data>
+  <data name="Ui.FailedToSaveSession0" xml:space="preserve"><value>Speichern der Sitzung fehlgeschlagen: {0}</value></data>
+  <data name="Ui.FastCompletedAPhysicalExactCalculation" xml:space="preserve"><value>Schnell hat eine physische Exakt-Berechnung abgeschlossen.</value></data>
+  <data name="Ui.FastCompletedAfterTheAutomaticExactOpportunityNoAdditionalAttemptWasStartedSelectExactOn" xml:space="preserve"><value>Schnell wurde erst nach dem Zeitfenster für die automatische Exakt-Nachberechnung fertig; kein weiterer Versuch wurde gestartet. Wähle „Nur Exakt“, um mehr Zeit zuzulassen.</value></data>
+  <data name="Ui.FastMaySimplifyWhetherDeckSearchTargetsSurviveWhenExactCountingIsTooExpensiveCertifiedBo" xml:space="preserve"><value>Wenn exaktes Zählen zu aufwendig ist, kann Schnell vereinfachen, ob Decksuchziele verfügbar bleiben. Garantierte ±-Grenzen beschreiben Modellunsicherheit, kein statistisches Konfidenzintervall; „Nicht zertifiziert“ hat keine garantierte Grenze. Exakt (±0%) beseitigt diese Unsicherheit innerhalb der Modellannahmen.</value></data>
+  <data name="Ui.FastOnly" xml:space="preserve"><value>Nur Schnell</value></data>
+  <data name="Ui.FileNameCannotBeEmpty" xml:space="preserve"><value>Der Dateiname darf nicht leer sein</value></data>
+  <data name="Ui.FilterIsTooLargeOrTooDeeplyGrouped" xml:space="preserve"><value>Der Filter ist zu groß oder zu tief verschachtelt.</value></data>
+  <data name="Ui.FirstDrawActivationOnly" xml:space="preserve"><value>nur als erste Ziehaktivierung</value></data>
+  <data name="Ui.Group0" xml:space="preserve"><value>Gruppe {0}</value></data>
+  <data name="Ui.GroupFor0" xml:space="preserve"><value>Gruppe für {0}</value></data>
+  <data name="Ui.GroupName" xml:space="preserve"><value>Gruppenname</value></data>
+  <data name="Ui.GroupNameCannotBeEmpty" xml:space="preserve"><value>Der Gruppenname darf nicht leer sein.</value></data>
+  <data name="Ui.GroupProbabilities" xml:space="preserve"><value>Gruppenwahrscheinlichkeiten:</value></data>
+  <data name="Ui.GroupedEligibilityFilter" xml:space="preserve"><value>Gruppierter Auswahlfilter</value></data>
+  <data name="Ui.HandSize" xml:space="preserve"><value>Handgröße:</value></data>
+  <data name="Ui.HandSize0" xml:space="preserve"><value>Handgröße: {0}</value></data>
+  <data name="Ui.HandSize01Cards" xml:space="preserve"><value>Handgröße {0} · {1} Karten</value></data>
+  <data name="Ui.HandSizeMustBeAtLeast1" xml:space="preserve"><value>Die Handgröße muss mindestens 1 sein.</value></data>
+  <data name="Ui.Help" xml:space="preserve"><value>Hilfe</value></data>
+  <data name="Ui.High65536entries524288cells" xml:space="preserve"><value>Hoch (65,536 Einträge / 524,288 Zellen)</value></data>
+  <data name="Ui.Higherlimitsmayallowmorecomplexexactcalculationstocompleteandcanusesubstantiallymorebrowsermemorytheydonotchangeprobabilityaccuracy" xml:space="preserve"><value>Höhere Grenzen können den Abschluss komplexerer exakter Berechnungen ermöglichen und erheblich mehr Browserspeicher belegen; sie ändern die Genauigkeit der Wahrscheinlichkeit nicht.</value></data>
+  <data name="Ui.IfUnavailableFailBranch" xml:space="preserve"><value>Falls nicht verfügbar: Zweig erfolglos.</value></data>
+  <data name="Ui.Import" xml:space="preserve"><value>Importieren</value></data>
+  <data name="Ui.ImportDeck" xml:space="preserve"><value>Deck importieren</value></data>
+  <data name="Ui.ImportYDK" xml:space="preserve"><value>YDK importieren</value></data>
+  <data name="Ui.ImportYDKe" xml:space="preserve"><value>YDKe importieren</value></data>
+  <data name="Ui.Inactive" xml:space="preserve"><value>Inaktiv</value></data>
+  <data name="Ui.IndividualCombos" xml:space="preserve"><value>Einzelne Kombos</value></data>
+  <data name="Ui.IndividualCombos.dc8d9abb" xml:space="preserve"><value>Einzelne Kombos:</value></data>
+  <data name="Ui.InputsChanged" xml:space="preserve"><value>Eingaben geändert</value></data>
+  <data name="Ui.InvalidSessionFileFormat" xml:space="preserve"><value>Ungültiges Sitzungsdateiformat</value></data>
+  <data name="Ui.IsAnAbsoluteChangeOnThe0100ProbabilityScaleNotARelativePercentageBoundedValuesShowADispl" xml:space="preserve"><value>± ist eine absolute Änderung auf der Wahrscheinlichkeitsskala von 0% bis 100%, kein relativer Prozentsatz. Werte mit garantierten Grenzen zeigen die Intervallmitte mit einem nach außen gerundeten Radius, der den garantierten Bereich abdeckt; kein Wert darin wird als wahrscheinlicher bezeichnet. Dies ist kein statistisches Konfidenzintervall.</value></data>
+  <data name="Ui.LeaveEmptyForAny" xml:space="preserve"><value>Für „Beliebig“ leer lassen</value></data>
+  <data name="Ui.LeaveEmptyForAnyNumberSetBothCountsTo0ToExcludeMatchingCards" xml:space="preserve"><value>Für eine beliebige Anzahl leer lassen. Setze beide Anzahlen auf 0, um passende Karten auszuschließen.</value></data>
+  <data name="Ui.Level" xml:space="preserve"><value>Stufe</value></data>
+  <data name="Ui.Level0" xml:space="preserve"><value>Stufe &gt;= {0}</value></data>
+  <data name="Ui.Light" xml:space="preserve"><value>Hell</value></data>
+  <data name="Ui.Link" xml:space="preserve"><value>Linkzahl</value></data>
+  <data name="Ui.LinksAreNotEncryptedAnyoneWithThisLinkOrAccessToBrowserHistoryCanReadTheSession" xml:space="preserve"><value>Links sind nicht verschlüsselt. Jeder mit diesem Link oder Zugriff auf den Browserverlauf kann die Sitzung lesen.</value></data>
+  <data name="Ui.Load" xml:space="preserve"><value>Laden</value></data>
+  <data name="Ui.LoadSession" xml:space="preserve"><value>Sitzung laden</value></data>
+  <data name="Ui.LoadSharedSession" xml:space="preserve"><value>Geteilte Sitzung laden</value></data>
+  <data name="Ui.LoadingLocalCardCatalog" xml:space="preserve"><value>Lokaler Kartenkatalog wird geladen…</value></data>
+  <data name="Ui.LoadingReplacesThisWorkspaceIncludingEditorDraftsAndAnySavedRecoveryDraftYouCanDismissTh" xml:space="preserve"><value>Das Laden ersetzt diesen Arbeitsbereich einschließlich offener Bearbeitungen sowie jeden gespeicherten Wiederherstellungsentwurf. Du kannst stattdessen diesen Link ausblenden oder unten den lokalen Entwurf wiederherstellen.</value></data>
+  <data name="Ui.LoadingSession" xml:space="preserve"><value>Sitzung wird geladen…</value></data>
+  <data name="Ui.LocalCatalogUnavailable" xml:space="preserve"><value>Lokaler Katalog nicht verfügbar</value></data>
+  <data name="Ui.LocalRecoveryCouldNotCaptureThisSessionSaveASessionFileToKeepYourWork" xml:space="preserve"><value>Die lokale Wiederherstellung konnte diese Sitzung nicht erfassen. Speichere eine Sitzungsdatei, um deine Arbeit zu sichern.</value></data>
+  <data name="Ui.LocalRecoveryIsUnavailableSaveASessionFileToKeepYourWork" xml:space="preserve"><value>Die lokale Wiederherstellung ist nicht verfügbar. Speichere eine Sitzungsdatei, um deine Arbeit zu sichern.</value></data>
+  <data name="Ui.ManageCardRoles" xml:space="preserve"><value>· Kartenrollen verwalten</value></data>
+  <data name="Ui.Manual" xml:space="preserve"><value>Manuell</value></data>
+  <data name="Ui.Maximum0" xml:space="preserve"><value>Maximum {0}</value></data>
+  <data name="Ui.MaximumCountMustBeAWholeNumberAtLeastEqualToMinimumCount" xml:space="preserve"><value>Die Höchstzahl muss eine ganze Zahl sein und mindestens der Mindestzahl entsprechen.</value></data>
+  <data name="Ui.Mill0" xml:space="preserve"><value> · {0} vom Deck auf den Friedhof</value></data>
+  <data name="Ui.Minimum0" xml:space="preserve"><value>Minimum {0}</value></data>
+  <data name="Ui.MinimumCountMustBeANonNegativeWholeNumber" xml:space="preserve"><value>Die Mindestzahl muss eine nicht negative ganze Zahl sein.</value></data>
+  <data name="Ui.MissingCard" xml:space="preserve"><value>Fehlende Karte</value></data>
+  <data name="Ui.MissingCard0" xml:space="preserve"><value>Fehlende Karte ({0})</value></data>
+  <data name="Ui.MissingCardReferenceRemoveTheMissingRequirementThenAddAnotherCardIfNeeded" xml:space="preserve"><value>Fehlender Kartenverweis. Entferne die betroffene Anforderung und füge bei Bedarf eine andere Karte hinzu.</value></data>
+  <data name="Ui.ModelLimits" xml:space="preserve"><value>Modellgrenzen:</value></data>
+  <data name="Ui.ModelNotes" xml:space="preserve"><value>Modellhinweise</value></data>
+  <data name="Ui.ModelNotesIncludePerformanceGuidance" xml:space="preserve"><value>Modellhinweise enthalten Angaben zum Rechenaufwand</value></data>
+  <data name="Ui.ModeledPrimaryFraction" xml:space="preserve"><value>Modellierter primärer Bruch</value></data>
+  <data name="Ui.ModeledPrimaryFraction0" xml:space="preserve"><value>Modellierter primärer Bruch: {0}</value></data>
+  <data name="Ui.ModeledPrimaryFraction0.75f14642" xml:space="preserve"><value>modellierter primärer Bruch: {0}</value></data>
+  <data name="Ui.More" xml:space="preserve"><value>Mehr</value></data>
+  <data name="Ui.MoreWorkspaceActions" xml:space="preserve"><value>Weitere Arbeitsbereichsaktionen</value></data>
+  <data name="Ui.Move" xml:space="preserve"><value>Verschieben</value></data>
+  <data name="Ui.MoveDown" xml:space="preserve"><value>Nach unten verschieben</value></data>
+  <data name="Ui.MoveToPosition" xml:space="preserve"><value>An Position verschieben</value></data>
+  <data name="Ui.MoveToPosition.8d5ae4bd" xml:space="preserve"><value>An Position verschieben…</value></data>
+  <data name="Ui.MoveUp" xml:space="preserve"><value>Nach oben verschieben</value></data>
+  <data name="Ui.Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Ui.NestedConditions" xml:space="preserve"><value>Verschachtelte Bedingungen</value></data>
+  <data name="Ui.NewComboGroupName" xml:space="preserve"><value>Name der neuen Kombogruppe</value></data>
+  <data name="Ui.NewNameForCategory0" xml:space="preserve"><value>Neuer Name für Kategorie {0}</value></data>
+  <data name="Ui.NewNameForGroup0" xml:space="preserve"><value>Neuer Name für Gruppe {0}</value></data>
+  <data name="Ui.NoActiveDeckSearches" xml:space="preserve"><value>Keine aktiven Decksuchen</value></data>
+  <data name="Ui.NoBuiltInSimulation" xml:space="preserve"><value>Keine integrierte Simulation</value></data>
+  <data name="Ui.NoDrawEffect" xml:space="preserve"><value>Kein Zieheffekt</value></data>
+  <data name="Ui.NoDrawEffectsConfigured" xml:space="preserve"><value>Keine aktivierten Zieh- oder Sucheffekte.</value></data>
+  <data name="Ui.NoEffectSimulation" xml:space="preserve"><value>Keine Effektsimulation</value></data>
+  <data name="Ui.NoEligibleCards" xml:space="preserve"><value>keine zulässigen Karten</value></data>
+  <data name="Ui.NoFurtherDraws" xml:space="preserve"><value>kein weiteres Ziehen</value></data>
+  <data name="Ui.NoMatchingCards" xml:space="preserve"><value>Keine passenden Karten.</value></data>
+  <data name="Ui.NoProbabilityWasCalculatedForThisRequest" xml:space="preserve"><value> Für diese Anfrage wurde keine Wahrscheinlichkeit berechnet.</value></data>
+  <data name="Ui.NoProbabilityWasReturnedForThisRequest" xml:space="preserve"><value> Für diese Anfrage wurde keine Wahrscheinlichkeit zurückgegeben.</value></data>
+  <data name="Ui.None" xml:space="preserve"><value>Keiner</value></data>
+  <data name="Ui.NotCertified" xml:space="preserve"><value>Nicht zertifiziert</value></data>
+  <data name="Ui.NumberOfCopiesMustBeAtLeast1" xml:space="preserve"><value>Die Anzahl der Exemplare muss mindestens 1 sein.</value></data>
+  <data name="Expression.OrSeparator" xml:space="preserve"><value> ODER </value></data>
+  <data name="Ui.ORAnyAlternative" xml:space="preserve"><value>ODER: mindestens eine Alternative</value></data>
+  <data name="Ui.OncePerTurn" xml:space="preserve"><value>Einmal pro Spielzug</value></data>
+  <data name="Ui.OncePerTurn.e31d0a49" xml:space="preserve"><value>einmal pro Spielzug</value></data>
+  <data name="Ui.OpeningHandOnlySavedSimulationIsOff" xml:space="preserve"><value>Nur Starthand · gespeicherte Simulation ist aus.</value></data>
+  <data name="Ui.OrganizeCombos" xml:space="preserve"><value>· Kombos organisieren</value></data>
+  <data name="Ui.Partial" xml:space="preserve"><value>Teilweise</value></data>
+  <data name="Ui.PasteYdke" xml:space="preserve"><value>ydke://… einfügen</value></data>
+  <data name="Ui.Performance" xml:space="preserve"><value>Rechenaufwand:</value></data>
+  <data name="Ui.PinResult" xml:space="preserve"><value>Ergebnis anheften</value></data>
+  <data name="Ui.PinnedResult" xml:space="preserve"><value>Angeheftetes Ergebnis</value></data>
+  <data name="Ui.PleaseSelectACardToAdd" xml:space="preserve"><value>Wähle eine Karte zum Hinzufügen.</value></data>
+  <data name="Ui.PleaseSelectACategoryToAdd" xml:space="preserve"><value>Wähle eine Kategorie zum Hinzufügen.</value></data>
+  <data name="Ui.Preliminary" xml:space="preserve"><value>Vorläufig</value></data>
+  <data name="Ui.PreviousResultCurrentInputsHaveChanged" xml:space="preserve"><value>Vorheriges Ergebnis — aktuelle Eingaben wurden geändert.
+</value></data>
+  <data name="Ui.ProbabilityResults" xml:space="preserve"><value>Wahrscheinlichkeitsergebnisse</value></data>
+  <data name="Ui.Progressive" xml:space="preserve"><value>Progressiv</value></data>
+  <data name="Ui.Progressivedefault" xml:space="preserve"><value>Progressiv (Standard)</value></data>
+  <data name="Ui.Properties" xml:space="preserve"><value>Eigenschaften:</value></data>
+  <data name="Ui.Property" xml:space="preserve"><value>Eigenschaft</value></data>
+  <data name="Ui.Rank" xml:space="preserve"><value>Rang</value></data>
+  <data name="Ui.RationalEndpoints01ModeledOptimisticPrimary2" xml:space="preserve"><value>rationale Grenzwerte [{0}, {1}]; modellierter optimistischer Primärwert: {2}</value></data>
+  <data name="Ui.RecalculateUsingExact" xml:space="preserve"><value>Mit Exakt neu berechnen</value></data>
+  <data name="Ui.Recoverydraftkeptautosavepaused" xml:space="preserve"><value>Wiederherstellungsentwurf behalten; automatisches Speichern pausiert.</value></data>
+  <data name="Ui.RelevantProperties" xml:space="preserve"><value>Relevante Eigenschaften</value></data>
+  <data name="Ui.Remove" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="Ui.Remove0" xml:space="preserve"><value> · {0} entfernen</value></data>
+  <data name="Ui.Remove0FromHand1" xml:space="preserve"><value>{0} aus der Hand entfernen ({1})</value></data>
+  <data name="Ui.Remove0FromHand1.af3ec21f" xml:space="preserve"><value>{0} aus der Hand entfernen ({1})</value></data>
+  <data name="Ui.Remove1" xml:space="preserve"><value>1 entfernen</value></data>
+  <data name="Ui.Remove2" xml:space="preserve"><value>2 entfernen</value></data>
+  <data name="Ui.RemoveCategory0" xml:space="preserve"><value>Kategorie {0} entfernen</value></data>
+  <data name="Ui.RemoveCategory0FromCard1" xml:space="preserve"><value>Kategorie {0} von Karte {1} entfernen</value></data>
+  <data name="Ui.RemoveGroup0" xml:space="preserve"><value>Gruppe {0} entfernen</value></data>
+  <data name="Ui.RemoveManuallyAddedCardProperty0FromCard1" xml:space="preserve"><value>Manuell hinzugefügte Karteneigenschaft {0} von Karte {1} entfernen</value></data>
+  <data name="Ui.RemoveProperty0" xml:space="preserve"><value>Eigenschaft {0} entfernen</value></data>
+  <data name="Ui.RemoveProperty0FromAlternative1" xml:space="preserve"><value>Eigenschaft {0} aus Alternative {1} entfernen</value></data>
+  <data name="Ui.RemoveRequirement" xml:space="preserve"><value>Anforderung entfernen</value></data>
+  <data name="Ui.RemoveRule" xml:space="preserve"><value>Regel entfernen</value></data>
+  <data name="Ui.ReplaceCurrentWorkAndRestore" xml:space="preserve"><value>Aktuellen Arbeitsbereich ersetzen und wiederherstellen</value></data>
+  <data name="Ui.ReplaceEmptyFilter" xml:space="preserve"><value>Leeren Filter ersetzen</value></data>
+  <data name="Ui.ReplacePinWithCurrentResult" xml:space="preserve"><value>Angeheftetes durch aktuelles Ergebnis ersetzen</value></data>
+  <data name="Ui.ReplaceVerifiedFilter" xml:space="preserve"><value>Verifizierten Filter ersetzen</value></data>
+  <data name="Ui.Requirement" xml:space="preserve"><value>Anforderung</value></data>
+  <data name="Ui.RequirementOrGroupExpressionGroupNested" xml:space="preserve"><value>requirement-or-group expression-group-nested</value></data>
+  <data name="Ui.RestoreBuiltInSimulation" xml:space="preserve"><value>Integrierte Simulation wiederherstellen</value></data>
+  <data name="Ui.RestorePreviousSession" xml:space="preserve"><value>Vorherige Sitzung wiederherstellen</value></data>
+  <data name="Ui.RestoringWillReplaceYourCurrentEdits" xml:space="preserve"><value>Die Wiederherstellung ersetzt deine aktuellen Änderungen.</value></data>
+  <data name="Ui.ResultGroup" xml:space="preserve"><value>Ergebnisgruppe</value></data>
+  <data name="Ui.ResultReady" xml:space="preserve"><value>Ergebnis bereit.</value></data>
+  <data name="Ui.ResultSummary" xml:space="preserve"><value>Ergebnisübersicht</value></data>
+  <data name="Ui.ResultsCopied" xml:space="preserve"><value>Ergebnisse kopiert.</value></data>
+  <data name="Ui.SameCardProperty0" xml:space="preserve"><value>Eigenschaft derselben Karte {0}</value></data>
+  <data name="Ui.Save" xml:space="preserve"><value>Speichern</value></data>
+  <data name="Ui.SaveCategoryName" xml:space="preserve"><value>Kategorienamen speichern</value></data>
+  <data name="Ui.SaveGroupName" xml:space="preserve"><value>Gruppennamen speichern</value></data>
+  <data name="Ui.SaveOrCancelTheConditionEditFirst" xml:space="preserve"><value>Bearbeitung der Bedingung zuerst speichern oder abbrechen</value></data>
+  <data name="Ui.SaveOrCancelThePendingRowBeforeChangingItsGrouping" xml:space="preserve"><value>Speichere die offene Zeile oder brich ihre Bearbeitung ab, bevor du ihre Gruppierung änderst.</value></data>
+  <data name="Ui.SaveSession" xml:space="preserve"><value>Sitzung speichern</value></data>
+  <data name="Ui.SavedSimulation" xml:space="preserve"><value>Gespeicherte Simulation</value></data>
+  <data name="Ui.Savedsettingsnobuiltinrevisionrecorded" xml:space="preserve"><value>Gespeicherte Einstellungen; keine integrierte Version vermerkt.</value></data>
+  <data name="Ui.Search1" xml:space="preserve"><value>Suche 1</value></data>
+  <data name="Ui.Search10" xml:space="preserve"><value>Suche 1 ({0})</value></data>
+  <data name="Ui.Search1CardFromDeck" xml:space="preserve"><value>Suche 1 Karte vom Deck</value></data>
+  <data name="Ui.SearchConfiguredOff" xml:space="preserve"><value>Suche konfiguriert · Aus</value></data>
+  <data name="Ui.SelectACategoryToAddAsAnANDCondition" xml:space="preserve"><value>Wähle eine Kategorie, um sie als UND-Bedingung hinzuzufügen.</value></data>
+  <data name="Ui.SelectATargetForThisAlternative" xml:space="preserve"><value>Wähle ein Ziel für diese Alternative.</value></data>
+  <data name="Ui.SelectCategory" xml:space="preserve"><value>Kategorie auswählen…</value></data>
+  <data name="Ui.SelectedCategoryNotFound" xml:space="preserve"><value>Die ausgewählte Kategorie wurde nicht gefunden.</value></data>
+  <data name="Ui.Send0UnseenTopDeckCardsToTheGY" xml:space="preserve"><value>die obersten {0} unbekannten Deckkarten auf den Friedhof legen</value></data>
+  <data name="Ui.SeparateCardRequirements" xml:space="preserve"><value>+: Anforderungen für separate Karten</value></data>
+  <data name="Ui.SessionContainsDuplicateCardIDs" xml:space="preserve"><value>Die Sitzung enthält doppelte Karten-IDs.</value></data>
+  <data name="Ui.SessionContainsDuplicateCategoryIdentities" xml:space="preserve"><value>Die Sitzung enthält doppelte Kategorieidentitäten.</value></data>
+  <data name="Ui.SessionContainsInvalidOrDuplicateComboGroupIdentities" xml:space="preserve"><value>Die Sitzung enthält ungültige oder doppelte Kombogruppenidentitäten.</value></data>
+  <data name="Ui.SessionContainsMissingComboRequirements" xml:space="preserve"><value>In der Sitzung fehlen Komboanforderungen.</value></data>
+  <data name="Ui.SessionContainsMissingModelCollectionsOrEntries" xml:space="preserve"><value>In der Sitzung fehlen Modellsammlungen oder Einträge.</value></data>
+  <data name="Ui.SessionRecovery" xml:space="preserve"><value>Sitzungswiederherstellung</value></data>
+  <data name="Ui.Set0ColorTo1" xml:space="preserve"><value>Farbe von {0} auf {1} setzen</value></data>
+  <data name="Ui.ShareLinkCopied" xml:space="preserve"><value>Link zum Teilen kopiert.</value></data>
+  <data name="Ui.SharedSession" xml:space="preserve"><value>Geteilte Sitzung</value></data>
+  <data name="Ui.ShowRecovery" xml:space="preserve"><value>Wiederherstellung anzeigen</value></data>
+  <data name="Ui.ShowsFastFirstThenAttemptsExact" xml:space="preserve"><value>Zeigt zuerst Schnell, versucht anschließend Exakt.</value></data>
+  <data name="Ui.Simulation" xml:space="preserve"><value>Simulation</value></data>
+  <data name="Ui.SortAZ" xml:space="preserve"><value>A–Z sortieren</value></data>
+  <data name="Ui.SortDeckAZ" xml:space="preserve"><value>Deck A–Z sortieren</value></data>
+  <data name="Ui.Standard32768entries262144cells" xml:space="preserve"><value>Standard (32,768 Einträge / 262,144 Zellen)</value></data>
+  <data name="Ui.StorageSafetyLimit" xml:space="preserve"><value>Speicher-Sicherheitsgrenze</value></data>
+  <data name="Ui.System" xml:space="preserve"><value>System</value></data>
+  <data name="Ui.TheANDGroupWouldExceed16PropertiesRemoveAPropertyBeforeCombining" xml:space="preserve"><value>Die UND-Gruppe würde mehr als 16 Eigenschaften enthalten. Entferne vor dem Zusammenfassen eine Eigenschaft.</value></data>
+  <data name="Ui.TheActiveDeckHas0CopiesFewerThanTheHandSizeOf1" xml:space="preserve"><value>Die Kartenanzahl im aktiven Deck ({0}) ist kleiner als die Handgröße ({1}).</value></data>
+  <data name="Ui.TheActiveDeckIsTooLargeToCalculateReduceTheNumberOfCopiesOrDeactivateCards" xml:space="preserve"><value>Das aktive Deck ist zu groß für die Berechnung. Verringere die Anzahl der Exemplare oder deaktiviere Karten.</value></data>
+  <data name="Ui.TheAutomaticExactAttemptCouldNotCompleteTheCompletedFastResultIsRetained" xml:space="preserve"><value>Die automatische Exakt-Nachberechnung konnte nicht abgeschlossen werden; das fertige Schnell-Ergebnis bleibt erhalten.</value></data>
+  <data name="Ui.TheAutomaticExactAttemptReachedTheRemainingWorkAllowanceTheCompletedFastResultIsRetained" xml:space="preserve"><value>Die automatische Exakt-Nachberechnung hat die verbleibende Grenze für Rechenschritte erreicht; das fertige Schnell-Ergebnis bleibt erhalten.</value></data>
+  <data name="Ui.TheAutomaticExactAttemptReachedTheStorageLimitTheCompletedFastResultIsRetained" xml:space="preserve"><value>Die automatische Exakt-Nachberechnung hat die Speichergrenze erreicht; das fertige Schnell-Ergebnis bleibt erhalten.</value></data>
+  <data name="Ui.TheAutomaticExactOpportunityEndedTheCompletedFastResultIsRetainedSelectExactOnlyToAllowM" xml:space="preserve"><value>Das Zeitfenster für die automatische Exakt-Nachberechnung ist abgelaufen; das fertige Schnell-Ergebnis bleibt erhalten. Wähle „Nur Exakt“, um mehr Zeit zuzulassen.</value></data>
+  <data name="Ui.TheAutomaticExactRouteWasUnsupportedTheCompletedFastResultIsRetained" xml:space="preserve"><value>Der automatische Exakt-Berechnungsweg wurde nicht unterstützt; das fertige Schnell-Ergebnis bleibt erhalten.</value></data>
+  <data name="Ui.TheDecodedYDKe0DeckSectionLengthMustBeDivisibleByFourBytes" xml:space="preserve"><value>Die Länge des dekodierten YDKe-Deckabschnitts {0} muss durch vier Bytes teilbar sein.</value></data>
+  <data name="Ui.TheLocalDraftCouldNotBeRestoredYourCurrentWorkAndSavedDraftAreKept" xml:space="preserve"><value>Der lokale Entwurf konnte nicht wiederhergestellt werden. Dein aktueller Arbeitsbereich und der gespeicherte Entwurf bleiben erhalten.</value></data>
+  <data name="Ui.TheLocalDraftIsInvalidOrFromAnUnsupportedSessionVersionItIsKeptUntilYouDiscardOrReplaceI" xml:space="preserve"><value>Der lokale Entwurf ist ungültig oder stammt aus einer nicht unterstützten Sitzungsversion. Er bleibt erhalten, bis du ihn verwirfst oder ersetzt.</value></data>
+  <data name="Ui.TheORGroupWouldExceed16AlternativesRemoveAnAlternativeBeforeSplitting" xml:space="preserve"><value>Die ODER-Gruppe würde mehr als 16 Alternativen enthalten. Entferne vor dem Aufteilen eine Alternative.</value></data>
+  <data name="Ui.TheOriginalResultContextIsUnavailable" xml:space="preserve"><value>Der ursprüngliche Ergebniskontext ist nicht verfügbar.</value></data>
+  <data name="Ui.TheSharedSessionIsInvalidOrUsesAnUnsupportedSessionVersionYourWorkAndSavedDraftAreKept" xml:space="preserve"><value>Die geteilte Sitzung ist ungültig oder verwendet eine nicht unterstützte Sitzungsversion. Dein Arbeitsbereich und der gespeicherte Entwurf bleiben erhalten.</value></data>
+  <data name="Ui.TheSharedSessionLinkIsInvalidOrCorrupted" xml:space="preserve"><value>Der Link zur geteilten Sitzung ist ungültig oder beschädigt.</value></data>
+  <data name="Ui.TheYDKe0DeckSectionIsNotValidBase64" xml:space="preserve"><value>Der YDKe-Deckabschnitt {0} ist kein gültiges Base64.</value></data>
+  <data name="Ui.ThisCategoryIsAlreadyAddedToTheCard" xml:space="preserve"><value>Diese Kategorie ist der Karte bereits zugeordnet.</value></data>
+  <data name="Ui.ThisEffectRequiresDetailedHandStateCalculationInEffectModesAndCanBecomeExpensiveInComple" xml:space="preserve"><value>Dieser Effekt erfordert in Effektmodi eine detaillierte Berechnung des Handzustands und kann in komplexen Decks aufwendig werden.</value></data>
+  <data name="Ui.ThisSavedEffectCannotRunInThisCalculator" xml:space="preserve"><value>Dieser gespeicherte Effekt kann in diesem Rechner nicht ausgeführt werden.</value></data>
+  <data name="Ui.ThisSessionIsTooLargeForAShareLinkShareANormalSessionFileInstead" xml:space="preserve"><value>Diese Sitzung ist zu groß für einen Link zum Teilen. Teile stattdessen eine normale Sitzungsdatei.</value></data>
+  <data name="Ui.ThisSessionIsTooLargeOrUnsupportedForAShareLinkShareANormalSessionFileInstead" xml:space="preserve"><value>Diese Sitzung ist für einen Link zum Teilen zu groß oder nicht unterstützt. Teile stattdessen eine normale Sitzungsdatei.</value></data>
+  <data name="Ui.ThisSharedLinkIsTooLargeRequestANormalSessionFileInstead" xml:space="preserve"><value>Dieser geteilte Link ist zu groß. Bitte stattdessen um eine normale Sitzungsdatei.</value></data>
+  <data name="Ui.Uncertified" xml:space="preserve"><value>⚠ Nicht zertifiziert</value></data>
+  <data name="Ui.UncertifiedAccuracyUnavailable" xml:space="preserve"><value>Nicht zertifiziert · Genauigkeit nicht verfügbar</value></data>
+  <data name="Ui.Ungrouped" xml:space="preserve"><value>Ohne Gruppe</value></data>
+  <data name="Ui.UngroupedCombos" xml:space="preserve"><value>Kombos ohne Gruppe</value></data>
+  <data name="Ui.UngroupedCombos.ec9c0ff4" xml:space="preserve"><value>Kombos ohne Gruppe:</value></data>
+  <data name="Ui.Uninformative" xml:space="preserve"><value>Nicht aussagekräftig</value></data>
+  <data name="Ui.UninformativeLowerBound" xml:space="preserve"><value> (nicht aussagekräftige Untergrenze)</value></data>
+  <data name="Ui.UnknownCalculationMode" xml:space="preserve"><value>Unbekannter Berechnungsmodus.</value></data>
+  <data name="Ui.Unlimited" xml:space="preserve"><value>unbegrenzt</value></data>
+  <data name="Ui.Unmodeled" xml:space="preserve"><value>Nicht modelliert</value></data>
+  <data name="Ui.UnnamedCard" xml:space="preserve"><value>Unbenannte Karte</value></data>
+  <data name="Ui.UnnamedCombo0" xml:space="preserve"><value>Unbenannte Kombo {0}</value></data>
+  <data name="Ui.UnpinResult" xml:space="preserve"><value>Ergebnis lösen</value></data>
+  <data name="Ui.UnsupportedEffect" xml:space="preserve"><value>Nicht unterstützter Effekt</value></data>
+  <data name="Ui.UnsupportedExecutionModel" xml:space="preserve"><value>Nicht unterstütztes Ausführungsmodell</value></data>
+  <data name="Ui.UnsupportedSharedLinkFormatVersion" xml:space="preserve"><value>Nicht unterstützte Formatversion des geteilten Links.</value></data>
+  <data name="Ui.UpTo0ActivationsPerEntry" xml:space="preserve"><value>bis zu {0} Aktivierungen pro Eintrag</value></data>
+  <data name="Ui.UpdateRequirement" xml:space="preserve"><value>Anforderung aktualisieren</value></data>
+  <data name="Ui.UseThisWorkspaceForRecovery" xml:space="preserve"><value>Diesen Arbeitsbereich zur Wiederherstellung verwenden</value></data>
+  <data name="Ui.UserCategories" xml:space="preserve"><value>Eigene Kategorien</value></data>
+  <data name="Ui.Veryhigh131072entries1048576cells" xml:space="preserve"><value>Sehr hoch (131,072 Einträge / 1,048,576 Zellen)</value></data>
+  <data name="Ui.WaitForTheCalculationToFinishBeforeCopyingResults" xml:space="preserve"><value>Warte auf den Abschluss der Berechnung, bevor du Ergebnisse kopierst.</value></data>
+  <data name="Ui.YDKeCodeMustContainExactlyThreeBase64SectionsEachFollowedBy" xml:space="preserve"><value>Der YDKe-Code muss genau drei Base64-Abschnitte enthalten, jeweils gefolgt von '!'.</value></data>
+  <data name="Ui.YDKeCodeMustIncludeAMainDeckSection" xml:space="preserve"><value>Der YDKe-Code muss einen Main-Deck-Abschnitt enthalten.</value></data>
+  <data name="Ui.YDKeCodeMustStartWithYdke" xml:space="preserve"><value>Der YDKe-Code muss mit 'ydke://' beginnen.</value></data>
+  <data name="Ui.YDKeDeckCode" xml:space="preserve"><value>YDKe-Deckcode</value></data>
+  <data name="Ui.YDKeDeckImport" xml:space="preserve"><value>YDKe-Deckimport</value></data>
+  <data name="Ui.YuGiOhAdvancedProbabilityCalculator" xml:space="preserve"><value>Yu-Gi-Oh! Advanced Probability Calculator</value></data>
+  <data name="Help.PageTitle" xml:space="preserve"><value>Hilfe | Yu-Gi-Oh! Advanced Probability Calculator</value></data>
+  <data name="Help.EmptyExample" xml:space="preserve"><value>Die Beispielsitzungsdatei ist leer</value></data>
+  <data name="Help.ExampleError" xml:space="preserve"><value>Laden der Beispielsitzung fehlgeschlagen: {0}</value></data>
+  <data name="Help.TryExample" xml:space="preserve"><value>Mit Beispieldaten ausprobieren</value></data>
+  <data name="Probability.Summary" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="Probability.UninformativeSummary" xml:space="preserve"><value>{0} {1} · Nicht aussagekräftig</value></data>
+  <data name="Probability.BoundedDetail" xml:space="preserve"><value>{0} Angezeigte Intervallmitte ± konservative absolute Unsicherheit; der beibehaltene optimistische Primärwert kann über der garantierten Obergrenze liegen.</value></data>
+  <data name="Probability.UninformativeDetail" xml:space="preserve"><value>{0} Nicht aussagekräftig: Die tatsächliche Wahrscheinlichkeit könnte null sein.</value></data>
+  <data name="Probability.CertificationLimited" xml:space="preserve"><value>Zertifizierung eingeschränkt: {0}</value></data>
+  <data name="Probability.CertificationError" xml:space="preserve"><value>Zertifizierungsfehler: {0}</value></data>
+  <data name="Probability.NoInterval" xml:space="preserve"><value>Kein vollständiges gültiges Intervall: {0}</value></data>
+  <data name="Probability.DetailWithPrimary" xml:space="preserve"><value>{0} Modellierter primärer Bruch: {1}.</value></data>
+  <data name="Result.Heading" xml:space="preserve"><value>Ergebnisse</value></data>
+  <data name="Expression.Objective" xml:space="preserve"><value>Objektiv</value></data>
+  <data name="Expression.Not" xml:space="preserve"><value>NICHT</value></data>
+  <data name="Language.Label" xml:space="preserve"><value>Sprache</value></data>
+  <data name="Language.CaptureFailed" xml:space="preserve"><value>Der übernommene Arbeitsbereich konnte nicht sicher erfasst werden. Speichere eine Sitzungsdatei und versuche es erneut.</value></data>
+  <data name="Language.ChangeFailed" xml:space="preserve"><value>Die Sprache wurde nicht geändert. Dein aktueller Arbeitsbereich bleibt erhalten. Sichere deine Arbeit, prüfe den Website-Speicher und versuche es erneut. {0}</value></data>
+  <data name="Language.RestoreFailed" xml:space="preserve"><value>Der Arbeitsbereich konnte nach dem Sprachwechsel nicht vollständig wiederhergestellt werden. Die Übergabedaten bleiben in diesem Tab erhalten. Lade sie herunter, bevor du Browserdaten löschst. {0}</value></data>
+  <data name="Language.DownloadHandoff" xml:space="preserve"><value>Erhaltene Übergabedaten herunterladen</value></data>
+  <data name="Language.WaitForLoad" xml:space="preserve"><value>Warte, bis das Laden der Sitzung oder der Deckimport abgeschlossen ist, und ändere dann die Sprache.</value></data>
+  <data name="Language.UnfinishedEdit" xml:space="preserve"><value>Speichere/übernimm die offene Bearbeitung oder brich sie ab, bevor du die Sprache änderst.</value></data>
+  <data name="Language.WaitForCalculation" xml:space="preserve"><value>Warte auf den Abschluss der Berechnung oder brich sie ab, bevor du die Sprache änderst.</value></data>
+  <data name="Language.UnrestoredCheckpoint" xml:space="preserve"><value>Ein früherer Sprachwechsel-Zwischenstand wurde nicht wiederhergestellt. Er bleibt in diesem Tab erhalten; lade ihn herunter, bevor du Browserdaten löschst.</value></data>
+  <data name="Ui.DisableSimulation" xml:space="preserve"><value>Simulation deaktivieren</value></data>
+  <data name="Ui.EnableSimulation" xml:space="preserve"><value>Simulation aktivieren</value></data>
+  <data name="Ui.SimulationDisabled" xml:space="preserve"><value>Simulation für diesen Eintrag deaktiviert</value></data>
+  <data name="Priority.DrawEffects" xml:space="preserve"><value>Zieheffekte</value></data>
+  <data name="Priority.SearchEffects" xml:space="preserve"><value>Sucheffekte</value></data>
+  <data name="Metadata.kind:monster" xml:space="preserve"><value>Monster</value></data>
+  <data name="Metadata.kind:spell" xml:space="preserve"><value>Zauber</value></data>
+  <data name="Metadata.kind:trap" xml:space="preserve"><value>Falle</value></data>
+  <data name="Metadata.monster-trait:normal" xml:space="preserve"><value>Normales Monster</value></data>
+  <data name="Metadata.monster-trait:effect" xml:space="preserve"><value>Effektmonster</value></data>
+  <data name="Metadata.monster-trait:flip" xml:space="preserve"><value>Flippmonster</value></data>
+  <data name="Metadata.monster-trait:tuner" xml:space="preserve"><value>Empfängermonster</value></data>
+  <data name="Metadata.monster-trait:gemini" xml:space="preserve"><value>Zwillingsmonster</value></data>
+  <data name="Metadata.monster-trait:pendulum" xml:space="preserve"><value>Pendelmonster</value></data>
+  <data name="Metadata.monster-trait:spirit" xml:space="preserve"><value>Spiritmonster</value></data>
+  <data name="Metadata.monster-trait:toon" xml:space="preserve"><value>Toon-Monster</value></data>
+  <data name="Metadata.monster-trait:union" xml:space="preserve"><value>Unionsmonster</value></data>
+  <data name="Metadata.monster-type:ritual" xml:space="preserve"><value>Ritualmonster</value></data>
+  <data name="Metadata.monster-type:fusion" xml:space="preserve"><value>Fusionsmonster</value></data>
+  <data name="Metadata.monster-type:synchro" xml:space="preserve"><value>Synchromonster</value></data>
+  <data name="Metadata.monster-type:xyz" xml:space="preserve"><value>Xyz-Monster</value></data>
+  <data name="Metadata.monster-type:link" xml:space="preserve"><value>Linkmonster</value></data>
+  <data name="Metadata.attribute:dark" xml:space="preserve"><value>Eigenschaft: FINSTERNIS</value></data>
+  <data name="Metadata.attribute:light" xml:space="preserve"><value>Eigenschaft: LICHT</value></data>
+  <data name="Metadata.attribute:earth" xml:space="preserve"><value>Eigenschaft: ERDE</value></data>
+  <data name="Metadata.attribute:water" xml:space="preserve"><value>Eigenschaft: WASSER</value></data>
+  <data name="Metadata.attribute:fire" xml:space="preserve"><value>Eigenschaft: FEUER</value></data>
+  <data name="Metadata.attribute:wind" xml:space="preserve"><value>Eigenschaft: WIND</value></data>
+  <data name="Metadata.attribute:divine" xml:space="preserve"><value>Eigenschaft: GÖTTLICH</value></data>
+  <data name="Metadata.spell-type:normal" xml:space="preserve"><value>Normaler Zauber</value></data>
+  <data name="Metadata.spell-type:field" xml:space="preserve"><value>Spielfeldzauber</value></data>
+  <data name="Metadata.spell-type:equip" xml:space="preserve"><value>Ausrüstungszauber</value></data>
+  <data name="Metadata.spell-type:continuous" xml:space="preserve"><value>Permanenter Zauber</value></data>
+  <data name="Metadata.spell-type:quick-play" xml:space="preserve"><value>Schnellzauber</value></data>
+  <data name="Metadata.spell-type:ritual" xml:space="preserve"><value>Ritualzauber</value></data>
+  <data name="Metadata.trap-type:normal" xml:space="preserve"><value>Normale Falle</value></data>
+  <data name="Metadata.trap-type:continuous" xml:space="preserve"><value>Permanente Falle</value></data>
+  <data name="Metadata.trap-type:counter" xml:space="preserve"><value>Konterfalle</value></data>
+  <data name="Metadata.monster-race:aqua" xml:space="preserve"><value>Monstertyp: Aqua</value></data>
+  <data name="Metadata.monster-race:beast" xml:space="preserve"><value>Monstertyp: Ungeheuer</value></data>
+  <data name="Metadata.monster-race:beast-warrior" xml:space="preserve"><value>Monstertyp: Ungeheuer-Krieger</value></data>
+  <data name="Metadata.monster-race:creator%20god" xml:space="preserve"><value>Monstertyp: Schöpfergott</value></data>
+  <data name="Metadata.monster-race:cyberse" xml:space="preserve"><value>Monstertyp: Cyberse</value></data>
+  <data name="Metadata.monster-race:dinosaur" xml:space="preserve"><value>Monstertyp: Dinosaurier</value></data>
+  <data name="Metadata.monster-race:divine-beast" xml:space="preserve"><value>Monstertyp: Göttliches Ungeheuer</value></data>
+  <data name="Metadata.monster-race:dragon" xml:space="preserve"><value>Monstertyp: Drache</value></data>
+  <data name="Metadata.monster-race:fairy" xml:space="preserve"><value>Monstertyp: Fee</value></data>
+  <data name="Metadata.monster-race:fiend" xml:space="preserve"><value>Monstertyp: Unterweltler</value></data>
+  <data name="Metadata.monster-race:fish" xml:space="preserve"><value>Monstertyp: Fisch</value></data>
+  <data name="Metadata.monster-race:insect" xml:space="preserve"><value>Monstertyp: Insekt</value></data>
+  <data name="Metadata.monster-race:illusion" xml:space="preserve"><value>Monstertyp: Illusion</value></data>
+  <data name="Metadata.monster-race:machine" xml:space="preserve"><value>Monstertyp: Maschine</value></data>
+  <data name="Metadata.monster-race:plant" xml:space="preserve"><value>Monstertyp: Pflanze</value></data>
+  <data name="Metadata.monster-race:psychic" xml:space="preserve"><value>Monstertyp: Psi</value></data>
+  <data name="Metadata.monster-race:pyro" xml:space="preserve"><value>Monstertyp: Pyro</value></data>
+  <data name="Metadata.monster-race:reptile" xml:space="preserve"><value>Monstertyp: Reptil</value></data>
+  <data name="Metadata.monster-race:rock" xml:space="preserve"><value>Monstertyp: Fels</value></data>
+  <data name="Metadata.monster-race:sea%20serpent" xml:space="preserve"><value>Monstertyp: Seeschlange</value></data>
+  <data name="Metadata.monster-race:spellcaster" xml:space="preserve"><value>Monstertyp: Hexer</value></data>
+  <data name="Metadata.monster-race:thunder" xml:space="preserve"><value>Monstertyp: Donner</value></data>
+  <data name="Metadata.monster-race:warrior" xml:space="preserve"><value>Monstertyp: Krieger</value></data>
+  <data name="Metadata.monster-race:winged%20beast" xml:space="preserve"><value>Monstertyp: Geflügeltes Ungeheuer</value></data>
+  <data name="Metadata.monster-race:wyrm" xml:space="preserve"><value>Monstertyp: Wyrm</value></data>
+  <data name="Metadata.monster-race:zombie" xml:space="preserve"><value>Monstertyp: Zombie</value></data>
+  <data name="Metadata.level:1" xml:space="preserve"><value>Stufe 1</value></data>
+  <data name="Metadata.level:2" xml:space="preserve"><value>Stufe 2</value></data>
+  <data name="Metadata.level:3" xml:space="preserve"><value>Stufe 3</value></data>
+  <data name="Metadata.level:4" xml:space="preserve"><value>Stufe 4</value></data>
+  <data name="Metadata.level:5" xml:space="preserve"><value>Stufe 5</value></data>
+  <data name="Metadata.level:6" xml:space="preserve"><value>Stufe 6</value></data>
+  <data name="Metadata.level:7" xml:space="preserve"><value>Stufe 7</value></data>
+  <data name="Metadata.level:8" xml:space="preserve"><value>Stufe 8</value></data>
+  <data name="Metadata.level:9" xml:space="preserve"><value>Stufe 9</value></data>
+  <data name="Metadata.level:10" xml:space="preserve"><value>Stufe 10</value></data>
+  <data name="Metadata.level:11" xml:space="preserve"><value>Stufe 11</value></data>
+  <data name="Metadata.level:12" xml:space="preserve"><value>Stufe 12</value></data>
+  <data name="Metadata.rank:0" xml:space="preserve"><value>Rang 0</value></data>
+  <data name="Metadata.rank:1" xml:space="preserve"><value>Rang 1</value></data>
+  <data name="Metadata.rank:2" xml:space="preserve"><value>Rang 2</value></data>
+  <data name="Metadata.rank:3" xml:space="preserve"><value>Rang 3</value></data>
+  <data name="Metadata.rank:4" xml:space="preserve"><value>Rang 4</value></data>
+  <data name="Metadata.rank:5" xml:space="preserve"><value>Rang 5</value></data>
+  <data name="Metadata.rank:6" xml:space="preserve"><value>Rang 6</value></data>
+  <data name="Metadata.rank:7" xml:space="preserve"><value>Rang 7</value></data>
+  <data name="Metadata.rank:8" xml:space="preserve"><value>Rang 8</value></data>
+  <data name="Metadata.rank:9" xml:space="preserve"><value>Rang 9</value></data>
+  <data name="Metadata.rank:10" xml:space="preserve"><value>Rang 10</value></data>
+  <data name="Metadata.rank:11" xml:space="preserve"><value>Rang 11</value></data>
+  <data name="Metadata.rank:12" xml:space="preserve"><value>Rang 12</value></data>
+  <data name="Metadata.rank:13" xml:space="preserve"><value>Rang 13</value></data>
+  <data name="Metadata.link:1" xml:space="preserve"><value>Linkzahl 1</value></data>
+  <data name="Metadata.link:2" xml:space="preserve"><value>Linkzahl 2</value></data>
+  <data name="Metadata.link:3" xml:space="preserve"><value>Linkzahl 3</value></data>
+  <data name="Metadata.link:4" xml:space="preserve"><value>Linkzahl 4</value></data>
+  <data name="Metadata.link:5" xml:space="preserve"><value>Linkzahl 5</value></data>
+  <data name="Metadata.link:6" xml:space="preserve"><value>Linkzahl 6</value></data>
+  <data name="Metadata.scale:0" xml:space="preserve"><value>Pendelbereich 0</value></data>
+  <data name="Metadata.scale:1" xml:space="preserve"><value>Pendelbereich 1</value></data>
+  <data name="Metadata.scale:2" xml:space="preserve"><value>Pendelbereich 2</value></data>
+  <data name="Metadata.scale:3" xml:space="preserve"><value>Pendelbereich 3</value></data>
+  <data name="Metadata.scale:4" xml:space="preserve"><value>Pendelbereich 4</value></data>
+  <data name="Metadata.scale:5" xml:space="preserve"><value>Pendelbereich 5</value></data>
+  <data name="Metadata.scale:6" xml:space="preserve"><value>Pendelbereich 6</value></data>
+  <data name="Metadata.scale:7" xml:space="preserve"><value>Pendelbereich 7</value></data>
+  <data name="Metadata.scale:8" xml:space="preserve"><value>Pendelbereich 8</value></data>
+  <data name="Metadata.scale:9" xml:space="preserve"><value>Pendelbereich 9</value></data>
+  <data name="Metadata.scale:10" xml:space="preserve"><value>Pendelbereich 10</value></data>
+  <data name="Metadata.scale:11" xml:space="preserve"><value>Pendelbereich 11</value></data>
+  <data name="Metadata.scale:12" xml:space="preserve"><value>Pendelbereich 12</value></data>
+  <data name="Metadata.scale:13" xml:space="preserve"><value>Pendelbereich 13</value></data>
+  <data name="Color.Blue" xml:space="preserve"><value>Blau</value></data>
+  <data name="Color.Orange" xml:space="preserve"><value>Orange</value></data>
+  <data name="Color.Green" xml:space="preserve"><value>Grün</value></data>
+  <data name="Color.Purple" xml:space="preserve"><value>Violett</value></data>
+  <data name="Color.Red" xml:space="preserve"><value>Rot</value></data>
+  <data name="Color.Cyan" xml:space="preserve"><value>Cyan</value></data>
+  <data name="Color.Gold" xml:space="preserve"><value>Gold</value></data>
+  <data name="Color.Pink" xml:space="preserve"><value>Rosa</value></data>
+  <data name="Color.Lime" xml:space="preserve"><value>Limettengrün</value></data>
+  <data name="Color.Slate" xml:space="preserve"><value>Schiefergrau</value></data>
+  <data name="Color.Teal" xml:space="preserve"><value>Blaugrün</value></data>
+  <data name="Color.Magenta" xml:space="preserve"><value>Magenta</value></data>
+  <data name="Help.Introduction.Overview" xml:space="preserve"><value>Berechne die Wahrscheinlichkeit, deine Kombos mit der Starthand zu erreichen – einschließlich unterstützter Zieh- und Sucheffekte. Beginne mit deinem eigenen Deck oder probiere das Beispiel aus.</value></data>
+  <data name="Help.Introduction.ReplaceWarning" xml:space="preserve"><value>Beim Laden wird dein aktueller Arbeitsbereich ersetzt. Speichere vorher eine Sitzung, um ihn zu behalten.</value></data>
+  <data name="Help.GettingStarted.Question" xml:space="preserve"><value>Wie fange ich an?</value></data>
+  <data name="Help.GettingStarted.AddDeck.Part0" xml:space="preserve"><value>Deck hinzufügen.</value></data>
+  <data name="Help.GettingStarted.AddDeck.Part1" xml:space="preserve"><value>.ydk</value></data>
+  <data name="Help.GettingStarted.AddDeck" xml:space="preserve"><value>{0} Importiere eine {1}-Datei oder einen YDKe-Code oder gib Karten von Hand ein. Prüfe die Anzahl der Exemplare und die Handgröße.</value></data>
+  <data name="Help.GettingStarted.DefineCombo.Part0" xml:space="preserve"><value>Kombo definieren.</value></data>
+  <data name="Help.GettingStarted.DefineCombo" xml:space="preserve"><value>{0} Füge die Karten, Kategorien oder Eigenschaften hinzu, die eine erfolgreiche Hand benötigt.</value></data>
+  <data name="Help.GettingStarted.CheckEffects.Part0" xml:space="preserve"><value>Karteneffekte prüfen.</value></data>
+  <data name="Help.GettingStarted.CheckEffects" xml:space="preserve"><value>{0} Klappe Effektkarten auf, um ihre eingestellten Simulationen zu prüfen.</value></data>
+  <data name="Help.GettingStarted.Calculate.Part0" xml:space="preserve"><value>Berechnen.</value></data>
+  <data name="Help.GettingStarted.Calculate.Part1" xml:space="preserve"><value>Progressiv</value></data>
+  <data name="Help.GettingStarted.Calculate" xml:space="preserve"><value>{0} Beginne mit {1} und prüfe anschließend die Genauigkeitsangabe neben jedem Ergebnis.</value></data>
+  <data name="Help.GettingStarted.Deactivate" xml:space="preserve"><value>Karten und Kombos lassen sich vorübergehend deaktivieren, ohne sie zu löschen.</value></data>
+  <data name="Help.Properties.Question" xml:space="preserve"><value>Wie verwende ich Kategorien und Eigenschaften?</value></data>
+  <data name="Help.Properties.RolesAndProperties.Part0" xml:space="preserve"><value>Eigenschaften</value></data>
+  <data name="Help.Properties.RolesAndProperties.Part1" xml:space="preserve"><value>Kategorien</value></data>
+  <data name="Help.Properties.RolesAndProperties" xml:space="preserve"><value>Verwende {0} für Kartenmerkmale und {1} für selbst zugewiesene Rollen.</value></data>
+  <data name="Help.Properties.PropertyExamples.Part0" xml:space="preserve"><value>Eigenschaften:</value></data>
+  <data name="Help.Properties.PropertyExamples" xml:space="preserve"><value>{0} FEUER, Krieger, Stufe 4 und weitere Werte aus den Kartendaten.</value></data>
+  <data name="Help.Properties.CategoryExamples.Part0" xml:space="preserve"><value>Kategorien:</value></data>
+  <data name="Help.Properties.CategoryExamples" xml:space="preserve"><value>{0} Starter, Extender oder andere Rollen, die für dein Deck nützlich sind.</value></data>
+  <data name="Help.Properties.Overlaps" xml:space="preserve"><value>Eine Karte kann gleichzeitig mehrere Eigenschaften und Kategorien erfüllen. Selbst zugewiesene Rollen ändern nicht, welche Karten ein integrierter Sucheffekt als Ziel zulässt.</value></data>
+  <data name="Help.Properties.NumericRanges.Part0" xml:space="preserve"><value>Stufe 1–4 UND Krieger</value></data>
+  <data name="Help.Properties.NumericRanges" xml:space="preserve"><value>Stufe, Rang und Linkzahl unterstützen Zahlenvergleiche und Bereiche einschließlich beider Grenzen. Zum Beispiel wählt {0} einzelne Krieger in diesem Stufenbereich aus. Karten ohne passenden Wert erfüllen die Bedingung nicht.</value></data>
+  <data name="Help.Requirements.Question" xml:space="preserve"><value>Wie definiere ich die Anforderungen einer Kombo?</value></data>
+  <data name="Help.Requirements.Create.Part0" xml:space="preserve"><value>Anforderung hinzufügen</value></data>
+  <data name="Help.Requirements.Create.Part1" xml:space="preserve"><value>Mindestens</value></data>
+  <data name="Help.Requirements.Create.Part2" xml:space="preserve"><value>Maximum</value></data>
+  <data name="Help.Requirements.Create.Part3" xml:space="preserve"><value>0</value></data>
+  <data name="Help.Requirements.Create" xml:space="preserve"><value>Wähle {0}, bestimme das Ziel und lege {1} fest. Mit {2} begrenzt du passende Karten; setze beide Anzahlen auf {3}, um sie auszuschließen.</value></data>
+  <data name="Help.Requirements.FinalHand" xml:space="preserve"><value>Die endgültige Hand nach der Auflösung aller Effekte muss sämtliche Anforderungen einer Kombo erfüllen.</value></data>
+  <data name="Help.Requirements.Combining" xml:space="preserve"><value>Anforderungen kombinieren</value></data>
+  <data name="Help.Requirements.Expression" xml:space="preserve"><value>Ausdruck</value></data>
+  <data name="Help.Requirements.Meaning" xml:space="preserve"><value>Bedeutung</value></data>
+  <data name="Help.Requirements.DistinctExample.Part0" xml:space="preserve"><value>Starter + FEUER</value></data>
+  <data name="Help.Requirements.DistinctCopies" xml:space="preserve"><value>Zwei verschiedene physische Kartenexemplare: ein Starter und eine FEUER-Karte. Eine einzelne Karte, die beides erfüllt, kann nicht beide Anforderungen abdecken.</value></data>
+  <data name="Help.Requirements.SameCardExample.Part0" xml:space="preserve"><value>FEUER UND Krieger</value></data>
+  <data name="Help.Requirements.SameCard" xml:space="preserve"><value>Jede passende Karte muss beide Eigenschaften besitzen.</value></data>
+  <data name="Help.Requirements.AlternativesExample.Part0" xml:space="preserve"><value>Razen + (FEUER ODER FINSTERNIS)</value></data>
+  <data name="Help.Requirements.Alternatives" xml:space="preserve"><value>Razen und ein anderes Kartenexemplar, das eine der beiden Alternativen erfüllt.</value></data>
+  <data name="Help.Requirements.Counting" xml:space="preserve"><value>Zählregeln</value></data>
+  <data name="Help.Requirements.Maximum.Part0" xml:space="preserve"><value>jede passende Karte</value></data>
+  <data name="Help.Requirements.Maximum.Part1" xml:space="preserve"><value>Beliebig</value></data>
+  <data name="Help.Requirements.Maximum" xml:space="preserve"><value>Ein Maximum zählt {0} in der endgültigen Hand. Ein leeres Maximum bedeutet {1}.</value></data>
+  <data name="Help.Requirements.AlternativeCounts.Part0" xml:space="preserve"><value>FEUER (2–2) ODER FINSTERNIS (2–2)</value></data>
+  <data name="Help.Requirements.AlternativeCounts" xml:space="preserve"><value>Jede ODER-Alternative behält ihre eigenen Anzahlen. {0} verlangt zwei Karten einer der beiden Eigenschaften.</value></data>
+  <data name="Help.Requirements.RepeatedTarget.Part0" xml:space="preserve"><value>Mindestens</value></data>
+  <data name="Help.Requirements.RepeatedTarget" xml:space="preserve"><value>Erhöhe {0}, wenn mehrere Exemplare benötigt werden. Bei mehrfacher Angabe desselben Ziels gilt die Schnittmenge der Grenzen.</value></data>
+  <data name="Help.Requirements.Editing.Part0" xml:space="preserve"><value>Enter</value></data>
+  <data name="Help.Requirements.Editing.Part1" xml:space="preserve"><value>Escape</value></data>
+  <data name="Help.Requirements.Editing.Part2" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Help.Requirements.Editing" xml:space="preserve"><value>Wähle eine bestehende Anforderung aus, um sie zu bearbeiten. {0} speichert; {1} oder {2} verwirft die Änderung.</value></data>
+  <data name="Help.Simulations.Question" xml:space="preserve"><value>Wie stelle ich Karteneffekte ein?</value></data>
+  <data name="Help.Simulations.Inspect.Part0" xml:space="preserve"><value>Modellhinweise</value></data>
+  <data name="Help.Simulations.Inspect" xml:space="preserve"><value>Klappe eine Karte auf, um ihre gespeicherte Simulation und die {0} zu prüfen.</value></data>
+  <data name="Help.Simulations.BuiltIn.Part0" xml:space="preserve"><value>Integrierte Simulation:</value></data>
+  <data name="Help.Simulations.BuiltIn" xml:space="preserve"><value>{0} ein gepflegtes Modell für einen unterstützten Effekt.</value></data>
+  <data name="Help.Simulations.Partial.Part0" xml:space="preserve"><value>Teilweise:</value></data>
+  <data name="Help.Simulations.Partial" xml:space="preserve"><value>{0} ein Teil des aufgedruckten Karteneffekts wird nicht berücksichtigt.</value></data>
+  <data name="Help.Simulations.Custom.Part0" xml:space="preserve"><value>Eigene Simulation:</value></data>
+  <data name="Help.Simulations.Custom" xml:space="preserve"><value>{0} ein im Effekteditor gespeicherter Ablauf.</value></data>
+  <data name="Help.Simulations.Editing.Part0" xml:space="preserve"><value>Simulation anpassen</value></data>
+  <data name="Help.Simulations.Editing.Part1" xml:space="preserve"><value>Simulation konfigurieren</value></data>
+  <data name="Help.Simulations.Editing.Part2" xml:space="preserve"><value>Speichern</value></data>
+  <data name="Help.Simulations.Editing.Part3" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Help.Simulations.Editing.Part4" xml:space="preserve"><value>Keiner</value></data>
+  <data name="Help.Simulations.Editing" xml:space="preserve"><value>Wähle {0} oder {1}, nimm Änderungen vor und wähle dann {2}. {3} behält den bisherigen Ablauf bei. Mit {4} wird die Karte ohne Effekt behandelt und bleibt im Deck.</value></data>
+  <data name="Help.Simulations.Restore.Part0" xml:space="preserve"><value>Integrierte Simulation wiederherstellen</value></data>
+  <data name="Help.Simulations.Restore" xml:space="preserve"><value>Sitzungen behalten ihre gespeicherten Effekteinstellungen. {0} ersetzt diese Einstellungen ausdrücklich durch den aktuell gepflegten Ablauf.</value></data>
+  <data name="Help.Simulations.Limitations.Part0" xml:space="preserve"><value>Modellhinweise</value></data>
+  <data name="Help.Simulations.Limitations" xml:space="preserve"><value>Nur eingestellte Effekte werden ausgeführt. Prüfe die {0}, bevor du annimmst, dass eine Simulation den vollständigen aufgedruckten Karteneffekt abbildet.</value></data>
+  <data name="Help.EffectResolution.Question" xml:space="preserve"><value>Wie werden Effekte aufgelöst?</value></data>
+  <data name="Help.EffectResolution.Phases" xml:space="preserve"><value>Effekte folgen einem festen Ablauf mit zwei Phasen.</value></data>
+  <data name="Help.EffectResolution.DrawHeading" xml:space="preserve"><value>1. Zieheffekte</value></data>
+  <data name="Help.EffectResolution.Draws" xml:space="preserve"><value>Zulässige Zieheffekte werden automatisch aktiviert und verbrauchen ihre auslösende Karte. Jeder Effekt schließt seine Kosten, Ziehvorgänge und Entfernungen ab, bevor ein weiterer Effekt beginnt.</value></data>
+  <data name="Help.EffectResolution.Restrictions.Part0" xml:space="preserve"><value>Einmal pro Spielzug</value></data>
+  <data name="Help.EffectResolution.Restrictions" xml:space="preserve"><value>{0} gilt gemeinsam für alle Exemplare desselben Karteneintrags. Vor der Aktivierung werden Kosten, Aktivierungsbeschränkungen und eine ausreichende verbleibende Deckgröße geprüft. Scheitert eine verpflichtende Entfernung, zählt das Ergebnis als Misserfolg.</value></data>
+  <data name="Help.EffectResolution.SearchHeading" xml:space="preserve"><value>2. Sucheffekte</value></data>
+  <data name="Help.EffectResolution.Searches" xml:space="preserve"><value>Nach Abschluss der Zieheffekte können optionale Sucheffekte ihre auslösenden Handkarten verbrauchen, um zulässige verbleibende Karten auf die Hand zu nehmen. Alle Suchen greifen auf dieselben tatsächlich verbleibenden Exemplare und dieselbe Deckgröße zu. Effekte gesuchter Karten werden nicht aktiviert und starten keine der beiden Phasen erneut.</value></data>
+  <data name="Help.EffectResolution.PriorityHeading" xml:space="preserve"><value>Priorität und Kartenauswahl</value></data>
+  <data name="Help.EffectResolution.Priority" xml:space="preserve"><value>Standardmäßig gilt die Reihenfolge, in der Effekte auftreten. Eine eigene Priorität ordnet Effekte innerhalb jeder Phase; das Umordnen der Deckanzeige ändert diese Priorität nicht.</value></data>
+  <data name="Help.EffectResolution.KeepPolicy" xml:space="preserve"><value>Für Handkosten und Entfernungen gilt dieselbe Regel zur Kartenauswahl, die Kombobestandteile und nutzbare Effekte schützt. Änderungen an den aktiven Kombos können daher beeinflussen, welche Karten entfernt werden. Verschiedene Ergebniszeilen können unterschiedliche zulässige Suchentscheidungen verwenden.</value></data>
+  <data name="Help.EffectResolution.ModelScope.Part0" xml:space="preserve"><value>Berechnungsmodell</value></data>
+  <data name="Help.EffectResolution.ModelScope" xml:space="preserve"><value>Berechnet wird der eingestellte Ablauf einschließlich seiner Auslassungen. Optimales Spiel wird damit nicht bestimmt. Unterstützte Operationen und Einschränkungen beschreibt das {0}.</value></data>
+  <data name="Help.Modes.Question" xml:space="preserve"><value>Welche Berechnungsmodi gibt es?</value></data>
+  <data name="Help.Modes.Default.Part0" xml:space="preserve"><value>Progressiv</value></data>
+  <data name="Help.Modes.Default" xml:space="preserve"><value>{0} ist die Standardeinstellung und ein guter Ausgangspunkt.</value></data>
+  <data name="Help.Modes.Mode" xml:space="preserve"><value>Modus</value></data>
+  <data name="Help.Modes.Behavior" xml:space="preserve"><value>Verhalten</value></data>
+  <data name="Help.Modes.Progressive" xml:space="preserve"><value>Progressiv</value></data>
+  <data name="Help.Modes.ProgressiveDescription" xml:space="preserve"><value>Zeigt ein abgeschlossenes Schnell-Ergebnis und versucht anschließend bei Bedarf eine exakte Berechnung.</value></data>
+  <data name="Help.Modes.Fast" xml:space="preserve"><value>Nur Schnell</value></data>
+  <data name="Help.Modes.FastDescription" xml:space="preserve"><value>Führt Schnell einmal aus. Das Ergebnis kann Exakt, Mit garantierten Grenzen oder Nicht zertifiziert sein.</value></data>
+  <data name="Help.Modes.Exact" xml:space="preserve"><value>Nur Exakt</value></data>
+  <data name="Help.Modes.ExactDescription" xml:space="preserve"><value>Zeigt neue Werte erst nach Abschluss der exakten Berechnung mit einzelnen physischen Kartenexemplaren an.</value></data>
+  <data name="Help.Modes.NoEffects" xml:space="preserve"><value>Keine Effektsimulation</value></data>
+  <data name="Help.Modes.NoEffectsDescription" xml:space="preserve"><value>Wertet die ausgeteilte Hand ohne die eingestellten Effekte aus. Gespeicherte Effekteinstellungen bleiben unverändert.</value></data>
+  <data name="Help.Modes.Cancel" xml:space="preserve"><value>Wird die exakte Weiterberechnung im Modus Progressiv abgebrochen, bleibt das abgeschlossene Schnell-Ergebnis erhalten.</value></data>
+  <data name="Help.Modes.Limits.Part0" xml:space="preserve"><value>Genauigkeit und Leistung</value></data>
+  <data name="Help.Modes.Limits" xml:space="preserve"><value>Exakt hat kein Zeitlimit für die Berechnung. Speichergrenzen, nicht unterstützte Konfigurationen oder Fehler können den Abschluss dennoch verhindern. Ressourcengrenzen sind unter {0} beschrieben.</value></data>
+  <data name="Help.Results.Question" xml:space="preserve"><value>Wie lese ich die Ergebnisse?</value></data>
+  <data name="Help.Results.Union.Part0" xml:space="preserve"><value>Mindestens eine Kombo</value></data>
+  <data name="Help.Results.Union" xml:space="preserve"><value>Jede Kombo wird unabhängig ausgewertet. {0} zählt Erfolge in mindestens einer aktiven Kombo; Gruppenergebnisse tun dasselbe für ihre Mitglieder.</value></data>
+  <data name="Help.Results.OverlapWarning.Part0" xml:space="preserve"><value>Überlappende Erfolge zählen nur einmal. Addiere die einzelnen Prozentwerte nicht.</value></data>
+  <data name="Help.Results.Accuracy" xml:space="preserve"><value>Genauigkeit</value></data>
+  <data name="Help.Results.Label" xml:space="preserve"><value>Kennzeichnung</value></data>
+  <data name="Help.Results.Meaning" xml:space="preserve"><value>Bedeutung</value></data>
+  <data name="Help.Results.Exact" xml:space="preserve"><value>Exakt / ±0%</value></data>
+  <data name="Help.Results.ExactDescription" xml:space="preserve"><value>Die Wahrscheinlichkeit ist für das eingestellte Modell bewiesen.</value></data>
+  <data name="Help.Results.Bounded" xml:space="preserve"><value>Mit garantierten Grenzen / ±</value></data>
+  <data name="Help.Results.BoundedDescription" xml:space="preserve"><value>Die Wahrscheinlichkeit des Modells mit physischen Kartenexemplaren liegt in einem zertifizierten Intervall. Angezeigt werden dessen Mittelpunkt als Prozentwert und ein nach außen gerundeter Radius.</value></data>
+  <data name="Help.Results.Uncertified" xml:space="preserve"><value>Nicht zertifiziert</value></data>
+  <data name="Help.Results.UncertifiedDescription" xml:space="preserve"><value>Ein Modellergebnis liegt vor, aber seine Fehlergrenze gegenüber dem Modell mit physischen Kartenexemplaren ist nicht nachgewiesen.</value></data>
+  <data name="Help.Results.ModelScope" xml:space="preserve"><value>Exaktheit bezieht sich auf das eingestellte Modell, einschließlich aller nicht berücksichtigten Spielmechaniken.</value></data>
+  <data name="Help.Results.State" xml:space="preserve"><value>Ergebnisstatus</value></data>
+  <data name="Help.Results.Preliminary.Part0" xml:space="preserve"><value>Vorläufig:</value></data>
+  <data name="Help.Results.Preliminary" xml:space="preserve"><value>{0} ein abgeschlossenes Schnell-Ergebnis wartet auf eine mögliche exakte Weiterberechnung.</value></data>
+  <data name="Help.Results.Stale.Part0" xml:space="preserve"><value>Eingaben geändert:</value></data>
+  <data name="Help.Results.Stale" xml:space="preserve"><value>{0} das Ergebnis beschreibt einen früheren Stand des Arbeitsbereichs.</value></data>
+  <data name="Help.Results.Pinned.Part0" xml:space="preserve"><value>Angeheftetes Ergebnis:</value></data>
+  <data name="Help.Results.Pinned" xml:space="preserve"><value>{0} das Ergebnis behält seine erfassten Eingaben und seine Genauigkeit für Vergleiche.</value></data>
+  <data name="Help.Results.Fraction" xml:space="preserve"><value>Bewege den Mauszeiger über einen Wert oder fokussiere ihn per Tastatur, um seinen primären Bruch anzuzeigen. Bei Ergebnissen mit garantierten Grenzen stammt dieser Bruch aus dem primären Modell und kann vom angezeigten Mittelpunkt abweichen – sogar oberhalb der zertifizierten Obergrenze liegen. Kopiere Ergebnisse zusammen mit ihren Genauigkeitsangaben.</value></data>
+  <data name="Help.Sessions.Question" xml:space="preserve"><value>Wie speichere, teile und stelle ich meine Arbeit wieder her?</value></data>
+  <data name="Help.Sessions.SaveHeading" xml:space="preserve"><value>Sitzung speichern</value></data>
+  <data name="Help.Sessions.Save.Part0" xml:space="preserve"><value>Sitzung speichern</value></data>
+  <data name="Help.Sessions.Save" xml:space="preserve"><value>Wähle {0}, um dein Deck, Anforderungen, Gruppen, Effekteinstellungen und Berechnungseinstellungen herunterzuladen. Speichere offene Änderungen im Editor zuerst. Ungespeicherte Entwürfe, Ergebnisse, Kartenbilder und Designeinstellungen sind nicht enthalten.</value></data>
+  <data name="Help.Sessions.ShareHeading" xml:space="preserve"><value>Konfiguration teilen</value></data>
+  <data name="Help.Sessions.Share.Part0" xml:space="preserve"><value>Link zum Teilen kopieren</value></data>
+  <data name="Help.Sessions.Share" xml:space="preserve"><value>Wähle {0}. Beim Öffnen des Links kannst du entscheiden, ob der Inhalt geladen werden soll, bevor er den Arbeitsbereich ersetzt. Alle Personen mit dem Link können seinen Inhalt lesen; umfangreiche Konfigurationen benötigen möglicherweise stattdessen eine Sitzungsdatei.</value></data>
+  <data name="Help.Sessions.RecoveryHeading" xml:space="preserve"><value>Lokale Arbeit wiederherstellen</value></data>
+  <data name="Help.Sessions.Recovery" xml:space="preserve"><value>Die lokale Wiederherstellung merkt sich Änderungen am Arbeitsbereich in diesem Browser. Gelöschter oder nicht verfügbarer Browserspeicher kann die Wiederherstellung verhindern. Bewahre deshalb Sitzungsdateien als dauerhafte Kopien auf.</value></data>
+  <data name="Help.Sessions.MultipleTabs" xml:space="preserve"><value>Mehrere Tabs können voneinander abweichende Wiederherstellungsstände anbieten. Wähle den Arbeitsbereich, den du behalten möchtest; Tabs gleichen Änderungen nicht automatisch ab.</value></data>
+  <data name="Help.Example.Question" xml:space="preserve"><value>Wie funktioniert das Beispiel Vanquish Soul / K9?</value></data>
+  <data name="Help.Example.Contents" xml:space="preserve"><value>Das Beispiel enthält:</value></data>
+  <data name="Help.Example.Copies.Part0" xml:space="preserve"><value>40 Kartenexemplare</value></data>
+  <data name="Help.Example.Copies" xml:space="preserve"><value>{0} in 24 Einträgen, mit einer Starthand aus fünf Karten.</value></data>
+  <data name="Help.Example.Groups.Part0" xml:space="preserve"><value>Acht Kombodefinitionen</value></data>
+  <data name="Help.Example.Groups.Part1" xml:space="preserve"><value>Full VS</value></data>
+  <data name="Help.Example.Groups.Part2" xml:space="preserve"><value>Full K9</value></data>
+  <data name="Help.Example.Groups" xml:space="preserve"><value>{0}, gegliedert in {1} und {2}.</value></data>
+  <data name="Help.Example.Requirements" xml:space="preserve"><value>Anforderungen anhand von Kartenidentitäten und Eigenschaften, ohne eigene Kategorien.</value></data>
+  <data name="Help.Example.Alternatives.Part0" xml:space="preserve"><value>VS Starter + (FIRE OR DARK)</value></data>
+  <data name="Help.Example.Alternatives" xml:space="preserve"><value>{0} zeigt alternative Anforderungen. Sucheffekte nehmen zulässige verbleibende Monster auf die Hand; diese bringen ihre eigenen Identitäten und Eigenschaften mit.</value></data>
+  <data name="Help.Example.Result.Part0" xml:space="preserve"><value>85.92% (565375/658008)</value></data>
+  <data name="Help.Example.Result.Part1" xml:space="preserve"><value>Mindestens eine Kombo</value></data>
+  <data name="Help.Example.Result" xml:space="preserve"><value>Mit allen acht aktiven Kombos ist das endgültige Ergebnis im Modus Progressiv exakt: {0} für {1}.</value></data>
+  <data name="Help.Footer.Heading" xml:space="preserve"><value>Weiterführendes und Mitwirkende</value></data>
+  <data name="Help.Footer.Reading.Part0" xml:space="preserve"><value>Berechnungsmodell</value></data>
+  <data name="Help.Footer.Reading.Part1" xml:space="preserve"><value>durchgerechnete Wahrscheinlichkeitsbeispiel</value></data>
+  <data name="Help.Footer.Reading.Part2" xml:space="preserve"><value>Leitfaden zur Genauigkeit</value></data>
+  <data name="Help.Footer.Reading" xml:space="preserve"><value>Lies das {0}, das {1} und den {2}. Die Dokumentation folgt dem Entwicklungsstand; die stabile Website kann davon abweichen.</value></data>
+  <data name="Help.Footer.Credits.Part0" xml:space="preserve"><value>SeyTi01</value></data>
+  <data name="Help.Footer.Credits.Part1" xml:space="preserve"><value>YGOPRODeck</value></data>
+  <data name="Help.Footer.Credits" xml:space="preserve"><value>Erstellt von {0}. Kartenbilder werden von {1} bereitgestellt und auf dem Hosting des Projekts gespeichert. Fehlende Bilder beeinflussen die Berechnungen nicht; Bilder Dritter fallen nicht unter die Softwarelizenz.</value></data>
+  <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exakt)</value></data>
+  <data name="Ui.Share" xml:space="preserve"><value>Teilen</value></data>
+  <data name="Ui.TargetsInThisDeck" xml:space="preserve"><value>Ziele in diesem Deck</value></data>
+  <data name="Result.HandSize" xml:space="preserve"><value>Handgröße: {0}</value></data>
+  <data name="Result.DeckSize" xml:space="preserve"><value>Deckgröße: {0}</value></data>
+</root>
