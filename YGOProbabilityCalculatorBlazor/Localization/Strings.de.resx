@@ -152,7 +152,7 @@
   <data name="Ui.01234Width56" xml:space="preserve"><value>- {0}: [{1}/{2}, {3}/{4}]; Breite {5} ({6})</value></data>
   <data name="Ui.012Active" xml:space="preserve"><value>- **{0}** — {1} ({2} aktiv)</value></data>
   <data name="Ui.01PerEntry" xml:space="preserve"><value>{0}: {1} pro Eintrag</value></data>
-  <data name="Ui.0AnyActiveCombo1" xml:space="preserve"><value>{0}, mindestens eine aktive Kombo: {1}</value></data>
+  <data name="Ui.0AnyActiveCombo1" xml:space="preserve"><value>{0}, mindestens eine Kombo: {1}</value></data>
   <data name="Ui.0Combo12" xml:space="preserve"><value>{0}, Kombo {1}: {2}</value></data>
   <data name="Ui.0Custom1" xml:space="preserve"><value>{0} (benutzerdefiniert: {1})</value></data>
   <data name="Ui.0Entry1" xml:space="preserve"><value>{0} (Eintrag {1})</value></data>
@@ -174,7 +174,7 @@
   <data name="Ui.AccuracyUnavailableForThisResult" xml:space="preserve"><value>Für dieses Ergebnis ist keine Genauigkeit verfügbar.</value></data>
   <data name="Ui.ActionsFor0" xml:space="preserve"><value>Aktionen für {0}</value></data>
   <data name="Ui.Activate" xml:space="preserve"><value>Aktivieren</value></data>
-  <data name="Ui.ActivateAtLeastOneCardToCalculate" xml:space="preserve"><value>Aktiviere mindestens eine Karte, um zu berechnen.</value></data>
+  <data name="Ui.ActivateAtLeastOneCardToCalculate" xml:space="preserve"><value>Füge mindestens eine Deckkarte hinzu oder aktiviere sie, um zu berechnen.</value></data>
   <data name="Ui.ActivateAtLeastOneComboToCalculate" xml:space="preserve"><value>Aktiviere mindestens eine Kombo, um zu berechnen.</value></data>
   <data name="Ui.Add" xml:space="preserve"><value>Hinzufügen</value></data>
   <data name="Ui.AddANDPropertyToAlternative0" xml:space="preserve"><value>UND-Eigenschaft zu Alternative {0} hinzufügen</value></data>
@@ -199,11 +199,11 @@
   <data name="Ui.AndOthers" xml:space="preserve"><value> und weitere</value></data>
   <data name="Ui.AnotherPropertySameCard" xml:space="preserve"><value>Weitere Eigenschaft · dieselbe Karte</value></data>
   <data name="Ui.Any" xml:space="preserve"><value>Beliebig</value></data>
-  <data name="Ui.AnyActiveCombo" xml:space="preserve"><value>Mindestens eine aktive Kombo</value></data>
-  <data name="Ui.AnyActiveCombo0" xml:space="preserve"><value>Mindestens eine aktive Kombo: {0}</value></data>
+  <data name="Ui.AnyActiveCombo" xml:space="preserve"><value>Mindestens eine Kombo</value></data>
+  <data name="Ui.AnyActiveCombo0" xml:space="preserve"><value>Mindestens eine Kombo: {0}</value></data>
   <data name="Ui.AnyCard" xml:space="preserve"><value>beliebige Karte</value></data>
   <data name="Ui.AnyEligibilityRowMayMatch" xml:space="preserve"><value>Mindestens eine Filterzeile muss zutreffen</value></data>
-  <data name="Ui.Anycardclearfilter" xml:space="preserve"><value>Beliebige Karte (Filter löschen)</value></data>
+  <data name="Ui.Anycardclearfilter" xml:space="preserve"><value>Filter löschen</value></data>
   <data name="Ui.ApplyRule" xml:space="preserve"><value>Regel anwenden</value></data>
   <data name="Ui.AtLeast" xml:space="preserve"><value>Mindestens</value></data>
   <data name="Ui.AtLeast0CardsInHandBeforeActivation" xml:space="preserve"><value>mindestens {0} Handkarten vor der Aktivierung</value></data>
@@ -825,7 +825,7 @@
   <data name="Help.Modes.Limits.Part0" xml:space="preserve"><value>Genauigkeit und Leistung</value></data>
   <data name="Help.Modes.Limits" xml:space="preserve"><value>Exakt hat kein Zeitlimit für die Berechnung. Speichergrenzen, nicht unterstützte Konfigurationen oder Fehler können den Abschluss dennoch verhindern. Ressourcengrenzen sind unter {0} beschrieben.</value></data>
   <data name="Help.Results.Question" xml:space="preserve"><value>Wie lese ich die Ergebnisse?</value></data>
-  <data name="Help.Results.Union.Part0" xml:space="preserve"><value>Mindestens eine aktive Kombo</value></data>
+  <data name="Help.Results.Union.Part0" xml:space="preserve"><value>Mindestens eine Kombo</value></data>
   <data name="Help.Results.Union" xml:space="preserve"><value>Jede Kombo wird unabhängig ausgewertet. {0} zählt Erfolge in mindestens einer aktiven Kombo; Gruppenergebnisse tun dasselbe für ihre Mitglieder.</value></data>
   <data name="Help.Results.OverlapWarning.Part0" xml:space="preserve"><value>Überlappende Erfolge zählen nur einmal. Addiere die einzelnen Prozentwerte nicht.</value></data>
   <data name="Help.Results.Accuracy" xml:space="preserve"><value>Genauigkeit</value></data>
@@ -868,7 +868,7 @@
   <data name="Help.Example.Alternatives.Part0" xml:space="preserve"><value>VS Starter + (FIRE OR DARK)</value></data>
   <data name="Help.Example.Alternatives" xml:space="preserve"><value>{0} zeigt alternative Anforderungen. Sucheffekte nehmen zulässige verbleibende Monster auf die Hand; diese bringen ihre eigenen Identitäten und Eigenschaften mit.</value></data>
   <data name="Help.Example.Result.Part0" xml:space="preserve"><value>85.92% (565375/658008)</value></data>
-  <data name="Help.Example.Result.Part1" xml:space="preserve"><value>Mindestens eine aktive Kombo</value></data>
+  <data name="Help.Example.Result.Part1" xml:space="preserve"><value>Mindestens eine Kombo</value></data>
   <data name="Help.Example.Result" xml:space="preserve"><value>Mit allen acht aktiven Kombos ist das endgültige Ergebnis im Modus Progressiv exakt: {0} für {1}.</value></data>
   <data name="Help.Footer.Heading" xml:space="preserve"><value>Weiterführendes und Mitwirkende</value></data>
   <data name="Help.Footer.Reading.Part0" xml:space="preserve"><value>Berechnungsmodell</value></data>
@@ -880,4 +880,7 @@
   <data name="Help.Footer.Credits" xml:space="preserve"><value>Erstellt von {0}. Kartenbilder werden von {1} bereitgestellt und auf dem Hosting des Projekts gespeichert. Fehlende Bilder beeinflussen die Berechnungen nicht; Bilder Dritter fallen nicht unter die Softwarelizenz.</value></data>
   <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exakt)</value></data>
   <data name="Ui.Share" xml:space="preserve"><value>Teilen</value></data>
+  <data name="Ui.TargetsInThisDeck" xml:space="preserve"><value>Ziele in diesem Deck</value></data>
+  <data name="Result.HandSize" xml:space="preserve"><value>Handgröße: {0}</value></data>
+  <data name="Result.DeckSize" xml:space="preserve"><value>Deckgröße: {0}</value></data>
 </root>
