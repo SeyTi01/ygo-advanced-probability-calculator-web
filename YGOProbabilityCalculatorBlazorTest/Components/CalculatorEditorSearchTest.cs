@@ -144,7 +144,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));
         editor.Find(".simulation-edit").Click();
         Assert.That(editor.FindAll("[id^=cardSearchObjective]"), Is.Empty);
-        Button(editor, "Any card (clear filter)").Click();
+        Button(editor, "Clear filter").Click();
         editor.Find("#cardSearchEligibility0").Change(role.Identity);
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("Custom target"));
         editor.Find(".simulation-save").Click();

@@ -216,27 +216,30 @@
                      role="region"
                      aria-labelledby="probabilityResultsHeading">
                 <div class="probability-results-heading">
-                    <div class="probability-result-title">
-                        <h5 id="probabilityResultsHeading">@(_pinnedResult is null ? UiText.Get("Result.Heading") : UiText.Get("Ui.CurrentResult"))</h5>
-                        <small class="probability-result-status-slot text-body-secondary fw-normal" role="status" aria-live="polite">
-                            <span class="probability-result-status-placeholder" aria-hidden="true">
-                                <span class="probability-result-status-chip probability-result-status-neutral">@(UiText.Get("Ui.InputsChanged"))</span>
-                            </span>
-                            @if (_calculation.IsPreliminary || _calculation.IsStale) {
-                                <span class="probability-result-status probability-result-status-chip @(_calculation.IsPreliminary ? "probability-result-status-preliminary" : "probability-result-status-neutral")">
-                                    @if (_calculation.IsPreliminary) {
-                                        <span>@(UiText.Get("Ui.Preliminary"))</span>
-                                    }
-                                    else {
-                                        <span>@(UiText.Get("Ui.InputsChanged"))</span>
-                                    }
+                    <CalculationAccuracyResult Contract="result.Contract" Context="_calculation.Snapshot?.Context"
+                        ModeDescription="@(_calculation.Snapshot?.Context.ModeDescription)">
+                        <div class="probability-result-title">
+                            <h5 id="probabilityResultsHeading">@(_pinnedResult is null ? UiText.Get("Result.Heading") : UiText.Get("Ui.CurrentResult"))</h5>
+                            <small class="probability-result-status-slot text-body-secondary fw-normal" role="status" aria-live="polite">
+                                <span class="probability-result-status-placeholder" aria-hidden="true">
+                                    <span class="probability-result-status-chip probability-result-status-neutral">@(UiText.Get("Ui.InputsChanged"))</span>
                                 </span>
-                            }
-                            else {
-                                <span class="visually-hidden">@(UiText.Get("Ui.ResultReady"))</span>
-                            }
-                        </small>
-                    </div>
+                                @if (_calculation.IsPreliminary || _calculation.IsStale) {
+                                    <span class="probability-result-status probability-result-status-chip @(_calculation.IsPreliminary ? "probability-result-status-preliminary" : "probability-result-status-neutral")">
+                                        @if (_calculation.IsPreliminary) {
+                                            <span>@(UiText.Get("Ui.Preliminary"))</span>
+                                        }
+                                        else {
+                                            <span>@(UiText.Get("Ui.InputsChanged"))</span>
+                                        }
+                                    </span>
+                                }
+                                else {
+                                    <span class="visually-hidden">@(UiText.Get("Ui.ResultReady"))</span>
+                                }
+                            </small>
+                        </div>
+                    </CalculationAccuracyResult>
                     <button type="button" class="btn btn-outline-primary pin-result-action" disabled="@(!CanPin)"
                             aria-label="@(_pinnedResult is null ? UiText.Get("Ui.PinResult") : UiText.Get("Ui.ReplacePinWithCurrentResult"))"
                             title="@(_pinnedResult is null ? UiText.Get("Ui.PinResult") : UiText.Get("Ui.ReplacePinWithCurrentResult"))"
@@ -250,8 +253,7 @@
                                              IsStale="_calculation.IsStale"
                                              IsCalculating="_calculation.IsCalculating" />
                 </div>
-                <CalculationAccuracyResult Contract="result.Contract" Context="_calculation.Snapshot?.Context"
-                    ModeDescription="@(_calculation.Snapshot?.Context.ModeDescription)" />
+                <CalculationAccuracyDetails />
                 <div class="combo-probability-row probability-total">
                     <span class="combo-probability-name">@(UiText.Get("Ui.AnyActiveCombo"))</span>
                     <div class="result-value-group">

@@ -590,7 +590,7 @@
     <value>Any eligibility row may match</value>
   </data>
   <data xml:space="preserve" name="Ui.Anycardclearfilter">
-    <value>Any card (clear filter)</value>
+    <value>Clear filter</value>
   </data>
   <data xml:space="preserve" name="Ui.ApplyRule">
     <value>Apply rule</value>
@@ -1932,6 +1932,6 @@
     <value>Hand size: {0}</value>
   </data>
   <data name="Result.DeckSize" xml:space="preserve">
-    <value>Deck size: {0} cards</value>
+    <value>Deck size: {0}</value>
   </data>
 </root>
