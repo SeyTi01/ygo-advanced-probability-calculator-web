@@ -12,7 +12,7 @@ The German pilot uses informal **du**, short action labels and complete explanat
 | Preliminary | Vorläufig | Accepted Fast result awaiting possible Exact refinement. |
 | distinct physical copies | verschiedene physische Kartenexemplare | Separate positive requirements consume separate copies. |
 | requirement / same-card AND / OR | Anforderung / UND auf derselben Karte / ODER | Inclusive minima/maxima and alternative semantics are unchanged. |
-| Any active combo | Mindestens eine aktive Kombo | Union of active successes, counting overlaps once. |
+| Any combo | Mindestens eine Kombo | Union of active successes, counting overlaps once. |
 | modeled primary fraction | modellierter primärer Bruch | Retained model fraction; may differ from the bounded display midpoint. |
 | workspace / session | Arbeitsbereich / Sitzung | Current accepted state / portable saved configuration. |
 | pinned result | angeheftetes Ergebnis | Snapshot retaining its original inputs and accuracy. |
