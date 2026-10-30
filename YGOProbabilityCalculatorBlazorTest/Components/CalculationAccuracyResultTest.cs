@@ -22,9 +22,7 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
             parameters.Add(component => component.Contract, snapshot.Contract));
         string expected = ProbabilityPresentation.AutomaticExactDetail(outcome)!;
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Effects — fast"));
-        Assert.That(cut.Find("details").GetAttribute("open"), Is.Null);
-        AssertDisclosure(cut);
-        Assert.That(cut.Find("details").TextContent, Does.Not.Contain(expected));
+        Assert.That(cut.FindAll("details"), Is.Empty);
         string copied = ProbabilityResultSummaryFormatter.Format(result, 5, System.Globalization.CultureInfo.InvariantCulture);
         Assert.That(copied, Does.Contain("Mode: Effects — fast").And.Contain(expected));
         Assert.That(snapshot.Contract, Is.SameAs(contract));
@@ -58,7 +56,7 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
             parameters.Add(component => component.Contract, contract));
 
         AssertStatus(cut, contract);
-        AssertDisclosure(cut);
+        Assert.That(cut.FindAll("details"), Is.Empty);
     }
 
     [Test]
@@ -66,20 +64,22 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
         IRenderedComponent<CalculationAccuracyResult> cut = context.RenderComponent<CalculationAccuracyResult>();
 
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Uncertified · accuracy unavailable"));
-        AssertDisclosure(cut);
+        Assert.That(cut.FindAll("details"), Is.Empty);
     }
 
     [Test]
     public void ContextUsesPhysicalCopiesAndKeepsModeAndAccuracyDisclosure() {
         PinnedCalculationContext input = new(5, 40, 24);
         IRenderedComponent<CalculationAccuracyResult> cut = context.RenderComponent<CalculationAccuracyResult>(parameters => parameters
+            .AddChildContent("<h5>Results</h5>")
             .Add(component => component.Context, input)
             .Add(component => component.ModeDescription, input.ModeDescription)
             .Add(component => component.Contract, ProbabilityPresentationTest.Contract(CalculationAccuracy.Exact)));
+        Assert.That(cut.Find("h5").TextContent, Is.EqualTo("Results"));
         Assert.That(cut.Find(".result-model").Children.Select(child => child.TextContent),
-            Is.EqualTo(new[] { "Hand size: 5", "Deck size: 40 cards" }));
+            Is.EqualTo(new[] { "Hand size: 5", "Deck size: 40" }));
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
-        AssertDisclosure(cut);
+        Assert.That(cut.FindAll("details"), Is.Empty);
     }
 
     private static void AssertStatus(IRenderedFragment cut, CalculationResultContract contract) {
@@ -87,6 +87,12 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
 
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo(expected));
         Assert.That(cut.Find(".result-accuracy").GetAttribute("role"), Is.EqualTo("status"));
+    }
+
+    [Test]
+    public void AccuracyDetailsRemainAnInitiallyCollapsedDisclosureOnTheirOwn() {
+        IRenderedComponent<CalculationAccuracyDetails> cut = context.RenderComponent<CalculationAccuracyDetails>();
+        AssertDisclosure(cut);
     }
 
     private static void AssertDisclosure(IRenderedFragment cut) {

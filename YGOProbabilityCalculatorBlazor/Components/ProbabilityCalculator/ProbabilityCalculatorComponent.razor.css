@@ -13,9 +13,10 @@
 }
 
 .probability-results-heading {
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
+    align-items: start;
     gap: 0.5rem;
     margin-bottom: 0.75rem;
 }
@@ -31,7 +32,8 @@
     align-items: center;
     gap: .5rem;
     min-width: 0;
-    min-height: 2.75rem;
+    grid-column: 1;
+    grid-row: 1;
 }
 
 .probability-result-title h5 { min-width: 0; overflow-wrap: anywhere; }
@@ -512,4 +514,13 @@
     color: var(--bs-secondary-color);
     background-color: var(--bs-secondary-bg);
     border-color: var(--bs-border-color);
+}
+
+@container result-panel (max-width: 48rem) {
+    .probability-result-title { min-height: 2.75rem; }
+    .probability-result-status-slot { position: absolute; inset-inline-end: 0; inset-block-start: 3.25rem; }
+}
+@container result-panel (min-width: 48.001rem) {
+    .probability-result-title { display: contents; }
+    .probability-result-status-slot { order: 1; }
 }

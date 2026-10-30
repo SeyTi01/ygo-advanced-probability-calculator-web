@@ -1,9 +1,11 @@
 <section class="alert alert-secondary mt-3 pinned-result" aria-labelledby="pinnedResultHeading">
     <div class="pinned-heading">
-        <h5 id="pinnedResultHeading">@(UiText.Get("Ui.PinnedResult"))</h5>
+        <CalculationAccuracyResult Context="Snapshot.Context" ModeDescription="@Snapshot.Context.ModeDescription" Contract="Snapshot.Contract">
+            <h5 id="pinnedResultHeading">@(UiText.Get("Ui.PinnedResult"))</h5>
+        </CalculationAccuracyResult>
         <button type="button" class="btn btn-sm btn-outline-secondary" title="@(UiText.Get("Ui.UnpinResult"))" aria-label="@(UiText.Get("Ui.UnpinResult"))" @onclick="OnClear"><PinIcon Slashed="true" /></button>
     </div>
-    <CalculationAccuracyResult Context="Snapshot.Context" ModeDescription="@Snapshot.Context.ModeDescription" Contract="Snapshot.Contract" />
+    <CalculationAccuracyDetails />
 
     <div class="pinned-row pinned-total">
         <span>@(UiText.Get("Ui.AnyActiveCombo"))</span><ProbabilityValue Probability="Snapshot.Total" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" ValueClass="probability-total-value" />
