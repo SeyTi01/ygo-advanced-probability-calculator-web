@@ -125,15 +125,16 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         Assert.That(manual.ExternalCardId, Is.Null);
     }
 
-    [Test]
-    public async Task LocalizedCardDisplayPreservesCanonicalSessionAndCustomRename() {
-        using PresentationLocale locale = new("fr");
+    [TestCase("fr", "⟦Greed vessel⟧")]
+    [TestCase("de", "Topf der Gier")]
+    public async Task LocalizedCardDisplayPreservesCanonicalSessionAndCustomRename(string language, string displayName) {
+        using PresentationLocale locale = new(language, production: language == "de");
         Card card = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [card] });
         IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
-        cut.WaitForAssertion(() => Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith("⟦Greed vessel⟧")));
+        cut.WaitForAssertion(() => Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith(displayName)));
         IElement input = editor.Find("#cardName0");
-        Assert.That(input.GetAttribute("value"), Is.EqualTo("⟦Greed vessel⟧"));
+        Assert.That(input.GetAttribute("value"), Is.EqualTo(displayName));
         string before = cut.FindComponent<SessionShareButton>().Instance.Capture();
         await input.FocusAsync(new());
         await input.BlurAsync(new());
@@ -142,14 +143,14 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         await input.InputAsync(new() { Value = "Pot of Greed" });
         Assert.That(input.GetAttribute("value"), Is.EqualTo("Pot of Greed"), "a translated label must not replace an active typed draft");
         await input.BlurAsync(new());
-        Assert.That(input.GetAttribute("value"), Is.EqualTo("⟦Greed vessel⟧"));
+        Assert.That(input.GetAttribute("value"), Is.EqualTo(displayName));
         Assert.That(cut.FindComponent<SessionShareButton>().Instance.Capture(), Is.EqualTo(before));
         await input.InputAsync(new() { Value = "My custom name" });
         await input.BlurAsync(new());
         Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith("My custom name"));
         Assert.That(input.GetAttribute("value"), Is.EqualTo("My custom name"));
         Assert.That(editor.Instance.Card.Name, Is.EqualTo("My custom name"));
-        Assert.That(_handler.Requests.Count(address => address.AbsolutePath.EndsWith("card-names.fr.test.json")), Is.EqualTo(1));
+        Assert.That(_handler.Requests.Count(address => address.AbsolutePath.EndsWith(language == "de" ? "card-names.de.v1.json" : "card-names.fr.test.json")), Is.EqualTo(1));
     }
 
     [Test]
@@ -199,17 +200,18 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         service.Verify(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>()), Times.Exactly(2));
     }
 
-    [Test]
-    public async Task LocalizedPriorityLabelsDisambiguateTranslatedAndCustomNames() {
-        using PresentationLocale locale = new("fr");
+    [TestCase("fr", "⟦Greed vessel⟧")]
+    [TestCase("de", "Topf der Gier")]
+    public async Task LocalizedPriorityLabelsDisambiguateTranslatedAndCustomNames(string language, string displayName) {
+        using PresentationLocale locale = new(language, production: language == "de");
         Card canonical = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
-        Card custom = new([], name: "⟦Greed vessel⟧", drawCount: 2);
+        Card custom = new([], name: displayName, drawCount: 2);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [canonical, custom] });
         await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
         cut.WaitForAssertion(() => {
             string[] labels = cut.FindAll(".draw-priority-name").Select(element => element.TextContent.Trim()).ToArray();
             Assert.That(labels, Has.Length.EqualTo(2));
-            Assert.That(labels.All(label => label.StartsWith("⟦Greed vessel⟧", StringComparison.Ordinal)), Is.True);
+            Assert.That(labels.All(label => label.StartsWith(displayName, StringComparison.Ordinal)), Is.True);
             Assert.That(labels.Distinct().Count(), Is.EqualTo(2));
         });
     }
@@ -757,7 +759,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     private void RegisterCardInfoService(SearchCatalogHandler handler) {
         _handler = handler;
         HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
-        CardInfoService service = new(new EmptyLocalStorage(), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+        CardInfoService service = new(new EmptyLocalStorage(), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json", ["de"] = "data/card-names.de.v1.json" });
         context.Services.RemoveAll<ICardInfoService>();
         context.Services.RemoveAll<ICardArtworkService>();
         context.Services.AddSingleton<ICardInfoService>(service);
@@ -775,7 +777,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
 
     private void RegisterCardInfoService(DelayedSearchCatalogHandler handler) {
         HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
-        CardInfoService service = new(new EmptyLocalStorage(), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+        CardInfoService service = new(new EmptyLocalStorage(), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json", ["de"] = "data/card-names.de.v1.json" });
         context.Services.RemoveAll<ICardInfoService>();
         context.Services.RemoveAll<ICardArtworkService>();
         context.Services.AddSingleton<ICardInfoService>(service);
@@ -801,6 +803,8 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
             Requests.Add(address);
             HttpResponseMessage response = address.AbsolutePath.EndsWith("card-catalog.v1.json", StringComparison.Ordinal)
                 ? new(HttpStatusCode.OK) { Content = new StringContent(_catalogJson, Encoding.UTF8, "application/json") }
+                : address.AbsolutePath.EndsWith("card-names.de.v1.json", StringComparison.Ordinal)
+                ? new(HttpStatusCode.OK) { Content = new StringContent("{\"version\":1,\"locale\":\"de\",\"names\":[[55144522,\"Topf der Gier\"]]}", Encoding.UTF8, "application/json") }
                 : address.AbsolutePath.EndsWith("card-names.fr.test.json", StringComparison.Ordinal)
                 ? new(HttpStatusCode.OK) { Content = new StringContent("{\"version\":1,\"locale\":\"fr\",\"names\":[[55144522,\"⟦Greed vessel⟧\"]]}", Encoding.UTF8, "application/json") }
                 : new(HttpStatusCode.NotFound);

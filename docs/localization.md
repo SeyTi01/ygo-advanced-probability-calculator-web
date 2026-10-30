@@ -1,6 +1,6 @@
 # Localization contributors
 
-English is the only production locale. Presentation uses the platform's
+English and German (`de`, Deutsch) are production locales. Presentation uses the platform's
 `ResourceManager` and keyed `.resx` satellites in `Localization/Strings.resx`.
 This avoids an additional package and works equally in Razor, static C#
 presentation helpers, WebAssembly, and the publish-time prerenderer.
@@ -73,8 +73,8 @@ reveals its canonical HTML. For a non-English preference it keeps that HTML hidd
 until the correctly initialized interactive layout is ready. The document language
 then changes with the interactive UI. This does not translate or replace SEO
 metadata. JavaScript-disabled crawlers/readers retain canonical English HTML.
-Startup errors reveal the existing runtime-error UI. No translated card catalog
-is bundled; translations remain .resx satellites selected by startup.
+Startup errors reveal the existing runtime-error UI. UI translations remain
+.resx satellites selected by startup; German card names load separately on demand.
 
 ## Language reload and accepted workspace
 
@@ -116,7 +116,7 @@ from normal explicit recovery and never changes session schema or worker bytes.
 
 `node scripts/localization/prepare-test-host.cjs` makes an ignored source copy
 under `bin/localization-test-host`, adding the test-only pseudo satellite under
-`fr` and `de` plus an isolated registry. Neither pseudo resource nor registry
+`fr` plus an isolated registry, retaining the real German satellite. Neither pseudo resource nor registry
 is included in production. Publish that copy with the same stripped-IL AOT
 configuration as the production app. Use `--refresh` to recreate a previously
 marked generated copy after source changes, then run:
@@ -152,7 +152,7 @@ resources, even inside that scope.
 `Archetypes.<canonical name>`, and `NumericProperty.<enum name>`. Missing optional
 labels retain the canonical English display value. Numeric requirement rendering
 uses parameterized `NumericRange.*` messages. Optional same-origin name assets join the shared catalog by canonical ID.
-No production name asset is registered yet; English performs no extra lookup.
+The reviewed German name asset is registered; English performs no extra lookup.
 
 Catalog `CardInfo` results have verified identity and may use localized labels.
 Saved `Card.Name` always retains its stored text. An optional display label is
@@ -216,3 +216,16 @@ The deliberate later translation pass consists of:
 
 The `/help` route, canonical metadata, development-channel version label and
 publish-time prerendering behavior stay intact.
+
+## German card-name coverage
+
+The [German terminology guide](localization-de.md) records wording and intentional
+English fallbacks. The retained YGOPRODeck snapshot supplies 11,769 names out of
+14,607 canonical cards, covering 4 of the 24 example entries. German and English
+queries select the same canonical cards through the shared loader. Umlauts and
+ß remain distinct; no accent stripping or translated-name identity joins occur.
+
+See the [offline generation and audit guide](../infrastructure/card-catalog/README.md#german-search-names).
+The YAML Yugi comparison remains audit-only: its hypothetical coverage expansion
+is blocked on unresolved bulk name/passcode redistribution permission. No candidate
+snapshot or additional runtime names are included.

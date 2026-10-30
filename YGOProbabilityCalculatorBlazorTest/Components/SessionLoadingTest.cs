@@ -322,8 +322,9 @@ public class SessionLoadingTest {
 
     [TestCase("en")]
     [TestCase("fr")]
+    [TestCase("de")]
     public void HelpKeepsOneExampleActionBeforeCollapsedSemanticTopics(string language) {
-        using PresentationLocale locale = new(language, production: language == "en");
+        using PresentationLocale locale = new(language, production: language != "fr");
         IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
         Assert.That(cut.FindAll(".example-session-action button"), Has.Count.EqualTo(1));
         Assert.That(cut.Find(".help-content > section .example-session-action"), Is.Not.Null);
