@@ -7,13 +7,13 @@ public enum DrawExecutionPath { Ordinary, DrawCountState, ExchangeableConditiona
 // Structural guidance only. Never compiles events, reduces the deck, or enumerates hands.
 public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bool ElevatedRisk) {
     internal static bool IsExchangeableEffect(Card effect, bool relevant, int copies, int handSize) =>
-        !effect.EffectPlan.HasActivationRestrictions && effect.PreDrawRemovalCount == 0 && !relevant && effect.MaximumActivations == int.MaxValue
+        !effect.IsDangerReveal && !effect.EffectPlan.HasActivationRestrictions && effect.PreDrawRemovalCount == 0 && !relevant && effect.MaximumActivations == int.MaxValue
         && effect.DrawCount == effect.PostDrawDiscardCount + 1
         && effect.PostDrawSelector.Kind == CardSelectorKind.Any
         && (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) * (long)effect.Copies <= copies - handSize;
 
     internal static bool CanDeferIdentities(Card effect) =>
-        (effect.PreDrawRemovalCount == 0 || effect.PreDrawSelector.Kind != CardSelectorKind.Any)
+        !effect.IsDangerReveal && (effect.PreDrawRemovalCount == 0 || effect.PreDrawSelector.Kind != CardSelectorKind.Any)
         && (effect.PostDrawDiscardCount == 0 || effect.PostDrawSelector.Kind != CardSelectorKind.Any)
         && !effect.EffectPlan.HasActivationRestrictions;
 
@@ -46,6 +46,9 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         long copies = active.Sum(card => (long)card.Copies);
         if (copies > int.MaxValue || handSize < 1 || handSize > copies) {
             return new(DrawExecutionPath.Unknown, false);
+        }
+        if (active.Any(card => card.IsDangerReveal)) {
+            return new(DrawExecutionPath.OrderedFrontier, true);
         }
         HashSet<Card>? inert = DrawEffectFeasibility.FindInert(active, (int)copies, handSize);
         Card[] effects = active.Where(card => card.DrawCount is not null && (inert is null || !inert.Contains(card))).ToArray();

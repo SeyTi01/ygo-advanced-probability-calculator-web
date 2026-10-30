@@ -28,7 +28,7 @@ internal readonly struct OrderedDrawStateLayout {
         Array.Fill(_optSlots, -1);
         int optCount = 0;
         for (int i = 0; i < RowCount; i++) {
-            if (cards[i].DrawCount is not null && cards[i].MaximumActivations != int.MaxValue) {
+            if (cards[i].HasDrawEffect && cards[i].MaximumActivations != int.MaxValue) {
                 _optSlots[i] = 2 * RowCount + optCount++;
             }
         }

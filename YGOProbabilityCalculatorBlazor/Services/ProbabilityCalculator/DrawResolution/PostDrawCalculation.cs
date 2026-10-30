@@ -1,5 +1,6 @@
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
@@ -22,10 +23,12 @@ internal sealed partial class PostDrawCalculation(
     bool eagerTerminalAggregation = true,
     bool reuseSearchTemplates = true,
     bool compactSearchTerminals = true,
-    bool deferSearchers = true
+    bool deferSearchers = true,
+    CardEffectRegistry? identityRegistry = null
 ) {
     // A quarter of Standard's cell allowance. Small conditional frontiers retain
     // their original representation; this is a trigger, never a raised limit.
+    private CardEffectRegistry IdentityRegistry { get; } = identityRegistry ?? CardEffectRegistry.Default;
     internal const int DefaultCompactFrontierThreshold = 65_536;
     private bool CompactPhysicalTerminals => compactSearchTerminals;
     private bool EagerTerminalAggregation { get; } = eagerTerminalAggregation;
@@ -46,6 +49,10 @@ internal sealed partial class PostDrawCalculation(
     internal Action<int[], BigInteger>? ObserveTerminal { get; init; }
     // Paired tests retain the frontier path as a reference for streaming.
     internal bool StreamSearchTerminals { get; init; } = true;
+    // Reference/chunk checks exercise the same exact transitions.
+    internal bool StreamDanger { get; init; } = true;
+    internal long DangerFrontierCellTarget { get; init; } = long.MaxValue;
+    internal int DangerFrontierFlushes { get; private set; }
 
     private void CheckStorage(long entries, long cells, string structure) {
         if (cells > PeakCells) {
@@ -72,7 +79,7 @@ internal sealed partial class PostDrawCalculation(
 
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly = false) {
         List<Card> cards = ReduceDeck(combos);
-        List<Card> deferred = deferIdentities ? DeferUnobservedIdentities(ref cards) : [];
+        List<Card> deferred = deferIdentities && !cards.Any(card => card.IsDangerReveal) ? DeferUnobservedIdentities(ref cards) : [];
         OrderedDrawPreparation preparation = PrepareOrderedDraw(cards, combos);
         int n = cards.Count;
         int copies = preparation.Copies;
@@ -80,8 +87,8 @@ internal sealed partial class PostDrawCalculation(
         bool[] relevant = preparation.Relevant;
         BigInteger[] factorial = preparation.Factorial;
 
-        int[] effects = Enumerable.Range(0, n).Where(index => cards[index].DrawCount is not null).ToArray();
-        int[] filler = Enumerable.Range(0, n).Where(index => !relevant[index] && cards[index].DrawCount is null).ToArray();
+        int[] effects = Enumerable.Range(0, n).Where(index => cards[index].HasDrawEffect).ToArray();
+        int[] filler = Enumerable.Range(0, n).Where(index => !relevant[index] && !cards[index].HasDrawEffect).ToArray();
         // A single effect identity has no order dimension under either priority policy. For a hand-neutral,
         // irrelevant, non-OPT effect, relevant ordinary cards always retain the
         // best handSize copies seen so far. Keep this optimization only when all
@@ -109,36 +116,56 @@ internal sealed partial class PostDrawCalculation(
             removalEligibility,
             costEligibility
         );
+        if (StreamDanger && cards.Any(card => card.IsDangerReveal) && PreferStreamedDanger(cards)
+            && ObserveTerminal is null && ObservePhysicalOutcome is null) {
+            ExactCalculationResult result = CountPhysicalSearch(cards, layout, resolver, factorial, combos, groups, totalOnly,
+                PhysicalEnumerationMethod.Auto);
+            Route = SolverRoute.Ordered;
+            return result;
+        }
         Dictionary<State, BigInteger> terminal = resolver.Resolve(handSize, copies, factorial, compactFrontierThreshold);
         TerminalStates = terminal.Count;
+        BigInteger denominator = resolver.Denominator(factorial, handSize);
 
         return deferred.Count > 0
-            ? CountDeferredHands(cards, deferred, terminal, factorial[copies], combos, groups, totalOnly)
-            : CountTerminalHands(cards, terminal, factorial[copies], combos, groups, totalOnly);
+            ? CountDeferredHands(cards, deferred, terminal, denominator, combos, groups, totalOnly)
+            : CountTerminalHands(cards, terminal, denominator, combos, groups, totalOnly);
+    }
+
+    // Keep the inexpensive frontier for small schedules; both representations
+    // follow exactly the same physical policy and retain the same resource caps.
+    private bool PreferStreamedDanger(List<Card> cards) {
+        long activations = cards.Where(card => card.HasDrawEffect).Sum(card => (long)Math.Min(card.MaximumActivations, card.Copies));
+        long observations = handSize + cards.Sum(card => (long)card.DrawBatchSize * Math.Min(card.MaximumActivations, card.Copies));
+        return cards.Count > 8 || handSize > 5 || activations > 4 || observations > 12;
     }
 
     private List<Card> ReduceDeck(List<Combo> combos) {
         ReductionSelectors selectors = PrepareReductionSelectors(combos);
         List<(Card Card, string Signature, string Eligibility)> entries = CreateReductionEntries(selectors);
         List<Card> reduced = [];
+        bool danger = deck.Any(card => card.IsDangerReveal);
         foreach (IGrouping<string, (Card Card, string Signature, string Eligibility)> group in entries
             .GroupBy(entry => entry.Signature).OrderBy(group => group.Key, StringComparer.Ordinal)) {
             // Retain the established membership/ordinary/ID tie order. Only merge
             // adjacent ordinary runs with equal eligibility for every effect.
             // Combining interleaved IDs across different filters changes removals.
             string? previousEligibility = null;
-            foreach ((Card card, string _, string eligibility) in group.Where(entry => entry.Card.DrawCount is null)
+            foreach ((Card card, string _, string eligibility) in group.Where(entry => !entry.Card.HasDrawEffect)
                 .OrderBy(entry => entry.Card.Id, StringComparer.Ordinal)) {
-                if (eligibility == previousEligibility) {
+                string observedEligibility = danger
+                    ? eligibility + ":" + DangerCardIdentity.Resolve(card, IdentityRegistry)?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    : eligibility;
+                if (observedEligibility == previousEligibility) {
                     reduced[^1] = reduced[^1].WithCopies(checked(reduced[^1].Copies + card.Copies));
                 }
                 else {
                     reduced.Add(card);
-                    previousEligibility = eligibility;
+                    previousEligibility = observedEligibility;
                 }
             }
             // Effect entries stay separate, preserving OPT identity AND custom rank.
-            reduced.AddRange(group.Where(entry => entry.Card.DrawCount is not null).Select(entry => entry.Card)
+            reduced.AddRange(group.Where(entry => entry.Card.HasDrawEffect).Select(entry => entry.Card)
                 .OrderBy(card => card.Id, StringComparer.Ordinal));
         }
         return reduced;

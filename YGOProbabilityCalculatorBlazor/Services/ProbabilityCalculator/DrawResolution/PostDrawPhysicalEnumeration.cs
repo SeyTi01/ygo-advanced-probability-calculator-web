@@ -132,10 +132,13 @@ internal sealed partial class PostDrawCalculation {
         int copies = cards.Sum(card => card.Copies);
         CalculationResultRows resultRows = new(combos, groups, totalOnly);
         BigInteger[] wins = new BigInteger[resultRows.Count];
-        CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "physical results");
+        TerminalAccumulator? accumulator = cards.Any(card => card.IsDangerReveal) && ObservePhysicalOutcome is null
+            ? new(this, budget, factorial, resultRows, totalOnly) : null;
+        BigInteger denominator = resolver.Denominator(factorial, handSize);
+        CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(denominator) + 1), "physical results");
         BoundedSearchHandCounter? bounded = cards.Any(card => card.EffectPlan.RequiresSearchResolution)
             ? new(cards, combos, budget, priority) : null;
-        PhysicalSearchHandCounter? counter = bounded is null ? new(cards, combos, budget) : null;
+        PhysicalSearchHandCounter? counter = bounded is null ? new(cards, combos, budget, memoize: cards.Any(card => card.IsDangerReveal)) : null;
         PhysicalSearchLossCounter? lossCounter = bounded is null && ObservePhysicalOutcome is null
             && cards.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0)
             ? new(cards, budget) : null;
@@ -147,10 +150,16 @@ internal sealed partial class PostDrawCalculation {
         // conservative structural domain, stream rather than speculate/ retry.
         // This is a selection estimate, not a promise to fit: both routes charge
         // actual work and storage and report typed failure at unchanged limits.
-        bool frontier = method == PhysicalEnumerationMethod.Frontier || (method == PhysicalEnumerationMethod.Auto
+        bool frontier = cards.Any(card => card.IsDangerReveal) || method == PhysicalEnumerationMethod.Frontier || (method == PhysicalEnumerationMethod.Auto
             && n <= 8 && handSize <= 5 && activations <= 4 && observations <= 12);
         Route = frontier ? SolverRoute.SearchPhysicalFrontier : SolverRoute.SearchPhysicalEnumeration;
-        if (!layout.HasSearchQueue && cards.All(card => card.DrawCount is null)) {
+        if (StreamDanger && cards.Any(card => card.IsDangerReveal)
+            && (method == PhysicalEnumerationMethod.Streaming || method != PhysicalEnumerationMethod.Frontier && PreferStreamedDanger(cards))
+            && ObservePhysicalOutcome is null && ObserveTerminal is null) {
+            wins = resolver.CountStreamedDanger(handSize, copies, factorial, resultRows.Count,
+                (state, remaining, weight, destination) => CountTerminalInto(state, remaining, weight, destination, sums: accumulator));
+        }
+        else if (!layout.HasSearchQueue && cards.All(card => !card.HasDrawEffect)) {
             // With no draw phase the order of the opening hand is unobservable.
             // Enumerate count vectors with physical binomial mass, not permutations.
             Route = SolverRoute.SearchOnly;
@@ -190,11 +199,15 @@ internal sealed partial class PostDrawCalculation {
         else {
             resolver.Enumerate(handSize, copies, CountTerminal);
         }
-        ExactProbability[] result = wins.Select(win => new ExactProbability(win, factorial[copies])).ToArray();
+        accumulator?.Flush(wins);
+        ExactProbability[] result = wins.Select(win => new ExactProbability(win, denominator)).ToArray();
 
         return resultRows.ToResult(result);
 
-        void CountTerminal(int[] state, int remaining, BigInteger weight) {
+        void CountTerminal(int[] state, int remaining, BigInteger weight) => CountTerminalInto(state, remaining, weight, wins, sums: accumulator);
+
+        void CountTerminalInto(int[] state, int remaining, BigInteger weight, BigInteger[] destination,
+            TerminalAccumulator? sums = null) {
             using IDisposable? terminalMeasurement = budget.SearchDiagnostics?.Measure("physical terminal resolution");
             budget.SearchDiagnostics?.Add("physical visible terminals");
             int hidden = layout.HasHiddenCount ? state[layout.HiddenCount] : 0;
@@ -204,9 +217,16 @@ internal sealed partial class PostDrawCalculation {
             // For a hidden vector l: product C(r_i,l_i) * H! * (R-H)!
             // counts its labeled suffixes. This is joint, not independent losses.
             // Removed/consumed observed cards are already absent from state[0..n].
-            budget.Spend(WorkBudget.IntegerCells(weight) * (WorkBudget.IntegerCells(factorial[hidden])
-                + WorkBudget.IntegerCells(factorial[remaining - hidden]) + 2));
-            BigInteger suffixWeight = weight * factorial[hidden] * factorial[remaining - hidden];
+            BigInteger suffixWeight = weight;
+            if (sums is not null) {
+                budget.Spend((WorkBudget.IntegerCells(weight) + 1) * (WorkBudget.IntegerCells(factorial[hidden]) + 1));
+                suffixWeight *= factorial[hidden];
+            }
+            else {
+                budget.Spend(WorkBudget.IntegerCells(weight) * (WorkBudget.IntegerCells(factorial[hidden])
+                    + WorkBudget.IntegerCells(factorial[remaining - hidden]) + 2));
+                suffixWeight *= factorial[hidden] * factorial[remaining - hidden];
+            }
             if (hidden == 0) {
                 budget.Spend(n);
                 state.AsSpan(0, n).CopyTo(available);
@@ -230,20 +250,24 @@ internal sealed partial class PostDrawCalculation {
                     : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available,
                         layout.HasSearchQueue ? state.AsSpan(layout.SearchQueueStart, layout.SearchQueueCapacity).ToArray()
                             .Where(value => value > 0).Select(value => value - 1).ToArray() : null);
+                if (sums is not null) {
+                    sums.Add(success, remaining - hidden, mass, destination);
+                    return;
+                }
                 if (success.Any(value => value)) {
-                    wins[0] += mass;
+                    destination[0] += mass;
                 }
                 if (!totalOnly) {
                     for (int combo = 0; combo < combos.Count; combo++) {
                         budget.Spend(WorkBudget.IntegerCells(mass) + 1);
                         if (success[combo]) {
-                            wins[resultRows.ComboRow(combo)] += mass;
+                            destination[resultRows.ComboRow(combo)] += mass;
                         }
                     }
                     for (int group = 0; group < (groups?.Count ?? 0); group++) {
                         budget.Spend(combos.Count + WorkBudget.IntegerCells(mass));
                         if (resultRows.GroupMatches(group, success)) {
-                            wins[resultRows.GroupRow(group)] += mass;
+                            destination[resultRows.GroupRow(group)] += mass;
                         }
                     }
                 }

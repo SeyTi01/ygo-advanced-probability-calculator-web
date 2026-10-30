@@ -1,5 +1,6 @@
 using System.Text.Json;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 
@@ -33,6 +34,31 @@ public class CuratedDrawEffectPresetsTest {
             Assert.Multiple(() => {
                 Assert.That(card.GetProperty("name").GetString(), Is.EqualTo(preset.Name));
                 Assert.That(card.GetProperty("canonicalCardId").GetInt32(), Is.EqualTo(preset.CardId));
+            });
+        }
+    }
+
+    [Test]
+    public void DangerPresetsMatchCanonicalCatalogIdentitiesAndOfficialNames() {
+        (int Id, string Name)[] identities = [
+            (43316238, "Danger! Bigfoot!"), (90807199, "Danger! Thunderbird!"),
+            (26302107, "Danger! Dogman!"), (99745551, "Danger!? Tsuchinoko?"),
+            (16209941, "Danger! Chupacabra!"), (52350806, "Danger! Mothman!"),
+            (70711847, "Danger! Nessie!"), (43694650, "Danger!? Jackalope?"),
+            (83518674, "Danger! Ogopogo!")
+        ];
+        using JsonDocument catalog = JsonDocument.Parse(File.ReadAllText(FindCatalogPath()));
+        Dictionary<int, JsonElement> cardsById = catalog.RootElement.GetProperty("cards")
+            .EnumerateArray().ToDictionary(card => card.GetProperty("id").GetInt32());
+
+        Assert.That(DangerBaseEffect.Definitions.Select(effect => (effect.CanonicalCardId, effect.Name)), Is.EqualTo(identities));
+        foreach ((int id, string name) in identities) {
+            JsonElement card = cardsById[id];
+            Assert.Multiple(() => {
+                Assert.That(card.GetProperty("name").GetString(), Is.EqualTo(name));
+                Assert.That(card.GetProperty("canonicalCardId").GetInt32(), Is.EqualTo(id));
+                Assert.That(card.GetProperty("artworkImageIds").EnumerateArray().Select(image => image.GetInt32()), Is.EqualTo(new[] { id }));
+                Assert.That(CardEffectRegistry.Default.Find(id)!.Plan.Operation, Is.EqualTo(DrawOperation.DangerReveal));
             });
         }
     }

@@ -1,0 +1,482 @@
+[
+  {
+    "deck_size": 40,
+    "danger_credit_cap": 8,
+    "tails": [
+      {
+        "depth_at_least": 0,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 1
+      },
+      {
+        "depth_at_least": 1,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 4
+      },
+      {
+        "depth_at_least": 2,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 9
+      },
+      {
+        "depth_at_least": 3,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 15
+      },
+      {
+        "depth_at_least": 4,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 21
+      },
+      {
+        "depth_at_least": 5,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 27
+      },
+      {
+        "depth_at_least": 6,
+        "probability": "4609/5624",
+        "decimal": 0.8195234708392604,
+        "states": 32
+      },
+      {
+        "depth_at_least": 7,
+        "probability": "3449/5624",
+        "decimal": 0.6132645803698435,
+        "states": 37
+      },
+      {
+        "depth_at_least": 8,
+        "probability": "42973/95608",
+        "decimal": 0.4494707555853067,
+        "states": 41
+      },
+      {
+        "depth_at_least": 9,
+        "probability": "337563/1051688",
+        "decimal": 0.3209725698115791,
+        "states": 43
+      },
+      {
+        "depth_at_least": 10,
+        "probability": "465891/2103376",
+        "decimal": 0.22149677470884901,
+        "states": 42
+      },
+      {
+        "depth_at_least": 11,
+        "probability": "2412339/16301164",
+        "decimal": 0.14798568985625812,
+        "states": 38
+      },
+      {
+        "depth_at_least": 12,
+        "probability": "281493/2963848",
+        "decimal": 0.09497551831268,
+        "states": 33
+      },
+      {
+        "depth_at_least": 13,
+        "probability": "22027/382432",
+        "decimal": 0.05759716760103757,
+        "states": 27
+      },
+      {
+        "depth_at_least": 14,
+        "probability": "48209/1481924",
+        "decimal": 0.03253135788340023,
+        "states": 21
+      },
+      {
+        "depth_at_least": 15,
+        "probability": "1517/90117",
+        "decimal": 0.016833671782238647,
+        "states": 16
+      },
+      {
+        "depth_at_least": 16,
+        "probability": "5727/740962",
+        "decimal": 0.007729141305492049,
+        "states": 11
+      },
+      {
+        "depth_at_least": 17,
+        "probability": "52969/17783088",
+        "decimal": 0.0029786165372403263,
+        "states": 7
+      },
+      {
+        "depth_at_least": 18,
+        "probability": "2783/3138192",
+        "decimal": 0.0008868163579538792,
+        "states": 4
+      },
+      {
+        "depth_at_least": 19,
+        "probability": "187/1046064",
+        "decimal": 0.0001787653527891219,
+        "states": 2
+      },
+      {
+        "depth_at_least": 20,
+        "probability": "1/55056",
+        "decimal": 1.816332461493752e-05,
+        "states": 1
+      }
+    ]
+  },
+  {
+    "deck_size": 60,
+    "danger_credit_cap": 8,
+    "tails": [
+      {
+        "depth_at_least": 0,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 1
+      },
+      {
+        "depth_at_least": 1,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 4
+      },
+      {
+        "depth_at_least": 2,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 9
+      },
+      {
+        "depth_at_least": 3,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 15
+      },
+      {
+        "depth_at_least": 4,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 21
+      },
+      {
+        "depth_at_least": 5,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 27
+      },
+      {
+        "depth_at_least": 6,
+        "probability": "42317/65018",
+        "decimal": 0.6508505336983604,
+        "states": 32
+      },
+      {
+        "depth_at_least": 7,
+        "probability": "14941/37642",
+        "decimal": 0.3969236491153499,
+        "states": 37
+      },
+      {
+        "depth_at_least": 8,
+        "probability": "1586335/6436782",
+        "decimal": 0.2464484582513436,
+        "states": 41
+      },
+      {
+        "depth_at_least": 9,
+        "probability": "16457831/113716482",
+        "decimal": 0.1447268743329573,
+        "states": 43
+      },
+      {
+        "depth_at_least": 10,
+        "probability": "32749267/403176618",
+        "decimal": 0.0812280909603741,
+        "states": 42
+      },
+      {
+        "depth_at_least": 11,
+        "probability": "3290437903/75394027566",
+        "decimal": 0.043643216965953274,
+        "states": 38
+      },
+      {
+        "depth_at_least": 12,
+        "probability": "748270633/34270012530",
+        "decimal": 0.02183455965605391,
+        "states": 33
+      },
+      {
+        "depth_at_least": 13,
+        "probability": "19056904/1903889585",
+        "decimal": 0.010009458610489746,
+        "states": 27
+      },
+      {
+        "depth_at_least": 14,
+        "probability": "21943427/5272309620",
+        "decimal": 0.004162014104171674,
+        "states": 21
+      },
+      {
+        "depth_at_least": 15,
+        "probability": "1607507/1054461924",
+        "decimal": 0.0015244808403342594,
+        "states": 16
+      },
+      {
+        "depth_at_least": 16,
+        "probability": "821557/1757436540",
+        "decimal": 0.0004674746321138856,
+        "states": 11
+      },
+      {
+        "depth_at_least": 17,
+        "probability": "16819/149216310",
+        "decimal": 0.00011271556038344602,
+        "states": 7
+      },
+      {
+        "depth_at_least": 18,
+        "probability": "9203/465203790",
+        "decimal": 1.9782727909417934e-05,
+        "states": 4
+      },
+      {
+        "depth_at_least": 19,
+        "probability": "347/155067930",
+        "decimal": 2.237728974650013e-06,
+        "states": 2
+      },
+      {
+        "depth_at_least": 20,
+        "probability": "1/8161470",
+        "decimal": 1.2252694673876153e-07,
+        "states": 1
+      }
+    ]
+  },
+  {
+    "deck_size": 40,
+    "danger_credit_cap": 4,
+    "tails": [
+      {
+        "depth_at_least": 0,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 1
+      },
+      {
+        "depth_at_least": 1,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 4
+      },
+      {
+        "depth_at_least": 2,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 9
+      },
+      {
+        "depth_at_least": 3,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 15
+      },
+      {
+        "depth_at_least": 4,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 21
+      },
+      {
+        "depth_at_least": 5,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 27
+      },
+      {
+        "depth_at_least": 6,
+        "probability": "4609/5624",
+        "decimal": 0.8195234708392604,
+        "states": 32
+      },
+      {
+        "depth_at_least": 7,
+        "probability": "3449/5624",
+        "decimal": 0.6132645803698435,
+        "states": 37
+      },
+      {
+        "depth_at_least": 8,
+        "probability": "42973/95608",
+        "decimal": 0.4494707555853067,
+        "states": 41
+      },
+      {
+        "depth_at_least": 9,
+        "probability": "337563/1051688",
+        "decimal": 0.3209725698115791,
+        "states": 43
+      },
+      {
+        "depth_at_least": 10,
+        "probability": "622423/2878304",
+        "decimal": 0.21624644234938353,
+        "states": 38
+      },
+      {
+        "depth_at_least": 11,
+        "probability": "13085923/89227424",
+        "decimal": 0.14665808350580647,
+        "states": 35
+      },
+      {
+        "depth_at_least": 12,
+        "probability": "756766449/8476605280",
+        "decimal": 0.08927706599545708,
+        "states": 27
+      },
+      {
+        "depth_at_least": 13,
+        "probability": "44231989/847660528",
+        "decimal": 0.052181253625625944,
+        "states": 19
+      },
+      {
+        "depth_at_least": 14,
+        "probability": "61736551/2119151320",
+        "decimal": 0.029132677037900248,
+        "states": 12
+      },
+      {
+        "depth_at_least": 15,
+        "probability": "7241231/693540432",
+        "decimal": 0.010440964456993619,
+        "states": 6
+      },
+      {
+        "depth_at_least": 16,
+        "probability": "1339337/231180144",
+        "decimal": 0.005793477661299493,
+        "states": 5
+      }
+    ]
+  },
+  {
+    "deck_size": 60,
+    "danger_credit_cap": 4,
+    "tails": [
+      {
+        "depth_at_least": 0,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 1
+      },
+      {
+        "depth_at_least": 1,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 4
+      },
+      {
+        "depth_at_least": 2,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 9
+      },
+      {
+        "depth_at_least": 3,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 15
+      },
+      {
+        "depth_at_least": 4,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 21
+      },
+      {
+        "depth_at_least": 5,
+        "probability": "1",
+        "decimal": 1.0,
+        "states": 27
+      },
+      {
+        "depth_at_least": 6,
+        "probability": "42317/65018",
+        "decimal": 0.6508505336983604,
+        "states": 32
+      },
+      {
+        "depth_at_least": 7,
+        "probability": "14941/37642",
+        "decimal": 0.3969236491153499,
+        "states": 37
+      },
+      {
+        "depth_at_least": 8,
+        "probability": "1586335/6436782",
+        "decimal": 0.2464484582513436,
+        "states": 41
+      },
+      {
+        "depth_at_least": 9,
+        "probability": "16457831/113716482",
+        "decimal": 0.1447268743329573,
+        "states": 43
+      },
+      {
+        "depth_at_least": 10,
+        "probability": "713049643/8869885596",
+        "decimal": 0.08038994813208862,
+        "states": 38
+      },
+      {
+        "depth_at_least": 11,
+        "probability": "6561279383/150788055132",
+        "decimal": 0.0435132569171759,
+        "states": 35
+      },
+      {
+        "depth_at_least": 12,
+        "probability": "80126414351/3769701378300",
+        "decimal": 0.021255374447493806,
+        "states": 27
+      },
+      {
+        "depth_at_least": 13,
+        "probability": "476751499/50262685044",
+        "decimal": 0.009485197589079281,
+        "states": 19
+      },
+      {
+        "depth_at_least": 14,
+        "probability": "4962099677/1256567126100",
+        "decimal": 0.0039489332276269554,
+        "states": 12
+      },
+      {
+        "depth_at_least": 15,
+        "probability": "840052601/753940275660",
+        "decimal": 0.0011142163751162082,
+        "states": 6
+      },
+      {
+        "depth_at_least": 16,
+        "probability": "98835199/251313425220",
+        "decimal": 0.00039327464863239827,
+        "states": 5
+      }
+    ]
+  }
+]

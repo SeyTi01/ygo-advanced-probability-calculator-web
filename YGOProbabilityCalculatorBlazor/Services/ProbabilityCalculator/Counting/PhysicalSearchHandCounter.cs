@@ -20,8 +20,23 @@ internal sealed class PhysicalSearchHandCounter {
     private readonly int[] _allowance;
     private readonly bool[] _success;
     private readonly Stack<(int Kind, int Index, int Start, int Left)> _stack = new();
+    private readonly Dictionary<TerminalKey, bool[]>? _terminals;
+    private readonly int[]? _terminalTargets;
+    private long _terminalCells;
 
-    internal PhysicalSearchHandCounter(List<Card> cards, List<Combo> combos, WorkBudget budget) {
+    private sealed record TerminalKey(int[] Values) {
+        public bool Equals(TerminalKey? other) => other is not null && Values.AsSpan().SequenceEqual(other.Values);
+
+        public override int GetHashCode() {
+            HashCode hash = new();
+            foreach (int value in Values) {
+                hash.Add(value);
+            }
+            return hash.ToHashCode();
+        }
+    }
+
+    internal PhysicalSearchHandCounter(List<Card> cards, List<Combo> combos, WorkBudget budget, bool memoize = false) {
         _cards = cards;
         _combos = combos;
         _budget = budget;
@@ -35,12 +50,24 @@ internal sealed class PhysicalSearchHandCounter {
         _hand = new int[cards.Count];
         _allowance = new int[_sources.Length];
         _success = new bool[combos.Count];
+        if (memoize) {
+            budget.Spend(_sources.Sum(source => source.Targets.Length + 1L));
+            _terminalTargets = _sources.SelectMany(source => source.Targets).Distinct().ToArray();
+            budget.CheckStorage(_terminalTargets.Length, _terminalTargets.Length);
+            _terminals = new();
+        }
     }
 
     // The caller consumes this borrowed row buffer before evaluating the next
     // terminal. No input, result, or mutable state is retained across requests.
     internal bool[] Evaluate(ReadOnlySpan<int> original, int[] available) {
         _budget.Spend(original.Length + _combos.Count + 1L);
+        TerminalKey? key = _terminals is null ? null : CreateTerminalKey(original, available);
+        if (key is not null && _terminals!.TryGetValue(key, out bool[] cached)) {
+            _budget.Spend(_success.Length);
+            cached.CopyTo(_success, 0);
+            return _success;
+        }
         int[] hand = _hand;
         original.CopyTo(hand);
         int size = hand.Sum();
@@ -165,6 +192,9 @@ internal sealed class PhysicalSearchHandCounter {
             Push(1, index, 0, allowance[index]);
             Push(0, index + 1, 0, 0);
         }
+        if (key is not null) {
+            RememberTerminal(key, success);
+        }
         return success;
 
         void Push(int kind, int index, int start, int left) {
@@ -182,5 +212,37 @@ internal sealed class PhysicalSearchHandCounter {
             }
             return count >= bound.Minimum && count <= bound.Maximum;
         }
+    }
+
+    // No later draw observes the Deck. Only held sources and their target rows
+    // affect single-pass search assignments. A target cannot be consumed more
+    // often than the total allowance supplied by the initial hand; excess copies
+    // and every non-target Deck row are therefore equivalent at this boundary.
+    private TerminalKey CreateTerminalKey(ReadOnlySpan<int> hand, int[] available) {
+        int maximumSearches = 0;
+        foreach ((int source, int[] _) in _sources) {
+            maximumSearches += Math.Min(hand[source], _cards[source].MaximumActivations);
+        }
+        int[] values = new int[hand.Length + _terminalTargets!.Length];
+        hand.CopyTo(values);
+        for (int index = 0; index < _terminalTargets.Length; index++) {
+            values[hand.Length + index] = Math.Min(available[_terminalTargets[index]], maximumSearches);
+        }
+        _budget.Spend(_sources.Length + 2L * values.Length + 1);
+        return new(values);
+    }
+
+    private void RememberTerminal(TerminalKey key, bool[] success) {
+        long cells = key.Values.Length + success.Length + 1L;
+        _budget.Spend(cells);
+        if (_terminals!.Count >= _budget.StoragePolicy.EntryLimit
+            || _terminalCells + cells > _budget.StoragePolicy.CellLimit) {
+            // A full optional cache stops retaining entries. The uncached
+            // evaluator still resolves the complete physical outcome exactly.
+            return;
+        }
+        _terminalCells += cells;
+        _budget.CheckStorage(_terminals.Count + 1L, _terminalCells);
+        _terminals.Add(key, (bool[])success.Clone());
     }
 }

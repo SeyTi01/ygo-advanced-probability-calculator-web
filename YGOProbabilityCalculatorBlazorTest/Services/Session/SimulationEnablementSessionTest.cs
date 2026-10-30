@@ -22,7 +22,7 @@ public sealed class SimulationEnablementSessionTest {
         SessionService codec = Codec();
         string json = codec.SerializeSession(session);
         SessionState loaded = await codec.LoadSessionAsync(json);
-        Assert.That(loaded.SchemaVersion, Is.EqualTo(13), "older readers must reject the new behavior");
+        Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion), "older readers must reject the new behavior");
         Assert.That(codec.SerializeSession(loaded), Is.EqualTo(json));
         for (int index = 0; index < session.Cards.Count; index++) {
             Assert.That(loaded.Cards[index].SimulationEnabled, Is.EqualTo(session.Cards[index].SimulationEnabled));

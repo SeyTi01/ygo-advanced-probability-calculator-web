@@ -200,6 +200,15 @@ public class CardConverter : JsonConverter<Card> {
 
         bool firstActivationOnly = ReadRestriction("FirstActivationOnly");
         bool blocksLaterDraws = ReadRestriction("BlocksLaterDraws");
+        JsonProperty[] operations = root.EnumerateObject()
+            .Where(property => property.Name.Equals("DrawOperation", StringComparison.OrdinalIgnoreCase)).ToArray();
+        DrawOperation operation = DrawOperation.Ordinary;
+        if (operations.Length > 1 || (operations.Length == 1
+            && (operations[0].Value.ValueKind != JsonValueKind.String
+                || !Enum.GetNames<DrawOperation>().Contains(operations[0].Value.GetString(), StringComparer.Ordinal)
+                || !Enum.TryParse(operations[0].Value.GetString(), out operation)))) {
+            throw new JsonException("Draw operation must be a single supported operation name.");
+        }
         try {
             return new Card(
                 categories,
@@ -224,7 +233,8 @@ public class CardConverter : JsonConverter<Card> {
                 oncePerTurn: oncePerTurn,
                 activationLimit: ReadInteger("ActivationLimit"),
                 minimumHandSize: ReadInteger("MinimumHandSize") ?? 0,
-                simulationEnabled: simulationEnabled
+                simulationEnabled: simulationEnabled,
+                drawOperation: operation
             );
         }
         catch (ArgumentException exception) {
@@ -250,6 +260,9 @@ public class CardConverter : JsonConverter<Card> {
         JsonSerializer.Serialize(writer, value.ManualMetadataCategoryKeys.Order(StringComparer.Ordinal), options);
         if (value.DrawCount is { } drawCount) {
             writer.WriteNumber("DrawCount", drawCount);
+        }
+        if (value.EffectPlan.Operation != DrawOperation.Ordinary) {
+            writer.WriteString("DrawOperation", value.EffectPlan.Operation.ToString());
         }
 
         if (value.Search is not null) {

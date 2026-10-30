@@ -36,6 +36,9 @@ internal sealed partial class PostDrawCalculation {
             int compactFrontierThreshold,
             bool packTerminals = false
         ) where TTerminal : struct, ITerminalHand {
+            if (cards.Any(card => card.IsDangerReveal)) {
+                return ResolveDanger<TTerminal>(handSize, copies, factorial, compactFrontierThreshold, packTerminals);
+            }
             int n = layout.RowCount;
             int[] initial = new int[layout.QueueStart];
             for (int i = 0; i < n; i++) {
@@ -84,7 +87,7 @@ internal sealed partial class PostDrawCalculation {
                         if (values[i] == 0) {
                             continue;
                         }
-                        bool candidate = cards[i].DrawCount is not null && TimingAllows(values, i) && !Used(values, i)
+                        bool candidate = cards[i].HasDrawEffect && TimingAllows(values, i) && !Used(values, i)
                             && (cards[i].MaximumActivations != 1 || !values.AsSpan(layout.QueueStart).Contains(i));
                         budget.Spend(values.Length + WorkBudget.IntegerCells(weight) + 1L);
                         int[] drawn = new int[values.Length + (candidate ? 1 : 0)];
@@ -254,7 +257,7 @@ internal sealed partial class PostDrawCalculation {
                     values = RemoveCandidate(values, candidate);
                     continue;
                 }
-                if (cards[source].DrawCount!.Value + cards[source].PreDrawDeckRemovalCount + cards[source].PostDrawDeckMillCount > remaining) {
+                if (cards[source].DrawBatchSize + cards[source].PreDrawDeckRemovalCount + cards[source].PostDrawDeckMillCount > remaining) {
                     values = RemoveCandidate(values, candidate);
                     continue;
                 }
@@ -299,7 +302,7 @@ internal sealed partial class PostDrawCalculation {
                 // Single-activation entries enqueue only one pending copy;
                 // higher limits retain later copies until their allowance is spent.
             }
-            values[layout.DrawsLeft] = cards[source].DrawCount!.Value;
+            values[layout.DrawsLeft] = cards[source].DrawBatchSize;
             bool needsCompletion = cards[source].PostDrawDiscardCount > 0
                 || cards[source].PostDrawDeckMillCount > 0 || cards[source].BlocksLaterDraws;
             values[layout.CompletionSource] = needsCompletion ? source + 1 : 0;
@@ -334,16 +337,16 @@ internal sealed partial class PostDrawCalculation {
             bool[] activatable = new bool[n];
             bool[] costDeferred = new bool[n];
             int minimumLegalDeckConsumption = int.MaxValue;
-            if (reservedSource >= 0 && cards[reservedSource].DrawCount is int reservedDrawCount
-                && reservedDrawCount + cards[reservedSource].PreDrawDeckRemovalCount + cards[reservedSource].PostDrawDeckMillCount <= remaining) {
+            if (reservedSource >= 0 && cards[reservedSource].HasDrawEffect
+                && cards[reservedSource].DrawBatchSize + cards[reservedSource].PreDrawDeckRemovalCount + cards[reservedSource].PostDrawDeckMillCount <= remaining) {
                 // A reserved source has already passed its activation checks and is finishing its cost.
-                minimumLegalDeckConsumption = reservedDrawCount + cards[reservedSource].PreDrawDeckRemovalCount + cards[reservedSource].PostDrawDeckMillCount;
+                minimumLegalDeckConsumption = cards[reservedSource].DrawBatchSize + cards[reservedSource].PreDrawDeckRemovalCount + cards[reservedSource].PostDrawDeckMillCount;
             }
             for (int i = 0; i < n; i++) {
                 if (!TimingAllows(values, i)
                     || (reservedSource >= 0 && (cards[reservedSource].BlocksLaterDraws || cards[i].FirstActivationOnly))
                     || !pending[i] || values[layout.HandStart + i] - (i == reservedSource ? 1 : 0) == 0 || Used(values, i)
-                    || cards[i].DrawCount is not int drawCount || drawCount + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount > remaining
+                    || !cards[i].HasDrawEffect || cards[i].DrawBatchSize + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount > remaining
                     || (i == reservedSource && RemainingAllowance(values, i) <= 1)) {
                     continue;
                 }
@@ -352,7 +355,7 @@ internal sealed partial class PostDrawCalculation {
                     && (cards[i].PreDrawRemovalCount == 0 || CanPay(values, i, reservedSource));
                 if (canPay) {
                     activatable[i] = true;
-                    minimumLegalDeckConsumption = Math.Min(minimumLegalDeckConsumption, drawCount + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount);
+                    minimumLegalDeckConsumption = Math.Min(minimumLegalDeckConsumption, cards[i].DrawBatchSize + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount);
                 }
                 else if (cards[i].PreDrawRemovalCount > 0 || cards[i].MinimumHandSize > 0) {
                     costDeferred[i] = true;
@@ -370,7 +373,7 @@ internal sealed partial class PostDrawCalculation {
                 bool usable = activatable[i];
                 bool redundant = values[layout.HandStart + i] - (i == reservedSource ? 1 : 0) > RemainingAllowance(values, i) - (i == reservedSource ? 1 : 0);
                 bool deferred = costDeferred[i] && !redundant && !cards[i].FirstActivationOnly
-                    && cards[i].DrawCount is int drawCount && drawCount + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount <= remainingAfterAnotherDraw;
+                    && cards[i].HasDrawEffect && cards[i].DrawBatchSize + cards[i].PreDrawDeckRemovalCount + cards[i].PostDrawDeckMillCount <= remainingAfterAnotherDraw;
                 int tier = (relevant[i], usable && !redundant, deferred) switch {
                     (true, _, _) => 1,
                     (_, true, _) => 2,
@@ -378,7 +381,7 @@ internal sealed partial class PostDrawCalculation {
                     _ => 4
                 };
                 if (searchPolicy is not null) {
-                    int searchCapacity = remaining - (reservedSource < 0 ? 0 : cards[reservedSource].DrawCount!.Value
+                    int searchCapacity = remaining - (reservedSource < 0 ? 0 : cards[reservedSource].DrawBatchSize
                         + cards[reservedSource].PreDrawDeckRemovalCount + cards[reservedSource].PostDrawDeckMillCount);
                     tier = Math.Min(tier, searchPolicy.Tier(i, values, layout.HandStart, searchCapacity));
                 }
@@ -397,7 +400,7 @@ internal sealed partial class PostDrawCalculation {
             // Remove the latest copy of this identity, retaining FIFO priority.
             for (int q = values.Length - 1; q >= layout.QueueStart; q--) {
                 if (values[q] == selected) {
-                    if (cards[selected].MaximumActivations != 1 || values[layout.HandStart + selected] == 0) {
+                    if (_hasDanger || cards[selected].MaximumActivations != 1 || values[layout.HandStart + selected] == 0) {
                         selectedQueue = q;
                     }
                     break;

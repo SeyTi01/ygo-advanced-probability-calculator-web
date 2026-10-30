@@ -1,0 +1,245 @@
+{
+  "Configuration": "Debug .NET 10.0.401 Windows x64; single trial, serial; includes JIT on first call. Not browser latency.",
+  "Samples": [
+    {
+      "Name": "danger-control-40-fast",
+      "InputSha256": "8f4533e821b35f3d65e0879db7f64e9aa6112804a649834393c12ba8c1b3807b",
+      "Milliseconds": 44.4463,
+      "Work": 2838,
+      "PeakEntries": 13,
+      "PeakCells": 65,
+      "AllocatedBytes": 63824,
+      "ExactReference": [
+        "529/703",
+        "14351/27417",
+        "3155/9139",
+        "4762/27417",
+        "15869/27417",
+        "4762/27417"
+      ],
+      "Accuracy": 0,
+      "Proof": "NoActiveSearch",
+      "SolverRoute": "CountState"
+    },
+    {
+      "Name": "danger-control-40-exact",
+      "InputSha256": "b1032bc14f2be325ef15e6e5e65d3793a0e5f814dcc9267b0410f136ea48feb1",
+      "Milliseconds": 0.3458,
+      "Work": 2838,
+      "PeakEntries": 13,
+      "PeakCells": 65,
+      "AllocatedBytes": 58896,
+      "ExactReference": [
+        "529/703",
+        "14351/27417",
+        "3155/9139",
+        "4762/27417",
+        "15869/27417",
+        "4762/27417"
+      ],
+      "Accuracy": 0,
+      "Proof": "NoActiveSearch",
+      "SolverRoute": "CountState"
+    },
+    {
+      "Name": "danger-control-60-fast",
+      "InputSha256": "e97799439da8e8297aa9a52ef80df20c9614a3cce7d2dda548f5da25ee393b84",
+      "Milliseconds": 0.3603,
+      "Work": 2838,
+      "PeakEntries": 13,
+      "PeakCells": 65,
+      "AllocatedBytes": 58960,
+      "ExactReference": [
+        "206259/357599",
+        "206803/715198",
+        "7705/32509",
+        "73768/357599",
+        "132491/357599",
+        "73768/357599"
+      ],
+      "Accuracy": 0,
+      "Proof": "NoActiveSearch",
+      "SolverRoute": "CountState"
+    },
+    {
+      "Name": "danger-control-60-exact",
+      "InputSha256": "2ead1dd091ac70eb91503db6ce5414cc09a6ba108ffa4401aad6a67d7f941010",
+      "Milliseconds": 0.3543,
+      "Work": 2838,
+      "PeakEntries": 13,
+      "PeakCells": 65,
+      "AllocatedBytes": 58960,
+      "ExactReference": [
+        "206259/357599",
+        "206803/715198",
+        "7705/32509",
+        "73768/357599",
+        "132491/357599",
+        "73768/357599"
+      ],
+      "Accuracy": 0,
+      "Proof": "NoActiveSearch",
+      "SolverRoute": "CountState"
+    },
+    {
+      "Name": "danger-single-40-fast",
+      "InputSha256": "e7795c7f01c4352aec242f02453accc2f8891b924bcc4d43ac4cd3a5bffaacc5",
+      "Milliseconds": 63.3896,
+      "Work": 69355,
+      "PeakEntries": 86,
+      "PeakCells": 1027,
+      "AllocatedBytes": 405024,
+      "ExactReference": [
+        "54233/73112",
+        "55561/109668",
+        "667/1976",
+        "38927/219336",
+        "30943/54834",
+        "38927/219336"
+      ],
+      "Accuracy": 0,
+      "Proof": "NoActiveSearch",
+      "SolverRoute": "Ordered"
+    },
+    {
+      "Name": "danger-single-40-exact",
+      "InputSha256": "b8b7b13f3fc499721d2a4b1bec2ab3d63d4b234a25cfe2020ed94d27634ccd79",
+      "Milliseconds": 1.6831,
+      "Work": 69355,
+      "PeakEntries": 86,
+      "PeakCells": 1027,
+      "AllocatedBytes": 398072,
+      "ExactReference": [
+        "54233/73112",
+        "55561/109668",
+        "667/1976",
+        "38927/219336",
+        "30943/54834",
+        "38927/219336"
+      ],
+      "Accuracy": 0,
+      "Proof": "NoActiveSearch",
+      "SolverRoute": "Ordered"
+    },
+    {
+      "Name": "danger-single-60-fast",
+      "InputSha256": "575015bdf5f0dd579fcc185ef0e458318cb370795bd1ba0f862eec7cf06b0306",
+      "Milliseconds": 2.3624,
+      "Work": 78749,
+      "PeakEntries": 86,
+      "PeakCells": 1204,
+      "AllocatedBytes": 421920,
+      "ExactReference": [
+        "37053/65018",
+        "36623/130036",
+        "1597/6844",
+        "53681/260072",
+        "94531/260072",
+        "53681/260072"
+      ],
+      "Accuracy": 0,
+      "Proof": "NoActiveSearch",
+      "SolverRoute": "Ordered"
+    },
+    {
+      "Name": "danger-single-60-exact",
+      "InputSha256": "c3fa74ea5e4b6d77ad559781c55f952335e48a07728d5ab7e004bde668ac0f42",
+      "Milliseconds": 1.7098,
+      "Work": 78749,
+      "PeakEntries": 86,
+      "PeakCells": 1204,
+      "AllocatedBytes": 421920,
+      "ExactReference": [
+        "37053/65018",
+        "36623/130036",
+        "1597/6844",
+        "53681/260072",
+        "94531/260072",
+        "53681/260072"
+      ],
+      "Accuracy": 0,
+      "Proof": "NoActiveSearch",
+      "SolverRoute": "Ordered"
+    },
+    {
+      "Name": "danger-mixed-40-fast",
+      "InputSha256": "8445c25e5bc8bc8757629f6f8889c3682f540dbec68437108c41c39989a6cec0",
+      "Milliseconds": 124.1497,
+      "Work": 2436630,
+      "PeakEntries": 2560,
+      "PeakCells": 28352,
+      "AllocatedBytes": 10002320,
+      "ExactReference": [
+        "66377/83657",
+        "1905214/3262623",
+        "7111571/16313115",
+        "134974/776815",
+        "2106170/3262623",
+        "134974/776815"
+      ],
+      "Accuracy": 0,
+      "Proof": "ExplicitPhysicalSurvivors",
+      "SolverRoute": "SearchPhysicalFrontier"
+    },
+    {
+      "Name": "danger-mixed-40-exact",
+      "InputSha256": "c5826101fb1d33e37c57dfe81e90c6fa74c128e7d4ffa2456e49be0268dce6b8",
+      "Milliseconds": 41.9369,
+      "Work": 2436630,
+      "PeakEntries": 2560,
+      "PeakCells": 28352,
+      "AllocatedBytes": 9982760,
+      "ExactReference": [
+        "66377/83657",
+        "1905214/3262623",
+        "7111571/16313115",
+        "134974/776815",
+        "2106170/3262623",
+        "134974/776815"
+      ],
+      "Accuracy": 0,
+      "Proof": "ExplicitPhysicalSurvivors",
+      "SolverRoute": "SearchPhysicalFrontier"
+    },
+    {
+      "Name": "danger-mixed-60-fast",
+      "InputSha256": "a634a67a5a71c2ed9507b7432530ce0b89982a979aef569ffe7c1518c790c380",
+      "Milliseconds": 35.5734,
+      "Work": 2695466,
+      "PeakEntries": 2560,
+      "PeakCells": 38267,
+      "AllocatedBytes": 10340912,
+      "ExactReference": [
+        "27890113/45057474",
+        "3203323/9655173",
+        "206182523/675862110",
+        "2112322/10240335",
+        "2644339/6144201",
+        "2112322/10240335"
+      ],
+      "Accuracy": 0,
+      "Proof": "ExplicitPhysicalSurvivors",
+      "SolverRoute": "SearchPhysicalFrontier"
+    },
+    {
+      "Name": "danger-mixed-60-exact",
+      "InputSha256": "8afb9768a39dc19bf9d01596e79fdbf1195b9986eb07fd939847c13cfb29eafd",
+      "Milliseconds": 33.3672,
+      "Work": 2695466,
+      "PeakEntries": 2560,
+      "PeakCells": 38267,
+      "AllocatedBytes": 10341152,
+      "ExactReference": [
+        "27890113/45057474",
+        "3203323/9655173",
+        "206182523/675862110",
+        "2112322/10240335",
+        "2644339/6144201",
+        "2112322/10240335"
+      ],
+      "Accuracy": 0,
+      "Proof": "ExplicitPhysicalSurvivors",
+      "SolverRoute": "SearchPhysicalFrontier"
+    }
+  ]
+}

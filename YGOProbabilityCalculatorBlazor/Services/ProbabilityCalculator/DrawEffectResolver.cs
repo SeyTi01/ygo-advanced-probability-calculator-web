@@ -130,6 +130,10 @@ internal static class DrawEffectResolver {
     }
 
     internal static bool CanUseCountStateFastPath(IReadOnlyList<Card> effects, int totalCopies, int handSize) {
+        if (effects.Any(effect => effect.IsDangerReveal)) {
+            return false;
+        }
+
         if (handSize < 0 || handSize > totalCopies) {
             return false;
         }

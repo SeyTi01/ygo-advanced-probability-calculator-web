@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-30",
+  "productionSourceChanged": false,
+  "regularDotnet": {
+    "command": "dotnet test YGOProbabilityCalculatorBlazor.sln --no-build --logger console;verbosity=minimal",
+    "execution": "approved",
+    "passed": 3136,
+    "failed": 0,
+    "duration": "3m43s",
+    "build": "Debug opt-in research build before anonymous prototype inclusion; explicit research measurements excluded from regular selection"
+  },
+  "regularNode": {
+    "command": "node --test",
+    "execution": "approved",
+    "passed": 182,
+    "failed": 0,
+    "durationMilliseconds": 30422.3703,
+    "priorRestrictedAttempt": "Privacy-guard temporary Git fixture creation failed: Expected command to succeed (diagnostics redacted), actual exit 128. Approved rerun passed. No guard bypass or global Git configuration change."
+  },
+  "prototypeOracle": {
+    "command": "dotnet test YGOProbabilityCalculatorBlazor.sln --no-build --filter FullyQualifiedName~DangerBoundsOracleExperiment",
+    "execution": "approved",
+    "passed": 48,
+    "methods": ["beam", "continuation", "anonymous", "anonymous-batch", "anonymous-stratum"],
+    "scope": "Independent physical-oracle shapes across priorities, three capacities and three Work budgets, deterministic repeats, nested-Work bounds, exact convergence, conditional interruption, two simultaneous strata, empty retained strata and repeated policy observations."
+  },
+  "buildFailures": [
+    "Initial beam and continuation opt-in compile each lacked Services.Interface using; corrected.",
+    "Two premature opt-in builds overlapped the regular test process. Copy failed MSB3027/MSB3021 because testhost locked the test-bin application DLL. Waited for regular test completion before rebuilding; no serial-MSBuild workaround.",
+    "One whole-batch build was canceled with MSB5021; ordinary retry passed without environment changes."
+  ],
+  "resolvedTestAssumptions": [
+    "Danger fixture initially supplied forbidden ordinary DrawCount; corrected before calculation.",
+    "Work-1 can interrupt after all terminal mass is committed; corrected test searches the actual full-mass completion threshold.",
+    "Repeated-observer fixture initially asserted joint-stratum coverage belonging to a different case; preserved joint/empty-stratum assertions in their case and made the later observer filter actually require observing K."
+  ],
+  "finalNormalBuild": "dotnet build YGOProbabilityCalculatorBlazor.sln --no-restore; restricted; passed, zero warnings/errors; no research import",
+  "evidenceCheck": "node research/danger-fast/verify-evidence.mjs; passed13 frozen hashes and318 native row interval checks, with all available exact references enclosed",
+  "notRun": ["new production integration", "Release AOT publish", "published worker/browser", "cold-worker regression"]
+}
