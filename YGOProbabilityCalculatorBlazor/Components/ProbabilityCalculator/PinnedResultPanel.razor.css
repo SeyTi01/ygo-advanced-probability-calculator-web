@@ -1,7 +1,7 @@
 .pinned-result { min-width: 0; container: result-panel / inline-size; }
-.pinned-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: .5rem; margin-bottom: .75rem; }
-.pinned-heading h5 { margin: 0; grid-column: 1; grid-row: 1; }
-.pinned-heading button { grid-column: 2; grid-row: 1; display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: .5rem; flex-shrink: 0; }
+.pinned-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }
+.pinned-heading h5 { margin: 0; }
+.pinned-heading button { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: .5rem; flex-shrink: 0; }
 .pinned-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: .5rem; }
 .pinned-row span { min-width: 0; overflow-wrap: anywhere; }
 .pinned-total { border-bottom: 1px solid var(--bs-border-color); font-size: 1.2rem; padding-bottom: .75rem; margin-bottom: .75rem; }

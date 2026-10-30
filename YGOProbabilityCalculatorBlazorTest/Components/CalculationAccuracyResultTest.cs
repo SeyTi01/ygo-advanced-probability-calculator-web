@@ -71,11 +71,9 @@ public sealed class CalculationAccuracyResultTest : CalculatorEditorTestBase {
     public void ContextUsesPhysicalCopiesAndKeepsModeAndAccuracyDisclosure() {
         PinnedCalculationContext input = new(5, 40, 24);
         IRenderedComponent<CalculationAccuracyResult> cut = context.RenderComponent<CalculationAccuracyResult>(parameters => parameters
-            .AddChildContent("<h5>Results</h5>")
             .Add(component => component.Context, input)
             .Add(component => component.ModeDescription, input.ModeDescription)
             .Add(component => component.Contract, ProbabilityPresentationTest.Contract(CalculationAccuracy.Exact)));
-        Assert.That(cut.Find("h5").TextContent, Is.EqualTo("Results"));
         Assert.That(cut.Find(".result-model").Children.Select(child => child.TextContent),
             Is.EqualTo(new[] { "Hand size: 5", "Deck size: 40" }));
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));

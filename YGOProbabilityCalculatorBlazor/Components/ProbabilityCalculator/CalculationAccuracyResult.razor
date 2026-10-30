@@ -1,8 +1,7 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 
-<div class="result-metadata">
-    @ChildContent
+<div class="result-metadata mb-2">
     @if (Context is { } input) {
         <div class="result-model">
             <span>@(UiText.Format("Result.HandSize", input.HandSize))</span>
@@ -20,7 +19,6 @@
 </div>
 
 @code {
-    [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public PinnedCalculationContext? Context { get; set; }
     [Parameter] public string? ModeDescription { get; set; }
     [Parameter] public CalculationResultContract? Contract { get; set; }
