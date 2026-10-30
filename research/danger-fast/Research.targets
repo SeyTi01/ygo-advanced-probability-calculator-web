@@ -1,0 +1,15 @@
+<Project>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'YGOProbabilityCalculatorBlazor'">
+    <Compile Include="$(MSBuildThisFileDirectory)PostDrawDangerBeam.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)PostDrawDangerContinuation.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)PostDrawDangerAnonymous.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)PostDrawDangerAnonymousBatch.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'YGOProbabilityCalculatorBlazorTest'">
+    <Compile Include="$(MSBuildThisFileDirectory)DangerBeamExperiment.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DangerBoundsOracleExperiment.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DangerContinuationExperiment.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DangerAnonymousExperiment.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DangerChallengeReference.cs" />
+  </ItemGroup>
+</Project>
