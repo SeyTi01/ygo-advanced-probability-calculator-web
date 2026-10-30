@@ -38,12 +38,12 @@ internal sealed class SearchAccessCalculation(
         }
         SearchAccessPlan search = new(cards, budget);
         HashSet<Card>? inert = DrawEffectFeasibility.FindInert(cards, copies, handSize, budget);
-        List<Card> effects = cards.Where(card => card.DrawCount is not null && inert?.Contains(card) != true).ToList();
+        List<Card> effects = cards.Where(card => card.HasDrawEffect && inert?.Contains(card) != true).ToList();
         Cards = cards;
         Effects = effects;
         Search = search;
         List<Card> ordinary = cards.Where(card => !effects.Contains(card)).ToList();
-        if (cards.Any(card => card.EffectPlan.RequiresSearchResolution)) {
+        if (cards.Any(card => card.IsDangerReveal || card.EffectPlan.RequiresSearchResolution)) {
             // Hand loss and mode allowances invalidate the substitution projection
             // and its survival certificate. Both modes use physical counting.
             PostDrawCalculation bounded = new(cards, handSize, budget, priority);

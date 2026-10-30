@@ -26,6 +26,9 @@
             <span class="text-danger" role="status">@(UiText.Get("Ui.UnsupportedExecutionModel"))</span>
         }
     </div>
+    @if (Card.IsDangerReveal && _effect.Source == EffectSource.BuiltIn) {
+        <div class="simulation-summary">@_effect.Summary</div>
+    }
     @if (!IsUnconfigured && _effect.Source != EffectSource.BuiltIn && Card.Search is null) {
         <div class="simulation-summary">@DrawEffectPresentation.DescribePlan(Card.EffectPlan, CategoryBases)</div>
     }
@@ -99,8 +102,11 @@
             <label for="cardDraw@(Index)" class="form-label">@(UiText.Get("Ui.Effect"))</label>
             <div class="d-flex flex-wrap align-items-center gap-3">
                 <select @ref="_drawInput" id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
-                        value="@(_draft.Search is not null ? "search" : _draft.DrawCount?.ToString() ?? string.Empty)"
+                        value="@DraftOperationValue"
                          @onchange="e => ChangeDrawCount(e.Value)">
+                    @if (Card.IsDangerReveal || _effect.Maintained?.Plan.Operation == DrawOperation.DangerReveal) {
+                        <option value="danger">@(UiText.Get("Effect.DangerReveal"))</option>
+                    }
                     <option value="">@(UiText.Get("Ui.None"))</option>
                     <option value="1">@(UiText.Get("Ui.Draw1"))</option>
                     <option value="2">@(UiText.Get("Ui.Draw2"))</option>
@@ -110,14 +116,14 @@
                 @if (_draft.EffectPlan.ActivationLimit is int limit) {
                     <div class="form-text">@(UiText.Format("Effect.PreservedAllowance", limit))</div>
                 }
-                else if (_draft.HasEffect && _draft.Search?.Modes is null) {
+                else if (_draft.HasEffect && !_draft.IsDangerReveal && _draft.Search?.Modes is null) {
                     <div class="form-check form-switch mb-0">
                         <input id="@OnceInputId" class="form-check-input" type="checkbox" role="switch"
                                checked="@_draft.OncePerTurn" @onchange="e => ChangeOncePerTurn(e.Value)" />
                         <label for="@OnceInputId" class="form-check-label">@(UiText.Get("Ui.OncePerTurn"))</label>
                     </div>
                 }
-                @if (_draft.HasEffect) {
+                @if (_draft.HasEffect && !_draft.IsDangerReveal) {
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <label for="cardCost@(Index)" class="form-label mb-0">@(_draft.Search is null ? UiText.Get("Effect.BeforeDrawing") : UiText.Get("Effect.BeforeSearching"))</label>
                         <select id="cardCost@(Index)" class="form-select form-select-sm w-auto"
@@ -140,6 +146,9 @@
                     </div>
                 }
             </div>
+            @if (_draft.IsDangerReveal) {
+                <div class="form-text simulation-danger-note">@(UiText.Get("Effect.DangerFixedOperation"))</div>
+            }
             @if (_draft.PreDrawRemovalCount > 0) {
                 <div class="mt-2 small">@(_draft.Search is null ? UiText.Get("Effect.BeforeDrawingRemoval") : UiText.Get("Effect.BeforeSearchingRemoval"))</div>
                 <PostDrawSelectorEditor Id="@($"cardCostEligibility{Index}")" Selector="_draft.PreDrawSelector"
@@ -361,8 +370,24 @@
         }
     }
 
+    private string DraftOperationValue => _draft switch {
+        { IsDangerReveal: true } => "danger",
+        { Search: not null } => "search",
+        _ => _draft?.DrawCount?.ToString() ?? string.Empty
+    };
+
     private void ChangeDrawCount(object? value) {
         string? text = value?.ToString();
+        if (text == "danger" && (Card.IsDangerReveal || _effect.Maintained?.Plan.Operation == DrawOperation.DangerReveal)) {
+            SetDraft(_draft!.WithEffect(DrawEffectPlan.DangerReveal(), _draft.EffectProfile.AsCustom()), "draw");
+            return;
+        }
+
+        bool ordinaryChoice = string.IsNullOrEmpty(text) || text == "search" || text is "1" or "2" or "3";
+        if (_draft!.IsDangerReveal && ordinaryChoice) {
+            SetDraft(_draft.WithEffect(new(null, false, 0, CardSelector.Any, 0, 0, CardSelector.Any), _draft.EffectProfile.AsCustom()), "draw");
+        }
+
         if (string.IsNullOrEmpty(text)) {
             SetDraft(_draft!.WithDrawCount(null).WithSearch(null), "draw");
         }

@@ -11,8 +11,8 @@ physical-card probability oracles.
 
 ## Small published-app smoke set
 
-Publish a clean optimized Release build with SDK-scoped `wasm-tools`, without
-external measurement sources or AOT. Use the existing external Playwright
+Publish a clean optimized, stripped-AOT Release build with SDK-scoped `wasm-tools`,
+without external measurement sources. Use the existing external Playwright
 installation through `NODE_PATH`. Set `YGO_BROWSER_EXECUTABLE` to an installed
 Chromium executable, or optionally set `YGO_BROWSER_CHANNEL`.
 
@@ -56,6 +56,22 @@ returning to idle or a call to `terminate()` alone.
 Run `scripts/verify-published-seo.sh` against the published directory as required
 by the existing publish verification workflow. Keep this responsibility separate
 from browser correctness and do not add expensive smoke matrices to every push.
+
+## Danger! base-effect acceptance
+
+After a clean stripped-AOT Release publish, run the focused editor and worker check:
+
+```sh
+node scripts/background-calculation/danger-smoke.cjs <published-wwwroot>
+```
+
+It checks independent small-deck rational expectations in Fast and Exact, the
+versioned random-discard operation, Save/Cancel, disable/restore, file round trip,
+and a narrow viewport. Optional second and third arguments supply the local
+`CardEffectProfileBenchmark.MeasureDanger` JSON and an evidence output path;
+then every complete native worker response, including fractions and proof metadata,
+is compared with the actual published worker. Export that benchmark with
+`YGO_DANGER_BENCHMARK_OUTPUT` and keep generated evidence outside tracked source.
 
 ## Opt-in measurement tools
 
