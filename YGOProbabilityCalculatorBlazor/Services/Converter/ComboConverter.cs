@@ -12,8 +12,7 @@ public class ComboConverter : JsonConverter<Combo> {
         CheckFields(root, "Categories", "Cards", "Name", "Active", "GroupId", "AlternativeGroups", "RequirementOrder");
 
         List<ComboCategory> categories = JsonSerializer.Deserialize<List<ComboCategory>>(
-            root.GetProperty("Categories").GetRawText(),
-            options) ?? [];
+            root.GetProperty("Categories").GetRawText(), options) ?? [];
 
         List<ComboCard> cards = root.TryGetProperty("Cards", out JsonElement cardsProperty)
             ? JsonSerializer.Deserialize<List<ComboCard>>(cardsProperty.GetRawText(), options) ?? []
@@ -46,10 +45,7 @@ public class ComboConverter : JsonConverter<Combo> {
         foreach (JsonElement group in groupArray.EnumerateArray()) {
             CheckFields(group, "Alternatives");
             bool hasAlternatives = group.TryGetProperty("Alternatives", out JsonElement alternatives);
-
-            bool hasInvalidAlternatives = !hasAlternatives
-                || alternatives.ValueKind != JsonValueKind.Array
-                || alternatives.GetArrayLength() is 0 or > 2048;
+            bool hasInvalidAlternatives = !hasAlternatives || alternatives.ValueKind != JsonValueKind.Array || alternatives.GetArrayLength() is 0 or > 2048;
 
             if (hasInvalidAlternatives) {
                 throw new JsonException("An OR group requires alternatives.");
@@ -92,11 +88,8 @@ public class ComboConverter : JsonConverter<Combo> {
                     leaves.Add(ComboAlternative.For(categoryRequirement ?? throw new JsonException("Missing category alternative.")));
                 }
                 else if (alternativeKind == "Card" && hasCard && !hasCategory) {
-                    ComboCard? cardRequirement = JsonSerializer.Deserialize<ComboCard>(
-                        card.GetRawText(),
-                        options);
-                    leaves.Add(ComboAlternative.For(
-                        cardRequirement ?? throw new JsonException("Missing card alternative.")));
+                    ComboCard? cardRequirement = JsonSerializer.Deserialize<ComboCard>(card.GetRawText(), options);
+                    leaves.Add(ComboAlternative.For(cardRequirement ?? throw new JsonException("Missing card alternative.")));
                 }
                 else {
                     throw new JsonException("Invalid alternative kind or target.");
@@ -119,18 +112,23 @@ public class ComboConverter : JsonConverter<Combo> {
         List<ComboAlternativeGroup> groups
     ) {
         List<ComboRequirementPosition>? order = null;
+
         if (root.TryGetProperty("RequirementOrder", out JsonElement positions)) {
             if (positions.ValueKind != JsonValueKind.Array || positions.GetArrayLength() != categories.Count + cards.Count + groups.Count) {
                 throw new JsonException("Presentation order must address every requirement.");
             }
+
             order = [];
+
             foreach (JsonElement position in positions.EnumerateArray()) {
                 CheckFields(position, "Kind", "Index");
+
                 if (!position.TryGetProperty("Kind", out JsonElement kind) || kind.ValueKind != JsonValueKind.String
                     || !Enum.TryParse(kind.GetString(), out ComboRequirementKind parsed) || !Enum.IsDefined(parsed)
                     || !position.TryGetProperty("Index", out JsonElement index) || !index.TryGetInt32(out int parsedIndex)) {
                     throw new JsonException("Invalid presentation address.");
                 }
+
                 order.Add(new(parsed, parsedIndex));
             }
         }
@@ -196,14 +194,17 @@ public class ComboConverter : JsonConverter<Combo> {
         }
 
         IEnumerable<ComboRequirementPosition> defaultOrder = Combo.DefaultOrder(value.Categories.Count, value.Cards.Count, value.AlternativeGroups.Count);
+
         if (!value.RequirementOrder.SequenceEqual(defaultOrder)) {
             writer.WriteStartArray("RequirementOrder");
+
             foreach (ComboRequirementPosition position in value.RequirementOrder) {
                 writer.WriteStartObject();
                 writer.WriteString("Kind", position.Kind.ToString());
                 writer.WriteNumber("Index", position.Index);
                 writer.WriteEndObject();
             }
+
             writer.WriteEndArray();
         }
 

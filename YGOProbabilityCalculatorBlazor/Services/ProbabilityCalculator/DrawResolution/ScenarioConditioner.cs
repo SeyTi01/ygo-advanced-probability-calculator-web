@@ -14,11 +14,14 @@ internal sealed class ScenarioConditioner(int ordinaryRows, int randomHandSize, 
         budget.Spend(1 + ordinaryRows / 32);
         BigInteger ordinaryMask = (BigInteger.One << ordinaryRows) - 1;
         Dictionary<BigInteger, CountBound> projected = new();
+
         foreach (CountBound bound in compiled.Constraints) {
             int fixedCount = 0;
+
             if (sparseFixedRows && retained.Count <= 64) {
                 ulong mask = (ulong)(bound.EligibleRows >> ordinaryRows);
                 budget.Spend(BitOperations.PopCount(mask) + 1L + bound.EligibleRows.GetBitLength() / 32);
+
                 while (mask != 0) {
                     int index = BitOperations.TrailingZeroCount(mask);
                     fixedCount = checked(fixedCount + retained[index].Copies);
@@ -27,6 +30,7 @@ internal sealed class ScenarioConditioner(int ordinaryRows, int randomHandSize, 
             }
             else {
                 budget.Spend(retained.Count + 1L + bound.EligibleRows.GetBitLength() / 32);
+
                 for (int i = 0; i < retained.Count; i++) {
                     if ((bound.EligibleRows & (BigInteger.One << (ordinaryRows + i))) != 0) {
                         fixedCount = checked(fixedCount + retained[i].Copies);
@@ -37,6 +41,7 @@ internal sealed class ScenarioConditioner(int ordinaryRows, int randomHandSize, 
             BigInteger eligible = bound.EligibleRows & ordinaryMask;
             int min = Math.Max(0, bound.MinCount - fixedCount);
             int max = Math.Min(randomHandSize, bound.MaxCount - fixedCount);
+
             if (projected.TryGetValue(eligible, out CountBound previous)) {
                 min = Math.Max(min, previous.MinCount);
                 max = Math.Min(max, previous.MaxCount);

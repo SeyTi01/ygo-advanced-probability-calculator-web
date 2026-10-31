@@ -52,6 +52,7 @@ internal sealed partial class PostDrawCalculation(
             PeakCells = cells;
             LargestStructure = structure;
         }
+
         budget.CheckStorage(entries, cells);
     }
 
@@ -66,6 +67,7 @@ internal sealed partial class PostDrawCalculation(
             foreach (int value in Values) {
                 hash.Add(value);
             }
+
             return hash.ToHashCode();
         }
     }
@@ -89,6 +91,7 @@ internal sealed partial class PostDrawCalculation(
         // the effect schedule, which the general resolver handles exactly.
         if (effects.Length == 1 && filler.Length <= 1) {
             int effect = effects[0];
+
             if (DrawExecutionAssessment.IsExchangeableEffect(cards[effect], relevant[effect], copies, handSize)) {
                 Route = SolverRoute.Exchangeable;
                 return CalculateExchangeable(cards, relevant, effect, filler.FirstOrDefault(-1), factorial, combos, groups, totalOnly);
@@ -109,6 +112,7 @@ internal sealed partial class PostDrawCalculation(
             removalEligibility,
             costEligibility
         );
+
         Dictionary<State, BigInteger> terminal = resolver.Resolve(handSize, copies, factorial, compactFrontierThreshold);
         TerminalStates = terminal.Count;
 
@@ -121,14 +125,17 @@ internal sealed partial class PostDrawCalculation(
         ReductionSelectors selectors = PrepareReductionSelectors(combos);
         List<(Card Card, string Signature, string Eligibility)> entries = CreateReductionEntries(selectors);
         List<Card> reduced = [];
+
         foreach (IGrouping<string, (Card Card, string Signature, string Eligibility)> group in entries
             .GroupBy(entry => entry.Signature).OrderBy(group => group.Key, StringComparer.Ordinal)) {
             // Retain the established membership/ordinary/ID tie order. Only merge
             // adjacent ordinary runs with equal eligibility for every effect.
             // Combining interleaved IDs across different filters changes removals.
             string? previousEligibility = null;
+
             foreach ((Card card, string _, string eligibility) in group.Where(entry => entry.Card.DrawCount is null)
                 .OrderBy(entry => entry.Card.Id, StringComparer.Ordinal)) {
+
                 if (eligibility == previousEligibility) {
                     reduced[^1] = reduced[^1].WithCopies(checked(reduced[^1].Copies + card.Copies));
                 }
@@ -137,10 +144,12 @@ internal sealed partial class PostDrawCalculation(
                     previousEligibility = eligibility;
                 }
             }
+
             // Effect entries stay separate, preserving OPT identity AND custom rank.
             reduced.AddRange(group.Where(entry => entry.Card.DrawCount is not null).Select(entry => entry.Card)
                 .OrderBy(card => card.Id, StringComparer.Ordinal));
         }
+
         return reduced;
     }
 }

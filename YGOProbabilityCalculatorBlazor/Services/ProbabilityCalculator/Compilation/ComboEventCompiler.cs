@@ -127,13 +127,16 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
                     budget.CheckStorage(_selectorMasks.Count + 1L + _compiledEntries, _selectorCells + _compiledCells + cells);
                     _selectorCells += cells;
                     bool[] matching = CardSelectorCompiler.Compile(selector, deck, budget);
+
                     for (int row = 0; row < matching.Length; row++) {
                         if (matching[row] && deck[row].Copies > 0) {
                             eligible |= BigInteger.One << row;
                         }
                     }
+
                     _selectorMasks.Add(constraint.Key.Value, eligible);
                 }
+
                 roles.Add(new CountBound(eligible, constraint.MinCount, constraint.MaxCount));
                 continue;
             }

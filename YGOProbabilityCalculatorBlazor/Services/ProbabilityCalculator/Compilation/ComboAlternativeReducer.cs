@@ -31,11 +31,14 @@ internal static class ComboAlternativeReducer {
             HashSet<int> seenAlternatives = [];
             List<int> ids = [];
             List<ComboAlternative> alternatives = [];
+
             foreach (ComboAlternative alternative in group.Alternatives) {
                 AlternativeKey key = alternative.Category is { } category
                     ? new(false, category.Selector.Signature, category.MinCount, category.MaxCount, category.MaximumMode)
                     : new(true, alternative.Card!.CardId, alternative.Card.MinCount, alternative.Card.MaxCount, alternative.Card.MaximumMode);
+
                 budget.Spend(2L * key.Identity.Length + 8);
+
                 if (!identities.TryGetValue(key, out int id)) {
                     CheckStorage(1, key.Identity.Length + 5L);
                     id = identities.Count;
@@ -57,6 +60,7 @@ internal static class ComboAlternativeReducer {
             CheckStorage(1, signatureCells);
             string signature = string.Join(',', ids);
             budget.Spend(2L * signature.Length + 1);
+
             if (seenGroups.Add(signature)) {
                 reduced.Add(alternatives.Count == count ? group : new(alternatives));
                 groupCells += signature.Length + (long)alternatives.Count + 1;

@@ -51,7 +51,6 @@ public sealed record CalculationResultContract(
         );
 }
 
-public sealed class UnsupportedExactCalculationException(CalculationResultContract contract)
-    : Exception("Unsupported exact calculation: " + contract.Reason) {
+public sealed class UnsupportedExactCalculationException(CalculationResultContract contract): Exception("Unsupported exact calculation: " + contract.Reason) {
     public CalculationResultContract Contract { get; } = contract;
 }

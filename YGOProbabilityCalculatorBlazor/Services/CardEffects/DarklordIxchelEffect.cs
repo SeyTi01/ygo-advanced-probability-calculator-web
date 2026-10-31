@@ -4,7 +4,6 @@ namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
 public sealed class DarklordIxchelEffect : CardEffectDefinition {
     private static readonly CategoryBase Darklord = EffectProperties.Property("Archetype: Darklord", "archetype:darklord");
-
     public override int CanonicalCardId => 52840267;
     public override string Name => "Darklord Ixchel";
     public override int Revision => 1;

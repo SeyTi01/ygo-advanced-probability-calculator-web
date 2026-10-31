@@ -7,6 +7,5 @@ public sealed class SpellPowerMasteryEffect : CardEffectDefinition {
     public override string Name => "Spell Power Mastery";
     public override int Revision => 1;
     public override EffectSupport Support => EffectSupport.ModeledWithinRules;
-
     public override DrawEffectPlan Compile() => DrawEffectPlan.SearchCards(new(new(CardSelectorKind.Category, ["metadata:archetype:endymion"])), true);
 }

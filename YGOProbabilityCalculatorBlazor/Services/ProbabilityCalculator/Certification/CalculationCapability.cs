@@ -46,6 +46,7 @@ internal readonly record struct CalculationCapability(
             : route == SolverRoute.SearchCountState ? CertificationSupport.ElementaryCountStateLowerPass
             : route is SolverRoute.SearchOrdered or SolverRoute.SearchOrderedDeferred ? CertificationSupport.OrderedTerminalLowerPass
             : CertificationSupport.Unsupported;
+
         return new(route, exact ? PhysicalSearchAccuracy.ProvenExact : PhysicalSearchAccuracy.OptimisticSurvivalUnproven, reason, support);
     }
 }

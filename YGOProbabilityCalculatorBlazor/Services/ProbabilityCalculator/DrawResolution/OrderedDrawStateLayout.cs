@@ -27,11 +27,13 @@ internal readonly struct OrderedDrawStateLayout {
         _optSlots = new int[RowCount];
         Array.Fill(_optSlots, -1);
         int optCount = 0;
+
         for (int i = 0; i < RowCount; i++) {
             if (cards[i].DrawCount is not null && cards[i].MaximumActivations != int.MaxValue) {
                 _optSlots[i] = 2 * RowCount + optCount++;
             }
         }
+
         DrawsLeft = 2 * RowCount + optCount;
         bool hasHidden = cards.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0);
         bool hasRestrictions = cards.Any(card => card.EffectPlan.HasActivationRestrictions);

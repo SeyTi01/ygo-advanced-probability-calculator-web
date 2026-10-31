@@ -34,6 +34,7 @@ public class SessionService(IJSRuntime jsRuntime, ISerializer serializer) : ISes
             || (session.CalculationModel != CalculationModel.Fast && session.FastExecutionStrategy != FastExecutionStrategy.Progressive)) {
             throw new ArgumentOutOfRangeException(nameof(session), UiText.Get("Ui.UnknownCalculationMode"));
         }
+
         SessionState sessionToSave = new() {
             SchemaVersion = SessionState.CurrentSchemaVersion,
             Categories = session.Categories,

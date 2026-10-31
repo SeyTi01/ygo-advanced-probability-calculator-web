@@ -22,28 +22,32 @@ internal static class CountStateLossBudget {
     ) {
         budget.CheckStorage(cards.Count, cards.Count);
         int[] losses = new int[cards.Count];
+
         for (int row = 0; row < cards.Count; row++) {
             long ownContribution = 0;
             long maximumOtherContribution = 0;
             int observedOther = 0;
             budget.Spend(effects.Count + 1L);
+
             for (int effect = 0; effect < effects.Count; effect++) {
                 Card source = effects[effect];
                 long contribution = 1L + source.PreDrawDeckRemovalCount + source.PostDrawDeckMillCount;
+
                 if (source.Id == cards[row].Id) {
                     int cap = Math.Min(source.MaximumActivations, source.Copies);
                     ownContribution = cap * contribution;
                 }
                 else {
                     maximumOtherContribution = Math.Max(maximumOtherContribution, contribution);
+
                     if (composition.EffectCounts[effect] > 0) {
                         observedOther++;
                     }
                 }
             }
+
             long unexplained = Math.Max(0, lost - ownContribution);
-            int requiredOther = maximumOtherContribution == 0 ? 0
-                : (int)((unexplained + maximumOtherContribution - 1) / maximumOtherContribution);
+            int requiredOther = maximumOtherContribution == 0 ? 0 : (int)((unexplained + maximumOtherContribution - 1) / maximumOtherContribution);
             losses[row] = lost - Math.Max(observedOther, requiredOther);
         }
 

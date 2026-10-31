@@ -30,9 +30,11 @@ internal sealed partial class PostDrawCalculation {
     ) {
         source = resolver.SingleSource(handSize, copies);
         budget.Spend(cards.Count);
+
         if (source < 0 || cards.Any(card => card.EffectPlan.RequiresSearchResolution)) {
             return false;
         }
+
         // Existing classes already preserve direct IDs, search and removal
         // masks. Check full predicate truth as well: numeric/objective selectors
         // need not be determined by their category atoms alone.
@@ -41,8 +43,10 @@ internal sealed partial class PostDrawCalculation {
                 foreach (Card card in cards) {
                     budget.Spend((requirement.Selector.EvaluationSize + 1L) * (card.Categories.Count + 1L));
                     bool expected = requirement.Selector.Matches(card);
+
                     foreach (Card original in identities[card.Id]) {
                         budget.Spend((requirement.Selector.EvaluationSize + 1L) * (original.Categories.Count + 1L));
+
                         if (requirement.Selector.Matches(original) != expected) {
                             return false;
                         }
@@ -50,6 +54,7 @@ internal sealed partial class PostDrawCalculation {
                 }
             }
         }
+
         return true;
     }
 
@@ -73,6 +78,7 @@ internal sealed partial class PostDrawCalculation {
         StreamedSearchPredicates counter = new(state.Cards, combos, budget, includeWitness: true);
         using IDisposable? measurement = budget.SearchDiagnostics?.Measure("streamed search");
         bool countAbsent = ObserveTerminal is null;
+
         if (countAbsent) {
             try {
                 counter.CountAbsent(state.Source, handSize, state.Factorial, state.Primary[0], state.Witness[0], groups);
@@ -88,6 +94,7 @@ internal sealed partial class PostDrawCalculation {
                 budget.SearchDiagnostics?.Add("streamed absent storage fallback");
             }
         }
+
         state.Resolver.TryEnumerateSingleSource(handSize, state.Factorial.Length - 1, state.Factorial, (values, remaining, weight) => {
             budget.SearchDiagnostics?.Add("streamed search terminals");
             ReadOnlySpan<int> held = values.AsSpan(state.Layout.HandStart, state.Cards.Count);
@@ -102,6 +109,7 @@ internal sealed partial class PostDrawCalculation {
             RecordStreamed(state.Witness[partition], counter.Witness, mass, resultRows);
             ObserveTerminal?.Invoke(SearchTerminal.Create(values, state.Layout, remaining), mass);
         }, sourcePresent: countAbsent ? true : null);
+
         return StreamedResult(state, state.Primary[0], state.Primary[1], resultRows);
     }
 
@@ -113,30 +121,35 @@ internal sealed partial class PostDrawCalculation {
         bool useKnownLoss
     ) {
         CalculationResultRows resultRows = new(combos, groups);
+
         if (declineSearch) {
             return StreamedResult(state, state.Witness[0], state.Witness[1], resultRows);
         }
+
         Card source = state.Cards[state.Source];
         // A mandatory discard larger than the available hand has no successful
         // source-present terminal. Clamp only this unreachable loss-table index.
-        int lost = (int)Math.Min(state.Factorial.Length - 1L,
-            1L + source.PostDrawDiscardCount + source.PreDrawDeckRemovalCount + source.PostDrawDeckMillCount);
+        int lost = (int)Math.Min(state.Factorial.Length - 1L, 1L + source.PostDrawDiscardCount + source.PreDrawDeckRemovalCount + source.PostDrawDeckMillCount);
         int loss = useKnownLoss ? OrderedSearchLossBudget.Create(state.Cards, budget)[lost] : lost;
         // Source absence has no loss: its completed primary already IS the
         // conservative event. For source presence, if every target capacity is
         // zero, the stronger pass IS the completed empty-assignment witness.
         // This tests the existing lower proof, not actual hidden survival.
         bool anyTarget = false;
+
         foreach (Card searcher in state.Cards) {
             budget.Spend(1);
+
             if (searcher.Search is null) {
                 continue;
             }
+
             foreach (Card target in state.Cards) {
                 budget.Spend((searcher.Search.Selector.EvaluationSize + 1L) * (target.Categories.Count + 1L));
                 anyTarget |= target.Copies > loss && searcher.Id != target.Id && searcher.Search.Matches(target);
             }
         }
+
         if (!anyTarget) {
             return StreamedResult(state, state.Primary[0], state.Witness[1], resultRows);
         }
@@ -145,6 +158,7 @@ internal sealed partial class PostDrawCalculation {
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(state.Factorial[^1]) + 1), "streamed lower results");
         StreamedSearchPredicates counter = new(state.Cards, combos, budget, includeWitness: false);
         using IDisposable? measurement = budget.SearchDiagnostics?.Measure("streamed lower search");
+
         state.Resolver.TryEnumerateSingleSource(handSize, state.Factorial.Length - 1, state.Factorial, (values, remaining, weight) => {
             budget.SearchDiagnostics?.Add("streamed lower terminals");
             ReadOnlySpan<int> held = values.AsSpan(state.Layout.HandStart, state.Cards.Count);
@@ -152,11 +166,13 @@ internal sealed partial class PostDrawCalculation {
             bool[] success = counter.Evaluate(held, remaining - hidden, loss);
             RecordStreamed(wins, success, StreamedMass(state, remaining, weight), resultRows);
         }, sourcePresent: true);
+
         return StreamedResult(state, state.Primary[0], wins, resultRows);
     }
 
     private BigInteger StreamedMass(StreamedSearchState state, int remaining, BigInteger weight) {
         budget.Spend((WorkBudget.IntegerCells(weight) + 1) * (WorkBudget.IntegerCells(state.Factorial[remaining]) + 1));
+
         // Hidden positions remain among the exchangeable unseen labels. Fast
         // never allocates their identities: all remaining! suffixes count once.
         return weight * state.Factorial[remaining];
@@ -170,17 +186,22 @@ internal sealed partial class PostDrawCalculation {
     ) {
         long cells = WorkBudget.IntegerCells(mass);
         budget.Spend(resultRows.ComboCount + cells);
+
         if (success.Any(value => value)) {
             wins[0] += mass;
         }
+
         for (int combo = 0; combo < resultRows.ComboCount; combo++) {
             budget.Spend(cells + 1);
+
             if (success[combo]) {
                 wins[resultRows.ComboRow(combo)] += mass;
             }
         }
+
         for (int group = 0; group < resultRows.GroupCount; group++) {
             budget.Spend(resultRows.ComboCount + cells);
+
             if (resultRows.GroupMatches(group, success)) {
                 wins[resultRows.GroupRow(group)] += mass;
             }
@@ -195,6 +216,7 @@ internal sealed partial class PostDrawCalculation {
     ) {
         budget.Spend(first.Length * (WorkBudget.IntegerCells(state.Factorial[^1]) + 1));
         ExactProbability[] results = first.Select((win, row) => new ExactProbability(win + second[row], state.Factorial[^1])).ToArray();
+
         return resultRows.ToResult(results);
     }
 
@@ -230,22 +252,28 @@ internal sealed partial class PostDrawCalculation {
         internal bool[] Evaluate(ReadOnlySpan<int> held, int capacity, int loss) {
             _budget.Spend(held.Length + _combos.Count + 1L);
             int size = 0;
+
             for (int row = 0; row < _rows.Length; row++) {
                 _hand[row] = held[_rows[row]];
                 size += _hand[row];
             }
+
             int limit = Math.Min(size, Math.Max(0, capacity));
             (int Hand, int Capacity, int Loss) key = (size, limit, limit == 0 ? 0 : loss);
+
             if (_counter is null || key != _key) {
                 Compile(size, limit, key.Loss);
                 _key = key;
             }
+
             for (int combo = 0; combo < _success.Length; combo++) {
                 _success[combo] = _counter.Evaluate(_roots[combo], _hand);
+
                 if (_includeWitness) {
                     Witness[combo] = _counter.Evaluate(_witnessRoots[combo], _hand);
                 }
             }
+
             return _success;
         }
 
@@ -267,6 +295,7 @@ internal sealed partial class PostDrawCalculation {
             BigInteger mass = BigInteger.Zero;
             int absent = 0;
             bool completed = false;
+
             try {
                 int capacity = Math.Min(size, remaining);
                 Compile(size, capacity, 0);
@@ -274,8 +303,7 @@ internal sealed partial class PostDrawCalculation {
                 _budget.Spend(_rows.Length);
                 int row = Array.IndexOf(_rows, source);
                 absent = _counter!.Union([new CompiledEvent([new(BigInteger.One << row, 0, 0)])]);
-                _budget.Spend((WorkBudget.IntegerCells(factorial[size]) + 1)
-                    * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
+                _budget.Spend((WorkBudget.IntegerCells(factorial[size]) + 1) * (WorkBudget.IntegerCells(factorial[remaining]) + 1));
                 mass = factorial[size] * factorial[remaining];
                 CountRows(_roots, primary);
                 CountRows(_witnessRoots, witness);
@@ -295,20 +323,26 @@ internal sealed partial class PostDrawCalculation {
 
             void CountRows(int[] roots, BigInteger[] wins) {
                 int total = 0;
+
                 for (int combo = 0; combo < roots.Length; combo++) {
                     total = _counter!.Or(total, roots[combo]);
                     wins[resultRows.ComboRow(combo)] = Count(roots[combo]);
                     _budget.SearchDiagnostics?.Add("streamed absent counted rows");
                 }
+
                 wins[0] = Count(total);
+
                 for (int group = 0; group < (groups?.Count ?? 0); group++) {
                     int root = 0;
+
                     for (int combo = 0; combo < roots.Length; combo++) {
                         _budget.Spend(1);
+
                         if (resultRows.GroupContains(group, combo)) {
                             root = _counter!.Or(root, roots[combo]);
                         }
                     }
+
                     wins[resultRows.GroupRow(group)] = Count(root);
                 }
             }
@@ -316,6 +350,7 @@ internal sealed partial class PostDrawCalculation {
             BigInteger Count(int root) {
                 BigInteger subsets = _counter!.Count(_counter.And(root, absent));
                 _budget.Spend((WorkBudget.IntegerCells(subsets) + 1) * (WorkBudget.IntegerCells(mass) + 1));
+
                 return subsets * mass;
             }
         }
@@ -328,11 +363,13 @@ internal sealed partial class PostDrawCalculation {
             _budget.SearchDiagnostics?.Add("streamed predicate compilations");
             List<List<CompiledEvent?>> events = _search.Compile(_combos, size, _cards, capacity, loss);
             SearchDecisionCounter counter = new(_cards, size, _budget);
-            _roots = events.Select(counter.Union).ToArray();
+            _roots = [.. events.Select(counter.Union)];
+
             if (_includeWitness) {
                 ComboEventCompiler compiler = new(_cards, size, _budget);
-                _witnessRoots = _combos.Select(combo => counter.Union(compiler.CompileCombo(combo))).ToArray();
+                _witnessRoots = [.. _combos.Select(combo => counter.Union(compiler.CompileCombo(combo)))];
             }
+
             _counter = counter;
         }
     }
