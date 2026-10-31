@@ -9,6 +9,32 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 [TestFixture]
 public class DrawFrontierPackingTest {
     [Test]
+    public void DangerPackedFrontierMatchesIndependentPhysicalDiscardOracle() {
+        CategoryBase role = new("Role");
+        List<Card> deck = [new Card([], 2, id: "danger", externalCardId: 43316238)
+                .WithEffect(DrawEffectPlan.DangerReveal(), EffectProfile.Legacy),
+            new([], id: "draw", drawCount: 2, postDrawDiscardCount: 1),
+            new([role], 2, id: "target"), new([], id: "filler")];
+        List<Combo> combos = [new([new(role, 1, 2)], groupId: "g"),
+            new([], cards: [new("danger", 0, 0)], groupId: "g")];
+        List<ComboGroup> groups = [new("g", "Union")];
+        TwoPhaseSearchOracle.Rational[] expected = TwoPhaseSearchOracle.Count(deck, 2, combos, groups,
+            DrawActivationPriority.Default, new Dictionary<string, int?> { ["danger"] = 43316238 });
+        foreach (int threshold in new[] { 0, int.MaxValue }) {
+            PostDrawCalculation calculation = new(deck, 2, new(CalculationWorkPolicy.Interactive), compactFrontierThreshold: threshold) {
+                StreamDanger = false
+            };
+            ExactCalculationResult actual = calculation.Calculate(combos, groups);
+            ExactProbability[] rows = [actual.Total, .. actual.Combos, .. actual.Groups];
+            for (int row = 0; row < rows.Length; row++) {
+                Assert.That(rows[row].Numerator * expected[row].Denominator,
+                    Is.EqualTo(expected[row].Numerator * rows[row].Denominator));
+            }
+            Assert.That(calculation.PackedLayers > 0, Is.EqualTo(threshold == 0));
+        }
+    }
+
+    [Test]
     public void EveryByteAndPartialWordRoundTripsWithoutAliases() {
         for (int length = 0; length <= 259; length++) {
             int[] values = Enumerable.Range(0, length).Select(index => index % 256).ToArray();

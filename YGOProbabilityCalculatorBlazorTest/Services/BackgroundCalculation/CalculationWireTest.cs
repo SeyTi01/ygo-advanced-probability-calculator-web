@@ -1,14 +1,78 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
+using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.BackgroundCalculation;
 
 [TestFixture]
 public class CalculationWireTest {
+    [TestCase(CalculationModel.Fast)]
+    [TestCase(CalculationModel.Exact)]
+    public void DangerWorkerRoundTripPreservesEveryFractionRowAndProofField(CalculationModel mode) {
+        CategoryBase role = new("Role");
+        Card danger = CardEffectRegistry.Default.RestoreBuiltIn(new([role], id: "danger", externalCardId: 43316238));
+        List<Card> cards = [danger, new([role], id: "target"), new([], 2, id: "blank")];
+        List<Combo> combos = [new([new(role, 1, 2)], "Role", groupId: "g"),
+            new([], "Target", groupId: "g", cards: [new("target", 1, 1)]),
+            new([new(role, 0, 0)], "No role")];
+        List<ComboGroup> groups = [new("g", "Overlapping routes")];
+        CalculationOptions options = new(Mode: mode);
+        ProbabilityCalculationResult direct = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            cards, combos, 2, groups, CalculationWorkPolicy.Default, options);
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, combos, 2, groups, options: options);
+        ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json), mode);
+        Assert.That(JsonSerializer.Serialize(worker), Is.EqualTo(JsonSerializer.Serialize(direct)));
+    }
+
+    [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+    private sealed record PreviousWorkerInput(
+        JsonElement Cards,
+        JsonElement Combos,
+        int HandSize,
+        JsonElement Groups,
+        long? WorkUnits,
+        JsonElement StorageTier,
+        JsonElement Options
+    );
+
+    [Test]
+    public void DangerWireMarkerMakesPreviousWorkersRejectTheOperationRatherThanIgnoreIt() {
+        Card danger = CardEffectRegistry.Default.RestoreBuiltIn(new([], externalCardId: 43316238));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture([danger, new([], 2)], [new([])], 1, []);
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<PreviousWorkerInput>(snapshot.Json));
+        CalculationSnapshot ordinary = CalculationSnapshot.Capture([new([], 3)], [new([])], 1, []);
+        Assert.That(ordinary.Json, Does.Not.Contain("DrawOperationVersion"));
+        Assert.DoesNotThrow(() => JsonSerializer.Deserialize<PreviousWorkerInput>(ordinary.Json));
+        foreach (int? version in new int?[] { null, 0, 2 }) {
+            JsonNode input = JsonNode.Parse(snapshot.Json)!;
+            input["DrawOperationVersion"] = version;
+            Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(CalculationWire.Execute(input.ToJsonString())));
+        }
+    }
+
+    [TestCase(CalculationModel.Fast)]
+    [TestCase(CalculationModel.Exact)]
+    public void UnknownWorkerDrawOperationFailsInsteadOfDroppingItsBranches(CalculationModel mode) {
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture([new([], 2, id: "card")], [new([])], 1, [], options: new(Mode: mode));
+        JsonNode input = JsonNode.Parse(snapshot.Json)!;
+        input["Cards"]![0]!["DrawOperation"] = 99;
+        Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(CalculationWire.Execute(input.ToJsonString())));
+    }
+
+    [TestCase("\"DrawOperation\":1,\"DrawOperation\":0")]
+    [TestCase("\"DrawOperation\":1,\"drawoperation\":0")]
+    [TestCase("\"drawoperation\":1")]
+    public void DuplicateOrIncorrectlyCasedWorkerOperationCannotSilentlyBecomeAnOrdinaryCard(string operation) {
+        string json = $$"""{"Cards":[{"Id":"source","Copies":2,"Categories":[],"ManualMetadataCategoryKeys":[],{{operation}}}],"Combos":[],"HandSize":1,"Groups":[]}""";
+        Assert.Throws<ArgumentException>(() => CalculationWire.ReadResult(CalculationWire.Execute(json)));
+    }
+
     [Test]
     public void LargeFiniteProbabilitySurvivesWorkerSerialization() {
         CategoryBase a = new("A");

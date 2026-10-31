@@ -40,7 +40,8 @@ internal static class TwoPhaseSearchOracle {
     }
 
     internal static Rational[] Count(IReadOnlyList<Card> input, int handSize, IReadOnlyList<Combo> combos,
-        IReadOnlyList<ComboGroup> groups, DrawActivationPriority priority) {
+        IReadOnlyList<ComboGroup> groups, DrawActivationPriority priority,
+        IReadOnlyDictionary<string, int?>? verifiedIdentities = null) {
         Card[] cards = input.Where(card => card.Active && card.Copies > 0).ToArray();
         int[] labels = cards.SelectMany((card, row) => Enumerable.Repeat(row, card.Copies)).ToArray();
         string[] categoryKeys = combos.SelectMany(combo => combo.AllCategories).SelectMany(requirement => requirement.CategoryBases)
@@ -107,6 +108,17 @@ internal static class TwoPhaseSearchOracle {
                         && Matches(effect.PreDrawSelector, cards[token.Row])) < effect.PreDrawRemovalCount) {
                     continue;
                 }
+                if (effect.IsDangerReveal) {
+                    if (known.DrawLocked || known.Deck.Count == 0) {
+                        continue;
+                    }
+                    // Every observed world has the same labeled hand. Expand one
+                    // equally weighted successor per physical card, including the
+                    // revealed token. No production transition or weighting helper.
+                    List<World> after = worlds.SelectMany(world => world.Hand.Select(discarded =>
+                        Reveal(world, candidate.Encounter, discarded.Encounter))).ToList();
+                    return AverageObserved(after, objective);
+                }
                 if (effect.DrawCount is int draws) {
                     if (known.DrawLocked || effect.FirstActivationOnly && known.DrawActivations > 0
                         || known.Deck.Count < draws + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) {
@@ -158,7 +170,7 @@ internal static class TwoPhaseSearchOracle {
             if (!known.DrawComplete) {
                 foreach (World world in worlds) {
                     world.DrawComplete = true;
-                    world.Pending.RemoveAll(token => cards[token.Row].DrawCount is not null);
+                    world.Pending.RemoveAll(token => cards[token.Row].HasDrawEffect);
                 }
                 return Resolve(worlds, objective);
             }
@@ -167,6 +179,33 @@ internal static class TwoPhaseSearchOracle {
 
         Rational AverageObserved(List<World> worlds, Func<IReadOnlyList<Card>, bool> objective) => worlds.GroupBy(Observation)
             .Aggregate(Rational.Zero, (sum, group) => sum.Add(Resolve(group.ToList(), objective).Scale(group.Count(), worlds.Count)));
+
+        World Reveal(World original, int encounter, int discardedEncounter) {
+            World next = original.Clone();
+            Token source = next.Hand.Single(token => token.Encounter == encounter);
+            Token discarded = next.Hand.Single(token => token.Encounter == discardedEncounter);
+            int? sourceIdentity = verifiedIdentities?.GetValueOrDefault(cards[source.Row].Id);
+            int? discardedIdentity = verifiedIdentities?.GetValueOrDefault(cards[discarded.Row].Id);
+            if (sourceIdentity is null) {
+                throw new ArgumentException("The oracle requires independently supplied source identities.");
+            }
+            next.Hand.Remove(discarded);
+            next.Pending.Remove(discarded);
+            next.DrawActivations++;
+            if (sourceIdentity == discardedIdentity) {
+                return next;
+            }
+            next.Hand.Remove(source);
+            next.Pending.Remove(source);
+            int label = next.Deck[0];
+            next.Deck.RemoveAt(0);
+            Token drawn = new(label, labels[label], next.NextEncounter++);
+            next.Hand.Add(drawn);
+            if (Enabled(cards[drawn.Row])) {
+                next.Pending.Add(drawn);
+            }
+            return next;
+        }
 
         World Draw(World original, int encounter) {
             World next = original.Clone();
@@ -223,13 +262,13 @@ internal static class TwoPhaseSearchOracle {
                 }
                 HashSet<int> payableDraws = [];
                 HashSet<int> deferredDraws = [];
-                int minimumNextDraw = reserved is not null && cards[reserved.Row].DrawCount is not null
+                int minimumNextDraw = reserved is not null && cards[reserved.Row].HasDrawEffect
                     ? Consumption(cards[reserved.Row]) : int.MaxValue;
                 foreach (Token pending in world.Pending) {
                     Card effect = cards[pending.Row];
-                    if (world.DrawComplete || effect.DrawCount is null || !DrawTiming(world, effect) || Allowance(pending.Row) <= 0
+                    if (world.DrawComplete || !effect.HasDrawEffect || !DrawTiming(world, effect) || Allowance(pending.Row) <= 0
                         || Consumption(effect) > world.Deck.Count
-                        || reserved is not null && cards[reserved.Row].DrawCount is not null
+                        || reserved is not null && cards[reserved.Row].HasDrawEffect
                             && (cards[reserved.Row].BlocksLaterDraws || effect.FirstActivationOnly)) {
                         continue;
                     }
@@ -246,7 +285,7 @@ internal static class TwoPhaseSearchOracle {
                 }
                 Token removed = choices.OrderByDescending(token => Tier(token.Row))
                     .ThenByDescending(token => Membership(cards[token.Row]), StringComparer.Ordinal)
-                    .ThenByDescending(token => Enabled(cards[token.Row]) && cards[token.Row].DrawCount is not null)
+                    .ThenByDescending(token => Enabled(cards[token.Row]) && cards[token.Row].HasDrawEffect)
                     .ThenByDescending(token => cards[token.Row].Id, StringComparer.Ordinal)
                     // Within one entry preserve naturally eligible copies before
                     // inert fetched/declined copies, then preserve earlier FIFO.
@@ -291,9 +330,9 @@ internal static class TwoPhaseSearchOracle {
 
         bool Expired(World world, Token token) => world.Used[token.Row] >= cards[token.Row].MaximumActivations
             || !DrawTiming(world, cards[token.Row]) || Consumption(cards[token.Row]) > world.Deck.Count;
-        bool DrawTiming(World world, Card card) => card.DrawCount is null
+        bool DrawTiming(World world, Card card) => !card.HasDrawEffect
             || !world.DrawLocked && (!card.FirstActivationOnly || world.DrawActivations == 0);
-        int Consumption(Card card) => card.Search is not null ? 1
+        int Consumption(Card card) => card.Search is not null || card.IsDangerReveal ? 1
             : card.DrawCount!.Value + card.PreDrawDeckRemovalCount + card.PostDrawDeckMillCount;
         string Membership(Card card) => string.Concat(categoryKeys.Select(key => card.Categories.Any(category => category.Identity == key) ? '1' : '0'))
             + string.Concat(directKeys.Select(id => card.Id == id ? '1' : '0'));

@@ -5,11 +5,14 @@ namespace YGOProbabilityCalculatorBlazor.Models;
 // performs mandatory hand removal. Optional zero counts preserve existing V1 plans.
 // Schema 6 adds an optional search-only source, executed in a separate phase
 // after all draws. A source cannot contain both operations.
+// Schema 14 adds the explicit repeatable Danger reveal operation; it is not an
+// unconditional draw count and always requires weighted hand resolution.
 // Definitions cannot smuggle callbacks into count-state equivalence or worker JSON;
 // unsupported execution models still require a new compiler/interpreter.
+public enum DrawOperation { Ordinary = 0, DangerReveal = 1 }
 public enum EffectExecutionModel { DrawSequenceV1 = 1, Unsupported = 2 }
 [Flags]
-public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32, FirstActivationOnly = 64, BlocksLaterDraws = 128, Search = 256, BoundedActivations = 512, SearchModes = 1024, MinimumHandSize = 2048 }
+public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32, FirstActivationOnly = 64, BlocksLaterDraws = 128, Search = 256, BoundedActivations = 512, SearchModes = 1024, MinimumHandSize = 2048, RandomHandDiscard = 4096 }
 public enum EffectSource { LegacySnapshot, BuiltIn, Custom }
 public enum EffectSupport { ModeledWithinRules, Partial, Unmodeled }
 
@@ -41,14 +44,18 @@ public readonly record struct DrawEffectPlan(
     bool BlocksLaterDraws = false,
     SearchEffectPlan? Search = null,
     int? ActivationLimit = null,
-    int MinimumHandSize = 0
+    int MinimumHandSize = 0,
+    DrawOperation Operation = DrawOperation.Ordinary
 ) {
+    public static DrawEffectPlan DangerReveal() => new(null, false, 0, CardSelector.Any, 0, 0, CardSelector.Any, Operation: DrawOperation.DangerReveal);
+
     public static DrawEffectPlan Draw(int count, bool oncePerTurn) => new(count, oncePerTurn, 0, CardSelector.Any, 0, 0, CardSelector.Any);
 
     public static DrawEffectPlan SearchCards(SearchEffectPlan search, bool oncePerTurn) =>
         new(null, oncePerTurn, 0, CardSelector.Any, 0, 0, CardSelector.Any, Search: search);
 
-    public EffectCapabilities Capabilities => (DrawCount is null ? EffectCapabilities.None : EffectCapabilities.Draw)
+    public EffectCapabilities Capabilities => (DrawCount is null && Operation == DrawOperation.Ordinary ? EffectCapabilities.None : EffectCapabilities.Draw)
+        | (Operation == DrawOperation.DangerReveal ? EffectCapabilities.RandomHandDiscard : EffectCapabilities.None)
         | ((DrawCount is not null || Search is not null) && OncePerTurn ? EffectCapabilities.OncePerTurn : EffectCapabilities.None)
         | (Search is not null ? EffectCapabilities.Search : EffectCapabilities.None)
         | (ActivationLimit is not null ? EffectCapabilities.BoundedActivations : EffectCapabilities.None)
@@ -70,9 +77,12 @@ public readonly record struct DrawEffectPlan(
     public bool RequiresSearchResolution => Search is not null
         && (RequiresHandResolution || Search.Modes is { Count: > 0 } || MinimumHandSize > 0);
 
-    public bool RequiresHandResolution => HandCost > 0 || RemovalCount > 0;
+    public bool RequiresHandResolution => Operation == DrawOperation.DangerReveal || HandCost > 0 || RemovalCount > 0;
 
     public string Describe() {
+        if (Operation == DrawOperation.DangerReveal) {
+            return "Reveal; randomly discard one hand card; if a different card identity is discarded, remove the source and draw 1; repeatable; base effect only";
+        }
         if (DrawCount is null && Search is null) {
             return "No effect";
         }

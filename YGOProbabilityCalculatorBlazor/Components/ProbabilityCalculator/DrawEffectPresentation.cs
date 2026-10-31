@@ -10,6 +10,10 @@ public static class DrawEffectPresentation {
             return UiText.Get("Ui.UnsupportedEffect");
         }
 
+        if (card.IsDangerReveal) {
+            return UiText.Get(drawEffectsEnabled ? "Effect.DangerReveal" : "Effect.DangerRevealOff");
+        }
+
         if (card.Search is not null) {
             return drawEffectsEnabled ? UiText.Get("Ui.Search1") : UiText.Get("Ui.SearchConfiguredOff");
         }
@@ -39,6 +43,10 @@ public static class DrawEffectPresentation {
     }
 
     public static string DescribePlan(DrawEffectPlan plan, IReadOnlyList<CategoryBase> categories) {
+        if (plan.Operation == DrawOperation.DangerReveal) {
+            return UiText.Get("Effect.DangerRevealSummary");
+        }
+
         if (plan.DrawCount is null && plan.Search is null) {
             return UiText.Get("Ui.NoDrawEffect");
         }

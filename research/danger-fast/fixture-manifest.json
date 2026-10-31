@@ -1,0 +1,84 @@
+{
+  "SourceCommit": "bd75460e4bb3d9f990d8bc04bd1fcd915bcabc71",
+  "HashConvention": "SHA-256 of UTF-8 JSON, recursively ordinal-key-sorted objects, original array order, no whitespace or trailing newline.",
+  "Cases": [
+    {
+      "Name": "danger-control-40",
+      "Kind": "baseline",
+      "InputSha256": "8f4533e821b35f3d65e0879db7f64e9aa6112804a649834393c12ba8c1b3807b",
+      "ReferenceSha256": "84699703fff12ce8d52dfc6dfebeff942e55b1de6a011571b756f47551e06966"
+    },
+    {
+      "Name": "danger-single-40",
+      "Kind": "baseline",
+      "InputSha256": "e7795c7f01c4352aec242f02453accc2f8891b924bcc4d43ac4cd3a5bffaacc5",
+      "ReferenceSha256": "693b3d601bfdc530b90a5901ec5cdb0b8b66492e237fac4e9e718d1cc4d5920d"
+    },
+    {
+      "Name": "danger-mixed-40",
+      "Kind": "baseline",
+      "InputSha256": "8445c25e5bc8bc8757629f6f8889c3682f540dbec68437108c41c39989a6cec0",
+      "ReferenceSha256": "031a16edf094bf9017a19c3dbdaa1a2644206e80436ac6b90d9d6b62dd79d846"
+    },
+    {
+      "Name": "danger-heavy-40",
+      "Kind": "baseline",
+      "InputSha256": "a9bb949c8f2c7f4672516b877a14fb0d6bd574079cb7748b72461bce6c3985cc",
+      "ReferenceSha256": "3d2d4e40d8c6bc4dc8020c0b61db2d6c24797708dd6667fc584667e9296c239f"
+    },
+    {
+      "Name": "danger-control-60",
+      "Kind": "baseline",
+      "InputSha256": "e97799439da8e8297aa9a52ef80df20c9614a3cce7d2dda548f5da25ee393b84",
+      "ReferenceSha256": "2ff5bd633652aea738a000f0ef80f83cf511d480d92299f06f40515ef3501ae0"
+    },
+    {
+      "Name": "danger-single-60",
+      "Kind": "baseline",
+      "InputSha256": "575015bdf5f0dd579fcc185ef0e458318cb370795bd1ba0f862eec7cf06b0306",
+      "ReferenceSha256": "dbcf15a2c4acb76f0635fc93a9698a23b65cd9b1e5c21e7209b0484c1764bb6b"
+    },
+    {
+      "Name": "danger-mixed-60",
+      "Kind": "baseline",
+      "InputSha256": "a634a67a5a71c2ed9507b7432530ce0b89982a979aef569ffe7c1518c790c380",
+      "ReferenceSha256": "aebec833d25f6edeb7621a769efeee210bc0d6b6241bdb2ff90f7b0b36e141a9"
+    },
+    {
+      "Name": "danger-heavy-60",
+      "Kind": "baseline",
+      "InputSha256": "129d4a6fb930ea1aa40da2c2158fd5af5cf16939b5c455563a8ca770930f5781",
+      "ReferenceSha256": "6655abac2616f0db4060fa276c600883fc7a1c4d1830ab97f53e55e2ac202090"
+    },
+    {
+      "Name": "challenge-heavy-40-hand6",
+      "Kind": "challenge",
+      "InputSha256": "f7825ec7c0771bc50f8b8b3bbf690df613e86d8a52583e85bc1b42dc8cae86b2",
+      "ReferenceSha256": null
+    },
+    {
+      "Name": "challenge-heavy-60-priority",
+      "Kind": "challenge",
+      "InputSha256": "2195ac7729fa84a1b9dae63d3ce061fb84a883adc0684b0b631c2eadaea412a3",
+      "ReferenceSha256": null
+    },
+    {
+      "Name": "challenge-heavy-40-multiplicity",
+      "Kind": "challenge",
+      "InputSha256": "2b7c57f41ee7033659da15b5c6dcdba1ebbcf541d2ecf22dbce948622efdd1ed",
+      "ReferenceSha256": null
+    },
+    {
+      "Name": "challenge-heavy-60-direct",
+      "Kind": "challenge",
+      "InputSha256": "378ce0e095161ce8403be9f66725ca5b3ffbfbf321e05544b8c440f3b95120a5",
+      "ReferenceSha256": null
+    },
+    {
+      "Name": "challenge-mixed-40-direct-exclusion",
+      "Kind": "challenge",
+      "InputSha256": "bca70a01b5d153d28f0958c9db2c09787ef461cf078491bcb4313cf1e487e81a",
+      "ReferenceSha256": null
+    }
+  ]
+}
