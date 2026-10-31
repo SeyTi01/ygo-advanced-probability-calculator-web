@@ -5,12 +5,26 @@ import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gzipSync, brotliCompressSync } from 'node:zlib';
+import { eligibleCatalog, exclusionReason } from './card-eligibility.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const validName = name => typeof name === 'string' && name.trim().length > 0 && name.length <= 512;
 const validLabel = name => validName(name) && !/[<>\x00-\x1f\x7f]|&(?:#\d+|#x[\da-f]+|[a-z]+);/i.test(name);
 const numericOrder = (left, right) => left - right;
 const validId = (id, assigned) => Number.isInteger(id) && id > 0 && id <= (assigned ? 2147483647 : 99999999);
+
+function validateSnapshot(snapshot) {
+    if (snapshot.version !== 1 || snapshot.locale !== 'de' || !Array.isArray(snapshot.cards)
+        || snapshot.cards.length > 30000 || !/^[a-f0-9]{40}$/.test(snapshot.revision)
+        || !/^[a-f0-9]{64}$/.test(snapshot.sourceSha256)) throw new Error('Unsupported name snapshot');
+    const seen = new Set();
+    for (const card of snapshot.cards) {
+        if (card.id === null) continue;
+        if (!validId(card.id, card.assigned === true) || seen.has(card.id)
+            || (card.assigned !== undefined && card.assigned !== true)) throw new Error('Invalid or duplicate YAML Yugi identity');
+        seen.add(card.id);
+    }
+}
 
 export function retainYamlYugiSnapshot(bytes, revision, retrievedAt) {
     if (!/^[a-f0-9]{40}$/.test(revision)) throw new Error('Supply the verified YAML Yugi source commit');
@@ -49,24 +63,48 @@ export function exampleNameCoverage(asset, catalog, example) {
         unresolved: cards.filter(card => card.name === null), cards };
 }
 
+// Keep only identities belonging to the eligible canonical pool. Resolve against
+// the full input first so an excluded canonical ID cannot become an artwork alias.
+export function retainEligibleNames(snapshot, catalog) {
+    validateSnapshot(snapshot);
+    const canonical = new Map(catalog.cards.map(card => [card.id, card]));
+    const owners = new Map();
+    for (const card of catalog.cards) {
+        for (const id of card.artworkImageIds ?? []) {
+            const entries = owners.get(id) ?? new Set();
+            entries.add(card.id);
+            owners.set(id, entries);
+        }
+    }
+    const cards = snapshot.cards.filter(card => {
+        let match = canonical.get(card.id);
+        if (!match && owners.get(card.id)?.size === 1) match = canonical.get([...owners.get(card.id)][0]);
+        return match && exclusionReason(match) === null;
+    });
+    return { ...snapshot, cards };
+}
+
 export function buildLocalizedNames(snapshot, catalog, example) {
-    if (snapshot.version !== 1 || snapshot.locale !== 'de' || !Array.isArray(snapshot.cards)
-        || snapshot.cards.length > 30000 || !/^[a-f0-9]{40}$/.test(snapshot.revision)
-        || !/^[a-f0-9]{64}$/.test(snapshot.sourceSha256) || catalog.version !== 2 || !Array.isArray(catalog.cards)) {
+    validateSnapshot(snapshot);
+    if (catalog.version !== 2 || !Array.isArray(catalog.cards)) {
         throw new Error('Unsupported name snapshot or canonical catalog');
     }
+    const allCards = catalog.cards;
+    const excludedIds = new Set(allCards.filter(card => exclusionReason(card) !== null).map(card => card.id));
+    catalog = eligibleCatalog(catalog);
     const canonical = new Map();
     const artwork = new Map();
     for (const card of catalog.cards) {
         if (!validId(card.id, true) || canonical.has(card.id) || !validName(card.name)) throw new Error('Invalid canonical identity');
         canonical.set(card.id, card);
+    }
+    for (const card of allCards) {
         for (const id of card.artworkImageIds ?? []) {
             const owners = artwork.get(id) ?? new Set();
             owners.add(card.id);
             artwork.set(id, owners);
         }
     }
-    const seen = new Set();
     const names = new Map();
     const rejectedNames = [];
     const unexpectedIds = [];
@@ -76,9 +114,7 @@ export function buildLocalizedNames(snapshot, catalog, example) {
     const englishNameDifferences = [];
     for (const card of [...snapshot.cards].sort((left, right) => (left.id ?? 0) - (right.id ?? 0))) {
         if (card.id === null) continue;
-        if (!validId(card.id, card.assigned === true) || seen.has(card.id)
-            || (card.assigned !== undefined && card.assigned !== true)) throw new Error('Invalid or duplicate YAML Yugi identity');
-        seen.add(card.id);
+        if (excludedIds.has(card.id)) continue;
         if (card.name === null) continue;
         if (!validLabel(card.name) || !validName(card.name_en)) {
             rejectedNames.push(card);
@@ -89,6 +125,7 @@ export function buildLocalizedNames(snapshot, catalog, example) {
             const owners = artwork.get(card.id);
             if (owners?.size === 1) {
                 match = canonical.get([...owners][0]);
+                if (!match) continue;
                 aliasMatches.push({ sourceId: card.id, canonicalId: match.id });
             } else {
                 if (owners?.size > 1) ambiguousIds.push({ id: card.id, candidates: [...owners].sort(numericOrder) });
@@ -106,7 +143,7 @@ export function buildLocalizedNames(snapshot, catalog, example) {
     for (const [id, name] of asset.names) byName.set(name, [...(byName.get(name) ?? []), id]);
     const bytes = Buffer.from(JSON.stringify(asset) + '\n');
     const audit = {
-        policy: 'YAML Yugi only; exact canonical IDs first, then unique catalog artwork aliases; no name joins.',
+        policy: 'Eligible Main Deck pool only; YAML Yugi exact canonical IDs first, then unique catalog artwork aliases; no name joins.',
         source: { url: snapshot.source, revision: snapshot.revision, sha256: snapshot.sourceSha256,
             retrievedAt: snapshot.retrievedAt, bytes: snapshot.sourceBytes,
             projectionSha256: sha256(Buffer.from(JSON.stringify(snapshot) + '\n')) },
@@ -145,12 +182,14 @@ async function main(args) {
         ...(options.has('--provider') ? ['--revision', '--retrieved-at'] : [])]) {
         if (!options.has(option)) throw new Error(`Missing ${option}`);
     }
-    const snapshot = options.has('--provider')
+    const sourceSnapshot = options.has('--provider')
         ? retainYamlYugiSnapshot(await readFile(options.get('--provider')), options.get('--revision'), options.get('--retrieved-at'))
         : JSON.parse(await readFile(options.get('--snapshot'), 'utf8'));
     const catalogBytes = await readFile(options.get('--catalog'));
+    const catalog = JSON.parse(catalogBytes);
+    const snapshot = retainEligibleNames(sourceSnapshot, catalog);
     const exampleBytes = await readFile(options.get('--example'));
-    const { asset, audit } = buildLocalizedNames(snapshot, JSON.parse(catalogBytes), JSON.parse(exampleBytes));
+    const { asset, audit } = buildLocalizedNames(snapshot, catalog, JSON.parse(exampleBytes));
     const allowedRemovals = options.has('--allow-removals') ? JSON.parse(await readFile(options.get('--allow-removals'), 'utf8')) : [];
     try {
         assertNoNameRegression(JSON.parse(await readFile(options.get('--previous') ?? options.get('--output'), 'utf8')), asset, allowedRemovals);
@@ -160,7 +199,7 @@ async function main(args) {
     audit.canonicalSha256 = sha256(catalogBytes);
     audit.exampleSha256 = sha256(exampleBytes);
     for (const [file, content] of [
-        ...(options.has('--provider') ? [[options.get('--snapshot'), snapshot]] : []),
+        [options.get('--snapshot'), snapshot],
         [options.get('--output'), asset], [options.get('--audit'), audit]
     ]) {
         await mkdir(dirname(resolve(file)), { recursive: true });

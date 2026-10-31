@@ -8,7 +8,62 @@ Refresh from an already downloaded official response without network access:
 node infrastructure/card-catalog/prepare-catalog.mjs --catalog cardinfo.json --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --audit membership-audit.json
 ```
 
-Omitting `--catalog` makes one full metadata request. Add `--save-source cardinfo.json` to retain its exact bytes for subsequent offline rebuilds. The catalog is validated and serialized before the output is atomically replaced. The normal app build and test suite never call the provider. Identical saved source and checked-in policy produce byte-identical catalog and audit JSON, independently of response order.
+Omitting `--catalog` makes one full metadata request with `misc=yes` (including format metadata). Add `--save-source cardinfo.json` to retain its exact bytes for subsequent offline rebuilds. The catalog is validated and serialized before the output is atomically replaced. The normal app build and test suite never call the provider. Identical saved source and checked-in policy produce byte-identical catalog and audit JSON, independently of response order.
+
+## Main Deck eligibility
+
+`card-eligibility.mjs` is the shared policy for canonical generation, retained
+translation projections, locale assets and coverage denominators:
+
+- Keep the explicitly recognized Main Deck monster types, including Ritual,
+  Ritual/Pendulum, Normal/Pendulum, Tuner and Flip variants, plus Spells and Traps.
+- Fusion, Synchro, Xyz or Link in either type or frame classification wins over
+  Pendulum/Effect/Ritual classifications. Exclude Tokens and Skills.
+- Exclude records whose supplied format metadata lists Speed Duel without TCG or
+  OCG. Shared TCG/OCG/Speed Duel cards remain eligible. Missing formats do not by
+  themselves exclude unreleased cards; save the full `misc=yes` response for refreshes.
+- Promotional printing is not a card type or an exclusion rule. Ordinary Main Deck
+  cards remain eligible even if their only release is a magazine/promo release,
+  they have Speed Duel/promotional printings, or they are currently forbidden.
+  The reviewed `eligibility-policy.json` excludes special promotional identities:
+  the four Anotherverse prize monsters, seven early World Championship prize
+  monsters, Get Your Game On!, Tyler the Great Warrior and Decoy. It also excludes
+  the provider's unrevealed deck-profile placeholder. Entries include exact ID,
+  English name, type and evidence; changed identities require review. These are
+  scope decisions, not claims that all prize cards are illegal. New Main Deck
+  records with exclusively Championship-prize/Make-A-Wish set metadata stop for
+  review; never exclude every card with a matching individual printing.
+- Unrecognized types stop generation for review rather than silently disappearing.
+  No ID-range, translated-name, arbitrary substring or banlist heuristics apply.
+
+The initial trim filters the existing catalogue from commit `b3c3296` through
+`eligibleCatalog`, without refreshing provider identities or recomputing memberships.
+Every retained object, including English identity, artwork aliases, metadata,
+resolved archetypes and reviewed name clauses, is byte-for-byte equivalent as JSON.
+`snapshots/main-deck-migration.audit.json` records the input/output hashes and counts.
+To reproduce this one-time trim offline, extract the old asset from that commit,
+parse it and serialize `eligibleCatalog(previous)` followed by one newline.
+Subsequent full-source refreshes use the normal offline command above.
+
+| Pool | Before | Shipped eligible pool |
+| --- | ---: | ---: |
+| Canonical cards | 14,607 | 12,156 |
+| Retained YAML Yugi name records | 14,414 | 12,106 |
+| German canonical labels | 14,125 | 11,956 |
+| Missing/withheld German labels | 482 | 200 |
+
+Removed canonical records: 2,206 Extra Deck, 124 Skills, 106 Tokens, 14 special
+promotional identities and one placeholder. Canonical JSON is 3,597,796 bytes;
+German JSON is 415,971 bytes. All 24 example entries remain covered.
+
+The full-response floor is 14,000 records **before filtering**, with a separate
+11,000 eligible-card floor. The canonical CLI compares against the existing output
+(or explicit `--previous FILE`) before writing; unexplained eligible-card removals
+fail even above those floors. A reviewed `--allow-removals FILE` lists exact IDs,
+not a percentage exemption. Always supply `--previous` when generating a new path
+for a refresh. Translation removals likewise require explicit accepted IDs; the
+initial trim allowed only names belonging to policy-excluded canonical cards.
+Do not lower baselines or automatically accept removals to make a partial response pass.
 
 ## Membership policy and limits
 
@@ -22,7 +77,10 @@ Unknown/malformed permanent declarations and missing descriptions produce an off
 
 Quoted identity statements without an explicit permanence marker or zone/activation condition are also audited. `reviewed-name-clauses.json` accepts three verified older clauses only when their original ID, English name, type and complete normalized sentence match: Neo-Spacian Marine Dolphin and Neo-Spacian Twinkle Moss add a name; Lemuria, the Forgotten City replaces its effective name with Umi, consistent with Konami's current permanent wording. Changed or unreviewed wording still requires audit. This affects archetype classification only: the catalog and workspace retain original names and IDs, and direct combo card requirements select the exact workspace entry even when two entries share a treated-as name.
 
-It's a Toon World! remains `null` with audit reason `out-of-scope-skill-identity-clause`. Skill identity is applied through Speed Duel setup/effects, outside this deck/hand model; unqualified Skill identity statements are not accepted as Main Deck aliases, even if they say `always`. The full-source review additionally surfaces Tomb of the Pharaoh's permanent Necrovalley wording as out of scope (previously a verified empty set); explicit field conditions such as Mythic Depths remain ignored. The follow-up changes the unresolved count from four to two out-of-scope Skill records; only the three reviewed records gain memberships. See the [official Skill rules update](https://yugiohblog.konami.com/2021/news-updates/skillcard-update/). The reviewed clauses link their primary card-text sources and remain offline data; neither descriptions nor alternate-name tags are shipped.
+Skill identity clauses remain out of scope in the membership parser. Skills and
+Extra Deck cards no longer ship in the eligible catalogue; parser unit cases and
+reviewed clauses remain available for source review. Lemuria's permanent Umi name
+rule remains in the shipped pool.
 
 Representative primary checks: [Summoned Skull](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=4028&ope=2&request_locale=en), [Hardened Armed Dragon](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=8374&ope=2&request_locale=en), [Double Iris Magician](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=12908&ope=2&request_locale=en), and [Harpie Perfumer](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=14165&ope=2&request_locale=en). Provider field/endpoint documentation: [API guide](https://ygoprodeck.com/api-guide/).
 
@@ -30,7 +88,7 @@ Representative primary checks: [Summoned Skull](https://www.db.yugioh-card.com/y
 
 All objective archetype properties consume resolved data. Catalog lookups support canonical IDs and unique artwork aliases; an editable display name cannot override a known ID. Unknown live/API/cache records have no objective archetype claim. Old v1 catalogs remain readable, but their association tags cannot become memberships. Historical caches cannot smuggle resolved claims into the current catalog.
 
-Session load, share acceptance and recovery reconcile only automatic archetype properties against the bundled catalog before optional legacy enrichment. Exact unique names are used only when there is no external ID. Unknown/ambiguous identities and unverified membership sets remain unchanged. User categories, unrelated metadata, explicit manual keys and saved simulation plans/provenance are preserved. If an old automatic membership previously absorbed a manual assignment, the missing provenance cannot be reconstructed: only explicitly stored override keys are preserved. An already-correct card retains its reference; reconciliation does not itself write browser storage or bump session schema.
+Session load, share acceptance and recovery reconcile only automatic archetype properties against the bundled catalog before optional legacy enrichment. Exact unique names are used only when there is no external ID. Unknown/ambiguous identities and unverified membership sets remain unchanged. Cards absent after eligibility trimming remain in saved sessions; import still attempts targeted metadata lookup and preserves an unresolved imported ID/copy count when lookup fails. User categories, unrelated metadata, explicit manual keys and saved simulation plans/provenance are preserved. If an old automatic membership previously absorbed a manual assignment, the missing provenance cannot be reconstructed: only explicitly stored override keys are preserved. An already-correct card retains its reference; reconciliation does not itself write browser storage or bump session schema.
 
 The same saved provider response can also refresh the artwork allowlist:
 
@@ -60,7 +118,7 @@ The name-only projection is pinned to
 [86c467a8e14e633a6210458905f5a479c4836405](https://github.com/DawnbrandBots/yaml-yugi/tree/86c467a8e14e633a6210458905f5a479c4836405)
 (October 31, 2026). The downloaded OCG/TCG aggregate has 110,194,011 bytes and
 SHA-256 `c41ad997e6bf5fa3431feaf5c425967c5c9306d06ad1eae5d4a592277f55222b`.
-Its entire retained identity/English/German-name projection was checked against
+Before this eligibility trim, its complete identity/English/German-name projection was checked against
 all individual `data/cards/*.json` records from that revision. The pinned source
 archive has SHA-256
 `b37373450e0c7d4dde033150984b3a11e8cb9d1e3fd72b3d081f935929d2ecd9`.
@@ -75,7 +133,7 @@ its AGPL license covers pipeline code. No upstream pipeline code is copied, and
 this project's software license does not relicense rights-holder card content.
 Compilation credit appears in Help and the repository README.
 
-`snapshots/names.de.yaml-yugi.2026-10-31.json` retains only source IDs and
+`snapshots/names.de.yaml-yugi.2026-10-31.json` retains only eligible canonical/unique-artwork source IDs and
 English/German names, explicit source-assigned-ID markers, revision and retrieval
 metadata, and the full aggregate's hash/size. No descriptions, artwork, prices,
 foreign rules or archetype data are retained. The old German YGOPRODeck projection
@@ -98,38 +156,21 @@ A disagreement fails generation for review. Spelling differences from canonical
 English are audited without changing the English identity.
 
 The existing conservative label policy withholds controls, HTML entities and
-angle brackets. Ten literal Maliss `<P>`, `<Q>` or `<C>` names therefore remain
+angle brackets. Seven eligible literal Maliss `<P>` or `<C>` names therefore remain
 withheld; this does not mean they are malicious or lack official translations.
 Missing/withheld labels use English fallback.
 
 ### Coverage and source choice
 
-| Current 14,607-card catalog | German labels | Missing / withheld | Example entries |
-| --- | ---: | ---: | ---: |
-| Previous YGOPRODeck names | 11,769 | 2,838 | 4/24 |
-| YAML Yugi, printed-ID exact matches only | 14,103 | 504 | 24/24 |
-| Shipped YAML Yugi, verified IDs and aliases | 14,125 | 482 | 24/24 |
-
-The source contains 14,414 records. The audit records all missing IDs, rejected
-labels, unknown/ambiguous IDs, alias/source-assigned matches, spelling differences,
-repeated labels, source hashes, sizes and actual example labels/fallback reasons.
-Five example K9 names equal their English spelling. Neither equal names nor
-coverage totals establish complete official translation coverage or native-speaker
-review.
-
-A single translation source was chosen after comparison with the fill-only union.
-With verified mappings, 116 old provider labels fall back to English: 85 Skills,
-16 Tokens and these 15 other records: Sanctity of Dragon; Iron Knight of Revolution;
-Holactie the Creator of Light; Shuttleroid; Aroma Strategy; Mooyan Curry; Tyler the
-Great Warrior; Get Your Game On!; Ulevo; Meteo the Matchless; King of Destruction -
-Xexex; Queen of Fate - Eternia; Testament of the Arcane Lords; Chimaera, the Master
-of Beasts; and Emperor of Lightning. This tradeoff was explicitly accepted in
-favor of one translation source. No claim is made that every old provider label
-was an official German release. Skills/Tokens do not justify maintaining another
-translation provider for this calculator.
-
-The compact asset has 502,498 UTF-8 bytes. Compression sizes in the audit use
-Node's defaults, not hosted transfer measurements.
+Coverage uses the 12,156 eligible canonical cards as its denominator: 11,956
+German labels and 200 missing/withheld labels. The retained projection contains
+12,106 eligible source identities, including alias records and missing labels.
+Excluded cards, unknown identities and ambiguous artwork joins are not retained
+as translation-maintenance gaps. The audit lists missing eligible IDs, rejected
+labels, alias/source-assigned matches, spelling differences, repeated labels,
+source hashes, sizes and actual example labels/fallback reasons. All 24 example
+entries are covered; five K9 names equal their English spelling. Coverage does not
+establish complete official translations or native-speaker review.
 
 ### Offline generation and refresh
 
