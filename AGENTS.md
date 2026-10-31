@@ -58,8 +58,7 @@ For Windows Codex tasks using the verified restricted environment:
 - Repository setup may install or refresh the documented publication hooks,
   preserving the existing approved identity and policy. Do not change global
   configuration, ACLs, or permission profiles, or bypass publication guards.
-- Report whether verification used approved execution. Reinvestigate only
-  when an approved command fails or the execution environment changes.
+- Reinvestigate only when an approved command fails or the execution environment changes.
 
 ### Release WebAssembly publishing
 
@@ -105,8 +104,8 @@ Applies to C# and Razor C#, including `@code`; preserve markup/layout during rea
 
 ### Publication privacy
 
-- Before owner-authored commits, run `node scripts/codex/privacy-guard.mjs check` on resolved author/committer. Approved owner name: `SeyTi01`. Obtain the issued noreply address only from authenticated **Settings → Emails**, never profile/billing/machine identity or inferred IDs.
-- Windows setup installs shared publication hooks; fresh clones block until configured. Follow [PRIVACY.md](scripts/codex/PRIVACY.md) with explicitly approved public identity. Contributors/forks must use their own identity. Preserve existing hooks/stdin; never bypass guards with `--no-verify` or disabled hooks.
+- Before owner-authored commits, run `node scripts/codex/privacy-guard.mjs check` on resolved author/committer. In Codex, use the provided default identity; in web sessions, use the identity from existing commits.
+- Windows setup installs shared publication hooks; fresh clones block until configured. Follow [PRIVACY.md](scripts/codex/PRIVACY.md) with the established public identity. Contributors/forks must use their own identity. Preserve existing hooks/stdin; never bypass guards with `--no-verify` or disabled hooks.
 - Before pushes/API writes, inspect all newly outgoing raw authors/committers, identity trailers, annotated taggers, messages, paths, and changed content. Local config does not set API identities: use explicit approved API controls or guarded local Git; never publish objects to probe defaults. Inspect incoming author metadata before web/API merges.
 - Never derive public hostnames/resources/docs/screenshots from personal names/emails, machine profiles, or billing data. Inspect text and images separately; hooks cannot detect all identifying content.
 - These preemptive checks validate new publication. Changes to existing published history require separate authorization except for the task-branch rebases authorized below; rebased commits still require all publication checks.
@@ -119,6 +118,6 @@ Applies to C# and Razor C#, including `@code`; preserve markup/layout during rea
   Never amend or squash already-pushed commits, or rewrite published history for cosmetic cleanup.
 - Before rebasing a published task branch, record its exact remote SHA and preserve the old head in a local backup ref. Publish the rebase with explicit `--force-with-lease=<ref>:<expected-sha>` and verify the remote commit and tree. If the lease fails, fetch and reconcile concurrent changes before retrying; never overwrite them with unguarded force. This authorization does not extend to unrelated branches or protected branches.
 - An authenticated GitHub plugin may be used as a push fallback only when that specific remote operation is authorized. A forced plugin ref update is not an atomic Git lease: recheck the exact remote SHA immediately before updating, verify the intended commit and tree were published, and abort if the remote changed unexpectedly. Never use unguarded CLI force or infer CLI Git authentication from plugin access.
-- Keep changes/PRs focused; add relevant regression tests above and run solution checks for substantial changes. Report exact verification commands, results, execution mode, manual checks, and limits in the PR discussion, not an extra report file.
+- Keep changes/PRs focused; add relevant regression tests above and run solution checks for substantial changes. Omit routine verification results, including tests, CI, and privacy checks, from PRs and issues; report only verification blocked and not reconciled.
 - Unless explicitly requested, do not change GitHub Actions workflows, Cloudflare deployment/branch policies, frameworks/dependencies, or unrelated docs, or perform broad refactors. Do not intentionally trigger deployments or modify releases without authorization.
 - Verify which branch a hosted site represents before claiming it.
