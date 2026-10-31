@@ -11,6 +11,44 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 [TestFixture]
 public class CardInfoServiceTests {
     [Test]
+    [SetUICulture("de")]
+    public async Task BundledGermanNamesResolveBothLanguagesToCanonicalCards() {
+        string nameAssetPath = "YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json";
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, nameAssetPath))) {
+            directory = directory.Parent;
+        }
+        Assert.That(directory, Is.Not.Null, "Bundled card names must be available to the integration test.");
+        string data = Path.Combine(directory!.FullName, "YGOProbabilityCalculatorBlazor/wwwroot/data");
+        string catalog = await File.ReadAllTextAsync(Path.Combine(data, "card-catalog.v1.json"));
+        string names = await File.ReadAllTextAsync(Path.Combine(data, "card-names.de.v1.json"));
+        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            request.RequestUri!.AbsolutePath.EndsWith("card-names.de.v1.json") ? names : catalog)));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client);
+
+        CardInfo german = (await service.SearchCardsAsync("Bezwingerseele Razen")).Single();
+        CardInfo english = (await service.SearchCardsAsync("Vanquish Soul Razen")).Single();
+        Assert.That(german, Is.SameAs(english));
+        Assert.That((german.Id, german.Name), Is.EqualTo((29302858, "Vanquish Soul Razen")));
+        Assert.That(service.GetLocalizedCardName(german), Is.EqualTo("Bezwingerseele Razen"));
+        Assert.That(german.ResolvedArchetypes, Does.Contain("Vanquish Soul"));
+
+        Card imported = CuratedDrawEffectPresets.CreateImportedCard(german, 3, german.Id);
+        string before = JsonSerializer.Serialize(imported);
+        await service.EnsureLocalizedCardNamesAsync([imported]);
+        Assert.That(service.GetLocalizedCardName(imported), Is.EqualTo("Bezwingerseele Razen"));
+        Assert.That(JsonSerializer.Serialize(imported), Is.EqualTo(before));
+        Assert.That(service.GetLocalizedCardName(imported.WithName("My Razen")), Is.Null);
+        Assert.That((await service.SearchCardsAsync("Wiedergeburt")).First().Id, Is.EqualTo(83764719));
+        Assert.That((await service.SearchCardsAsync("Slifer der Himmelsdrache")).First().Id, Is.EqualTo(10000020));
+        CardInfo missing = (await service.SearchCardsAsync("Mooyan Curry")).Single();
+        Assert.That(service.GetLocalizedCardName(missing), Is.Null);
+        Assert.That(missing.Name, Is.EqualTo("Mooyan Curry"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+    }
+
+    [Test]
     [SetUICulture("fr")]
     public async Task ArtworkSharesPendingCatalogWithoutWaitingForLocalizedNames() {
         TaskCompletionSource<HttpResponseMessage> pendingCatalog = new(TaskCreationOptions.RunContinuationsAsynchronously);

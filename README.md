@@ -59,3 +59,5 @@ dotnet run --project YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlaz
 Install SDK-scoped `wasm-tools` for optimized Release publishing. See [repository instructions](AGENTS.md), [restricted Linux verification](scripts/codex/RESTRICTED-LINUX.md), and [publication privacy checks](scripts/codex/PRIVACY.md) before contributing. [Worker/runtime notes](scripts/background-calculation/README.md) contain implementation and historical benchmark evidence.
 
 Card artwork is supplied by [YGOPRODeck](https://ygoprodeck.com/api-guide/) and retained on project hosting. The software license does not cover third-party artwork.
+
+German card-name compilation is credited to [YAML Yugi](https://github.com/DawnbrandBots/yaml-yugi) and its upstream contributors. Card content remains the property of its respective rights holders; the software license does not relicense it. See the [offline source and coverage guide](infrastructure/card-catalog/README.md#german-search-names).

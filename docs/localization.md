@@ -220,12 +220,13 @@ publish-time prerendering behavior stay intact.
 ## German card-name coverage
 
 The [German terminology guide](localization-de.md) records wording and intentional
-English fallbacks. The retained YGOPRODeck snapshot supplies 11,769 names out of
-14,607 canonical cards, covering 4 of the 24 example entries. German and English
+English fallbacks. The pinned YAML Yugi compilation is the sole German-name
+source. It supplies 14,125 names out of 14,607 canonical cards and covers all 24
+example entries. German and English
 queries select the same canonical cards through the shared loader. Umlauts and
 ß remain distinct; no accent stripping or translated-name identity joins occur.
 
 See the [offline generation and audit guide](../infrastructure/card-catalog/README.md#german-search-names).
-The YAML Yugi comparison remains audit-only: its hypothetical coverage expansion
-is blocked on unresolved bulk name/passcode redistribution permission. No candidate
-snapshot or additional runtime names are included.
+The retained name-only snapshot reproduces the runtime asset offline.
+YAML Yugi and its upstream contributors receive compilation credit in Help and
+the README; rights-holder card content is separate from the software license.

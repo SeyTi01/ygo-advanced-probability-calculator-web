@@ -1923,6 +1923,8 @@
   <data name="Help.Footer.Credits.Part0" xml:space="preserve"><value>SeyTi01</value></data>
   <data name="Help.Footer.Credits.Part1" xml:space="preserve"><value>YGOPRODeck</value></data>
   <data name="Help.Footer.Credits" xml:space="preserve"><value>Created by {0}. Card artwork is supplied by {1} and retained on project hosting. Missing artwork does not affect calculations; third-party artwork is outside the software license.</value></data>
+  <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve"><value>YAML Yugi</value></data>
+  <data name="Help.Footer.NameCompilation" xml:space="preserve"><value>German card-name compilation: {0} and its upstream contributors. Card content remains the property of its respective rights holders.</value></data>
   <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exact)</value></data>
   <data name="Ui.Share" xml:space="preserve"><value>Share</value></data>
   <data name="Ui.TargetsInThisDeck" xml:space="preserve">

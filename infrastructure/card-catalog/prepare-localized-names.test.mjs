@@ -5,174 +5,136 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { buildLocalizedNames, retainNameSnapshot, retainYamlYugiSnapshot, compareYamlYugi,
-    exampleNameCoverage, assertNoNameRegression } from './prepare-localized-names.mjs';
-
-const catalog = { version: 2, cards: [
-    { id: 1, name: 'First', artworkImageIds: [1, 9] },
-    { id: 2, name: 'Second', artworkImageIds: [2, 9] },
-    { id: 3, name: 'Third', artworkImageIds: [3, 8] }
-] };
-const snapshot = cards => ({ version: 1, locale: 'de', cards });
-
-test('ID-only joins retain distinct same-name cards and report missing/artwork/unknown IDs', () => {
-    const source = snapshot([
-        { id: 99, name: 'First', name_en: 'First' },
-        { id: 9, name: 'Mehrdeutiges Bild', name_en: 'First' },
-        { id: 8, name: 'Anderes Bild', name_en: 'Third' },
-        { id: 2, name: 'Weißer Drache', name_en: 'Second' },
-        { id: 1, name: 'Weißer Drache', name_en: 'FIRST' }
-    ]);
-    const result = buildLocalizedNames(source, catalog);
-    assert.deepEqual(result.asset.names, [[1, 'Weißer Drache'], [2, 'Weißer Drache']]);
-    assert.deepEqual(result.audit.missingIds, [3]);
-    assert.deepEqual(result.audit.unexpectedIds, [8, 9, 99]);
-    assert.deepEqual(result.audit.artworkOnlyIds, [{ id: 8, candidates: [3] }, { id: 9, candidates: [1, 2] }]);
-    assert.deepEqual(result.audit.ambiguousNames, [{ name: 'Weißer Drache', ids: [1, 2] }]);
-    assert.deepEqual(result.audit.englishNameDifferences, [{ id: 1, provider: 'FIRST', canonical: 'First' }]);
-    assert.deepEqual(buildLocalizedNames(snapshot([...source.cards].reverse()), catalog), result);
-});
-
-test('malformed or duplicate identities cannot publish ambiguous labels', () => {
-    const entry = { id: 1, name: 'Äther', name_en: 'First' };
-    for (const cards of [[entry, entry], [{ ...entry, id: -1 }], [{ ...entry, name: '' }],
-        [{ ...entry, name: '<b>Äther</b>' }], [{ ...entry, name: 'Äther<br>' }],
-        [{ ...entry, name: 'Äther &amp; mehr' }], [{ ...entry, name: 'Äther\n' }], [{ ...entry, name_en: null }]]) {
-        assert.throws(() => buildLocalizedNames(snapshot(cards), catalog));
-    }
-});
-
-test('retained source projects only original name/identity fields and hashes original bytes', () => {
-    const bytes = Buffer.from(JSON.stringify({ data: [{ id: 1, name: 'Äther', name_en: 'First',
-        desc: 'Do not retain', card_images: [{ id: 9, image_url: 'private.invalid' }], card_prices: [{}] }] }));
-    const retained = retainNameSnapshot(bytes, '2026-10-28T00:00:00Z');
-    assert.deepEqual(retained.cards, [{ id: 1, name: 'Äther', name_en: 'First' }]);
-    assert.equal(retained.sourceBytes, bytes.length);
-    assert.match(retained.sourceSha256, /^[a-f0-9]{64}$/);
-});
-
-test('shipped German names reproduce offline from retained provider names and canonical catalog', async () => {
-    const read = async relative => JSON.parse(await readFile(new URL(relative, import.meta.url), 'utf8'));
-    const retained = await read('./snapshots/names.de.2026-10-28.json');
-    const canonical = await read('../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json');
-    const shipped = await read('../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json');
-    const result = buildLocalizedNames(retained, canonical);
-    assert.deepEqual(result.asset, shipped);
-    const audit = await read('./snapshots/names.de.2026-10-28.audit.json');
-    const { canonicalSha256, sourceSha256, ...generated } = audit;
-    assert.deepEqual(result.audit, generated);
-    assert.equal(result.audit.matchedRecords + result.audit.missingIds.length, canonical.cards.length);
-    assert.deepEqual(result.audit.unexpectedIds, []);
-    assert.deepEqual(result.audit.ambiguousNames, []);
-    const example = await read('../../YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json');
-    const coverage = exampleNameCoverage(shipped, canonical, example);
-    assert.equal(coverage.entries, example.Cards.length);
-    for (const entry of coverage.cards) {
-        assert.equal(entry.name, new Map(shipped.names).get(entry.id) ?? null);
-    }
-    assert.equal(coverage.matched + coverage.unresolved.length, coverage.entries);
-});
+import { buildLocalizedNames, retainYamlYugiSnapshot, exampleNameCoverage, assertNoNameRegression } from './prepare-localized-names.mjs';
 
 const revision = 'a'.repeat(40);
-const retrievedAt = '2026-10-29T00:00:00Z';
-const yamlSnapshot = cards => retainYamlYugiSnapshot(Buffer.from(JSON.stringify(cards)), revision, retrievedAt);
+const retrievedAt = '2026-10-31T00:00:00Z';
+const snapshot = cards => retainYamlYugiSnapshot(Buffer.from(JSON.stringify(cards)), revision, retrievedAt);
+const record = (password, en, de) => ({ password, name: { en, de } });
+const catalog = { version: 2, cards: [
+    { id: 1, name: 'First', artworkImageIds: [1, 2, 9] },
+    { id: 2, name: 'Second', artworkImageIds: [2, 9] },
+    { id: 3, name: 'Third', artworkImageIds: [3, 8, 8] }
+] };
 const example = { Cards: [
     { ExternalCardId: 1, Name: 'First' }, { ExternalCardId: 2, Name: 'Second' },
     { ExternalCardId: 3, Name: 'Third' }, { ExternalCardId: 1, Name: 'My label' }
 ] };
 
-test('additional-source comparison keeps primary names and joins only exact passcodes', () => {
-    const primary = snapshot([{ id: 1, name: 'Beibehalten', name_en: 'First' }]);
-    const records = [
-        { password: 1, name: { en: 'First', de: 'Abweichung' }, text: { de: 'Do not retain' } },
-        { password: 2, name: { en: 'Second', de: 'Second' } },
-        { password: 3, name: { en: 'Third', de: 'Beibehalten' } },
-        { password: 8, name: { en: 'Third', de: 'Falsches Bild' } },
-        { password: 99, name: { en: 'First', de: 'Unbekannt' } },
-        { konami_id: 1, name: { en: 'First', de: 'Keine Passnummer' } },
-        { password: 7, name: { en: 'No German' } }
-    ];
-    const candidate = yamlSnapshot(records);
-    assert.deepEqual(Object.keys(candidate.cards[0]), ['id', 'name', 'name_en']);
-    assert.equal(candidate.revision, revision);
-    assert.match(candidate.sourceSha256, /^[a-f0-9]{64}$/);
-    assert.equal(JSON.stringify(candidate).includes('Do not retain'), false);
-    const audit = compareYamlYugi(primary, candidate, catalog, example);
-    assert.deepEqual(audit.disagreements, [{ id: 1, retained: 'Beibehalten', candidate: 'Abweichung', decision: 'retain-ygoprodeck' }]);
-    assert.deepEqual(audit.addedIds, [2, 3]);
-    assert.deepEqual(audit.candidate.unexpectedIds, [8, 99]);
-    assert.deepEqual(audit.candidate.artworkOnlyIds, [{ id: 8, candidates: [3] }]);
-    assert.equal(audit.candidate.equalToEnglish, 1);
-    assert.equal(audit.hypothetical.matched, 3);
-    assert.deepEqual(audit.hypothetical.duplicateNames, [{ name: 'Beibehalten', ids: [1, 3] }]);
-    assert.equal(audit.withoutPasscode, 1);
-    assert.equal(audit.withoutGermanName, 1);
-    assert.equal(audit.example.before.matched, 1);
-    assert.equal(audit.example.hypothetical.matched, 3);
-    assert.equal(audit.example.hypothetical.cards[0].name, 'Beibehalten');
-    assert.equal(audit.example.hypothetical.cards[3].reason, 'unverified-canonical-identity');
-    const reordered = yamlSnapshot([...records].reverse());
-    assert.deepEqual(reordered.cards, candidate.cards);
-    const reorderedAudit = compareYamlYugi(primary, { ...candidate, cards: reordered.cards }, catalog, example);
-    assert.deepEqual(reorderedAudit, audit);
-    assert.equal('asset' in audit, false, 'research audit must not publish an additional runtime asset');
+test('canonical IDs win over aliases; unique artwork IDs join, ambiguous IDs and translated names do not', () => {
+    const raw = [record(1, 'FIRST', 'Weißer Drache'), record(2, 'Second', 'Weißer Drache'),
+        record(8, 'Third', 'Dritte'), record(9, 'First', 'Mehrdeutig'), record(99, 'First', 'Unbekannt')];
+    const result = buildLocalizedNames(snapshot(raw), catalog, example);
+    assert.deepEqual(result.asset.names, [[1, 'Weißer Drache'], [2, 'Weißer Drache'], [3, 'Dritte']]);
+    assert.deepEqual(result.audit.aliasMatches, [{ sourceId: 8, canonicalId: 3 }]);
+    assert.deepEqual(result.audit.ambiguousIds, [{ id: 9, candidates: [1, 2] }]);
+    assert.deepEqual(result.audit.unexpectedIds, [99]);
+    assert.deepEqual(result.audit.ambiguousNames, [{ name: 'Weißer Drache', ids: [1, 2] }]);
+    assert.deepEqual(result.audit.englishNameDifferences, [{ id: 1, sourceId: 1, provider: 'FIRST', canonical: 'First' }]);
+    const reordered = snapshot(raw);
+    reordered.cards.reverse();
+    assert.deepEqual(buildLocalizedNames(reordered, catalog, example).asset, result.asset);
+    assert.equal(result.audit.example.cards[3].reason, 'unverified-canonical-identity');
 });
 
-test('comparison rejects malformed/duplicate passcodes even if one record lacks a German name', () => {
-    const card = { password: 1, name: { en: 'First', de: 'Erste' } };
-    for (const password of [-1, 0, 1.5, '1', 100000000]) {
-        assert.throws(() => yamlSnapshot([{ ...card, password }]), /passcode/);
-    }
-    assert.throws(() => yamlSnapshot([card, { password: 1, name: { en: 'First' } }]), /duplicate/);
+test('source-assigned IDs preserve passwordless canonical cards without guessing by name', () => {
+    const cards = [record(null, 'Slifer', 'Slifer der Himmelsdrache')];
+    cards[0].fake_password = 10000020;
+    const retained = snapshot(cards);
+    assert.deepEqual(retained.cards[0], { id: 10000020, assigned: true, name: 'Slifer der Himmelsdrache', name_en: 'Slifer' });
+    const canonical = { version: 2, cards: [{ id: 10000020, name: 'Slifer' }] };
+    const result = buildLocalizedNames(retained, canonical, { Cards: [] });
+    assert.deepEqual(result.asset.names, [[10000020, 'Slifer der Himmelsdrache']]);
+    assert.deepEqual(result.audit.assignedIds, [{ sourceId: 10000020, canonicalId: 10000020 }]);
+});
+
+test('duplicate and malformed identities fail even when the duplicate has no German name', () => {
+    const card = record(1, 'First', 'Erste');
+    for (const id of [-1, 0, 1.5, '1', 100000000]) assert.throws(() => snapshot([{ ...card, password: id }]), /identity/);
+    assert.throws(() => snapshot([card, record(1, 'First', null)]), /duplicate/);
+    assert.throws(() => snapshot([{ ...record(null, 'First', 'Erste'), fake_password: 2147483648 }]), /identity/);
+    const retained = snapshot([card]);
+    retained.cards.push({ id: 1, name: null, name_en: 'First' });
+    assert.throws(() => buildLocalizedNames(retained, catalog, example), /duplicate/);
     assert.throws(() => retainYamlYugiSnapshot(Buffer.from('[]'), 'master', retrievedAt), /commit/);
-    const audit = compareYamlYugi(snapshot([{ id: 1, name: 'Erste', name_en: 'First' }]),
-        yamlSnapshot([{ password: 2, name: { en: 'Second', de: '<ruby>Zweite</ruby>' } }]), catalog, example);
-    assert.equal(audit.rejectedNames.length, 1);
-    assert.equal(audit.hypothetical.matched, 1);
-    assert.equal(audit.example.hypothetical.cards[1].reason, 'missing-provider-name');
+    assert.throws(() => buildLocalizedNames(snapshot([record(3, 'Third', 'Dritte'), record(8, 'Third', 'Andere')]), catalog, example), /Conflicting/);
+    assert.deepEqual(buildLocalizedNames(snapshot([record(3, 'Third', 'Dritte'), record(8, 'Third', 'Dritte')]), catalog, example).asset.names, [[3, 'Dritte']]);
 });
 
-test('a refresh cannot silently lose previously shipped canonical names', () => {
+test('projection omits unrelated data and audits invalid or missing labels without substituting English', () => {
+    const raw = [{ ...record(1, 'First', 'Erste'), effect: 'Do not retain', image: 'https://unused.invalid' },
+        record(2, 'Second', null), record(3, 'Third', '<ruby>Dritte</ruby>'), record(null, 'No ID', 'Ohne ID')];
+    const retained = snapshot(raw);
+    assert.deepEqual(Object.keys(retained.cards.find(card => card.id === 1)), ['id', 'name', 'name_en']);
+    assert.equal(JSON.stringify(retained).includes('Do not retain'), false);
+    assert.match(retained.sourceSha256, /^[a-f0-9]{64}$/);
+    const result = buildLocalizedNames(retained, catalog, example);
+    assert.deepEqual(result.asset.names, [[1, 'Erste']]);
+    assert.equal(result.audit.withoutId, 1);
+    assert.equal(result.audit.withoutGermanName, 1);
+    assert.equal(result.audit.rejectedNames.length, 1);
+    assert.deepEqual(result.audit.missingIds, [2, 3]);
+    for (const name of ['', 'Dritte\n', 'Dritte &amp; mehr', 'x'.repeat(513)]) {
+        assert.deepEqual(buildLocalizedNames(snapshot([record(1, 'First', name)]), catalog, example).asset.names, []);
+    }
+});
+
+test('shipped names reproduce from the sole retained source and cover every actual example entry', async () => {
+    const read = async path => JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
+    const retained = await read('./snapshots/names.de.yaml-yugi.2026-10-31.json');
+    const canonical = await read('../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json');
+    const session = await read('../../YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json');
+    const shipped = await read('../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json');
+    const savedAudit = await read('./snapshots/names.de.yaml-yugi.2026-10-31.audit.json');
+    const { canonicalSha256, exampleSha256, ...audit } = savedAudit;
+    const result = buildLocalizedNames(retained, canonical, session);
+    assert.deepEqual(result.asset, shipped);
+    assert.deepEqual(result.audit, audit);
+    assert.equal(result.audit.matchedRecords + result.audit.missingIds.length, canonical.cards.length);
+    const coverage = exampleNameCoverage(shipped, canonical, session);
+    assert.equal(coverage.matched, session.Cards.length);
+    assert.deepEqual(coverage.unresolved, []);
+    assert.equal(new Map(shipped.names).get(83764719), 'Wiedergeburt');
+    assert.equal(new Map(shipped.names).get(10000020), 'Slifer der Himmelsdrache');
+    assert.equal(new Map(shipped.names).has(58074572), false, 'missing source translation uses English fallback');
+});
+
+test('coverage changes require explicit reviewed removal IDs', () => {
     const asset = names => ({ version: 1, locale: 'de', names });
-    assert.throws(() => assertNoNameRegression(asset([[1, 'Erste'], [2, 'Zweite']]), asset([[1, 'Erste']])), /2/);
-    assert.doesNotThrow(() => assertNoNameRegression(asset([[1, 'Erste']]), asset([[1, 'Erste'], [2, 'Zweite']])));
+    const before = asset([[1, 'Erste'], [2, 'Zweite']]);
+    const after = asset([[2, 'Zweite']]);
+    assert.throws(() => assertNoNameRegression(before, after), /regression: 1/);
+    assert.throws(() => assertNoNameRegression(before, after, [2]), /regression: 1/);
+    assert.deepEqual(assertNoNameRegression(before, after, [1]), [1]);
+    assert.throws(() => assertNoNameRegression(before, after, ['1']), /reviewed/);
 });
 
-test('audit-only CLI cannot replace the shipped name asset', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'name-comparison-'));
+test('CLI refresh validates before writing and the retained snapshot regenerates identical output offline', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'german-names-'));
     try {
-        const raw = join(directory, 'source.json');
-        const primary = join(directory, 'primary.json');
-        const canonical = join(directory, 'catalog.json');
-        const session = join(directory, 'example.json');
-        const audit = join(directory, 'audit.json');
-        const output = join(directory, 'names.json');
-        await writeFile(raw, JSON.stringify([{ password: 2, name: { en: 'Second', de: 'Zweite' } }]));
-        await writeFile(primary, JSON.stringify(snapshot([{ id: 1, name: 'Erste', name_en: 'First' }])));
-        await writeFile(canonical, JSON.stringify(catalog));
-        await writeFile(session, JSON.stringify(example));
-        await writeFile(output, 'existing bytes');
+        const paths = Object.fromEntries(['provider', 'snapshot', 'catalog', 'example', 'output', 'audit', 'allowed']
+            .map(key => [key, join(directory, key + '.json')]));
+        await writeFile(paths.catalog, JSON.stringify(catalog));
+        await writeFile(paths.example, JSON.stringify(example));
+        await writeFile(paths.provider, JSON.stringify([record(2, 'Second', 'Zweite')]));
+        await writeFile(paths.snapshot, 'preserve snapshot');
+        await writeFile(paths.output, JSON.stringify({ version: 1, locale: 'de', names: [[1, 'Erste']] }));
         const args = [fileURLToPath(new URL('./prepare-localized-names.mjs', import.meta.url)),
-            '--snapshot', primary, '--catalog', canonical, '--audit', audit,
-            '--compare-yaml-yugi', raw, '--revision', revision, '--retrieved-at', retrievedAt, '--example', session];
+            '--snapshot', paths.snapshot, '--catalog', paths.catalog, '--example', paths.example,
+            '--output', paths.output, '--audit', paths.audit];
+        const refresh = [...args, '--provider', paths.provider, '--revision', revision, '--retrieved-at', retrievedAt];
+        assert.throws(() => execFileSync(process.execPath, refresh, { stdio: 'pipe' }), error => /regression: 1/.test(error.stderr));
+        assert.equal(await readFile(paths.snapshot, 'utf8'), 'preserve snapshot');
+        await writeFile(paths.allowed, '[1]');
+        execFileSync(process.execPath, [...refresh, '--allow-removals', paths.allowed]);
+        const firstAsset = await readFile(paths.output, 'utf8');
+        const firstAudit = await readFile(paths.audit, 'utf8');
+        assert.deepEqual(JSON.parse(firstAsset).names, [[2, 'Zweite']]);
         execFileSync(process.execPath, args);
-        const firstAudit = await readFile(audit, 'utf8');
-        execFileSync(process.execPath, args);
-        assert.equal(await readFile(audit, 'utf8'), firstAudit, 'same input bytes reproduce the complete audit');
-        assert.equal(JSON.parse(await readFile(audit, 'utf8')).example.hypothetical.matched, 2);
-        assert.throws(() => execFileSync(process.execPath, [...args, '--output', output], { stdio: 'pipe' }));
-        assert.equal(await readFile(output, 'utf8'), 'existing bytes');
-        const provider = join(directory, 'provider.json');
-        const baseline = join(directory, 'previous.json');
-        await writeFile(provider, JSON.stringify({ data: [{ id: 2, name: 'Zweite', name_en: 'Second' }] }));
-        await writeFile(baseline, JSON.stringify({ version: 1, locale: 'de', names: [[1, 'Erste']] }));
-        const refresh = [args[0], '--snapshot', primary, '--catalog', canonical,
-            '--provider', provider, '--output', join(directory, 'new-names.json'), '--audit', audit];
-        assert.throws(() => execFileSync(process.execPath, refresh, { stdio: 'pipe' }), error => /ENOENT/.test(error.stderr),
-            'a provider refresh requires a shipped baseline before writing');
-        assert.throws(() => execFileSync(process.execPath, [...refresh, '--previous', baseline], { stdio: 'pipe' }),
-            error => /coverage regression: 1/.test(error.stderr));
-        assert.equal(JSON.parse(await readFile(primary, 'utf8')).cards[0].id, 1, 'failed refresh preserves the old snapshot');
+        assert.equal(await readFile(paths.output, 'utf8'), firstAsset);
+        assert.equal(await readFile(paths.audit, 'utf8'), firstAudit);
+        assert.throws(() => execFileSync(process.execPath, [...args, '--previous', join(directory, 'missing.json')], { stdio: 'pipe' }),
+            error => /ENOENT/.test(error.stderr));
     } finally {
         await rm(directory, { recursive: true, force: true });
     }

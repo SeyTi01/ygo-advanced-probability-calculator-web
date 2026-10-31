@@ -46,176 +46,122 @@ node --test infrastructure/card-catalog/*.test.mjs
 
 ## German search names
 
-`prepare-localized-names.mjs` joins the German endpoint's top-level passcodes to
-the existing canonical catalog by **exact ID only**. It never joins by translated
-name, `name_en`, or artwork ID, and never derives archetype/name-rule membership
-from German. The runtime asset contains only `[canonical ID, German name]` pairs.
-These names act as search aliases for the canonical English entries; they are
-not a second card metadata catalog.
+[**YAML Yugi**](https://github.com/DawnbrandBots/yaml-yugi) is the sole source of
+German card names. YGOPRODeck continues to supply the canonical English metadata
+catalog and artwork; it is no longer a second translation source. The runtime
+asset contains only `[canonical ID, German name]` pairs, used for display and
+bilingual search. Selecting either language returns the original English card.
+Saved names, custom labels, session/share JSON, archetype keys and membership,
+effects and probability inputs remain unchanged.
 
-The October 28, 2026 response from
-[`cardinfo.php?language=de`](https://db.ygoprodeck.com/api/v7/cardinfo.php?language=de)
-contained 11,769 records (18,992,044 response bytes). All 11,769 match exact IDs in
-the checked-in 14,607-card catalog: 2,838 canonical cards have no German record.
-There were zero duplicate IDs, duplicate German names, unknown IDs or artwork-only
-ID matches. All records supplied `name_en`; eight differ from the canonical
-English spelling (seven capitalization differences and Cu/Cú Chulainn). These are
-reported for review, never used to override identity. 631 supplied German names
-equal their English names; this does **not** establish whether each is an official
-unchanged name or an untranslated provider record. No complete/native-speaker
-translation-coverage claim is made. The [provider guide](https://ygoprodeck.com/api-guide/)
-documents incomplete foreign-language coverage and English artwork.
+### Source and compilation credit
 
-`snapshots/names.de.2026-10-28.json` retains the original `id`, `name` and `name_en`
-fields plus endpoint, retrieval time, original byte count and SHA-256. It is a
-**name-only projection** of the downloaded response, not its full card text.
-Descriptions, images, prices, set data and foreign rule metadata are deliberately
-not retained or deployed. The adjacent audit records missing IDs, spelling
-differences and ambiguous/unknown identity candidates. The projection has 924,993
-bytes; the deployable `card-names.de.v1.json` has 412,046 UTF-8 bytes (173,885 gzip,
-135,945 Brotli using Node's defaults; actual host compression may differ).
+The name-only projection is pinned to
+[86c467a8e14e633a6210458905f5a479c4836405](https://github.com/DawnbrandBots/yaml-yugi/tree/86c467a8e14e633a6210458905f5a479c4836405)
+(October 31, 2026). The downloaded OCG/TCG aggregate has 110,194,011 bytes and
+SHA-256 `c41ad997e6bf5fa3431feaf5c425967c5c9306d06ad1eae5d4a592277f55222b`.
+Its entire retained identity/English/German-name projection was checked against
+all individual `data/cards/*.json` records from that revision. The pinned source
+archive has SHA-256
+`b37373450e0c7d4dde033150984b3a11e8cb9d1e3fd72b3d081f935929d2ecd9`.
+Verify the moving Pages aggregate against an immutable revision before refreshing;
+the old `aggregate` branch is not the current published snapshot.
 
-Regenerate byte-identical runtime names and audit entirely offline:
+Credit **YAML Yugi and its upstream contributors for their compilation**, including
+the [Yugipedia source cache](https://github.com/DawnbrandBots/yaml-yugipedia).
+The [upstream README](https://github.com/DawnbrandBots/yaml-yugi/blob/86c467a8e14e633a6210458905f5a479c4836405/README.md)
+attributes underlying card content to Studio Dice/SHUEISHA, TV TOKYO and KONAMI;
+its AGPL license covers pipeline code. No upstream pipeline code is copied, and
+this project's software license does not relicense rights-holder card content.
+Compilation credit appears in Help and the repository README.
 
-```sh
-node infrastructure/card-catalog/prepare-localized-names.mjs --snapshot infrastructure/card-catalog/snapshots/names.de.2026-10-28.json --catalog YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json --audit infrastructure/card-catalog/snapshots/names.de.2026-10-28.audit.json
-node --test infrastructure/card-catalog/prepare-localized-names.test.mjs
-```
+`snapshots/names.de.yaml-yugi.2026-10-31.json` retains only source IDs and
+English/German names, explicit source-assigned-ID markers, revision and retrieval
+metadata, and the full aggregate's hash/size. No descriptions, artwork, prices,
+foreign rules or archetype data are retained. The old German YGOPRODeck projection
+and the two-source merge path have been removed.
 
-To refresh, download the documented German endpoint once to a local file, then
-add `--provider PATH_TO_RESPONSE.json` and choose a new dated snapshot/audit path.
-Pass `--previous YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json`
-when writing to a new output path. Refreshes fail before writing if a previously
-shipped ID loses its label. Without `--previous`, an existing output is the
-baseline; a provider refresh cannot silently start without either baseline.
-This validates the names before replacing output; review the audit and update the
-coverage figures before publication. The tool itself never fetches the network.
-Normal builds, tests, publishing and startup never call the provider for names.
+### Identity and validation
 
-A German card search with at least two non-space characters or a populated deck
-requiring verified display labels requests the name asset. Concurrent search and
-display requests share the same load, including a failed result, for the service
-lifetime. Synchronous label reads, Help, an empty calculator, artwork and checkpoint
-capture do not request it. Rendering an imported/restored deck may request it.
-Searches while the UI language is English do not request it. A missing, invalid, oversized or timed-out
-name asset falls back to the existing English catalog search and manual entry.
-The service has an explicit supported-name-asset map (currently only `de`) and a
-shared lazy task per locale. Regional UI cultures resolve through their parents;
-a future reviewed locale can reuse this loader by adding its own map entry and
-asset. Merely registering a UI locale never guesses or downloads a name asset.
+Printed `password` values map first to exact canonical IDs, then to **unique**
+artwork aliases already verified in the canonical catalog. This uses the same
+precedence as the runtime catalog index. Source `fake_password` values explicitly
+identify passwordless records such as the Egyptian Gods; they are marked
+`assigned: true` in the retained projection and audited separately. These are
+source-assigned identifiers, not claims about printed passcodes.
 
-Populated display preparation uses one batch API and overlaps cold catalog/name
-downloads. Empty/manual-only decks still fetch neither; with a warm catalog,
-custom or unverified names do not request the language asset. Validated catalog
-records build a shared canonical-ID/artwork-alias index once. Exact canonical IDs
-take precedence, repeated artwork IDs on one record remain unique, and aliases
-owned by multiple records remain unresolved. All languages reuse this index and
-the same display fallback path; no localized fields are added to sessions.
+No English/German name matching establishes identity. Unknown or ambiguous IDs
+are withheld. Repeated aliases on the same card do not create ambiguity. Distinct
+canonical cards sharing a German name remain distinct choices; multiple source
+IDs resolving to one canonical card coalesce only when their German labels agree.
+A disagreement fails generation for review. Spelling differences from canonical
+English are audited without changing the English identity.
 
-German search ranks exact, then prefix, then substring matches across both names,
-with the existing canonical English name/ID tie order and 20-result limit. Each
-canonical card appears once. Matching is ordinal and case-insensitive, retaining
-umlauts and ß without accent stripping or ß/ss conflation. Distinct cards with
-identical localized names remain separate choices. Suggestions use `DisplayLabels`
-with the loaded German label; selecting one passes the original `CardInfo` to the
-existing import/effect path. Deck display labels require a verified external ID
-(exact canonical or unique artwork alias) and an exact stored canonical English
-name. Custom names retain their text. This presentation rule never mutates saved
-`Card.Name`; name-field focus/blur does not save a translation. User labels, objective
-metadata and English-derived memberships remain unchanged. The provider's
-abbreviations are retained (for example, `Blauäugiger w. Drache`), not expanded by
-guessing.
-The data-label accessor accepts only the original verified catalog objects;
-matching IDs on unverified live/cache objects do not confer a translated label.
+The existing conservative label policy withholds controls, HTML entities and
+angle brackets. Ten literal Maliss `<P>`, `<Q>` or `<C>` names therefore remain
+withheld; this does not mean they are malicious or lack official translations.
+Missing/withheld labels use English fallback.
 
-### YAML Yugi evaluation (October 29, 2026; research only)
+### Coverage and source choice
 
-The candidate is [DawnbrandBots/YAML Yugi](https://github.com/DawnbrandBots/yaml-yugi),
-at source commit `296ed20acd86883fe04a485caf7a4fea67d250de` (08:01:19 UTC).
-The downloaded OCG/TCG aggregate has 110,067,238 bytes and SHA-256
-`ff00889b46ceb7df7d1a2a53cf76ab0f5ea39446bce6896f7f04cef42fdf31f7`.
-Its complete passcode/German-name projection was compared with all individual
-`data/cards/*.json` records at that commit and matched. This pins the data behind
-the moving Pages URL; the stale `aggregate` branch is **not** this snapshot.
-Upstream's merge workflow runs on dispatch/update events, not a promised release
-schedule. The observed revision is current to the retrieval date.
-
-**Redistribution is unresolved, so no YAML Yugi snapshot or new runtime names are
-checked in.** The pinned [README](https://github.com/DawnbrandBots/yaml-yugi/blob/296ed20acd86883fe04a485caf7a4fea67d250de/README.md)
-attributes card data to Studio Dice/SHUEISHA, TV TOKYO and KONAMI, and assigns
-AGPL-3.0-or-later to the remaining pipeline source. It does not clearly grant
-redistribution rights for a bulk name/passcode projection. Publication and the
-code license alone do not resolve that question. No pipeline code was copied.
-This is an unresolved permission question, not a conclusion that names may never
-be reused. Resolve the name-only data rights and attribution before shipping it.
-
-The existing generator now has an **audit-only** comparison path. It never writes
-a candidate runtime asset and refuses `--output` in comparison mode. It retains
-only passcodes and English/German names in memory, rejects duplicate/malformed
-non-null passcodes, ignores missing passcodes, and reports invalid labels instead
-of substituting translations. Names with angle brackets, controls or HTML entities
-are withheld conservatively. In this snapshot, the ten withheld labels contain
-literal Maliss `<P>`, `<Q>` or `<C>` markers; this is not evidence of malicious HTML
-or absent official translations. They need a reviewed literal-label policy.
-
-| Coverage of the 14,607 canonical cards | Existing YGOPRODeck | Usable YAML Yugi | Hypothetical fill-only union |
+| Current 14,607-card catalog | German labels | Missing / withheld | Example entries |
 | --- | ---: | ---: | ---: |
-| Exact canonical matches | 11,769 | 14,103 | 14,240 |
-| Name differs from English | 11,138 | 13,343 | 13,470 |
-| Name equals English | 631 | 760 | 770 |
-| Missing / withheld | 2,838 | 504 | 367 |
-| Actual example entries resolved | 4/24 | 24/24 | 24/24 |
+| Previous YGOPRODeck names | 11,769 | 2,838 | 4/24 |
+| YAML Yugi, printed-ID exact matches only | 14,103 | 504 | 24/24 |
+| Shipped YAML Yugi, verified IDs and aliases | 14,125 | 482 | 24/24 |
 
-The raw candidate has 14,409 records, 118 without a passcode, 271 without a German
-name, 14,132 with both, and no duplicate passcodes. Before label validation it has
-14,113 exact canonical matches; ten are withheld by the rule above. Its remaining
-19 German-name passcodes match only artwork aliases, so none is joined. There is
-one repeated display name shared by distinct canonical cards, which remain
-separate. All **63 disagreements** are listed in the local comparison output with
-both spellings and the explicit decision `retain-ygoprodeck`. Every existing
-YGOPRODeck label stays unchanged; no conflict is silently declared authoritative.
+The source contains 14,414 records. The audit records all missing IDs, rejected
+labels, unknown/ambiguous IDs, alias/source-assigned matches, spelling differences,
+repeated labels, source hashes, sizes and actual example labels/fallback reasons.
+Five example K9 names equal their English spelling. Neither equal names nor
+coverage totals establish complete official translation coverage or native-speaker
+review.
 
-The example report reads `wwwroot/sample-data/example_session_state.json`, then
-looks up its exact IDs and canonical stored names in the same generated name
-pairs. It does not maintain a separate example mapping. The candidate fills all
-20 current gaps; five K9 names legitimately remain identical to English. There
-are no candidate conflicts or unresolved example entries. The 367 full-catalog
-gaps are provider/validation gaps, **not** a claim that those cards have no official
-German name. Current production still resolves only 4/24 because the candidate
-has not been cleared for redistribution.
+A single translation source was chosen after comparison with the fill-only union.
+With verified mappings, 116 old provider labels fall back to English: 85 Skills,
+16 Tokens and these 15 other records: Sanctity of Dragon; Iron Knight of Revolution;
+Holactie the Creator of Light; Shuttleroid; Aroma Strategy; Mooyan Curry; Tyler the
+Great Warrior; Get Your Game On!; Ulevo; Meteo the Matchless; King of Destruction -
+Xexex; Queen of Fate - Eternia; Testament of the Arcane Lords; Chimaera, the Master
+of Beasts; and Emperor of Lightning. This tradeoff was explicitly accepted in
+favor of one translation source. No claim is made that every old provider label
+was an official German release. Skills/Tokens do not justify maintaining another
+translation provider for this calculator.
 
-Official German spot checks confirmed [Razen](https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=18727&request_locale=de),
-[Fuwalos](https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=20500&request_locale=de)
-and [Magnamhut](https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=17762&request_locale=de).
-The material [Fairy Tale Tails disagreement](https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=15853&request_locale=de)
-also matches the candidate's spelling; the existing label is nevertheless retained
-pending a separate explicit correction. Two other conflict-page retrievals were
-unavailable; no full official verification of the candidate is claimed.
+The compact asset has 502,498 UTF-8 bytes. Compression sizes in the audit use
+Node's defaults, not hosted transfer measurements.
 
-The hypothetical compact asset would be 506,533 bytes (214,412 gzip / 165,761
-Brotli), versus 412,046 (173,885 / 135,945) currently deployed. These are Node
-default compression measurements, not hosted transfer measurements. Runtime
-loading, HTTP requests, saved state, canonical catalog and solver are unchanged.
+### Offline generation and refresh
 
-Repeat the comparison locally, with the externally obtained, hash-verified input:
+Regenerate the shipped asset and complete audit **offline**:
 
 ```sh
-node infrastructure/card-catalog/prepare-localized-names.mjs --snapshot infrastructure/card-catalog/snapshots/names.de.2026-10-28.json --catalog YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --compare-yaml-yugi /tmp/yaml-yugi-cards.json --revision 296ed20acd86883fe04a485caf7a4fea67d250de --retrieved-at 2026-10-29T11:57:50.615Z --example YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json --audit /tmp/yaml-yugi-comparison.json
+node infrastructure/card-catalog/prepare-localized-names.mjs --snapshot infrastructure/card-catalog/snapshots/names.de.yaml-yugi.2026-10-31.json --catalog YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --example YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json --audit infrastructure/card-catalog/snapshots/names.de.yaml-yugi.2026-10-31.audit.json
 node --test infrastructure/card-catalog/prepare-localized-names.test.mjs
 ```
 
-The audit includes source/catalog/example hashes, all missing IDs, additions,
-invalid labels, unknown/artwork-only IDs, spelling differences, disagreements,
-per-example labels/fallback reasons, and sizes. Identical input bytes and explicit
-retrieval metadata reproduce the same audit. Source hashes identify exact bytes;
-the old Windows-generated audit's canonical-file hash includes CRLF, whereas a
-Linux checkout uses LF. Its coverage fields and regenerated runtime asset agree.
-An in-memory name-only projection also has its own hash; no full aggregate or
-foreign descriptions/images need to be retained in this repository.
+To refresh, download the aggregate separately and verify its name/ID projection
+against the chosen immutable repository revision. Add
+`--provider PATH_TO_AGGREGATE.json --revision COMMIT_SHA --retrieved-at ISO_TIMESTAMP`
+to the command above and choose a new dated snapshot/audit path. The existing
+output is the required coverage baseline; use `--previous PATH_TO_SHIPPED_ASSET`
+when writing a new output path. Removed labels fail validation before any output
+is written. Intentional changes such as a reviewed source migration require
+`--allow-removals FILE`, a JSON array listing the exact accepted canonical IDs;
+it does not permit any other removals. Review all source/identity/coverage changes
+before publishing. Retain only the name projection, never the full aggregate.
 
-The narrow current alternative is the existing documented YGOPRODeck integration
-with English fallback. A fresh full German response on October 29 still has
-11,769 records and no Razen entry. YGOJSON aggregates YAML Yugi/Yugipedia and is
-not independent evidence of data permission; swapping to its MIT-licensed tooling
-would not by itself resolve upstream data rights. No adequate additional source
-with verified redistribution permission was established in this evaluation.
+The generator never fetches the network. Builds, tests, publishing and startup
+make no translation-provider requests. The existing lazy loader requests just
+`data/card-names.de.v1.json` when German search or verified deck display needs it.
+English, Help, an empty calculator and synchronous label reads do not load names.
+Concurrent display/search requests share one task, including a failed result.
+Failure falls back to English and manual entry; regional UI cultures use their
+supported parent locale. The runtime name asset format and loader are unchanged.
+
+Exact, prefix and substring searches use both languages with the existing English
+name/ID tie order and 20-result limit. Matching is ordinal and case-insensitive;
+umlauts and ß remain distinct, with no accent stripping or ß/ss conflation.
+Display labels require a verified external ID and an exact stored English name;
+custom labels stay verbatim. The data-label accessor accepts only verified
+catalog objects, and no localized fields are added to sessions.
