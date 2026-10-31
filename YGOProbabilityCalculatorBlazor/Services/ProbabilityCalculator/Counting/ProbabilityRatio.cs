@@ -29,7 +29,7 @@ internal static class ProbabilityRatio {
             return 0;
         }
 
-        if ((successes << (int)-exponent) < denominator) {
+        if (successes << (int)-exponent < denominator) {
             exponent--;
         }
 

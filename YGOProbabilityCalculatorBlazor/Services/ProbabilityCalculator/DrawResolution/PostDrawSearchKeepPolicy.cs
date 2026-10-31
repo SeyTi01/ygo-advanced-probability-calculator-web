@@ -6,7 +6,8 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawReso
 internal sealed partial class PostDrawCalculation {
     private HashSet<string> SearchPolicyObservedRows(List<Card> cards, bool deferUnremovableSearchers = false) {
         HashSet<string> observed = new(StringComparer.Ordinal);
-        Card[] effects = cards.Where(card => card.Copies > 0 && card.DrawCount is not null).ToArray();
+        Card[] effects = [.. cards.Where(card => card.Copies > 0 && card.DrawCount is not null)];
+
         foreach (Card source in cards.Where(card => card.Copies > 0 && card.Search is not null)) {
             // An unremovable searcher cannot act during draws. Its label may be
             // pooled unless another removable searcher's retention tier observes
@@ -14,20 +15,24 @@ internal sealed partial class PostDrawCalculation {
             if (!deferUnremovableSearchers) {
                 observed.Add(source.Id);
             }
-            budget.Spend(effects.Sum(effect => effect.PreDrawSelector.CategoryIdentities.Count
-                + effect.PostDrawSelector.CategoryIdentities.Count + 1L) * (source.Categories.Count + 1L));
+
+            budget.Spend(effects.Sum(effect => effect.PreDrawSelector.CategoryIdentities.Count + effect.PostDrawSelector.CategoryIdentities.Count + 1L) * (source.Categories.Count + 1L));
             bool removable = effects.Any(effect => (effect.PreDrawRemovalCount > 0 && effect.PreDrawSelector.Matches(source))
                 || (effect.PostDrawDiscardCount > 0 && effect.PostDrawSelector.Matches(source)));
+
             if (!removable) {
                 continue;
             }
+
             budget.Spend(cards.Sum(card => card.Categories.Count + 1L) * (source.Search!.Selector.CategoryIdentities.Count + 1L));
+
             foreach (Card target in cards) {
                 if (source.Id != target.Id && source.Search!.Matches(target)) {
                     observed.Add(target.Id);
                 }
             }
         }
+
         CheckStorage(observed.Count, observed.Count, "search policy observations");
 
         return observed;
@@ -44,11 +49,13 @@ internal sealed partial class PostDrawCalculation {
             _budget = budget;
             budget.CheckStorage(cards.Count, 3L * cards.Count * cards.Count + cards.Count);
             _targets = new (int, int, bool)[cards.Count][];
+
             for (int source = 0; source < cards.Count; source++) {
                 if (cards[source].Copies <= 0 || cards[source].Search is not { } search) {
                     _targets[source] = [];
                     continue;
                 }
+
                 budget.Spend(cards.Sum(card => card.Categories.Count + 1L) * (search.Selector.CategoryIdentities.Count + 1L));
                 _targets[source] = cards.Select((card, row) => (Card: card, Row: row))
                     .Where(target => target.Row != source && search.Matches(target.Card))
@@ -60,13 +67,17 @@ internal sealed partial class PostDrawCalculation {
             if (capacity <= 0) {
                 return 4;
             }
+
             int tier = 4;
+
             foreach ((int row, int copies, bool relevant) in _targets[source]) {
                 _budget.Spend(1);
+
                 if (values[handStart + row] < copies) {
                     if (relevant) {
                         return 1;
                     }
+
                     tier = 2;
                 }
             }

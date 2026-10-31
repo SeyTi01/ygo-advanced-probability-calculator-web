@@ -30,6 +30,7 @@ internal sealed class DrawEffectCalculation(
         if (!_completed) {
             throw new InvalidOperationException("Capability requires a completed calculation.");
         }
+
         return SearchExecution?.DescribeCapability() ?? CalculationCapability.NoSearch(_route);
     }
 
@@ -38,12 +39,14 @@ internal sealed class DrawEffectCalculation(
         SearchExecution = null;
         ExactCalculationResult result = CalculateCore(combos, groups, totalOnly);
         _completed = true;
+
         return result;
     }
 
     private ExactCalculationResult CalculateCore(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
         if (deck.Any(card => card.Active && card.Copies > 0 && card.Search is not null)) {
             SearchExecution = new(deck, handSize, budget, priority, physicalSearch, adaptiveFast);
+
             return SearchExecution.Calculate(combos, groups, totalOnly);
         }
 
@@ -51,10 +54,12 @@ internal sealed class DrawEffectCalculation(
         List<Card> effects = [];
         int ordinaryCopies = 0;
         int deckCopies = 0;
+
         foreach (Card card in deck) {
             budget.Spend(1);
             ArgumentOutOfRangeException.ThrowIfNegative(card.Copies);
             deckCopies = checked(deckCopies + card.Copies);
+
             if (card.DrawCount is not null && card.Copies > 0) {
                 effects.Add(card);
             }
@@ -66,8 +71,8 @@ internal sealed class DrawEffectCalculation(
             budget.CheckStorage(deck.Count, deck.Count + (long)effects.Count);
         }
 
-        HashSet<Card>? inert = effects.Count == 0 ? null
-            : DrawEffectFeasibility.FindInert(deck, deckCopies, handSize, budget);
+        HashSet<Card>? inert = effects.Count == 0 ? null : DrawEffectFeasibility.FindInert(deck, deckCopies, handSize, budget);
+
         if (inert is not null) {
             // Retain the actual cards, including identities and memberships. Only
             // the activation partition changes; no saved or executable plan is edited.
@@ -75,6 +80,7 @@ internal sealed class DrawEffectCalculation(
                 ordinary.Add(effect);
                 ordinaryCopies = checked(ordinaryCopies + effect.Copies);
             }
+
             effects.RemoveAll(inert.Contains);
         }
 
@@ -85,10 +91,12 @@ internal sealed class DrawEffectCalculation(
         if (effects.Count == 0) {
             _route = SolverRoute.Ordinary;
             ProbabilityCalculation calculation = new(ordinary, handSize, budget);
+
             return totalOnly ? new(calculation.CalculateUnionExact(combos), [], []) : calculation.CalculateExactResults(combos, groups);
         }
 
         budget.Spend(effects.Count + 1L);
+
         if (!DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize)) {
             return CalculateOrdered();
         }
@@ -101,8 +109,9 @@ internal sealed class DrawEffectCalculation(
         // remain exchangeable. Priority therefore does not invalidate this fast path.
         DrawResolutionResult resolution = DrawEffectResolver.Resolve(ordinaryCopies, effects, handSize, budget);
         ExactProbability total = ExactProbability.Zero;
-        ExactProbability[] individual = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : combos.Count).ToArray();
-        ExactProbability[] grouped = Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : groups?.Count ?? 0).ToArray();
+        ExactProbability[] individual = [.. Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : combos.Count)];
+        ExactProbability[] grouped = [.. Enumerable.Repeat(ExactProbability.Zero, totalOnly ? 0 : groups?.Count ?? 0)];
+
         foreach ((DrawComposition composition, ExactProbability weight) in resolution.Scenarios) {
             budget.Spend(effects.Count + ordinary.Count + 1L);
             List<Card> retained = [];
@@ -116,7 +125,9 @@ internal sealed class DrawEffectCalculation(
             ExactCalculationResult result = totalOnly
                 ? new(calculation.CalculateUnionExact(combos), [], [])
                 : calculation.CalculateExactResults(combos, groups);
+
             total = total.Add(weight.Multiply(result.Total, budget), budget);
+
             for (int i = 0; i < individual.Length; i++) {
                 individual[i] = individual[i].Add(weight.Multiply(result.Combos[i], budget), budget);
             }
@@ -135,6 +146,7 @@ internal sealed class DrawEffectCalculation(
             PostDrawCalculation calculation = new(deck, handSize, budget, priority);
             ExactCalculationResult result = calculation.Calculate(combos, groups, totalOnly);
             _route = calculation.Route;
+
             return result;
         }
     }

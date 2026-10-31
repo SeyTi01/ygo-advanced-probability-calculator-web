@@ -9,11 +9,13 @@ namespace YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 // Arrays are owned by their key and never mutated after insertion.
 internal sealed record DrawComposition(int OrdinaryCount, int[] EffectCounts) {
     public bool Equals(DrawComposition? other) => other is not null
-        && OrdinaryCount == other.OrdinaryCount && EffectCounts.AsSpan().SequenceEqual(other.EffectCounts);
+        && OrdinaryCount == other.OrdinaryCount
+        && EffectCounts.AsSpan().SequenceEqual(other.EffectCounts);
 
     public override int GetHashCode() {
         HashCode hash = new();
         hash.Add(OrdinaryCount);
+
         foreach (int count in EffectCounts) {
             hash.Add(count);
         }
@@ -29,6 +31,7 @@ internal static class DrawEffectResolver {
     internal static DrawResolutionResult Resolve<TTerminal>(int ordinaryCopies, List<Card> effects, int handSize, WorkBudget budget)
         where TTerminal : struct, IDrawTerminal {
         int totalCopies = ordinaryCopies;
+
         foreach (Card effect in effects) {
             budget.Spend(1);
             ArgumentOutOfRangeException.ThrowIfNegative(effect.Copies);
@@ -40,14 +43,17 @@ internal static class DrawEffectResolver {
         }
 
         budget.Spend(effects.Count + 1L);
+
         if (!CanUseCountStateFastPath(effects, totalCopies, handSize)) {
             throw new InvalidOperationException("Exhaustion-sensitive draw effects require ordered resolution.");
         }
 
         budget.CheckStorage(1, effects.Count + 3L);
+
         Dictionary<DrawComposition, ExactProbability> current = new() {
             [new(0, new int[effects.Count])] = ExactProbability.One
         };
+
         Dictionary<DrawComposition, ExactProbability> scenarios = new();
         long scenarioCells = 0;
 
@@ -59,10 +65,12 @@ internal static class DrawEffectResolver {
                 budget.Spend(effects.Count + 1L);
                 int encountered = state.OrdinaryCount;
                 long pending = handSize - (long)state.OrdinaryCount;
+
                 for (int i = 0; i < effects.Count; i++) {
                     int count = state.EffectCounts[i];
                     encountered = checked(encountered + count);
                     pending -= count;
+
                     if (count > 0) {
                         int activations = Math.Min(effects[i].MaximumActivations, count);
                         pending += (long)effects[i].DrawCount!.Value * activations;
@@ -70,10 +78,12 @@ internal static class DrawEffectResolver {
                 }
 
                 int remaining = totalCopies - encountered;
+
                 if (pending == 0) {
                     int[] retained = state.EffectCounts
                         .Select((count, index) => Math.Max(0, count - effects[index].MaximumActivations))
                         .ToArray();
+
                     Add(scenarios, new(state.OrdinaryCount, TTerminal.Retained(retained, state.EffectCounts, effects, remaining)), weight, ref scenarioCells);
                     continue;
                 }
@@ -85,11 +95,13 @@ internal static class DrawEffectResolver {
                     int[] retained = effects
                         .Select(effect => Math.Max(0, effect.Copies - effect.MaximumActivations))
                         .ToArray();
+
                     Add(scenarios, new(ordinaryCopies, TTerminal.Retained(retained, null, effects, 0)), weight, ref scenarioCells);
                     continue;
                 }
 
                 int ordinaryRemaining = ordinaryCopies - state.OrdinaryCount;
+
                 if (ordinaryRemaining > 0) {
                     ExactProbability increment = weight.Multiply(new(ordinaryRemaining, remaining), budget);
                     Add(next, new(state.OrdinaryCount + 1, state.EffectCounts), increment, ref nextCells);
@@ -97,6 +109,7 @@ internal static class DrawEffectResolver {
 
                 for (int i = 0; i < effects.Count; i++) {
                     int copies = effects[i].Copies - state.EffectCounts[i];
+
                     if (copies == 0) {
                         continue;
                     }
@@ -114,12 +127,7 @@ internal static class DrawEffectResolver {
 
         return new(scenarios);
 
-        void Add(
-            Dictionary<DrawComposition, ExactProbability> map,
-            DrawComposition key,
-            ExactProbability increment,
-            ref long cells
-        ) {
+        void Add(Dictionary<DrawComposition, ExactProbability> map, DrawComposition key, ExactProbability increment, ref long cells) {
             budget.Spend(effects.Count + 1L);
             bool exists = map.TryGetValue(key, out ExactProbability previous);
             ExactProbability value = exists ? previous.Add(increment, budget) : increment;
@@ -146,10 +154,9 @@ internal static class DrawEffectResolver {
         // after that activation, OPT already prevents every remaining copy.
         // Distinct entries have separate OPT allowances, so this proof cannot
         // combine entries merely because their definitions or card IDs match.
-        bool restrictionsAreRedundant = effects.Count == 1 && effects[0].MaximumActivations == 1
-            && !effects[0].EffectPlan.RequiresHandResolution;
-        if (!restrictionsAreRedundant
-            && effects.Any(effect => effect.FirstActivationOnly || effect.BlocksLaterDraws)) {
+        bool restrictionsAreRedundant = effects.Count == 1 && effects[0].MaximumActivations == 1 && !effects[0].EffectPlan.RequiresHandResolution;
+
+        if (!restrictionsAreRedundant && effects.Any(effect => effect.FirstActivationOnly || effect.BlocksLaterDraws)) {
             return false;
         }
 
@@ -157,6 +164,7 @@ internal static class DrawEffectResolver {
         // affect capacity or the schedule, whether hidden positions precede or follow a batch.
         // No observed identity or hand operation depends on those positions. Visible draws remain a uniform sample without replacement.
         long maximumDraws = 0;
+
         foreach (Card effect in effects) {
             int activations = Math.Min(effect.MaximumActivations, effect.Copies);
             maximumDraws += (effect.DrawCount!.Value + effect.PreDrawDeckRemovalCount + effect.PostDrawDeckMillCount) * (long)activations;

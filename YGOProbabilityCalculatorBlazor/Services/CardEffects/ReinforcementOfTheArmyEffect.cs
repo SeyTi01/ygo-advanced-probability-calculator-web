@@ -7,7 +7,6 @@ public sealed class ReinforcementOfTheArmyEffect : CardEffectDefinition {
     public override string Name => "Reinforcement of the Army";
     public override int Revision => 4;
     public override EffectSupport Support => EffectSupport.ModeledWithinRules;
-
     public override DrawEffectPlan Compile() => DrawEffectPlan.SearchCards(
         new(CardSelector.AllOfSelectors([
             CardSelector.For(EffectProperties.Property("Warrior", "monster-race:warrior")),

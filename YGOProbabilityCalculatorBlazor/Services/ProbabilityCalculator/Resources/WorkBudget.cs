@@ -41,6 +41,7 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
 
     internal void EnsureAvailable(long units) {
         ArgumentOutOfRangeException.ThrowIfNegative(units);
+
         if (_remaining is long remaining && units > remaining) {
             throw new ProbabilityCalculationLimitException();
         }
@@ -49,6 +50,7 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
     public void CheckStorage(long entries, long cells) {
         PeakEntries = Math.Max(PeakEntries, entries);
         PeakCells = Math.Max(PeakCells, cells);
+
         if (entries > _storagePolicy.EntryLimit || cells > _storagePolicy.CellLimit) {
             throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
         }

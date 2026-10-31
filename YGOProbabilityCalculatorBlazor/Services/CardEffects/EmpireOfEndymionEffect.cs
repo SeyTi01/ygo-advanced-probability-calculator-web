@@ -8,7 +8,6 @@ public sealed class EmpireOfEndymionEffect : CardEffectDefinition {
     public override int Revision => 1;
     public override EffectSupport Support => EffectSupport.ModeledWithinRules;
     public override string Limitations => ResourceText("Limitations");
-
     public override DrawEffectPlan Compile() => DrawEffectPlan.SearchCards(
         new(CardSelector.AnyOfSelectors([
             CardSelector.CatalogIdentity(96228804),

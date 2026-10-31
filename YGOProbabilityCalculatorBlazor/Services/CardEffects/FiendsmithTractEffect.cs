@@ -7,7 +7,6 @@ public sealed class FiendsmithTractEffect : CardEffectDefinition {
     public override string Name => "Fiendsmith's Tract";
     public override int Revision => 2;
     public override EffectSupport Support => EffectSupport.ModeledWithinRules;
-
     public override DrawEffectPlan Compile() => DrawEffectPlan.SearchCards(
         new(CardSelector.AllOf(["metadata:attribute:light", "metadata:monster-race:fiend"])),
         true

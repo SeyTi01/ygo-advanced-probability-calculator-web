@@ -12,12 +12,10 @@ public abstract class CardEffectDefinition : ICardEffectDefinition {
     public abstract int Revision { get; }
     public abstract EffectSupport Support { get; }
     public abstract DrawEffectPlan Compile();
-    public virtual IReadOnlyList<int> Aliases => [];
-    public virtual IReadOnlyList<CategoryBase> FilterProperties => [];
     public string Summary => ResourceText("Summary");
     public virtual string Limitations => "";
+    public virtual IReadOnlyList<int> Aliases => [];
+    public virtual IReadOnlyList<CategoryBase> FilterProperties => [];
     public virtual EffectExecutionModel ExecutionModel => EffectExecutionModel.DrawSequenceV1;
-
-    protected string ResourceText(string field) =>
-        UiText.English($"Effects.{CanonicalCardId.ToString(CultureInfo.InvariantCulture)}.{field}");
+    protected string ResourceText(string field) => UiText.English($"Effects.{CanonicalCardId.ToString(CultureInfo.InvariantCulture)}.{field}");
 }

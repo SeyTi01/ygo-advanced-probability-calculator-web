@@ -29,7 +29,8 @@ public static class YdkeParser {
         return new YdkeDeck(
             DecodeSection(sections[0], "main"),
             DecodeSection(sections[1], "extra"),
-            DecodeSection(sections[2], "side"));
+            DecodeSection(sections[2], "side")
+        );
     }
 
     private static IReadOnlyList<uint> DecodeSection(string encoded, string sectionName) {

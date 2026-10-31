@@ -23,9 +23,11 @@ internal sealed partial class PostDrawCalculation {
             bool? sourcePresent = null
         ) {
             int source = SingleSource(handSize, copies);
+
             if (source < 0) {
                 return false;
             }
+
             int drawCount = cards[source].DrawCount!.Value;
 
             // Source absence and source presence partition every opening hand.
@@ -34,26 +36,25 @@ internal sealed partial class PostDrawCalculation {
             if (sourcePresent != true) {
                 Enumerate(0, BigInteger.One);
             }
+
             if (sourcePresent != false) {
                 int visible = handSize + drawCount;
                 BigInteger sourceLabels = BigInteger.One;
                 BigInteger visiblePositions = BigInteger.One;
                 BigInteger drawnPositions = BigInteger.One;
+
                 for (int observedSources = 1; observedSources <= Math.Min(cards[source].Copies, visible); observedSources++) {
-                    budget.Spend(3L * WorkBudget.IntegerCells(sourceLabels) + 3L * WorkBudget.IntegerCells(visiblePositions)
-                        + 3L * WorkBudget.IntegerCells(drawnPositions) + 3);
+                    budget.Spend(3L * WorkBudget.IntegerCells(sourceLabels) + 3L * WorkBudget.IntegerCells(visiblePositions) + 3L * WorkBudget.IntegerCells(drawnPositions) + 3);
                     sourceLabels *= cards[source].Copies - observedSources + 1;
                     visiblePositions = visiblePositions * (visible - observedSources + 1) / observedSources;
-                    drawnPositions = observedSources <= drawCount
-                        ? drawnPositions * (drawCount - observedSources + 1) / observedSources : BigInteger.Zero;
-                    budget.Spend((WorkBudget.IntegerCells(sourceLabels) + 1)
-                        * (WorkBudget.IntegerCells(visiblePositions) + WorkBudget.IntegerCells(drawnPositions) + 1));
+                    drawnPositions = observedSources <= drawCount ? drawnPositions * (drawCount - observedSources + 1) / observedSources : BigInteger.Zero;
+                    budget.Spend((WorkBudget.IntegerCells(sourceLabels) + 1) * (WorkBudget.IntegerCells(visiblePositions) + WorkBudget.IntegerCells(drawnPositions) + 1));
                     BigInteger prefix = sourceLabels * (visiblePositions - drawnPositions);
-                    long prefixCells = WorkBudget.IntegerCells(sourceLabels) + WorkBudget.IntegerCells(visiblePositions)
-                        + WorkBudget.IntegerCells(drawnPositions) + WorkBudget.IntegerCells(prefix);
+                    long prefixCells = WorkBudget.IntegerCells(sourceLabels) + WorkBudget.IntegerCells(visiblePositions) + WorkBudget.IntegerCells(drawnPositions) + WorkBudget.IntegerCells(prefix);
                     Enumerate(observedSources, prefix, prefixCells);
                 }
             }
+
             return true;
 
             void Enumerate(int observedSources, BigInteger prefix, long prefixCells = 0) {
@@ -64,13 +65,17 @@ internal sealed partial class PostDrawCalculation {
                 int[] values = new int[length];
                 int[] rows = new int[cards.Count - 1];
                 int next = 0;
+
                 for (int row = 0; row < cards.Count; row++) {
                     values[row] = cards[row].Copies;
+
                     if (row != source) {
                         rows[next++] = row;
                     }
                 }
+
                 int remaining = copies;
+
                 if (present) {
                     values[source] -= observedSources;
                     values[layout.HandStart + source] = observedSources;
@@ -101,11 +106,14 @@ internal sealed partial class PostDrawCalculation {
                     prefixCells,
                     0
                 );
+
                 budget.SearchDiagnostics?.Add("physical single-source frames");
+
                 while (expansion.TryNext(prefixCells, expansion.Entries, out int[] drawn, out BigInteger weight)) {
                     budget.Spend(1);
                     budget.SearchDiagnostics?.Add("physical single-source children");
                     int unseen = remaining - expansion.Draws;
+
                     if (Settle(ref drawn, unseen) != ResolutionOutcome.RemovalUnavailable) {
                         terminal(drawn, unseen, weight);
                     }
@@ -115,23 +123,30 @@ internal sealed partial class PostDrawCalculation {
 
         internal int SingleSource(int handSize, int copies) {
             int source = -1;
+
             for (int row = 0; row < cards.Count; row++) {
                 budget.Spend(1);
+
                 if (cards[row].Copies <= 0 || cards[row].DrawCount is null) {
                     continue;
                 }
-                bool singleActivation = cards[row].Copies == 1 || cards[row].MaximumActivations == 1
-                    || cards[row].FirstActivationOnly || cards[row].BlocksLaterDraws;
+
+                bool singleActivation = cards[row].Copies == 1 || cards[row].MaximumActivations == 1 || cards[row].FirstActivationOnly || cards[row].BlocksLaterDraws;
+
                 if (source >= 0 || !singleActivation || cards[row].PreDrawRemovalCount != 0) {
                     return -1;
                 }
+
                 source = row;
             }
+
             if (source < 0 || handSize == 0 || handSize < cards[source].MinimumHandSize) {
                 return -1;
             }
+
             int drawCount = cards[source].DrawCount!.Value;
             int consumption = drawCount + cards[source].PreDrawDeckRemovalCount + cards[source].PostDrawDeckMillCount;
+
             return consumption <= copies - handSize ? source : -1;
         }
     }

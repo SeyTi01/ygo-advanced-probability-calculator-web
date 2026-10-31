@@ -12,16 +12,16 @@ public static class CatalogArchetypeReconciler {
 
         // Only index evidence this session can use. Canonical IDs take precedence,
         // so ordinary identified sessions need neither artwork nor name indexes.
-        HashSet<int> externalIds = cards.Where(card => card.ExternalCardId is not null)
-            .Select(card => card.ExternalCardId!.Value).ToHashSet();
-        HashSet<string> exactNames = cards.Where(card => card.ExternalCardId is null && card.Name is not null)
-            .Select(card => card.Name!).ToHashSet(StringComparer.Ordinal);
+        HashSet<int> externalIds = cards.Where(card => card.ExternalCardId is not null).Select(card => card.ExternalCardId!.Value).ToHashSet();
+        HashSet<string> exactNames = cards.Where(card => card.ExternalCardId is null && card.Name is not null).Select(card => card.Name!).ToHashSet(StringComparer.Ordinal);
         Dictionary<int, CardInfo> byId = catalog.Where(info => externalIds.Contains(info.Id)).ToDictionary(info => info.Id);
         externalIds.ExceptWith(byId.Keys);
+
         Dictionary<int, CardInfo[]> byArtwork = externalIds.Count == 0 ? [] : catalog
             .SelectMany(info => info.ArtworkImageIds.Distinct().Where(externalIds.Contains).Select(id => (Id: id, Info: info)))
             .GroupBy(entry => entry.Id)
             .ToDictionary(group => group.Key, group => group.Select(entry => entry.Info).ToArray());
+
         Dictionary<string, CardInfo[]> byName = exactNames.Count == 0 ? new(StringComparer.Ordinal) : catalog
             .Where(info => exactNames.Contains(info.Name))
             .GroupBy(info => info.Name, StringComparer.Ordinal)
@@ -30,6 +30,7 @@ public static class CatalogArchetypeReconciler {
         for (int index = 0; index < cards.Count; index++) {
             Card card = cards[index];
             CardInfo? info = null;
+
             if (card.ExternalCardId is int externalId) {
                 if (!byId.TryGetValue(externalId, out info)
                     && byArtwork.TryGetValue(externalId, out CardInfo[] artwork) && artwork.Length == 1) {
@@ -49,11 +50,13 @@ public static class CatalogArchetypeReconciler {
                     && ((info.ResolvedNames is not null && category.MetadataKey!.StartsWith("catalog-id:", StringComparison.Ordinal))
                         || (info.ResolvedNames is not null && category.MetadataKey.StartsWith("card-name:", StringComparison.Ordinal))
                         || (info.MentionedNames is not null && category.MetadataKey.StartsWith("mentions:", StringComparison.Ordinal))));
+
             List<CategoryBase> effective = card.Categories
                 .Where(category => !Owned(category) || card.ManualMetadataCategoryKeys.Contains(category.MetadataKey!))
                 .Concat(CardPropertyProvider.GetCategories(info).Where(Owned))
                 .DistinctBy(category => category.Identity)
                 .ToList();
+
             if (card.Categories.Select(category => category.Identity).ToHashSet(StringComparer.Ordinal)
                 .SetEquals(effective.Select(category => category.Identity))) {
                 continue;
@@ -65,6 +68,5 @@ public static class CatalogArchetypeReconciler {
         }
     }
 
-    private static bool IsArchetype(CategoryBase category) => category.Source == CategorySource.Metadata
-        && category.MetadataKey!.StartsWith("archetype:", StringComparison.Ordinal);
+    private static bool IsArchetype(CategoryBase category) => category.Source == CategorySource.Metadata && category.MetadataKey!.StartsWith("archetype:", StringComparison.Ordinal);
 }

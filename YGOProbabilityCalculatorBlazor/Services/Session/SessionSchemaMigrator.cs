@@ -67,24 +67,29 @@ public sealed class SessionSchemaMigrator {
             property.Name.Equals(nameof(SessionState.CalculationModel), StringComparison.OrdinalIgnoreCase)).ToArray();
         JsonProperty[] legacy = rootElement.EnumerateObject().Where(property =>
             property.Name.Equals("DrawEffectsEnabled", StringComparison.OrdinalIgnoreCase)).ToArray();
+
         if (modes.Length > 1 || legacy.Length > 1 || (sourceVersion < 8 && modes.Length > 0)
             || (sourceVersion >= 8 && legacy.Length > 0)) {
             throw new JsonException("Session has duplicated, obsolete or contradictory calculation mode fields.");
         }
+
         if (modes.Length == 1 && (modes[0].Value.ValueKind != JsonValueKind.String
             || !Enum.GetNames<CalculationModel>().Contains(modes[0].Value.GetString(), StringComparer.Ordinal))) {
             throw new JsonException("Unknown session calculation mode.");
         }
+
         if (legacy.Length == 1 && legacy[0].Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) {
             throw new JsonException("Legacy draw-effects setting must be a boolean.");
         }
 
         JsonProperty[] strategies = rootElement.EnumerateObject().Where(property =>
             property.Name.Equals(nameof(SessionState.FastExecutionStrategy), StringComparison.OrdinalIgnoreCase)).ToArray();
+
         if (strategies.Length > 1 || (sourceVersion < 11 && strategies.Length != 0)
             || (sourceVersion >= 11 && strategies.Length != 1)) {
             throw new JsonException("Session execution strategy is missing, duplicated or obsolete.");
         }
+
         if (strategies.Length == 1 && (strategies[0].Value.ValueKind != JsonValueKind.String
             || !Enum.GetNames<FastExecutionStrategy>().Contains(strategies[0].Value.GetString(), StringComparer.Ordinal)
             || (strategies[0].Value.GetString() == "FastOnly" && (modes.Length != 1 || modes[0].Value.GetString() != "Fast")))) {
@@ -96,9 +101,11 @@ public sealed class SessionSchemaMigrator {
         }
 
         JsonObject root = JsonNode.Parse(json) as JsonObject ?? throw new JsonException("Session root must be a JSON object.");
+
         if (sourceVersion <= 3) {
             RemoveUnreleasedRules(root);
         }
+
         int version = sourceVersion;
 
         while (version < SessionState.CurrentSchemaVersion) {
@@ -144,12 +151,14 @@ public sealed class SessionSchemaMigrator {
         // Older readers ignored this extension. Preserve their enabled behavior.
         // Schema 13 prevents them from silently executing intentionally disabled plans.
         JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
+
         foreach (JsonObject card in cards?.OfType<JsonObject>() ?? []) {
             foreach (string field in card.Select(property => property.Key)
                 .Where(name => name.Equals("SimulationEnabled", StringComparison.OrdinalIgnoreCase)).ToArray()) {
                 card.Remove(field);
             }
         }
+
         SetSchemaVersion(root, 13);
     }
 
@@ -159,9 +168,11 @@ public sealed class SessionSchemaMigrator {
         string? field = root.Select(property => property.Key).SingleOrDefault(name =>
             name.Equals("DrawEffectsEnabled", StringComparison.OrdinalIgnoreCase));
         bool enabled = field is null || root[field]!.GetValue<bool>();
+
         if (field is not null) {
             root.Remove(field);
         }
+
         root[nameof(SessionState.CalculationModel)] = enabled ? "Fast" : "OpeningHand";
         SetSchemaVersion(root, 8);
     }
@@ -175,6 +186,7 @@ public sealed class SessionSchemaMigrator {
                 card.Remove(field);
             }
         }
+
         SetSchemaVersion(root, 6);
     }
 
@@ -195,6 +207,7 @@ public sealed class SessionSchemaMigrator {
                 card.Remove(field);
             }
         }
+
         SetSchemaVersion(root, 5);
     }
 
@@ -209,6 +222,7 @@ public sealed class SessionSchemaMigrator {
                     || name.Equals("PostDrawSelector", StringComparison.OrdinalIgnoreCase)
                     || name.Equals("PostDrawFailureBehavior", StringComparison.OrdinalIgnoreCase)
                     || name.Equals("PostDrawDiscardCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+
             foreach (string field in fields) {
                 card.Remove(field);
             }

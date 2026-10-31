@@ -17,8 +17,9 @@ internal static class SessionCardPreparation {
         }
 
         // Resolve the same-origin bundle before applying saved objective memberships.
-        List<Card> preparedCards = session.Cards.ToList();
+        List<Card> preparedCards = [.. session.Cards];
         IReadOnlyList<CardInfo> catalog = [];
+
         try {
             if (preparedCards.Any(card => card.ExternalCardId is not null || !string.IsNullOrWhiteSpace(card.Name))) {
                 catalog = await cardInfoService.GetCatalogCardsAsync();

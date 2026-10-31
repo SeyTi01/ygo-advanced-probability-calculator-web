@@ -27,6 +27,7 @@ public class CardInfoService : ICardInfoService {
         await _cache.EnsureLoadedAsync();
 
         CardInfo? catalogCard = await _catalog.GetLoadedCanonicalCardAsync(id);
+
         if (catalogCard is not null) {
             return catalogCard;
         }
@@ -168,8 +169,7 @@ public class CardInfoService : ICardInfoService {
         }
     }
 
-    public CardInfoService(ILocalStorageService localStorage, HttpClient? httpClient = null, TimeProvider? timeProvider = null)
-        : this(localStorage, httpClient, timeProvider, LocalizedNameAssets) { }
+    public CardInfoService(ILocalStorageService localStorage, HttpClient? httpClient = null, TimeProvider? timeProvider = null): this(localStorage, httpClient, timeProvider, LocalizedNameAssets) { }
 
     internal CardInfoService(
         ILocalStorageService localStorage,
@@ -187,6 +187,7 @@ public class CardInfoService : ICardInfoService {
 
     private CardInfo WithCatalogMembership(CardInfo info) {
         CardInfo? canonical = _catalog.Find(info.CanonicalCardId ?? info.Id);
+
         return canonical is null ? info : info with {
             ResolvedArchetypes = canonical.ResolvedArchetypes,
             ResolvedNames = canonical.ResolvedNames,

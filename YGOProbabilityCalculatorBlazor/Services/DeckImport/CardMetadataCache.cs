@@ -35,12 +35,14 @@ internal sealed class CardMetadataCache {
             }
 
             TimeSpan age = _timeProvider.GetUtcNow() - lastRefresh;
+
             return age >= TimeSpan.Zero && age < CacheTimeToLive;
         }
     }
 
     internal void Store(int queryId, CardInfo card) {
         _state.Cards[queryId] = card;
+
         // A targeted enrichment is never evidence of a full metadata refresh.
         if (_state.SchemaVersion != CacheSchemaVersion) {
             _state = new(CacheSchemaVersion, null, _state.Cards);

@@ -8,7 +8,6 @@ public sealed class FutureSilenceEffect : CardEffectDefinition {
     public override int Revision => 1;
     public override EffectSupport Support => EffectSupport.ModeledWithinRules;
     public override string Limitations => ResourceText("Limitations");
-
     public override DrawEffectPlan Compile() => DrawEffectPlan.SearchCards(
         new(CardSelector.AllOfSelectors([
             CardSelector.AllOf(["metadata:kind:monster"]),

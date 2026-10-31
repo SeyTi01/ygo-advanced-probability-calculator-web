@@ -12,7 +12,10 @@ internal sealed class CardCatalogIndex {
         foreach (CardInfo card in cards) {
             foreach (int id in card.ArtworkImageIds) {
                 // A canonical passcode always takes precedence over an artwork alias.
-                if (CanonicalCards.ContainsKey(id)) { continue; }
+                if (CanonicalCards.ContainsKey(id)) {
+                    continue;
+                }
+
                 if (_artworkCards.TryGetValue(id, out CardInfo? previous)) {
                     if (!ReferenceEquals(previous, card)) { _artworkCards[id] = null; }
                 }
@@ -24,5 +27,6 @@ internal sealed class CardCatalogIndex {
     }
 
     public CardInfo? Find(int id) => CanonicalCards.TryGetValue(id, out CardInfo? card)
-        ? card : _artworkCards.GetValueOrDefault(id);
+        ? card
+        : _artworkCards.GetValueOrDefault(id);
 }

@@ -12,6 +12,5 @@ public sealed class BonfireEffect : CardEffectDefinition {
     public override string Name => "Bonfire";
     public override int Revision => 4;
     public override EffectSupport Support => EffectSupport.ModeledWithinRules;
-
     public override DrawEffectPlan Compile() => DrawEffectPlan.SearchCards(new(LevelOneToFourPyro), true);
 }

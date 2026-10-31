@@ -25,11 +25,7 @@ public sealed class CalculationProtocolException : InvalidOperationException {
     // Flattened result order: total, then combo rows, then group rows.
     public int? RowIndex { get; }
 
-    private CalculationProtocolException(
-        CalculationProtocolFailureReason reason,
-        string message,
-        int? rowIndex = null
-    ) : base(message) {
+    private CalculationProtocolException(CalculationProtocolFailureReason reason, string message, int? rowIndex = null) : base(message) {
         Reason = reason;
         RowIndex = rowIndex;
     }

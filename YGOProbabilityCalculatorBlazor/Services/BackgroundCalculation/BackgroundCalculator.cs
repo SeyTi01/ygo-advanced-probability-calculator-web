@@ -13,8 +13,10 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
     private Task? _disposeTask;
     private bool _disposed;
 
-    public Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken cancellationToken) =>
-        CalculateCoreAsync(snapshot, null, cancellationToken);
+    public Task<ProbabilityCalculationResult> CalculateAsync(
+        CalculationSnapshot snapshot,
+        CancellationToken cancellationToken
+    ) => CalculateCoreAsync(snapshot, null, cancellationToken);
 
     public Task<ProbabilityCalculationResult> CalculateProgressivelyAsync(
         CalculationSnapshot snapshot,
@@ -37,6 +39,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
         // late interop handles when a request is cancelled during import/creation.
         Task<IJSObjectReference> initialization = _ownerTask ??= CreateOwnerAsync();
         IJSObjectReference owner;
+
         try {
             owner = await initialization;
         }
@@ -44,8 +47,10 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
             if (ReferenceEquals(_ownerTask, initialization)) {
                 _ownerTask = null;
             }
+
             throw;
         }
+
         token.ThrowIfCancellationRequested();
         long? releasedId = null;
         bool completed = false;
@@ -53,16 +58,20 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
         // A cancelled interop await resumes before its JS lease cleanup finishes.
         // Serialize acquisition through cleanup, never through abandoned worker work.
         await _leaseGate.WaitAsync(token);
+
         try {
             token.ThrowIfCancellationRequested();
             ProbabilityCalculationResult result;
+
             await using (IJSObjectReference job = await owner.InvokeAsync<IJSObjectReference>("createJob")) {
                 try {
                     token.ThrowIfCancellationRequested();
+
                     if (onPreliminary is not null && snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast) {
                         PresentationStage stage = await job.InvokeAsync<PresentationStage>("runProgressive", token, snapshot.Json, true);
                         token.ThrowIfCancellationRequested();
                         result = CalculationWire.ReadResult(stage.Response, snapshot.RequestedMode);
+
                         if (stage.IsPreliminary) {
                             CalculationResponseReader.ValidatePreliminary(result);
                             await onPreliminary(result).WaitAsync(token);
@@ -73,11 +82,11 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
                         }
                     }
                     else {
-                        string response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast,
-                            snapshot.RequestedMode == CalculationModel.Exact);
+                        string response = await job.InvokeAsync<string>("run", token, snapshot.Json, snapshot.AllowAutomaticExact && snapshot.RequestedMode == CalculationModel.Fast, snapshot.RequestedMode == CalculationModel.Exact);
                         token.ThrowIfCancellationRequested();
                         result = CalculationWire.ReadResult(response, snapshot.RequestedMode);
                     }
+
                     token.ThrowIfCancellationRequested();
                     // Errors (including valid Work/Storage/Input responses) never
                     // acknowledge the lease or retain a possibly enlarged heap.
@@ -90,6 +99,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
                     }
                 }
             }
+
             token.ThrowIfCancellationRequested();
             completed = true;
 
@@ -112,6 +122,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
 
     private async Task<IJSObjectReference> CreateOwnerAsync() {
         IJSObjectReference? owner = null;
+
         try {
             await using (IJSObjectReference module = await js.InvokeAsync<IJSObjectReference>("import", "./js/background-calculation.js")) {
                 _lifetime.Token.ThrowIfCancellationRequested();
@@ -129,6 +140,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
                     await owner.DisposeAsync();
                 }
             }
+
             throw;
         }
 
@@ -139,6 +151,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
         if (_disposeTask is not null) {
             return new(_disposeTask);
         }
+
         _disposed = true;
         _lifetime.Cancel();
         _disposeTask = DisposeOwnerAsync();
@@ -150,6 +163,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
         try {
             if (_ownerTask is not null) {
                 IJSObjectReference owner;
+
                 try {
                     owner = await _ownerTask;
                 }
@@ -157,6 +171,7 @@ public sealed class BackgroundCalculator(IJSRuntime js) : IProgressiveBackground
                     // Initialization owns its error and disposes its module.
                     return;
                 }
+
                 try {
                     await owner.InvokeVoidAsync("dispose");
                 }
