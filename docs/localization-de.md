@@ -29,12 +29,11 @@ Common monster traits/types, attributes, Spell/Trap subtypes and supported numer
 - The product name **Yu-Gi-Oh! Advanced Probability Calculator**, proper names, URLs, filenames, keyboard key names and technical formats such as YDKe remain unchanged. Two preexisting CSS-token resources also remain byte-for-byte unchanged; they are not prose.
 - User-authored card, category, combo and group names remain exactly as saved, including the example's `Full VS`, `Full K9` and `VS Starter + (FIRE OR DARK)`. A verified external ID plus an exact canonical English name allows a German display label in card rows, fields and selectors; the saved name remains unchanged. Names alone never establish card identity.
 - Card suggestions and verified catalog-backed deck entries use the separate German name asset when available. Missing provider translations, unsupported metadata/archetype labels and failed asset requests retain English labels. This is incomplete provider coverage, not a claim of complete German card data. See [catalog generation and coverage](../infrastructure/card-catalog/README.md).
-  The October 29 YAML Yugi comparison would resolve all 24 example entries,
-  including five K9 names equal to English, but remains research-only because
-  redistribution permission for its name/passcode data is unresolved. The
-  shipped example therefore still has 20 provider-name gaps; no manual example
-  translations or additional runtime source have been introduced.
-- Maintained effect prose is translated explicitly. Proper card references with verified German snapshot matches use those names (for example Polymerisation, Mystischer Raum-Taifun, Sonderfahrplan, Knapper Fahrplan, Märchenschweif-Geschichten, Wagenkupplung and Drehscheiben-Bahnhof). Established family spellings supported by snapshot names include Weltvermächtnis, Finsterlord, Himmelsjäger, Märchenschweif and Lichtverpflichtet. Newer references absent from that snapshot retain their canonical English names: Regulus, the Prince of Endymion; Shining Sarcophagus; Radiant Typhoon; Dracotail; Fiendsmith; Kewl Tune; Primite; and Diagram Token. These names are presentation only and never compile membership rules.
+  The pinned YAML Yugi compilation is the sole German-name source and resolves
+  all 24 example entries, including five K9 names equal to English. Missing
+  translations fall back to English. No manual example translations or translated
+  archetype membership rules are introduced.
+- Maintained effect prose and its card references are authored resources. They do not automatically follow the external card-name table. A name-catalog refresh updates card display/search labels; it does not rewrite effect prose or compile archetype membership rules.
 - Historical/custom effect notes remain their authored text. The existing compatibility gate decides whether a maintained translation applies.
 - Static/prerendered English SEO and social metadata, host loading/fatal-error/noscript text, external linked documentation, runtime/worker/certificate diagnostic payloads and underlying validation exception details remain English. Localized wrappers do not rewrite protocol values.
 - Invariant JSON, session/share/worker bytes, exact fractions and numeric formatting remain independent of UI language. Literal reference values in Help and the existing resource-limit options retain their existing numeric notation.

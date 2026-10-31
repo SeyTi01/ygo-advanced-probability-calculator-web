@@ -1,32 +1,29 @@
 #!/usr/bin/env node
-// Offline by default. Retain only provider identity/name fields, never card text or URLs.
+// Offline German display names. Canonical metadata and saved identities stay English.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gzipSync, brotliCompressSync } from 'node:zlib';
 
-export const GERMAN_NAMES_URL = 'https://db.ygoprodeck.com/api/v7/cardinfo.php?language=de';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const validName = name => typeof name === 'string' && name.trim().length > 0 && name.length <= 512;
 const validLabel = name => validName(name) && !/[<>\x00-\x1f\x7f]|&(?:#\d+|#x[\da-f]+|[a-z]+);/i.test(name);
 const numericOrder = (left, right) => left - right;
+const validId = (id, assigned) => Number.isInteger(id) && id > 0 && id <= (assigned ? 2147483647 : 99999999);
 
-// Research only: this projection does not establish permission to redistribute the data.
 export function retainYamlYugiSnapshot(bytes, revision, retrievedAt) {
     if (!/^[a-f0-9]{40}$/.test(revision)) throw new Error('Supply the verified YAML Yugi source commit');
+    if (bytes.length > 160 * 1024 * 1024) throw new Error('Provider snapshot too large');
     const source = JSON.parse(bytes);
-    if (!Array.isArray(source) || source.length === 0 || source.length > 30000) {
-        throw new Error('Invalid YAML Yugi aggregate');
-    }
+    if (!Array.isArray(source) || source.length === 0 || source.length > 30000) throw new Error('Invalid YAML Yugi aggregate');
     const seen = new Set();
     const cards = source.map(card => {
-        const id = card.password;
-        if (id != null && (!Number.isInteger(id) || id <= 0 || id > 99999999 || seen.has(id))) {
-            throw new Error('Invalid or duplicate YAML Yugi passcode');
-        }
-        if (id != null) seen.add(id);
-        return { id: id ?? null, name: card.name?.de ?? null, name_en: card.name?.en ?? null };
+        const assigned = card.password == null && card.fake_password != null;
+        const id = card.password ?? card.fake_password ?? null;
+        if (id !== null && (!validId(id, assigned) || seen.has(id))) throw new Error('Invalid or duplicate YAML Yugi identity');
+        if (id !== null) seen.add(id);
+        return { id, ...(assigned ? { assigned: true } : {}), name: card.name?.de ?? null, name_en: card.name?.en ?? null };
     });
     cards.sort((left, right) => {
         const order = (left.id ?? 0) - (right.id ?? 0);
@@ -42,195 +39,126 @@ export function retainYamlYugiSnapshot(bytes, revision, retrievedAt) {
 export function exampleNameCoverage(asset, catalog, example) {
     const canonical = new Map(catalog.cards.map(card => [card.id, card]));
     const names = new Map(asset.names);
-    const entries = example.Cards.map(card => {
+    const cards = example.Cards.map(card => {
         const id = card.ExternalCardId;
-        const match = canonical.get(id);
-        const verified = match?.name === card.Name;
+        const verified = canonical.get(id)?.name === card.Name;
         return { id, canonical: card.Name, name: verified ? names.get(id) ?? null : null,
             reason: !verified ? 'unverified-canonical-identity' : names.has(id) ? null : 'missing-provider-name' };
     });
-    return { entries: entries.length, matched: entries.filter(card => card.name !== null).length,
-        unresolved: entries.filter(card => card.name === null), cards: entries };
+    return { entries: cards.length, matched: cards.filter(card => card.name !== null).length,
+        unresolved: cards.filter(card => card.name === null), cards };
 }
 
-const assetSize = asset => {
-    const bytes = Buffer.from(JSON.stringify(asset) + '\n');
-    return { bytes: bytes.length, gzip: gzipSync(bytes).length, brotli: brotliCompressSync(bytes).length };
-};
-
-// Deliberately returns an audit, never an asset: additional-source rights remain unresolved.
-export function compareYamlYugi(primary, candidate, catalog, example) {
-    const before = buildLocalizedNames(primary, catalog);
-    const rejectedNames = candidate.cards.filter(card => card.id !== null && card.name !== null
-        && (!validLabel(card.name) || !validName(card.name_en)));
-    const usable = candidate.cards.filter(card => card.id !== null && card.name !== null
-        && validLabel(card.name) && validName(card.name_en));
-    const additional = buildLocalizedNames({ version: 1, locale: 'de', cards: usable }, catalog);
-    const original = new Map(before.asset.names);
-    const merged = new Map(additional.asset.names);
-    for (const [id, name] of original) merged.set(id, name);
-    const combined = { version: 1, locale: 'de', names: [...merged].sort(([left], [right]) => left - right) };
-    const disagreements = additional.asset.names.filter(([id, name]) => original.has(id) && original.get(id) !== name)
-        .map(([id, name]) => ({ id, retained: original.get(id), candidate: name, decision: 'retain-ygoprodeck' }));
-    const summarize = result => ({ matched: result.audit.matchedRecords,
-        differingFromEnglish: result.audit.matchedRecords - result.audit.unchangedNames.length,
-        equalToEnglish: result.audit.unchangedNames.length, missingIds: result.audit.missingIds,
-        unexpectedIds: result.audit.unexpectedIds, artworkOnlyIds: result.audit.artworkOnlyIds,
-        duplicateNames: result.audit.ambiguousNames, englishNameDifferences: result.audit.englishNameDifferences });
-    const canonical = new Map(catalog.cards.map(card => [card.id, card.name]));
-    const unchanged = combined.names.filter(([id, name]) => canonical.get(id) === name).map(([id]) => id);
-    const byName = new Map();
-    for (const [id, name] of combined.names) byName.set(name, [...(byName.get(name) ?? []), id]);
-    return {
-        publication: 'research-only; additional-source redistribution permission unresolved',
-        policy: 'Exact passcodes only; retain every YGOPRODeck name; fill missing IDs only; no artwork/name joins.',
-        source: { url: candidate.source, revision: candidate.revision, sha256: candidate.sourceSha256,
-            retrievedAt: candidate.retrievedAt, bytes: candidate.sourceBytes,
-            projectionSha256: sha256(Buffer.from(JSON.stringify(candidate) + '\n')) },
-        returnedRecords: candidate.cards.length,
-        withoutPasscode: candidate.cards.filter(card => card.id === null).length,
-        withoutGermanName: candidate.cards.filter(card => card.name === null).length,
-        rejectedNames, duplicatePasscodes: [],
-        before: summarize(before), candidate: summarize(additional),
-        addedIds: combined.names.filter(([id]) => !original.has(id)).map(([id]) => id),
-        disagreements,
-        hypothetical: { matched: merged.size, differingFromEnglish: merged.size - unchanged.length,
-            equalToEnglish: unchanged.length,
-            missingIds: [...canonical.keys()].filter(id => !merged.has(id)).sort(numericOrder),
-            duplicateNames: [...byName].filter(([, ids]) => ids.length > 1).map(([name, ids]) => ({ name, ids })) },
-        example: { before: exampleNameCoverage(before.asset, catalog, example),
-            candidate: exampleNameCoverage(additional.asset, catalog, example),
-            hypothetical: exampleNameCoverage(combined, catalog, example) },
-        sizes: { before: assetSize(before.asset), hypothetical: assetSize(combined) }
-    };
-}
-
-export function assertNoNameRegression(previous, next) {
-    const names = new Map(next.names);
-    const removed = previous.names.filter(([id]) => !names.has(id)).map(([id]) => id);
-    if (removed.length) throw new Error(`Localized name coverage regression: ${removed.join(', ')}`);
-}
-
-export function retainNameSnapshot(bytes, retrievedAt) {
-    const source = JSON.parse(bytes);
-    if (!Array.isArray(source.data) || source.data.length === 0 || source.data.length > 30000) {
-        throw new Error('Invalid provider response');
-    }
-    const cards = source.data.map(card => ({ id: card.id, name: card.name, name_en: card.name_en }));
-    return {
-        version: 1, locale: 'de', source: GERMAN_NAMES_URL, retrievedAt,
-        sourceBytes: bytes.length, sourceSha256: sha256(bytes),
-        cards: cards.sort((left, right) => left.id - right.id)
-    };
-}
-
-export function buildLocalizedNames(snapshot, catalog) {
+export function buildLocalizedNames(snapshot, catalog, example) {
     if (snapshot.version !== 1 || snapshot.locale !== 'de' || !Array.isArray(snapshot.cards)
-        || snapshot.cards.length > 30000
-        || catalog.version !== 2 || !Array.isArray(catalog.cards)) {
+        || snapshot.cards.length > 30000 || !/^[a-f0-9]{40}$/.test(snapshot.revision)
+        || !/^[a-f0-9]{64}$/.test(snapshot.sourceSha256) || catalog.version !== 2 || !Array.isArray(catalog.cards)) {
         throw new Error('Unsupported name snapshot or canonical catalog');
     }
     const canonical = new Map();
     const artwork = new Map();
     for (const card of catalog.cards) {
-        if (!Number.isInteger(card.id) || card.id <= 0 || canonical.has(card.id) || !validName(card.name)) {
-            throw new Error('Invalid canonical identity');
-        }
+        if (!validId(card.id, true) || canonical.has(card.id) || !validName(card.name)) throw new Error('Invalid canonical identity');
         canonical.set(card.id, card);
         for (const id of card.artworkImageIds ?? []) {
-            artwork.set(id, [...(artwork.get(id) ?? []), card.id]);
+            const owners = artwork.get(id) ?? new Set();
+            owners.add(card.id);
+            artwork.set(id, owners);
         }
     }
     const seen = new Set();
-    const names = [];
+    const names = new Map();
+    const rejectedNames = [];
     const unexpectedIds = [];
-    const artworkOnlyIds = [];
+    const ambiguousIds = [];
+    const aliasMatches = [];
+    const assignedIds = [];
     const englishNameDifferences = [];
-    const unchangedNames = [];
-    const byName = new Map();
-    for (const card of [...snapshot.cards].sort((left, right) => left.id - right.id)) {
-        if (!Number.isInteger(card.id) || card.id <= 0 || card.id > 2147483647
-            || seen.has(card.id) || !validLabel(card.name) || !validName(card.name_en)) {
-            throw new Error('Invalid or duplicate provider identity/name');
-        }
+    for (const card of [...snapshot.cards].sort((left, right) => (left.id ?? 0) - (right.id ?? 0))) {
+        if (card.id === null) continue;
+        if (!validId(card.id, card.assigned === true) || seen.has(card.id)
+            || (card.assigned !== undefined && card.assigned !== true)) throw new Error('Invalid or duplicate YAML Yugi identity');
         seen.add(card.id);
-        const match = canonical.get(card.id);
-        if (!match) {
-            unexpectedIds.push(card.id);
-            if (artwork.has(card.id)) artworkOnlyIds.push({ id: card.id, candidates: artwork.get(card.id) });
+        if (card.name === null) continue;
+        if (!validLabel(card.name) || !validName(card.name_en)) {
+            rejectedNames.push(card);
             continue;
         }
-        names.push([card.id, card.name]);
-        byName.set(card.name, [...(byName.get(card.name) ?? []), card.id]);
-        if (card.name_en !== match.name) {
-            englishNameDifferences.push({ id: card.id, provider: card.name_en, canonical: match.name });
+        let match = canonical.get(card.id);
+        if (!match) {
+            const owners = artwork.get(card.id);
+            if (owners?.size === 1) {
+                match = canonical.get([...owners][0]);
+                aliasMatches.push({ sourceId: card.id, canonicalId: match.id });
+            } else {
+                if (owners?.size > 1) ambiguousIds.push({ id: card.id, candidates: [...owners].sort(numericOrder) });
+                else unexpectedIds.push(card.id);
+                continue;
+            }
         }
-        if (card.name === match.name) unchangedNames.push(card.id);
+        if (names.has(match.id) && names.get(match.id) !== card.name) throw new Error(`Conflicting German names for canonical ID ${match.id}`);
+        names.set(match.id, card.name);
+        if (card.assigned) assignedIds.push({ sourceId: card.id, canonicalId: match.id });
+        if (card.name_en !== match.name) englishNameDifferences.push({ id: match.id, sourceId: card.id, provider: card.name_en, canonical: match.name });
     }
-    const matched = new Set(names.map(([id]) => id));
+    const asset = { version: 1, locale: 'de', names: [...names].sort(([left], [right]) => left - right) };
+    const byName = new Map();
+    for (const [id, name] of asset.names) byName.set(name, [...(byName.get(name) ?? []), id]);
+    const bytes = Buffer.from(JSON.stringify(asset) + '\n');
     const audit = {
-        returnedRecords: snapshot.cards.length, canonicalRecords: canonical.size, matchedRecords: names.length,
-        missingIds: [...canonical.keys()].filter(id => !matched.has(id)).sort((left, right) => left - right),
-        unexpectedIds, artworkOnlyIds, englishNameDifferences, unchangedNames,
-        ambiguousNames: [...byName].filter(([, ids]) => ids.length > 1).map(([name, ids]) => ({ name, ids }))
+        policy: 'YAML Yugi only; exact canonical IDs first, then unique catalog artwork aliases; no name joins.',
+        source: { url: snapshot.source, revision: snapshot.revision, sha256: snapshot.sourceSha256,
+            retrievedAt: snapshot.retrievedAt, bytes: snapshot.sourceBytes,
+            projectionSha256: sha256(Buffer.from(JSON.stringify(snapshot) + '\n')) },
+        returnedRecords: snapshot.cards.length, canonicalRecords: canonical.size, matchedRecords: names.size,
+        withoutId: snapshot.cards.filter(card => card.id === null).length,
+        withoutGermanName: snapshot.cards.filter(card => card.name === null).length,
+        missingIds: [...canonical.keys()].filter(id => !names.has(id)).sort(numericOrder),
+        rejectedNames, unexpectedIds, ambiguousIds, aliasMatches, assignedIds, englishNameDifferences,
+        unchangedNames: asset.names.filter(([id, name]) => canonical.get(id).name === name).map(([id]) => id),
+        ambiguousNames: [...byName].filter(([, ids]) => ids.length > 1).map(([name, ids]) => ({ name, ids })),
+        example: exampleNameCoverage(asset, catalog, example),
+        sizes: { bytes: bytes.length, gzip: gzipSync(bytes).length, brotli: brotliCompressSync(bytes).length }
     };
-    return { asset: { version: 1, locale: 'de', names }, audit };
+    return { asset, audit };
+}
+
+export function assertNoNameRegression(previous, next, allowedRemovals = []) {
+    if (!Array.isArray(allowedRemovals) || allowedRemovals.some(id => !validId(id, true))) throw new Error('Invalid reviewed removal IDs');
+    const names = new Map(next.names);
+    const removed = previous.names.filter(([id]) => !names.has(id)).map(([id]) => id);
+    const unexpected = removed.filter(id => !allowedRemovals.includes(id));
+    if (unexpected.length) throw new Error(`Localized name coverage regression: ${unexpected.join(', ')}`);
+    return removed;
 }
 
 async function main(args) {
     const options = new Map();
     for (let index = 0; index < args.length; index += 2) {
         if (!['--provider', '--snapshot', '--catalog', '--output', '--audit', '--previous',
-            '--compare-yaml-yugi', '--revision', '--retrieved-at', '--example'].includes(args[index]) || !args[index + 1]) {
-            throw new Error('Use --snapshot FILE --catalog FILE --output FILE --audit FILE; optionally --provider FILE to retain a new name-only snapshot.');
+            '--revision', '--retrieved-at', '--example', '--allow-removals'].includes(args[index]) || !args[index + 1]) {
+            throw new Error('Use --snapshot FILE --catalog FILE --example FILE --output FILE --audit FILE; optionally --provider FILE --revision SHA --retrieved-at ISO_TIMESTAMP');
         }
         options.set(args[index], args[index + 1]);
     }
-    const comparison = options.has('--compare-yaml-yugi');
-    for (const option of ['--snapshot', '--catalog', '--audit',
-        ...(comparison ? ['--revision', '--retrieved-at', '--example'] : ['--output'])]) {
+    for (const option of ['--snapshot', '--catalog', '--example', '--output', '--audit',
+        ...(options.has('--provider') ? ['--revision', '--retrieved-at'] : [])]) {
         if (!options.has(option)) throw new Error(`Missing ${option}`);
     }
+    const snapshot = options.has('--provider')
+        ? retainYamlYugiSnapshot(await readFile(options.get('--provider')), options.get('--revision'), options.get('--retrieved-at'))
+        : JSON.parse(await readFile(options.get('--snapshot'), 'utf8'));
     const catalogBytes = await readFile(options.get('--catalog'));
-    const catalog = JSON.parse(catalogBytes);
-    if (comparison) {
-        if (options.has('--provider') || options.has('--output') || options.has('--previous')) {
-            throw new Error('Comparison is audit-only; do not supply --provider, --output or --previous');
-        }
-        const bytes = await readFile(options.get('--compare-yaml-yugi'));
-        const candidate = retainYamlYugiSnapshot(bytes, options.get('--revision'), options.get('--retrieved-at'));
-        const primary = JSON.parse(await readFile(options.get('--snapshot'), 'utf8'));
-        const example = JSON.parse(await readFile(options.get('--example'), 'utf8'));
-        const audit = compareYamlYugi(primary, candidate, catalog, example);
-        audit.canonicalSha256 = sha256(catalogBytes);
-        audit.primarySourceSha256 = primary.sourceSha256;
-        audit.exampleSha256 = sha256(await readFile(options.get('--example')));
-        await mkdir(dirname(resolve(options.get('--audit'))), { recursive: true });
-        await writeFile(options.get('--audit'), JSON.stringify(audit) + '\n');
-        console.log(JSON.stringify({ before: audit.before.matched, hypothetical: audit.hypothetical.matched,
-            added: audit.addedIds.length, disagreements: audit.disagreements.length,
-            exampleBefore: audit.example.before.matched, exampleHypothetical: audit.example.hypothetical.matched,
-            publication: audit.publication }));
-        return;
-    }
-    let snapshot;
-    if (options.has('--provider')) {
-        const providerBytes = await readFile(options.get('--provider'));
-        if (providerBytes.length > 100 * 1024 * 1024) throw new Error('Provider snapshot too large');
-        snapshot = retainNameSnapshot(providerBytes, new Date().toISOString());
-    } else {
-        snapshot = JSON.parse(await readFile(options.get('--snapshot'), 'utf8'));
-    }
-    const { asset, audit } = buildLocalizedNames(snapshot, catalog);
-    // A refresh must compare against the previously shipped asset, even when writing a new path.
-    const previous = options.get('--previous') ?? options.get('--output');
+    const exampleBytes = await readFile(options.get('--example'));
+    const { asset, audit } = buildLocalizedNames(snapshot, JSON.parse(catalogBytes), JSON.parse(exampleBytes));
+    const allowedRemovals = options.has('--allow-removals') ? JSON.parse(await readFile(options.get('--allow-removals'), 'utf8')) : [];
     try {
-        assertNoNameRegression(JSON.parse(await readFile(previous, 'utf8')), asset);
+        assertNoNameRegression(JSON.parse(await readFile(options.get('--previous') ?? options.get('--output'), 'utf8')), asset, allowedRemovals);
     } catch (error) {
-        if (error.code !== 'ENOENT' || options.has('--provider') || options.has('--previous')) throw error;
+        if (error.code !== 'ENOENT' || options.has('--provider') || options.has('--previous') || options.has('--allow-removals')) throw error;
     }
     audit.canonicalSha256 = sha256(catalogBytes);
-    audit.sourceSha256 = snapshot.sourceSha256;
+    audit.exampleSha256 = sha256(exampleBytes);
     for (const [file, content] of [
         ...(options.has('--provider') ? [[options.get('--snapshot'), snapshot]] : []),
         [options.get('--output'), asset], [options.get('--audit'), audit]
@@ -239,8 +167,7 @@ async function main(args) {
         await writeFile(file, JSON.stringify(content) + '\n');
     }
     console.log(JSON.stringify({ returned: audit.returnedRecords, matched: audit.matchedRecords,
-        missing: audit.missingIds.length, unexpected: audit.unexpectedIds.length,
-        assetBytes: Buffer.byteLength(JSON.stringify(asset) + '\n') }));
+        missing: audit.missingIds.length, example: audit.example.matched, assetBytes: audit.sizes.bytes }));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
