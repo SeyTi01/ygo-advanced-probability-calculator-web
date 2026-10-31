@@ -60,4 +60,4 @@ Install SDK-scoped `wasm-tools` for optimized Release publishing. See [repositor
 
 Card artwork is supplied by [YGOPRODeck](https://ygoprodeck.com/api-guide/) and retained on project hosting. The software license does not cover third-party artwork.
 
-German card-name compilation is credited to [YAML Yugi](https://github.com/DawnbrandBots/yaml-yugi) and its upstream contributors. Card content remains the property of its respective rights holders; the software license does not relicense it. See the [offline source and coverage guide](infrastructure/card-catalog/README.md#german-search-names).
+Translation data compilation is credited to [YAML Yugi](https://github.com/DawnbrandBots/yaml-yugi) and its upstream contributors. Card content remains the property of its respective rights holders; the software license does not relicense it. See the [offline source and coverage guide](infrastructure/card-catalog/README.md#german-search-names).
