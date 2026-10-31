@@ -879,7 +879,7 @@
   <data name="Help.Footer.Credits.Part1" xml:space="preserve"><value>YGOPRODeck</value></data>
   <data name="Help.Footer.Credits" xml:space="preserve"><value>Erstellt von {0}. Kartenbilder werden von {1} bereitgestellt und auf dem Hosting des Projekts gespeichert. Fehlende Bilder beeinflussen die Berechnungen nicht; Bilder Dritter fallen nicht unter die Softwarelizenz.</value></data>
   <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve"><value>YAML Yugi</value></data>
-  <data name="Help.Footer.NameCompilation" xml:space="preserve"><value>Datensammlung deutscher Kartennamen: {0} und die dort genannten Quellen. Die Rechte an den Karteninhalten verbleiben bei den jeweiligen Rechteinhabern.</value></data>
+  <data name="Help.Footer.NameCompilation" xml:space="preserve"><value>Zusammenstellung der Übersetzungsdaten: {0} und die dort genannten Quellen. Die Rechte an den Karteninhalten verbleiben bei den jeweiligen Rechteinhabern.</value></data>
   <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exakt)</value></data>
   <data name="Ui.Share" xml:space="preserve"><value>Teilen</value></data>
   <data name="Ui.TargetsInThisDeck" xml:space="preserve"><value>Ziele in diesem Deck</value></data>

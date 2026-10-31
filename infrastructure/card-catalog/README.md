@@ -67,7 +67,7 @@ archive has SHA-256
 Verify the moving Pages aggregate against an immutable revision before refreshing;
 the old `aggregate` branch is not the current published snapshot.
 
-Credit **YAML Yugi and its upstream contributors for their compilation**, including
+Credit **YAML Yugi and its upstream contributors for compiling translation data**, including
 the [Yugipedia source cache](https://github.com/DawnbrandBots/yaml-yugipedia).
 The [upstream README](https://github.com/DawnbrandBots/yaml-yugi/blob/86c467a8e14e633a6210458905f5a479c4836405/README.md)
 attributes underlying card content to Studio Dice/SHUEISHA, TV TOKYO and KONAMI;
