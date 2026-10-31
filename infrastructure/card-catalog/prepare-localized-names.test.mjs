@@ -12,9 +12,9 @@ const retrievedAt = '2026-10-31T00:00:00Z';
 const snapshot = cards => retainYamlYugiSnapshot(Buffer.from(JSON.stringify(cards)), revision, retrievedAt);
 const record = (password, en, de) => ({ password, name: { en, de } });
 const catalog = { version: 2, cards: [
-    { id: 1, name: 'First', artworkImageIds: [1, 2, 9] },
-    { id: 2, name: 'Second', artworkImageIds: [2, 9] },
-    { id: 3, name: 'Third', artworkImageIds: [3, 8, 8] }
+    { id: 1, type: 'Effect Monster', name: 'First', artworkImageIds: [1, 2, 9] },
+    { id: 2, type: 'Spell Card', name: 'Second', artworkImageIds: [2, 9] },
+    { id: 3, type: 'Trap Card', name: 'Third', artworkImageIds: [3, 8, 8] }
 ] };
 const example = { Cards: [
     { ExternalCardId: 1, Name: 'First' }, { ExternalCardId: 2, Name: 'Second' },
@@ -42,7 +42,7 @@ test('source-assigned IDs preserve passwordless canonical cards without guessing
     cards[0].fake_password = 10000020;
     const retained = snapshot(cards);
     assert.deepEqual(retained.cards[0], { id: 10000020, assigned: true, name: 'Slifer der Himmelsdrache', name_en: 'Slifer' });
-    const canonical = { version: 2, cards: [{ id: 10000020, name: 'Slifer' }] };
+    const canonical = { version: 2, cards: [{ id: 10000020, type: 'Effect Monster', name: 'Slifer' }] };
     const result = buildLocalizedNames(retained, canonical, { Cards: [] });
     assert.deepEqual(result.asset.names, [[10000020, 'Slifer der Himmelsdrache']]);
     assert.deepEqual(result.audit.assignedIds, [{ sourceId: 10000020, canonicalId: 10000020 }]);

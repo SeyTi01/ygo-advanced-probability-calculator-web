@@ -36,7 +36,6 @@ public class CatalogArchetypeReconcilerTest {
             ("Summoned Skull", ["Archfiend"]), ("Hardened Armed Dragon", []),
             ("A Legendary Ocean", ["Umi"]), ("Fusion Substitute", ["Polymerization"]),
             ("Lemuria, the Forgotten City", ["Umi"]),
-            ("Neo-Spacian Marine Dolphin", ["Neo-Spacian"]), ("Neo-Spacian Twinkle Moss", ["Neo-Spacian"]),
             ("Double Iris Magician", ["Magician", "Pendulum", "Pendulum Dragon"]),
             ("Orcustrated Return", ["Orcust"]), ("World Legacy - \"World Wand\"", ["World Legacy"]),
             ("Radiant Typhoon Vision", ["Radiant Typhoon"])
@@ -52,7 +51,7 @@ public class CatalogArchetypeReconcilerTest {
     public async Task ReviewedNameTreatmentPreservesImportedAndRecoveredIdentityAndSavedSimulation() {
         IReadOnlyList<CardInfo> catalog = BundledCatalog();
         CategoryBase manual = new("Archetype: Lightsworn", CategorySource.Metadata, "archetype:lightsworn");
-        foreach (int externalId in new[] { 34103656, 13857930, 78734254 }) {
+        foreach (int externalId in new[] { 34103656 }) {
             CardInfo info = catalog.Single(card => card.Id == externalId);
             Assert.That(info.CanonicalCardId, Is.EqualTo(externalId));
             Card imported = CuratedDrawEffectPresets.CreateImportedCard(info, 2, info.Id);
@@ -80,8 +79,32 @@ public class CatalogArchetypeReconcilerTest {
                     .Select(category => category.Identity))));
             Assert.That(repaired.Categories.All(category => category.MetadataKey?.Contains("treated-as", StringComparison.Ordinal) != true), Is.True);
         }
-        Assert.That(catalog.Single(card => card.Id == 300201007).ResolvedArchetypes, Is.Null);
-        Assert.That(catalog.Single(card => card.Id == 300101005).ResolvedArchetypes, Is.Null);
+        Assert.That(catalog.Any(card => card.Id == 300201007 || card.Id == 300101005), Is.False);
+    }
+
+    [TestCase(13857930)] // Extra Deck card with a reviewed permanent name clause.
+    [TestCase(300201007)] // Skill.
+    [TestCase(68811206)] // Special promotional record.
+    public async Task CardsTrimmedFromCatalogKeepSavedIdentityCategoriesConstraintsAndEffects(int externalId) {
+        IReadOnlyList<CardInfo> catalog = BundledCatalog();
+        Assert.That(catalog.Any(card => card.Id == externalId), Is.False);
+        CategoryBase role = new("Saved custom role");
+        Card saved = new([role, Lightsworn], 2, "My saved label", active: false,
+            externalCardId: externalId, manualMetadataCategoryKeys: [Lightsworn.MetadataKey!],
+            drawCount: 1, drawOncePerTurn: false,
+            effectProfile: new(EffectSource.Custom, externalId, 7, "Saved plan", EffectSupport.Partial, "Saved limitation"));
+        SessionState session = new() {
+            Cards = [saved], Categories = [role],
+            Combos = [new([new(role, 1, 2)], "Saved combo")], HandSize = 2
+        };
+        using Bunit.TestContext context = new();
+        SessionService sessions = new(context.JSInterop.JSRuntime, new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        string before = sessions.SerializeSession(session);
+        SessionState loaded = await sessions.LoadSessionAsync(before);
+
+        CatalogArchetypeReconciler.Reconcile(loaded.Cards, catalog);
+
+        Assert.That(sessions.SerializeSession(loaded), Is.EqualTo(before));
     }
 
     [Test]

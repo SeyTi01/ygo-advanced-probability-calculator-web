@@ -37,11 +37,11 @@ test("projects objective metadata and artwork identities while excluding provide
 
     assert.equal(catalog.version, 2);
     assert.equal(cards.get(7).scale, 1);
-    assert.equal(cards.get(4).level, 8);
+    assert.equal(cards.has(4), false);
     assert.equal(cards.get(6).race, "Counter");
     assert.equal(cards.get(5).race, "Quick-Play");
-    assert.equal(cards.get(2).linkVal, 1);
-    assert.deepEqual(cards.get(4).artworkImageIds, [41, 40]);
+    assert.equal(cards.has(2), false);
+    assert.deepEqual(cards.get(7).artworkImageIds, [70]);
     assert.equal(cards.get(7).canonicalCardId, 7);
     assert.equal(cards.get(7).artworkMetadataKnown, true);
 
@@ -59,7 +59,7 @@ test("orders records and serializes deterministically", () => {
 
     const namesAndIds = JSON.parse(first).cards.map(entry => [entry.name, entry.id]);
     assert.deepEqual(namesAndIds.slice(0, 3), [
-        ["Ash Blossom & Joyous Spring", 3], ["Blue Eyes", 4], ["Linkuriboh", 2]
+        ["Ash Blossom & Joyous Spring", 3], ["MST", 5], ["Twin Name", 1]
     ]);
     assert.deepEqual(namesAndIds.filter(([name]) => name === "Twin Name"), [["Twin Name", 1], ["Twin Name", 8]]);
 });

@@ -7,12 +7,14 @@ import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { resolveMembership, auditMembership } from "./archetype-membership.mjs";
+import { exclusionReason, assertNoCatalogRegression } from "./card-eligibility.mjs";
 
-export const CATALOG_URL = "https://db.ygoprodeck.com/api/v7/cardinfo.php";
+export const CATALOG_URL = "https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes";
 export const MAX_INPUT_BYTES = 100 * 1024 * 1024;
 export const MAX_OUTPUT_BYTES = 20 * 1024 * 1024;
 export const MAX_CARD_COUNT = 30_000;
-export const MIN_FULL_CATALOG_CARDS = 1_000;
+export const MIN_FULL_CATALOG_CARDS = 14_000;
+export const MIN_ELIGIBLE_CARDS = 11_000;
 const MAX_TEXT_LENGTH = 512;
 const MAX_NUMERIC_VALUE = 1_000;
 
@@ -100,7 +102,7 @@ export function projectCard(card) {
     return projected;
 }
 
-export function buildCatalog(response, minimumCards = 1) {
+export function buildCatalog(response, minimumCards = 1, minimumEligibleCards = 1) {
     if (!isRecord(response) || !Array.isArray(response.data)) {
         throw new Error("Expected an official catalog object with a data array");
     }
@@ -110,10 +112,15 @@ export function buildCatalog(response, minimumCards = 1) {
         throw new Error("Catalog is empty, incomplete, or larger than the supported limit");
     }
 
-    const cards = records.map(projectCard);
-    const ids = new Set(cards.map(card => card.id));
-    if (ids.size !== cards.length) {
+    const projected = records.map(projectCard);
+    const ids = new Set(projected.map(card => card.id));
+    if (ids.size !== projected.length) {
         throw new Error("Catalog contains duplicate card ids");
+    }
+
+    const cards = projected.filter((card, index) => exclusionReason(records[index]) === null);
+    if (cards.length < minimumEligibleCards) {
+        throw new Error("Eligible catalog is empty or incomplete");
     }
 
     cards.sort((left, right) => compareText(left.name.toLowerCase(), right.name.toLowerCase())
@@ -183,7 +190,7 @@ function parseArguments(args) {
     const options = {};
     for (let index = 0; index < args.length; index++) {
         const key = args[index];
-        if (!["--catalog", "--output", "--audit", "--save-source"].includes(key)) {
+        if (!["--catalog", "--output", "--audit", "--save-source", "--previous", "--allow-removals"].includes(key)) {
             throw new Error(`Unknown argument: ${key}`);
         }
         const value = args[++index];
@@ -207,11 +214,22 @@ async function main() {
     const input = options.catalog ? await readCatalogBytes(options.catalog) : await downloadCatalog();
     const text = input.toString("utf8").replace(/^\uFEFF/, "");
     const source = JSON.parse(text);
-    const catalog = buildCatalog(source, MIN_FULL_CATALOG_CARDS);
+    const catalog = buildCatalog(source, MIN_FULL_CATALOG_CARDS, MIN_ELIGIBLE_CARDS);
     const output = serializeCatalog(catalog);
+    const allowedRemovals = options['allow-removals']
+        ? JSON.parse(await readFile(options['allow-removals'], 'utf8')) : [];
+    if (!Array.isArray(allowedRemovals) || allowedRemovals.some(id => !Number.isInteger(id) || id <= 0)) {
+        throw new Error('Invalid reviewed removal IDs');
+    }
+    try {
+        const previous = JSON.parse(await readFile(options.previous ?? options.output, 'utf8'));
+        assertNoCatalogRegression(previous, catalog, allowedRemovals);
+    } catch (error) {
+        if (error.code !== 'ENOENT' || options.previous || options['allow-removals']) throw error;
+    }
     await writeAtomically(resolve(options.output), output);
     if (options.audit) {
-        await writeAtomically(resolve(options.audit), `${JSON.stringify(auditMembership(source.data), null, 2)}\n`);
+        await writeAtomically(resolve(options.audit), `${JSON.stringify(auditMembership(source.data.filter(card => exclusionReason(card) === null)), null, 2)}\n`);
     }
     if (options["save-source"]) {
         await writeAtomically(resolve(options["save-source"]), input);

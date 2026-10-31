@@ -1,0 +1,20 @@
+{
+  "policyVersion": 1,
+  "previousCanonicalSha256": "7cfd0d6695f69bcbdc4b143c2d303fbce3f0f28027a162c2169100d672371d48",
+  "canonicalSha256": "81d64dec0ca5f18b69705b2d6a75d961cbd4a58447c535f3dccc7c45761b5e17",
+  "previousRecords": 14607,
+  "eligibleRecords": 12156,
+  "excludedByReason": {
+    "deck-profile-placeholder": 1,
+    "extra-deck": 2206,
+    "skill": 124,
+    "special-promotional-record": 14,
+    "token": 106
+  },
+  "previousRetainedNames": 14414,
+  "retainedNames": 12106,
+  "removedLocalizedNames": 2169,
+  "retainedMetadataUnchanged": true,
+  "excludedCanonicalIdsInRetainedArtwork": [],
+  "artworkAliasesSharedAcrossExcludedAndRetainedCards": []
+}
