@@ -1,7 +1,7 @@
 namespace YGOProbabilityCalculatorBlazor.Constants;
 
 public static class ProjectConstants {
-    public const string Version = "2.1.1";
+    public const string Version = "2.1.2";
 
 #if APP_DEPLOYMENT_CHANNEL_STABLE
     public const string DeploymentChannel = "stable";
