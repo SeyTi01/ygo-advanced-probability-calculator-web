@@ -18,94 +18,82 @@ public static class ComboOperatorEditing {
         int authoredPosition = combo.RequirementOrder.ToList().IndexOf(position);
         Combo updated = combo.WithoutRequirement(position);
         foreach (ComboAlternative[] segment in new[] { group.Alternatives.Take(boundary).ToArray(), group.Alternatives.Skip(boundary).ToArray() }) {
-            ComboRequirementPosition added;
-            if (segment.Length > 1) {
-                updated = updated.WithAlternativeGroups(updated.AlternativeGroups.Append(new(segment)));
-                added = new(ComboRequirementKind.Group, updated.AlternativeGroups.Count - 1);
-            }
-            else if (segment[0].Category is { } category) {
-                updated = updated.WithCategories(updated.Categories.Append(category));
-                added = new(ComboRequirementKind.Category, updated.Categories.Count - 1);
-            }
-            else {
-                updated = updated.WithCards(updated.Cards.Append(segment[0].Card!));
-                added = new(ComboRequirementKind.Card, updated.Cards.Count - 1);
-            }
-            updated = updated.WithRequirementAt(added, authoredPosition++);
+            updated = segment.Length > 1
+                ? ComboRequirementEditing.AppendGroup(updated, segment, authoredPosition++)
+                : ComboRequirementEditing.Append(updated, segment[0], authoredPosition++);
         }
         return updated;
     }
 
-    private static ComboCategory? Validate(Combo combo, IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
+    private static string? Validate(
+        Combo combo,
+        IReadOnlyList<ComboRequirementPosition> positions,
+        ComboGroupEdit edit,
+        out ComboCategory? sameCard
+    ) {
+        sameCard = null;
         if (positions.Count == 0 || positions.Distinct().Count() != positions.Count || positions.Any(position => !combo.RequirementOrder.Contains(position))) {
-            throw new ArgumentException("The edited conditions changed. Reopen the group.");
+            return "The edited conditions changed. Reopen the group.";
         }
         if (edit.Operands.Count == 0 || edit.Operator is not ("+" or "AND" or "OR")) {
-            throw new ArgumentException("Choose an operator and at least one complete condition.");
+            return "Choose an operator and at least one complete condition.";
         }
 
-        ComboCategory? sameCard = null;
         if (edit.Operator == "AND") {
             ComboCategory[] categories = edit.Operands.Select(operand => operand.Category).OfType<ComboCategory>().ToArray();
             if (categories.Length != edit.Operands.Count) {
-                throw new ArgumentException("Same-card AND requires category/property operands. Direct-card conditions can use + or OR.");
+                return "Same-card AND requires category/property operands. Direct-card conditions can use + or OR.";
             }
             ComboCategory first = categories[0];
             if (categories.Any(category => category.MinCount != first.MinCount || category.MaxCount != first.MaxCount || category.MaximumMode != first.MaximumMode)) {
                 if (categories.All(category => category.MaximumMode == RequirementMaximumMode.HandSize && category.MinCount == first.MinCount)) {
-                    throw new ArgumentException("The saved Any maxima differ. Choose one shared fixed maximum to combine without discarding a saved bound.");
+                    return "The saved Any maxima differ. Choose one shared fixed maximum to combine without discarding a saved bound.";
                 }
-                throw new ArgumentException("Same-card AND requires matching bounds. Set every operand to the same minimum and fixed/Any maximum, then save.");
+                return "Same-card AND requires matching bounds. Set every operand to the same minimum and fixed/Any maximum, then save.";
             }
             if (positions.Count != 1 || positions[0].Kind != ComboRequirementKind.Group
                 || categories.Any(category => category.CategoryBases.Count != 1)
                 || categories.Select(category => category.BaseCategory.Identity).Distinct(StringComparer.Ordinal).Count() != categories.Length) {
-                throw new ArgumentException("This operator change cannot be reversed without losing requirements or grouping.");
+                return "This operator change cannot be reversed without losing requirements or grouping.";
             }
             IReadOnlyList<ComboAlternative> original = combo.AlternativeGroups[positions[0].Index].Alternatives;
             if (original.Count != edit.Operands.Count
                 || !original.Zip(edit.Operands).All(pair => ReferenceEquals(pair.First.Category, pair.Second.Category))) {
-                throw new ArgumentException("Change only the operator of the existing alternatives.");
+                return "Change only the operator of the existing alternatives.";
             }
             sameCard = ComboCategory.SameCard(categories.SelectMany(category => category.CategoryBases), first.MinCount, first.MaxCount, first.MaximumMode);
         }
 
-        return sameCard;
+        return null;
     }
 
     public static bool CanApply(Combo combo, IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
         try {
-            Validate(combo, positions, edit);
-            return true;
+            return Validate(combo, positions, edit, out _) is null;
         }
         catch (ArgumentException) {
+            // The model constructor remains the authority for selector limits.
+            // Ordinary unavailable operators return a validation message above.
             return false;
         }
     }
 
     public static Combo Apply(Combo combo, IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
-        ComboCategory? sameCard = Validate(combo, positions, edit);
+        string? error = Validate(combo, positions, edit, out ComboCategory? sameCard);
+        if (error is not null) {
+            throw new ArgumentException(error);
+        }
         int authoredPosition = positions.Min(position => combo.RequirementOrder.ToList().IndexOf(position));
         Combo updated = combo;
         foreach (ComboRequirementPosition position in positions.OrderByDescending(position => position.Index)) {
             updated = updated.WithoutRequirement(position);
         }
         if (edit.Operator == "OR") {
-            updated = updated.WithAlternativeGroups(updated.AlternativeGroups.Append(new(edit.Operands.ToArray())));
-            return updated.WithRequirementAt(new(ComboRequirementKind.Group, updated.AlternativeGroups.Count - 1), authoredPosition);
+            return ComboRequirementEditing.AppendGroup(updated, edit.Operands, authoredPosition);
         }
         IReadOnlyList<ComboAlternative> requirements = sameCard is null ? edit.Operands : [ComboAlternative.For(sameCard)];
         foreach (ComboAlternative operand in requirements) {
-            ComboRequirementPosition added;
-            if (operand.Category is { } category) {
-                updated = updated.WithCategories(updated.Categories.Append(category));
-                added = new(ComboRequirementKind.Category, updated.Categories.Count - 1);
-            }
-            else {
-                updated = updated.WithCards(updated.Cards.Append(operand.Card!));
-                added = new(ComboRequirementKind.Card, updated.Cards.Count - 1);
-            }
-            updated = updated.WithRequirementAt(added, authoredPosition++);
+            updated = ComboRequirementEditing.Append(updated, operand, authoredPosition++);
         }
         return updated;
     }

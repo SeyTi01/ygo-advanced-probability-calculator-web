@@ -3,8 +3,8 @@
         <h5 id="pinnedResultHeading">@(UiText.Get("Ui.PinnedResult"))</h5>
         <button type="button" class="btn btn-sm btn-outline-secondary" title="@(UiText.Get("Ui.UnpinResult"))" aria-label="@(UiText.Get("Ui.UnpinResult"))" @onclick="OnClear"><PinIcon Slashed="true" /></button>
     </div>
-    <p class="small text-body-secondary mb-2">@Snapshot.Context.Description</p>
-    <CalculationAccuracyResult ModeDescription="@Snapshot.Context.ModeDescription" Contract="Snapshot.Contract" />
+    <CalculationAccuracyResult Context="Snapshot.Context" ModeDescription="@Snapshot.Context.ModeDescription" Contract="Snapshot.Contract" />
+    <CalculationAccuracyDetails />
 
     <div class="pinned-row pinned-total">
         <span>@(UiText.Get("Ui.AnyActiveCombo"))</span><ProbabilityValue Probability="Snapshot.Total" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" ValueClass="probability-total-value" />

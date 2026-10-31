@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
@@ -9,6 +10,254 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
 [TestFixture]
 public class CardInfoServiceTests {
+    [Test]
+    [SetUICulture("fr")]
+    public async Task ArtworkSharesPendingCatalogWithoutWaitingForLocalizedNames() {
+        TaskCompletionSource<HttpResponseMessage> pendingCatalog = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<HttpResponseMessage> pendingNames = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        RecordingHttpMessageHandler handler = new((request, _) => request.RequestUri!.AbsolutePath.EndsWith("card-names.fr.test.json")
+            ? pendingNames.Task : pendingCatalog.Task);
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        TestLocalStorage storage = new(null);
+        CardInfoService service = new(storage, client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+
+        Task<IReadOnlyList<CardInfo>> catalog = service.GetCatalogCardsAsync();
+        Task<CardInfo> artwork = service.GetCardArtworkInfoAsync(1);
+        Task display = service.EnsureLocalizedCardNamesAsync([new Card([], name: "Card", externalCardId: 1)]);
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+        pendingCatalog.SetResult(Response(HttpStatusCode.OK, CreateLocalCatalogJson([
+            new CardInfo { Id = 1, Name = "Card", ArtworkMetadataKnown = true, ArtworkImageIds = [1] }
+        ])));
+
+        Assert.That(await artwork.WaitAsync(TimeSpan.FromSeconds(1)), Is.SameAs((await catalog).Single()));
+        Assert.That(service.GetLocalizedCardName(await artwork), Is.Null);
+        pendingNames.SetResult(Response(HttpStatusCode.OK, """{"version":1,"locale":"fr","names":[[1,"Label"]]}"""));
+        await display;
+        Assert.That(service.GetLocalizedCardName(await artwork), Is.EqualTo("Label"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+        Assert.That(storage.WriteCount, Is.Zero);
+    }
+
+    [Test]
+    [SetUICulture("fr-CA")]
+    public async Task SavedCardDisplayVerifiesIdentityAndNameWithoutChangingTheSession() {
+        CardInfo[] catalogCards = [
+            new() { Id = 35261759, CanonicalCardId = 35261759, Name = "Pot of Desires", Type = "Spell Card",
+                ArtworkMetadataKnown = true, ArtworkImageIds = [35261759, 91, 91, 99, 2], ResolvedArchetypes = [] },
+            new() { Id = 2, Name = "Other", ArtworkMetadataKnown = true, ArtworkImageIds = [2, 99] },
+            new() { Id = 3, Name = "Missing", ArtworkMetadataKnown = true }
+        ];
+        TaskCompletionSource<HttpResponseMessage> pendingNames = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        RecordingHttpMessageHandler handler = new((request, _) => request.RequestUri!.AbsolutePath.EndsWith("card-names.fr.test.json")
+            ? pendingNames.Task : Task.FromResult(Response(HttpStatusCode.OK, CreateLocalCatalogJson(catalogCards))));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+        CategoryBase customCategory = new("My starter");
+        Card canonical = new([customCategory], copies: 2, name: "Pot of Desires", externalCardId: 35261759,
+            drawCount: 2, preDrawDeckRemovalCount: 10);
+        Card artwork = new([], name: "Pot of Desires", externalCardId: 91);
+        Card customName = new([], name: "My favourite Pot", externalCardId: 35261759);
+        Card manual = new([], name: "Pot of Desires");
+        Card ambiguousArtwork = new([], name: "Pot of Desires", externalCardId: 99);
+        Card unknown = new([], name: "Pot of Desires", externalCardId: 123);
+        Card changedCase = new([], name: "pot of desires", externalCardId: 35261759);
+        Card wrongArtworkOwner = new([], name: "Pot of Desires", externalCardId: 2);
+        Card otherCanonical = new([], name: "Other", externalCardId: 2);
+        Card missingTranslation = new([], name: "Missing", externalCardId: 3);
+        SessionState session = new() { Cards = [canonical, artwork, customName, manual], Categories = [customCategory] };
+        YGOProbabilityCalculatorBlazor.Services.Session.SessionService codec = new(
+            Moq.Mock.Of<Microsoft.JSInterop.IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        string before = codec.SerializeSession(session);
+
+        Assert.That(service.GetLocalizedCardName(canonical), Is.Null);
+        await service.EnsureLocalizedCardNamesAsync([]);
+        await service.EnsureLocalizedCardNamesAsync([manual, new Card([], name: " ", externalCardId: 35261759)]);
+        Assert.That(service.GetLocalizedCardName(manual), Is.Null);
+        Assert.That(handler.Requests, Is.Empty, "manual names and synchronous reads must not start a request");
+        await service.GetCatalogCardsAsync();
+        await service.EnsureLocalizedCardNamesAsync([customName, ambiguousArtwork, unknown, changedCase, wrongArtworkOwner]);
+        Assert.That(service.GetLocalizedCardName(customName), Is.Null);
+        Assert.That(service.GetLocalizedCardName(ambiguousArtwork), Is.Null,
+            "ambiguous artwork cannot borrow a canonical name");
+        Assert.That(service.GetLocalizedCardName(unknown), Is.Null);
+        Assert.That(service.GetLocalizedCardName(changedCase), Is.Null,
+            "case changes may be authored and must remain verbatim");
+        Assert.That(service.GetLocalizedCardName(wrongArtworkOwner), Is.Null,
+            "an exact canonical ID takes precedence over another card's artwork alias");
+        Assert.That(handler.Requests, Has.Length.EqualTo(1), "unverified/custom names do not demand-load localized names");
+
+        Task display = service.EnsureLocalizedCardNamesAsync([canonical, artwork, otherCanonical, missingTranslation]);
+        Task<IReadOnlyList<CardInfo>> search = service.SearchCardsAsync("vessel");
+        pendingNames.SetResult(Response(HttpStatusCode.OK, """{"version":1,"locale":"fr","names":[[35261759,"⟦Desire vessel⟧"],[2,"Other label"]]}"""));
+        await display;
+        Assert.That(service.GetLocalizedCardName(canonical), Is.EqualTo("⟦Desire vessel⟧"));
+        Assert.That(service.GetLocalizedCardName(canonical.WithCategories([new("Rule membership")])), Is.EqualTo("⟦Desire vessel⟧"),
+            "category-rule materialization must retain the verified display name");
+        Assert.That(service.GetLocalizedCardName(artwork), Is.EqualTo("⟦Desire vessel⟧"),
+            "repeated artwork IDs on one canonical record must not count as multiple owners");
+        Assert.That(service.GetLocalizedCardName(otherCanonical), Is.EqualTo("Other label"));
+        Assert.That(service.GetLocalizedCardName(wrongArtworkOwner), Is.Null);
+        Assert.That(service.GetLocalizedCardName(ambiguousArtwork), Is.Null);
+        Assert.That(service.GetLocalizedCardName(customName), Is.Null);
+        Assert.That(service.GetLocalizedCardName(manual), Is.Null);
+        Assert.That(service.GetLocalizedCardName(missingTranslation), Is.Null,
+            "a verified card without a supplied Localized name keeps its stored English name");
+        Assert.That(service.GetLocalizedCardName((await search).Single()), Is.EqualTo("⟦Desire vessel⟧"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2), "saved display and search share the same name request");
+        Assert.That(codec.SerializeSession(session), Is.EqualTo(before));
+        Assert.That(canonical.Name, Is.EqualTo("Pot of Desires"));
+        Assert.That(canonical.Categories.Single(), Is.SameAs(customCategory));
+    }
+
+    [Test]
+    [SetUICulture("fr")]
+    public async Task ColdSavedCardDisplayStartsCatalogAndNamesTogetherAndSharesThemWithSearch() {
+        TaskCompletionSource<HttpResponseMessage> pendingCatalog = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<HttpResponseMessage> pendingNames = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        RecordingHttpMessageHandler handler = new((request, _) => request.RequestUri!.AbsolutePath.EndsWith("card-names.fr.test.json")
+            ? pendingNames.Task : pendingCatalog.Task);
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+        Card card = new([], name: "Pot of Desires", externalCardId: 35261759);
+
+        Task display = service.EnsureLocalizedCardNamesAsync([card]);
+        Assert.That(handler.Requests.Select(url => new Uri(url).AbsolutePath), Is.EquivalentTo(new[] {
+            "/data/card-catalog.v1.json", "/data/card-names.fr.test.json"
+        }), "both requests must start while the controlled catalog response remains pending");
+        Task<IReadOnlyList<CardInfo>> search = service.SearchCardsAsync("vessel");
+        Task repeatedDisplay = service.EnsureLocalizedCardNamesAsync([card]);
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+        pendingNames.SetResult(Response(HttpStatusCode.OK,
+            """{"version":1,"locale":"fr","names":[[35261759,"⟦Desire vessel⟧"]]}"""));
+        pendingCatalog.SetResult(Response(HttpStatusCode.OK, CreateLocalCatalogJson([
+            new CardInfo { Id = 35261759, Name = "Pot of Desires", ArtworkMetadataKnown = true }
+        ])));
+        await Task.WhenAll(display, repeatedDisplay);
+
+        Assert.That(service.GetLocalizedCardName(card), Is.EqualTo("⟦Desire vessel⟧"));
+        Assert.That((await search).Single().Id, Is.EqualTo(35261759));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+    }
+
+    [Test]
+    [SetUICulture("en")]
+    public async Task EnglishSavedCardDisplayDoesNotLoadCatalogOrNames() {
+        RecordingHttpMessageHandler handler = HandlerWithStatus(HttpStatusCode.ServiceUnavailable);
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+        Card card = new([], name: "Pot of Desires", externalCardId: 35261759);
+        await service.EnsureLocalizedCardNamesAsync([card]);
+        Assert.That(service.GetLocalizedCardName(card), Is.Null);
+        Assert.That(handler.Requests, Is.Empty);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    [SetUICulture("fr")]
+    public async Task SavedCardDisplayFailurePreservesTheNameWithoutExternalEnrichment(bool catalogUnavailable) {
+        CardInfo[] cards = [new() { Id = 35261759, Name = "Pot of Desires", ArtworkMetadataKnown = true }];
+        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(
+            catalogUnavailable || request.RequestUri!.AbsolutePath.EndsWith("card-names.fr.test.json")
+                ? Response(HttpStatusCode.ServiceUnavailable, "{}") : Response(HttpStatusCode.OK, CreateLocalCatalogJson(cards))));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        TestLocalStorage storage = new(null);
+        CardInfoService service = new(storage, client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+        Card card = new([], name: "Pot of Desires", externalCardId: 35261759);
+        await service.EnsureLocalizedCardNamesAsync([card]);
+        await service.EnsureLocalizedCardNamesAsync([card]);
+        Assert.That(service.GetLocalizedCardName(card), Is.Null);
+        Assert.That(card.Name, Is.EqualTo("Pot of Desires"));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+        Assert.That(handler.Requests.All(url => url.StartsWith("https://calculator.test/data/", StringComparison.Ordinal)), Is.True);
+        Assert.That(storage.WriteCount, Is.Zero);
+    }
+
+    [Test]
+    [SetUICulture("fr-CA")]
+    public async Task LocalizedSearchSharesDemandLoadAndKeepsCanonicalNamesMetadataAndEffects() {
+        CardInfo[] cards = [
+            new() { Id = 35261759, CanonicalCardId = 35261759, Name = "Pot of Desires", Type = "Spell Card",
+                ArtworkMetadataKnown = true, ArtworkImageIds = [35261759, 99], ResolvedArchetypes = [] },
+            new() { Id = 2, Name = "White Dragon", Type = "Effect Monster", ArtworkMetadataKnown = true,
+                ArtworkImageIds = [2, 99], ResolvedArchetypes = ["Blue-Eyes"] },
+            new() { Id = 3, Name = "Another White Dragon", Type = "Effect Monster", ArtworkMetadataKnown = true },
+            new() { Id = 4, Name = "Missing Translation", Type = "Spell Card", ArtworkMetadataKnown = true }
+        ];
+        string catalog = JsonSerializer.Serialize(new { version = 2, cards }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        TaskCompletionSource<HttpResponseMessage> pendingNames = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        RecordingHttpMessageHandler handler = new((request, _) => request.RequestUri!.AbsolutePath.EndsWith("card-names.fr.test.json")
+            ? pendingNames.Task : Task.FromResult(Response(HttpStatusCode.OK, catalog)));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+
+        Assert.That(service.GetLocalizedCardName(cards[0]), Is.Null);
+        Assert.That(await service.SearchCardsAsync(" T "), Is.Empty);
+        await service.GetCatalogCardsAsync();
+        Assert.That(handler.Requests, Has.Length.EqualTo(1), "catalog/import use must not load names");
+        Task<IReadOnlyList<CardInfo>> localizedSearch = service.SearchCardsAsync("⟦Desire vessel⟧");
+        Task<IReadOnlyList<CardInfo>> englishSearch = service.SearchCardsAsync("Pot of Desires");
+        pendingNames.SetResult(Response(HttpStatusCode.OK, """
+            {"version":1,"locale":"fr","names":[[35261759,"⟦Desire vessel⟧"],[2,"⟦White drágon⟧"],
+             [3,"⟦White drágon⟧"],[99,"Alias label"],[123,"Unknown label"]]}
+            """));
+        CardInfo localized = (await localizedSearch).Single();
+        CardInfo english = (await englishSearch).Single();
+        Assert.That(localized, Is.SameAs(english));
+        Assert.That(localized.Name, Is.EqualTo("Pot of Desires"));
+        Assert.That(service.GetLocalizedCardName(localized), Is.EqualTo("⟦Desire vessel⟧"));
+        Assert.That(service.GetLocalizedCardName(localized with { }), Is.Null, "an unverified clone/ID cannot acquire a data label");
+        Assert.That(service.GetLocalizedCardName(new CardInfo { Id = 99, Name = "Artwork" }), Is.Null);
+        Card imported = CuratedDrawEffectPresets.CreateImportedCard(localized, 1, localized.Id);
+        Assert.That(imported.Name, Is.EqualTo("Pot of Desires"));
+        Assert.That((imported.DrawCount, imported.PreDrawDeckRemovalCount), Is.EqualTo(((int?)2, 10)));
+        Assert.That((await service.SearchCardsAsync("vessel")).Select(card => card.Id), Is.EqualTo(new[] { 35261759 }));
+        Assert.That((await service.SearchCardsAsync("WHITE DRÁGON")).Select(card => card.Id), Is.EqualTo(new[] { 3, 2 }));
+        Assert.That((await service.SearchCardsAsync("White Dragon")).Select(card => card.Id), Is.EqualTo(new[] { 2, 3 }));
+        Assert.That(await service.SearchCardsAsync("⟦White dragon⟧"), Is.Empty, "do not fold distinct spellings or IDs");
+        Assert.That(await service.SearchCardsAsync("Alias label"), Is.Empty, "artwork aliases never join names");
+        Assert.That(await service.SearchCardsAsync("Unknown label"), Is.Empty);
+        Assert.That((await service.SearchCardsAsync("Missing")).Single().Name, Is.EqualTo("Missing Translation"));
+        Assert.That((await service.SearchCardsAsync("White Dragon")).Single(card => card.Id == 2).ResolvedArchetypes,
+            Is.EqualTo(new[] { "Blue-Eyes" }));
+        Assert.That(handler.Requests, Has.Length.EqualTo(2), "both overlapping and warm searches share the name request");
+    }
+
+    [TestCase(null)]
+    [TestCase("{bad json")]
+    [TestCase("{\"version\":1,\"locale\":\"xx\",\"names\":[[1,\"Æther\"]]}")]
+    [TestCase("{\"version\":1,\"locale\":\"fr\",\"names\":[[1,\"Æther\"],[1,\"Different\"]]}")]
+    [SetUICulture("fr")]
+    public async Task FailedLocalizedNamesKeepEnglishSearchAndCacheFailure(string? names) {
+        CardInfo[] cards = [new() { Id = 1, Name = "Aether", ArtworkMetadataKnown = true }];
+        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(
+            request.RequestUri!.AbsolutePath.EndsWith("card-names.fr.test.json")
+                ? Response(names is null ? HttpStatusCode.NotFound : HttpStatusCode.OK, names ?? "")
+                : Response(HttpStatusCode.OK, CreateLocalCatalogJson(cards))));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+        Assert.That((await service.SearchCardsAsync("Aether")).Single().Id, Is.EqualTo(1));
+        Assert.That((await service.SearchCardsAsync("Aeth")).Single().Name, Is.EqualTo("Aether"));
+        Assert.That(service.GetLocalizedCardName(cards[0]), Is.Null);
+        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+    }
+
+    [Test]
+    [SetUICulture("fr")]
+    public async Task LocalizedSearchRanksBothLanguagesAndCapsDeduplicatedCanonicalResults() {
+        CardInfo[] cards = Enumerable.Range(1, 30).Select(index => new CardInfo {
+            Id = index, Name = $"Æther {index:00}", ArtworkMetadataKnown = true
+        }).ToArray();
+        string names = JsonSerializer.Serialize(new {
+            version = 1, locale = "fr", names = cards.Select(card => new object[] { card.Id, card.Name })
+        });
+        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            request.RequestUri!.AbsolutePath.EndsWith("card-names.fr.test.json") ? names : CreateLocalCatalogJson(cards))));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
+        Assert.That((await service.SearchCardsAsync("æTH")).Select(card => card.Id), Is.EqualTo(Enumerable.Range(1, 20)));
+        Assert.That((await service.SearchCardsAsync("æther 29")).Single().Id, Is.EqualTo(29));
+    }
+
     [Test]
     public async Task VerifiedCatalogMembershipWinsForSearchImportCanonicalAndArtworkIds() {
         CardInfo[] cards = [
@@ -317,7 +566,6 @@ public class CardInfoServiceTests {
             return Result.Task;
         }
 
-        public Task<string> GetCardNameAsync(int id) => throw new NotSupportedException();
 
         public Task<IReadOnlyDictionary<string, CardInfo>> GetCardInfoByExactNamesAsync(IEnumerable<string> names) => throw new NotSupportedException();
     }
@@ -528,7 +776,7 @@ public class CardInfoServiceTests {
         CardInfo info = await service.GetCardInfoAsync(1234);
         Assert.That(info.Id, Is.EqualTo(1234));
         Assert.That(info.Name, Is.EqualTo("Alternate passcode"));
-        Assert.That(await service.GetCardNameAsync(1234), Is.EqualTo(info.Name));
+        Assert.That((await service.GetCardInfoAsync(1234)).Name, Is.EqualTo(info.Name));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
     }
 
@@ -540,7 +788,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Blue-Eyes White Dragon"));
         Assert.That(handler.Requests, Is.Empty);
@@ -554,7 +802,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Updated Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -572,7 +820,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Stale Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -589,7 +837,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        Assert.That(await service.GetCardNameAsync(1234), Is.EqualTo("Stale Name"));
+        Assert.That((await service.GetCardInfoAsync(1234)).Name, Is.EqualTo("Stale Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
         Assert.That(storage.RawCache, Is.EqualTo(originalJson));
         Assert.That(storage.WriteCount, Is.Zero);
@@ -603,7 +851,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Refreshed Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -618,7 +866,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(1234);
+        string result = (await service.GetCardInfoAsync(1234)).Name;
 
         Assert.That(result, Is.EqualTo("Legacy Name"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -633,7 +881,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -649,7 +897,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -664,7 +912,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -679,7 +927,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        Assert.That(await service.GetCardNameAsync(5678), Is.EqualTo("Dark Magician"));
+        Assert.That((await service.GetCardInfoAsync(5678)).Name, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
         AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
     }
@@ -696,7 +944,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -715,7 +963,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("New Card"));
         AssertPersistedCache(storage.RawCache, refreshedAt, (1234, "Known Card"), (5678, "New Card"));
@@ -731,7 +979,7 @@ public class CardInfoServiceTests {
 
         using (HttpClient firstHttpClient = new(firstHandler)) {
             CardInfoService firstService = new(storage, firstHttpClient, new TestTimeProvider(Now));
-            Assert.That(await firstService.GetCardNameAsync(5678), Is.EqualTo("New Card"));
+            Assert.That((await firstService.GetCardInfoAsync(5678)).Name, Is.EqualTo("New Card"));
         }
 
         using (JsonDocument document = JsonDocument.Parse(storage.RawCache!)) {
@@ -746,7 +994,7 @@ public class CardInfoServiceTests {
         using HttpClient nextHttpClient = new(nextHandler);
         CardInfoService nextService = new(storage, nextHttpClient, new TestTimeProvider(Now));
 
-        Assert.That(await nextService.GetCardNameAsync(1234), Is.EqualTo("Refreshed Name"));
+        Assert.That((await nextService.GetCardInfoAsync(1234)).Name, Is.EqualTo("Refreshed Name"));
         Assert.That(nextHandler.Requests, Has.Length.EqualTo(1));
     }
 
@@ -758,7 +1006,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(9999);
+        string result = (await service.GetCardInfoAsync(9999)).Name;
 
         Assert.That(result, Is.EqualTo("9999"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -772,7 +1020,7 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string result = await service.GetCardNameAsync(5678);
+        string result = (await service.GetCardInfoAsync(5678)).Name;
 
         Assert.That(result, Is.EqualTo("Dark Magician"));
         Assert.That(handler.Requests, Has.Length.EqualTo(1));
@@ -787,9 +1035,9 @@ public class CardInfoServiceTests {
         using HttpClient httpClient = new(handler);
         CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
 
-        string[] results = await Task.WhenAll(service.GetCardNameAsync(1234), service.GetCardNameAsync(5678));
+        CardInfo[] results = await Task.WhenAll(service.GetCardInfoAsync(1234), service.GetCardInfoAsync(5678));
 
-        Assert.That(results, Is.EqualTo(new[] { "New A", "New B" }));
+        Assert.That(results.Select(card => card.Name), Is.EqualTo(new[] { "New A", "New B" }));
         Assert.That(handler.Requests.Select(request => new Uri(request).Query),
             Is.EquivalentTo(new[] { "?id=1234", "?id=5678" }));
     }
@@ -850,9 +1098,6 @@ public class CardInfoServiceTests {
         public bool ThrowOnRead { get; init; }
         public bool ThrowOnWrite { get; init; }
         public int WriteCount { get; private set; }
-
-        public Task<T?> GetItemAsync<T>(string key) =>
-            Task.FromResult(RawCache is null ? default : JsonSerializer.Deserialize<T>(RawCache));
 
         public Task<string?> GetRawItemAsync(string key) {
             if (ThrowOnRead) {

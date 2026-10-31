@@ -178,11 +178,11 @@ public sealed class ThreeCalculationModesTest {
         }) {
             JsonObject changed = response.DeepClone().AsObject();
             changed["Result"]!["Contract"]![field] = value;
-            Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(changed.ToJsonString()), field);
+            Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(changed.ToJsonString()), field);
         }
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(response.ToJsonString(), CalculationModel.Exact));
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response.ToJsonString(), CalculationModel.Exact));
         response["Result"]!["SearchAvailability"]!["Combos"] = new JsonArray();
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(response.ToJsonString()));
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response.ToJsonString()));
     }
 
     [Test]
@@ -214,7 +214,7 @@ public sealed class ThreeCalculationModesTest {
         Assert.Throws<OperationCanceledException>(() => CalculationWire.ReadResult(json, CalculationModel.Exact));
         JsonObject corrupt = JsonNode.Parse(json)!.AsObject();
         corrupt["Contract"]!["ExecutedMode"] = 999;
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(corrupt.ToJsonString()));
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(corrupt.ToJsonString()));
     }
 
     [TestCase("null"), TestCase("[]")]

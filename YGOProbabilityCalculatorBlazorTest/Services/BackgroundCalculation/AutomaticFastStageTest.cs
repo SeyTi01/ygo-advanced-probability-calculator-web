@@ -64,8 +64,8 @@ public sealed class AutomaticFastStageTest {
             ThreeCalculationModesTest.Combos, 2, ThreeCalculationModesTest.Groups).Json;
         JsonObject response = JsonNode.Parse(Stage(json).Response)!.AsObject();
         response["Result"]!["Contract"]!["AutomaticExact"] = 0;
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(response.ToJsonString(), CalculationModel.Fast));
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response.ToJsonString(), CalculationModel.Fast));
         response["Result"]!["Contract"]!["AutomaticExact"] = 99;
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(response.ToJsonString(), CalculationModel.Fast));
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response.ToJsonString(), CalculationModel.Fast));
     }
 }

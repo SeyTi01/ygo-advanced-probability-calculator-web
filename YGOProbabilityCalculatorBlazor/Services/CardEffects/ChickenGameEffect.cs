@@ -1,13 +1,11 @@
-using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
-public sealed class ChickenGameEffect : ICardEffectDefinition {
-    public int CanonicalCardId => 67616300;
-    public string Name => "Chicken Game";
-    public int Revision => 1;
-    public DrawEffectPlan Compile() => DrawEffectPlan.Draw(1, false);
-    public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => UiText.English("Effects.67616300.Summary");
+public sealed class ChickenGameEffect : CardEffectDefinition {
+    public override int CanonicalCardId => 67616300;
+    public override string Name => "Chicken Game";
+    public override int Revision => 1;
+    public override DrawEffectPlan Compile() => DrawEffectPlan.Draw(1, false);
+    public override EffectSupport Support => EffectSupport.ModeledWithinRules;
 }

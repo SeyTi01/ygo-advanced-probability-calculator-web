@@ -4,8 +4,8 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 public static class CardPropertyColorPalette {
     public const string GenericMetadataClass = "card-property-color-generic";
-    public const string GenericAttributeClass = "card-property-color-attribute";
-    public const string MonsterTraitClass = "card-property-color-monster-trait";
+    private const string GenericAttributeClass = "card-property-color-attribute";
+    private const string MonsterTraitClass = "card-property-color-monster-trait";
 
     private static readonly IReadOnlyDictionary<string, string> AttributeClasses = new Dictionary<string, string>(StringComparer.Ordinal) {
         ["fire"] = "card-property-color-attribute-fire",

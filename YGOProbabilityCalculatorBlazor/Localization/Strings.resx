@@ -437,7 +437,7 @@
     <value>{0}: {1} per entry</value>
   </data>
   <data xml:space="preserve" name="Ui.0AnyActiveCombo1">
-    <value>{0}, any active combo: {1}</value>
+    <value>{0}, any combo: {1}</value>
   </data>
   <data xml:space="preserve" name="Ui.0Combo12">
     <value>{0}, combo {1}: {2}</value>
@@ -503,7 +503,7 @@
     <value>Activate</value>
   </data>
   <data xml:space="preserve" name="Ui.ActivateAtLeastOneCardToCalculate">
-    <value>Activate at least one card to calculate.</value>
+    <value>Add or enable at least one deck card to calculate.</value>
   </data>
   <data xml:space="preserve" name="Ui.ActivateAtLeastOneComboToCalculate">
     <value>Activate at least one combo to calculate.</value>
@@ -578,10 +578,10 @@
     <value>Any</value>
   </data>
   <data xml:space="preserve" name="Ui.AnyActiveCombo">
-    <value>Any active combo</value>
+    <value>Any combo</value>
   </data>
   <data xml:space="preserve" name="Ui.AnyActiveCombo0">
-    <value>Any active combo: {0}</value>
+    <value>Any combo: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.AnyCard">
     <value>any card</value>
@@ -590,7 +590,7 @@
     <value>Any eligibility row may match</value>
   </data>
   <data xml:space="preserve" name="Ui.Anycardclearfilter">
-    <value>Any card (clear filter)</value>
+    <value>Clear filter</value>
   </data>
   <data xml:space="preserve" name="Ui.ApplyRule">
     <value>Apply rule</value>
@@ -1768,4 +1768,170 @@
   <data name="Ui.SimulationDisabled" xml:space="preserve"><value>Simulation disabled for this entry</value></data>
   <data name="Priority.DrawEffects" xml:space="preserve"><value>Draw effects</value></data>
   <data name="Priority.SearchEffects" xml:space="preserve"><value>Search effects</value></data>
+  <data name="Help.Introduction.Overview" xml:space="preserve"><value>Calculate opening-hand combo probabilities, including supported draw and search effects. Start with your own deck or explore the example.</value></data>
+  <data name="Help.Introduction.ReplaceWarning" xml:space="preserve"><value>Loading replaces your current workspace. Save a session first to keep it.</value></data>
+  <data name="Help.GettingStarted.Question" xml:space="preserve"><value>How to start?</value></data>
+  <data name="Help.GettingStarted.AddDeck.Part0" xml:space="preserve"><value>Add your deck.</value></data>
+  <data name="Help.GettingStarted.AddDeck.Part1" xml:space="preserve"><value>.ydk</value></data>
+  <data name="Help.GettingStarted.AddDeck" xml:space="preserve"><value>{0} Import a {1} file or YDKe code, or enter cards manually. Check the copy counts and hand size.</value></data>
+  <data name="Help.GettingStarted.DefineCombo.Part0" xml:space="preserve"><value>Define a combo.</value></data>
+  <data name="Help.GettingStarted.DefineCombo" xml:space="preserve"><value>{0} Add the cards, categories or properties that a successful hand needs.</value></data>
+  <data name="Help.GettingStarted.CheckEffects.Part0" xml:space="preserve"><value>Check card effects.</value></data>
+  <data name="Help.GettingStarted.CheckEffects" xml:space="preserve"><value>{0} Expand effect cards to inspect their configured simulations.</value></data>
+  <data name="Help.GettingStarted.Calculate.Part0" xml:space="preserve"><value>Calculate.</value></data>
+  <data name="Help.GettingStarted.Calculate.Part1" xml:space="preserve"><value>Progressive</value></data>
+  <data name="Help.GettingStarted.Calculate" xml:space="preserve"><value>{0} Start with {1}, then check the accuracy label beside each result.</value></data>
+  <data name="Help.GettingStarted.Deactivate" xml:space="preserve"><value>Cards and combos can be deactivated temporarily without deleting them.</value></data>
+  <data name="Help.Properties.Question" xml:space="preserve"><value>How to use categories and properties?</value></data>
+  <data name="Help.Properties.RolesAndProperties.Part0" xml:space="preserve"><value>properties</value></data>
+  <data name="Help.Properties.RolesAndProperties.Part1" xml:space="preserve"><value>categories</value></data>
+  <data name="Help.Properties.RolesAndProperties" xml:space="preserve"><value>Use {0} for card characteristics and {1} for roles you assign.</value></data>
+  <data name="Help.Properties.PropertyExamples.Part0" xml:space="preserve"><value>Properties:</value></data>
+  <data name="Help.Properties.PropertyExamples" xml:space="preserve"><value>{0} FIRE, Warrior, Level 4 and other values supplied by card data.</value></data>
+  <data name="Help.Properties.CategoryExamples.Part0" xml:space="preserve"><value>Categories:</value></data>
+  <data name="Help.Properties.CategoryExamples" xml:space="preserve"><value>{0} Starter, Extender or any role useful to your deck.</value></data>
+  <data name="Help.Properties.Overlaps" xml:space="preserve"><value>A card can match several properties and categories at once. Custom role assignments do not change a built-in search effect’s eligibility rules.</value></data>
+  <data name="Help.Properties.NumericRanges.Part0" xml:space="preserve"><value>Level 1–4 AND Warrior</value></data>
+  <data name="Help.Properties.NumericRanges" xml:space="preserve"><value>Level, Rank and Link rating support numeric comparisons and inclusive ranges. For example, {0} selects individual Warriors within that level range. Cards without an applicable value do not match.</value></data>
+  <data name="Help.Requirements.Question" xml:space="preserve"><value>How to define combo requirements?</value></data>
+  <data name="Help.Requirements.Create.Part0" xml:space="preserve"><value>Add requirement</value></data>
+  <data name="Help.Requirements.Create.Part1" xml:space="preserve"><value>At least</value></data>
+  <data name="Help.Requirements.Create.Part2" xml:space="preserve"><value>Maximum</value></data>
+  <data name="Help.Requirements.Create.Part3" xml:space="preserve"><value>0</value></data>
+  <data name="Help.Requirements.Create" xml:space="preserve"><value>Choose {0}, select a target, and set {1}. Use {2} to limit matching cards; set both counts to {3} to exclude them.</value></data>
+  <data name="Help.Requirements.FinalHand" xml:space="preserve"><value>All requirements in a combo must be satisfied by the final hand after effects resolve.</value></data>
+  <data name="Help.Requirements.Combining" xml:space="preserve"><value>Combining requirements</value></data>
+  <data name="Help.Requirements.Expression" xml:space="preserve"><value>Expression</value></data>
+  <data name="Help.Requirements.Meaning" xml:space="preserve"><value>Meaning</value></data>
+  <data name="Help.Requirements.DistinctExample.Part0" xml:space="preserve"><value>Starter + FIRE</value></data>
+  <data name="Help.Requirements.DistinctCopies" xml:space="preserve"><value>Two distinct copies: one Starter and one FIRE card. A single card matching both cannot fill both requirements.</value></data>
+  <data name="Help.Requirements.SameCardExample.Part0" xml:space="preserve"><value>FIRE AND Warrior</value></data>
+  <data name="Help.Requirements.SameCard" xml:space="preserve"><value>Each matching card must have both properties.</value></data>
+  <data name="Help.Requirements.AlternativesExample.Part0" xml:space="preserve"><value>Razen + (FIRE OR DARK)</value></data>
+  <data name="Help.Requirements.Alternatives" xml:space="preserve"><value>Razen plus a distinct copy satisfying either alternative.</value></data>
+  <data name="Help.Requirements.Counting" xml:space="preserve"><value>Counting rules</value></data>
+  <data name="Help.Requirements.Maximum.Part0" xml:space="preserve"><value>every matching card</value></data>
+  <data name="Help.Requirements.Maximum.Part1" xml:space="preserve"><value>Any</value></data>
+  <data name="Help.Requirements.Maximum" xml:space="preserve"><value>A maximum counts {0} in the final hand. An empty maximum means {1}.</value></data>
+  <data name="Help.Requirements.AlternativeCounts.Part0" xml:space="preserve"><value>FIRE (2–2) OR DARK (2–2)</value></data>
+  <data name="Help.Requirements.AlternativeCounts" xml:space="preserve"><value>Each OR alternative keeps its own counts. {0} requires two of either kind.</value></data>
+  <data name="Help.Requirements.RepeatedTarget.Part0" xml:space="preserve"><value>At least</value></data>
+  <data name="Help.Requirements.RepeatedTarget" xml:space="preserve"><value>To request multiple copies, increase {0}. Repeating the same target intersects its bounds.</value></data>
+  <data name="Help.Requirements.Editing.Part0" xml:space="preserve"><value>Enter</value></data>
+  <data name="Help.Requirements.Editing.Part1" xml:space="preserve"><value>Escape</value></data>
+  <data name="Help.Requirements.Editing.Part2" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Help.Requirements.Editing" xml:space="preserve"><value>Select an existing requirement to edit it. {0} saves; {1} or {2} discards the edit.</value></data>
+  <data name="Help.Simulations.Question" xml:space="preserve"><value>How to configure card effects?</value></data>
+  <data name="Help.Simulations.Inspect.Part0" xml:space="preserve"><value>Model notes</value></data>
+  <data name="Help.Simulations.Inspect" xml:space="preserve"><value>Expand a card to inspect its saved simulation and {0}.</value></data>
+  <data name="Help.Simulations.BuiltIn.Part0" xml:space="preserve"><value>Built-in simulation:</value></data>
+  <data name="Help.Simulations.BuiltIn" xml:space="preserve"><value>{0} a maintained model for a supported effect.</value></data>
+  <data name="Help.Simulations.Partial.Part0" xml:space="preserve"><value>Partial:</value></data>
+  <data name="Help.Simulations.Partial" xml:space="preserve"><value>{0} some printed-card behavior is omitted.</value></data>
+  <data name="Help.Simulations.Custom.Part0" xml:space="preserve"><value>Custom simulation:</value></data>
+  <data name="Help.Simulations.Custom" xml:space="preserve"><value>{0} a plan saved through the effect editor.</value></data>
+  <data name="Help.Simulations.Editing.Part0" xml:space="preserve"><value>Customize simulation</value></data>
+  <data name="Help.Simulations.Editing.Part1" xml:space="preserve"><value>Configure simulation</value></data>
+  <data name="Help.Simulations.Editing.Part2" xml:space="preserve"><value>Save</value></data>
+  <data name="Help.Simulations.Editing.Part3" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Help.Simulations.Editing.Part4" xml:space="preserve"><value>None</value></data>
+  <data name="Help.Simulations.Editing" xml:space="preserve"><value>Choose {0} or {1}, make changes, then {2}. {3} keeps the previous plan. Choosing {4} treats the card as ordinary while keeping it in the deck.</value></data>
+  <data name="Help.Simulations.Restore.Part0" xml:space="preserve"><value>Restore built-in simulation</value></data>
+  <data name="Help.Simulations.Restore" xml:space="preserve"><value>Sessions preserve their saved effect settings. {0} explicitly replaces those settings with the current maintained plan.</value></data>
+  <data name="Help.Simulations.Limitations.Part0" xml:space="preserve"><value>Model notes</value></data>
+  <data name="Help.Simulations.Limitations" xml:space="preserve"><value>Only configured effects execute. Check {0} before treating a simulation as the card’s complete printed behavior.</value></data>
+  <data name="Help.EffectResolution.Question" xml:space="preserve"><value>How are effects resolved?</value></data>
+  <data name="Help.EffectResolution.Phases" xml:space="preserve"><value>Effects follow a fixed policy with two phases.</value></data>
+  <data name="Help.EffectResolution.DrawHeading" xml:space="preserve"><value>1. Draw effects</value></data>
+  <data name="Help.EffectResolution.Draws" xml:space="preserve"><value>Legal draw effects activate automatically, consuming their source. Each effect finishes its costs, draws and removals before another effect begins.</value></data>
+  <data name="Help.EffectResolution.Restrictions.Part0" xml:space="preserve"><value>Once per turn</value></data>
+  <data name="Help.EffectResolution.Restrictions" xml:space="preserve"><value>{0} is shared by copies of the same card entry. Costs, activation restrictions and sufficient remaining deck capacity are checked before activation. A failed mandatory removal counts as a failed outcome.</value></data>
+  <data name="Help.EffectResolution.SearchHeading" xml:space="preserve"><value>2. Search effects</value></data>
+  <data name="Help.EffectResolution.Searches" xml:space="preserve"><value>After draws finish, optional searches can consume held sources to fetch eligible remaining cards. Searches share the actual remaining copies and deck capacity. Fetched effects do not activate or restart either phase.</value></data>
+  <data name="Help.EffectResolution.PriorityHeading" xml:space="preserve"><value>Priority and card selection</value></data>
+  <data name="Help.EffectResolution.Priority" xml:space="preserve"><value>Encounter order is the default. Custom priority ranks effects within each phase; rearranging the displayed deck does not change that priority.</value></data>
+  <data name="Help.EffectResolution.KeepPolicy" xml:space="preserve"><value>Hand costs and removals use a shared keep policy that protects combo pieces and usable effects. Changing the active combos can therefore change removal choices. Different result rows may use different legal search choices.</value></data>
+  <data name="Help.EffectResolution.ModelScope.Part0" xml:space="preserve"><value>calculation model</value></data>
+  <data name="Help.EffectResolution.ModelScope" xml:space="preserve"><value>This models the configured policy, including its omissions. It does not determine optimal gameplay. See the {0} for supported operations and limitations.</value></data>
+  <data name="Help.Modes.Question" xml:space="preserve"><value>Which calculation modes are available?</value></data>
+  <data name="Help.Modes.Default.Part0" xml:space="preserve"><value>Progressive</value></data>
+  <data name="Help.Modes.Default" xml:space="preserve"><value>{0} is the default and a good starting point.</value></data>
+  <data name="Help.Modes.Mode" xml:space="preserve"><value>Mode</value></data>
+  <data name="Help.Modes.Behavior" xml:space="preserve"><value>Behavior</value></data>
+  <data name="Help.Modes.Progressive" xml:space="preserve"><value>Progressive</value></data>
+  <data name="Help.Modes.ProgressiveDescription" xml:space="preserve"><value>Shows a completed Fast result, then attempts Exact if needed.</value></data>
+  <data name="Help.Modes.Fast" xml:space="preserve"><value>Fast only</value></data>
+  <data name="Help.Modes.FastDescription" xml:space="preserve"><value>Runs Fast once. The result may be Exact, Bounded or Uncertified.</value></data>
+  <data name="Help.Modes.Exact" xml:space="preserve"><value>Exact only</value></data>
+  <data name="Help.Modes.ExactDescription" xml:space="preserve"><value>Publishes new values only when physical Exact completes.</value></data>
+  <data name="Help.Modes.NoEffects" xml:space="preserve"><value>No effect simulation</value></data>
+  <data name="Help.Modes.NoEffectsDescription" xml:space="preserve"><value>Evaluates the dealt hand while ignoring configured effects. Saved effect settings remain unchanged.</value></data>
+  <data name="Help.Modes.Cancel" xml:space="preserve"><value>Canceling a Progressive upgrade keeps its completed Fast result.</value></data>
+  <data name="Help.Modes.Limits.Part0" xml:space="preserve"><value>accuracy and performance</value></data>
+  <data name="Help.Modes.Limits" xml:space="preserve"><value>Exact has no calculation deadline, but memory limits, unsupported configurations or failures can still prevent completion. See {0} for resource limits.</value></data>
+  <data name="Help.Results.Question" xml:space="preserve"><value>How to read results?</value></data>
+  <data name="Help.Results.Union.Part0" xml:space="preserve"><value>Any combo</value></data>
+  <data name="Help.Results.Union" xml:space="preserve"><value>Each combo is evaluated independently. {0} counts success in at least one active combo; group totals do the same for their members.</value></data>
+  <data name="Help.Results.OverlapWarning.Part0" xml:space="preserve"><value>Overlapping successes count once. Do not add individual percentages.</value></data>
+  <data name="Help.Results.Accuracy" xml:space="preserve"><value>Accuracy</value></data>
+  <data name="Help.Results.Label" xml:space="preserve"><value>Label</value></data>
+  <data name="Help.Results.Meaning" xml:space="preserve"><value>Meaning</value></data>
+  <data name="Help.Results.Exact" xml:space="preserve"><value>Exact / ±0%</value></data>
+  <data name="Help.Results.ExactDescription" xml:space="preserve"><value>The probability is proven for the configured model.</value></data>
+  <data name="Help.Results.Bounded" xml:space="preserve"><value>Bounded / ±</value></data>
+  <data name="Help.Results.BoundedDescription" xml:space="preserve"><value>The physical-model probability lies within a certified interval. The displayed percentage is its midpoint, with an outward-rounded radius.</value></data>
+  <data name="Help.Results.Uncertified" xml:space="preserve"><value>Uncertified</value></data>
+  <data name="Help.Results.UncertifiedDescription" xml:space="preserve"><value>A modeled result is available, but its physical error bound has not been established.</value></data>
+  <data name="Help.Results.ModelScope" xml:space="preserve"><value>Exactness applies to the configured model, including any omitted gameplay.</value></data>
+  <data name="Help.Results.State" xml:space="preserve"><value>Result state</value></data>
+  <data name="Help.Results.Preliminary.Part0" xml:space="preserve"><value>Preliminary:</value></data>
+  <data name="Help.Results.Preliminary" xml:space="preserve"><value>{0} a completed Fast result is awaiting a possible Exact upgrade.</value></data>
+  <data name="Help.Results.Stale.Part0" xml:space="preserve"><value>Inputs changed:</value></data>
+  <data name="Help.Results.Stale" xml:space="preserve"><value>{0} the result describes an earlier workspace state.</value></data>
+  <data name="Help.Results.Pinned.Part0" xml:space="preserve"><value>Pinned:</value></data>
+  <data name="Help.Results.Pinned" xml:space="preserve"><value>{0} the result keeps its captured inputs and accuracy for comparison.</value></data>
+  <data name="Help.Results.Fraction" xml:space="preserve"><value>Hover or keyboard-focus a value to inspect its primary fraction. For Bounded results, that fraction comes from the primary model and can differ from the displayed midpoint—even exceeding the certified upper bound. Copy results with their accuracy context.</value></data>
+  <data name="Help.Sessions.Question" xml:space="preserve"><value>How to save, share and recover work?</value></data>
+  <data name="Help.Sessions.SaveHeading" xml:space="preserve"><value>Save a session</value></data>
+  <data name="Help.Sessions.Save.Part0" xml:space="preserve"><value>Save Session</value></data>
+  <data name="Help.Sessions.Save" xml:space="preserve"><value>Choose {0} to download your deck, requirements, groups, effect settings and calculation preferences. Save pending editor changes first. Unsaved drafts, results, artwork and theme preferences are not included.</value></data>
+  <data name="Help.Sessions.ShareHeading" xml:space="preserve"><value>Share a setup</value></data>
+  <data name="Help.Sessions.Share.Part0" xml:space="preserve"><value>Copy share link</value></data>
+  <data name="Help.Sessions.Share" xml:space="preserve"><value>Choose {0}. Opening the link offers a load choice before replacing the workspace. Anyone with the link can read its contents; large setups may require a session file instead.</value></data>
+  <data name="Help.Sessions.RecoveryHeading" xml:space="preserve"><value>Recover local work</value></data>
+  <data name="Help.Sessions.Recovery" xml:space="preserve"><value>Local recovery remembers workspace changes in this browser. Cleared or unavailable storage can prevent recovery, so keep session files for durable copies.</value></data>
+  <data name="Help.Sessions.MultipleTabs" xml:space="preserve"><value>Multiple tabs may offer conflicting recovery records. Choose which workspace to keep; tabs do not synchronize edits automatically.</value></data>
+  <data name="Help.Example.Question" xml:space="preserve"><value>How does the Vanquish Soul / K9 example work?</value></data>
+  <data name="Help.Example.Contents" xml:space="preserve"><value>The example contains:</value></data>
+  <data name="Help.Example.Copies.Part0" xml:space="preserve"><value>40 card copies</value></data>
+  <data name="Help.Example.Copies" xml:space="preserve"><value>{0} across 24 entries, with a five-card opening hand.</value></data>
+  <data name="Help.Example.Groups.Part0" xml:space="preserve"><value>Eight combo definitions</value></data>
+  <data name="Help.Example.Groups.Part1" xml:space="preserve"><value>Full VS</value></data>
+  <data name="Help.Example.Groups.Part2" xml:space="preserve"><value>Full K9</value></data>
+  <data name="Help.Example.Groups" xml:space="preserve"><value>{0}, organized into {1} and {2}.</value></data>
+  <data name="Help.Example.Requirements" xml:space="preserve"><value>Requirements based on card identities and properties, without custom categories.</value></data>
+  <data name="Help.Example.Alternatives.Part0" xml:space="preserve"><value>VS Starter + (FIRE OR DARK)</value></data>
+  <data name="Help.Example.Alternatives" xml:space="preserve"><value>{0} demonstrates alternative requirements. Search effects fetch eligible remaining monsters, which contribute their own identities and properties.</value></data>
+  <data name="Help.Example.Result.Part0" xml:space="preserve"><value>85.92% (565375/658008)</value></data>
+  <data name="Help.Example.Result.Part1" xml:space="preserve"><value>Any combo</value></data>
+  <data name="Help.Example.Result" xml:space="preserve"><value>With all eight combos active, the settled Progressive result is exact: {0} for {1}.</value></data>
+  <data name="Help.Footer.Heading" xml:space="preserve"><value>Further reading and credits</value></data>
+  <data name="Help.Footer.Reading.Part0" xml:space="preserve"><value>calculation model</value></data>
+  <data name="Help.Footer.Reading.Part1" xml:space="preserve"><value>worked probability example</value></data>
+  <data name="Help.Footer.Reading.Part2" xml:space="preserve"><value>accuracy guide</value></data>
+  <data name="Help.Footer.Reading" xml:space="preserve"><value>Explore the {0}, {1} and {2}. Documentation follows the development branch; the stable site may differ.</value></data>
+  <data name="Help.Footer.Credits.Part0" xml:space="preserve"><value>SeyTi01</value></data>
+  <data name="Help.Footer.Credits.Part1" xml:space="preserve"><value>YGOPRODeck</value></data>
+  <data name="Help.Footer.Credits" xml:space="preserve"><value>Created by {0}. Card artwork is supplied by {1} and retained on project hosting. Missing artwork does not affect calculations; third-party artwork is outside the software license.</value></data>
+  <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exact)</value></data>
+  <data name="Ui.Share" xml:space="preserve"><value>Share</value></data>
+  <data name="Ui.TargetsInThisDeck" xml:space="preserve">
+    <value>Targets in this deck</value>
+  </data>
+  <data name="Result.HandSize" xml:space="preserve">
+    <value>Hand size: {0}</value>
+  </data>
+  <data name="Result.DeckSize" xml:space="preserve">
+    <value>Deck size: {0}</value>
+  </data>
 </root>

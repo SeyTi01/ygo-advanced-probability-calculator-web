@@ -23,8 +23,7 @@ internal sealed class PhysicalSearchLossCounter {
     private long _cells;
 
     internal PhysicalSearchLossCounter(List<Card> cards, WorkBudget budget) {
-        if (cards.Any(card => card.EffectPlan.RequiresSearchResolution
-            || (card.Search is not null && card.MinimumHandSize > 0))) {
+        if (cards.Any(card => card.EffectPlan.RequiresSearchResolution)) {
             throw new ArgumentException("Hidden-loss capacity pooling requires simple optional searches.", nameof(cards));
         }
 

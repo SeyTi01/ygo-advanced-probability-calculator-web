@@ -146,6 +146,11 @@
         _editorKeys.Synchronize(Combos);
         _categoryOptions = CategoryCatalog.BuildOptions(CategoryBases, Cards, Combos);
 
+        HashSet<string> groupIds = ComboGroups.Select(group => group.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (string removed in _groupNameButtonReferences.Keys.Where(groupId => !groupIds.Contains(groupId)).ToArray()) {
+            _groupNameButtonReferences.Remove(removed);
+        }
+
         if (_editingGroupId is string id && !ComboGroups.Any(group => group.Id == id)) {
             ClearGroupRename();
         }

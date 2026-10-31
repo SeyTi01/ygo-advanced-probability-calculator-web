@@ -13,8 +13,11 @@ public sealed record ProbabilityFraction(string Numerator, string Denominator);
 
 public sealed record SearchAvailabilityInterval(string Label, ProbabilityFraction Lower, ProbabilityFraction Upper) {
     [JsonIgnore] public bool IsExact => Lower == Upper;
-    [JsonIgnore] public SearchAvailabilityRowStatus Informativeness => IsExact ? SearchAvailabilityRowStatus.Exact
-        : Lower.Numerator == "0" ? SearchAvailabilityRowStatus.Uninformative : SearchAvailabilityRowStatus.Informative;
+    [JsonIgnore] public SearchAvailabilityRowStatus Informativeness => IsExact
+        ? SearchAvailabilityRowStatus.Exact
+        : Lower.Numerator == "0"
+            ? SearchAvailabilityRowStatus.Uninformative
+            : SearchAvailabilityRowStatus.Informative;
 }
 
 // Owned by the same accepted immutable worker result as the primary probabilities.

@@ -10,6 +10,50 @@ using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorLocalizationTest : CalculatorEditorTestBase {
+    [Test]
+    public async Task RestoredAutomaticNamesAreAbbreviatedAcrossPropertiesSelectorsAndComboReferences() {
+        CategoryBase[] metadata = [
+            new("Card identity: Target", CategorySource.Metadata, "catalog-id:123"),
+            new("Card name: Target", CategorySource.Metadata, "card-name:target"),
+            new("Monster Type: Warrior", CategorySource.Metadata, "monster-race:warrior")
+        ];
+        CategoryBase custom = new("Card name: Authored role");
+        Card target = new([.. metadata, custom], 3, "Target");
+        SessionState original = new() {
+            Cards = [target], Categories = [custom],
+            Combos = [new([new(metadata[0], 1, 3)])], HandSize = 1
+        };
+        ISessionService codec = context.Services.GetRequiredService<ISessionService>();
+        string saved = codec.SerializeSession(original);
+        SessionState restored = await codec.LoadSessionAsync(saved);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(restored);
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
+        card.Find(".accordion-button").Click();
+        Assert.That(card.Find(".detected-card-properties").TextContent,
+            Does.Contain("Identity: Target").And.Contain("Name: Target").And.Contain("Type: Warrior"));
+        IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
+        Assert.That(combo.Find(".combo-header-requirements").TextContent, Does.Contain("Identity: Target"));
+        combo.Find(".accordion-button").Click();
+        OpenNewRequirement(combo);
+        Assert.That(combo.Find(".requirement-property-picker").TextContent,
+            Does.Contain("Identity: Target").And.Contain("Name: Target").And.Contain("Type: Warrior").And.Contain(custom.Name));
+        Assert.That(restored.Cards[0].Categories.Select(category => category.Name),
+            Is.EqualTo(original.Cards[0].Categories.Select(category => category.Name)));
+        Assert.That(codec.SerializeSession(restored), Is.EqualTo(saved));
+    }
+
+    [Test]
+    public void NestedExpressionStructureDoesNotUseTranslatedCssTokens() {
+        using PresentationLocale locale = new();
+        IRenderedComponent<ExpressionGroup> group = context.RenderComponent<ExpressionGroup>(parameters => parameters
+            .Add(component => component.Nested, true)
+            .Add(component => component.Label, "Nested alternatives")
+            .AddChildContent("Requirements"));
+
+        Assert.That(group.Find(".requirement-or-group.expression-group-nested[role=group]").TextContent, Is.EqualTo("Requirements"));
+        Assert.That(group.Find("[role=group]").GetAttribute("aria-label"), Is.EqualTo("Nested alternatives"));
+    }
+
     [TestCase("current")]
     [TestCase("historical")]
     [TestCase("custom")]

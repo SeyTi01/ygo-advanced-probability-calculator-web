@@ -119,9 +119,6 @@ public static class ProbabilityPresentation {
     private static string Printed(BigInteger hundredths, CultureInfo culture) => ((decimal)hundredths / 100m).ToString("0.00", culture) + "%";
     private static string Ratio(ProbabilityFraction fraction) => $"{fraction.Numerator}/{fraction.Denominator}";
 
-    private static string Percent(BigInteger n, BigInteger d, bool up, CultureInfo culture) {
-        BigInteger units = up ? Ceiling(n * 100_000_000, d) : n * 100_000_000 / d;
-
-        return ((decimal)units / 1_000_000m).ToString("0.000000", culture) + "%";
-    }
+    private static string Percent(BigInteger n, BigInteger d, bool up, CultureInfo culture) =>
+        RationalPercentage.FormatOutward(n, d, up, culture) + "%";
 }

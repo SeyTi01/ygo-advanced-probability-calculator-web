@@ -135,7 +135,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 5, session.Combos, []);
             double expected = new ExactProbability(oracle.Wins[0], oracle.Total).ToDouble(new(CalculationWorkPolicy.Interactive));
             Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(expected.ToString("P2")));
-            Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size 5 · ").And.Not.Contain(new PinnedCalculationContext(0, 0, 0, mode).ModeDescription));
+            Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size: 5").And.Not.Contain(new PinnedCalculationContext(0, 0, 0, mode).ModeDescription));
             Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {new PinnedCalculationContext(0, 0, 0, mode).ModeDescription}"));
             Assert.That(cut.FindComponent<ProbabilityResultExport>().Instance.ModelDescription, Is.EqualTo(new PinnedCalculationContext(0, 0, 0, mode).ModeDescription));
         }

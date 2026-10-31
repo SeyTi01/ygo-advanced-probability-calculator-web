@@ -2,6 +2,7 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
+  <data name="Ui.RequirementOrGroupExpressionGroupNested" xml:space="preserve"><value>⟦Translated class tokens must not control layout⟧</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve"><value>⟦Search cards⟧</value></data>
   <data name="Combo.NoRequirements" xml:space="preserve"><value>⟦No requirements⟧</value></data>
   <data name="Requirement.MaximumAny" xml:space="preserve"><value>⟦Unbounded maximum⟧</value></data>
@@ -25,4 +26,6 @@
   <data name="NumericProperty.Level" xml:space="preserve"><value>⟦Level⟧</value></data>
   <!-- Deliberately malformed to exercise runtime fallback. -->
   <data name="Move.ToPosition" xml:space="preserve"><value>⟦Move {1}⟧</value></data>
+  <data name="Help.GettingStarted.Question" xml:space="preserve"><value>⟦Getting started⟧</value></data>
+  <data name="Help.Properties.RolesAndProperties" xml:space="preserve"><value>⟦Use {1} and {0}; &lt;pseudo&gt;⟧</value></data>
 </root>

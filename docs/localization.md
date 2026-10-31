@@ -151,13 +151,16 @@ resources, even inside that scope.
 `Cards.<verified canonical ID>.Name`, `Metadata.<exact MetadataKey>`,
 `Archetypes.<canonical name>`, and `NumericProperty.<enum name>`. Missing optional
 labels retain the canonical English display value. Numeric requirement rendering
-uses parameterized `NumericRange.*` messages. Another offline label/alias source
-can be integrated here later; no additional catalog is supplied by this change.
+uses parameterized `NumericRange.*` messages. Optional same-origin name assets join the shared catalog by canonical ID.
+No production name asset is registered yet; English performs no extra lookup.
 
 Catalog `CardInfo` results have verified identity and may use localized labels.
-Saved `Card.Name` has no reliable authorship provenance, so it always retains its
-stored text, even when it equals a catalog name. User card, category, combo and
-group names are never translated or rewritten. Keep canonical English default
+Saved `Card.Name` always retains its stored text. An optional display label is
+allowed only when its external ID resolves unambiguously and its stored name
+exactly matches the canonical English name. Custom text, unknown IDs and
+ambiguous artwork aliases keep their stored display. The shared index gives
+canonical IDs precedence over artwork aliases. User card, category, combo and
+group names are never rewritten. Keep canonical English default
 names used when duplicating authored entities independent of locale as well.
 
 Never change `CategoryBase.Identity`, `MetadataKey`, selector signatures, numeric
@@ -167,6 +170,16 @@ Encoded English metadata tokens remain stable identifiers. Continue using the
 single offline archetype resolver's canonical `resolvedArchetypes`; translated
 names and aliases must not compile alternate membership rules. See the
 [catalog instructions](../infrastructure/card-catalog/README.md).
+
+Optional name assets are loaded once per service and selected locale, only for
+search or verified saved-card display. Synchronous label reads never fetch.
+Failure falls back to English and is cached for the service lifetime. Register
+reviewed assets in `CardInfoService.LocalizedNameAssets`; tests inject a pseudo
+asset map through the internal constructor without enabling a production locale.
+
+All nine Help FAQ sections use `Help.*` resources. Numbered placeholders insert
+Razor-owned semantic fragments; translated text remains HTML-encoded. Keep
+fragment IDs, links and English prerendered SEO stable.
 
 ## Maintained effect descriptions
 
@@ -191,10 +204,6 @@ names, titles and tooltips, plus all maintained summaries/notes.
 
 The deliberate later translation pass consists of:
 
-- The Help article's getting-started, requirements, simulations, modes, results,
-  sessions, example and credits prose, headings and topic navigation. The page
-  title and example action/errors establish `Help.*`; continue extracting complete
-  paragraphs around the existing semantic markup rather than cloning the page.
 - The canonical English SEO descriptions/social-image alternatives in
   `Pages/Index.razor` and `Pages/Help.razor`, plus the static host's initial loading,
   fatal runtime-error and noscript text in `wwwroot/index.html`.

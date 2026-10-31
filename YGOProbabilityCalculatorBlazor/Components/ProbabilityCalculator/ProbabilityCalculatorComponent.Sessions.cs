@@ -44,7 +44,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         || _combos.Count > 0
         || _comboGroups.Count > 0
         || _handSize != 5
-        || _calculationResult is not null
+        || _calculation.Result is not null
         || _pinnedResult is not null
         || _isYdkeImportOpen
         || _ydkeCode.Length > 0
@@ -63,8 +63,6 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     }
 
     private void CancelClearWorkspace() => _isClearWorkspaceConfirmationOpen = false;
-
-    private void ConfirmClearWorkspace() => ClearWorkspace();
 
     private void ClearWorkspace() {
         _isClearWorkspaceConfirmationOpen = false;
@@ -168,57 +166,17 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         }
     }
 
-    private async Task<List<Card>> PrepareSessionCardsAsync(SessionState session) {
-        if (session.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count() != session.Cards.Count) {
-            throw new InvalidOperationException(UiText.Get("Ui.SessionContainsDuplicateCardIDs"));
-        }
-
-        // Resolve the same-origin bundle before applying saved objective memberships.
-        List<Card> preparedCards = session.Cards.ToList();
-        IReadOnlyList<CardInfo> catalog = [];
-        try {
-            if (preparedCards.Any(card => card.ExternalCardId is not null || !string.IsNullOrWhiteSpace(card.Name))) {
-                catalog = await _cardInfoService.GetCatalogCardsAsync() ?? [];
-                CatalogArchetypeReconciler.Reconcile(preparedCards, catalog);
-            }
-        }
-        catch {
-            // An unavailable bundled catalog is not evidence about an unknown card.
-        }
-
-        // Check the supplied snapshot, just as the legacy enricher does. Catalog
-        // reconciliation still repairs automatic archetypes on the fast path.
-        if (!session.Cards.Any(LegacyCardMetadataEnricher.NeedsNameEnrichment)) {
-            return preparedCards;
-        }
-
-        // Optional legacy network enrichment is bounded and receives its own model,
-        // so a late completion cannot mutate the already reconciled workspace.
-        SessionState enriched = await _sessionService.LoadSessionAsync(_sessionService.SerializeSession(session));
-        Card[] originalEnrichmentCards = [.. enriched.Cards];
-
-        try {
-            await _legacyMetadataEnricher.EnrichAsync(enriched).WaitAsync(TimeSpan.FromSeconds(2));
-            CatalogArchetypeReconciler.Reconcile(enriched.Cards, catalog);
-
-            for (int i = 0; i < enriched.Cards.Count; i++) {
-                if (!ReferenceEquals(enriched.Cards[i], originalEnrichmentCards[i])) {
-                    preparedCards[i] = enriched.Cards[i];
-                }
-            }
-        }
-        catch {
-        }
-
-        return preparedCards;
-    }
-
     private async Task<bool> RestoreSessionDataAsync(SessionState session, SessionLoadRequest request) {
         if (!OwnsSessionLoad(request)) {
             return false;
         }
 
-        List<Card> preparedCards = await PrepareSessionCardsAsync(session);
+        List<Card> preparedCards = await SessionCardPreparation.PrepareAsync(
+            session,
+            _cardInfoService,
+            _sessionService,
+            _legacyMetadataEnricher
+        );
 
         if (!CanApplySession(request)) {
             return false;
@@ -260,7 +218,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         if (LanguageWorkspace?.Capture?.Target == this) { LanguageWorkspace.Capture = null; }
         InvalidateSessionLoad();
         _disposed = true;
-        StopCalculation();
+        _calculation.Stop();
         await _backgroundCalculator.DisposeAsync();
     }
 

@@ -1,5 +1,5 @@
 @using YGOProbabilityCalculatorBlazor.Models
-@using YGOProbabilityCalculatorBlazor.Services.DeckImport
+@using YGOProbabilityCalculatorBlazor.Services.CardEffects
 
 <div class="mt-2">
     @if (HasVerifiedPredicate(Selector)) {
@@ -70,7 +70,7 @@
 
     private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
 
-    private CategoryBase[] Available => _categoryOptions.All.Concat(CuratedDrawEffectPresets.FilterProperties)
+    private CategoryBase[] Available => _categoryOptions.All.Concat(CardEffectRegistry.Default.FilterProperties)
         .DistinctBy(static category => category.Identity).ToArray();
 
     private CategoryBase[] GroupedAvailable => Available

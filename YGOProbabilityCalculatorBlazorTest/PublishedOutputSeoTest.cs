@@ -57,6 +57,8 @@ public class PublishedOutputSeoTest {
     }
 
     private static void AssertSeo(IDocument document, string relativePath, string title, string canonical) {
+        Assert.That(document.DocumentElement.TextContent, Does.Not.Contain("\uFFFD"),
+            "Published text must not contain replacement characters from invalid source encoding.");
         AssertSingle(document, "head title", title);
         string? description = Single(document, "head meta[name='description']").GetAttribute("content");
         Assert.That(description, Is.Not.Null.And.Not.Empty, "The published route needs a description before JavaScript runs.");
@@ -87,6 +89,16 @@ public class PublishedOutputSeoTest {
 
         Assert.That(document.QuerySelector("#app main"), Is.Not.Null, "The page body must be prerendered inside the normal app root.");
         Assert.That(document.QuerySelectorAll("script[src='_framework/blazor.webassembly.js']"), Has.Length.EqualTo(1));
+        if (relativePath == "help.html") {
+            foreach (string id in new[] { "getting-started", "properties", "requirements", "simulations", "effect-resolution", "modes", "results", "sessions", "example" }) {
+                IElement topic = Single(document, $"details.help-topic#{id}");
+                Assert.That(topic.QuerySelector("summary h2"), Is.Not.Null);
+                Assert.That(topic.QuerySelector(".help-topic-body")?.TextContent, Is.Not.Null.And.Not.Empty,
+                    "Full topic content must be present before JavaScript runs.");
+                Assert.That(topic.HasAttribute("open"), Is.False);
+            }
+            Assert.That(Single(document, ".example-session-action button").ParentElement?.Closest("details"), Is.Null);
+        }
     }
 
     private static IElement Single(IDocument document, string selector) {

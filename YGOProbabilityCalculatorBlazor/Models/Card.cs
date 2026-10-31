@@ -123,97 +123,70 @@ public class Card {
         ManualMetadataCategoryKeys = ValidateManualKeys(Categories, manualMetadataCategoryKeys);
     }
 
-    public Card Duplicate() => new(
-        Categories,
-        Copies,
-        Name,
-        Active,
-        externalCardId: ExternalCardId,
-        manualMetadataCategoryKeys: ManualMetadataCategoryKeys,
-        drawCount: DrawCount,
-        drawOncePerTurn: DrawOncePerTurn,
-        postDrawDiscardCount: PostDrawDiscardCount,
-        postDrawSelector: PostDrawSelector,
-        postDrawFailureBehavior: PostDrawFailureBehavior,
-        preDrawRemovalCount: PreDrawRemovalCount,
-        preDrawSelector: PreDrawSelector,
-        preDrawDeckRemovalCount: PreDrawDeckRemovalCount,
-        effectProfile: EffectProfile,
-        postDrawDeckMillCount: PostDrawDeckMillCount,
-        firstActivationOnly: FirstActivationOnly,
-        blocksLaterDraws: BlocksLaterDraws,
-        search: Search,
-        oncePerTurn: OncePerTurn,
-        activationLimit: EffectPlan.ActivationLimit,
-        minimumHandSize: MinimumHandSize,
-        simulationEnabled: SimulationEnabled
-    );
+    // Internal edits carry a complete plan instead of independently forwarding
+    // every legacy effect field. Keep the public constructor as the validation
+    // boundary, including its exception names and legacy search-OPT semantics.
+    private Card(
+        IEnumerable<CategoryBase> categories,
+        int copies,
+        string? name,
+        bool active,
+        string? id,
+        int? externalCardId,
+        IEnumerable<string> manualMetadataCategoryKeys,
+        DrawEffectPlan plan,
+        EffectProfile profile,
+        bool simulationEnabled
+    ) : this(
+        categories,
+        copies,
+        name,
+        active,
+        id,
+        externalCardId,
+        manualMetadataCategoryKeys,
+        plan.DrawCount,
+        plan.OncePerTurn,
+        plan.RemovalCount,
+        plan.RemovalSelector,
+        plan.FailureBehavior,
+        plan.HandCost,
+        plan.HandCostSelector,
+        plan.HiddenDeckCost,
+        profile,
+        plan.HiddenPostDrawMill,
+        plan.FirstActivationOnly,
+        plan.BlocksLaterDraws,
+        plan.Search,
+        plan.OncePerTurn,
+        plan.ActivationLimit,
+        plan.MinimumHandSize,
+        simulationEnabled
+    ) { }
+
+    public Card Duplicate() => new(Categories, Copies, Name, Active, null, ExternalCardId, ManualMetadataCategoryKeys, EffectPlan, EffectProfile, SimulationEnabled);
 
     public Card WithPostDrawDeckMillCount(int count) => WithEffect(EffectPlan with { HiddenPostDrawMill = count }, EffectProfile.AsCustom());
 
-    public Card WithPreDrawDeckRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, count, EffectProfile.AsCustom(), PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search, OncePerTurn, EffectPlan.ActivationLimit, MinimumHandSize, SimulationEnabled);
+    public Card WithPreDrawDeckRemovalCount(int count) => WithEffect(EffectPlan with { HiddenDeckCost = count }, EffectProfile.AsCustom());
 
-    public Card WithPreDrawRemovalCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, count, count == 0 ? CardSelector.Any : PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search, OncePerTurn, EffectPlan.ActivationLimit, MinimumHandSize, SimulationEnabled);
+    public Card WithPreDrawRemovalCount(int count) => WithEffect(EffectPlan with {
+        HandCost = count,
+        HandCostSelector = count == 0 ? CardSelector.Any : PreDrawSelector
+    }, EffectProfile.AsCustom());
 
-    public Card WithPreDrawSelector(CardSelector selector) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, selector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search, OncePerTurn, EffectPlan.ActivationLimit, MinimumHandSize, SimulationEnabled);
+    public Card WithPreDrawSelector(CardSelector selector) => WithEffect(EffectPlan with { HandCostSelector = selector }, EffectProfile.AsCustom());
 
-    public Card WithPostDrawDiscardCount(int count) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, count, count == 0 ? CardSelector.Any : PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile.AsCustom(), PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search, OncePerTurn, EffectPlan.ActivationLimit, MinimumHandSize, SimulationEnabled);
+    public Card WithPostDrawDiscardCount(int count) => WithEffect(EffectPlan with {
+        RemovalCount = count,
+        RemovalSelector = count == 0 ? CardSelector.Any : PostDrawSelector
+    }, EffectProfile.AsCustom());
 
-    public Card WithPostDrawSelector(CardSelector selector) => new(
-        Categories,
-        Copies,
-        Name,
-        Active,
-        Id,
-        ExternalCardId,
-        ManualMetadataCategoryKeys,
-        DrawCount,
-        DrawOncePerTurn,
-        PostDrawDiscardCount,
-        selector,
-        PostDrawFailureBehavior,
-        PreDrawRemovalCount,
-        PreDrawSelector,
-        PreDrawDeckRemovalCount,
-        EffectProfile.AsCustom(),
-        PostDrawDeckMillCount,
-        FirstActivationOnly,
-        BlocksLaterDraws,
-        Search,
-        OncePerTurn,
-        EffectPlan.ActivationLimit,
-        MinimumHandSize,
-        SimulationEnabled
-    );
+    public Card WithPostDrawSelector(CardSelector selector) => WithEffect(EffectPlan with { RemovalSelector = selector }, EffectProfile.AsCustom());
 
-    public Card WithPostDrawFailureBehavior(PostDrawFailureBehavior behavior) => new(
-        Categories,
-        Copies,
-        Name,
-        Active,
-        Id,
-        ExternalCardId,
-        ManualMetadataCategoryKeys,
-        DrawCount,
-        DrawOncePerTurn,
-        PostDrawDiscardCount,
-        PostDrawSelector,
-        behavior,
-        PreDrawRemovalCount,
-        PreDrawSelector,
-        PreDrawDeckRemovalCount,
-        EffectProfile.AsCustom(),
-        PostDrawDeckMillCount,
-        FirstActivationOnly,
-        BlocksLaterDraws,
-        Search,
-        OncePerTurn,
-        EffectPlan.ActivationLimit,
-        MinimumHandSize,
-        SimulationEnabled
-    );
+    public Card WithPostDrawFailureBehavior(PostDrawFailureBehavior behavior) => WithEffect(EffectPlan with { FailureBehavior = behavior }, EffectProfile.AsCustom());
 
-    public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile, PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search, OncePerTurn, EffectPlan.ActivationLimit, MinimumHandSize, SimulationEnabled);
+    public Card WithName(string? name) => new(Categories, Copies, name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, EffectPlan, EffectProfile, SimulationEnabled);
 
     // Counting repeatedly changes multiplicities on already validated snapshots.
     // Copy mutable categories, but reuse immutable plans and frozen provenance;
@@ -245,32 +218,23 @@ public class Card {
 
     public Card WithCopies(int copies) => new(this, copies);
 
-    public Card WithDrawCount(int? drawCount) => new(
-        Categories,
-        Copies,
-        Name,
-        Active,
-        Id,
-        ExternalCardId,
-        ManualMetadataCategoryKeys,
-        drawCount,
-        DrawOncePerTurn,
-        drawCount is null && Search is null ? 0 : PostDrawDiscardCount,
-        drawCount is null && Search is null ? CardSelector.Any : PostDrawSelector,
-        PostDrawFailureBehavior,
-        drawCount is null && Search is null ? 0 : PreDrawRemovalCount,
-        drawCount is null && Search is null ? CardSelector.Any : PreDrawSelector,
-        drawCount is null ? 0 : PreDrawDeckRemovalCount,
-        EffectProfile.AsCustom(),
-        drawCount is null ? 0 : PostDrawDeckMillCount,
-        drawCount is not null && FirstActivationOnly,
-        drawCount is not null && BlocksLaterDraws,
-        drawCount is null ? Search : null,
-        OncePerTurn,
-        drawCount is null && Search is null ? null : EffectPlan.ActivationLimit,
-        drawCount is null && Search is null ? 0 : MinimumHandSize,
-        SimulationEnabled
-    );
+    public Card WithDrawCount(int? drawCount) {
+        bool hasEffect = drawCount is not null || Search is not null;
+        return WithEffect(EffectPlan with {
+            DrawCount = drawCount,
+            RemovalCount = hasEffect ? PostDrawDiscardCount : 0,
+            RemovalSelector = hasEffect ? PostDrawSelector : CardSelector.Any,
+            HandCost = hasEffect ? PreDrawRemovalCount : 0,
+            HandCostSelector = hasEffect ? PreDrawSelector : CardSelector.Any,
+            HiddenDeckCost = drawCount is null ? 0 : PreDrawDeckRemovalCount,
+            HiddenPostDrawMill = drawCount is null ? 0 : PostDrawDeckMillCount,
+            FirstActivationOnly = drawCount is not null && FirstActivationOnly,
+            BlocksLaterDraws = drawCount is not null && BlocksLaterDraws,
+            Search = drawCount is null ? Search : null,
+            ActivationLimit = hasEffect ? EffectPlan.ActivationLimit : null,
+            MinimumHandSize = hasEffect ? MinimumHandSize : 0
+        }, EffectProfile.AsCustom());
+    }
 
     public Card WithOncePerTurn(bool oncePerTurn) => WithEffect(EffectPlan with { OncePerTurn = oncePerTurn, ActivationLimit = null }, EffectProfile.AsCustom());
 
@@ -278,36 +242,13 @@ public class Card {
 
     public Card WithCategories(IEnumerable<CategoryBase> categories) {
         List<CategoryBase> effective = categories.ToList();
+        IEnumerable<string> retainedKeys = ManualMetadataCategoryKeys
+            .Where(key => effective.Any(category => category.Source == CategorySource.Metadata && category.MetadataKey == key));
 
-        return new(
-            effective,
-            Copies,
-            Name,
-            Active,
-            Id,
-            ExternalCardId,
-            ManualMetadataCategoryKeys.Where(key => effective.Any(category => category.Source == CategorySource.Metadata && category.MetadataKey == key)),
-            DrawCount,
-            DrawOncePerTurn,
-            PostDrawDiscardCount,
-            PostDrawSelector,
-            PostDrawFailureBehavior,
-            PreDrawRemovalCount,
-            PreDrawSelector,
-            PreDrawDeckRemovalCount,
-            EffectProfile,
-            PostDrawDeckMillCount,
-            FirstActivationOnly,
-            BlocksLaterDraws,
-            Search,
-            OncePerTurn,
-            EffectPlan.ActivationLimit,
-            MinimumHandSize,
-            SimulationEnabled
-        );
+        return new(effective, Copies, Name, Active, Id, ExternalCardId, retainedKeys, EffectPlan, EffectProfile, SimulationEnabled);
     }
 
-    public Card WithActive(bool active) => new(Categories, Copies, Name, active, Id, ExternalCardId, ManualMetadataCategoryKeys, DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile, PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search, OncePerTurn, EffectPlan.ActivationLimit, MinimumHandSize, SimulationEnabled);
+    public Card WithActive(bool active) => new(Categories, Copies, Name, active, Id, ExternalCardId, ManualMetadataCategoryKeys, EffectPlan, EffectProfile, SimulationEnabled);
 
     public Card WithManualMetadataCategory(CategoryBase category) {
         if (category.Source != CategorySource.Metadata) {
@@ -319,7 +260,18 @@ public class Card {
             return this;
         }
 
-        return new(Categories.Concat([category]), Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys.Append(category.MetadataKey!), DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile, PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search, OncePerTurn, EffectPlan.ActivationLimit, MinimumHandSize, SimulationEnabled);
+        return new(
+            Categories.Concat([category]),
+            Copies,
+            Name,
+            Active,
+            Id,
+            ExternalCardId,
+            ManualMetadataCategoryKeys.Append(category.MetadataKey!),
+            EffectPlan,
+            EffectProfile,
+            SimulationEnabled
+        );
     }
 
     public Card WithoutManualMetadataCategory(string key) {
@@ -335,29 +287,14 @@ public class Card {
             Id,
             ExternalCardId,
             ManualMetadataCategoryKeys.Where(metadataKey => metadataKey != key),
-            DrawCount,
-            DrawOncePerTurn,
-            PostDrawDiscardCount,
-            PostDrawSelector,
-            PostDrawFailureBehavior,
-            PreDrawRemovalCount,
-            PreDrawSelector,
-            PreDrawDeckRemovalCount,
+            EffectPlan,
             EffectProfile,
-            PostDrawDeckMillCount,
-            FirstActivationOnly,
-            BlocksLaterDraws,
-            Search,
-            OncePerTurn,
-            EffectPlan.ActivationLimit,
-            MinimumHandSize,
             SimulationEnabled
         );
     }
 
     public Card WithObjectiveMetadata(IEnumerable<CategoryBase> properties, int externalCardId) {
         List<CategoryBase> objective = properties.ToList();
-
         if (objective.Any(static category => category.Source != CategorySource.Metadata)) {
             throw new ArgumentException("Objective card properties require metadata categories.", nameof(properties));
         }
@@ -367,15 +304,13 @@ public class Card {
             .Where(category => category.Source == CategorySource.User || ManualMetadataCategoryKeys.Contains(category.MetadataKey!))
             .Concat(objective)
             .DistinctBy(static category => category.Identity);
+        IEnumerable<string> retainedKeys = ManualMetadataCategoryKeys.Where(key => !objectiveKeys.Contains(key));
 
         // Once materialized objectively, an overlapping override is no longer removable.
-        return new(effective, Copies, Name, Active, Id, externalCardId, ManualMetadataCategoryKeys.Where(key => !objectiveKeys.Contains(key)), DrawCount, DrawOncePerTurn, PostDrawDiscardCount, PostDrawSelector, PostDrawFailureBehavior, PreDrawRemovalCount, PreDrawSelector, PreDrawDeckRemovalCount, EffectProfile, PostDrawDeckMillCount, FirstActivationOnly, BlocksLaterDraws, Search, OncePerTurn, EffectPlan.ActivationLimit, MinimumHandSize, SimulationEnabled);
+        return new(effective, Copies, Name, Active, Id, externalCardId, retainedKeys, EffectPlan, EffectProfile, SimulationEnabled);
     }
 
-    public Card WithEffect(DrawEffectPlan plan, EffectProfile profile) => new(
-        Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys,
-        plan.DrawCount, plan.OncePerTurn, plan.RemovalCount, plan.RemovalSelector,
-        plan.FailureBehavior, plan.HandCost, plan.HandCostSelector, plan.HiddenDeckCost, profile, plan.HiddenPostDrawMill, plan.FirstActivationOnly, plan.BlocksLaterDraws, plan.Search, plan.OncePerTurn, plan.ActivationLimit, plan.MinimumHandSize, SimulationEnabled);
+    public Card WithEffect(DrawEffectPlan plan, EffectProfile profile) => new(Categories, Copies, Name, Active, Id, ExternalCardId, ManualMetadataCategoryKeys, plan, profile, SimulationEnabled);
 
     public Card WithSearch(SearchEffectPlan? search) => WithEffect(EffectPlan with {
         Search = search, OncePerTurn = search is not null && Search is null ? false : OncePerTurn,

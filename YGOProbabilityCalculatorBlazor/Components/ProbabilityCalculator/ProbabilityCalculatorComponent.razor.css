@@ -1,16 +1,3 @@
-.calculator-section {
-    margin-bottom: 2rem;
-}
-
-.category-badge {
-    margin-right: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.form-group {
-    margin-bottom: 1rem;
-}
-
 .accordion-button:focus {
     box-shadow: none;
 }
@@ -41,6 +28,7 @@
 
 .probability-result-title {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: .5rem;
     min-width: 0;
@@ -418,10 +406,6 @@
     .calculator-workspace ::deep #cardsAccordion > .accordion-item + .accordion-item.entry-inactive,
     .calculator-workspace ::deep #combosAccordion > .accordion-item + .accordion-item.entry-inactive {
         border-top-style: dashed;
-    }
-
-    .calculator-workspace ::deep .entry-editor-active-toggle {
-        margin-inline-start: auto;
     }
 
     .calculator-workspace ::deep .card-header-name,

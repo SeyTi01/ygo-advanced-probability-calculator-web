@@ -1,6 +1,8 @@
+@inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 @using YGOProbabilityCalculatorBlazor.Services.DeckImport
+@using YGOProbabilityCalculatorBlazor.Services.CardEffects
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using Microsoft.AspNetCore.Components.Web
 
@@ -17,7 +19,7 @@
                 <span class="card-header-content">
                     <span class="card-header-name">@CardDisplayName <span class="card-copies">(@Card.Copies)</span></span>
 
-                    @if (DrawPresentation.HeaderText is { } drawSummary) {
+                    @if (DrawEffectPresentation.HeaderForCard(Card, DrawEffectsEnabled) is { } drawSummary) {
                         <span class="badge text-bg-secondary ms-1">@drawSummary</span>
                     }
 
@@ -57,7 +59,7 @@
                 <div class="card-identity-fields">
                     <div class="card-name-field">
                         <label for="cardName@(Index)" class="form-label">@(UiText.Get("Ui.Name"))</label>
-                        <CardSearchInput Id="@($"cardName{Index}")" Identity="@Card.Id" Value="@(Card.Name ?? string.Empty)"
+                        <CardSearchInput Id="@($"cardName{Index}")" Identity="@Card.Id" Value="@DisplayLabels.Card(Card, CardInfoService)"
                                          ResultsId="@($"cardSearchResults{Index}")" OptionPrefix="@($"cardSearchOption{Index}")"
                                          OnInput="RenameFromSearch" OnSelected="SelectCard" OnFinished="OnNameEditFinished" />
                     </div>
@@ -155,6 +157,7 @@
 </div>
 
 @code {
+    [Parameter] public long CardDisplayNamesRevision { get; set; }
     [Parameter] public IReadOnlyList<Card> Deck { get; set; } = [];
     [Parameter] public int Index { get; set; }
     [Parameter] public int Count { get; set; }
@@ -228,12 +231,11 @@
         IReadOnlyList<CategoryBase> CategoryBases,
         IReadOnlySet<string> RelevantMetadataCategoryIdentities,
         IReadOnlyDictionary<string, int> CategoryColorIndices,
-        CategoryRenameNotice? CategoryRename
+        CategoryRenameNotice? CategoryRename,
+        long CardDisplayNamesRevision
     );
 
-    private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? UiText.Format("Ui.Card0", Index + 1) : Card.Name;
-    private DrawEffectPresentation DrawPresentation =>
-        DrawEffectPresentation.ForCard(Card, DrawEffectsEnabled);
+    private string CardDisplayName => string.IsNullOrWhiteSpace(Card.Name) ? UiText.Format("Ui.Card0", Index + 1) : DisplayLabels.Card(Card, CardInfoService);
     private Task ToggleCard() {
         int next = ActiveCardIndex == Index ? -1 : Index;
 
@@ -259,7 +261,7 @@
     private Task SelectCard(CardInfo selectedCard) {
         Card replacement = Card.WithObjectiveMetadata(CardPropertyProvider.GetCategories(selectedCard), selectedCard.Id)
             .WithName(selectedCard.Name);
-        Card newCard = CuratedDrawEffectPresets.ApplyForExplicitSelection(replacement, Card, selectedCard);
+        Card newCard = CardEffectRegistry.Default.ApplyForExplicitSelection(replacement, Card, selectedCard);
 
         return OnReplaceCard.InvokeAsync((Index, newCard));
     }
@@ -339,7 +341,8 @@
             CategoryBases,
             RelevantMetadataCategoryIdentities,
             CategoryColorIndices,
-            CategoryRename
+            CategoryRename,
+            CardDisplayNamesRevision
         );
         bool colorsUnchanged = CategoryColorIndices.Count == _previousCategoryColors.Count
             && CategoryColorIndices.All(color => _previousCategoryColors.TryGetValue(color.Key, out int previous) && previous == color.Value);

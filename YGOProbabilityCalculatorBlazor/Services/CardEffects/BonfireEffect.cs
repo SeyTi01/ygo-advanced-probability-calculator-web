@@ -1,19 +1,16 @@
-using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
-public sealed class BonfireEffect : ICardEffectDefinition {
+public sealed class BonfireEffect : CardEffectDefinition {
     private static readonly CardSelector LevelOneToFourPyro = CardSelector.AllOfSelectors([
         CardSelector.For(EffectProperties.Property("Pyro", "monster-race:pyro")),
         new NumericPropertyRange(NumericPropertyKind.Level, 1, 4).ToSelector()
     ]);
 
-    public int CanonicalCardId => 85106525;
-    public string Name => "Bonfire";
-    public int Revision => 4;
-    public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => UiText.English("Effects.85106525.Summary");
-    public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
-        Search: new(LevelOneToFourPyro));
+    public override int CanonicalCardId => 85106525;
+    public override string Name => "Bonfire";
+    public override int Revision => 4;
+    public override EffectSupport Support => EffectSupport.ModeledWithinRules;
+    public override DrawEffectPlan Compile() => DrawEffectPlan.SearchCards(new(LevelOneToFourPyro), true);
 }

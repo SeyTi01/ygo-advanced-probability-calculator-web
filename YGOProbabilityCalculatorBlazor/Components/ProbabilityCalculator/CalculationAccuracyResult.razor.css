@@ -1,0 +1,12 @@
+.result-metadata { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; min-width: 0; }
+.result-model { display: contents; }
+.result-model > span, .result-accuracy { min-width: 0; overflow-wrap: anywhere; font-size: .875rem; color: var(--bs-secondary-color); }
+.result-model > span + span::before, .result-model ~ .result-accuracy::before { content: "●" / ""; display: inline-block; margin-inline-end: .6rem; font-size: .55em; vertical-align: middle; }
+@container result-panel (max-width: 24rem) {
+    .result-model > span, .result-accuracy { flex-basis: 100%; }
+    .result-model > span + span::before, .result-model ~ .result-accuracy::before { display: none; }
+}
+@media (max-width: 767.98px) {
+    .result-model > span, .result-accuracy { flex-basis: 100%; }
+    .result-model > span + span::before, .result-model ~ .result-accuracy::before { display: none; }
+}

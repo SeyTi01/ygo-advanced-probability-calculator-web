@@ -32,49 +32,66 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         if (!drawsEnabled) {
             return new(DrawExecutionPath.Ordinary, false);
         }
+
         // Bound UI work even for unusually large imported models. Unknown is not a latency claim.
         if (cards.Count > 128 || combos.Count > 64 || combos.Sum(combo => (long)combo.RequirementCount) > 256
             || cards.Sum(card => (long)card.Categories.Count) > 2048
             || combos.Sum(combo => combo.AllCategories.Sum(requirement => (long)requirement.Selector.CategoryIdentities.Count)) > 2048) {
             return new(DrawExecutionPath.Unknown, false);
         }
+
         if (cards.Any(card => card.Active && card.Copies > 0
             && card.EffectProfile.ExecutionModel != EffectExecutionModel.DrawSequenceV1)) {
             return new(DrawExecutionPath.Unknown, false);
         }
-        Card[] active = cards.Where(card => card.Active && card.Copies > 0).ToArray();
+
+        Card[] active = [.. cards.Where(card => card.Active && card.Copies > 0)];
         long copies = active.Sum(card => (long)card.Copies);
+
         if (copies > int.MaxValue || handSize < 1 || handSize > copies) {
             return new(DrawExecutionPath.Unknown, false);
         }
+
         HashSet<Card>? inert = DrawEffectFeasibility.FindInert(active, (int)copies, handSize);
-        Card[] effects = active.Where(card => card.DrawCount is not null && (inert is null || !inert.Contains(card))).ToArray();
+        Card[] effects = [.. active.Where(card => card.DrawCount is not null && (inert is null || !inert.Contains(card)))];
+
         if (effects.Length == 0) {
             return new(DrawExecutionPath.Ordinary, false);
         }
+
         // The shared proof rejects timing/lock interactions before testing collective capacity.
         // Priority itself does not invalidate the remaining exchangeability proofs.
         bool countStateFits = DrawEffectResolver.CanUseCountStateFastPath(effects, (int)copies, handSize);
         bool conditional = effects.Any(card => card.PreDrawRemovalCount > 0 || card.PostDrawDiscardCount > 0
             || (card.EffectPlan.HasActivationRestrictions && !countStateFits)
             || ((card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0) && !countStateFits));
+
         if (!conditional) {
-            return new(countStateFits
-                ? DrawExecutionPath.DrawCountState : DrawExecutionPath.OrderedFrontier, false);
+            return new(countStateFits ? DrawExecutionPath.DrawCountState : DrawExecutionPath.OrderedFrontier, false);
         }
-        Combo[] routes = combos.Where(combo => combo.Active).ToArray();
+
+        Combo[] routes = [.. combos.Where(combo => combo.Active)];
+
         if (active.Any(card => card.Search is not null)) {
             // Search hand operations use the ordered resolver, possibly with a
             // smaller deferred pool. Do not promise the no-search exchangeable
             // specialization without proving search-policy equivalence.
             return new(DrawExecutionPath.OrderedFrontier, active.Length >= 8 && routes.Length >= 4);
         }
-        HashSet<string> trackedCategories = routes.SelectMany(combo => combo.AllCategories)
-            .SelectMany(requirement => requirement.Selector.CategoryIdentities).ToHashSet(StringComparer.Ordinal);
-        HashSet<string> directIds = routes.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
+
+        HashSet<string> trackedCategories = routes
+            .SelectMany(combo => combo.AllCategories)
+            .SelectMany(requirement => requirement.Selector.CategoryIdentities)
             .ToHashSet(StringComparer.Ordinal);
+
+        HashSet<string> directIds = routes
+            .SelectMany(combo => combo.AllCards)
+            .Select(requirement => requirement.CardId)
+            .ToHashSet(StringComparer.Ordinal);
+
         string Signature(Card card) => Membership(card, trackedCategories);
         string PolicySignature(Card card) => Signature(card) + (directIds.Contains(card.Id) ? ":" + card.Id : "");
+
         bool Relevant(Card card) => routes.Any(combo =>
             combo.AllCards.Any(requirement => requirement.MinCount > 0 && requirement.CardId == card.Id)
             || combo.AllCategories.Any(requirement => requirement.MinCount > 0 && requirement.Selector.Matches(card)));
@@ -82,24 +99,34 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         // A sufficient pre-reduction proof: identical category membership and no direct
         // references make all irrelevant ordinary entries one filler after ReduceDeck.
         // More elaborate eligible decks remain Unknown rather than running reduction here.
-        Card[] filler = active.Where(card => card.DrawCount is null && !Relevant(card)).ToArray();
+        Card[] filler = [.. active.Where(card => card.DrawCount is null && !Relevant(card))];
         bool oneFillerClass = !routes.Any(combo => combo.AllCards.Any(requirement => filler.Any(card => card.Id == requirement.CardId)))
             && filler.Select(Signature).Distinct(StringComparer.Ordinal).Take(2).Count() <= 1;
+
         if (effects.Length == 1 && oneFillerClass && IsExchangeableEffect(effects[0], Relevant(effects[0]), (int)copies, handSize)) {
             return new(DrawExecutionPath.ExchangeableConditional, false);
         }
+
         // The resolver retains even preflight-inert sources. Use the same complete
         // source set for this proof; do not forget a selector or merge source IDs.
-        Card[] allSources = active.Where(card => card.DrawCount is not null).ToArray();
+        Card[] allSources = [.. active.Where(card => card.DrawCount is not null)];
         bool Material(Card card) => allSources.Any(effect => IsRemovalMaterial(effect, card));
+
         if (allSources.All(CanDeferIdentities)
             && allSources.Any(effect => effect.PreDrawRemovalCount > 0 || effect.PostDrawDiscardCount > 0)
-            && active.Where(card => card.DrawCount is null && !Material(card))
+            && active
+                .Where(card => card.DrawCount is null && !Material(card))
                 .Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(2).Count() == 2) {
+
             int observedClasses = allSources.Length + active.Where(card => card.DrawCount is null && Material(card))
-                .Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(8).Count();
+                .Select(PolicySignature)
+                .Distinct(StringComparer.Ordinal)
+                .Take(8)
+                .Count();
+
             return new(DrawExecutionPath.DeferredConditional, observedClasses >= 8 && routes.Length >= 4);
         }
+
         bool couldSpecialize = effects.Length == 1 && IsExchangeableEffect(effects[0], Relevant(effects[0]), (int)copies, handSize);
         DrawExecutionPath path = couldSpecialize ? DrawExecutionPath.Unknown : DrawExecutionPath.OrderedFrontier;
         // Initial conservative rule: many membership classes AND several active routes,
@@ -107,6 +134,7 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         int classes = active.Select(PolicySignature).Distinct(StringComparer.Ordinal).Take(8).Count();
         bool detailedEffect = effects.Length > 1 || effects.Any(card => card.PreDrawRemovalCount > 0 || card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0 || card.PostDrawSelector.Kind != CardSelectorKind.Any);
         bool elevated = !couldSpecialize && classes >= 8 && routes.Length >= 4 && detailedEffect;
+
         return new(path, elevated);
     }
 

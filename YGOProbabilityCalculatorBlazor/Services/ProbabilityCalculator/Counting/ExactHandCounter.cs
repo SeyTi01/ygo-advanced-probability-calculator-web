@@ -13,10 +13,6 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
     private long _cachedIntegerCells;
     private BigInteger? _totalWays;
 
-    internal double Probability(CompiledEvent? predicate) => ProbabilityExact(predicate).ToDouble(budget);
-
-    internal double ToProbability(BigInteger successes) => ProbabilityRatio.ToDouble(successes, _totalWays!.Value, budget);
-
     internal ExactProbability Fraction(BigInteger successes) => new(successes, _totalWays!.Value);
 
     internal ExactProbability ProbabilityExact(CompiledEvent? predicate) {
@@ -120,8 +116,7 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
 
             foreach ((StateKey state, BigInteger ways) in states) {
                 budget.Spend(categories.Length + 1L);
-                bool satisfiesMinima = state.DrawnCards == handSize
-                    && !categories.Where((category, i) => state.CategoryCounts[i] < category.MinCount).Any();
+                bool satisfiesMinima = state.DrawnCards == handSize && !categories.Where((category, i) => state.CategoryCounts[i] < category.MinCount).Any();
 
                 if (satisfiesMinima) {
                     successes += ways;
@@ -188,14 +183,18 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
             // unmatched row, deficit <= remaining AND draw <= slots - deficit.
             // Saturating an unrestricted count at its minimum preserves both.
             budget.Spend(categories.Length + 1L);
+
             for (int i = 0; i < categories.Length; i++) {
                 int deficit = categories[i].MinCount - state.CategoryCounts[i];
+
                 if (affected < indices.Length && indices[affected] == i) {
                     affected++;
+
                     if (deficit > slots) {
                         limit = -1;
                         break;
                     }
+
                     minimumDraw = Math.Max(minimumDraw, deficit - remaining[i]);
                     limit = Math.Min(limit, categories[i].MaxCount - state.CategoryCounts[i]);
                 }
@@ -204,6 +203,7 @@ internal sealed class ExactHandCounter(List<Card> deck, int handSize, WorkBudget
                         limit = -1;
                         break;
                     }
+
                     limit = Math.Min(limit, slots - deficit);
                 }
             }

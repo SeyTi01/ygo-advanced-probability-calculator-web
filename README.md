@@ -4,42 +4,36 @@ Calculate opening-hand combo probabilities for Yu-Gi-Oh! decks with overlapping 
 
 **[Try the stable calculator](https://ygo-calculator.pages.dev/)** · **[Development preview](https://dev.ygo-calculator.pages.dev/)** · **[How to use it](https://dev.ygo-calculator.pages.dev/help)**
 
-This README describes the current `dev` branch; the stable deployment may differ.
+This README is updated before each release and may not reflect the latest development changes.
 
 ![Dark full-page calculator showing a 40-card Vanquish Soul deck, eight combos, and a settled Progressive result of 85.92%.](YGOProbabilityCalculatorBlazor/Assets/probability_calculator_example.png)
 
 ## What it models
 
-- **Overlapping roles and properties.** A card can be a custom Starter, a FIRE monster, and a Level 5 card at once. Imports supply objective card metadata; custom categories describe your own roles.
-- **Distinct physical copies.** Separate positive requirements such as `Starter + Fire` need different copies. Same-card `AND` combines properties on each matching card; `OR` offers alternative routes.
-- **Overlapping combos and groups.** Individual rows may overlap. Group totals and **Any active combo** count each successful random outcome once.
-- **Configured effects.** Draw effects resolve first, then search effects, with configurable priority within each phase. Supported built-in and custom draw/search plans resolve under a fixed policy, including supported costs, removals, hidden deck losses and activation priority. This models the saved plan, not full gameplay or optimal play.
+- **Effect simulation.** Simulate supported draw and search effects, including conditional effects.
+- **Distinct physical copies.** Separate positive requirements such as `Warrior + Fire` need different copies. A single copy of Vanquish Soul Razen cannot fulfill both.
+- **Overlapping properties and combos.** A card can match several properties, and a hand can satisfy several combos. Group totals and **Any combo** count each successful outcome only once.
+
+## Modes and accuracy
+
+The model resolves all draw effects before search effects. It then checks whether any legal combination of search targets can satisfy each combo, without committing each search effect to a particular target. Interleaving searches with draws would invalidate that approach and require substantially more expensive calculations. The fixed order can differ from optimal play, even when the result is exact for the model.
+
+Random banishes and mills can remove search targets from the deck. Fast can sometimes account for these losses statistically, or prove they cannot affect the result, without tracking the identity of every remaining card. Most practical calculations produce an exact result; others may be bounded by a certified range or be uncertified, with no proven error range.
+
+When Fast is not exact, the default mode attempts an exact calculation. Some combinations of draw and search effects make this substantially more expensive. You can also choose Fast only, Exact only, or calculate without effect simulation.
+
+See [accuracy and performance](docs/accuracy-and-performance.md) for the precise contracts and [the calculation model](docs/calculation-model.md) for supported operations and exclusions. For the mathematics behind counting, including inclusion-exclusion and Hall-style matching, see [the probability engine](docs/probability-engine.md).
 
 ## Start with a deck
 
 1. Import a `.ydk` file or YDKe code, or enter cards manually. Set the opening hand size.
 2. Assign reusable categories if needed. Imported metadata properties are available alongside custom roles.
-3. Use **Add requirement** to define combos. Set **At least** and optionally **Maximum: Any**. A `0–0` requirement excludes matching cards. Numeric properties support inclusive comparisons and ranges in one term.
-4. Add **OR** alternatives or same-card **AND** properties where appropriate. Separate positive requirements still consume distinct copies.
-5. Open **Calculation settings**, choose a mode, and **Calculate**. Read the accuracy shown with each row before comparing results.
-
-Expand a card to inspect or customize its simulation. **Save** accepts edits; **Cancel** preserves the saved plan. **Restore built-in simulation** explicitly applies the current maintained plan. Saved sessions keep their effect settings until changed; compatible built-in descriptions can refresh without changing those settings.
+3. Define combos using card identities, categories, and properties. Combine alternatives or properties as needed.
+4. Calculate.
 
 ## Example: Vanquish Soul / K9
 
-The bundled session has **24 card entries representing 40 copies**, a **five-card hand**, **eight combo definitions**, and the **Full VS** and **Full K9** groups. It has no user-defined categories: requirements use card identities and objective metadata. `VS Starter + (Fire OR Dark)` combines alternatives in one definition. It opens in **Progressive (default)** mode.
-
-Its search cards use their configured search effects; fetched monsters contribute their own identities and properties. Reinforcement of the Army uses one Level 1–4 Warrior predicate, and the supplied Reinforcement and Chaotic Elements plans match their current maintained definitions.
-
-With all eight combos active, the settled **Progressive (default)** result is exact: **Any active combo is 85.92% (565375/658008)**. Open the [Help page](https://dev.ygo-calculator.pages.dev/help) and choose **Try It with Example Data** to inspect the complete setup.
-
-## Modes and accuracy
-
-**Progressive** first presents a completed Fast result, then attempts physical Exact on the same input if needed. **Fast only** stops after Fast; it may report Exact, certified bounds, or Uncertified. **Exact only** publishes values only after physical Exact completes. **No effect simulation** evaluates the dealt hand while ignoring all configured effects.
-
-Interactive Exact and Progressive's Exact stage have no calculation deadline or cumulative Work cutoff. They remain cancelable and subject to Storage limits, unsupported cases and failures; unlimited Work does not guarantee completion. An interrupted Progressive upgrade keeps the accepted Fast result. Bounded percentages use a certified midpoint and outward-rounded ± radius; the retained primary fraction is a separate modeled quantity.
-
-See [accuracy and performance](docs/accuracy-and-performance.md) for the precise contracts and [the calculation model](docs/calculation-model.md) for supported operations and exclusions.
+The bundled session shows how to define Vanquish Soul and K9 combos using card identities and properties, including alternatives such as `VS Starter + (Fire OR Dark)`. With all combos active, the exact chance of reaching any combo is **85.92%**. Open the [Help page](https://dev.ygo-calculator.pages.dev/help) and choose **Try It with Example Data** to explore the setup.
 
 ## Workspace features
 

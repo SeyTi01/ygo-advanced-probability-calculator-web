@@ -88,14 +88,14 @@ public class WorkPolicyWireTest {
     [TestCase("{\"LimitReason\":1}")]
     [TestCase("{\"Error\":\"conflict\",\"LimitReason\":1,\"FailureKind\":1}")]
     public void InvalidResponsesNeverMasqueradeAsResourceLimits(string json) =>
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(json));
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(json));
 
     [Test]
     public void GenericErrorsRemainGenericAndConflictingSuccessIsRejected() {
         Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult("{\"Error\":\"ordinary failure\",\"FailureKind\":2}"));
         JsonNode success = JsonNode.Parse(CalculationWire.Execute(Snapshot().Json))!;
         success["Error"] = "conflicting error";
-        Assert.Throws<InvalidOperationException>(() => CalculationWire.ReadResult(success.ToJsonString()));
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(success.ToJsonString()));
         Assert.Throws<JsonException>(() => CalculationWire.ReadResult("not JSON"));
     }
 }

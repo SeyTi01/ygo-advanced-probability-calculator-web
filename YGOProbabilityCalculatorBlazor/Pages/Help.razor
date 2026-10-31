@@ -3,7 +3,10 @@
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using YGOProbabilityCalculatorBlazor.Constants
 @using YGOProbabilityCalculatorBlazor.Components.Shared
-@implements IDisposable
+@using Microsoft.AspNetCore.Components.Routing
+@using System.Globalization
+@using System.Text.RegularExpressions
+@implements IAsyncDisposable
 @inject IJSRuntime SessionLoadingJS
 @inject NavigationManager NavigationManager
 @inject ISessionService _sessionService
@@ -34,88 +37,10 @@
 <div class="help-content mt-4">
     <section class="mb-4">
         <h1>@UiText.Get("Ui.YuGiOhAdvancedProbabilityCalculator") <small class="text-muted">@ProjectConstants.DisplayVersion</small></h1>
-        <p>Define the hands you want to open, configure supported effects, and calculate probabilities with an explicit accuracy status. The calculator counts random outcomes under your saved rules; it does not simulate full gameplay or optimal play.</p>
-        <nav aria-label="Help topics">
-            <a href="help#getting-started">Start</a> · <a href="help#requirements">Requirements</a> · <a href="help#simulations">Effects</a> · <a href="help#modes">Modes</a> · <a href="help#results">Results</a> · <a href="help#sessions">Save and share</a> · <a href="help#example">Example</a>
-        </nav>
-    </section>
-
-    <section id="getting-started" class="mb-4">
-        <h2>Getting started</h2>
-        <ol>
-            <li>Import a <code>.ydk</code> file or YDKe deck code, or add cards manually. Check copy counts and the opening hand size.</li>
-            <li>Use imported properties or create custom categories for roles such as Starter and Extender. One card can belong to several categories.</li>
-            <li>Create a combo and use <strong>Add requirement</strong> to choose cards, categories or properties. Set its counts, then submit.</li>
-            <li>Inspect the saved simulations of effect cards. Choose a mode in the gear <strong>Calculation settings</strong> menu.</li>
-            <li>Choose <strong>Calculate</strong>, then read each result's accuracy alongside its percentage.</li>
-        </ol>
-        <p>Common properties are available before a matching card is present. Imported metadata supplies objective values such as Monster, FIRE and Level; more specific values such as archetypes appear when relevant. Use custom categories for your own roles. Manual role assignments do not rewrite a built-in search's objective eligibility.</p>
-        <p>Deactivate a card or combo to omit it temporarily. Use arrows or <strong>Move to position</strong> to reorder cards, categories, combos and groups. Destinations start at 1; enter a position and apply, or press Escape to cancel. Visual deck order does not shuffle cards or set effect priority.</p>
-    </section>
-
-    <section id="requirements" class="mb-4">
-        <h2>Build combo requirements</h2>
-        <p>Choose a target in <strong>Add requirement</strong> and set <strong>At least</strong>. Open <strong>Maximum: Any</strong> to add an upper bound. Empty maximum means Any, using the final hand size; a fixed zero stays zero. Set both counts to <code>0</code> to exclude matching cards. Maxima count all matching cards in the final hand.</p>
-        <p>Separate positive requirements need separate physical copies. One card that is both Starter and FIRE cannot fill both parts of <code>Starter + Fire</code>. Two copies can. Each combo is checked independently.</p>
-        <ul>
-            <li><strong>Same-card AND:</strong> open a property requirement and choose <strong>Add property (AND)</strong>. <code>(Orcust AND Monster) Min 2</code> needs two cards that each match both properties.</li>
-            <li><strong>OR:</strong> choose <strong>Add alternative (OR)</strong>. <code>Razen + (Fire OR Dark)</code> needs Razen and a distinct copy satisfying one alternative. Each alternative keeps its own bounds; satisfying several counts once.</li>
-            <li><strong>Numeric properties:</strong> choose Level, Rank or Link rating and an exact, minimum, maximum or range comparison. Range endpoints are inclusive and apply to one card. A missing or inapplicable value does not match. <code>Level 1–4 AND Warrior</code> is one selector, not four separate requirements.</li>
-        </ul>
-        <p>Click a requirement or alternative to edit its target, bounds or properties. Enter in a count field submits; Escape or Cancel leaves the saved requirement unchanged and restores the ordinary add draft. Extension buttons save pending edits before adding a property or alternative. Remove a requirement or alternative inside its editor. Removing the next-to-last OR alternative promotes the remaining one without changing its bounds.</p>
-        <p><code>Fire (2–2) OR Dark (2–2)</code> needs two Fire or two Dark, rather than one of each. Repeated references to the same target intersect their bounds; use the minimum count to request multiple copies. Groups organize the union of member combos; they do not add requirements to a combo.</p>
-    </section>
-
-    <section id="simulations" class="mb-4">
-        <h2>Inspect and configure effects</h2>
-        <p>Expand a card to inspect its saved simulation. Maintained definitions show <strong>Built-in simulation</strong>; incomplete printed-card models show <strong>Partial</strong>. <strong>Model notes</strong> contains card-specific assumptions or saved-version information. A recognized import or database selection can receive a maintained plan; other cards start ordinary.</p>
-        <p>Open <strong>Customize simulation</strong> or <strong>Configure simulation</strong>, edit, then <strong>Save</strong>. <strong>Cancel</strong> leaves the saved plan unchanged. Saving a change creates a <strong>Custom simulation</strong>, even if you later match the built-in values manually. <strong>Restore built-in simulation</strong> explicitly applies the current plan. Loading preserves saved plans; compatible built-in descriptions can refresh without changing the saved settings. Differing historical plans keep their own notes. Unsupported execution models are reported rather than replaced by generic draws.</p>
-        <p>Custom choices include <strong>None</strong>, draws, and <strong>Search 1</strong>. None makes the card ordinary without deactivating it. An activating effect consumes its source. <strong>Once per turn</strong> is shared by copies of the same entry; later copies remain held. With it off, newly drawn copies may also activate. Separate entries have independent allowances.</p>
-        <p><strong>Before drawing</strong> can require an eligible hand cost; <strong>After drawing</strong> can require a removal. Filters support properties, same-card AND and OR. The activating copy cannot pay its own cost. <strong>Advanced → Banish from deck</strong> removes hidden top cards before drawing; saved milling operations deplete the deck afterward. The full draw batch, pre-draw banish and post-draw mill must fit in the remaining deck; hand costs and saved activation restrictions must also be satisfied before activation. Otherwise the source stays held without spending its allowance. A failed mandatory removal remains a failed outcome in the original denominator.</p>
-        <p>The fixed keep policy protects positive combo pieces and usable effects before other cards; it is shared by all result rows and can change when active combos change. It does not optimize gameplay. <strong>Draw activation priority</strong> defaults to Encounter order. Choose Custom priority to rank entries with arrows or a direct destination. A batch, mill and removal finish before the next effect; newly drawn higher-priority effects can then overtake waiting ones. Rankings are saved, while visual deck sorting does not change them.</p>
-        <p>Draw effects and their associated hand operations resolve before optional searches. Supported search plans can have their own costs and removals during the search phase. Each search consumes a held source and transfers one eligible remaining target; searches share copy and deck-capacity limits. Fetched effects do not activate or restart resolution, but can still be removed by a search plan. Different combo rows may use different legal search choices, while groups and the total count each random outcome once. Search plus draw on the same source is unsupported.</p>
-        <p>Completed physical Exact counts surviving search targets after supported banishment, milling, costs and removals, including ordered draw paths. Fast can prove a result exact or report bounds/Uncertified when survival is unproven. Neither mode infers banished-card recovery, GY triggers or other omitted gameplay. Removing a cost creates a different hypothetical model, not necessarily an upper bound on the printed card.</p>
-    </section>
-
-    <section id="modes" class="mb-4">
-        <h2>Choose a calculation mode</h2>
-        <ul>
-            <li><strong>Progressive (default):</strong> present completed Fast first, then continue physical Exact if needed. A proven Fast result finishes immediately. An interrupted upgrade keeps the accepted Fast result and its accuracy.</li>
-            <li><strong>Fast only:</strong> run Fast once without an automatic upgrade. Its result may be Exact, Bounded or Uncertified.</li>
-            <li><strong>Exact only:</strong> publish values only when physical Exact completes. A failed request supplies no new values.</li>
-            <li><strong>No effect simulation:</strong> count the dealt hand without executing any configured effects. Saved card settings are preserved.</li>
-        </ul>
-        <p>Interactive Exact and Progressive's Exact stage have no calculation deadline or cumulative Work cutoff. You can cancel; Storage limits, unsupported cases and failures still apply. Unlimited Work does not guarantee completion. Fast and No effect simulation have a finite 150-million-unit Work allowance; units are not seconds. A larger <strong>Storage safety limit</strong> may allow more states but uses more browser memory and is a runtime preference, not a session setting.</p>
-        <p>A slow-configuration notice is guidance, not a completion promise. <strong>Recalculate using Exact</strong> makes a one-off request without changing your selected mode.</p>
-    </section>
-
-    <section id="results" class="mb-4">
-        <h2>Read and compare results</h2>
-        <p>Each active combo has a row. <strong>Any active combo</strong> counts success in at least one active combo; group rows count success in at least one member. Overlapping successes count once, so do not add individual percentages.</p>
-        <ul>
-            <li><strong>Exact / ±0%:</strong> proven probability for the configured model, including Fast cases that prove exactness.</li>
-            <li><strong>Bounded / ±:</strong> a certified interval encloses the physical-model probability. The displayed percentage is its midpoint, with an outward-rounded radius.</li>
-            <li><strong>Uncertified:</strong> a completed modeled result has no established physical error bound. Its physical exactness is unproven.</li>
-        </ul>
-        <p>Hover or keyboard-focus a result value for its primary fraction. For a bounded Fast result, that fraction belongs to the primary model and can differ from the displayed midpoint or even exceed the certified upper endpoint. Inspect accuracy details and copy results with their context. Exactness applies to the saved model, including its omissions.</p>
-        <p><strong>Preliminary</strong> means an accepted Fast result is awaiting a possible upgrade. A previous/stale label means inputs changed after calculation. Pin results to retain their captured context for comparison; a pinned or copied value is not recalculated by editing the workspace.</p>
-    </section>
-
-    <section id="sessions" class="mb-4">
-        <h2>Save, share and recover work</h2>
-        <p><strong>Save Session</strong> downloads the accepted deck, categories, requirements, groups, ordering and calculation preferences. Load a session to restore that setup. Save editor drafts first: unsaved drafts, calculation results, artwork and theme preferences are not session content. Supported older sessions migrate without silently replacing their saved effects; an older application may reject newer saves.</p>
-        <p><strong>Copy share link</strong> puts the accepted setup in the link. Anyone with it can read the setup; it is not encrypted. Opening it offers an explicit load choice before replacing the workspace. Large sessions may need a session file instead. A failed clipboard operation offers selectable text.</p>
-        <p>Local recovery stores accepted workspace edits in this browser's storage. It can offer a draft after returning, but storage denial, clearing, a crash or unsaved drafts can prevent recovery. Keep session files for durable copies. Multiple tabs can detect conflicting recovery records; choose which workspace to keep rather than assuming live synchronization.</p>
-        <p>Imported thumbnails load as rows approach the viewport; expand a card for a larger preview. Missing artwork does not affect saved sessions or calculations. Images are supplied by <a href="https://ygoprodeck.com/api-guide/" target="_blank" rel="noopener noreferrer">YGOPRODeck</a> and retained on project hosting; the software license does not cover third-party artwork.</p>
-    </section>
-
-    <section id="example" class="mb-4">
-        <h2>Example: Vanquish Soul / K9</h2>
-        <p>The supplied session contains 24 card entries representing 40 copies, a five-card opening hand, eight combo definitions, and the <strong>Full VS</strong> and <strong>Full K9</strong> groups. It has no user-defined categories; requirements use card identities and objective metadata. <code>VS Starter + (Fire OR Dark)</code> combines alternatives in one definition.</p>
-        <p>Search cards transfer eligible remaining monsters instead of carrying proxy monster roles. Reinforcement of the Army uses one Level 1–4 Warrior term; it and Chaotic Elements use their current maintained plans in this example.</p>
-        <p>With all eight combos active, the settled <strong>Progressive (default)</strong> result is exact: the modeled total is <strong>85.92% (565375/658008)</strong>. Load the example to inspect the complete configuration; loading replaces the current setup.</p>
-        <div class="mt-3 example-session-action">
-            <button class="btn btn-primary" disabled="@_loadingExample" @onclick="LoadExampleSession">@UiText.Get("Help.TryExample")</button>
+        <p>@UiText.Get("Help.Introduction.Overview")</p>
+        <div class="example-session-action">
+            <p id="example-session-warning" class="small text-muted mb-2">@UiText.Get("Help.Introduction.ReplaceWarning")</p>
+            <button class="btn btn-primary" aria-describedby="example-session-warning" disabled="@_loadingExample" @onclick="LoadExampleSession">@UiText.Get("Help.TryExample")</button>
             <div class="example-session-status">
                 <SessionLoadingStatus RequestVersion="@(_loadingExample ? 1L : null)" />
             </div>
@@ -125,17 +50,214 @@
         </div>
     </section>
 
-    <section class="mb-4">
-        <h2>Further reading and credits</h2>
-        <p>The <a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/README.md" target="_blank" rel="noopener noreferrer">documentation index</a> links the supported model, worked probability explanation, and accuracy/resource reference. These describe the development branch; the stable deployment may differ.</p>
-        <p>Created by <a href="https://github.com/SeyTi01" target="_blank" rel="noopener noreferrer">SeyTi01</a>.</p>
-    </section>
+    <details id="getting-started" class="help-topic">
+        <summary><h2>@UiText.Get("Help.GettingStarted.Question")</h2></summary>
+        <div class="help-topic-body">
+            <ol>
+                <li>@Message("Help.GettingStarted.AddDeck", @<strong>@UiText.Get("Help.GettingStarted.AddDeck.Part0")</strong>, @<code>@UiText.Get("Help.GettingStarted.AddDeck.Part1")</code>)</li>
+                <li>@Message("Help.GettingStarted.DefineCombo", @<strong>@UiText.Get("Help.GettingStarted.DefineCombo.Part0")</strong>)</li>
+                <li>@Message("Help.GettingStarted.CheckEffects", @<strong>@UiText.Get("Help.GettingStarted.CheckEffects.Part0")</strong>)</li>
+                <li>@Message("Help.GettingStarted.Calculate", @<strong>@UiText.Get("Help.GettingStarted.Calculate.Part0")</strong>, @<strong>@UiText.Get("Help.GettingStarted.Calculate.Part1")</strong>)</li>
+            </ol>
+            <p>@UiText.Get("Help.GettingStarted.Deactivate")</p>
+        </div>
+    </details>
+
+    <details id="properties" class="help-topic">
+        <summary><h2>@UiText.Get("Help.Properties.Question")</h2></summary>
+        <div class="help-topic-body">
+            <p>@Message("Help.Properties.RolesAndProperties", @<strong>@UiText.Get("Help.Properties.RolesAndProperties.Part0")</strong>, @<strong>@UiText.Get("Help.Properties.RolesAndProperties.Part1")</strong>)</p>
+            <ul>
+                <li>@Message("Help.Properties.PropertyExamples", @<strong>@UiText.Get("Help.Properties.PropertyExamples.Part0")</strong>)</li>
+                <li>@Message("Help.Properties.CategoryExamples", @<strong>@UiText.Get("Help.Properties.CategoryExamples.Part0")</strong>)</li>
+            </ul>
+            <p>@UiText.Get("Help.Properties.Overlaps")</p>
+            <p>@Message("Help.Properties.NumericRanges", @<code>@UiText.Get("Help.Properties.NumericRanges.Part0")</code>)</p>
+        </div>
+    </details>
+
+    <details id="requirements" class="help-topic">
+        <summary><h2>@UiText.Get("Help.Requirements.Question")</h2></summary>
+        <div class="help-topic-body">
+            <p>@Message("Help.Requirements.Create", @<strong>@UiText.Get("Help.Requirements.Create.Part0")</strong>, @<strong>@UiText.Get("Help.Requirements.Create.Part1")</strong>, @<strong>@UiText.Get("Help.Requirements.Create.Part2")</strong>, @<code>@UiText.Get("Help.Requirements.Create.Part3")</code>)</p>
+            <p>@UiText.Get("Help.Requirements.FinalHand")</p>
+            <h3>@UiText.Get("Help.Requirements.Combining")</h3>
+            <table class="table">
+            <thead><tr><th scope="col">@UiText.Get("Help.Requirements.Expression")</th><th scope="col">@UiText.Get("Help.Requirements.Meaning")</th></tr></thead>
+            <tbody>
+                <tr><th scope="row"><code>@UiText.Get("Help.Requirements.DistinctExample.Part0")</code></th><td>@UiText.Get("Help.Requirements.DistinctCopies")</td></tr>
+                <tr><th scope="row"><code>@UiText.Get("Help.Requirements.SameCardExample.Part0")</code></th><td>@UiText.Get("Help.Requirements.SameCard")</td></tr>
+                <tr><th scope="row"><code>@UiText.Get("Help.Requirements.AlternativesExample.Part0")</code></th><td>@UiText.Get("Help.Requirements.Alternatives")</td></tr>
+            </tbody>
+            </table>
+            <h3>@UiText.Get("Help.Requirements.Counting")</h3>
+            <ul>
+                <li>@Message("Help.Requirements.Maximum", @<strong>@UiText.Get("Help.Requirements.Maximum.Part0")</strong>, @<strong>@UiText.Get("Help.Requirements.Maximum.Part1")</strong>)</li>
+                <li>@Message("Help.Requirements.AlternativeCounts", @<code>@UiText.Get("Help.Requirements.AlternativeCounts.Part0")</code>)</li>
+                <li>@Message("Help.Requirements.RepeatedTarget", @<strong>@UiText.Get("Help.Requirements.RepeatedTarget.Part0")</strong>)</li>
+            </ul>
+            <p>@Message("Help.Requirements.Editing", @<strong>@UiText.Get("Help.Requirements.Editing.Part0")</strong>, @<strong>@UiText.Get("Help.Requirements.Editing.Part1")</strong>, @<strong>@UiText.Get("Help.Requirements.Editing.Part2")</strong>)</p>
+        </div>
+    </details>
+
+    <details id="simulations" class="help-topic">
+        <summary><h2>@UiText.Get("Help.Simulations.Question")</h2></summary>
+        <div class="help-topic-body">
+            <p>@Message("Help.Simulations.Inspect", @<strong>@UiText.Get("Help.Simulations.Inspect.Part0")</strong>)</p>
+            <ul>
+                <li>@Message("Help.Simulations.BuiltIn", @<strong>@UiText.Get("Help.Simulations.BuiltIn.Part0")</strong>)</li>
+                <li>@Message("Help.Simulations.Partial", @<strong>@UiText.Get("Help.Simulations.Partial.Part0")</strong>)</li>
+                <li>@Message("Help.Simulations.Custom", @<strong>@UiText.Get("Help.Simulations.Custom.Part0")</strong>)</li>
+            </ul>
+            <p>@Message("Help.Simulations.Editing", @<strong>@UiText.Get("Help.Simulations.Editing.Part0")</strong>, @<strong>@UiText.Get("Help.Simulations.Editing.Part1")</strong>, @<strong>@UiText.Get("Help.Simulations.Editing.Part2")</strong>, @<strong>@UiText.Get("Help.Simulations.Editing.Part3")</strong>, @<strong>@UiText.Get("Help.Simulations.Editing.Part4")</strong>)</p>
+            <p>@Message("Help.Simulations.Restore", @<strong>@UiText.Get("Help.Simulations.Restore.Part0")</strong>)</p>
+            <p>@Message("Help.Simulations.Limitations", @<strong>@UiText.Get("Help.Simulations.Limitations.Part0")</strong>)</p>
+        </div>
+    </details>
+
+    <details id="effect-resolution" class="help-topic">
+        <summary><h2>@UiText.Get("Help.EffectResolution.Question")</h2></summary>
+        <div class="help-topic-body">
+            <p>@UiText.Get("Help.EffectResolution.Phases")</p>
+            <h3>@UiText.Get("Help.EffectResolution.DrawHeading")</h3>
+            <p>@UiText.Get("Help.EffectResolution.Draws")</p>
+            <p>@Message("Help.EffectResolution.Restrictions", @<strong>@UiText.Get("Help.EffectResolution.Restrictions.Part0")</strong>)</p>
+            <h3>@UiText.Get("Help.EffectResolution.SearchHeading")</h3>
+            <p>@UiText.Get("Help.EffectResolution.Searches")</p>
+            <h3>@UiText.Get("Help.EffectResolution.PriorityHeading")</h3>
+            <p>@UiText.Get("Help.EffectResolution.Priority")</p>
+            <p>@UiText.Get("Help.EffectResolution.KeepPolicy")</p>
+            <p>@Message("Help.EffectResolution.ModelScope", @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/calculation-model.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.EffectResolution.ModelScope.Part0")</a>)</p>
+        </div>
+    </details>
+
+    <details id="modes" class="help-topic">
+        <summary><h2>@UiText.Get("Help.Modes.Question")</h2></summary>
+        <div class="help-topic-body">
+            <p>@Message("Help.Modes.Default", @<strong>@UiText.Get("Help.Modes.Default.Part0")</strong>)</p>
+            <table class="table">
+            <thead><tr><th scope="col">@UiText.Get("Help.Modes.Mode")</th><th scope="col">@UiText.Get("Help.Modes.Behavior")</th></tr></thead>
+            <tbody>
+                <tr><th scope="row">@UiText.Get("Help.Modes.Progressive")</th><td>@UiText.Get("Help.Modes.ProgressiveDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Modes.Fast")</th><td>@UiText.Get("Help.Modes.FastDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Modes.Exact")</th><td>@UiText.Get("Help.Modes.ExactDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Modes.NoEffects")</th><td>@UiText.Get("Help.Modes.NoEffectsDescription")</td></tr>
+            </tbody>
+            </table>
+            <p>@UiText.Get("Help.Modes.Cancel")</p>
+            <p>@Message("Help.Modes.Limits", @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/accuracy-and-performance.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Modes.Limits.Part0")</a>)</p>
+        </div>
+    </details>
+
+    <details id="results" class="help-topic">
+        <summary><h2>@UiText.Get("Help.Results.Question")</h2></summary>
+        <div class="help-topic-body">
+            <p>@Message("Help.Results.Union", @<strong>@UiText.Get("Help.Results.Union.Part0")</strong>)</p>
+            <p><strong>@UiText.Get("Help.Results.OverlapWarning.Part0")</strong></p>
+            <h3>@UiText.Get("Help.Results.Accuracy")</h3>
+            <table class="table">
+            <thead><tr><th scope="col">@UiText.Get("Help.Results.Label")</th><th scope="col">@UiText.Get("Help.Results.Meaning")</th></tr></thead>
+            <tbody>
+                <tr><th scope="row">@UiText.Get("Help.Results.Exact")</th><td>@UiText.Get("Help.Results.ExactDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Results.Bounded")</th><td>@UiText.Get("Help.Results.BoundedDescription")</td></tr>
+                <tr><th scope="row">@UiText.Get("Help.Results.Uncertified")</th><td>@UiText.Get("Help.Results.UncertifiedDescription")</td></tr>
+            </tbody>
+            </table>
+            <p>@UiText.Get("Help.Results.ModelScope")</p>
+            <h3>@UiText.Get("Help.Results.State")</h3>
+            <ul>
+                <li>@Message("Help.Results.Preliminary", @<strong>@UiText.Get("Help.Results.Preliminary.Part0")</strong>)</li>
+                <li>@Message("Help.Results.Stale", @<strong>@UiText.Get("Help.Results.Stale.Part0")</strong>)</li>
+                <li>@Message("Help.Results.Pinned", @<strong>@UiText.Get("Help.Results.Pinned.Part0")</strong>)</li>
+            </ul>
+            <p>@UiText.Get("Help.Results.Fraction")</p>
+        </div>
+    </details>
+
+    <details id="sessions" class="help-topic">
+        <summary><h2>@UiText.Get("Help.Sessions.Question")</h2></summary>
+        <div class="help-topic-body">
+            <h3>@UiText.Get("Help.Sessions.SaveHeading")</h3>
+            <p>@Message("Help.Sessions.Save", @<strong>@UiText.Get("Help.Sessions.Save.Part0")</strong>)</p>
+            <h3>@UiText.Get("Help.Sessions.ShareHeading")</h3>
+            <p>@Message("Help.Sessions.Share", @<strong>@UiText.Get("Help.Sessions.Share.Part0")</strong>)</p>
+            <h3>@UiText.Get("Help.Sessions.RecoveryHeading")</h3>
+            <p>@UiText.Get("Help.Sessions.Recovery")</p>
+            <p>@UiText.Get("Help.Sessions.MultipleTabs")</p>
+        </div>
+    </details>
+
+    <details id="example" class="help-topic">
+        <summary><h2>@UiText.Get("Help.Example.Question")</h2></summary>
+        <div class="help-topic-body">
+            <p>@UiText.Get("Help.Example.Contents")</p>
+            <ul>
+                <li>@Message("Help.Example.Copies", @<strong>@UiText.Get("Help.Example.Copies.Part0")</strong>)</li>
+                <li>@Message("Help.Example.Groups", @<strong>@UiText.Get("Help.Example.Groups.Part0")</strong>, @<strong>@UiText.Get("Help.Example.Groups.Part1")</strong>, @<strong>@UiText.Get("Help.Example.Groups.Part2")</strong>)</li>
+                <li>@UiText.Get("Help.Example.Requirements")</li>
+            </ul>
+            <p>@Message("Help.Example.Alternatives", @<code>@UiText.Get("Help.Example.Alternatives.Part0")</code>)</p>
+            <p>@Message("Help.Example.Result", @<strong>@UiText.Get("Help.Example.Result.Part0")</strong>, @<strong>@UiText.Get("Help.Example.Result.Part1")</strong>)</p>
+        </div>
+    </details>
+
+    <footer class="help-footer mt-3">
+        <h2>@UiText.Get("Help.Footer.Heading")</h2>
+        <p>@Message("Help.Footer.Reading", @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/calculation-model.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Reading.Part0")</a>, @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/probability-engine.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Reading.Part1")</a>, @<a href="https://github.com/SeyTi01/ygo-advanced-probability-calculator-web/blob/dev/docs/accuracy-and-performance.md" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Reading.Part2")</a>)</p>
+        <p>@Message("Help.Footer.Credits", @<a href="https://github.com/SeyTi01" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Credits.Part0")</a>, @<a href="https://ygoprodeck.com/api-guide/" target="_blank" rel="noopener noreferrer">@UiText.Get("Help.Footer.Credits.Part1")</a>)</p>
+    </footer>
 </div>
 
 @code {
+    // Only numbered text placeholders are substituted. Emphasis, code and links
+    // remain Razor-owned fragments; resource text is always HTML-encoded.
+    private static RenderFragment Message(string key, params RenderFragment[] arguments) => builder => {
+        string message = UiText.Get(key);
+        int offset = 0;
+        foreach (Match placeholder in Regex.Matches(message, @"\{(\d+)\}")) {
+            builder.AddContent(0, message[offset..placeholder.Index]);
+            int argument = int.Parse(placeholder.Groups[1].Value, CultureInfo.InvariantCulture);
+            builder.AddContent(1, arguments[argument]);
+            offset = placeholder.Index + placeholder.Length;
+        }
+        builder.AddContent(2, message[offset..]);
+    };
+
     private string? _errorMessage;
     private bool _loadingExample;
     private bool _disposed;
+    private bool _revealFragment = true;
+    private IJSObjectReference? _topicModule;
+
+    protected override void OnInitialized() {
+        NavigationManager.LocationChanged += LocationChanged;
+    }
+
+    private void LocationChanged(object? sender, LocationChangedEventArgs args) {
+        _revealFragment = true;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!_revealFragment || _disposed) {
+            return;
+        }
+
+        _revealFragment = false;
+        if (_topicModule is null) {
+            IJSObjectReference module = await SessionLoadingJS.InvokeAsync<IJSObjectReference>("import", "./Pages/Help.razor.js");
+            if (_disposed) {
+                await module.DisposeAsync();
+                return;
+            }
+
+            _topicModule = module;
+            await _topicModule.InvokeVoidAsync("watchTopics");
+        }
+        if (!_disposed) {
+            await _topicModule.InvokeVoidAsync("revealTopic", new Uri(NavigationManager.Uri).Fragment);
+        }
+    }
 
     private async Task LoadExampleSession() {
         if (_loadingExample || _disposed) {
@@ -175,5 +297,12 @@
         }
     }
 
-    public void Dispose() => _disposed = true;
+    public async ValueTask DisposeAsync() {
+        _disposed = true;
+        NavigationManager.LocationChanged -= LocationChanged;
+        if (_topicModule is not null) {
+            await _topicModule.InvokeVoidAsync("stopWatchingTopics");
+            await _topicModule.DisposeAsync();
+        }
+    }
 }

@@ -28,7 +28,7 @@ public partial class ProbabilityCalculatorComponent {
     );
 
     private string CaptureLanguageWorkspace() {
-        if (_isCalculating) { throw new InvalidOperationException(UiText.Get("Language.WaitForCalculation")); }
+        if (_calculation.IsCalculating) { throw new InvalidOperationException(UiText.Get("Language.WaitForCalculation")); }
         if (!_sessionInitialized || _pendingLanguageLoad is not null || _sharedLoading || _ydkeImportRequest is not null) {
             throw new InvalidOperationException(UiText.Get("Language.WaitForLoad"));
         }
@@ -40,9 +40,9 @@ public partial class ProbabilityCalculatorComponent {
         LanguageState state = new(
             session,
             _storageTier,
-            _calculationResult,
-            _calculationResultIsStale,
-            _acceptedResultSnapshot,
+            _calculation.Result,
+            _calculation.IsStale,
+            _calculation.Snapshot,
             _pinnedResult
         );
         return JsonSerializer.Serialize(state);
@@ -67,9 +67,7 @@ public partial class ProbabilityCalculatorComponent {
         _fastStrategy = session.FastExecutionStrategy;
         _drawActivationPriority = session.DrawActivationPriority ?? DrawActivationPriority.Default;
         _storageTier = state.Storage;
-        _calculationResult = state.Result;
-        _calculationResultIsStale = state.Stale;
-        _acceptedResultSnapshot = state.Accepted;
+        _calculation.Restore(state.Result, state.Stale, state.Accepted);
         _pinnedResult = state.Pin;
     }
 }

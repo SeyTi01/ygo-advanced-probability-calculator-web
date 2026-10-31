@@ -1,3 +1,4 @@
+@inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
@@ -276,15 +277,6 @@
     private IEnumerable<CategoryBase> SelectableCategories => AndScope && _andSeed is { } seed
         ? _availableCategories.Where(category => !seed.Selector.CategoryIdentities.Contains(category.Identity, StringComparer.Ordinal))
         : _availableCategories;
-    private IEnumerable<CategoryBase> SelectableUserCategories => SelectableCategories
-        .Where(static category => category.Source == CategorySource.User);
-    private IEnumerable<CategoryBase> SelectableRelevantProperties => SelectableCategories
-        .Where(category => category.Source == CategorySource.Metadata && _categoryOptions.RelevantMetadataIdentities.Contains(category.Identity));
-    private IEnumerable<CategoryBase> SelectableCommonProperties => SelectableCategories
-        .Where(category => CategoryCatalog.IsCommonMetadata(category) && !_categoryOptions.RelevantMetadataIdentities.Contains(category.Identity));
-    private string AlternativeLabel(ComboAlternative alternative) =>
-        (alternative.Category is { } value ? DisplayLabels.Requirement(value) : null) ?? UiText.Format("Requirement.Card", CardDisplayName(alternative.Card!.CardId));
-
     private string AlternativeRange(ComboAlternative alternative) => alternative.Category is { } category
         ? RequirementRangeFormatter.Format(category.MinCount, category.MaxCount, category.MaximumMode)
         : RequirementRangeFormatter.Format(alternative.Card!.MinCount, alternative.Card.MaxCount, alternative.Card.MaximumMode);
@@ -386,8 +378,6 @@
         _error = null;
     }
 
-    private void CancelAlternative() => CancelScopedAuthoring();
-
     private void BeginAlternativeDraft(
         ComboAlternative? seed,
         int? seedIndex,
@@ -465,19 +455,13 @@
             maximum,
             MaximumMode
         );
-        Combo updated = Combo;
+        Combo updated;
 
-        if (_andGroup is ComboAlternativeGroup group && _andGroupIndex is int groupIndex && _andAlternativeIndex is int alternativeIndex) {
-            List<ComboAlternativeGroup> groups = Combo.AlternativeGroups.ToList();
-            List<ComboAlternative> alternatives = groups[groupIndex].Alternatives.ToList();
-            alternatives[alternativeIndex] = ComboAlternative.For(updatedRequirement);
-            groups[groupIndex] = new ComboAlternativeGroup(alternatives);
-            updated = Combo.WithAlternativeGroups(groups);
+        if (_andGroup is not null && _andGroupIndex is int groupIndex && _andAlternativeIndex is int alternativeIndex) {
+            updated = ComboRequirementEditing.ReplaceAlternative(Combo, groupIndex, alternativeIndex, ComboAlternative.For(updatedRequirement));
         }
         else if (_andSeedIndex is int seedIndex) {
-            List<ComboCategory> categories = Combo.Categories.ToList();
-            categories[seedIndex] = updatedRequirement;
-            updated = Combo.WithCategories(categories);
+            updated = ComboRequirementEditing.Replace(Combo, new(ComboRequirementKind.Category, seedIndex), ComboAlternative.For(updatedRequirement));
         }
         else {
             CancelScopedAuthoring();
@@ -494,7 +478,7 @@
 
     private Task CommitAlternative() {
         if (!AlternativeScope || !AlternativeTargetIsCurrent) {
-            CancelAlternative();
+            CancelScopedAuthoring();
 
             return Task.CompletedTask;
         }
@@ -520,39 +504,27 @@
         }
 
         Combo updated = Combo;
-        List<ComboAlternativeGroup> groups = Combo.AlternativeGroups.ToList();
         int insertedIndex = _alternativeInsertIndex ?? _alternativeGroup?.Alternatives.Count ?? 1;
 
         if (_alternativeGroup is ComboAlternativeGroup currentGroup && _alternativeGroupIndex is int groupIndex) {
             List<ComboAlternative> alternatives = currentGroup.Alternatives.ToList();
             alternatives.Insert(insertedIndex, leaf);
-            groups[groupIndex] = new ComboAlternativeGroup(alternatives);
+            updated = ComboRequirementEditing.WithAlternatives(Combo, groupIndex, alternatives);
         }
         else if (_alternativeSeed is { } seed) {
-            if (seed.Category is not null) {
-                updated = updated.WithoutRequirement(new(ComboRequirementKind.Category, _alternativeSeedIndex!.Value));
-            }
-            else {
-                updated = updated.WithoutRequirement(new(ComboRequirementKind.Card, _alternativeSeedIndex!.Value));
-            }
-
-            groups.Add(new ComboAlternativeGroup([seed, leaf]));
+            ComboRequirementKind kind = seed.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
+            ComboRequirementPosition position = new(kind, _alternativeSeedIndex!.Value);
+            int authoredPosition = Combo.RequirementOrder.ToList().IndexOf(position);
+            updated = ComboRequirementEditing.AppendGroup(Combo.WithoutRequirement(position), [seed, leaf], authoredPosition);
         }
 
-        int? authoredPosition = _alternativeSeed is { } originalSeed && _alternativeSeedIndex is int originalIndex
-            ? Combo.RequirementOrder.ToList().IndexOf(new(originalSeed.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card, originalIndex))
-            : null;
-        updated = updated.WithAlternativeGroups(groups);
-        if (authoredPosition is int position) {
-            updated = updated.WithRequirementAt(new(ComboRequirementKind.Group, groups.Count - 1), position);
-        }
-        int savedGroup = _alternativeGroupIndex ?? groups.Count - 1;
+        int savedGroup = _alternativeGroupIndex ?? updated.AlternativeGroups.Count - 1;
         _returnRowKey = $"alternative:{savedGroup}:{insertedIndex}";
         if (_alternativeTermIdentity is { } term) {
             TransferRowIdentities(updated);
             _termIdentities[RowIdentity(leaf, insertedIndex, savedGroup)] = term;
         }
-        CancelAlternative();
+        CancelScopedAuthoring();
 
         return OnReplaceCombo.InvokeAsync((Index, updated));
     }
@@ -604,11 +576,9 @@
         ComboAlternative alternative,
         int leafIndex
     ) {
-        List<ComboAlternativeGroup> groups = Combo.AlternativeGroups.ToList();
-
         bool isCurrentGroup = groupIndex >= 0
-            && groupIndex < groups.Count
-            && ReferenceEquals(groups[groupIndex], group);
+            && groupIndex < Combo.AlternativeGroups.Count
+            && ReferenceEquals(Combo.AlternativeGroups[groupIndex], group);
 
         if (!isCurrentGroup) {
             return Task.CompletedTask;
@@ -622,37 +592,12 @@
             return Task.CompletedTask;
         }
 
-        ComboAlternative[] remaining = group.Alternatives.Where((_, index) => index != leafIndex).ToArray();
-        Combo updated = Combo;
-
-        if (remaining.Length == 0) {
-            groups.RemoveAt(groupIndex);
-            updated = updated.WithoutRequirement(new(ComboRequirementKind.Group, groupIndex));
-        }
-        else if (remaining.Length == 1) {
-            groups.RemoveAt(groupIndex);
-            updated = updated.WithoutRequirement(new(ComboRequirementKind.Group, groupIndex));
-            if (remaining[0].Category is { } category) {
-                updated = updated.WithCategories(updated.Categories.Append(category));
-            }
-            else {
-                updated = updated.WithCards(updated.Cards.Append(remaining[0].Card!));
-            }
-        }
-        else {
-            groups[groupIndex] = new ComboAlternativeGroup(remaining);
-        }
+        Combo updated = ComboRequirementEditing.RemoveAlternative(Combo, groupIndex, leafIndex);
 
         if (_alternativeGroupIndex == groupIndex && ReferenceEquals(_alternativeGroup, group)) {
-            CancelAlternative();
+            CancelScopedAuthoring();
         }
 
-        updated = updated.WithAlternativeGroups(groups);
-        if (remaining.Length == 1) {
-            ComboRequirementKind kind = remaining[0].Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
-            int index = kind == ComboRequirementKind.Category ? updated.Categories.Count - 1 : updated.Cards.Count - 1;
-            updated = updated.WithRequirementAt(new(kind, index), Combo.RequirementOrder.ToList().IndexOf(new(ComboRequirementKind.Group, groupIndex)));
-        }
         return OnReplaceCombo.InvokeAsync((Index, updated));
     }
 
@@ -667,7 +612,6 @@
         : Combo.Categories.Any(category => category.CategoryBases.Count == 1 && category.BaseCategory.Identity == _selectedCategory);
 
     private int ConstraintCount => Combo.RequirementCount;
-    private IEnumerable<Card> AlphabeticalCards => CardOrdering.Alphabetize(Cards);
     private int HiddenHeaderCategoriesCount => Math.Max(0, ConstraintCount - MaxHeaderBadges);
 
     private RequirementMaximumMode MaximumMode => string.IsNullOrWhiteSpace(_maxCount)
@@ -681,7 +625,7 @@
             return UiText.Format("Ui.MissingCard0", cardId[..Math.Min(8, cardId.Length)]);
         }
 
-        string? cardName = Cards[index].Name;
+        string cardName = DisplayLabels.Card(Cards[index], CardInfoService);
 
         return string.IsNullOrWhiteSpace(cardName) ? UiText.Get("Ui.UnnamedCard") : cardName;
     }
@@ -830,7 +774,7 @@
         }
 
         if (ReferenceEquals(_alternativeSeed?.Card, card) && _alternativeSeedIndex == index) {
-            CancelAlternative();
+            CancelScopedAuthoring();
         }
 
         return OnReplaceCombo.InvokeAsync((Index, Combo.WithoutRequirement(new(ComboRequirementKind.Card, index))));
@@ -857,7 +801,7 @@
         }
 
         if (ReferenceEquals(_alternativeSeed?.Category, category) && _alternativeSeedIndex == index) {
-            CancelAlternative();
+            CancelScopedAuthoring();
         }
 
         return OnReplaceCombo.InvokeAsync((Index, Combo.WithoutRequirement(new(ComboRequirementKind.Category, index))));

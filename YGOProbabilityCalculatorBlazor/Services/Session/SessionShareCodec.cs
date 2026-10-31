@@ -1,4 +1,3 @@
-using YGOProbabilityCalculatorBlazor.Localization;
 using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -24,7 +23,7 @@ public static class SessionShareCodec {
         byte[] source = StrictUtf8.GetBytes(serializedSession);
 
         if (source.Length > MaxJsonBytes) {
-            throw TooLarge();
+            throw SessionShareException.TooLarge();
         }
 
         using JsonDocument document = Parse(source);
@@ -54,7 +53,7 @@ public static class SessionShareCodec {
         string link = origin + Prefix + payload;
 
         if (link.Length > MaxUrlLength) {
-            throw TooLarge();
+            throw SessionShareException.TooLarge();
         }
 
         return link;
@@ -62,11 +61,11 @@ public static class SessionShareCodec {
 
     public static string Decode(string fragment) {
         if (fragment.Length > MaxUrlLength) {
-            throw TooLarge();
+            throw SessionShareException.TooLarge();
         }
 
         if (!fragment.StartsWith(Prefix, StringComparison.Ordinal)) {
-            throw new InvalidOperationException(UiText.Get("Ui.UnsupportedSharedLinkFormatVersion"));
+            throw SessionShareException.UnsupportedVersion();
         }
 
         string payload = fragment[Prefix.Length..];
@@ -75,7 +74,7 @@ public static class SessionShareCodec {
             payload.Any(static character => !char.IsAsciiLetterOrDigit(character) && character != '-' && character != '_');
 
         if (hasInvalidPayload) {
-            throw Invalid();
+            throw SessionShareException.InvalidPayload();
         }
 
         try {
@@ -83,14 +82,14 @@ public static class SessionShareCodec {
             byte[] transport = Convert.FromBase64String(paddedPayload);
 
             if (transport.Length <= HeaderLength) {
-                throw Invalid();
+                throw SessionShareException.InvalidPayload();
             }
 
             // Length is checked before allocation. Decoder receives only this bounded destination.
             int length = BinaryPrimitives.ReadInt32LittleEndian(transport);
 
             if (length < 2 || length > MaxJsonBytes) {
-                throw TooLarge();
+                throw SessionShareException.TooLarge();
             }
 
             byte[] json = new byte[length];
@@ -106,7 +105,7 @@ public static class SessionShareCodec {
                    );
 
             if (hasInvalidCompressedPayload) {
-                throw Invalid();
+                throw SessionShareException.InvalidPayload();
             }
 
             using MemoryStream input = new(transport, HeaderLength, transport.Length - HeaderLength);
@@ -114,7 +113,7 @@ public static class SessionShareCodec {
             decoder.ReadExactly(json);
 
             if (decoder.ReadByte() != -1) {
-                throw Invalid();
+                throw SessionShareException.InvalidPayload();
             }
 
             string text = StrictUtf8.GetString(json);
@@ -123,7 +122,7 @@ public static class SessionShareCodec {
             return text;
         }
         catch (Exception exception) when (exception is FormatException or DecoderFallbackException or JsonException or InvalidDataException or EndOfStreamException) {
-            throw Invalid();
+            throw SessionShareException.InvalidPayload(exception);
         }
     }
 
@@ -132,7 +131,7 @@ public static class SessionShareCodec {
 
         try {
             if (document.RootElement.ValueKind != JsonValueKind.Object) {
-                throw Invalid();
+                throw SessionShareException.InvalidPayload();
             }
 
             int nodes = 0;
@@ -149,7 +148,7 @@ public static class SessionShareCodec {
 
     private static void Check(JsonElement element, ref int nodes) {
         if (++nodes > 20_000) {
-            throw TooLarge();
+            throw SessionShareException.TooLarge();
         }
 
         switch (element.ValueKind) {
@@ -160,7 +159,7 @@ public static class SessionShareCodec {
                     bool hasInvalidName = property.Name.Length > 4096 || !names.Add(property.Name);
 
                     if (hasInvalidName) {
-                        throw Invalid();
+                        throw SessionShareException.InvalidPayload();
                     }
 
                     // The file loader intentionally tolerates some absent fields. Explicit null
@@ -168,14 +167,14 @@ public static class SessionShareCodec {
                     bool hasInvalidCollectionShape = Collections.Contains(property.Name) && property.Value.ValueKind != JsonValueKind.Array;
 
                     if (hasInvalidCollectionShape) {
-                        throw Invalid();
+                        throw SessionShareException.InvalidPayload();
                     }
 
                     bool requiresObjectValue = property.Name.Equals("BaseCategory", StringComparison.OrdinalIgnoreCase)
                         || property.Name.Equals("CategoryColorIndices", StringComparison.OrdinalIgnoreCase);
 
                     if (requiresObjectValue && property.Value.ValueKind != JsonValueKind.Object) {
-                        throw Invalid();
+                        throw SessionShareException.InvalidPayload();
                     }
 
                     bool hasInvalidCopies = property.Name.Equals("Copies", StringComparison.OrdinalIgnoreCase)
@@ -184,7 +183,7 @@ public static class SessionShareCodec {
                         || copies is < -10000 or > 10000);
 
                     if (hasInvalidCopies) {
-                        throw Invalid();
+                        throw SessionShareException.InvalidPayload();
                     }
 
                     Check(property.Value, ref nodes);
@@ -194,12 +193,12 @@ public static class SessionShareCodec {
             }
             case JsonValueKind.Array: {
                 if (element.GetArrayLength() > 2048) {
-                    throw TooLarge();
+                    throw SessionShareException.TooLarge();
                 }
 
                 foreach (JsonElement item in element.EnumerateArray()) {
                     if (item.ValueKind == JsonValueKind.Null) {
-                        throw Invalid();
+                        throw SessionShareException.InvalidPayload();
                     }
 
                     Check(item, ref nodes);
@@ -209,17 +208,11 @@ public static class SessionShareCodec {
             }
             case JsonValueKind.String: {
                 if (element.GetString()!.Length > 4096) {
-                    throw TooLarge();
+                    throw SessionShareException.TooLarge();
                 }
 
                 break;
             }
         }
     }
-
-    private static InvalidOperationException TooLarge() =>
-        new(UiText.Get("Ui.ThisSessionIsTooLargeForAShareLinkShareANormalSessionFileInstead"));
-
-    private static InvalidOperationException Invalid() =>
-        new(UiText.Get("Ui.TheSharedSessionLinkIsInvalidOrCorrupted"));
 }

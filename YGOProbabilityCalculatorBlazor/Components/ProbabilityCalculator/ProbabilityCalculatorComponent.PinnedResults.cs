@@ -6,12 +6,11 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 public partial class ProbabilityCalculatorComponent {
-    private PinnedResultSnapshot? _acceptedResultSnapshot;
     private PinnedResultSnapshot? _pinnedResult;
     private ElementReference _calculationAction;
 
-    private bool CanRetryExact => CanPin && CanCalculate && !_calculationResultIsStale
-        && _acceptedResultSnapshot is {
+    private bool CanRetryExact => CanPin && CanCalculate && !_calculation.IsStale
+        && _calculation.Snapshot is {
             Context.Model: CalculationModel.Fast,
             Contract: {
                 RequestedMode: CalculationModel.Fast,
@@ -32,11 +31,11 @@ public partial class ProbabilityCalculatorComponent {
 
     private bool CanPin {
         get {
-            if (_disposed || _isCalculating || _calculationResult is null) {
+            if (_disposed || _calculation.IsCalculating || _calculation.Result is null) {
                 return false;
             }
 
-            return _acceptedResultSnapshot is { IsValid: true };
+            return _calculation.Snapshot is { IsValid: true };
         }
     }
 
@@ -46,7 +45,7 @@ public partial class ProbabilityCalculatorComponent {
                 return "";
             }
 
-            if (_isCalculating) {
+            if (_calculation.IsCalculating) {
                 return UiText.Get("Ui.CalculationIsRunning");
             }
 
@@ -56,7 +55,7 @@ public partial class ProbabilityCalculatorComponent {
 
     private void PinCurrentResult() {
         if (CanPin) {
-            _pinnedResult = _acceptedResultSnapshot;
+            _pinnedResult = _calculation.Snapshot;
         }
     }
 

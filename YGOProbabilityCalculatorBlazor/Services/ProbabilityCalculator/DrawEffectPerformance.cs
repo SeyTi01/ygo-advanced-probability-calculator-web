@@ -11,21 +11,19 @@ public static class DrawEffectPerformance {
         }
 
         if (plan.DrawCount is null) {
-            return plan.RequiresSearchResolution || (plan.Search is not null && plan.MinimumHandSize > 0);
+            return plan.RequiresSearchResolution;
         }
 
         // OPT can make activation restrictions redundant in a single-entry workspace.
         // Multiple entries and deck capacity remain workspace assessment facts.
-        if (plan.HandCost > 0 || (plan.MinimumHandSize > 0 && plan.MinimumHandSize > plan.DrawCount)
-            || (plan.HasActivationRestrictions && plan.MaximumActivations > 1)) {
+        if (plan.HandCost > 0 || (plan.MinimumHandSize > 0 && plan.MinimumHandSize > plan.DrawCount) || (plan.HasActivationRestrictions && plan.MaximumActivations > 1)) {
             return true;
         }
 
         // PostDrawCalculation can specialize an unfiltered, non-OPT, hand-neutral
         // effect. Relevance, homogeneous filler and capacity remain workspace facts;
         // failure of those proofs must not turn this intrinsic hint into a card flag.
-        bool exchangeableShape = plan.MaximumActivations == int.MaxValue && plan.DrawCount == plan.RemovalCount + 1
-            && plan.RemovalSelector.Kind == CardSelectorKind.Any;
+        bool exchangeableShape = plan.MaximumActivations == int.MaxValue && plan.DrawCount == plan.RemovalCount + 1 && plan.RemovalSelector.Kind == CardSelectorKind.Any;
 
         return plan.RemovalCount > 0 && !exchangeableShape;
     }

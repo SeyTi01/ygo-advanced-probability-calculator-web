@@ -16,8 +16,8 @@ internal readonly record struct ExactProbability(BigInteger Numerator, BigIntege
 
     internal ProbabilityFraction ToFraction() {
         BigInteger divisor = BigInteger.GreatestCommonDivisor(Numerator, Denominator);
-        return new((Numerator / divisor).ToString(CultureInfo.InvariantCulture),
-            (Denominator / divisor).ToString(CultureInfo.InvariantCulture));
+
+        return new((Numerator / divisor).ToString(CultureInfo.InvariantCulture), (Denominator / divisor).ToString(CultureInfo.InvariantCulture));
     }
 
     internal ExactProbability Add(ExactProbability other, WorkBudget budget) {
@@ -27,6 +27,7 @@ internal readonly record struct ExactProbability(BigInteger Numerator, BigIntege
         BigInteger rightScale = Denominator / common;
         BigInteger numerator = Numerator * leftScale + other.Numerator * rightScale;
         BigInteger denominator = Denominator * leftScale;
+
         return Reduce(numerator, denominator, budget);
     }
 
@@ -34,8 +35,8 @@ internal readonly record struct ExactProbability(BigInteger Numerator, BigIntege
         Charge(other, budget);
         BigInteger first = BigInteger.GreatestCommonDivisor(Numerator, other.Denominator);
         BigInteger second = BigInteger.GreatestCommonDivisor(other.Numerator, Denominator);
-        return Reduce((Numerator / first) * (other.Numerator / second),
-            (Denominator / second) * (other.Denominator / first), budget);
+
+        return Reduce(Numerator / first * (other.Numerator / second), Denominator / second * (other.Denominator / first), budget);
     }
 
     private void Charge(ExactProbability other, WorkBudget budget) {
@@ -50,6 +51,7 @@ internal readonly record struct ExactProbability(BigInteger Numerator, BigIntege
         budget.CheckStorage(1, cells);
         budget.Spend(cells * cells);
         BigInteger divisor = BigInteger.GreatestCommonDivisor(numerator, denominator);
+
         return new(numerator / divisor, denominator / divisor);
     }
 }

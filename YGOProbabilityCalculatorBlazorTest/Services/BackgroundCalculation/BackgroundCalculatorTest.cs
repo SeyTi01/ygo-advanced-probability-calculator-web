@@ -64,8 +64,9 @@ public class BackgroundCalculatorTest {
     public void ContradictoryProgressCannotPresentAnAlreadyExactResult() {
         _job.Setup(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))
             .ReturnsAsync(new BackgroundCalculator.PresentationStage(CalculationWire.Execute(Snapshot().Json), true));
-        Assert.ThrowsAsync<InvalidOperationException>(() => _service.CalculateProgressivelyAsync(Snapshot(),
-            _ => throw new AssertionException("Contradictory progress must not be presented"), default));
+        CalculationProtocolException exception = Assert.ThrowsAsync<CalculationProtocolException>(() => _service.CalculateProgressivelyAsync(Snapshot(),
+            _ => throw new AssertionException("Contradictory progress must not be presented"), default))!;
+        Assert.That(exception.Reason, Is.EqualTo(CalculationProtocolFailureReason.InvalidPreliminaryResult));
         VerifyDisposed();
     }
 
@@ -439,7 +440,7 @@ public class BackgroundCalculatorTest {
     }
 
     [TestCase("not json", typeof(System.Text.Json.JsonException))]
-    [TestCase("{}", typeof(InvalidOperationException))]
+    [TestCase("{}", typeof(CalculationProtocolException))]
     [TestCase("{\"Error\":\"bad input\",\"FailureKind\":1}", typeof(ArgumentException))]
     [TestCase("{\"Error\":\"engine error\",\"FailureKind\":2}", typeof(InvalidOperationException))]
     public void DecodeAndValidWireFailuresRetireWorker(string response, Type exceptionType) {

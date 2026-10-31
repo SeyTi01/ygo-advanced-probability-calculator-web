@@ -137,6 +137,21 @@ public sealed class LocalizationTest {
             culture?.Name == "fr" ? Translation : Neutral;
     }
 
+    [TestCase("catalog-id:123", "Card identity: Target", "Identity: Target")]
+    [TestCase("card-name:target", "Card name: Target", "Name: Target")]
+    [TestCase("monster-race:warrior", "Monster Type: Warrior", "Type: Warrior")]
+    public void AutomaticLabelsShortenLegacyNamesWithoutRewritingDataOrCustomLabels(string key, string name, string expected) {
+        CategoryBase automatic = new(name, CategorySource.Metadata, key);
+        string identity = automatic.Identity;
+        Assert.That(DisplayLabels.Category(automatic), Is.EqualTo(expected));
+        Assert.That(automatic.Name, Is.EqualTo(name));
+        Assert.That(automatic.Identity, Is.EqualTo(identity));
+        Assert.That(automatic.MetadataKey, Is.EqualTo(key));
+        Assert.That(DisplayLabels.Category(new CategoryBase(name)), Is.EqualTo(name));
+        using PresentationLocale locale = new();
+        Assert.That(DisplayLabels.Category(automatic), Is.EqualTo(expected), "An absent locale label falls back to abbreviated English.");
+    }
+
     [Test]
     public void LabelsUseVerifiedCatalogIdentityAndNeverGuessStoredNameAuthorship() {
         using PresentationLocale locale = new();

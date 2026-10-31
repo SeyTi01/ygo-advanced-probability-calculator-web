@@ -1,19 +1,18 @@
-using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Services.CardEffects;
 
-public sealed class FairyTailBallEffect : ICardEffectDefinition {
-    public int CanonicalCardId => 56725612;
-    public string Name => "Fairy Tail Ball";
-    public int Revision => 1;
-    public EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public string Summary => UiText.English("Effects.56725612.Summary");
-    public string Limitations => UiText.English("Effects.56725612.Limitations");
-
-    public DrawEffectPlan Compile() => new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any,
-        Search: new(CardSelector.AnyOfSelectors([
+public sealed class FairyTailBallEffect : CardEffectDefinition {
+    public override int CanonicalCardId => 56725612;
+    public override string Name => "Fairy Tail Ball";
+    public override int Revision => 1;
+    public override EffectSupport Support => EffectSupport.ModeledWithinRules;
+    public override string Limitations => ResourceText("Limitations");
+    public override DrawEffectPlan Compile() => DrawEffectPlan.SearchCards(
+        new(CardSelector.AnyOfSelectors([
             CardSelector.AllOf(["metadata:kind:monster", "metadata:archetype:fairy%20tail"]),
             CardSelector.CatalogIdentity(91957038)
-        ])));
+        ])),
+        true
+    );
 }

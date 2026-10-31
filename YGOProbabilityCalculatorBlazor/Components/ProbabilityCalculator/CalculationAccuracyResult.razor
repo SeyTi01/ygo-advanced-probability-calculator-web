@@ -1,20 +1,25 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 
-<p class="small mb-2 result-accuracy" role="status">
-    @if (Contract is { } contract) {
-        <span>@(UiText.Format("Result.Mode", ModeDescription ?? contract.RequestedMode.Description()))</span>
+<div class="result-metadata mb-2">
+    @if (Context is { } input) {
+        <div class="result-model">
+            <span>@(UiText.Format("Result.HandSize", input.HandSize))</span>
+            <span>@(UiText.Format("Result.DeckSize", input.Copies))</span>
+        </div>
     }
-    else {
-        <span>@(UiText.Get("Ui.UncertifiedAccuracyUnavailable"))</span>
-    }
-</p>
-<details class="accuracy-details small mb-2">
-    <summary>@(UiText.Get("Ui.AccuracyDetails"))</summary>
-    <p class="mt-2 mb-1">@ProbabilityPresentation.AccuracyDetails</p>
-</details>
+    <span class="result-accuracy" role="status">
+        @if (Contract is { } contract) {
+            <span>@(UiText.Format("Result.Mode", ModeDescription ?? contract.RequestedMode.Description()))</span>
+        }
+        else {
+            <span>@(UiText.Get("Ui.UncertifiedAccuracyUnavailable"))</span>
+        }
+    </span>
+</div>
 
 @code {
+    [Parameter] public PinnedCalculationContext? Context { get; set; }
     [Parameter] public string? ModeDescription { get; set; }
     [Parameter] public CalculationResultContract? Contract { get; set; }
 }

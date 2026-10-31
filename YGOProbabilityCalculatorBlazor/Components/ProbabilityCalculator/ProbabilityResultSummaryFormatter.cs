@@ -6,11 +6,8 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 /// <summary>Formats an accepted probability result as a readable, shareable plain-text summary.</summary>
-public static class ProbabilityResultSummaryFormatter {
+internal static class ProbabilityResultSummaryFormatter {
     public static string Format(ProbabilityCalculationResult result, int handSize, CultureInfo culture, string? modeDescription = null) {
-        ArgumentNullException.ThrowIfNull(result);
-        ArgumentNullException.ThrowIfNull(culture);
-
         List<GroupProbabilityResult> groups = (result.GroupProbabilities ?? [])
             .Where(group => group.ActiveComboCount > 0).ToList();
         HashSet<string> knownGroupIds = groups.Select(group => group.GroupId).ToHashSet(StringComparer.Ordinal);

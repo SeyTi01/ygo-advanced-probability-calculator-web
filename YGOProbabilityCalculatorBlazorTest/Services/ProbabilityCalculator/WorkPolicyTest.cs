@@ -71,9 +71,21 @@ public class WorkPolicyTest {
     public void InvalidAllowancesAreRejected(long units) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => new CalculationWorkPolicy(units));
 
-    [Test]
-    public void NullExplicitPolicyIsRejected() => Assert.Throws<ArgumentNullException>(() =>
-        new ProbabilityCalculatorService().CalculateProbabilityForCombos([], [], 1, null!));
+    [TestCase(CalculationModel.Fast)]
+    [TestCase(CalculationModel.Exact)]
+    [TestCase(CalculationModel.OpeningHand)]
+    public void NullExplicitPoliciesAreRejectedBeforeCalculation(CalculationModel mode) {
+        ProbabilityCalculatorService service = new();
+        CalculationOptions options = new(Mode: mode);
+        Assert.That(Assert.Throws<ArgumentNullException>(() => service.CalculateProbabilityForCombos(
+            [], [], 1, null!, CalculationStoragePolicy.Standard, options))!.ParamName, Is.EqualTo("workPolicy"));
+        Assert.That(Assert.Throws<ArgumentNullException>(() => service.CalculateProbabilityForCombos(
+            [], [], 1, CalculationWorkPolicy.Default, null!, options))!.ParamName, Is.EqualTo("storagePolicy"));
+        Assert.That(Assert.Throws<ArgumentNullException>(() => service.CalculateProbabilityResults(
+            [], [], 1, null, null!, CalculationStoragePolicy.Standard, options))!.ParamName, Is.EqualTo("workPolicy"));
+        Assert.That(Assert.Throws<ArgumentNullException>(() => service.CalculateProbabilityResults(
+            [], [], 1, null, CalculationWorkPolicy.Default, null!, options))!.ParamName, Is.EqualTo("storagePolicy"));
+    }
 
     [Test]
     public void HallSubsetStorageStopsBeforeWorkExhaustion() {

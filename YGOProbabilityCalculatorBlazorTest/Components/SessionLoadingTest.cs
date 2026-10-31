@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Components.Shared;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -12,6 +13,7 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Shared;
+using YGOProbabilityCalculatorBlazorTest.Localization;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
@@ -293,8 +295,11 @@ public class SessionLoadingTest {
         IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
         Task load = cut.Find("button").ClickAsync(new());
         Loading(cut, true);
+        Assert.That(cut.Find("button").HasAttribute("disabled"), Is.True);
+        await cut.Find("button").ClickAsync(new());
+        _files.Verify(service => service.ReadAllTextAsync("sample-data/example_session_state.json"), Times.Once);
         if (action == "navigate") {
-            await cut.InvokeAsync(cut.Instance.Dispose);
+            await cut.InvokeAsync(async () => await cut.Instance.DisposeAsync());
         }
         if (action == "error") {
             gate.SetException(new IOException("Fixture file failure"));
@@ -310,6 +315,52 @@ public class SessionLoadingTest {
         if (action == "error") {
             Assert.That(cut.Markup, Does.Contain("Fixture file failure"));
         }
+        if (action == "success") {
+            Assert.That(Navigation.Uri, Is.EqualTo(Navigation.BaseUri));
+        }
+    }
+
+    [TestCase("en")]
+    [TestCase("fr")]
+    public void HelpKeepsOneExampleActionBeforeCollapsedSemanticTopics(string language) {
+        using PresentationLocale locale = new(language, production: language == "en");
+        IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
+        Assert.That(cut.FindAll(".example-session-action button"), Has.Count.EqualTo(1));
+        Assert.That(cut.Find(".help-content > section .example-session-action"), Is.Not.Null);
+        Assert.That(cut.Find("button").GetAttribute("aria-describedby"), Is.EqualTo("example-session-warning"));
+        Assert.That(cut.FindAll("details.help-topic"), Has.Count.EqualTo(9));
+        Assert.That(cut.FindAll("details[open]"), Is.Empty);
+        Assert.That(cut.FindAll("details > summary > h2"), Has.Count.EqualTo(9));
+        Assert.That(cut.Find("footer a").GetAttribute("href"), Does.EndWith("/docs/calculation-model.md"));
+        string[] topics = ["GettingStarted", "Properties", "Requirements", "Simulations", "EffectResolution", "Modes", "Results", "Sessions", "Example"];
+        Assert.That(cut.FindAll("details > summary > h2").Select(heading => heading.TextContent),
+            Is.EqualTo(topics.Select(topic => UiText.Get($"Help.{topic}.Question"))));
+        Assert.That(cut.Find(".example-session-action button").TextContent, Is.EqualTo(UiText.Get("Help.TryExample")));
+        Assert.That(cut.Find("#effect-resolution .help-topic-body p:last-child a").TextContent,
+            Is.EqualTo(UiText.Get("Help.EffectResolution.ModelScope.Part0")));
+        Assert.That(cut.Find(".help-content").TextContent, Does.Not.Contain("{0}").And.Not.Contain("Help."));
+        Assert.That(cut.Find("#example .help-topic-body").TextContent, Does.Contain("565375/658008"));
+        if (language == "fr") {
+            Assert.That(cut.Find("#properties p").TextContent, Does.Contain("<pseudo>"));
+            Assert.That(cut.FindAll("#properties pseudo"), Is.Empty, "resource text stays encoded");
+            Assert.That(cut.FindAll("#properties p:first-child strong").Select(element => element.TextContent),
+                Is.EqualTo(new[] { "categories", "properties" }), "semantic fragments follow translated argument order");
+        }
+    }
+
+    [Test]
+    public async Task HelpRevealsInitialAndSubsequentFragmentsAndUnsubscribesOnDisposal() {
+        BunitJSModuleInterop module = _context.JSInterop.SetupModule("./Pages/Help.razor.js");
+        module.SetupVoid("revealTopic", _ => true).SetVoidResult();
+        Navigation.NavigateTo("/help#requirements");
+        IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
+        Assert.That(module.Invocations["revealTopic"].Last().Arguments[0], Is.EqualTo("#requirements"));
+        await cut.InvokeAsync(() => Navigation.NavigateTo("/help#sessions"));
+        Assert.That(module.Invocations["revealTopic"].Last().Arguments[0], Is.EqualTo("#sessions"));
+        await cut.InvokeAsync(async () => await cut.Instance.DisposeAsync());
+        int calls = module.Invocations["revealTopic"].Count;
+        await cut.InvokeAsync(() => Navigation.NavigateTo("/help#results"));
+        Assert.That(module.Invocations["revealTopic"], Has.Count.EqualTo(calls));
     }
 
     private sealed class GatedStream(string json) : MemoryStream(Encoding.UTF8.GetBytes(json)) {

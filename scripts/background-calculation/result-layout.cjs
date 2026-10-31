@@ -36,6 +36,8 @@ module.exports = async function resultLayout(page, source, { calculate, hold, re
                 panels: panels.map(rect),
                 rows: rows.map(row => ({ row: rect(row), label: rect(row.firstElementChild), value: rect(row.lastElementChild) })),
                 overflow: document.documentElement.scrollWidth > innerWidth + 1,
+                metadataOverflow: panels.some(panel => [...panel.querySelectorAll('.result-accuracy, .result-model > span, .accuracy-details summary')]
+                    .some(item => item.getBoundingClientRect().right > panel.getBoundingClientRect().right + 1)),
                 overlap: rows.some(row => {
                     const label = row.firstElementChild.getBoundingClientRect();
                     const value = row.lastElementChild.getBoundingClientRect();
@@ -75,6 +77,7 @@ module.exports = async function resultLayout(page, source, { calculate, hold, re
         }
         for (const [stage, boxes] of [['Fast', before], ['Exact', after]]) {
             assert.equal(boxes.overflow, false, `${stage}: page fits ${width}px / ${zoom}x`);
+            assert.equal(boxes.metadataOverflow, false, `${stage}: metadata fits its current or pinned panel`);
             assert.equal(boxes.overlap, false, `${stage}: labels and values do not overlap`);
             assert.equal(boxes.clipped, false, `${stage}: values remain readable`);
         }

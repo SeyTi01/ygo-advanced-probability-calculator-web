@@ -23,10 +23,9 @@ internal sealed class SearchAccessCalculation(
     private SolverRoute _route;
     private PostDrawCalculation? _ordered;
     private DrawResolutionResult? _resolution;
-    internal List<Card> Cards { get; private set; } = null!;
-    internal List<Card> Effects { get; private set; } = null!;
-    internal SearchAccessPlan Search { get; private set; } = null!;
-    internal int HandSize => handSize;
+    private List<Card> Cards { get; set; } = null!;
+    private List<Card> Effects { get; set; } = null!;
+    private SearchAccessPlan Search { get; set; } = null!;
 
     internal CalculationCapability DescribeCapability() => _capability ??=
         CalculationCapability.Search(_route, _targetLossReason ?? Search.TargetLossReason(Effects, handSize));
@@ -44,7 +43,7 @@ internal sealed class SearchAccessCalculation(
         Effects = effects;
         Search = search;
         List<Card> ordinary = cards.Where(card => !effects.Contains(card)).ToList();
-        if (cards.Any(card => card.EffectPlan.RequiresSearchResolution || (card.Search is not null && card.MinimumHandSize > 0))) {
+        if (cards.Any(card => card.EffectPlan.RequiresSearchResolution)) {
             // Hand loss and mode allowances invalidate the substitution projection
             // and its survival certificate. Both modes use physical counting.
             PostDrawCalculation bounded = new(cards, handSize, budget, priority);
@@ -124,6 +123,7 @@ internal sealed class SearchAccessCalculation(
         bool declineSearch,
         ExactCalculationResult? improve = null
     ) {
+        CalculationResultRows resultRows = new(combos, groups);
         if (_ordered is not null) {
             return _ordered.CalculateSearchLower(combos, groups, declineSearch);
         }
@@ -132,8 +132,8 @@ internal sealed class SearchAccessCalculation(
         List<Card> ordinary = Cards.Where(card => !Effects.Contains(card)).ToList();
         int copies = Cards.Sum(card => card.Copies);
         ExactProbability[] sums = improve is null
-            ? Enumerable.Repeat(ExactProbability.Zero, 1 + combos.Count + (groups?.Count ?? 0)).ToArray()
-            : [improve.Total, .. improve.Combos, .. improve.Groups];
+            ? Enumerable.Repeat(ExactProbability.Zero, resultRows.Count).ToArray()
+            : improve.ToRows();
         foreach ((DrawComposition composition, ExactProbability weight) in resolution.Scenarios) {
             budget.Spend(Cards.Count + sums.Length + Effects.Count + 1L);
             List<Card> retained = Effects.Select((card, row) => card.WithCopies(composition.EffectCounts[row]))
@@ -149,14 +149,14 @@ internal sealed class SearchAccessCalculation(
                 continue;
             }
             ExactCalculationResult lower = Count(losses);
-            ExactProbability[] values = [lower.Total, .. lower.Combos, .. lower.Groups];
+            ExactProbability[] values = lower.ToRows();
             if (improve is not null) {
                 // Replace only affected conditional contributions. Unaffected
                 // scenarios reuse the completed elementary aggregate; no cache
                 // or second draw distribution is retained. Publish only after
                 // every delta completes, so limits retain the old certificate.
                 ExactCalculationResult previous = Count(null);
-                ExactProbability[] old = [previous.Total, .. previous.Combos, .. previous.Groups];
+                ExactProbability[] old = previous.ToRows();
                 for (int row = 0; row < values.Length; row++) {
                     values[row] = values[row].Add(new(-old[row].Numerator, old[row].Denominator), budget);
                 }
@@ -171,7 +171,7 @@ internal sealed class SearchAccessCalculation(
                 .Calculate(combos, groups, false);
         }
 
-        return new(sums[0], sums.Skip(1).Take(combos.Count).ToArray(), sums.Skip(1 + combos.Count).ToArray());
+        return resultRows.ToResult(sums);
     }
 
     internal ExactCalculationResult? TightenSurvivalUpper(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, ExactCalculationResult upper) =>

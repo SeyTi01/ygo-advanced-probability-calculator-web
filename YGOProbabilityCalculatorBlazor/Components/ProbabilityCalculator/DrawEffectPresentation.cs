@@ -3,24 +3,22 @@ using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
-public readonly record struct DrawEffectPresentation(string? HeaderText, string? InactiveMessage) {
-    public static DrawEffectPresentation ForCard(Card card, bool drawEffectsEnabled) {
+public static class DrawEffectPresentation {
+    public static string? HeaderForCard(Card card, bool drawEffectsEnabled) {
         drawEffectsEnabled &= card.SimulationEnabled;
         if (card.EffectProfile.ExecutionModel != EffectExecutionModel.DrawSequenceV1) {
-            return new(UiText.Get("Ui.UnsupportedEffect"), null);
+            return UiText.Get("Ui.UnsupportedEffect");
         }
 
         if (card.Search is not null) {
-            return new(drawEffectsEnabled ? UiText.Get("Ui.Search1") : UiText.Get("Ui.SearchConfiguredOff"), null);
+            return drawEffectsEnabled ? UiText.Get("Ui.Search1") : UiText.Get("Ui.SearchConfiguredOff");
         }
         if (card.DrawCount is not { } drawCount) {
-            return default;
+            return null;
         }
 
         if (!drawEffectsEnabled) {
-            return new(
-                UiText.Get("Ui.DrawConfiguredOff"),
-                UiText.Get("Ui.DrawSimulationIsOffThisConfiguredDrawEffectIsCurrentlyIgnored"));
+            return UiText.Get("Ui.DrawConfiguredOff");
         }
 
         string headerText = UiText.Format("Ui.Draw0", drawCount);
@@ -37,7 +35,7 @@ public readonly record struct DrawEffectPresentation(string? HeaderText, string?
             headerText += UiText.Format("Ui.Remove0", card.PostDrawDiscardCount);
         }
 
-        return new(headerText, null);
+        return headerText;
     }
 
     public static string DescribePlan(DrawEffectPlan plan, IReadOnlyList<CategoryBase> categories) {

@@ -19,7 +19,7 @@ internal readonly record struct CalculationCapability(
 
     internal string Explanation => Explain(Reason);
 
-    internal static string Explain(CapabilityReason reason) => reason switch {
+    private static string Explain(CapabilityReason reason) => reason switch {
         CapabilityReason.ExplicitPhysicalSurvivors => "Explicit ordered identities with joint conditional hidden losses under the fixed policy.",
         CapabilityReason.ConditionalPhysicalSurvivors => "Joint physical Deck-search survival counted conditionally on the proven draw count state.",
         CapabilityReason.ConditionalSelectiveSurvivors => "Joint physical Deck-search survival conditioned on observed sources, hand payments and exchangeable unseen copies.",
@@ -46,6 +46,7 @@ internal readonly record struct CalculationCapability(
             : route == SolverRoute.SearchCountState ? CertificationSupport.ElementaryCountStateLowerPass
             : route is SolverRoute.SearchOrdered or SolverRoute.SearchOrderedDeferred ? CertificationSupport.OrderedTerminalLowerPass
             : CertificationSupport.Unsupported;
+
         return new(route, exact ? PhysicalSearchAccuracy.ProvenExact : PhysicalSearchAccuracy.OptimisticSurvivalUnproven, reason, support);
     }
 }

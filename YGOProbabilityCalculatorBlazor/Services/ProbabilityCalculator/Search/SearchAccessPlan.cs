@@ -251,6 +251,7 @@ internal sealed class SearchProbabilityCalculation(
     SearchEventTemplate? template = null
 ) {
     internal ExactCalculationResult Calculate(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
         using IDisposable? scenario = budget.SearchDiagnostics?.Measure("search scenarios");
         budget.SearchDiagnostics?.Add("scenarios");
         budget.SearchDiagnostics?.BeginScenario();
@@ -291,7 +292,7 @@ internal sealed class SearchProbabilityCalculation(
         SearchDecisionCounter counter = new(ordered, randomCount, budget);
         int[] roots = projected.Select(counter.Union).ToArray();
         int total = roots.Aggregate(0, counter.Or);
-        int[] groupRoots = totalOnly ? [] : (groups ?? []).Select(group => roots.Where((_, index) => combos[index].GroupId == group.Id)
+        int[] groupRoots = totalOnly ? [] : (groups ?? []).Select((group, groupIndex) => roots.Where((_, index) => resultRows.GroupContains(groupIndex, index))
             .Aggregate(0, counter.Or)).ToArray();
         construction?.Dispose();
         using IDisposable? counting = budget.SearchDiagnostics?.Measure("weighted counting");

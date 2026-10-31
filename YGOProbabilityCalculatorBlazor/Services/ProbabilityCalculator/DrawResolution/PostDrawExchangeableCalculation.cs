@@ -33,11 +33,14 @@ internal sealed partial class PostDrawCalculation {
         BigInteger[] schedules = new BigInteger[ordinary + 1];
         long scheduleCells = schedules.Length;
         CheckStorage(schedules.Length, scheduleCells, "effect schedules");
+
         for (int depth = 0; current.Count > 0; depth++) {
             Dictionary<State, BigInteger> next = new();
             long cells = 0;
+
             foreach ((State state, BigInteger weight) in current) {
                 int[] values = state.Values;
+
                 if (values[6] == 0) {
                     int seen = ordinary - values[0];
                     BigInteger mass = weight * factorial[copies - depth];
@@ -48,20 +51,25 @@ internal sealed partial class PostDrawCalculation {
                     CheckStorage(schedules.Length, scheduleCells, "effect schedules");
                     continue;
                 }
+
                 for (int i = 0; i < 3; i++) {
                     budget.Spend(1);
+
                     if (values[i] == 0) {
                         continue;
                     }
+
                     int[] drawn = (int[])values.Clone();
                     budget.Spend(9 + WorkBudget.IntegerCells(weight));
                     drawn[i]--;
                     drawn[i + 3]++;
                     drawn[6]--;
                     int remaining = copies - depth - 1;
+
                     if (!Settle(drawn, remaining)) {
                         continue;
                     }
+
                     State key = new(drawn);
                     budget.Spend(33 + WorkBudget.IntegerCells(weight));
                     bool exists = next.TryGetValue(key, out BigInteger previous);
@@ -73,6 +81,7 @@ internal sealed partial class PostDrawCalculation {
                     next[key] = value;
                 }
             }
+
             current = next;
         }
 
@@ -80,19 +89,24 @@ internal sealed partial class PostDrawCalculation {
         // Divide out its binomial multiplicity, retaining integer permutation mass.
         BigInteger[][] choose = new BigInteger[copies + 1][];
         long chooseCells = 0;
+
         for (int n = 0; n <= copies; n++) {
             choose[n] = new BigInteger[n + 1];
             choose[n][0] = choose[n][n] = 1;
+
             for (int k = 1; k < n; k++) {
                 budget.Spend(WorkBudget.IntegerCells(choose[n - 1][k - 1]) + WorkBudget.IntegerCells(choose[n - 1][k]));
                 choose[n][k] = choose[n - 1][k - 1] + choose[n - 1][k];
             }
+
             chooseCells += choose[n].Sum(value => WorkBudget.IntegerCells(value));
             CheckStorage((n + 1L) * (n + 2) / 2, chooseCells, "binomial coefficients");
         }
+
         for (int seen = 0; seen < schedules.Length; seen++) {
             budget.Spend(WorkBudget.IntegerCells(schedules[seen]) * (WorkBudget.IntegerCells(choose[ordinary][seen]) + 1));
             schedules[seen] = BigInteger.DivRem(schedules[seen], choose[ordinary][seen], out BigInteger remainder);
+
             if (!remainder.IsZero) {
                 throw new InvalidOperationException("Exchangeable schedule mass must contain every relevant subset equally.");
             }
@@ -105,76 +119,96 @@ internal sealed partial class PostDrawCalculation {
         List<List<(bool[] Eligible, int Min, int Max)[]>> tests = [];
         long testCells = 0;
         long boundCount = 0;
+
         foreach (List<CompiledEvent?> routes in events) {
             List<(bool[] Eligible, int Min, int Max)[]> compiled = [];
+
             foreach (CompiledEvent? route in routes) {
                 if (route is null) {
                     continue;
                 }
+
                 List<(bool[] Eligible, int Min, int Max)> bounds = [];
+
                 foreach (CountBound bound in route.Constraints) {
                     budget.Spend(cards.Count * (WorkBudget.IntegerCells(bound.EligibleRows) + 1));
                     testCells += cards.Count + 2L;
                     CheckStorage(++boundCount, testCells, "terminal predicates");
-                    bool[] eligible = Enumerable.Range(0, cards.Count)
-                        .Select(index => (bound.EligibleRows & (BigInteger.One << index)) != 0).ToArray();
+                    bool[] eligible = Enumerable.Range(0, cards.Count).Select(index => (bound.EligibleRows & (BigInteger.One << index)) != 0).ToArray();
                     bounds.Add((eligible, bound.MinCount, bound.MaxCount));
                 }
-                compiled.Add(bounds.ToArray());
+
+                compiled.Add([.. bounds]);
             }
+
             tests.Add(compiled);
         }
-        BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
+        BigInteger[] wins = new BigInteger[resultRows.Count];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(factorial[copies]) + 1), "result accumulators");
         int[] hand = new int[cards.Count];
         List<int> occupied = [];
         int[] suffix = new int[rows.Length + 1];
+
         for (int i = rows.Length - 1; i >= 0; i--) {
             suffix[i] = suffix[i + 1] + cards[rows[i]].Copies;
         }
+
         for (int count = 0; count <= Math.Min(handSize, ordinary); count++) {
             if (count < handSize && (schedules[count].IsZero || filler < 0 || handSize - count > fillers)) {
                 continue;
             }
+
             if (filler >= 0) {
                 hand[filler] = handSize - count;
                 if (hand[filler] > 0) {
                     occupied.Add(filler);
                 }
             }
+
             Enumerate(0, count, -1, BigInteger.One, count);
             occupied.Clear();
         }
-        ExactProbability[] results = wins.Select(win => new ExactProbability(win, factorial[copies])).ToArray();
-        return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos.Count).ToArray(), totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
+
+        ExactProbability[] results = [.. wins.Select(win => new ExactProbability(win, factorial[copies]))];
+
+        return resultRows.ToResult(results);
 
         bool Settle(int[] values, int remaining) {
             if (values[6] > 0) {
                 return values[6] <= remaining;
             }
+
             for (int discard = values[7]; discard > 0; discard--) {
                 budget.Spend(4);
                 bool unusable = draws > remaining;
                 bool discardEffect = values[5] > 0 && (values[4] == 0 || (unusable && effect > filler));
                 int selected = 3;
+
                 if (discardEffect) {
                     selected = 5;
                 }
                 else if (values[4] > 0) {
                     selected = 4;
                 }
+
                 if (values[selected] == 0) {
                     return false;
                 }
+
                 values[selected]--;
             }
+
             values[7] = 0;
+
             if (values[5] > 0) {
                 values[5]--;
                 values[6] = draws;
                 values[7] = discards;
+
                 return draws <= remaining;
             }
+
             return true;
         }
 
@@ -182,8 +216,10 @@ internal sealed partial class PostDrawCalculation {
 
         void Enumerate(int position, int left, int last, BigInteger prefix, int retainedCount) {
             budget.Spend(1);
+
             if (left == 0) {
                 BigInteger mass;
+
                 if (last < 0 || retainedCount < handSize) {
                     mass = prefix * schedules[retainedCount];
                 }
@@ -195,63 +231,82 @@ internal sealed partial class PostDrawCalculation {
                     int boundary = rows[last];
                     int retained = hand[boundary];
                     BigInteger tail = 0;
+
                     for (int seen = handSize; seen <= ordinary; seen++) {
                         if (schedules[seen].IsZero) {
                             continue;
                         }
+
                         for (int extra = retained; extra <= cards[boundary].Copies; extra++) {
                             budget.Spend(WorkBudget.IntegerCells(schedules[seen]) + 3);
                             tail += schedules[seen] * Binomial(cards[boundary].Copies, extra)
                                 * Binomial(suffix[last + 1], seen - handSize + retained - extra);
                         }
                     }
+
                     mass = prefix / Binomial(cards[boundary].Copies, retained) * tail;
                 }
+
                 if (!mass.IsZero) {
                     TerminalStates++;
                     Evaluate(mass);
                 }
+
                 return;
             }
+
             if (position == rows.Length || suffix[position] < left) {
                 return;
             }
+
             int row = rows[position];
+
             for (int count = 0; count <= Math.Min(cards[row].Copies, left); count++) {
                 hand[row] = count;
+
                 if (count > 0) {
                     occupied.Add(row);
                 }
+
                 budget.Spend(WorkBudget.IntegerCells(prefix) + 1);
                 Enumerate(position + 1, left - count, count > 0 ? position : last, prefix * Binomial(cards[row].Copies, count), retainedCount);
+
                 if (count > 0) {
                     occupied.RemoveAt(occupied.Count - 1);
                 }
             }
+
             hand[row] = 0;
         }
 
         void Evaluate(BigInteger mass) {
             bool[] matches = new bool[combos.Count];
+
             for (int i = 0; i < tests.Count; i++) {
                 matches[i] = tests[i].Any(route => route.All(bound => {
                     budget.Spend(occupied.Count + 1L);
                     int count = occupied.Sum(index => bound.Eligible[index] ? hand[index] : 0);
                     return count >= bound.Min && count <= bound.Max;
                 }));
+
                 budget.Spend(WorkBudget.IntegerCells(mass) + 1);
+
                 if (!totalOnly && matches[i]) {
-                    wins[i + 1] += mass;
+                    wins[resultRows.ComboRow(i)] += mass;
                 }
             }
+
             budget.Spend(WorkBudget.IntegerCells(mass) + matches.Length + 1);
+
             if (matches.Any(match => match)) {
                 wins[0] += mass;
             }
+
             for (int g = 0; !totalOnly && g < (groups?.Count ?? 0); g++) {
                 budget.Spend(matches.Length + WorkBudget.IntegerCells(mass) + 1);
-                if (combos.Where((combo, index) => matches[index] && combo.GroupId == groups![g].Id).Any()) {
-                    wins[1 + combos.Count + g] += mass;
+
+                if (resultRows.GroupMatches(g, matches)) {
+                    wins[resultRows.GroupRow(g)] += mass;
                 }
             }
         }

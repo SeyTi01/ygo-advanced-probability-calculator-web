@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 using System.Net;
 using System.Text;
@@ -15,6 +16,7 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Localization;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
@@ -85,6 +87,132 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
 
     [SetUp]
     public void UseLocalSearchCatalog() => RegisterCardInfoService(new SearchCatalogHandler());
+
+    [Test]
+    public async Task LocalizedSuggestionsIgnoreStaleQueriesAndSelectCanonicalEffectsWhileManualNamesStayAuthored() {
+        using PresentationLocale locale = new("fr");
+        Mock<ICardInfoService> service = new();
+        TaskCompletionSource<IReadOnlyList<CardInfo>> oldQuery = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Setup(info => info.SearchCardsAsync("dragon")).Returns(oldQuery.Task);
+        service.Setup(info => info.SearchCardsAsync("vessel")).ReturnsAsync(new[] { PotOfGreed });
+        service.Setup(info => info.SearchCardsAsync("My name ß")).ReturnsAsync(Array.Empty<CardInfo>());
+        service.Setup(info => info.GetLocalizedCardName(PotOfGreed)).Returns("⟦Greed vessel⟧");
+        service.Setup(info => info.GetLocalizedCardName(BlueEyes)).Returns("⟦Blue dragon⟧");
+        service.Setup(info => info.GetLocalizedCardName(It.IsAny<Card>()))
+            .Returns((Card card) => card.ExternalCardId == PotOfGreedId && card.Name == PotOfGreed.Name ? "⟦Greed vessel⟧" : null);
+        context.Services.RemoveAll<ICardInfoService>();
+        context.Services.AddSingleton(service.Object);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new());
+        IElement input = cut.Find("#quickCardName");
+        Task pending = input.InputAsync(new() { Value = "dragon" });
+        await input.InputAsync(new() { Value = "vessel" });
+        oldQuery.SetResult(new[] { BlueEyes });
+        await pending;
+        Assert.That(cut.FindAll(".card-search-result").Select(result => result.TextContent.Trim()), Is.EqualTo(new[] { "⟦Greed vessel⟧" }));
+        await input.KeyDownAsync(new() { Key = "ArrowDown" });
+        await input.KeyDownAsync(new() { Key = "Enter" });
+        Card selected = cut.FindComponent<CardEditor>().Instance.Card;
+        Assert.That(cut.Find(".card-header-name").TextContent, Does.StartWith("⟦Greed vessel⟧"));
+        Assert.Multiple(() => {
+            Assert.That(selected.Name, Is.EqualTo(PotOfGreed.Name));
+            Assert.That(selected.ExternalCardId, Is.EqualTo(PotOfGreedId));
+            Assert.That(selected.EffectPlan, Is.EqualTo(CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId).EffectPlan));
+        });
+        await input.InputAsync(new() { Value = "My name ß" });
+        await cut.Find(".quick-add-row > button").ClickAsync(new());
+        Card manual = cut.FindComponents<CardEditor>()[1].Instance.Card;
+        Assert.That(manual.Name, Is.EqualTo("My name ß"));
+        Assert.That(manual.ExternalCardId, Is.Null);
+    }
+
+    [Test]
+    public async Task LocalizedCardDisplayPreservesCanonicalSessionAndCustomRename() {
+        using PresentationLocale locale = new("fr");
+        Card card = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [card] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        cut.WaitForAssertion(() => Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith("⟦Greed vessel⟧")));
+        IElement input = editor.Find("#cardName0");
+        Assert.That(input.GetAttribute("value"), Is.EqualTo("⟦Greed vessel⟧"));
+        string before = cut.FindComponent<SessionShareButton>().Instance.Capture();
+        await input.FocusAsync(new());
+        await input.BlurAsync(new());
+        Assert.That(cut.FindComponent<SessionShareButton>().Instance.Capture(), Is.EqualTo(before));
+        Assert.That(editor.Instance.Card.Name, Is.EqualTo("Pot of Greed"));
+        await input.InputAsync(new() { Value = "Pot of Greed" });
+        Assert.That(input.GetAttribute("value"), Is.EqualTo("Pot of Greed"), "a translated label must not replace an active typed draft");
+        await input.BlurAsync(new());
+        Assert.That(input.GetAttribute("value"), Is.EqualTo("⟦Greed vessel⟧"));
+        Assert.That(cut.FindComponent<SessionShareButton>().Instance.Capture(), Is.EqualTo(before));
+        await input.InputAsync(new() { Value = "My custom name" });
+        await input.BlurAsync(new());
+        Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith("My custom name"));
+        Assert.That(input.GetAttribute("value"), Is.EqualTo("My custom name"));
+        Assert.That(editor.Instance.Card.Name, Is.EqualTo("My custom name"));
+        Assert.That(_handler.Requests.Count(address => address.AbsolutePath.EndsWith("card-names.fr.test.json")), Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task LateLocalizedDisplayDoesNotOverwriteAnEditedCardName() {
+        using PresentationLocale locale = new("fr");
+        Mock<ICardInfoService> service = new();
+        TaskCompletionSource<string?> names = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Setup(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>())).Returns(names.Task);
+        service.Setup(info => info.SearchCardsAsync(It.IsAny<string>())).ReturnsAsync(Array.Empty<CardInfo>());
+        context.Services.RemoveAll<ICardInfoService>();
+        context.Services.AddSingleton(service.Object);
+        Card card = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [card] });
+        IRenderedComponent<CardEditor> editor = cut.FindComponent<CardEditor>();
+        await editor.Find("#cardName0").InputAsync(new() { Value = "My name" });
+        names.SetResult("⟦Greed vessel⟧");
+        await cut.InvokeAsync(() => Task.CompletedTask);
+        Assert.That(editor.Instance.Card.Name, Is.EqualTo("My name"));
+        Assert.That(editor.Find("#cardName0").GetAttribute("value"), Is.EqualTo("My name"));
+        Assert.That(editor.Find(".card-header-name").TextContent, Does.StartWith("My name"));
+    }
+
+    [Test]
+    public void DisplayPreparationIgnoresUnchangedNamesWhileARequestIsPendingOrComplete() {
+        using PresentationLocale locale = new("fr");
+        Mock<ICardInfoService> service = new();
+        TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Setup(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>())).Returns(ready.Task);
+        service.Setup(info => info.GetLocalizedCardName(It.IsAny<Card>()))
+            .Returns((Card card) => ready.Task.IsCompleted && card.Name == PotOfGreed.Name ? "⟦Greed vessel⟧" : null);
+        context.Services.RemoveAll<ICardInfoService>();
+        context.Services.AddSingleton(service.Object);
+        Card original = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
+        int updates = 0;
+        IRenderedComponent<LocalizedCardNames> cut = context.RenderComponent<LocalizedCardNames>(parameters => parameters
+            .Add(component => component.Cards, new[] { original })
+            .Add(component => component.OnChanged, _ => updates++));
+
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.Cards, new[] { original.WithCopies(3) }));
+        service.Verify(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>()), Times.Once);
+        ready.SetResult();
+        cut.WaitForAssertion(() => Assert.That(updates, Is.EqualTo(1)));
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.Cards, new[] { original.WithCategories([a]) }));
+        service.Verify(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>()), Times.Once);
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.Cards, new[] { original.WithName("My name") }));
+        cut.WaitForAssertion(() => Assert.That(updates, Is.EqualTo(2)));
+        service.Verify(info => info.EnsureLocalizedCardNamesAsync(It.IsAny<IReadOnlyList<Card>>()), Times.Exactly(2));
+    }
+
+    [Test]
+    public async Task LocalizedPriorityLabelsDisambiguateTranslatedAndCustomNames() {
+        using PresentationLocale locale = new("fr");
+        Card canonical = CuratedDrawEffectPresets.CreateImportedCard(PotOfGreed, 1, PotOfGreedId);
+        Card custom = new([], name: "⟦Greed vessel⟧", drawCount: 2);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Cards = [canonical, custom] });
+        await cut.Find("#drawActivationPriority").ChangeAsync(new() { Value = "CustomPriority" });
+        cut.WaitForAssertion(() => {
+            string[] labels = cut.FindAll(".draw-priority-name").Select(element => element.TextContent.Trim()).ToArray();
+            Assert.That(labels, Has.Length.EqualTo(2));
+            Assert.That(labels.All(label => label.StartsWith("⟦Greed vessel⟧", StringComparison.Ordinal)), Is.True);
+            Assert.That(labels.Distinct().Count(), Is.EqualTo(2));
+        });
+    }
 
     [TestCase(false)]
     [TestCase(true)]
@@ -629,7 +757,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     private void RegisterCardInfoService(SearchCatalogHandler handler) {
         _handler = handler;
         HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
-        CardInfoService service = new(new EmptyLocalStorage(), client);
+        CardInfoService service = new(new EmptyLocalStorage(), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
         context.Services.RemoveAll<ICardInfoService>();
         context.Services.RemoveAll<ICardArtworkService>();
         context.Services.AddSingleton<ICardInfoService>(service);
@@ -647,7 +775,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
 
     private void RegisterCardInfoService(DelayedSearchCatalogHandler handler) {
         HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
-        CardInfoService service = new(new EmptyLocalStorage(), client);
+        CardInfoService service = new(new EmptyLocalStorage(), client, null, new Dictionary<string, string> { ["fr"] = "data/card-names.fr.test.json" });
         context.Services.RemoveAll<ICardInfoService>();
         context.Services.RemoveAll<ICardArtworkService>();
         context.Services.AddSingleton<ICardInfoService>(service);
@@ -673,6 +801,8 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
             Requests.Add(address);
             HttpResponseMessage response = address.AbsolutePath.EndsWith("card-catalog.v1.json", StringComparison.Ordinal)
                 ? new(HttpStatusCode.OK) { Content = new StringContent(_catalogJson, Encoding.UTF8, "application/json") }
+                : address.AbsolutePath.EndsWith("card-names.fr.test.json", StringComparison.Ordinal)
+                ? new(HttpStatusCode.OK) { Content = new StringContent("{\"version\":1,\"locale\":\"fr\",\"names\":[[55144522,\"⟦Greed vessel⟧\"]]}", Encoding.UTF8, "application/json") }
                 : new(HttpStatusCode.NotFound);
             return Task.FromResult(response);
         }
@@ -693,7 +823,6 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
     }
 
     private sealed class EmptyLocalStorage : ILocalStorageService {
-        public Task<T?> GetItemAsync<T>(string key) => Task.FromResult<T?>(default);
         public Task<string?> GetRawItemAsync(string key) => Task.FromResult<string?>(null);
         public Task SetItemAsync<T>(string key, T value) => Task.CompletedTask;
     }

@@ -11,7 +11,8 @@ internal sealed partial class PostDrawCalculation {
 
     private List<Card> DeferUnobservedIdentities(ref List<Card> cards, HashSet<string>? observedIdentities = null) {
         budget.Spend(cards.Count);
-        Card[] effects = cards.Where(card => card.Copies > 0 && card.DrawCount is not null).ToArray();
+        Card[] effects = [.. cards.Where(card => card.Copies > 0 && card.DrawCount is not null)];
+
         if (effects.Length == 0 || !effects.All(DrawExecutionAssessment.CanDeferIdentities)
             || !effects.Any(effect => effect.PreDrawRemovalCount > 0 || effect.PostDrawDiscardCount > 0)) {
             return [];
@@ -22,6 +23,7 @@ internal sealed partial class PostDrawCalculation {
         // table. Every source stays explicit, even if currently unpayable or used
         // as material by another source. A later draw can make it payable again.
         bool[] material = new bool[cards.Count];
+
         foreach (Card effect in effects) {
             if (effect.PreDrawRemovalCount > 0) {
                 Include(effect.PreDrawSelector, cards);
@@ -34,14 +36,18 @@ internal sealed partial class PostDrawCalculation {
         void Include(CardSelector selector, List<Card> originals) {
             bool[] eligible = CardSelectorCompiler.Compile(selector, originals, budget);
             budget.Spend(originals.Count);
+
             for (int i = 0; i < originals.Count; i++) {
                 material[i] |= eligible[i];
             }
         }
+
         List<Card> deferred = [];
         List<Card> observed = [];
+
         for (int i = 0; i < cards.Count; i++) {
             budget.Spend(1);
+
             if (cards[i].Copies > 0 && cards[i].DrawCount is null && !material[i]
                 && (observedIdentities is null || !observedIdentities.Contains(cards[i].Id))) {
                 deferred.Add(cards[i]);
@@ -65,6 +71,7 @@ internal sealed partial class PostDrawCalculation {
         observed.Add(deferred[0].WithCopies(deferred.Sum(card => card.Copies)));
         cards = observed;
         DeferredRows = deferred.Count;
+
         return deferred;
     }
 
@@ -88,40 +95,50 @@ internal sealed partial class PostDrawCalculation {
         // Failed removals contribute no wins but remain in the original N! space.
         // The ordinary counter projects ALL combo constraints onto this subset;
         // the resolver's removal policy always used the full original combo list.
-        BigInteger[] wins = new BigInteger[1 + (totalOnly ? 0 : combos.Count + (groups?.Count ?? 0))];
+        CalculationResultRows resultRows = new(combos, groups, totalOnly);
+        BigInteger[] wins = new BigInteger[resultRows.Count];
         CheckStorage(wins.Length, wins.Length * (WorkBudget.IntegerCells(denominator) + 1), "result accumulators");
+
         foreach ((State hand, BigInteger mass) in terminal) {
             List<Card> retained = [];
+
             for (int i = 0; i < cards.Count - 1; i++) {
                 budget.Spend(1);
                 if (hand.Values[i] > 0) {
                     retained.Add(cards[i].WithCopies(hand.Values[i]));
                 }
             }
+
             // Each scenario owns and releases its counting caches. No persistent
             // memoization or dictionary of deferred physical hands is retained.
             ProbabilityCalculation calculation = new(deferred, hand.Values[^1], budget, retained);
             ExactCalculationResult result = totalOnly ? new(calculation.CalculateUnionExact(combos), [], [])
                 : calculation.CalculateExactResults(combos, groups);
+
             Add(0, result.Total);
+
             for (int i = 0; i < result.Combos.Length; i++) {
-                Add(1 + i, result.Combos[i]);
+                Add(resultRows.ComboRow(i), result.Combos[i]);
             }
+
             for (int i = 0; i < result.Groups.Length; i++) {
-                Add(1 + combos.Count + i, result.Groups[i]);
+                Add(resultRows.GroupRow(i), result.Groups[i]);
             }
 
             void Add(int index, ExactProbability probability) {
                 budget.Spend((WorkBudget.IntegerCells(mass) + probability.Cells + 1) * (probability.Cells + 1));
                 BigInteger contribution = BigInteger.DivRem(mass * probability.Numerator, probability.Denominator, out BigInteger remainder);
+
                 if (!remainder.IsZero) {
                     throw new InvalidOperationException("Deferred subsets must have equal integer permutation mass.");
                 }
+
                 wins[index] += contribution;
             }
         }
-        ExactProbability[] results = wins.Select(win => new ExactProbability(win, denominator)).ToArray();
-        return new(results[0], totalOnly ? [] : results.Skip(1).Take(combos.Count).ToArray(),
-            totalOnly ? [] : results.Skip(1 + combos.Count).ToArray());
+
+        ExactProbability[] results = [.. wins.Select(win => new ExactProbability(win, denominator))];
+
+        return resultRows.ToResult(results);
     }
 }

@@ -18,7 +18,7 @@ public class Combo {
             }
             // Public legacy lists remain mutable. Reconcile external mutations
             // before rendering or saving; immutable editor edits use Copy below.
-            ComboRequirementPosition[] current = DefaultOrder().ToArray();
+            ComboRequirementPosition[] current = DefaultOrder(Categories.Count, Cards.Count, AlternativeGroups.Count).ToArray();
             Dictionary<ComboRequirementPosition, ComboRequirementPosition> mapping = [];
             Map(_authoredCategories, Categories, ComboRequirementKind.Category, mapping);
             Map(_authoredCards, Cards, ComboRequirementKind.Card, mapping);
@@ -46,9 +46,10 @@ public class Combo {
         Name = name;
         Active = active;
         GroupId = groupId;
-        ComboRequirementPosition[] defaults = DefaultOrder().ToArray();
+        ComboRequirementPosition[] defaults = DefaultOrder(Categories.Count, Cards.Count, AlternativeGroups.Count).ToArray();
         ComboRequirementPosition[] order = requirementOrder?.ToArray() ?? defaults;
-        if (order.Length != defaults.Length || order.Distinct().Count() != order.Length || order.Except(defaults).Any()) {
+        if (requirementOrder is not null
+            && (order.Length != defaults.Length || order.Distinct().Count() != order.Length || order.Except(defaults).Any())) {
             throw new ArgumentException("Presentation order must contain each requirement exactly once.", nameof(requirementOrder));
         }
         _requirementOrder = Array.AsReadOnly(order);
@@ -96,10 +97,10 @@ public class Combo {
         );
     }
 
-    private IEnumerable<ComboRequirementPosition> DefaultOrder() =>
-        Enumerable.Range(0, Categories.Count).Select(index => new ComboRequirementPosition(ComboRequirementKind.Category, index))
-            .Concat(Enumerable.Range(0, Cards.Count).Select(index => new ComboRequirementPosition(ComboRequirementKind.Card, index)))
-            .Concat(Enumerable.Range(0, AlternativeGroups.Count).Select(index => new ComboRequirementPosition(ComboRequirementKind.Group, index)));
+    internal static IEnumerable<ComboRequirementPosition> DefaultOrder(int categoryCount, int cardCount, int groupCount) =>
+        Enumerable.Range(0, categoryCount).Select(index => new ComboRequirementPosition(ComboRequirementKind.Category, index))
+            .Concat(Enumerable.Range(0, cardCount).Select(index => new ComboRequirementPosition(ComboRequirementKind.Card, index)))
+            .Concat(Enumerable.Range(0, groupCount).Select(index => new ComboRequirementPosition(ComboRequirementKind.Group, index)));
 
     private Combo Copy(List<ComboCategory> categories, List<ComboCard> cards, List<ComboAlternativeGroup> groups) {
         Dictionary<ComboRequirementPosition, ComboRequirementPosition> mapping = [];
@@ -107,8 +108,8 @@ public class Combo {
         Map(Cards, cards, ComboRequirementKind.Card, mapping);
         Map(AlternativeGroups, groups, ComboRequirementKind.Group, mapping);
         ComboRequirementPosition[] retained = RequirementOrder.Where(mapping.ContainsKey).Select(item => mapping[item]).ToArray();
-        Combo unordered = new(categories, Name, Active, GroupId, cards, groups);
-        return new(categories, Name, Active, GroupId, cards, groups, retained.Concat(unordered.RequirementOrder.Except(retained)));
+        IEnumerable<ComboRequirementPosition> added = DefaultOrder(categories.Count, cards.Count, groups.Count).Except(retained);
+        return new(categories, Name, Active, GroupId, cards, groups, retained.Concat(added));
     }
 
     private static void Map<T>(

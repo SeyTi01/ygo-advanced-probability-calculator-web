@@ -1,3 +1,4 @@
+@inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Models
 @using YGOProbabilityCalculatorBlazor.Services.CardEffects
 @using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator
@@ -36,9 +37,12 @@
     }
     @if ((_draft is not null ? _draft.Search : Card.Search) is { } search) {
         <div class="simulation-summary">@SearchSummary(_draft ?? Card)</div>
-        <div class="simulation-targets small" role="status" aria-label="@(UiText.Get("Ui.CurrentSearchTargets"))">
-            @(UiText.Format("Effect.Targets", SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : UiText.Get("Ui.None")))
-        </div>
+        <details class="simulation-targets small">
+            <summary>@(UiText.Get("Ui.TargetsInThisDeck"))</summary>
+            <div role="status" aria-label="@(UiText.Get("Ui.CurrentSearchTargets"))">
+                @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : UiText.Get("Ui.None"))
+            </div>
+        </details>
     }
     @if (Card.HasEffect && !Card.SimulationEnabled) {
         <div class="simulation-disabled small text-body-secondary" role="status">@(UiText.Get("Ui.SimulationDisabled"))</div>
@@ -160,7 +164,7 @@
             @if (_draft.MinimumHandSize > 0) {
                 <div class="form-text">@(UiText.Format("Effect.PreservedHandSize", _draft.MinimumHandSize))</div>
             }
-            @if (_draft.Search?.Modes is { } modes) {
+            @if (_draft.Search?.Modes is not null) {
                 <div class="form-text">@DrawEffectPresentation.DescribePlan(_draft.EffectPlan, CategoryBases)</div>
             }
             else if (_draft.Search is { } draftSearch) {
@@ -185,7 +189,7 @@
             <div class="d-flex gap-2 mt-3">
                 <button type="button" class="btn btn-primary btn-sm simulation-save" disabled="@(Error is not null || _filterEdits.Count > 0)"
                         title="@(_filterEdits.Count > 0 ? UiText.Get("Ui.SaveOrCancelTheConditionEditFirst") : null)" @onclick="Save">@(UiText.Get("Ui.Save"))</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm simulation-cancel" @onclick="Cancel">@(UiText.Get("Ui.Cancel"))</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm simulation-cancel" @onclick="CloseEditor">@(UiText.Get("Ui.Cancel"))</button>
             </div>
         </div>
     }
@@ -277,7 +281,7 @@
         ? $"catalog:{card.ExternalCardId.Value}"
         : $"entry:{card.Id}";
 
-    private static string TargetName(Card card) => string.IsNullOrWhiteSpace(card.Name) ? UiText.Get("Ui.UnnamedCard") : card.Name;
+    private string TargetName(Card card) => string.IsNullOrWhiteSpace(card.Name) ? UiText.Get("Ui.UnnamedCard") : DisplayLabels.Card(card, CardInfoService);
 
     private void ToggleEditor() {
         if (_draft is not null) {
@@ -299,8 +303,6 @@
         _filterEdits.Clear();
         _focusEdit = true;
     }
-
-    private void Cancel() => CloseEditor();
 
     private async Task Save() {
         if (_draft is null || Error is not null || _filterEdits.Count > 0) {
