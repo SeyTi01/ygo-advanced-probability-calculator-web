@@ -2,6 +2,8 @@
 
 Read [README.md](README.md) for the user-facing description. Keep changes focused on the requested behavior.
 
+Update the root README as a separate, explicitly requested task before each release. Do not edit it as part of feature work or other tasks based on your own judgment. For a README update, review claims against the current implementation and keep the content concise and useful to first-time visitors.
+
 ## Project map
 
 Both projects target .NET 10 (`net10.0`); the app uses Blazor WebAssembly / C# 14. App paths below are relative to `YGOProbabilityCalculatorBlazor/`:
