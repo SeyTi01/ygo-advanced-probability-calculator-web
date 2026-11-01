@@ -19,7 +19,6 @@ jobs:
       actions: write
     env:
       REFRESH_BRANCH: codex/card-data-refresh
-      SOURCE_DIR: ${{ runner.temp }}/card-data-sources
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
@@ -36,6 +35,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "SOURCE_DIR=$RUNNER_TEMP/card-data-sources" >> "$GITHUB_ENV"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           node scripts/codex/privacy-guard.mjs install --name 'github-actions[bot]' --email '41898282+github-actions[bot]@users.noreply.github.com'
