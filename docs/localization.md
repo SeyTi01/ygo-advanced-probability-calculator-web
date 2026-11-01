@@ -1,6 +1,6 @@
 # Localization contributors
 
-English, Deutsch (`de`), 日本語 (`ja`), Français (`fr`) and Italiano (`it`) are production locales. Presentation uses the platform's
+English, Deutsch (`de`), 日本語 (`ja`), Français (`fr`), Italiano (`it`) and Português (`pt`) are production locales. Presentation uses the platform's
 `ResourceManager` and keyed `.resx` satellites in `Localization/Strings.resx`.
 This avoids an additional package and works equally in Razor, static C#
 presentation helpers, WebAssembly, and the publish-time prerenderer.
@@ -254,3 +254,10 @@ The [Italian terminology guide](localization-it.md) documents the reviewed vocab
 and intentional English fallbacks. The pinned YAML Yugi projection supplies
 11,956 labels for 12,156 eligible cards, covering all 24 example entries.
 The remaining 200 names use English fallback. See the [offline generation guide](../infrastructure/card-catalog/README.md#additional-locales).
+
+## Portuguese rollout
+
+The [Portuguese terminology guide](localization-pt.md) documents the reviewed vocabulary
+and intentional English fallbacks. The pinned YAML Yugi projection supplies
+11,952 labels for 12,156 eligible cards, covering all 24 example entries.
+The remaining 204 names use English fallback. See the [offline generation guide](../infrastructure/card-catalog/README.md#additional-locales).

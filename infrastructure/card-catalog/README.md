@@ -377,3 +377,13 @@ withheld by the existing angle-bracket policy. See [Italian terminology](../../d
 Rebuild with the command above, replacing every `ja` locale/path segment with `it`;
 the dated snapshot and audit use the same November 1 date. Refresh and identity
 validation follow the same manual path; no additional catalog is loaded at startup.
+
+### Portuguese names (`pt`)
+
+The same pinned revision supplies 11,952 labels and 204 English fallbacks
+for 12,156 eligible cards; all 24 example entries are covered. There are 50 missing
+source identities, 147 missing translations and seven literal Maliss labels
+withheld by the existing angle-bracket policy. See [Portuguese terminology](../../docs/localization-pt.md).
+Rebuild with the command above, replacing every `ja` locale/path segment with `pt`;
+the dated snapshot and audit use the same November 1 date. Refresh and identity
+validation follow the same manual path; no additional catalog is loaded at startup.
