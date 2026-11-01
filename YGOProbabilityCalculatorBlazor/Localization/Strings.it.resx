@@ -4,11 +4,11 @@
   <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Scavo configurato (disattivato)</value></data>
   <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Scava {0} carte; aggiungine 1 alla mano</value></data>
   <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Non disponibile dopo una pescata tramite effetto</value></data>
-  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Dopo le pescate, si attiva un solo scavo consentito prima delle ricerche; ha priorità il numero di carte scavate più alto. I pareggi seguono un ordine fisso. Le carte ottenute tramite scavo non attivano i propri effetti.</value></data>
+  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Dopo le pescate, si attiva un solo scavo consentito prima delle ricerche; ha priorità il numero di carte scavate più alto.</value></data>
+  <data name="Effects.98645731.Limitations" xml:space="preserve"><value></value></data>
   <data name="Effects.98645731.Summary" xml:space="preserve"><value>Scava 3 carte; aggiungine 1 alla mano; rimischia il resto nel Deck.</value></data>
-  <data name="Effects.98645731.Limitations" xml:space="preserve"><value>La legalità delle Evocazioni Speciali non è modellata.</value></data>
   <data name="Effects.84211599.Summary" xml:space="preserve"><value>Scava 6 carte; aggiungine 1 alla mano; metti il resto in fondo al Deck.</value></data>
-  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Scava sempre 6 carte, supponendo che siano disponibili sei carte nell'Extra Deck. Saltato dopo una pescata tramite effetto. Le conseguenze sull'Extra Deck e sui danni non sono modellate.</value></data>
+  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Scava sempre 6 carte, supponendo che siano disponibili sei carte nell'Extra Deck. Saltato dopo una pescata tramite effetto.</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve">
     <value>Cerca carte o inserisci un nome</value>
   </data>

@@ -8,5 +8,4 @@ public sealed class PotOfDualityEffect : CardEffectDefinition {
     public override int Revision => 1;
     public override DrawEffectPlan Compile() => DrawEffectPlan.Excavate(3);
     public override EffectSupport Support => EffectSupport.ModeledWithinRules;
-    public override string Limitations => ResourceText("Limitations");
 }
