@@ -174,8 +174,6 @@
   <data name="Ui.AccuracyUnavailableForThisResult" xml:space="preserve"><value>Für dieses Ergebnis ist keine Genauigkeit verfügbar.</value></data>
   <data name="Ui.ActionsFor0" xml:space="preserve"><value>Aktionen für {0}</value></data>
   <data name="Ui.Activate" xml:space="preserve"><value>Aktivieren</value></data>
-  <data name="Ui.ActivateAtLeastOneCardToCalculate" xml:space="preserve"><value>Füge mindestens eine Deckkarte hinzu oder aktiviere sie, um zu berechnen.</value></data>
-  <data name="Ui.ActivateAtLeastOneComboToCalculate" xml:space="preserve"><value>Aktiviere mindestens eine Kombo, um zu berechnen.</value></data>
   <data name="Ui.Add" xml:space="preserve"><value>Hinzufügen</value></data>
   <data name="Ui.AddANDPropertyToAlternative0" xml:space="preserve"><value>UND-Eigenschaft zu Alternative {0} hinzufügen</value></data>
   <data name="Ui.AddASeparateCopyRequirement" xml:space="preserve"><value>Anforderung für ein separates Exemplar hinzufügen</value></data>
