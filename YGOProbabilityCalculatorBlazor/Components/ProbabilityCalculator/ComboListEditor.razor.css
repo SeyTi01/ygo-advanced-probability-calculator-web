@@ -71,4 +71,5 @@
 
 
 
-.combo-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1.5rem; }
+.combo-section { margin-bottom: var(--calculator-section-spacing); }
+.combo-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: var(--calculator-section-spacing); }

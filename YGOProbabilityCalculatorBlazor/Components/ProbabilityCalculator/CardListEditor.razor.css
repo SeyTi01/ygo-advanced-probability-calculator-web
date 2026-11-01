@@ -1,5 +1,10 @@
+.deck-section {
+    margin-bottom: var(--calculator-section-spacing);
+}
+
 .deck-header {
     gap: .5rem;
+    margin-bottom: var(--calculator-section-spacing);
 }
 
 .deck-loading-status {

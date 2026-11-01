@@ -120,9 +120,9 @@
     align-items: start;
     justify-content: space-between;
     gap: .5rem 1rem;
-    /* Match the page's 1.1rem top padding, allowing for taller toolbar buttons. */
-    padding-bottom: .85rem;
-    margin-bottom: 1.5rem;
+    /* The toolbar buttons are .25rem taller than the settings trigger. */
+    padding-bottom: calc(var(--app-content-top-spacing) - .25rem);
+    margin-bottom: var(--calculator-section-spacing);
     border-bottom: 1px solid var(--bs-border-color);
 }
 
@@ -339,7 +339,7 @@
 }
 
 @media (max-width: 767.98px) {
-    .session-controls { padding-bottom: 1.1rem; }
+    .session-controls { padding-bottom: var(--app-content-top-spacing); }
 
     .session-controls .calculation-controls {
         width: 100%;
@@ -461,7 +461,7 @@
 .session-secondary:empty { display: none; }
 .session-secondary > :is(form, .clear-workspace-confirmation) { margin-block: 0 1rem; }
 .clear-workspace-confirmation { padding: .75rem; background: var(--bs-secondary-bg); border-radius: var(--bs-border-radius); }
-.calculator-workspace ::deep .workspace-management { margin: 0 0 1.5rem; padding-block: .5rem; border-block: 1px solid var(--bs-border-color); }
+.calculator-workspace ::deep .workspace-management { margin: 0 0 var(--calculator-section-spacing); padding-block: .5rem; border-block: 1px solid var(--bs-border-color); }
 .calculator-workspace ::deep .workspace-management > summary { cursor: pointer; padding: .5rem 0; font-weight: 600; }
 .calculator-workspace ::deep .workspace-management > summary span { font-weight: normal; font-size: .875rem; }
 .calculator-workspace ::deep .workspace-management > .mb-4 { margin: .5rem 0 !important; }
@@ -478,7 +478,7 @@
     .session-toolbar { flex-wrap: wrap; }
 }
 
-.calculator-workspace ::deep .combo-group-management { margin-top: 1.5rem; }
+.calculator-workspace ::deep .combo-group-management { margin-top: var(--calculator-section-spacing); }
 .session-toolbar ::deep :is(.session-action, .session-share-compact, .action-menu-trigger) {
     color: var(--bs-secondary-color);
 }
