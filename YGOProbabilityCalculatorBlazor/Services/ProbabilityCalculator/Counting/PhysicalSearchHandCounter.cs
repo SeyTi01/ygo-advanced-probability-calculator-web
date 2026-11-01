@@ -40,7 +40,11 @@ internal sealed class PhysicalSearchHandCounter {
 
     // The caller consumes this borrowed row buffer before evaluating the next
     // terminal. No input, result, or mutable state is retained across requests.
-    internal bool[] Evaluate(ReadOnlySpan<int> original, int[] available) {
+    internal bool[] Evaluate(
+        ReadOnlySpan<int> original,
+        int[] available,
+        ReadOnlySpan<int> activationSources = default
+    ) {
         _budget.Spend(original.Length + _combos.Count + 1L);
         int[] hand = _hand;
         original.CopyTo(hand);
@@ -110,7 +114,7 @@ internal sealed class PhysicalSearchHandCounter {
 
         for (int index = 0; index < _sources.Length; index++) {
             int source = _sources[index].Source;
-            allowance[index] = Math.Min(hand[source], _cards[source].MaximumActivations);
+            allowance[index] = Math.Min(activationSources.IsEmpty ? hand[source] : activationSources[source], _cards[source].MaximumActivations);
         }
 
         bool[] success = _success;

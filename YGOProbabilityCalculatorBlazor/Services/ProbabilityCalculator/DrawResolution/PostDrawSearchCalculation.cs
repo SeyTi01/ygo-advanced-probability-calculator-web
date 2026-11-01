@@ -55,7 +55,7 @@ internal sealed partial class PostDrawCalculation {
         // Only removable searchers need policy target counts. Unrelated targets
         // can still join the deferred pool when no removal can observe them.
         bool compactPhysical = physical && method == PhysicalEnumerationMethod.Auto && deferIdentities
-            && cards.All(card => !card.EffectPlan.RequiresSearchResolution);
+            && cards.All(card => !card.EffectPlan.RequiresSearchResolution && card.Excavation is null);
         // The same whole-trace exchangeability proof applies to optimistic and
         // lower counting: expand original source identities only in the final
         // conditional pool. Bounded hand operations and activation restrictions
@@ -259,7 +259,7 @@ internal sealed partial class PostDrawCalculation {
         // target capacity is its actual survivor count. No survivor identity is inferred.
         return reduced;
 
-        static bool Ordinary(Card card) => card.Active && card.Copies > 0 && card.DrawCount is null && card.Search is null;
+        static bool Ordinary(Card card) => card.Active && card.Copies > 0 && card.DrawCount is null && card.Search is null && card.Excavation is null;
 
         void Include(CardSelector selector) {
             CheckStorage(count, 3L * count + selector.EvaluationSize, "physical row partition");
@@ -300,7 +300,8 @@ internal sealed partial class PostDrawCalculation {
             foreach ((Card card, string _, string eligibility) in group.Where(entry => entry.Card.DrawCount is null)
                 .OrderBy(entry => entry.Card.Id, StringComparer.Ordinal)) {
 
-                if (merge && card.Search is null && reduced.Count > 0 && reduced[^1].Search is null && eligibility == previousEligibility) {
+                if (merge && card.Search is null && card.Excavation is null && reduced.Count > 0
+                    && reduced[^1].Search is null && reduced[^1].Excavation is null && eligibility == previousEligibility) {
                     identities[reduced[^1].Id].Add(card);
                     reduced[^1] = reduced[^1].WithCopies(checked(reduced[^1].Copies + card.Copies));
                 }

@@ -11,8 +11,8 @@ physical-card probability oracles.
 
 ## Small published-app smoke set
 
-Publish a clean optimized Release build with SDK-scoped `wasm-tools`, without
-external measurement sources or AOT. Use the existing external Playwright
+Publish a clean optimized Release build with SDK-scoped `wasm-tools`, using
+the production AOT settings and no external measurement sources. Use the existing external Playwright
 installation through `NODE_PATH`. Set `YGO_BROWSER_EXECUTABLE` to an installed
 Chromium executable, or optionally set `YGO_BROWSER_CHANNEL`.
 
@@ -112,6 +112,7 @@ successful calculations or Storage failures. Never commit generated output.
 | Ordered throughput | `OrderedStorageBenchmark`, `prepare-ordered-throughput.py` | `paired-ordered-throughput.cs` / `paired-ordered-throughput.cjs` |
 | Search throughput | `SelectiveSurvivorTest`, `search-throughput-benchmark-probe.cs` | `paired-search-throughput.cs` / `paired-search-throughput.cjs` |
 | Session loading | published sample session | `../workspace/measure-session-loading.cjs` |
+| Single excavation | `ExcavationBenchmark` | `excavation-workers.cjs` / `excavation-ui-smoke.cjs` |
 
 The paired native programs compile in a temporary dependency-free `net10.0`
 console with implicit usings and nullable enabled. Use test-bin directories to
@@ -122,6 +123,48 @@ measurement builds; never add them to the normal project or production publish.
 Use `DOTNET_TieredCompilation=0` for paired native measurements. Resource counters
 and diagnostic phases are not peak process/browser memory or latency evidence.
 WASM linear-memory capacity is not live managed heap.
+
+### Single-excavation acceptance
+
+`ExcavationBenchmark.Measure` is an explicit Release test. Set
+`YGO_EXCAVATION_BENCHMARK` to a Git-ignored output JSON path; optionally set
+`YGO_EXCAVATION_TRIALS` (warm samples, default 3), `YGO_EXCAVATION_CASE`,
+`YGO_EXCAVATION_EXCLUDE`, and `YGO_EXCAVATION_MODE`. Use
+`DOTNET_TieredCompilation=0`. The export includes the actual session/worker input,
+native response and exact row fractions, and saves after each fixture/mode.
+
+Both browser scripts take `<clean-published-wwwroot> <native-export.json>
+<output.json>`. The worker benchmark uses the shipped worker with no measurement
+exports, checks complete response/fraction parity, and separates runtime bootstrap
+from the first calculation and three warm calculations. Its external 60-second
+cutoff records a censored timeout; it is not a production calculation deadline.
+The UI check uses the exported two-Pot fixture for model notes, keyboard controls,
+desktop/mobile layout, simulation toggles and a saved-session round trip.
+
+Measured on Windows with .NET 10.0.401 and Edge 156.0.4314.58 on 2026-11-01,
+using a clean Release AOT publish with stripped IL. Native and browser jobs ran
+separately from builds and correctness tests. Each warm value below is the median
+of three measurements; the browser range covers Fast and Exact.
+
+| Fixture | Native warm | Browser warm |
+| --- | ---: | ---: |
+| 40-card Duality / 40–60-card Prosperity, seven combos | 0.4–0.6 ms | 4.4–6.0 ms |
+| 40-card excavation plus two search sources | 1.7–2.5 ms | 9.2–12.4 ms |
+| 40-card excavation, draw-two and searches | 7.8–13.1 ms | 38.7–59.2 ms |
+| 60-card mixed Pots, two searches, 15 overlapping combos | 235–239 ms | 909–918 ms |
+| 40-card Duality, banish-ten/draw-two and searches, Exact | 4.05 s | 13.90 s |
+
+Every completed browser response matched the native exact total/combo/group
+fractions. In the final hidden-loss fixture, Fast reached its unchanged 150M Work
+limit (about 2.13 seconds for the first browser calculation); it returned no
+probability. Ordinary fixtures had roughly 0.20–0.29-second first calculations,
+plus a separately measured 0.20–0.24-second worker bootstrap.
+
+Production assessment: viable for the documented single-excavation model and
+ordinary workloads; detailed hidden-loss mixtures remain expensive and may need
+Exact. These desktop measurements do not establish mobile CPU performance or a
+universal completion guarantee. The fixed phase/source policy and single-activation
+restriction remain semantic limitations regardless of the reported accuracy.
 
 `bounded-search-wire-smoke.cjs <clean-wwwroot> <fixtures.json>
 <native-measurements.json> <output.json>` remains a specialized post-benchmark

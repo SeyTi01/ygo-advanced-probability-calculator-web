@@ -195,6 +195,15 @@ public class CardConverter : JsonConverter<Card> {
             ? null
             : JsonSerializer.Deserialize<SearchEffectPlan>(searches[0].Value.GetRawText(), options) ?? throw new JsonException("Missing search operation.");
 
+        JsonProperty[] excavations = root.EnumerateObject().Where(property => property.Name.Equals("Excavation", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (excavations.Length > 1) {
+            throw new JsonException("Excavation operation is duplicated.");
+        }
+
+        ExcavationEffectPlan? excavation = excavations.Length == 0
+            ? null
+            : JsonSerializer.Deserialize<ExcavationEffectPlan>(excavations[0].Value.GetRawText(), options) ?? throw new JsonException("Missing excavation operation.");
+
         int? ReadInteger(string name) {
             JsonProperty[] values = root.EnumerateObject().Where(property => property.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToArray();
 
@@ -235,7 +244,8 @@ public class CardConverter : JsonConverter<Card> {
                 oncePerTurn: oncePerTurn,
                 activationLimit: ReadInteger("ActivationLimit"),
                 minimumHandSize: ReadInteger("MinimumHandSize") ?? 0,
-                simulationEnabled: simulationEnabled
+                simulationEnabled: simulationEnabled,
+                excavation: excavation
             );
         }
         catch (ArgumentException exception) {
@@ -264,7 +274,7 @@ public class CardConverter : JsonConverter<Card> {
             writer.WriteNumber("DrawCount", drawCount);
         }
 
-        if (value.Search is not null) {
+        if (value.Search is not null || value.Excavation is not null) {
             // Explicit shared flag distinguishes new search limits from the old,
             // ignored DrawOncePerTurn field. Existing draw wire meanings stay intact.
             writer.WriteBoolean("OncePerTurn", value.OncePerTurn);
@@ -324,6 +334,11 @@ public class CardConverter : JsonConverter<Card> {
         if (value.Search is not null) {
             writer.WritePropertyName("Search");
             JsonSerializer.Serialize(writer, value.Search, options);
+        }
+
+        if (value.Excavation is not null) {
+            writer.WritePropertyName("Excavation");
+            JsonSerializer.Serialize(writer, value.Excavation, options);
         }
 
         writer.WriteEndObject();

@@ -159,7 +159,11 @@ internal sealed partial class PostDrawCalculation {
             ? new(cards, combos, budget)
             : null;
 
-        PhysicalSearchLossCounter? lossCounter = bounded is null && ObservePhysicalOutcome is null && cards.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0)
+        ExcavationHandCounter? excavation = cards.Any(card => card.Excavation is not null)
+            ? new(cards, budget, resultRows, totalOnly, counter, bounded)
+            : null;
+
+        PhysicalSearchLossCounter? lossCounter = excavation is null && bounded is null && ObservePhysicalOutcome is null && cards.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0)
             ? new(cards, budget)
             : null;
 
@@ -255,10 +259,22 @@ internal sealed partial class PostDrawCalculation {
                 using IDisposable? searchMeasurement = budget.SearchDiagnostics?.Measure("physical hand search");
                 budget.SearchDiagnostics?.Add("physical search evaluations");
                 ObservePhysicalOutcome?.Invoke(cards, (int[])state.Clone(), (int[])available.Clone(), mass);
+                int[]? encounters = layout.HasSearchQueue ? state.AsSpan(layout.SearchQueueStart, layout.SearchQueueCapacity).ToArray()
+                    .Where(value => value > 0).Select(value => value - 1).ToArray() : null;
+
+                if (excavation?.TryAccumulate(
+                    state.AsSpan(layout.HandStart, n),
+                    available,
+                    layout.TracksEffectDraw && state[layout.EffectDrawOccurred] != 0,
+                    encounters,
+                    mass,
+                    wins
+                ) == true) {
+                    return;
+                }
+
                 bool[] success = bounded is null ? counter!.Evaluate(state.AsSpan(layout.HandStart, n), capacity ?? available)
-                    : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available,
-                        layout.HasSearchQueue ? state.AsSpan(layout.SearchQueueStart, layout.SearchQueueCapacity).ToArray()
-                            .Where(value => value > 0).Select(value => value - 1).ToArray() : null);
+                    : bounded.Evaluate(state.AsSpan(layout.HandStart, n), available, encounters);
 
                 if (success.Any(value => value)) {
                     wins[0] += mass;

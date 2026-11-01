@@ -29,6 +29,9 @@
     @if (!IsUnconfigured && _effect.Source != EffectSource.BuiltIn && Card.Search is null) {
         <div class="simulation-summary">@DrawEffectPresentation.DescribePlan(Card.EffectPlan, CategoryBases)</div>
     }
+    @if (_effect.Source == EffectSource.BuiltIn && Card.Excavation is not null) {
+        <div class="simulation-summary">@_effect.Summary</div>
+    }
     @if (!_effect.CanExecute) {
         <div class="small text-danger" role="alert">@(UiText.Get("Ui.ThisSavedEffectCannotRunInThisCalculator"))</div>
     }
@@ -68,6 +71,9 @@
     </div>
     @if (_detailsOpen && HasDetails) {
         <div id="simulationDetails@(Index)" class="simulation-details small">
+            @if (Card.Excavation is not null) {
+                <p class="simulation-excavation-note">@(UiText.Get("Effect.ExcavationPhaseRestriction"))</p>
+            }
             @if (_performanceNote) {
                 <p class="simulation-performance"><strong>@(UiText.Get("Ui.Performance"))</strong> @(UiText.Get("Ui.ThisEffectRequiresDetailedHandStateCalculationInEffectModesAndCanBecomeExpensiveInComple"))</p>
             }
@@ -99,25 +105,28 @@
             <label for="cardDraw@(Index)" class="form-label">@(UiText.Get("Ui.Effect"))</label>
             <div class="d-flex flex-wrap align-items-center gap-3">
                 <select @ref="_drawInput" id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
-                        value="@(_draft.Search is not null ? "search" : _draft.DrawCount?.ToString() ?? string.Empty)"
+                        value="@DraftOperation"
                          @onchange="e => ChangeDrawCount(e.Value)">
                     <option value="">@(UiText.Get("Ui.None"))</option>
                     <option value="1">@(UiText.Get("Ui.Draw1"))</option>
                     <option value="2">@(UiText.Get("Ui.Draw2"))</option>
                     <option value="3">@(UiText.Get("Ui.Draw3"))</option>
                     <option value="search">@(UiText.Get("Ui.Search1"))</option>
+                    @if (AvailableExcavation is { } excavation) {
+                        <option value="excavation">@(UiText.Format("Ui.Excavate0", excavation.Count))</option>
+                    }
                 </select>
                 @if (_draft.EffectPlan.ActivationLimit is int limit) {
                     <div class="form-text">@(UiText.Format("Effect.PreservedAllowance", limit))</div>
                 }
-                else if (_draft.HasEffect && _draft.Search?.Modes is null) {
+                else if (_draft.HasEffect && _draft.Search?.Modes is null && _draft.Excavation is null) {
                     <div class="form-check form-switch mb-0">
                         <input id="@OnceInputId" class="form-check-input" type="checkbox" role="switch"
                                checked="@_draft.OncePerTurn" @onchange="e => ChangeOncePerTurn(e.Value)" />
                         <label for="@OnceInputId" class="form-check-label">@(UiText.Get("Ui.OncePerTurn"))</label>
                     </div>
                 }
-                @if (_draft.HasEffect) {
+                @if (_draft.HasEffect && _draft.Excavation is null) {
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <label for="cardCost@(Index)" class="form-label mb-0">@(_draft.Search is null ? UiText.Get("Effect.BeforeDrawing") : UiText.Get("Effect.BeforeSearching"))</label>
                         <select id="cardCost@(Index)" class="form-select form-select-sm w-auto"
@@ -239,12 +248,19 @@
         ? UiText.Get("Ui.ConfigureSimulation") : UiText.Get("Ui.CustomizeSimulation");
     private bool HasSavedRevisionDetails => _effect.Source == EffectSource.BuiltIn
         && !_effect.UsesCurrentDescription;
-    private bool HasDetails => _performanceNote || (_effect.Source == EffectSource.BuiltIn
+    private bool HasDetails => Card.Excavation is not null || _performanceNote || (_effect.Source == EffectSource.BuiltIn
         && (!string.IsNullOrWhiteSpace(_effect.Limitations) || HasSavedRevisionDetails))
         || (_effect.Source == EffectSource.LegacySnapshot && Card.HasEffect);
     private string? ModeNotice => Card.HasEffect && !DrawEffectsEnabled
         ? UiText.Get("Ui.OpeningHandOnlySavedSimulationIsOff")
         : null;
+    private ExcavationEffectPlan? AvailableExcavation => Card.Excavation ?? _effect.Maintained?.Plan.Excavation;
+    private string DraftOperation => _draft switch {
+        { Excavation: not null } => "excavation",
+        { Search: not null } => "search",
+        { DrawCount: int count } => count.ToString(),
+        _ => string.Empty
+    };
 
     private string SearchSummary(Card card) => _effect.Source == EffectSource.BuiltIn && card.EffectPlan == Card.EffectPlan
             ? _effect.Summary
@@ -364,7 +380,7 @@
     private void ChangeDrawCount(object? value) {
         string? text = value?.ToString();
         if (string.IsNullOrEmpty(text)) {
-            SetDraft(_draft!.WithDrawCount(null).WithSearch(null), "draw");
+            SetDraft(_draft!.WithDrawCount(null).WithSearch(null).WithExcavation(null), "draw");
         }
         else if (text == "search") {
             SearchEffectPlan search = _effect.Maintained?.Plan.Search ?? new(CardSelector.Any, false);
@@ -373,6 +389,9 @@
                 ? draft.WithEffect(_effect.Maintained.Plan, draft.EffectProfile.AsCustom())
                 : draft.WithOncePerTurn(false);
             SetDraft(draft, "draw");
+        }
+        else if (text == "excavation" && AvailableExcavation is { } excavation) {
+            SetDraft(_draft!.WithExcavation(excavation), "draw");
         }
         else if (int.TryParse(text, out int count) && count is >= 1 and <= 3) {
             SetDraft(_draft!.WithDrawCount(count), "draw");

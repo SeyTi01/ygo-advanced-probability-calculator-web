@@ -12,7 +12,8 @@ public class Card {
     public int? ExternalCardId { get; }
     public DrawEffectPlan EffectPlan { get; }
     public SearchEffectPlan? Search => EffectPlan.Search;
-    public bool HasEffect => DrawCount is not null || Search is not null;
+    public ExcavationEffectPlan? Excavation => EffectPlan.Excavation;
+    public bool HasEffect => DrawCount is not null || Search is not null || Excavation is not null;
     public EffectProfile EffectProfile { get; }
     public bool FirstActivationOnly => EffectPlan.FirstActivationOnly;
     public bool BlocksLaterDraws => EffectPlan.BlocksLaterDraws;
@@ -55,7 +56,8 @@ public class Card {
         bool? oncePerTurn = null,
         int? activationLimit = null,
         int minimumHandSize = 0,
-        bool simulationEnabled = true
+        bool simulationEnabled = true,
+        ExcavationEffectPlan? excavation = null
     ) {
         if (drawCount is not null and not (>= 1 and <= 3)) {
             throw new ArgumentOutOfRangeException(nameof(drawCount), "Draw count must be 1, 2, 3, or absent.");
@@ -100,11 +102,17 @@ public class Card {
             throw new ArgumentException("Activation limits require an effect and must fit the supported range.");
         }
         search?.Validate();
+        excavation?.Validate();
+        if (excavation is not null && (drawCount is not null || search is not null || preDrawRemovalCount != 0
+            || postDrawDiscardCount != 0 || preDrawDeckRemovalCount != 0 || postDrawDeckMillCount != 0
+            || firstActivationOnly || blocksLaterDraws || activationLimit is not null || minimumHandSize != 0)) {
+            throw new ArgumentException("Excavation must be a standalone operation without draw/search costs or allowances.", nameof(excavation));
+        }
 
         // The old draw flag was ignored for searches. Only an explicit shared
         // flag opts a search snapshot into OPT; absent values stay unrestricted.
         EffectPlan = new(drawCount, oncePerTurn ?? (search is null && drawOncePerTurn), preDrawRemovalCount, preDrawSelector ?? CardSelector.Any,
-            preDrawDeckRemovalCount, postDrawDiscardCount, postDrawSelector ?? CardSelector.Any, postDrawFailureBehavior, postDrawDeckMillCount, firstActivationOnly, blocksLaterDraws, search, activationLimit, minimumHandSize);
+            preDrawDeckRemovalCount, postDrawDiscardCount, postDrawSelector ?? CardSelector.Any, postDrawFailureBehavior, postDrawDeckMillCount, firstActivationOnly, blocksLaterDraws, search, activationLimit, minimumHandSize, excavation);
         EffectProfile = effectProfile ?? EffectProfile.Legacy;
         if (!Enum.IsDefined(EffectProfile.Source) || !Enum.IsDefined(EffectProfile.Support)
             || EffectProfile.CanonicalCardId is <= 0 || EffectProfile.Revision is <= 0
@@ -161,7 +169,8 @@ public class Card {
         plan.OncePerTurn,
         plan.ActivationLimit,
         plan.MinimumHandSize,
-        simulationEnabled
+        simulationEnabled,
+        plan.Excavation
     ) { }
 
     public Card Duplicate() => new(Categories, Copies, Name, Active, null, ExternalCardId, ManualMetadataCategoryKeys, EffectPlan, EffectProfile, SimulationEnabled);
@@ -231,6 +240,7 @@ public class Card {
             FirstActivationOnly = drawCount is not null && FirstActivationOnly,
             BlocksLaterDraws = drawCount is not null && BlocksLaterDraws,
             Search = drawCount is null ? Search : null,
+            Excavation = drawCount is null ? Excavation : null,
             ActivationLimit = hasEffect ? EffectPlan.ActivationLimit : null,
             MinimumHandSize = hasEffect ? MinimumHandSize : 0
         }, EffectProfile.AsCustom());
@@ -314,6 +324,7 @@ public class Card {
 
     public Card WithSearch(SearchEffectPlan? search) => WithEffect(EffectPlan with {
         Search = search, OncePerTurn = search is not null && Search is null ? false : OncePerTurn,
+        Excavation = search is null ? Excavation : null,
         HandCost = search is null && DrawCount is null ? 0 : PreDrawRemovalCount,
         HandCostSelector = search is null && DrawCount is null ? CardSelector.Any : PreDrawSelector,
         RemovalCount = search is null && DrawCount is null ? 0 : PostDrawDiscardCount,
@@ -321,6 +332,10 @@ public class Card {
         ActivationLimit = search is null && DrawCount is null ? null : EffectPlan.ActivationLimit,
         MinimumHandSize = search is null && DrawCount is null ? 0 : MinimumHandSize
     }, EffectProfile.AsCustom());
+
+    public Card WithExcavation(ExcavationEffectPlan? excavation) => WithEffect(excavation is null
+        ? EffectPlan with { Excavation = null }
+        : DrawEffectPlan.Excavate(excavation.Count, excavation.RequiresNoPriorEffectDraw), EffectProfile.AsCustom());
 
     private static IReadOnlySet<string> ValidateManualKeys(IEnumerable<CategoryBase> categories, IEnumerable<string>? keys) {
         FrozenSet<string> result = (keys ?? []).ToFrozenSet(StringComparer.Ordinal);

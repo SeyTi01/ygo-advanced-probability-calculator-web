@@ -44,7 +44,7 @@ internal sealed class DrawEffectCalculation(
     }
 
     private ExactCalculationResult CalculateCore(List<Combo> combos, IReadOnlyList<ComboGroup>? groups, bool totalOnly) {
-        if (deck.Any(card => card.Active && card.Copies > 0 && card.Search is not null)) {
+        if (deck.Any(card => card.Active && card.Copies > 0 && (card.Search is not null || card.Excavation is not null))) {
             SearchExecution = new(deck, handSize, budget, priority, physicalSearch, adaptiveFast);
 
             return SearchExecution.Calculate(combos, groups, totalOnly);

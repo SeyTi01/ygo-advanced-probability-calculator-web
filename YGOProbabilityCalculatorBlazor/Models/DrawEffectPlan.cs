@@ -9,7 +9,7 @@ namespace YGOProbabilityCalculatorBlazor.Models;
 // unsupported execution models still require a new compiler/interpreter.
 public enum EffectExecutionModel { DrawSequenceV1 = 1, Unsupported = 2 }
 [Flags]
-public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32, FirstActivationOnly = 64, BlocksLaterDraws = 128, Search = 256, BoundedActivations = 512, SearchModes = 1024, MinimumHandSize = 2048 }
+public enum EffectCapabilities { None = 0, Draw = 1, OncePerTurn = 2, HandCost = 4, HiddenDeckCost = 8, MandatoryRemoval = 16, HiddenPostDrawMill = 32, FirstActivationOnly = 64, BlocksLaterDraws = 128, Search = 256, BoundedActivations = 512, SearchModes = 1024, MinimumHandSize = 2048, Excavation = 4096 }
 public enum EffectSource { LegacySnapshot, BuiltIn, Custom }
 public enum EffectSupport { ModeledWithinRules, Partial, Unmodeled }
 
@@ -41,16 +41,21 @@ public readonly record struct DrawEffectPlan(
     bool BlocksLaterDraws = false,
     SearchEffectPlan? Search = null,
     int? ActivationLimit = null,
-    int MinimumHandSize = 0
+    int MinimumHandSize = 0,
+    ExcavationEffectPlan? Excavation = null
 ) {
     public static DrawEffectPlan Draw(int count, bool oncePerTurn) => new(count, oncePerTurn, 0, CardSelector.Any, 0, 0, CardSelector.Any);
 
     public static DrawEffectPlan SearchCards(SearchEffectPlan search, bool oncePerTurn) =>
         new(null, oncePerTurn, 0, CardSelector.Any, 0, 0, CardSelector.Any, Search: search);
 
+    public static DrawEffectPlan Excavate(int count, bool requiresNoPriorEffectDraw = false) =>
+        new(null, true, 0, CardSelector.Any, 0, 0, CardSelector.Any, Excavation: new(count, requiresNoPriorEffectDraw));
+
     public EffectCapabilities Capabilities => (DrawCount is null ? EffectCapabilities.None : EffectCapabilities.Draw)
-        | ((DrawCount is not null || Search is not null) && OncePerTurn ? EffectCapabilities.OncePerTurn : EffectCapabilities.None)
+        | ((DrawCount is not null || Search is not null || Excavation is not null) && OncePerTurn ? EffectCapabilities.OncePerTurn : EffectCapabilities.None)
         | (Search is not null ? EffectCapabilities.Search : EffectCapabilities.None)
+        | (Excavation is not null ? EffectCapabilities.Excavation : EffectCapabilities.None)
         | (ActivationLimit is not null ? EffectCapabilities.BoundedActivations : EffectCapabilities.None)
         | (Search?.Modes is not null ? EffectCapabilities.SearchModes : EffectCapabilities.None)
         | (MinimumHandSize > 0 ? EffectCapabilities.MinimumHandSize : EffectCapabilities.None)
@@ -73,11 +78,16 @@ public readonly record struct DrawEffectPlan(
     public bool RequiresHandResolution => HandCost > 0 || RemovalCount > 0;
 
     public string Describe() {
-        if (DrawCount is null && Search is null) {
+        if (DrawCount is null && Search is null && Excavation is null) {
             return "No effect";
         }
 
-        string summary = Search is null ? $"Draw {DrawCount}" : "Search 1 from deck; flexible target choice";
+        string summary = Excavation is { } excavation
+            ? $"Excavate {excavation.Count}; add 1; highest-count eligible excavation only, after draws and before searches"
+            : Search is null ? $"Draw {DrawCount}" : "Search 1 from deck; flexible target choice";
+        if (Excavation?.RequiresNoPriorEffectDraw == true) {
+            summary += "; unavailable after an effect draw";
+        }
         if (HandCost > 0) {
             summary = $"Remove {HandCost} eligible card(s) from hand; " + summary;
         }

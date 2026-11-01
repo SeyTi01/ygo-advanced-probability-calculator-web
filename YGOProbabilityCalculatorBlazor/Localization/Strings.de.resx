@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Ui.Excavate0" xml:space="preserve"><value>{0} Karten ausgraben</value></data>
+  <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Ausgraben konfiguriert (aus)</value></data>
+  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>{0} Karten ausgraben; 1 der Hand hinzufügen</value></data>
+  <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Nach dem Ziehen durch einen Effekt nicht verfügbar</value></data>
+  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Nach dem Ziehen wird vor der Suche nur ein zulässiger Ausgrabeeffekt aktiviert; die höchste Anzahl hat Vorrang. Bei Gleichstand gilt eine feste Reihenfolge. Durch Ausgraben erhaltene Karten aktivieren ihre Effekte nicht.</value></data>
+  <data name="Effects.98645731.Summary" xml:space="preserve"><value>3 Karten ausgraben; 1 der Hand hinzufügen; den Rest zurückmischen.</value></data>
+  <data name="Effects.98645731.Limitations" xml:space="preserve"><value>Die Zulässigkeit von Spezialbeschwörungen wird nicht modelliert.</value></data>
+  <data name="Effects.84211599.Summary" xml:space="preserve"><value>6 Karten ausgraben; 1 der Hand hinzufügen; den Rest unter das Deck legen.</value></data>
+  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Gräbt immer 6 Karten aus; sechs verfügbare Extra-Deck-Karten werden vorausgesetzt. Nach dem Ziehen durch einen Effekt übersprungen. Auswirkungen auf das Extra Deck und Schaden werden nicht modelliert.</value></data>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>

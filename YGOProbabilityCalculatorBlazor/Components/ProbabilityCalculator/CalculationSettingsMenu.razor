@@ -80,6 +80,9 @@
                     </details>
                 }
             </div>
+            @if (Cards.Any(card => card.Excavation is not null && card.Active && card.Copies > 0 && card.SimulationEnabled)) {
+                <p class="form-text mb-0" role="note">@(UiText.Get("Effect.ExcavationPhaseRestriction"))</p>
+            }
         </section>
 
         <div class="border-top mt-3 pt-3 calculation-settings-option">
@@ -130,7 +133,7 @@
     protected override void OnParametersSet() {
         Dictionary<string, int> ranks = Priority.CardIds.Select((id, index) => (id, index))
             .ToDictionary(entry => entry.id, entry => entry.index, StringComparer.Ordinal);
-        _entries = Cards.Where(card => card.HasEffect && card.Active && card.Copies > 0 && card.SimulationEnabled)
+        _entries = Cards.Where(card => card.HasEffect && card.Excavation is null && card.Active && card.Copies > 0 && card.SimulationEnabled)
             .OrderBy(card => ranks.GetValueOrDefault(card.Id, int.MaxValue))
             .ThenBy(card => card.Id, StringComparer.Ordinal).ToArray();
         HashSet<string> visible = _entries.Select(card => card.Id).ToHashSet(StringComparer.Ordinal);
