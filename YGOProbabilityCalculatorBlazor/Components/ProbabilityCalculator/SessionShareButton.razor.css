@@ -2,7 +2,6 @@
 .share-fallback { flex-basis: 100%; grid-column: 1 / -1; min-width: 0; }
 textarea { overflow-wrap: anywhere; }
 
-.session-share-compact { min-height: var(--app-touch-target-size); padding: .35rem .6rem; border-color: transparent; }
 @media (max-width: 374px) {
     .session-share-compact .share-icon { display: none; }
 }

@@ -38,7 +38,7 @@
     @if ((_draft is not null ? _draft.Search : Card.Search) is { } search) {
         <div class="simulation-summary">@SearchSummary(_draft ?? Card)</div>
         <details class="simulation-targets small">
-            <summary>@(UiText.Get("Ui.TargetsInThisDeck"))</summary>
+            <summary class="control-focus-ring control-focus-ring-spaced">@(UiText.Get("Ui.TargetsInThisDeck"))</summary>
             <div role="status" aria-label="@(UiText.Get("Ui.CurrentSearchTargets"))">
                 @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : UiText.Get("Ui.None"))
             </div>
@@ -49,18 +49,18 @@
     }
     <div class="simulation-actions">
         @if (_effect.CanExecute) {
-            <button @ref="_editButton" type="button" class="btn btn-sm btn-link simulation-edit"
+            <button @ref="_editButton" type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-link simulation-edit"
                     aria-expanded="@(_draft is not null ? "true" : "false")" aria-controls="simulationEditor@(Index)"
                     @onclick="ToggleEditor">@EditLabel</button>
         }
         @if (Card.HasEffect) {
-            <button type="button" class="btn btn-sm btn-link simulation-toggle" @onclick="ToggleSimulation">@(UiText.Get(Card.SimulationEnabled ? "Ui.DisableSimulation" : "Ui.EnableSimulation"))</button>
+            <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-link simulation-toggle" @onclick="ToggleSimulation">@(UiText.Get(Card.SimulationEnabled ? "Ui.DisableSimulation" : "Ui.EnableSimulation"))</button>
         }
         @if (_effect.CanRestore && _effect.Source != EffectSource.BuiltIn) {
-            <button type="button" class="btn btn-sm btn-link simulation-restore" @onclick="Restore">@(UiText.Get("Ui.RestoreBuiltInSimulation"))</button>
+            <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-link simulation-restore" @onclick="Restore">@(UiText.Get("Ui.RestoreBuiltInSimulation"))</button>
         }
         @if (HasDetails) {
-            <button @ref="_detailsButton" type="button" class="btn btn-sm btn-link simulation-details-toggle"
+            <button @ref="_detailsButton" type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-link simulation-details-toggle"
                     aria-expanded="@(_detailsOpen ? "true" : "false")" aria-controls="simulationDetails@(Index)"
                     title="@(_performanceNote ? UiText.Get("Ui.ModelNotesIncludePerformanceGuidance") : null)"
                     @onclick="() => _detailsOpen = !_detailsOpen">@(UiText.Get("Ui.ModelNotes"))</button>
@@ -78,7 +78,7 @@
                 @if (HasSavedRevisionDetails) {
                     <p>@(UiText.Format("Effect.SavedRevision", Card.EffectProfile.Revision))</p>
                     @if (_effect.CanRestore) {
-                        <button type="button" class="btn btn-sm btn-outline-secondary simulation-restore" @onclick="Restore">@(UiText.Get("Ui.RestoreBuiltInSimulation"))</button>
+                        <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-outline-secondary simulation-restore" @onclick="Restore">@(UiText.Get("Ui.RestoreBuiltInSimulation"))</button>
                     }
                 }
             }
@@ -176,7 +176,7 @@
             }
             @if (_draft.DrawCount is not null) {
                 <details class="simulation-advanced mt-2">
-                    <summary>@(_draft.PreDrawDeckRemovalCount > 0 ? UiText.Format("Effect.AdvancedWithBanish", _draft.PreDrawDeckRemovalCount) : UiText.Get("Effect.Advanced"))</summary>
+                    <summary class="control-focus-ring control-focus-ring-spaced">@(_draft.PreDrawDeckRemovalCount > 0 ? UiText.Format("Effect.AdvancedWithBanish", _draft.PreDrawDeckRemovalCount) : UiText.Get("Effect.Advanced"))</summary>
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <label for="cardDeckCost@(Index)" class="form-label mb-0">@(UiText.Get("Ui.BanishFromDeck"))</label>
                         <input id="cardDeckCost@(Index)" class="form-control form-control-sm" type="number" min="0" max="60"
@@ -187,9 +187,9 @@
                 </details>
             }
             <div class="d-flex gap-2 mt-3">
-                <button type="button" class="btn btn-primary btn-sm simulation-save" disabled="@(Error is not null || _filterEdits.Count > 0)"
+                <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-primary btn-sm simulation-save" disabled="@(Error is not null || _filterEdits.Count > 0)"
                         title="@(_filterEdits.Count > 0 ? UiText.Get("Ui.SaveOrCancelTheConditionEditFirst") : null)" @onclick="Save">@(UiText.Get("Ui.Save"))</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm simulation-cancel" @onclick="CloseEditor">@(UiText.Get("Ui.Cancel"))</button>
+                <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-outline-secondary btn-sm simulation-cancel" @onclick="CloseEditor">@(UiText.Get("Ui.Cancel"))</button>
             </div>
         </div>
     }

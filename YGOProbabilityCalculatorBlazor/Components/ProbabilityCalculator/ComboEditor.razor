@@ -201,7 +201,7 @@
         </QuantityContent>
         <AfterContent>
         <details class="requirement-bounds" open="@(_maxCount.Length > 0)">
-            <summary>@(string.IsNullOrEmpty(_maxCount) ? UiText.Get("Requirement.MaximumAny") : UiText.Format("Requirement.MaximumCount", _maxCount))</summary>
+            <summary class="control-focus-ring">@(string.IsNullOrEmpty(_maxCount) ? UiText.Get("Requirement.MaximumAny") : UiText.Format("Requirement.MaximumCount", _maxCount))</summary>
             <div class="requirement-max">
                 <label for="maxCount@(Index)" class="form-label">@(UiText.Get("Ui.AtMost"))</label>
                 <input id="maxCount@(Index)" class="form-control" type="number" min="0" step="1" placeholder="@(UiText.Get("Ui.Any"))"

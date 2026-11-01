@@ -4,14 +4,14 @@
 @inject IJSRuntime JS
 
 <span class="move-position" @onclick:stopPropagation="true" @onkeydown:stopPropagation="@_open" @onkeydown="HandleKeyDown">
-    <button @ref="_trigger" type="button" class="@(MenuCommand ? "menu-command" : "move-position-trigger")"
+    <button @ref="_trigger" type="button" class="@(MenuCommand ? "menu-command" : "move-position-trigger control-focus-ring")"
             disabled="@(Count < 2)" aria-label="@(UiText.Format("Move.ToPosition", ItemLabel))" title="@(UiText.Get("Ui.MoveToPosition"))"
             aria-expanded="@(_open ? "true" : "false")" aria-controls="@_id" @onclick="Toggle">
         @if (MenuCommand) { <span>@(UiText.Get("Ui.MoveToPosition.8d5ae4bd"))</span> }
         else { <span aria-hidden="true">↕</span> }
     </button>
     @if (_open) {
-        <span @ref="_panel" id="@_id" class="move-position-panel" role="group" aria-label="@(UiText.Format("Move.ToPosition", ItemLabel))">
+        <span @ref="_panel" id="@_id" class="move-position-panel surface-panel" role="group" aria-label="@(UiText.Format("Move.ToPosition", ItemLabel))">
             <label for="@(_id + "-input")">@(UiText.Format("Move.PositionRange", Count)) <span class="move-position-current">@(UiText.Format("Move.CurrentPosition", Index + 1))</span></label>
             <span class="move-position-fields">
                 <input @ref="_input" id="@(_id + "-input")" class="form-control form-control-sm" type="text" inputmode="numeric"

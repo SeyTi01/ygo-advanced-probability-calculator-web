@@ -1,0 +1,45 @@
+/* Current and pinned results share structure; panel tokens retain their appearance. */
+.probability-results {
+    --result-divider-color: rgba(var(--bs-primary-rgb), .2);
+    --result-total-border-color: rgba(var(--bs-primary-rgb), .3);
+    --result-member-border-color: rgba(var(--bs-primary-rgb), .25);
+    --result-row-gap: 1rem;
+}
+.probability-total { font-weight: 600; }
+.probability-results-heading, .pinned-heading { align-items: center; gap: .5rem; margin-bottom: .75rem; }
+.probability-results-heading h5, .pinned-heading h5 { margin: 0; }
+.combo-probability-row, .pinned-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: var(--result-row-gap, .5rem);
+}
+.combo-probability-row { justify-content: space-between; }
+.probability-total, .pinned-total {
+    border-bottom: 1px solid var(--result-total-border-color, var(--bs-border-color));
+    font-size: 1.2rem;
+    margin-bottom: .75rem;
+    padding-bottom: .75rem;
+}
+.probability-group-container, .pinned-group { padding: .35rem 0 .5rem; }
+.probability-group-container + .probability-group-container, .pinned-group + .pinned-group {
+    border-top: 1px solid var(--result-divider-color, var(--bs-border-color));
+    padding-top: .55rem;
+}
+.combo-probability-row.probability-group-heading, .pinned-group h6 { align-items: center; margin-bottom: .25rem; padding: .2rem 0; }
+.combo-probability-list, .pinned-list { list-style: none; margin: 0; padding: 0; }
+.combo-probability-item, .pinned-list li { padding: .35rem 0; }
+.combo-probability-item + .combo-probability-item, .pinned-list li + li { border-top: 1px solid var(--result-divider-color, var(--bs-border-color)); }
+.probability-group-members, .pinned-members {
+    border-left: 2px solid var(--result-member-border-color, var(--bs-border-color));
+    margin-left: var(--result-member-margin, .5rem);
+    padding-left: var(--result-member-padding, .75rem);
+}
+@media (min-width: 768px) { .pinned-result { --result-member-margin: .25rem; --result-member-padding: .5rem; } }
+@media (max-width: 767.98px) {
+    .probability-results { --result-row-gap: .5rem; --result-member-margin: .25rem; --result-member-padding: .5rem; }
+}
+@container result-panel (max-width: 14rem) {
+    .combo-probability-row, .pinned-row { grid-template-columns: minmax(0, 1fr); gap: .25rem; }
+    .pinned-row .probability-with-accuracy { justify-self: end; }
+}
