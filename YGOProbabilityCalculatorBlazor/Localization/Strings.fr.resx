@@ -1,0 +1,2050 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <data name="Card.SearchPlaceholder" xml:space="preserve"><value>Rechercher des cartes ou saisir un nom</value></data>
+  <data name="Combo.GroupLabel" xml:space="preserve"><value>Groupe : {0}</value></data>
+  <data name="Combo.MoreRequirements" xml:space="preserve"><value>+{0} autres</value></data>
+  <data name="Combo.NoRequirements" xml:space="preserve"><value>(aucune condition)</value></data>
+  <data name="Requirement.MaximumAny" xml:space="preserve"><value>Maximum : Sans limite</value></data>
+  <data name="Requirement.MaximumCount" xml:space="preserve"><value>Maximum : {0}</value></data>
+  <data name="Effect.Advanced" xml:space="preserve"><value>Avancé</value></data>
+  <data name="Effect.UnavailableWithConfiguredDraws" xml:space="preserve"><value>{0} Appliqué uniquement avec les effets de pioche configurés.</value></data>
+  <data name="Effect.AdvancedWithBanish" xml:space="preserve"><value>Avancé · Bannir {0} cartes du Deck</value></data>
+  <data name="Result.DetailedDrawWarning" xml:space="preserve"><value>Ce calcul peut prendre plus de temps ou dépasser les limites de ressources, car ses effets de pioche nécessitent un traitement détaillé.</value></data>
+  <data name="Ui.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data xml:space="preserve" name="Card.PropertiesCount">
+    <value>Propriétés de la carte ({0})</value>
+  </data>
+  <data xml:space="preserve" name="Category.ManyMatches">
+    <value>{0} entrées correspondantes ({1} exemplaires)</value>
+  </data>
+  <data xml:space="preserve" name="Category.OneMatch">
+    <value>{0} entrée correspondante ({1} exemplaires)</value>
+  </data>
+  <data xml:space="preserve" name="Category.RuleHeading">
+    <value>Propriétés de {0}</value>
+  </data>
+  <data xml:space="preserve" name="Category.RuleLabel">
+    <value>Règle pour {0}</value>
+  </data>
+  <data xml:space="preserve" name="Category.SavedRuleLabel">
+    <value>Règle de propriétés enregistrée pour {0}</value>
+  </data>
+  <data xml:space="preserve" name="Deck.Count">
+    <value>Deck ({0})</value>
+  </data>
+  <data xml:space="preserve" name="Effect.AfterDrawing">
+    <value>Après la pioche</value>
+  </data>
+  <data xml:space="preserve" name="Effect.AfterDrawingRemoval">
+    <value>Après la pioche : retirer de la main</value>
+  </data>
+  <data xml:space="preserve" name="Effect.AfterSearching">
+    <value>Après la recherche</value>
+  </data>
+  <data xml:space="preserve" name="Effect.AfterSearchingRemoval">
+    <value>Après la recherche : retirer de la main</value>
+  </data>
+  <data xml:space="preserve" name="Effect.BeforeDrawing">
+    <value>Avant la pioche</value>
+  </data>
+  <data xml:space="preserve" name="Effect.BeforeDrawingRemoval">
+    <value>Avant la pioche : retirer de la main</value>
+  </data>
+  <data xml:space="preserve" name="Effect.BeforeSearching">
+    <value>Avant la recherche</value>
+  </data>
+  <data xml:space="preserve" name="Effect.BeforeSearchingRemoval">
+    <value>Avant la recherche : retirer de la main</value>
+  </data>
+  <data xml:space="preserve" name="Effect.PreservedAllowance">
+    <value>Jusqu’à {0} activations par entrée. Cette limite est conservée à l’enregistrement.</value>
+  </data>
+  <data xml:space="preserve" name="Effect.PreservedHandSize">
+    <value>Nécessite au moins {0} cartes en main avant l’activation. Cette condition est conservée à l’enregistrement.</value>
+  </data>
+  <data xml:space="preserve" name="Effect.PreservedMill">
+    <value>Continue d’envoyer les {0} cartes du dessus du Deck au Cimetière après la pioche. Choisir Aucun supprime l’effet de pioche entier.</value>
+  </data>
+  <data xml:space="preserve" name="Effect.SavedRevision">
+    <value>Révision intégrée enregistrée : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Effect.Targets">
+    <value>Cibles dans ce Deck : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Effects.11317977.Limitations">
+    <value>Modélise la recherche de Polymerization ; l’option distincte de récupération depuis le Cimetière est hors du périmètre.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.11317977.Summary">
+    <value>Défausser cette carte pour ajouter Polymerization depuis le Deck ; aucune limite d’une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.1475311.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.1475311.Summary">
+    <value>Piocher 2 cartes, puis retirer une carte TÉNÈBRES de la main.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.20508881.Limitations">
+    <value>L’option qui ajoute Mystical Space Typhoon du Deck ou du Cimetière à la main n’est pas modélisée.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.20508881.Summary">
+    <value>Piocher 2 cartes, puis défausser 1 Magie Jeu-Rapide ou carte Radiant Typhoon éligible ; une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.24940422.Limitations">
+    <value>Suppose qu’il n’y a aucune Magie/Piège au Cimetière ; l’autre restriction de Magie/Piège et l’effet de nouvelle pioche depuis le Cimetière ne sont pas modélisés.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.24940422.Summary">
+    <value>Piocher 2 cartes ; une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.26845680.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.26845680.Summary">
+    <value>Retirer un monstre Orcust ou World Legacy de la main avant de piocher 2 cartes ; une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.32807846.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.32807846.Summary">
+    <value>Rechercher 1 monstre Guerrier de Niveau 1 à 4</value>
+  </data>
+  <data xml:space="preserve" name="Effects.33782437.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.33782437.Summary">
+    <value>Piocher 1 carte.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.34041788.Limitations">
+    <value>L’Invocation Spéciale optionnelle d’un Magicien et les effets de remplacement de destruction sont hors du modèle de recherche de main de départ.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.34041788.Summary">
+    <value>Rechercher Regulus, the Prince of Endymion ou un monstre qui le mentionne</value>
+  </data>
+  <data xml:space="preserve" name="Effects.35261759.Limitations">
+    <value>L’épuisement du Deck est modélisé. La survie des cibles de recherche dépend de la précision du résultat : Rapide peut être exact ou incertain ; un calcul physique Exact terminé en tient compte. Les effets déclenchés par le bannissement ne sont pas simulés.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.35261759.Summary">
+    <value>Bannir 10 cartes inconnues du Deck, puis piocher 2 cartes ; une fois par tour. Nécessite 12 cartes restantes.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.36637374.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.36637374.Summary">
+    <value>Rechercher un monstre Despia après avoir défaussé 1 autre carte</value>
+  </data>
+  <data xml:space="preserve" name="Effects.38120068.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.38120068.Summary">
+    <value>Retirer une carte de Niveau 8 de la main avant de piocher 2 cartes.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.38943357.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.38943357.Summary">
+    <value>Rechercher 1 carte Endymion</value>
+  </data>
+  <data xml:space="preserve" name="Effects.42544773.Limitations">
+    <value>Modélise l’option de défausse et de recherche ; ses effets de réduction d’ATK et d’équipement depuis le Cimetière sont hors du périmètre.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.42544773.Summary">
+    <value>Défausser cette carte ; rechercher 1 autre monstre Magistus</value>
+  </data>
+  <data xml:space="preserve" name="Effects.45171524.Limitations">
+    <value>Modélise la recherche sans Sacrifice ; l’autre option de dommages et d’Invocation Spéciale est hors du périmètre.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.45171524.Summary">
+    <value>Rechercher 1 monstre Mitsurugi</value>
+  </data>
+  <data xml:space="preserve" name="Effects.48805472.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.48805472.Summary">
+    <value>Défausser 1 monstre Insecte ou Plante de Niveau 4, ou 1 Piège Normal, depuis la main pour piocher 2 cartes ; une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.49238328.Limitations">
+    <value>Suppose que 6 cartes de l’Extra Deck peuvent être bannies pour l’option de pioche de 2 cartes.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.49238328.Summary">
+    <value>Uniquement la première activation de pioche ; piocher 2 cartes ; aucune pioche supplémentaire.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.52782439.Limitations">
+    <value>L’Invocation optionnelle d’un Diagram Token est hors de ce modèle de recherche dans le Deck.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.52782439.Summary">
+    <value>Rechercher 1 Special Schedule ou Urgent Schedule ; une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.52840267.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.52840267.Summary">
+    <value>Défausser Ixchel et 1 autre carte Darklord de la main pour piocher 2 cartes ; une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.55144522.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.55144522.Summary">
+    <value>Piocher 2 cartes.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56506740.Limitations">
+    <value>Modélise la recherche dans le Deck à l’activation ; son effet distinct d’Invocation Spéciale d’un Monstre Normal est hors du périmètre.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56506740.Summary">
+    <value>À l’activation, rechercher 1 autre carte Primite</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56673480.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.56673480.Summary">
+    <value>Piocher 1 carte ; une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56725612.Limitations">
+    <value>Modélise la recherche dans le Deck ; l’option de bannissement et les autres effets de Magie de Terrain sont hors du modèle de main de départ.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56725612.Summary">
+    <value>Rechercher un monstre Fairy Tail ou Fairy Tail Tales</value>
+  </data>
+  <data xml:space="preserve" name="Effects.57103969.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.57103969.Summary">
+    <value>Rechercher 1 monstre Bête-Guerrier de Niveau 1 à 4</value>
+  </data>
+  <data xml:space="preserve" name="Effects.60764609.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.60764609.Summary">
+    <value>Rechercher 1 Magie/Piège Fiendsmith</value>
+  </data>
+  <data xml:space="preserve" name="Effects.6153210.Limitations">
+    <value>L’Invocation Fusion dépendant de l’adversaire est hors du modèle de recherche de main de départ.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.6153210.Summary">
+    <value>Rechercher 1 monstre Dracotail</value>
+  </data>
+  <data xml:space="preserve" name="Effects.63166095.Limitations">
+    <value>Suppose qu’il n’y a aucun monstre dans vos Zones Monstre Main ; la pioche optionnelle avec au moins 3 Magies au Cimetière est hors de ce modèle de recherche.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.63166095.Summary">
+    <value>Rechercher 1 autre carte Sky Striker depuis le Deck ; aucune limite d’une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.67115133.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.67115133.Summary">
+    <value>Rechercher un monstre Radiant Typhoon de Niveau 1 à 4 ou Mystical Space Typhoon ; chaque option une fois par entrée</value>
+  </data>
+  <data xml:space="preserve" name="Effects.67616300.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.67616300.Summary">
+    <value>Piocher 1 carte.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.691925.Limitations">
+    <value>L’envoi au Cimetière épuise le Deck. La survie des cibles de recherche dépend de la précision du résultat : Rapide peut être exact ou incertain ; un calcul physique Exact terminé en tient compte. Les effets déclenchés au Cimetière ne sont pas simulés.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.691925.Summary">
+    <value>Défausser 1 monstre Lightsworn ; piocher 2 cartes, puis envoyer les 2 cartes du dessus du Deck au Cimetière. Nécessite 4 cartes restantes.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.70368879.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.70368879.Summary">
+    <value>Piocher 1 carte.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.72323266.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.72323266.Summary">
+    <value>Rechercher 1 monstre Syntoniseur Démon de Niveau 1 à 3</value>
+  </data>
+  <data xml:space="preserve" name="Effects.74117290.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.74117290.Summary">
+    <value>Piocher 1 carte, puis retirer 1 carte de la main.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.78058681.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.78058681.Summary">
+    <value>Rechercher une autre carte Kewl Tune ; jusqu’à deux fois par entrée</value>
+  </data>
+  <data xml:space="preserve" name="Effects.78679226.Limitations">
+    <value>La pioche conditionnelle en Battle Phase est hors du modèle de main de départ limité à la recherche.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.78679226.Summary">
+    <value>Rechercher 1 monstre qui mentionne Shining Sarcophagus</value>
+  </data>
+  <data xml:space="preserve" name="Effects.7925734.Limitations">
+    <value>Suppose que la révélation de l’Extra Deck autorise la pioche.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.7925734.Summary">
+    <value>Piocher 1 carte ; une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.79571449.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.79571449.Summary">
+    <value>Piocher 3 cartes, puis retirer 2 cartes de la main.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.80181649.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.80181649.Summary">
+    <value>Rechercher 1 monstre K9</value>
+  </data>
+  <data xml:space="preserve" name="Effects.80845034.Limitations">
+    <value>Modélise uniquement la recherche dans le Main Deck ; son option d’ajout depuis le Cimetière et son effet distinct de pioche au Cimetière sont hors du périmètre.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.80845034.Summary">
+    <value>Rechercher 1 monstre Diabellstar depuis le Main Deck</value>
+  </data>
+  <data xml:space="preserve" name="Effects.81101309.Limitations">
+    <value>Le ciblage dans le Cimetière et l’effet distinct utilisable une fois par Duel sont hors du modèle de recherche de main de départ.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.81101309.Summary">
+    <value>Défausser cette carte pour ajouter Train Connection ou Revolving Switchyard depuis le Deck ; une fois par tour.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.85106525.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.85106525.Summary">
+    <value>Rechercher 1 monstre Pyro de Niveau 1 à 4</value>
+  </data>
+  <data xml:space="preserve" name="Effects.92221402.Limitations">
+    <value>Recherche dans le Main Deck uniquement ; la récupération depuis le Cimetière, la destruction optionnelle sur le Terrain et l’effet au Cimetière ne sont pas modélisés.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.92221402.Summary">
+    <value>Rechercher 1 monstre Pyro/Aqua LUMIÈRE/TÉNÈBRES de Niveau 5 ou plus</value>
+  </data>
+  <data xml:space="preserve" name="Effects.93946239.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.93946239.Summary">
+    <value>Avec au moins 3 cartes en main, piocher 1 carte.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.96729612.Limitations">
+    <value>La récupération optionnelle d’une Magie Rituelle depuis le Cimetière est hors de ce modèle de recherche dans le Deck.</value>
+  </data>
+  <data xml:space="preserve" name="Effects.96729612.Summary">
+    <value>Rechercher 1 Monstre Rituel de Niveau 1 à 7</value>
+  </data>
+  <data xml:space="preserve" name="Effects.98567237.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.98567237.Summary">
+    <value>Rechercher un Démon LUMIÈRE, puis défausser 1 carte</value>
+  </data>
+  <data xml:space="preserve" name="Move.CurrentPosition">
+    <value>(actuellement : {0})</value>
+  </data>
+  <data xml:space="preserve" name="Move.Down">
+    <value>Déplacer {0} vers le bas</value>
+  </data>
+  <data xml:space="preserve" name="Move.Left">
+    <value>Déplacer {0} vers la gauche</value>
+  </data>
+  <data xml:space="preserve" name="Move.PositionRange">
+    <value>Position 1–{0}</value>
+  </data>
+  <data xml:space="preserve" name="Move.Reorder">
+    <value>Réorganiser {0}</value>
+  </data>
+  <data xml:space="preserve" name="Move.Right">
+    <value>Déplacer {0} vers la droite</value>
+  </data>
+  <data xml:space="preserve" name="Move.ToPosition">
+    <value>Déplacer {0} à la position</value>
+  </data>
+  <data xml:space="preserve" name="Move.Up">
+    <value>Déplacer {0} vers le haut</value>
+  </data>
+  <data xml:space="preserve" name="NumericProperty.Level">
+    <value>Niveau</value>
+  </data>
+  <data xml:space="preserve" name="NumericProperty.Link">
+    <value>Lien</value>
+  </data>
+  <data xml:space="preserve" name="NumericProperty.Rank">
+    <value>Rang</value>
+  </data>
+  <data xml:space="preserve" name="NumericRange.Between">
+    <value>{0} {1}–{2}</value>
+  </data>
+  <data xml:space="preserve" name="NumericRange.Exact">
+    <value>{0} {1}</value>
+  </data>
+  <data xml:space="preserve" name="NumericRange.Maximum">
+    <value>{0} &lt;= {1}</value>
+  </data>
+  <data xml:space="preserve" name="NumericRange.Minimum">
+    <value>{0} &gt;= {1}</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.Card">
+    <value>Carte : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.MaximumProperty">
+    <value>Maximum {0}</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.RowOperator">
+    <value>Opérateur de ligne</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.Subject">
+    <value>{0}: {1}</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.WithRange">
+    <value>{0} ({1})</value>
+  </data>
+  <data xml:space="preserve" name="Result.ActiveCount">
+    <value>({0} actifs)</value>
+  </data>
+  <data xml:space="preserve" name="Result.Mode">
+    <value>Mode : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Result.PerformanceContributors">
+    <value>Contributions possibles : {0}. Consulter leurs notes de modèle (Performances).</value>
+  </data>
+  <data xml:space="preserve" name="Selector.Except">
+    <value>sauf {0}</value>
+  </data>
+  <data xml:space="preserve" name="Selector.Verified">
+    <value>{0} vérifié</value>
+  </data>
+  <data xml:space="preserve" name="Session.LastSaved">
+    <value>Dernier enregistrement : {0}.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.01234Width56">
+    <value>- {0} : [{1}/{2}, {3}/{4}] ; largeur {5} ({6})</value>
+  </data>
+  <data xml:space="preserve" name="Ui.012Active">
+    <value>- **{0}** — {1} ({2} actifs)</value>
+  </data>
+  <data xml:space="preserve" name="Ui.01PerEntry">
+    <value>{0} : {1} par entrée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0AnyActiveCombo1">
+    <value>{0}, au moins un combo : {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Combo12">
+    <value>{0}, combo {1} : {2}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Custom1">
+    <value>{0} (personnalisé {1})</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Entry1">
+    <value>{0} (entrée {1})</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Group12">
+    <value>{0}, groupe {1} : {2}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0MatchingEntries">
+    <value>0 entrée correspondante</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Max">
+    <value>{0} Max</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Min">
+    <value>{0} Min</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Width1">
+    <value>{0} · largeur {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ACategoryWithThisNameAlreadyExists">
+    <value>Une catégorie porte déjà ce nom.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AGroupWithThatNameAlreadyExists">
+    <value>Un groupe porte déjà ce nom.</value>
+  </data>
+  <data xml:space="preserve" name="Expression.AndSeparator">
+    <value> ET </value>
+  </data>
+  <data xml:space="preserve" name="Ui.ANDSameCardProperties">
+    <value>ET : propriétés de la même carte</value>
+  </data>
+  <data xml:space="preserve" name="Ui.APreviousWorkingSessionIsSavedLocally">
+    <value>Une session de travail précédente est enregistrée localement.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ASelectedCategoryWasRemovedUpdateTheEligibilityFilter">
+    <value>Une catégorie sélectionnée a été supprimée. Mettre à jour le filtre d’éligibilité.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ASharedSessionIsAvailable">
+    <value>Une session partagée est disponible.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AboutPriority">
+    <value>À propos de la priorité</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Accuracy0Completion1ContractV2">
+    <value>Précision : {0} ; achèvement : {1} ; contrat v{2}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AccuracyDetails">
+    <value>Détails de précision</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AccuracyUnavailableForThisResult">
+    <value>Précision indisponible pour ce résultat.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ActionsFor0">
+    <value>Actions pour {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Activate">
+    <value>Activer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Add">
+    <value>Ajouter</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddANDPropertyToAlternative0">
+    <value>Ajouter une propriété ET à l’alternative {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddASeparateCopyRequirement">
+    <value>Ajouter une condition sur un exemplaire distinct</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddAlternative">
+    <value>Ajouter une alternative</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddAlternativeOR">
+    <value>Ajouter une alternative (OU)</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddAnAlternativeOR">
+    <value>Ajouter une alternative · OU</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddCard">
+    <value>Ajouter une carte</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddCardByName">
+    <value>Ajouter une carte par nom</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddCombo">
+    <value>Ajouter un combo</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddComboGroup">
+    <value>Ajouter un groupe de combos</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddProperty">
+    <value>Ajouter une propriété</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddPropertyAND">
+    <value>Ajouter une propriété (ET)</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddRequirement">
+    <value>+ Ajouter une condition</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddRequirement.2d4936b2">
+    <value>Ajouter une condition</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddRuleAlternative">
+    <value>Ajouter une alternative de règle</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Added0">
+    <value>{0} ajouté.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AllEligibilityRowsMatchTheSameCard">
+    <value>Toutes les lignes d’éligibilité portent sur la même carte</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AlternativeGroup">
+    <value>Groupe d’alternatives</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AlternativeGroup0">
+    <value>Groupe d’alternatives {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnActiveComboHasAMissingCardReferenceRepairOrRemoveItOrDeactivateTheCombo">
+    <value>Un combo actif référence une carte manquante. Corriger ou supprimer cette référence, ou désactiver le combo.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AndOthers">
+    <value> et autres</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnotherPropertySameCard">
+    <value>Autre propriété · même carte</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Any">
+    <value>Sans limite</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnyActiveCombo">
+    <value>Au moins un combo</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnyActiveCombo0">
+    <value>Au moins un combo : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnyCard">
+    <value>n’importe quelle carte</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnyEligibilityRowMayMatch">
+    <value>Au moins une ligne d’éligibilité doit correspondre</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Anycardclearfilter">
+    <value>Effacer le filtre</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ApplyRule">
+    <value>Appliquer la règle</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AtLeast">
+    <value>Au moins</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AtLeast0CardsInHandBeforeActivation">
+    <value>au moins {0} cartes en main avant l’activation</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AtMost">
+    <value>Au plus</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Automatic">
+    <value>Automatique</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Back">
+    <value>Retour</value>
+  </data>
+  <data xml:space="preserve" name="Ui.BackToRow">
+    <value>Retour à la ligne</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Banish01">
+    <value>Bannir {0} · {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Banish0UnseenDeckCards">
+    <value>Bannir {0} cartes inconnues du Deck</value>
+  </data>
+  <data xml:space="preserve" name="Ui.BanishFromDeck">
+    <value>Bannir du Deck</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Between">
+    <value>Entre</value>
+  </data>
+  <data xml:space="preserve" name="Ui.BoundscertifyonlyDecksearchtargetsurvivalunderthefixedmodeleddrawremovalpolicynotfullgameplayoroptimalplayProbabilityrangesareavailableoneachresult">
+    <value>Les bornes certifient uniquement la survie des cibles de recherche dans le Deck selon la politique fixe de pioche/retrait modélisée ; elles ne couvrent ni le jeu complet ni le jeu optimal. Chaque résultat dispose d’un intervalle de probabilité.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.BuiltInSimulation">
+    <value>Simulation intégrée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Calculate">
+    <value>Calculer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculateAValidResultBeforePinning">
+    <value>Calculer un résultat valide avant de l’épingler.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculateWithAtMost0ActiveCombosDeactivateOrRemoveExtraCombos">
+    <value>Calculer avec au plus {0} combos actifs. Désactiver ou supprimer les combos en trop.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculatesPhysicalDeckSearchSurvivalExactlyWithoutAWorkCutoffSubjectToStorageLimitsAndCa">
+    <value>Calcule exactement la survie physique des cibles de recherche dans le Deck, sans plafond de Travail, sous réserve des limites de Mémoire et de l’annulation.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculatesProbabilitiesQuicklyButResultsMayBeApproximate">
+    <value>Calcule rapidement les probabilités, mais les résultats peuvent être approximatifs.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculationFailed0">
+    <value>Échec du calcul : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculationIsRunning">
+    <value>Calcul en cours.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculationModel">
+    <value>Modèle de calcul</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculationSettings">
+    <value>Paramètres de calcul</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Cancel">
+    <value>Annuler</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CancelCalculation">
+    <value>Annuler le calcul</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CancelCategoryEdit">
+    <value>Annuler la modification de catégorie</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CancelExactUpgrade">
+    <value>Annuler le passage à Exact</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CancelGroupEdit">
+    <value>Annuler la modification de groupe</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Card0">
+    <value>Carte {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Card0Row1">
+    <value>carte {0}, ligne {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardArtworkFor0">
+    <value>Illustration de la carte {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardPasscode0IsOutsideTheSupportedCardIDRange">
+    <value>Le code de carte {0} est hors de la plage d’identifiants prise en charge.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardProperty">
+    <value>Propriété de carte</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardSearchIsUnavailableYouCanStillEnterAManualCard">
+    <value>La recherche de cartes est indisponible. Il est toujours possible de saisir une carte manuellement.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardSearchResults">
+    <value>Résultats de recherche de cartes</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardSimulation">
+    <value>Simulation de carte</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Cards">
+    <value>Cartes</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Categories">
+    <value>Catégories</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Category">
+    <value>Catégorie</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Category0">
+    <value>catégorie {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CategoryName">
+    <value>Nom de catégorie</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CategoryNameCannotBeEmpty">
+    <value>Le nom de catégorie ne peut pas être vide.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CategoryRemoveButtonMs1">
+    <value>category-remove-button ms-1</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CertifiedRange01RationalEndpoints23">
+    <value>Intervalle certifié : [{0}, {1}] ; bornes rationnelles [{2}, {3}].</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Change0Operator">
+    <value>Changer l’opérateur de {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Choose">
+    <value>Choisir…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseACardCategoryOrProperty">
+    <value>Choisir une carte, une catégorie ou une propriété</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseACardCategoryOrProperty.d85ff195">
+    <value>Choisir une carte, une catégorie ou une propriété.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseAColorForCategory0">
+    <value>Choisir une couleur pour la catégorie {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseADeckBanishCountFrom0To60">
+    <value>Choisir un nombre de cartes à bannir du Deck entre 0 et 60.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseAProperty">
+    <value>Choisir une propriété</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseAPropertyOrCategory">
+    <value>Choisir une propriété ou une catégorie.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseColorForCategory0">
+    <value>Choisir la couleur de la catégorie {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseNoneDraw13OrSearch1">
+    <value>Choisir Aucun, Piocher 1–3 ou Rechercher 1.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseNoneRemove1OrRemove2">
+    <value>Choisir Aucun, Retirer 1 ou Retirer 2.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChoosesTheHighestLegalEffectAfterEachCompletedResolutionIncludingNewlyDrawnEffects">
+    <value>Résoudre les effets de pioche, puis les effets de recherche. Dans chaque phase, l’effet de priorité la plus élevée est résolu en premier.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Clear">
+    <value>Effacer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ClearWorkspace">
+    <value>Vider l’espace de travail</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Clearthecurrentdeckcategoriesandcombos">
+    <value>Vider le Deck, les catégories et les combos actuels ?</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ClipboardAccessWasDeniedSelectAndCopyThisLink">
+    <value>L’accès au presse-papiers a été refusé. Sélectionner et copier ce lien :</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ClipboardCopyingWasUnavailableSelectTheTextBelowAndCopyItManually">
+    <value>La copie dans le presse-papiers était indisponible. Sélectionner le texte ci-dessous et le copier manuellement.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Close">
+    <value>Fermer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CloseCopyFallback">
+    <value>Fermer la solution de copie alternative</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CloseEditor">
+    <value>Fermer l’éditeur</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CloseManualCopyText">
+    <value>Fermer le texte à copier manuellement</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ColorThemePreference">
+    <value>Préférence de thème</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Combo">
+    <value>Combo</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Combo0">
+    <value>Combo {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Combo0Row1">
+    <value>combo {0}, ligne {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ComboGroups">
+    <value>Groupes de combos</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ComboRequirements">
+    <value>Conditions du combo</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Combos">
+    <value>Combos</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CommonProperties">
+    <value>Propriétés courantes</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Comparison">
+    <value>Comparaison</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CompleteOrDeactivateEveryIncompleteActiveComboBeforeCalculating">
+    <value>Compléter ou désactiver chaque combo actif incomplet avant le calcul.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ConfigureSimulation">
+    <value>Configurer la simulation</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ConfirmCategoryDeletion">
+    <value>Confirmer la suppression de catégorie</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ConfirmClearingWorkspace">
+    <value>Confirmer le vidage de l’espace de travail</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ConfirmGroupDeletion">
+    <value>Confirmer la suppression de groupe</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Copies">
+    <value>Exemplaires</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CopyALinkToTheAcceptedSession">
+    <value>Copier un lien vers la session validée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CopyResults">
+    <value>Copier les résultats</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CopyShareLink">
+    <value>Copier le lien de partage</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Cost01">
+    <value>Coût {0} · {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Costcandependoneffectcombinationsanddeckconstraintsnoindividualeffectisidentified">
+    <value>Le coût peut dépendre des combinaisons d’effets et des contraintes du Deck ; aucun effet individuel n’est identifié.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentResult">
+    <value>Résultat actuel</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentSearchTargets">
+    <value>Cibles de recherche actuelles</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedDuringImportImportAgainToReplaceIt">
+    <value>Le travail actuel a changé pendant l’importation. Importer à nouveau pour le remplacer.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileLoadingLoadTheSessionAgainToReplaceIt">
+    <value>Le travail actuel a changé pendant le chargement. Recharger la session pour le remplacer.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileLoadingReviewTheSharedSessionAndLoadItAgain">
+    <value>Le travail actuel a changé pendant le chargement. Vérifier la session partagée et la charger à nouveau.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileLoadingTheExampleLoadTheExampleAgainToReplaceIt">
+    <value>Le travail actuel a changé pendant le chargement de l’exemple. Recharger l’exemple pour le remplacer.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileRestoringReviewTheDraftAndTryAgain">
+    <value>Le travail actuel a changé pendant la restauration. Vérifier le brouillon et réessayer.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CustomPriority">
+    <value>Priorité personnalisée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CustomSimulation">
+    <value>Simulation personnalisée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CustomizeSimulation">
+    <value>Personnaliser la simulation</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Dark">
+    <value>Sombre</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Deactivate">
+    <value>Désactiver</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DeckSearchAvailability">
+    <value>Disponibilité des cibles dans le Deck : </value>
+  </data>
+  <data xml:space="preserve" name="Ui.DeckSearchAvailability0">
+    <value>Disponibilité des cibles dans le Deck : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Deckdepletionismodeledsearchtargetsurvivalfollowsthereportedresultaccuracy">
+    <value>L’épuisement du Deck est modélisé ; la survie des cibles de recherche dépend de la précision indiquée du résultat.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DefineByProperties">
+    <value>Définir par propriétés</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Delete">
+    <value>Supprimer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Delete0AllMemberCombosIncludingInactiveOnesRemainInTheirCurrentOrderAndBecomeUngrouped">
+    <value>Supprimer {0} ? Tous les combos membres, y compris les inactifs, conservent leur ordre actuel et n’appartiennent plus à un groupe.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Delete0AndRemoveEveryMembershipComboRequirementAndEffectSearchRemovalReferenceIncludingI">
+    <value>Supprimer {0} ainsi que toutes ses appartenances et références dans les conditions de combos et les effets/recherches/retraits, y compris les entrées inactives ? Les termes et combos sans rapport sont conservés. Les combos vidés deviennent inactifs ; les filtres d’effets vidés ne correspondent à aucune carte avant modification. Les règles de propriétés n’utilisent que les métadonnées et restent inchangées.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DeleteCategory0">
+    <value>Supprimer la catégorie {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DeleteGroup0">
+    <value>Supprimer le groupe {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DiscardSavedDraft">
+    <value>Supprimer le brouillon enregistré</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Dismiss">
+    <value>Ignorer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DismissSharedLink">
+    <value>Ignorer le lien partagé</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DismisskeepsthedraftandpausesautosaveDiscarddeletesityournexteditstartsautosavingagain">
+    <value>Ignorer conserve le brouillon et suspend l’enregistrement automatique. Supprimer l’efface ; la prochaine modification relance l’enregistrement automatique.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Draw0">
+    <value>Piocher {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Draw1">
+    <value>Piocher 1</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Draw2">
+    <value>Piocher 2</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Draw3">
+    <value>Piocher 3</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DrawActivationPriority">
+    <value>Priorité d’activation</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DrawActivationPriorityHighestFirst">
+    <value>Priorité d’activation, la plus élevée d’abord</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DrawConfiguredOff">
+    <value>Pioche configurée · Désactivée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DrawSimulationIsOffThisConfiguredDrawEffectIsCurrentlyIgnored">
+    <value>La simulation de pioche est désactivée — cet effet de pioche configuré est actuellement ignoré.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Duplicate">
+    <value>Dupliquer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EachActiveCardMustHaveAtLeastOneCopyOrBeDeactivated">
+    <value>Chaque carte active doit avoir au moins un exemplaire, ou être désactivée.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Edit">
+    <value>Modifier</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Edit0">
+    <value>Modifier {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditAlternativesInORGroup0">
+    <value>Modifier les alternatives du groupe OU {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditCategory0">
+    <value>Modifier la catégorie {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditGroup0">
+    <value>Modifier le groupe {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditNewRequirement">
+    <value>Modifier la nouvelle condition</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditRequirement">
+    <value>Modifier la condition</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditRule">
+    <value>Modifier la règle</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Effect">
+    <value>Effet</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EffectScope">
+    <value>Périmètre de l’effet : </value>
+  </data>
+  <data xml:space="preserve" name="Ui.EffectsExact">
+    <value>Effets — exact</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EffectsFast">
+    <value>Effets — rapide</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Eligible">
+    <value>Éligible</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Encounterorderdefault">
+    <value>Ordre de rencontre (par défaut)</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EnterANonNegativeWholeNumberOrAnOrderedRange">
+    <value>Saisir un entier positif ou nul, ou un intervalle ordonné.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EnterAWholeNumberFrom1To0">
+    <value>Saisir un entier de 1 à {0}.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EnterValidMinimumAndMaximumCounts">
+    <value>Saisir des nombres minimum et maximum valides.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ExactModeledFraction">
+    <value>Fraction exacte du modèle</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ExactOnly">
+    <value>Exact uniquement</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ExactWithRespectToDeckSearchAvailability">
+    <value>Exact pour la disponibilité des cibles dans le Deck</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ExactWithinTheAcceptedCalculationScope">
+    <value>Exact dans le périmètre de calcul validé.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Exactly">
+    <value>Exactement</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToDeserializeSessionData">
+    <value>Échec de la désérialisation des données de session</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToImportDeck0">
+    <value>Échec de l’importation du Deck : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToLoadExampleSession0">
+    <value>Échec du chargement de la session d’exemple : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToLoadSession0">
+    <value>Échec du chargement de la session : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToSaveSession0">
+    <value>Échec de l’enregistrement de la session : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FastCompletedAPhysicalExactCalculation">
+    <value>Rapide a terminé un calcul physique Exact.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FastCompletedAfterTheAutomaticExactOpportunityNoAdditionalAttemptWasStartedSelectExactOn">
+    <value>Rapide a terminé après la fenêtre de tentative automatique Exact ; aucune tentative supplémentaire n’a été lancée. Choisir Exact uniquement pour autoriser plus de temps.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FastMaySimplifyWhetherDeckSearchTargetsSurviveWhenExactCountingIsTooExpensiveCertifiedBo">
+    <value>Rapide peut simplifier la survie des cibles de recherche dans le Deck lorsque le comptage Exact est trop coûteux. Les bornes ± certifiées décrivent l’incertitude du modèle, et non un intervalle de confiance statistique ; Non certifié ne fournit aucune borne garantie. Exact (±0%) résout cette incertitude selon les hypothèses modélisées.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FastOnly">
+    <value>Rapide uniquement</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FileNameCannotBeEmpty">
+    <value>Le nom de fichier ne peut pas être vide</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FilterIsTooLargeOrTooDeeplyGrouped">
+    <value>Le filtre est trop grand ou contient des groupes trop imbriqués.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FirstDrawActivationOnly">
+    <value>uniquement la première activation de pioche</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Group0">
+    <value>groupe {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupFor0">
+    <value>Groupe de {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupName">
+    <value>Nom du groupe</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupNameCannotBeEmpty">
+    <value>Le nom du groupe ne peut pas être vide.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupProbabilities">
+    <value>Probabilités des groupes :</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupedEligibilityFilter">
+    <value>Filtre d’éligibilité groupé</value>
+  </data>
+  <data xml:space="preserve" name="Ui.HandSize">
+    <value>Taille de la main :</value>
+  </data>
+  <data xml:space="preserve" name="Ui.HandSize0">
+    <value>Taille de la main : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.HandSize01Cards">
+    <value>Taille de la main {0} · {1} cartes</value>
+  </data>
+  <data xml:space="preserve" name="Ui.HandSizeMustBeAtLeast1">
+    <value>La taille de la main doit être d’au moins 1.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Help">
+    <value>Aide</value>
+  </data>
+  <data xml:space="preserve" name="Ui.High65536entries524288cells">
+    <value>Élevée (65,536 entrées / 524,288 cellules)</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Higherlimitsmayallowmorecomplexexactcalculationstocompleteandcanusesubstantiallymorebrowsermemorytheydonotchangeprobabilityaccuracy">
+    <value>Des limites supérieures peuvent permettre de terminer des calculs exacts plus complexes et utiliser beaucoup plus de mémoire du navigateur ; elles ne changent pas la précision des probabilités.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.IfUnavailableFailBranch">
+    <value>Si indisponible : échec de la branche.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Import">
+    <value>Importer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ImportDeck">
+    <value>Importer un Deck</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ImportYDK">
+    <value>Importer un YDK</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ImportYDKe">
+    <value>Importer un YDKe</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Inactive">
+    <value>Inactif</value>
+  </data>
+  <data xml:space="preserve" name="Ui.IndividualCombos">
+    <value>Combos individuels</value>
+  </data>
+  <data xml:space="preserve" name="Ui.IndividualCombos.dc8d9abb">
+    <value>Combos individuels :</value>
+  </data>
+  <data xml:space="preserve" name="Ui.InputsChanged">
+    <value>Données modifiées</value>
+  </data>
+  <data xml:space="preserve" name="Ui.InvalidSessionFileFormat">
+    <value>Format de fichier de session invalide</value>
+  </data>
+  <data xml:space="preserve" name="Ui.IsAnAbsoluteChangeOnThe0100ProbabilityScaleNotARelativePercentageBoundedValuesShowADispl">
+    <value>± est une variation absolue sur l’échelle de probabilité de 0% à 100%, et non un pourcentage relatif. Les valeurs bornées affichent un milieu et un rayon arrondi vers l’extérieur couvrant l’intervalle certifié ; aucune valeur de cet intervalle n’est considérée comme plus probable. Ce n’est pas un intervalle de confiance statistique.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LeaveEmptyForAny">
+    <value>Laisser vide pour Sans limite</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LeaveEmptyForAnyNumberSetBothCountsTo0ToExcludeMatchingCards">
+    <value>Laisser vide pour autoriser un nombre quelconque. Fixer les deux nombres à 0 pour exclure les cartes correspondantes.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Level">
+    <value>Niveau</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Level0">
+    <value>Niveau &gt;= {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Light">
+    <value>Clair</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Link">
+    <value>Lien</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LinksAreNotEncryptedAnyoneWithThisLinkOrAccessToBrowserHistoryCanReadTheSession">
+    <value>Les liens ne sont pas chiffrés. Toute personne disposant du lien ou d’un accès à l’historique du navigateur peut lire la session.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Load">
+    <value>Charger</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadSession">
+    <value>Charger une session</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadSharedSession">
+    <value>Charger la session partagée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadingLocalCardCatalog">
+    <value>Chargement du catalogue local de cartes…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadingReplacesThisWorkspaceIncludingEditorDraftsAndAnySavedRecoveryDraftYouCanDismissTh">
+    <value>Le chargement remplace cet espace de travail, y compris les brouillons des éditeurs et tout brouillon de récupération enregistré. Il est aussi possible d’ignorer ce lien ou de restaurer le brouillon local ci-dessous.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadingSession">
+    <value>Chargement de la session…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LocalCatalogUnavailable">
+    <value>Catalogue local indisponible</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LocalRecoveryCouldNotCaptureThisSessionSaveASessionFileToKeepYourWork">
+    <value>La récupération locale n’a pas pu conserver cette session. Enregistrer un fichier de session pour conserver ce travail.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LocalRecoveryIsUnavailableSaveASessionFileToKeepYourWork">
+    <value>La récupération locale est indisponible. Enregistrer un fichier de session pour conserver ce travail.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ManageCardRoles">
+    <value>· gérer les rôles des cartes</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Manual">
+    <value>Manuel</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Maximum0">
+    <value>Maximum {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MaximumCountMustBeAWholeNumberAtLeastEqualToMinimumCount">
+    <value>Le maximum doit être un entier au moins égal au minimum.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Mill0">
+    <value> · Envoyer {0} cartes du dessus du Deck au Cimetière</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Minimum0">
+    <value>Minimum {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MinimumCountMustBeANonNegativeWholeNumber">
+    <value>Le minimum doit être un entier positif ou nul.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MissingCard">
+    <value>Carte manquante</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MissingCard0">
+    <value>Carte manquante ({0})</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MissingCardReferenceRemoveTheMissingRequirementThenAddAnotherCardIfNeeded">
+    <value>Référence de carte manquante. Supprimer la condition manquante, puis ajouter une autre carte si nécessaire.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModelLimits">
+    <value>Limites du modèle :</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModelNotes">
+    <value>Notes du modèle</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModelNotesIncludePerformanceGuidance">
+    <value>Les notes du modèle comprennent des conseils sur les performances</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModeledPrimaryFraction">
+    <value>Fraction principale du modèle</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModeledPrimaryFraction0">
+    <value>Fraction principale du modèle : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModeledPrimaryFraction0.75f14642">
+    <value>fraction principale du modèle : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.More">
+    <value>Plus</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoreWorkspaceActions">
+    <value>Autres actions de l’espace de travail</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Move">
+    <value>Déplacer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoveDown">
+    <value>Déplacer vers le bas</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoveToPosition">
+    <value>Déplacer à la position</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoveToPosition.8d5ae4bd">
+    <value>Déplacer à la position…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoveUp">
+    <value>Déplacer vers le haut</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Name">
+    <value>Nom</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NestedConditions">
+    <value>Conditions imbriquées</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NewComboGroupName">
+    <value>Nom du nouveau groupe de combos</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NewNameForCategory0">
+    <value>Nouveau nom de la catégorie {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NewNameForGroup0">
+    <value>Nouveau nom du groupe {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoActiveDeckSearches">
+    <value>Aucune recherche active dans le Deck</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoBuiltInSimulation">
+    <value>Aucune simulation intégrée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoDrawEffect">
+    <value>Aucun effet de pioche</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoDrawEffectsConfigured">
+    <value>Aucun effet de pioche ou de recherche activé.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoEffectSimulation">
+    <value>Sans simulation d’effets</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoEligibleCards">
+    <value>aucune carte éligible</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoFurtherDraws">
+    <value>aucune pioche supplémentaire</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoMatchingCards">
+    <value>Aucune carte correspondante.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoProbabilityWasCalculatedForThisRequest">
+    <value> Aucune probabilité n’a été calculée pour cette demande.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoProbabilityWasReturnedForThisRequest">
+    <value> Aucune probabilité n’a été renvoyée pour cette demande.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.None">
+    <value>Aucun</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NotCertified">
+    <value>Non certifié</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NumberOfCopiesMustBeAtLeast1">
+    <value>Le nombre d’exemplaires doit être d’au moins 1.</value>
+  </data>
+  <data xml:space="preserve" name="Expression.OrSeparator">
+    <value> OU </value>
+  </data>
+  <data xml:space="preserve" name="Ui.ORAnyAlternative">
+    <value>OU : au moins une alternative</value>
+  </data>
+  <data xml:space="preserve" name="Ui.OncePerTurn">
+    <value>Une fois par tour</value>
+  </data>
+  <data xml:space="preserve" name="Ui.OncePerTurn.e31d0a49">
+    <value>une fois par tour</value>
+  </data>
+  <data xml:space="preserve" name="Ui.OpeningHandOnlySavedSimulationIsOff">
+    <value>Main de départ uniquement · simulation enregistrée désactivée.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.OrganizeCombos">
+    <value>· organiser les combos</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Partial">
+    <value>Partiel</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PasteYdke">
+    <value>Coller ydke://...</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Performance">
+    <value>Performances :</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PinResult">
+    <value>Épingler le résultat</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PinnedResult">
+    <value>Résultat épinglé</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PleaseSelectACardToAdd">
+    <value>Sélectionner une carte à ajouter.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PleaseSelectACategoryToAdd">
+    <value>Sélectionner une catégorie à ajouter.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Preliminary">
+    <value>Provisoire</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PreviousResultCurrentInputsHaveChanged">
+    <value>Résultat précédent — les données actuelles ont changé.
+</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ProbabilityResults">
+    <value>Résultats de probabilité</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Progressive">
+    <value>Progressif</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Progressivedefault">
+    <value>Progressif (par défaut)</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Properties">
+    <value>Propriétés :</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Property">
+    <value>Propriété</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Rank">
+    <value>Rang</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RationalEndpoints01ModeledOptimisticPrimary2">
+    <value>bornes rationnelles [{0}, {1}] ; valeur principale optimiste du modèle : {2}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RecalculateUsingExact">
+    <value>Recalculer avec Exact</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Recoverydraftkeptautosavepaused">
+    <value>Brouillon de récupération conservé ; enregistrement automatique suspendu.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RelevantProperties">
+    <value>Propriétés pertinentes</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove">
+    <value>Retirer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove0">
+    <value> · Retirer {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove0FromHand1">
+    <value>Retirer {0} de la main ({1})</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove0FromHand1.af3ec21f">
+    <value>retirer {0} de la main ({1})</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove1">
+    <value>Retirer 1</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove2">
+    <value>Retirer 2</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveCategory0">
+    <value>Retirer la catégorie {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveCategory0FromCard1">
+    <value>Retirer la catégorie {0} de la carte {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveGroup0">
+    <value>Retirer le groupe {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveManuallyAddedCardProperty0FromCard1">
+    <value>Retirer la propriété de carte {0} ajoutée manuellement à la carte {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveProperty0">
+    <value>Retirer la propriété {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveProperty0FromAlternative1">
+    <value>Retirer la propriété {0} de l’alternative {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveRequirement">
+    <value>Retirer la condition</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveRule">
+    <value>Retirer la règle</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ReplaceCurrentWorkAndRestore">
+    <value>Remplacer le travail actuel et restaurer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ReplaceEmptyFilter">
+    <value>Remplacer le filtre vide</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ReplacePinWithCurrentResult">
+    <value>Remplacer le résultat épinglé par le résultat actuel</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ReplaceVerifiedFilter">
+    <value>Remplacer le filtre vérifié</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Requirement">
+    <value>Condition</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RequirementOrGroupExpressionGroupNested">
+    <value>requirement-or-group expression-group-nested</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RestoreBuiltInSimulation">
+    <value>Restaurer la simulation intégrée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RestorePreviousSession">
+    <value>Restaurer la session précédente</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RestoringWillReplaceYourCurrentEdits">
+    <value>La restauration remplacera les modifications actuelles.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ResultGroup">
+    <value>Groupe de résultats</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ResultReady">
+    <value>Résultat prêt.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ResultSummary">
+    <value>Résumé du résultat</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ResultsCopied">
+    <value>Résultats copiés.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SameCardProperty0">
+    <value>Propriété de la même carte {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Save">
+    <value>Enregistrer</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveCategoryName">
+    <value>Enregistrer le nom de catégorie</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveGroupName">
+    <value>Enregistrer le nom de groupe</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveOrCancelTheConditionEditFirst">
+    <value>Enregistrer ou annuler d’abord la modification de condition</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveOrCancelThePendingRowBeforeChangingItsGrouping">
+    <value>Enregistrer ou annuler la ligne en cours avant de modifier son groupement.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveSession">
+    <value>Enregistrer la session</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SavedSimulation">
+    <value>Simulation enregistrée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Savedsettingsnobuiltinrevisionrecorded">
+    <value>Paramètres enregistrés ; aucune révision intégrée enregistrée.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Search1">
+    <value>Rechercher 1</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Search10">
+    <value>Rechercher 1 ({0})</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Search1CardFromDeck">
+    <value>Rechercher 1 carte dans le Deck</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SearchConfiguredOff">
+    <value>Recherche configurée · Désactivée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SelectACategoryToAddAsAnANDCondition">
+    <value>Sélectionner une catégorie à ajouter comme condition ET.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SelectATargetForThisAlternative">
+    <value>Sélectionner une cible pour cette alternative.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SelectCategory">
+    <value>Sélectionner une catégorie…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SelectedCategoryNotFound">
+    <value>Catégorie sélectionnée introuvable.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Send0UnseenTopDeckCardsToTheGY">
+    <value>envoyer {0} cartes inconnues du dessus du Deck au Cimetière</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SeparateCardRequirements">
+    <value>+ : conditions sur des cartes distinctes</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsDuplicateCardIDs">
+    <value>La session contient des identifiants de carte en double.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsDuplicateCategoryIdentities">
+    <value>La session contient des identités de catégorie en double.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsInvalidOrDuplicateComboGroupIdentities">
+    <value>La session contient des identités de groupe de combos invalides ou en double.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsMissingComboRequirements">
+    <value>La session contient des conditions de combo manquantes.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsMissingModelCollectionsOrEntries">
+    <value>La session contient des collections ou entrées de modèle manquantes.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionRecovery">
+    <value>Récupération de session</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Set0ColorTo1">
+    <value>Définir la couleur de {0} sur {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ShareLinkCopied">
+    <value>Lien de partage copié.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SharedSession">
+    <value>Session partagée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ShowRecovery">
+    <value>Afficher la récupération</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ShowsFastFirstThenAttemptsExact">
+    <value>Affiche d’abord Rapide, puis tente Exact.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Simulation">
+    <value>Simulation</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SortAZ">
+    <value>Trier de A à Z</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SortDeckAZ">
+    <value>Trier le Deck de A à Z</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Standard32768entries262144cells">
+    <value>Standard (32,768 entrées / 262,144 cellules)</value>
+  </data>
+  <data xml:space="preserve" name="Ui.StorageSafetyLimit">
+    <value>Limite de sécurité de la mémoire</value>
+  </data>
+  <data xml:space="preserve" name="Ui.System">
+    <value>Système</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheANDGroupWouldExceed16PropertiesRemoveAPropertyBeforeCombining">
+    <value>Le groupe ET dépasserait 16 propriétés. Retirer une propriété avant de combiner.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheActiveDeckHas0CopiesFewerThanTheHandSizeOf1">
+    <value>Le Deck actif contient {0} exemplaires, soit moins que la taille de main de {1}.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheActiveDeckIsTooLargeToCalculateReduceTheNumberOfCopiesOrDeactivateCards">
+    <value>Le Deck actif est trop grand pour le calcul. Réduire le nombre d’exemplaires ou désactiver des cartes.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactAttemptCouldNotCompleteTheCompletedFastResultIsRetained">
+    <value>La tentative automatique Exact n’a pas pu aboutir ; le résultat Rapide terminé est conservé.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactAttemptReachedTheRemainingWorkAllowanceTheCompletedFastResultIsRetained">
+    <value>La tentative automatique Exact a atteint le budget de Travail restant ; le résultat Rapide terminé est conservé.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactAttemptReachedTheStorageLimitTheCompletedFastResultIsRetained">
+    <value>La tentative automatique Exact a atteint la limite de Mémoire ; le résultat Rapide terminé est conservé.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactOpportunityEndedTheCompletedFastResultIsRetainedSelectExactOnlyToAllowM">
+    <value>La fenêtre de tentative automatique Exact est terminée ; le résultat Rapide terminé est conservé. Choisir Exact uniquement pour autoriser plus de temps.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactRouteWasUnsupportedTheCompletedFastResultIsRetained">
+    <value>La méthode automatique Exact n’était pas prise en charge ; le résultat Rapide terminé est conservé.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheDecodedYDKe0DeckSectionLengthMustBeDivisibleByFourBytes">
+    <value>La longueur de la section de Deck {0} YDKe décodée doit être divisible par quatre octets.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheLocalDraftCouldNotBeRestoredYourCurrentWorkAndSavedDraftAreKept">
+    <value>Le brouillon local n’a pas pu être restauré. Le travail actuel et le brouillon enregistré sont conservés.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheLocalDraftIsInvalidOrFromAnUnsupportedSessionVersionItIsKeptUntilYouDiscardOrReplaceI">
+    <value>Le brouillon local est invalide ou provient d’une version de session non prise en charge. Il est conservé jusqu’à sa suppression ou son remplacement.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheORGroupWouldExceed16AlternativesRemoveAnAlternativeBeforeSplitting">
+    <value>Le groupe OU dépasserait 16 alternatives. Retirer une alternative avant de séparer.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheOriginalResultContextIsUnavailable">
+    <value>Le contexte du résultat d’origine est indisponible.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheSharedSessionIsInvalidOrUsesAnUnsupportedSessionVersionYourWorkAndSavedDraftAreKept">
+    <value>La session partagée est invalide ou utilise une version de session non prise en charge. Le travail actuel et le brouillon enregistré sont conservés.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheSharedSessionLinkIsInvalidOrCorrupted">
+    <value>Le lien de session partagée est invalide ou corrompu.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheYDKe0DeckSectionIsNotValidBase64">
+    <value>La section de Deck {0} YDKe n’est pas un Base64 valide.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisCategoryIsAlreadyAddedToTheCard">
+    <value>Cette catégorie est déjà ajoutée à la carte.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisEffectRequiresDetailedHandStateCalculationInEffectModesAndCanBecomeExpensiveInComple">
+    <value>Cet effet nécessite un calcul détaillé de l’état de la main dans les modes avec effets et peut devenir coûteux pour les Decks complexes.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisSavedEffectCannotRunInThisCalculator">
+    <value>Cet effet enregistré ne peut pas être exécuté dans ce calculateur.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisSessionIsTooLargeForAShareLinkShareANormalSessionFileInstead">
+    <value>Cette session est trop volumineuse pour un lien de partage. Partager plutôt un fichier de session normal.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisSessionIsTooLargeOrUnsupportedForAShareLinkShareANormalSessionFileInstead">
+    <value>Cette session est trop volumineuse ou non prise en charge pour un lien de partage. Partager plutôt un fichier de session normal.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisSharedLinkIsTooLargeRequestANormalSessionFileInstead">
+    <value>Ce lien partagé est trop volumineux. Demander plutôt un fichier de session normal.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Uncertified">
+    <value>⚠ Non certifié</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UncertifiedAccuracyUnavailable">
+    <value>Non certifié · précision indisponible</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Ungrouped">
+    <value>Sans groupe</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UngroupedCombos">
+    <value>Combos sans groupe</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UngroupedCombos.ec9c0ff4">
+    <value>Combos sans groupe :</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Uninformative">
+    <value>Non informatif</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UninformativeLowerBound">
+    <value> (borne inférieure non informative)</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnknownCalculationMode">
+    <value>Mode de calcul inconnu.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Unlimited">
+    <value>sans limite</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Unmodeled">
+    <value>Non modélisé</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnnamedCard">
+    <value>Carte sans nom</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnnamedCombo0">
+    <value>Combo sans nom {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnpinResult">
+    <value>Détacher le résultat</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnsupportedEffect">
+    <value>Effet non pris en charge</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnsupportedExecutionModel">
+    <value>Modèle d’exécution non pris en charge</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnsupportedSharedLinkFormatVersion">
+    <value>Version du format de lien partagé non prise en charge.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UpTo0ActivationsPerEntry">
+    <value>jusqu’à {0} activations par entrée</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UpdateRequirement">
+    <value>Mettre à jour la condition</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UseThisWorkspaceForRecovery">
+    <value>Utiliser cet espace de travail pour la récupération</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UserCategories">
+    <value>Catégories personnelles</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Veryhigh131072entries1048576cells">
+    <value>Très élevée (131,072 entrées / 1,048,576 cellules)</value>
+  </data>
+  <data xml:space="preserve" name="Ui.WaitForTheCalculationToFinishBeforeCopyingResults">
+    <value>Attendre la fin du calcul avant de copier les résultats.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeCodeMustContainExactlyThreeBase64SectionsEachFollowedBy">
+    <value>Le code YDKe doit contenir exactement trois sections Base64, chacune suivie de '!'.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeCodeMustIncludeAMainDeckSection">
+    <value>Le code YDKe doit contenir une section de Main Deck.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeCodeMustStartWithYdke">
+    <value>Le code YDKe doit commencer par 'ydke://'.</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeDeckCode">
+    <value>Code de Deck YDKe</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeDeckImport">
+    <value>Importation de Deck YDKe</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YuGiOhAdvancedProbabilityCalculator">
+    <value>Yu-Gi-Oh! Advanced Probability Calculator</value>
+  </data>
+  <data xml:space="preserve" name="Help.PageTitle">
+    <value>Aide | Yu-Gi-Oh! Advanced Probability Calculator</value>
+  </data>
+  <data xml:space="preserve" name="Help.EmptyExample">
+    <value>Le fichier de session d’exemple est vide</value>
+  </data>
+  <data xml:space="preserve" name="Help.ExampleError">
+    <value>Échec du chargement de la session d’exemple : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Help.TryExample">
+    <value>Essayer avec les données d’exemple</value>
+  </data>
+  <data xml:space="preserve" name="Probability.Summary">
+    <value>{0} {1}</value>
+  </data>
+  <data xml:space="preserve" name="Probability.UninformativeSummary">
+    <value>{0} {1} · Non informatif</value>
+  </data>
+  <data xml:space="preserve" name="Probability.BoundedDetail">
+    <value>{0} Milieu affiché ± incertitude absolue conservatrice ; la valeur principale optimiste conservée peut dépasser la borne supérieure certifiée.</value>
+  </data>
+  <data xml:space="preserve" name="Probability.UninformativeDetail">
+    <value>{0} Non informatif : la probabilité réelle pourrait être nulle.</value>
+  </data>
+  <data xml:space="preserve" name="Probability.CertificationLimited">
+    <value>Certification limitée : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Probability.CertificationError">
+    <value>Erreur de certification : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Probability.NoInterval">
+    <value>Aucun intervalle complet valide : {0}</value>
+  </data>
+  <data xml:space="preserve" name="Probability.DetailWithPrimary">
+    <value>{0} Fraction principale du modèle : {1}.</value>
+  </data>
+  <data xml:space="preserve" name="Result.Heading">
+    <value>Résultats</value>
+  </data>
+  <data xml:space="preserve" name="Expression.Objective">
+    <value>Objectif</value>
+  </data>
+  <data xml:space="preserve" name="Expression.Not">
+    <value>NON</value>
+  </data>
+  <data name="Language.Label" xml:space="preserve"><value>Langue</value></data>
+  <data name="Language.CaptureFailed" xml:space="preserve"><value>L’espace de travail validé n’a pas pu être conservé en toute sécurité. Enregistrer un fichier de session et réessayer.</value></data>
+  <data name="Language.ChangeFailed" xml:space="preserve"><value>La langue n’a pas été modifiée. L’espace de travail actuel est conservé. Enregistrer le travail, vérifier le stockage du site et réessayer. {0}</value></data>
+  <data name="Language.RestoreFailed" xml:space="preserve"><value>L’espace de travail du changement de langue n’a pas pu être entièrement restauré. Son transfert est conservé dans cet onglet. Le télécharger avant d’effacer les données du navigateur. {0}</value></data>
+  <data name="Language.DownloadHandoff" xml:space="preserve"><value>Télécharger le transfert conservé</value></data>
+  <data name="Language.WaitForLoad" xml:space="preserve"><value>Attendre la fin du chargement de session ou de l’importation de Deck avant de changer de langue.</value></data>
+  <data name="Language.UnfinishedEdit" xml:space="preserve"><value>Enregistrer/appliquer ou annuler la modification en cours avant de changer de langue.</value></data>
+  <data name="Language.WaitForCalculation" xml:space="preserve"><value>Attendre la fin du calcul ou l’annuler avant de changer de langue.</value></data>
+  <data name="Language.UnrestoredCheckpoint" xml:space="preserve"><value>Un point de restauration de changement de langue précédent n’a pas été restauré. Il est conservé dans cet onglet ; le télécharger avant d’effacer les données du navigateur.</value></data>
+  <data name="Ui.DisableSimulation" xml:space="preserve"><value>Désactiver la simulation</value></data>
+  <data name="Ui.EnableSimulation" xml:space="preserve"><value>Activer la simulation</value></data>
+  <data name="Ui.SimulationDisabled" xml:space="preserve"><value>Simulation désactivée pour cette entrée</value></data>
+  <data name="Priority.DrawEffects" xml:space="preserve"><value>Effets de pioche</value></data>
+  <data name="Priority.SearchEffects" xml:space="preserve"><value>Effets de recherche</value></data>
+  <data name="Help.Introduction.Overview" xml:space="preserve"><value>Calculer les probabilités de combos en main de départ, y compris les effets de pioche et de recherche pris en charge. Commencer avec son propre Deck ou explorer l’exemple.</value></data>
+  <data name="Help.Introduction.ReplaceWarning" xml:space="preserve"><value>Le chargement remplace l’espace de travail actuel. Enregistrer d’abord une session pour le conserver.</value></data>
+  <data name="Help.GettingStarted.Question" xml:space="preserve"><value>Comment commencer ?</value></data>
+  <data name="Help.GettingStarted.AddDeck.Part0" xml:space="preserve"><value>Ajouter son Deck.</value></data>
+  <data name="Help.GettingStarted.AddDeck.Part1" xml:space="preserve"><value>.ydk</value></data>
+  <data name="Help.GettingStarted.AddDeck" xml:space="preserve"><value>{0} Importer un fichier {1} ou un code YDKe, ou saisir les cartes manuellement. Vérifier le nombre d’exemplaires et la taille de la main.</value></data>
+  <data name="Help.GettingStarted.DefineCombo.Part0" xml:space="preserve"><value>Définir un combo.</value></data>
+  <data name="Help.GettingStarted.DefineCombo" xml:space="preserve"><value>{0} Ajouter les cartes, catégories ou propriétés nécessaires à une main réussie.</value></data>
+  <data name="Help.GettingStarted.CheckEffects.Part0" xml:space="preserve"><value>Vérifier les effets des cartes.</value></data>
+  <data name="Help.GettingStarted.CheckEffects" xml:space="preserve"><value>{0} Développer les cartes à effets pour examiner leurs simulations configurées.</value></data>
+  <data name="Help.GettingStarted.Calculate.Part0" xml:space="preserve"><value>Calculer.</value></data>
+  <data name="Help.GettingStarted.Calculate.Part1" xml:space="preserve"><value>Progressif</value></data>
+  <data name="Help.GettingStarted.Calculate" xml:space="preserve"><value>{0} Commencer avec {1}, puis vérifier l’indication de précision à côté de chaque résultat.</value></data>
+  <data name="Help.GettingStarted.Deactivate" xml:space="preserve"><value>Les cartes et les combos peuvent être désactivés temporairement sans être supprimés.</value></data>
+  <data name="Help.Properties.Question" xml:space="preserve"><value>Comment utiliser les catégories et les propriétés ?</value></data>
+  <data name="Help.Properties.RolesAndProperties.Part0" xml:space="preserve"><value>propriétés</value></data>
+  <data name="Help.Properties.RolesAndProperties.Part1" xml:space="preserve"><value>catégories</value></data>
+  <data name="Help.Properties.RolesAndProperties" xml:space="preserve"><value>Utiliser les {0} pour les caractéristiques des cartes et les {1} pour les rôles attribués.</value></data>
+  <data name="Help.Properties.PropertyExamples.Part0" xml:space="preserve"><value>Propriétés :</value></data>
+  <data name="Help.Properties.PropertyExamples" xml:space="preserve"><value>{0} FEU, Guerrier, Niveau 4 et d’autres valeurs fournies par les données des cartes.</value></data>
+  <data name="Help.Properties.CategoryExamples.Part0" xml:space="preserve"><value>Catégories :</value></data>
+  <data name="Help.Properties.CategoryExamples" xml:space="preserve"><value>{0} Initiateur, Prolongateur ou tout rôle utile au Deck.</value></data>
+  <data name="Help.Properties.Overlaps" xml:space="preserve"><value>Une carte peut correspondre à plusieurs propriétés et catégories à la fois. Les rôles personnalisés ne changent pas les règles d’éligibilité d’un effet de recherche intégré.</value></data>
+  <data name="Help.Properties.NumericRanges.Part0" xml:space="preserve"><value>Niveau 1–4 ET Guerrier</value></data>
+  <data name="Help.Properties.NumericRanges" xml:space="preserve"><value>Le Niveau, le Rang et la valeur Lien permettent des comparaisons numériques et des intervalles inclusifs. Par exemple, {0} sélectionne les Guerriers individuels dans cet intervalle de niveaux. Les cartes sans valeur applicable ne correspondent pas.</value></data>
+  <data name="Help.Requirements.Question" xml:space="preserve"><value>Comment définir les conditions d’un combo ?</value></data>
+  <data name="Help.Requirements.Create.Part0" xml:space="preserve"><value>Ajouter une condition</value></data>
+  <data name="Help.Requirements.Create.Part1" xml:space="preserve"><value>Au moins</value></data>
+  <data name="Help.Requirements.Create.Part2" xml:space="preserve"><value>Maximum</value></data>
+  <data name="Help.Requirements.Create.Part3" xml:space="preserve"><value>0</value></data>
+  <data name="Help.Requirements.Create" xml:space="preserve"><value>Choisir {0}, sélectionner une cible et définir {1}. Utiliser {2} pour limiter les cartes correspondantes ; fixer les deux nombres à {3} pour les exclure.</value></data>
+  <data name="Help.Requirements.FinalHand" xml:space="preserve"><value>Toutes les conditions d’un combo doivent être satisfaites par la main finale après la résolution des effets.</value></data>
+  <data name="Help.Requirements.Combining" xml:space="preserve"><value>Combiner les conditions</value></data>
+  <data name="Help.Requirements.Expression" xml:space="preserve"><value>Expression</value></data>
+  <data name="Help.Requirements.Meaning" xml:space="preserve"><value>Signification</value></data>
+  <data name="Help.Requirements.DistinctExample.Part0" xml:space="preserve"><value>Initiateur + FEU</value></data>
+  <data name="Help.Requirements.DistinctCopies" xml:space="preserve"><value>Deux exemplaires distincts : un Initiateur et une carte FEU. Une seule carte correspondant aux deux ne peut pas remplir les deux conditions.</value></data>
+  <data name="Help.Requirements.SameCardExample.Part0" xml:space="preserve"><value>FEU ET Guerrier</value></data>
+  <data name="Help.Requirements.SameCard" xml:space="preserve"><value>Chaque carte correspondante doit posséder les deux propriétés.</value></data>
+  <data name="Help.Requirements.AlternativesExample.Part0" xml:space="preserve"><value>Razen + (FEU OU TÉNÈBRES)</value></data>
+  <data name="Help.Requirements.Alternatives" xml:space="preserve"><value>Razen, plus un exemplaire distinct satisfaisant l’une ou l’autre alternative.</value></data>
+  <data name="Help.Requirements.Counting" xml:space="preserve"><value>Règles de comptage</value></data>
+  <data name="Help.Requirements.Maximum.Part0" xml:space="preserve"><value>toutes les cartes correspondantes</value></data>
+  <data name="Help.Requirements.Maximum.Part1" xml:space="preserve"><value>Sans limite</value></data>
+  <data name="Help.Requirements.Maximum" xml:space="preserve"><value>Un maximum compte {0} de la main finale. Un maximum vide signifie {1}.</value></data>
+  <data name="Help.Requirements.AlternativeCounts.Part0" xml:space="preserve"><value>FEU (2–2) OU TÉNÈBRES (2–2)</value></data>
+  <data name="Help.Requirements.AlternativeCounts" xml:space="preserve"><value>Chaque alternative OU conserve ses propres nombres. {0} nécessite deux cartes de l’un ou l’autre type.</value></data>
+  <data name="Help.Requirements.RepeatedTarget.Part0" xml:space="preserve"><value>Au moins</value></data>
+  <data name="Help.Requirements.RepeatedTarget" xml:space="preserve"><value>Pour demander plusieurs exemplaires, augmenter {0}. Répéter la même cible applique l’intersection de ses bornes.</value></data>
+  <data name="Help.Requirements.Editing.Part0" xml:space="preserve"><value>Enter</value></data>
+  <data name="Help.Requirements.Editing.Part1" xml:space="preserve"><value>Escape</value></data>
+  <data name="Help.Requirements.Editing.Part2" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Help.Requirements.Editing" xml:space="preserve"><value>Sélectionner une condition existante pour la modifier. {0} enregistre ; {1} ou {2} annule la modification.</value></data>
+  <data name="Help.Simulations.Question" xml:space="preserve"><value>Comment configurer les effets des cartes ?</value></data>
+  <data name="Help.Simulations.Inspect.Part0" xml:space="preserve"><value>Notes du modèle</value></data>
+  <data name="Help.Simulations.Inspect" xml:space="preserve"><value>Développer une carte pour examiner sa simulation enregistrée et les {0}.</value></data>
+  <data name="Help.Simulations.BuiltIn.Part0" xml:space="preserve"><value>Simulation intégrée :</value></data>
+  <data name="Help.Simulations.BuiltIn" xml:space="preserve"><value>{0} un modèle maintenu pour un effet pris en charge.</value></data>
+  <data name="Help.Simulations.Partial.Part0" xml:space="preserve"><value>Partiel :</value></data>
+  <data name="Help.Simulations.Partial" xml:space="preserve"><value>{0} certains comportements de la carte imprimée sont omis.</value></data>
+  <data name="Help.Simulations.Custom.Part0" xml:space="preserve"><value>Simulation personnalisée :</value></data>
+  <data name="Help.Simulations.Custom" xml:space="preserve"><value>{0} un plan enregistré avec l’éditeur d’effets.</value></data>
+  <data name="Help.Simulations.Editing.Part0" xml:space="preserve"><value>Personnaliser la simulation</value></data>
+  <data name="Help.Simulations.Editing.Part1" xml:space="preserve"><value>Configurer la simulation</value></data>
+  <data name="Help.Simulations.Editing.Part2" xml:space="preserve"><value>Enregistrer</value></data>
+  <data name="Help.Simulations.Editing.Part3" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Help.Simulations.Editing.Part4" xml:space="preserve"><value>Aucun</value></data>
+  <data name="Help.Simulations.Editing" xml:space="preserve"><value>Choisir {0} ou {1}, effectuer les modifications, puis {2}. {3} conserve le plan précédent. Choisir {4} traite la carte comme une carte ordinaire tout en la conservant dans le Deck.</value></data>
+  <data name="Help.Simulations.Restore.Part0" xml:space="preserve"><value>Restaurer la simulation intégrée</value></data>
+  <data name="Help.Simulations.Restore" xml:space="preserve"><value>Les sessions conservent leurs paramètres d’effets enregistrés. {0} remplace explicitement ces paramètres par le plan maintenu actuel.</value></data>
+  <data name="Help.Simulations.Limitations.Part0" xml:space="preserve"><value>Notes du modèle</value></data>
+  <data name="Help.Simulations.Limitations" xml:space="preserve"><value>Seuls les effets configurés sont exécutés. Consulter les {0} avant de considérer une simulation comme le comportement imprimé complet de la carte.</value></data>
+  <data name="Help.EffectResolution.Question" xml:space="preserve"><value>Comment les effets sont-ils résolus ?</value></data>
+  <data name="Help.EffectResolution.Phases" xml:space="preserve"><value>Les effets suivent une politique fixe en deux phases.</value></data>
+  <data name="Help.EffectResolution.DrawHeading" xml:space="preserve"><value>1. Effets de pioche</value></data>
+  <data name="Help.EffectResolution.Draws" xml:space="preserve"><value>Les effets de pioche légaux s’activent automatiquement en consommant leur source. Chaque effet termine ses coûts, pioches et retraits avant que le suivant commence.</value></data>
+  <data name="Help.EffectResolution.Restrictions.Part0" xml:space="preserve"><value>Une fois par tour</value></data>
+  <data name="Help.EffectResolution.Restrictions" xml:space="preserve"><value>{0} est partagé entre les exemplaires d’une même entrée de carte. Les coûts, les restrictions d’activation et le nombre suffisant de cartes restantes dans le Deck sont vérifiés avant l’activation. Un retrait obligatoire impossible compte comme une issue échouée.</value></data>
+  <data name="Help.EffectResolution.SearchHeading" xml:space="preserve"><value>2. Effets de recherche</value></data>
+  <data name="Help.EffectResolution.Searches" xml:space="preserve"><value>Une fois les pioches terminées, les recherches optionnelles peuvent consommer les sources en main pour récupérer des cartes restantes éligibles. Elles partagent les exemplaires réellement restants et la capacité du Deck. Les effets récupérés ne s’activent pas et ne relancent aucune phase.</value></data>
+  <data name="Help.EffectResolution.PriorityHeading" xml:space="preserve"><value>Priorité et sélection des cartes</value></data>
+  <data name="Help.EffectResolution.Priority" xml:space="preserve"><value>L’ordre de rencontre est utilisé par défaut. La priorité personnalisée classe les effets dans chaque phase ; réorganiser le Deck affiché ne change pas cette priorité.</value></data>
+  <data name="Help.EffectResolution.KeepPolicy" xml:space="preserve"><value>Les coûts et retraits en main utilisent une politique de conservation partagée qui protège les pièces de combos et les effets utilisables. Changer les combos actifs peut donc modifier les choix de retrait. Les lignes de résultats peuvent utiliser des choix de recherche légaux différents.</value></data>
+  <data name="Help.EffectResolution.ModelScope.Part0" xml:space="preserve"><value>modèle de calcul</value></data>
+  <data name="Help.EffectResolution.ModelScope" xml:space="preserve"><value>Cela modélise la politique configurée, y compris ses omissions. Le jeu optimal n’est pas déterminé. Consulter le {0} pour les opérations prises en charge et les limites.</value></data>
+  <data name="Help.Modes.Question" xml:space="preserve"><value>Quels modes de calcul sont disponibles ?</value></data>
+  <data name="Help.Modes.Default.Part0" xml:space="preserve"><value>Progressif</value></data>
+  <data name="Help.Modes.Default" xml:space="preserve"><value>{0} est le mode par défaut et un bon point de départ.</value></data>
+  <data name="Help.Modes.Mode" xml:space="preserve"><value>Mode</value></data>
+  <data name="Help.Modes.Behavior" xml:space="preserve"><value>Comportement</value></data>
+  <data name="Help.Modes.Progressive" xml:space="preserve"><value>Progressif</value></data>
+  <data name="Help.Modes.ProgressiveDescription" xml:space="preserve"><value>Affiche un résultat Rapide terminé, puis tente Exact si nécessaire.</value></data>
+  <data name="Help.Modes.Fast" xml:space="preserve"><value>Rapide uniquement</value></data>
+  <data name="Help.Modes.FastDescription" xml:space="preserve"><value>Exécute Rapide une fois. Le résultat peut être Exact, Borné ou Non certifié.</value></data>
+  <data name="Help.Modes.Exact" xml:space="preserve"><value>Exact uniquement</value></data>
+  <data name="Help.Modes.ExactDescription" xml:space="preserve"><value>Publie de nouvelles valeurs uniquement quand le calcul physique Exact est terminé.</value></data>
+  <data name="Help.Modes.NoEffects" xml:space="preserve"><value>Sans simulation d’effets</value></data>
+  <data name="Help.Modes.NoEffectsDescription" xml:space="preserve"><value>Évalue la main distribuée en ignorant les effets configurés. Les paramètres d’effets enregistrés restent inchangés.</value></data>
+  <data name="Help.Modes.Cancel" xml:space="preserve"><value>Annuler le passage de Progressif à Exact conserve son résultat Rapide terminé.</value></data>
+  <data name="Help.Modes.Limits.Part0" xml:space="preserve"><value>précision et performances</value></data>
+  <data name="Help.Modes.Limits" xml:space="preserve"><value>Exact n’a pas de délai de calcul, mais les limites de mémoire, les configurations non prises en charge ou les erreurs peuvent empêcher son achèvement. Consulter {0} pour les limites de ressources.</value></data>
+  <data name="Help.Results.Question" xml:space="preserve"><value>Comment lire les résultats ?</value></data>
+  <data name="Help.Results.Union.Part0" xml:space="preserve"><value>Au moins un combo</value></data>
+  <data name="Help.Results.Union" xml:space="preserve"><value>Chaque combo est évalué indépendamment. {0} compte une réussite dans au moins un combo actif ; les totaux de groupes font de même pour leurs membres.</value></data>
+  <data name="Help.Results.OverlapWarning.Part0" xml:space="preserve"><value>Les réussites qui se chevauchent ne sont comptées qu’une fois. Ne pas additionner les pourcentages individuels.</value></data>
+  <data name="Help.Results.Accuracy" xml:space="preserve"><value>Précision</value></data>
+  <data name="Help.Results.Label" xml:space="preserve"><value>Indication</value></data>
+  <data name="Help.Results.Meaning" xml:space="preserve"><value>Signification</value></data>
+  <data name="Help.Results.Exact" xml:space="preserve"><value>Exact / ±0%</value></data>
+  <data name="Help.Results.ExactDescription" xml:space="preserve"><value>La probabilité est démontrée pour le modèle configuré.</value></data>
+  <data name="Help.Results.Bounded" xml:space="preserve"><value>Borné / ±</value></data>
+  <data name="Help.Results.BoundedDescription" xml:space="preserve"><value>La probabilité du modèle physique se situe dans un intervalle certifié. Le pourcentage affiché en est le milieu, avec un rayon arrondi vers l’extérieur.</value></data>
+  <data name="Help.Results.Uncertified" xml:space="preserve"><value>Non certifié</value></data>
+  <data name="Help.Results.UncertifiedDescription" xml:space="preserve"><value>Un résultat modélisé est disponible, mais sa borne d’erreur physique n’a pas été établie.</value></data>
+  <data name="Help.Results.ModelScope" xml:space="preserve"><value>L’exactitude s’applique au modèle configuré, y compris les aspects du jeu omis.</value></data>
+  <data name="Help.Results.State" xml:space="preserve"><value>État du résultat</value></data>
+  <data name="Help.Results.Preliminary.Part0" xml:space="preserve"><value>Provisoire :</value></data>
+  <data name="Help.Results.Preliminary" xml:space="preserve"><value>{0} un résultat Rapide terminé attend un éventuel passage à Exact.</value></data>
+  <data name="Help.Results.Stale.Part0" xml:space="preserve"><value>Données modifiées :</value></data>
+  <data name="Help.Results.Stale" xml:space="preserve"><value>{0} le résultat décrit un état antérieur de l’espace de travail.</value></data>
+  <data name="Help.Results.Pinned.Part0" xml:space="preserve"><value>Épinglé :</value></data>
+  <data name="Help.Results.Pinned" xml:space="preserve"><value>{0} le résultat conserve les données et la précision capturées pour la comparaison.</value></data>
+  <data name="Help.Results.Fraction" xml:space="preserve"><value>Survoler une valeur ou lui donner le focus au clavier pour examiner sa fraction principale. Pour les résultats Bornés, cette fraction provient du modèle principal et peut différer du milieu affiché, voire dépasser la borne supérieure certifiée. Copier les résultats avec leur contexte de précision.</value></data>
+  <data name="Help.Sessions.Question" xml:space="preserve"><value>Comment enregistrer, partager et récupérer son travail ?</value></data>
+  <data name="Help.Sessions.SaveHeading" xml:space="preserve"><value>Enregistrer une session</value></data>
+  <data name="Help.Sessions.Save.Part0" xml:space="preserve"><value>Enregistrer la session</value></data>
+  <data name="Help.Sessions.Save" xml:space="preserve"><value>Choisir {0} pour télécharger le Deck, les conditions, les groupes, les paramètres d’effets et les préférences de calcul. Enregistrer d’abord les modifications en cours des éditeurs. Les brouillons non enregistrés, résultats, illustrations et préférences de thème ne sont pas inclus.</value></data>
+  <data name="Help.Sessions.ShareHeading" xml:space="preserve"><value>Partager une configuration</value></data>
+  <data name="Help.Sessions.Share.Part0" xml:space="preserve"><value>Copier le lien de partage</value></data>
+  <data name="Help.Sessions.Share" xml:space="preserve"><value>Choisir {0}. L’ouverture du lien propose un choix de chargement avant de remplacer l’espace de travail. Toute personne disposant du lien peut lire son contenu ; les configurations volumineuses peuvent nécessiter un fichier de session.</value></data>
+  <data name="Help.Sessions.RecoveryHeading" xml:space="preserve"><value>Récupérer le travail local</value></data>
+  <data name="Help.Sessions.Recovery" xml:space="preserve"><value>La récupération locale mémorise les changements de l’espace de travail dans ce navigateur. Un stockage effacé ou indisponible peut empêcher la récupération ; conserver des fichiers de session pour des copies durables.</value></data>
+  <data name="Help.Sessions.MultipleTabs" xml:space="preserve"><value>Plusieurs onglets peuvent proposer des données de récupération contradictoires. Choisir l’espace de travail à conserver ; les onglets ne synchronisent pas automatiquement les modifications.</value></data>
+  <data name="Help.Example.Question" xml:space="preserve"><value>Comment fonctionne l’exemple Vanquish Soul / K9 ?</value></data>
+  <data name="Help.Example.Contents" xml:space="preserve"><value>L’exemple contient :</value></data>
+  <data name="Help.Example.Copies.Part0" xml:space="preserve"><value>40 exemplaires de cartes</value></data>
+  <data name="Help.Example.Copies" xml:space="preserve"><value>{0} répartis sur 24 entrées, avec une main de départ de cinq cartes.</value></data>
+  <data name="Help.Example.Groups.Part0" xml:space="preserve"><value>Huit définitions de combos</value></data>
+  <data name="Help.Example.Groups.Part1" xml:space="preserve"><value>Full VS</value></data>
+  <data name="Help.Example.Groups.Part2" xml:space="preserve"><value>Full K9</value></data>
+  <data name="Help.Example.Groups" xml:space="preserve"><value>{0}, organisées dans {1} et {2}.</value></data>
+  <data name="Help.Example.Requirements" xml:space="preserve"><value>Des conditions basées sur les identités et propriétés des cartes, sans catégories personnalisées.</value></data>
+  <data name="Help.Example.Alternatives.Part0" xml:space="preserve"><value>VS Starter + (FIRE OR DARK)</value></data>
+  <data name="Help.Example.Alternatives" xml:space="preserve"><value>{0} illustre les conditions alternatives. Les effets de recherche récupèrent les monstres restants éligibles, qui apportent leurs propres identités et propriétés.</value></data>
+  <data name="Help.Example.Result.Part0" xml:space="preserve"><value>85.92% (565375/658008)</value></data>
+  <data name="Help.Example.Result.Part1" xml:space="preserve"><value>Au moins un combo</value></data>
+  <data name="Help.Example.Result" xml:space="preserve"><value>Avec les huit combos actifs, le résultat Progressif final est exact : {0} pour {1}.</value></data>
+  <data name="Help.Footer.Heading" xml:space="preserve"><value>Lectures complémentaires et crédits</value></data>
+  <data name="Help.Footer.Reading.Part0" xml:space="preserve"><value>modèle de calcul</value></data>
+  <data name="Help.Footer.Reading.Part1" xml:space="preserve"><value>exemple de probabilité détaillé</value></data>
+  <data name="Help.Footer.Reading.Part2" xml:space="preserve"><value>guide de précision</value></data>
+  <data name="Help.Footer.Reading" xml:space="preserve"><value>Explorer le {0}, l’{1} et le {2}. La documentation suit la branche de développement ; le site stable peut différer.</value></data>
+  <data name="Help.Footer.Credits.Part0" xml:space="preserve"><value>SeyTi01</value></data>
+  <data name="Help.Footer.Credits.Part1" xml:space="preserve"><value>YGOPRODeck</value></data>
+  <data name="Help.Footer.Credits" xml:space="preserve"><value>Créé par {0}. Les illustrations de cartes sont fournies par {1} et conservées sur l’hébergement du projet. Les illustrations manquantes n’affectent pas les calculs ; les illustrations tierces sont hors de la licence du logiciel.</value></data>
+  <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve"><value>YAML Yugi</value></data>
+  <data name="Help.Footer.NameCompilation" xml:space="preserve"><value>Compilation des données de traduction : {0} et ses contributeurs en amont. Le contenu des cartes reste la propriété de ses ayants droit respectifs.</value></data>
+  <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exact)</value></data>
+  <data name="Ui.Share" xml:space="preserve"><value>Partager</value></data>
+  <data name="Ui.TargetsInThisDeck" xml:space="preserve">
+    <value>Cibles dans ce Deck</value>
+  </data>
+  <data name="Result.HandSize" xml:space="preserve">
+    <value>Taille de la main : {0}</value>
+  </data>
+  <data name="Result.DeckSize" xml:space="preserve">
+    <value>Taille du Deck : {0}</value>
+  </data>
+  <data name="Metadata.kind:monster" xml:space="preserve"><value>Monstre</value></data>
+  <data name="Metadata.kind:spell" xml:space="preserve"><value>Magie</value></data>
+  <data name="Metadata.kind:trap" xml:space="preserve"><value>Piège</value></data>
+  <data name="Metadata.monster-trait:normal" xml:space="preserve"><value>Monstre Normal</value></data>
+  <data name="Metadata.monster-trait:effect" xml:space="preserve"><value>Monstre à Effet</value></data>
+  <data name="Metadata.monster-trait:flip" xml:space="preserve"><value>Monstre Flip</value></data>
+  <data name="Metadata.monster-trait:tuner" xml:space="preserve"><value>Monstre Syntoniseur</value></data>
+  <data name="Metadata.monster-trait:gemini" xml:space="preserve"><value>Monstre Gémeau</value></data>
+  <data name="Metadata.monster-trait:pendulum" xml:space="preserve"><value>Monstre Pendule</value></data>
+  <data name="Metadata.monster-trait:spirit" xml:space="preserve"><value>Monstre Spirit</value></data>
+  <data name="Metadata.monster-trait:toon" xml:space="preserve"><value>Monstre Toon</value></data>
+  <data name="Metadata.monster-trait:union" xml:space="preserve"><value>Monstre Union</value></data>
+  <data name="Metadata.monster-type:ritual" xml:space="preserve"><value>Monstre Rituel</value></data>
+  <data name="Metadata.monster-type:fusion" xml:space="preserve"><value>Monstre Fusion</value></data>
+  <data name="Metadata.monster-type:synchro" xml:space="preserve"><value>Monstre Synchro</value></data>
+  <data name="Metadata.monster-type:xyz" xml:space="preserve"><value>Monstre Xyz</value></data>
+  <data name="Metadata.monster-type:link" xml:space="preserve"><value>Monstre Lien</value></data>
+  <data name="Metadata.attribute:dark" xml:space="preserve"><value>Attribut : TÉNÈBRES</value></data>
+  <data name="Metadata.attribute:light" xml:space="preserve"><value>Attribut : LUMIÈRE</value></data>
+  <data name="Metadata.attribute:earth" xml:space="preserve"><value>Attribut : TERRE</value></data>
+  <data name="Metadata.attribute:water" xml:space="preserve"><value>Attribut : EAU</value></data>
+  <data name="Metadata.attribute:fire" xml:space="preserve"><value>Attribut : FEU</value></data>
+  <data name="Metadata.attribute:wind" xml:space="preserve"><value>Attribut : VENT</value></data>
+  <data name="Metadata.attribute:divine" xml:space="preserve"><value>Attribut : DIVIN</value></data>
+  <data name="Metadata.spell-type:normal" xml:space="preserve"><value>Magie Normale</value></data>
+  <data name="Metadata.spell-type:field" xml:space="preserve"><value>Magie de Terrain</value></data>
+  <data name="Metadata.spell-type:equip" xml:space="preserve"><value>Magie d’Équipement</value></data>
+  <data name="Metadata.spell-type:continuous" xml:space="preserve"><value>Magie Continue</value></data>
+  <data name="Metadata.spell-type:quick-play" xml:space="preserve"><value>Magie Jeu-Rapide</value></data>
+  <data name="Metadata.spell-type:ritual" xml:space="preserve"><value>Magie Rituelle</value></data>
+  <data name="Metadata.trap-type:normal" xml:space="preserve"><value>Piège Normal</value></data>
+  <data name="Metadata.trap-type:continuous" xml:space="preserve"><value>Piège Continu</value></data>
+  <data name="Metadata.trap-type:counter" xml:space="preserve"><value>Contre-Piège</value></data>
+  <data name="Metadata.monster-race:aqua" xml:space="preserve"><value>Type de monstre : Aqua</value></data>
+  <data name="Metadata.monster-race:beast" xml:space="preserve"><value>Type de monstre : Bête</value></data>
+  <data name="Metadata.monster-race:beast-warrior" xml:space="preserve"><value>Type de monstre : Bête-Guerrier</value></data>
+  <data name="Metadata.monster-race:creator%20god" xml:space="preserve"><value>Type de monstre : Dieu Créateur</value></data>
+  <data name="Metadata.monster-race:cyberse" xml:space="preserve"><value>Type de monstre : Cyberse</value></data>
+  <data name="Metadata.monster-race:dinosaur" xml:space="preserve"><value>Type de monstre : Dinosaure</value></data>
+  <data name="Metadata.monster-race:divine-beast" xml:space="preserve"><value>Type de monstre : Bête Divine</value></data>
+  <data name="Metadata.monster-race:dragon" xml:space="preserve"><value>Type de monstre : Dragon</value></data>
+  <data name="Metadata.monster-race:fairy" xml:space="preserve"><value>Type de monstre : Elfe</value></data>
+  <data name="Metadata.monster-race:fiend" xml:space="preserve"><value>Type de monstre : Démon</value></data>
+  <data name="Metadata.monster-race:fish" xml:space="preserve"><value>Type de monstre : Poisson</value></data>
+  <data name="Metadata.monster-race:insect" xml:space="preserve"><value>Type de monstre : Insecte</value></data>
+  <data name="Metadata.monster-race:illusion" xml:space="preserve"><value>Type de monstre : Illusion</value></data>
+  <data name="Metadata.monster-race:machine" xml:space="preserve"><value>Type de monstre : Machine</value></data>
+  <data name="Metadata.monster-race:plant" xml:space="preserve"><value>Type de monstre : Plante</value></data>
+  <data name="Metadata.monster-race:psychic" xml:space="preserve"><value>Type de monstre : Psychique</value></data>
+  <data name="Metadata.monster-race:pyro" xml:space="preserve"><value>Type de monstre : Pyro</value></data>
+  <data name="Metadata.monster-race:reptile" xml:space="preserve"><value>Type de monstre : Reptile</value></data>
+  <data name="Metadata.monster-race:rock" xml:space="preserve"><value>Type de monstre : Rocher</value></data>
+  <data name="Metadata.monster-race:sea%20serpent" xml:space="preserve"><value>Type de monstre : Serpent de Mer</value></data>
+  <data name="Metadata.monster-race:spellcaster" xml:space="preserve"><value>Type de monstre : Magicien</value></data>
+  <data name="Metadata.monster-race:thunder" xml:space="preserve"><value>Type de monstre : Tonnerre</value></data>
+  <data name="Metadata.monster-race:warrior" xml:space="preserve"><value>Type de monstre : Guerrier</value></data>
+  <data name="Metadata.monster-race:winged%20beast" xml:space="preserve"><value>Type de monstre : Bête Ailée</value></data>
+  <data name="Metadata.monster-race:wyrm" xml:space="preserve"><value>Type de monstre : Wyrm</value></data>
+  <data name="Metadata.monster-race:zombie" xml:space="preserve"><value>Type de monstre : Zombie</value></data>
+  <data name="Color.Blue" xml:space="preserve"><value>Bleu</value></data>
+  <data name="Color.Orange" xml:space="preserve"><value>Orange</value></data>
+  <data name="Color.Green" xml:space="preserve"><value>Vert</value></data>
+  <data name="Color.Purple" xml:space="preserve"><value>Violet</value></data>
+  <data name="Color.Red" xml:space="preserve"><value>Rouge</value></data>
+  <data name="Color.Cyan" xml:space="preserve"><value>Cyan</value></data>
+  <data name="Color.Gold" xml:space="preserve"><value>Or</value></data>
+  <data name="Color.Pink" xml:space="preserve"><value>Rose</value></data>
+  <data name="Color.Lime" xml:space="preserve"><value>Vert citron</value></data>
+  <data name="Color.Slate" xml:space="preserve"><value>Gris ardoise</value></data>
+  <data name="Color.Teal" xml:space="preserve"><value>Bleu-vert</value></data>
+  <data name="Color.Magenta" xml:space="preserve"><value>Magenta</value></data>
+  <data name="Metadata.level:1" xml:space="preserve"><value>Niveau 1</value></data>
+  <data name="Metadata.level:2" xml:space="preserve"><value>Niveau 2</value></data>
+  <data name="Metadata.level:3" xml:space="preserve"><value>Niveau 3</value></data>
+  <data name="Metadata.level:4" xml:space="preserve"><value>Niveau 4</value></data>
+  <data name="Metadata.level:5" xml:space="preserve"><value>Niveau 5</value></data>
+  <data name="Metadata.level:6" xml:space="preserve"><value>Niveau 6</value></data>
+  <data name="Metadata.level:7" xml:space="preserve"><value>Niveau 7</value></data>
+  <data name="Metadata.level:8" xml:space="preserve"><value>Niveau 8</value></data>
+  <data name="Metadata.level:9" xml:space="preserve"><value>Niveau 9</value></data>
+  <data name="Metadata.level:10" xml:space="preserve"><value>Niveau 10</value></data>
+  <data name="Metadata.level:11" xml:space="preserve"><value>Niveau 11</value></data>
+  <data name="Metadata.level:12" xml:space="preserve"><value>Niveau 12</value></data>
+  <data name="Metadata.rank:0" xml:space="preserve"><value>Rang 0</value></data>
+  <data name="Metadata.rank:1" xml:space="preserve"><value>Rang 1</value></data>
+  <data name="Metadata.rank:2" xml:space="preserve"><value>Rang 2</value></data>
+  <data name="Metadata.rank:3" xml:space="preserve"><value>Rang 3</value></data>
+  <data name="Metadata.rank:4" xml:space="preserve"><value>Rang 4</value></data>
+  <data name="Metadata.rank:5" xml:space="preserve"><value>Rang 5</value></data>
+  <data name="Metadata.rank:6" xml:space="preserve"><value>Rang 6</value></data>
+  <data name="Metadata.rank:7" xml:space="preserve"><value>Rang 7</value></data>
+  <data name="Metadata.rank:8" xml:space="preserve"><value>Rang 8</value></data>
+  <data name="Metadata.rank:9" xml:space="preserve"><value>Rang 9</value></data>
+  <data name="Metadata.rank:10" xml:space="preserve"><value>Rang 10</value></data>
+  <data name="Metadata.rank:11" xml:space="preserve"><value>Rang 11</value></data>
+  <data name="Metadata.rank:12" xml:space="preserve"><value>Rang 12</value></data>
+  <data name="Metadata.rank:13" xml:space="preserve"><value>Rang 13</value></data>
+  <data name="Metadata.link:1" xml:space="preserve"><value>Lien 1</value></data>
+  <data name="Metadata.link:2" xml:space="preserve"><value>Lien 2</value></data>
+  <data name="Metadata.link:3" xml:space="preserve"><value>Lien 3</value></data>
+  <data name="Metadata.link:4" xml:space="preserve"><value>Lien 4</value></data>
+  <data name="Metadata.link:5" xml:space="preserve"><value>Lien 5</value></data>
+  <data name="Metadata.link:6" xml:space="preserve"><value>Lien 6</value></data>
+  <data name="Metadata.scale:0" xml:space="preserve"><value>Échelle Pendule 0</value></data>
+  <data name="Metadata.scale:1" xml:space="preserve"><value>Échelle Pendule 1</value></data>
+  <data name="Metadata.scale:2" xml:space="preserve"><value>Échelle Pendule 2</value></data>
+  <data name="Metadata.scale:3" xml:space="preserve"><value>Échelle Pendule 3</value></data>
+  <data name="Metadata.scale:4" xml:space="preserve"><value>Échelle Pendule 4</value></data>
+  <data name="Metadata.scale:5" xml:space="preserve"><value>Échelle Pendule 5</value></data>
+  <data name="Metadata.scale:6" xml:space="preserve"><value>Échelle Pendule 6</value></data>
+  <data name="Metadata.scale:7" xml:space="preserve"><value>Échelle Pendule 7</value></data>
+  <data name="Metadata.scale:8" xml:space="preserve"><value>Échelle Pendule 8</value></data>
+  <data name="Metadata.scale:9" xml:space="preserve"><value>Échelle Pendule 9</value></data>
+  <data name="Metadata.scale:10" xml:space="preserve"><value>Échelle Pendule 10</value></data>
+  <data name="Metadata.scale:11" xml:space="preserve"><value>Échelle Pendule 11</value></data>
+  <data name="Metadata.scale:12" xml:space="preserve"><value>Échelle Pendule 12</value></data>
+  <data name="Metadata.scale:13" xml:space="preserve"><value>Échelle Pendule 13</value></data>
+</root>
