@@ -502,12 +502,6 @@
   <data xml:space="preserve" name="Ui.Activate">
     <value>Activate</value>
   </data>
-  <data xml:space="preserve" name="Ui.ActivateAtLeastOneCardToCalculate">
-    <value>Add or enable at least one deck card to calculate.</value>
-  </data>
-  <data xml:space="preserve" name="Ui.ActivateAtLeastOneComboToCalculate">
-    <value>Activate at least one combo to calculate.</value>
-  </data>
   <data xml:space="preserve" name="Ui.Add">
     <value>Add</value>
   </data>

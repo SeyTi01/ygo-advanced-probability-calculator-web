@@ -402,7 +402,7 @@
             }
 
             if (ActiveCardCount == 0) {
-                return UiText.Get("Ui.ActivateAtLeastOneCardToCalculate");
+                return null;
             }
 
             if (_cards.Any(card => card.Active && card.Copies < 1)) {
@@ -418,7 +418,7 @@
             }
 
             if (ActiveComboCount == 0) {
-                return UiText.Get("Ui.ActivateAtLeastOneComboToCalculate");
+                return null;
             }
 
             if (ActiveComboCount > IProbabilityCalculatorService.MaxComboCount) {
@@ -433,7 +433,7 @@
         }
     }
 
-    private bool CanCalculate => CalculationUnavailableMessage is null;
+    private bool CanCalculate => ActiveCardCount > 0 && ActiveComboCount > 0 && CalculationUnavailableMessage is null;
 
     private static string ComboResultDisplayName(ComboProbabilityResult result) =>
         string.IsNullOrWhiteSpace(result.ComboName)
