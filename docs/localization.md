@@ -50,12 +50,17 @@ during startup is supported while retaining the browser's numeric culture.
 
 `ygo-calculator:language:v1` in localStorage contains an explicit website
 preference, independently of every deck, session, worker and share payload.
+The default **System** choice follows the browser's supported language and leaves
+that preference key absent, like the theme control. Choosing System clears an
+existing override; explicit language choices remain saved.
 Resolution is saved supported preference, then ordered `navigator.languages`,
 then English. Matching walks from a regional tag to registered parent tags.
 An explicit English selection overrides a supported German browser language.
 Unsupported/stale values are ignored; denied storage still allows startup.
-There is no language entry in Calculation settings or Browser default option.
-Clearing browser data resets the preference.
+The language and theme pickers are compact icon controls in the global header.
+They retain native keyboard/touch selection, accessible labels and current-choice
+tooltips. Language is not a calculation setting. Clearing browser data resets the
+preference to System.
 
 The head script `js/locale.js` fetches the small registry before
 `Blazor.start({ applicationCulture })` (autostart is disabled). Program sets
@@ -78,7 +83,10 @@ Startup errors reveal the existing runtime-error UI. UI translations remain
 
 ## Language reload and accepted workspace
 
-A language change takes one reload of the **exact current URL**. Before switching,
+A language preference change takes one reload of the **exact current URL**.
+The checkpoint records the resolved target language, including when System is
+selected or the preference changes without changing the current UI language.
+Before switching,
 finish an open effect, requirement, rule or rename form by saving/applying or
 cancelling it. Clear or add nonempty quick-add/category/group text first. Invalid
 numeric input also blocks the switch. The shell reads these semantic edit markers

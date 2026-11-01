@@ -2063,4 +2063,7 @@
   <data name="Property.Type" xml:space="preserve"><value>Tipo: {0}</value></data>
   <data name="Property.Attribute" xml:space="preserve"><value>Atributo: {0}</value></data>
   <data name="Property.Mentions" xml:space="preserve"><value>Menciona: {0}</value></data>
+  <data name="Preference.Current" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
 </root>
