@@ -1,5 +1,14 @@
 <?xml version='1.0' encoding='utf-8'?>
 <root>
+  <data name="Ui.Excavate0" xml:space="preserve"><value>Excaver {0}</value></data>
+  <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Excavation configurée (désactivée)</value></data>
+  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Excaver {0} cartes ; en ajouter 1 à la main</value></data>
+  <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Indisponible après une pioche par effet</value></data>
+  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Après les pioches, une seule excavation autorisée s'active avant les recherches ; le nombre de cartes excavées le plus élevé est prioritaire. Les égalités suivent un ordre fixe. Les cartes obtenues par excavation n'activent pas leurs effets.</value></data>
+  <data name="Effects.98645731.Summary" xml:space="preserve"><value>Excaver 3 cartes ; en ajouter 1 à la main ; remélanger le reste dans le Deck.</value></data>
+  <data name="Effects.98645731.Limitations" xml:space="preserve"><value>La légalité des Invocations Spéciales n'est pas modélisée.</value></data>
+  <data name="Effects.84211599.Summary" xml:space="preserve"><value>Excaver 6 cartes ; en ajouter 1 à la main ; placer le reste au-dessous du Deck.</value></data>
+  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Excave toujours 6 cartes, en supposant que six cartes de l'Extra Deck sont disponibles. Ignoré après une pioche par effet. Les conséquences sur l'Extra Deck et les dommages ne sont pas modélisées.</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve"><value>Rechercher des cartes ou saisir un nom</value></data>
   <data name="Combo.GroupLabel" xml:space="preserve"><value>Groupe : {0}</value></data>
   <data name="Combo.MoreRequirements" xml:space="preserve"><value>+{0} autres</value></data>

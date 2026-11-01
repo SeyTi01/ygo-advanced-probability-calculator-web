@@ -10,6 +10,9 @@ public static class DrawEffectPresentation {
             return UiText.Get("Ui.UnsupportedEffect");
         }
 
+        if (card.Excavation is { } excavation) {
+            return drawEffectsEnabled ? UiText.Format("Ui.Excavate0", excavation.Count) : UiText.Get("Ui.ExcavationConfiguredOff");
+        }
         if (card.Search is not null) {
             return drawEffectsEnabled ? UiText.Get("Ui.Search1") : UiText.Get("Ui.SearchConfiguredOff");
         }
@@ -39,6 +42,14 @@ public static class DrawEffectPresentation {
     }
 
     public static string DescribePlan(DrawEffectPlan plan, IReadOnlyList<CategoryBase> categories) {
+        if (plan.Excavation is { } excavation) {
+            string description = UiText.Format("Effect.Excavate0Add1", excavation.Count);
+            if (excavation.RequiresNoPriorEffectDraw) {
+                description += "; " + UiText.Get("Effect.NoPriorEffectDraw");
+            }
+
+            return description;
+        }
         if (plan.DrawCount is null && plan.Search is null) {
             return UiText.Get("Ui.NoDrawEffect");
         }

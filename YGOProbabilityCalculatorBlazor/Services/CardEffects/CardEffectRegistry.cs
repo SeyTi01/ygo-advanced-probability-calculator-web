@@ -47,6 +47,7 @@ public sealed class CardEffectRegistry {
         new UpstartGoblinEffect(),
         new AllureOfDarknessEffect(),
         new PotOfExtravaganceEffect(),
+        new PotOfDualityEffect(), new PotOfProsperityEffect(),
         new IntoTheVoidEffect(),
         new ChickenGameEffect(),
         new DarkWorldDealingsEffect(),

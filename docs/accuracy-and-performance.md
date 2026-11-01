@@ -25,6 +25,8 @@ An interrupted Progressive upgrade retains the accepted Fast result and its accu
 
 Fast does not always approximate. Search-only cases and other proven routes can be exact; uncertain survival after draws can require bounds. Certification runs after a complete primary result. If no usable interval completes, a certification limit or error leaves that primary Uncertified. If a later refinement fails, the last completed certified interval is retained. Exhausting Work before primary completion is a calculation failure, not a completed Uncertified answer.
 
+Requests with excavation use physical counting in both Fast and Exact, including prior hidden losses and subsequent ordinary searches. Completed results are exact for the [single-excavation policy](calculation-model.md#one-excavation-after-draws). Fast retains its finite Work allowance; Exact retains unlimited Work with the selected Storage limit. The one-activation restriction and Prosperity's fixed six-card assumption are model boundaries, not numerical error bounds.
+
 Keep three quantities separate:
 
 1. **Primary rational:** the retained result of the selected counting model. On an optimistic Fast search-access path it can exceed the certificate's upper endpoint. It is not the certified midpoint.

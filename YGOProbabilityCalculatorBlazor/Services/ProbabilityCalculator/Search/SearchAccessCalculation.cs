@@ -43,6 +43,17 @@ internal sealed class SearchAccessCalculation(
         Effects = effects;
         Search = search;
         List<Card> ordinary = cards.Where(card => !effects.Contains(card)).ToList();
+        if (cards.Any(card => card.Excavation is not null)) {
+            // Excavation observes the physical remaining Deck after every draw.
+            // Its fixed source and target-pool probability are identical in Fast
+            // and Exact; never reuse the optimistic survivor projection here.
+            PostDrawCalculation excavation = new(cards, handSize, budget, priority);
+            ExactCalculationResult result = excavation.CalculateSearch(combos, groups, totalOnly, search, physical: true);
+            _capability = new(SolverRoute.ExcavationPhysical, PhysicalSearchAccuracy.ProvenExact,
+                CapabilityReason.SingleExcavationPhysical, CertificationSupport.ReusePrimary);
+
+            return result;
+        }
         if (cards.Any(card => card.EffectPlan.RequiresSearchResolution)) {
             // Hand loss and mode allowances invalidate the substitution projection
             // and its survival certificate. Both modes use physical counting.

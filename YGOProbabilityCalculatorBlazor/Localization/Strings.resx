@@ -1,5 +1,14 @@
 <?xml version='1.0' encoding='utf-8'?>
 <root>
+  <data name="Ui.Excavate0" xml:space="preserve"><value>Excavate {0}</value></data>
+  <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Excavation configured (off)</value></data>
+  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Excavate {0}; add 1 to hand</value></data>
+  <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Unavailable after an effect draw</value></data>
+  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>After draws, only one eligible excavation activates before searches; the largest excavation is prioritized. Ties use a fixed order. Cards obtained by excavation do not activate their effects.</value></data>
+  <data name="Effects.98645731.Summary" xml:space="preserve"><value>Excavate 3; add 1 to hand; shuffle the rest back.</value></data>
+  <data name="Effects.98645731.Limitations" xml:space="preserve"><value>Special Summon legality is not modeled.</value></data>
+  <data name="Effects.84211599.Summary" xml:space="preserve"><value>Excavate 6; add 1 to hand; put the rest on the bottom of the deck.</value></data>
+  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Always excavates 6, assuming six Extra Deck cards are available. Skipped after an effect draw. Extra Deck and damage consequences are not modeled.</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve"><value>Search cards or enter a name</value></data>
   <data name="Combo.GroupLabel" xml:space="preserve"><value>Group: {0}</value></data>
   <data name="Combo.MoreRequirements" xml:space="preserve"><value>+{0} more</value></data>
