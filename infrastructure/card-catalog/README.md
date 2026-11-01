@@ -367,3 +367,13 @@ withheld by the existing angle-bracket policy. See [French terminology](../../do
 Rebuild with the command above, replacing every `ja` locale/path segment with `fr`;
 the dated snapshot and audit use the same November 1 date. Refresh and identity
 validation follow the same manual path; no additional catalog is loaded at startup.
+
+### Italian names (`it`)
+
+The same pinned revision supplies 11,956 labels and 200 English fallbacks
+for 12,156 eligible cards; all 24 example entries are covered. There are 50 missing
+source identities, 143 missing translations and seven literal Maliss labels
+withheld by the existing angle-bracket policy. See [Italian terminology](../../docs/localization-it.md).
+Rebuild with the command above, replacing every `ja` locale/path segment with `it`;
+the dated snapshot and audit use the same November 1 date. Refresh and identity
+validation follow the same manual path; no additional catalog is loaded at startup.
