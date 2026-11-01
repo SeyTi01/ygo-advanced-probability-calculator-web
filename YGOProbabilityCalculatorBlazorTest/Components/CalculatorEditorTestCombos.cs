@@ -22,6 +22,24 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
+    public async Task AddActionsKeepCardSearchAndOpenTheNewCombo() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = [], Cards = [], Combos = [new([], "Existing")], HandSize = 5
+        });
+        IElement cardAdd = cut.Find(".quick-add button.add-action");
+        Assert.That(cardAdd.HasAttribute("disabled"), Is.True);
+        Assert.That(cut.Find(".combo-heading #addCombo").ClassList.Contains("add-action"), Is.True);
+        await cut.Find("#quickCardName").InputAsync(new() { Value = "Custom card" });
+        Assert.That(cut.Find(".quick-add button.add-action").HasAttribute("disabled"), Is.False);
+        await cut.Find(".quick-add button.add-action").ClickAsync(new());
+        Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
+        await cut.Find("#addCombo").ClickAsync(new());
+        Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(2));
+        Assert.That(cut.Find("#combo1").ClassList.Contains("show"), Is.True);
+        Assert.That(context.JSInterop.Invocations.Any(call => call.Identifier == "workspaceSearch.focus" && (string)call.Arguments[0]! == "comboName1"), Is.True);
+    }
+
+    [Test]
     public async Task EmptyDeckCanAuthorCommonCategoryAndOrAndSameCardRequirements() {
         CategoryBase level8 = new NumericPropertyRange(NumericPropertyKind.Level, 8, 8).ToCategory();
         CategoryBase monster = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "kind:monster");
