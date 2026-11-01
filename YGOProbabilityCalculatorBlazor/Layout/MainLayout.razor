@@ -7,14 +7,14 @@
 <div class="page" inert="@_switching">
     <main>
         <div class="top-row">
-            <div class="top-row-inner @(LocalePreference.Available.Count > 1 ? "has-languages" : "")">
+            <div class="top-row-inner layout-row @(LocalePreference.Available.Count > 1 ? "has-languages" : "")">
                 @if (IsHelpPage) {
-                    <div class="h3 app-title mb-0">@(UiText.Get("Ui.YuGiOhAdvancedProbabilityCalculator"))</div>
+                    <div class="h3 app-title">@(UiText.Get("Ui.YuGiOhAdvancedProbabilityCalculator"))</div>
                 }
                 else {
-                    <h1 class="h3 app-title mb-0">@(UiText.Get("Ui.YuGiOhAdvancedProbabilityCalculator"))</h1>
+                    <h1 class="h3 app-title">@(UiText.Get("Ui.YuGiOhAdvancedProbabilityCalculator"))</h1>
                 }
-                <div class="top-row-controls">
+                <div class="top-row-controls layout-row">
                     @if (LocalePreference.Available.Count > 1) {
                         <label for="language-preference" class="visually-hidden">@UiText.Get("Language.Label")</label>
                         <select @key="_languageControlVersion" id="language-preference" class="form-select form-select-sm language-select" aria-label="@UiText.Get("Language.Label")"

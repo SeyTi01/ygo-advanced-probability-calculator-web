@@ -1,6 +1,4 @@
 .page {
-    --app-workspace-width: 60rem;
-    --app-page-gutter: clamp(0.75rem, 2.5vw, 2rem);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -18,14 +16,14 @@ main {
 }
 
 .top-row-inner {
+    --layout-row-gap: 0;
     max-width: var(--app-workspace-width);
     margin-inline: auto;
     min-height: 3.5rem;
-    display: flex;
-    align-items: center;
 }
 
 .app-title {
+    margin: 0;
     flex-grow: 1;
     min-width: 0;
     overflow: hidden;
@@ -34,10 +32,8 @@ main {
 }
 
 .top-row-controls {
-    display: flex;
+    --layout-row-gap: 0.75rem;
     flex: 0 0 auto;
-    align-items: center;
-    gap: 0.75rem;
 }
 
 .theme-select, .language-select {
@@ -65,8 +61,8 @@ article {
 
 @media (max-width: 767.98px) {
     .top-row-inner {
+        --layout-row-gap: 0.75rem;
         flex-wrap: wrap;
-        gap: 0.75rem;
         padding-block: 0.75rem;
     }
 
@@ -78,14 +74,14 @@ article {
     }
 
     .top-row-controls {
+        --layout-row-gap: 0.5rem;
         margin-inline-start: auto;
         flex-wrap: wrap;
         justify-content: flex-end;
-        gap: 0.5rem;
     }
 
     .theme-select, .language-select, .top-row a {
-        min-height: 2.75rem;
+        min-height: var(--app-touch-target-size);
     }
 }
 

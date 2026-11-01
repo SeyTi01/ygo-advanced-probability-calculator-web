@@ -69,7 +69,6 @@
     height: 1rem;
 }
 
-
-
-.combo-section { margin-bottom: var(--calculator-section-spacing); }
-.combo-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: var(--calculator-section-spacing); }
+.combo-heading {
+    --layout-row-gap: 0.75rem;
+}
