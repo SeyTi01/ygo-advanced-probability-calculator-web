@@ -380,35 +380,62 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task EmptyComboUsesOneClosedDraftRowAndOnlyConcreteRowsOpenForms() {
+    public async Task NewRequirementsKeepTheAddControlAndOpenTheFormDirectly() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Categories = Properties.ToList(), Combos = [new([])] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
-        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
-        Assert.That(editor.FindAll("[data-new-requirement]"), Has.Count.EqualTo(1));
-        Assert.That(editor.FindAll(".requirement-form, .add-top-level-group"), Is.Empty);
+        IElement addRequirement = Button(editor, "Add requirement");
+        Assert.That(addRequirement.TextContent.Trim(), Is.EqualTo("+"));
+        Assert.That(addRequirement.GetAttribute("aria-expanded"), Is.EqualTo("false"));
+        Assert.That(editor.FindAll(".requirement-row, .requirement-form"), Is.Empty);
         Assert.That(editor.Instance.Combo.RequirementCount, Is.Zero);
-        await editor.Find("[data-new-requirement]").ClickAsync(new());
+        await addRequirement.ClickAsync(new());
+        Assert.That(Button(editor, "Add requirement").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        Assert.That(editor.FindAll(".requirement-list > .requirement-form"), Has.Count.EqualTo(1));
+        Assert.That(editor.Markup, Does.Not.Contain("Choose a card, category or property"));
         await editor.Find("#comboTarget0").ChangeAsync(new() { Value = Properties[0].Identity });
+        await Button(editor, "Add requirement").ClickAsync(new());
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(Properties[0].Identity));
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(editor.Instance.Combo.RequirementCount, Is.EqualTo(1));
-        Assert.That(editor.FindAll(".requirement-form, [data-new-requirement]"), Is.Empty);
-        IElement addRequirement = Button(editor, "Add a separate-copy requirement");
+        Assert.That(editor.FindAll(".requirement-form"), Is.Empty);
+        addRequirement = Button(editor, "Add a separate-copy requirement");
         Assert.That(addRequirement.TextContent.Trim(), Is.EqualTo("+"));
         Assert.That(addRequirement.GetAttribute("title"), Is.EqualTo("Add a separate-copy requirement"));
         await addRequirement.ClickAsync(new());
-        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(2));
-        Assert.That(editor.FindAll(".requirement-row form"), Has.Count.EqualTo(1));
+        Assert.That(Button(editor, "Add a separate-copy requirement").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-list > .requirement-form"), Has.Count.EqualTo(1));
         await Button(editor, "Cancel").ClickAsync(new());
         Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
         Assert.That(editor.FindAll(".requirement-form"), Is.Empty);
+        Assert.That(Button(editor, "Add a separate-copy requirement").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         await DeleteRequirement(editor, "category:0");
         Assert.That(editor.Instance.Combo.RequirementCount, Is.Zero);
-        Assert.That(editor.FindAll("[data-new-requirement]"), Has.Count.EqualTo(1));
+        Assert.That(Button(editor, "Add requirement"), Is.Not.Null);
         Assert.That(editor.FindAll(".requirement-form"), Is.Empty);
-        await editor.Find("[data-new-requirement]").ClickAsync(new());
+        await Button(editor, "Add requirement").ClickAsync(new());
         await editor.Find("#comboTarget0").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
-        Assert.That(editor.FindAll("[data-new-requirement]"), Has.Count.EqualTo(1));
+        Assert.That(Button(editor, "Add requirement").GetAttribute("aria-expanded"), Is.EqualTo("false"));
         Assert.That(editor.FindAll(".requirement-form"), Is.Empty);
+    }
+
+    [Test]
+    public async Task NewRequirementDraftSurvivesEditingAnotherRequirement() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = Properties.ToList(), Combos = [new([Requirement(0)])]
+        });
+        IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        await Button(editor, "Add a separate-copy requirement").ClickAsync(new());
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = Properties[1].Identity });
+        await editor.Find("#minCount0").InputAsync(new() { Value = "2" });
+        await EditRequirement(editor, "category:0");
+        await Button(editor, "Cancel").ClickAsync(new());
+
+        await Button(editor, "Add a separate-copy requirement").ClickAsync(new());
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(Properties[1].Identity));
+        Assert.That(editor.Find("#minCount0").GetAttribute("value"), Is.EqualTo("2"));
+        await Button(editor, "Add").ClickAsync(new());
+        Assert.That(editor.Instance.Combo.Categories.Select(category => category.BaseCategory.Name), Is.EqualTo(new[] { "A", "B" }));
     }
 
 }

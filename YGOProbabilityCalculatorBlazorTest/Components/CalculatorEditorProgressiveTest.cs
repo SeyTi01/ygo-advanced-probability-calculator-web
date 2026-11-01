@@ -155,7 +155,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
-        Assert.That(editor.FindAll("[aria-expanded='true'].requirement-edit:not([data-new-requirement])"), Is.Empty);
+        Assert.That(editor.FindAll("[aria-expanded='true'].requirement-edit"), Is.Empty);
     }
 
     [Test]

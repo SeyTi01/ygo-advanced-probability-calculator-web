@@ -19,7 +19,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
                 combo = value.NewCombo;
                 comboEditor!.SetParametersAndRender(next => next.Add(component => component.Combo, combo));
             }));
-        comboEditor.Find("[data-new-requirement]").Click();
+        comboEditor.Find(".add-top-level-group").Click();
         Assert.That(comboEditor.FindComponent<RequirementEditForm>().Instance.QuantityContent, Is.Not.Null);
         AssertCollapsedNumericChoices(comboEditor);
         comboEditor.Find("#comboTarget0").Change(target);

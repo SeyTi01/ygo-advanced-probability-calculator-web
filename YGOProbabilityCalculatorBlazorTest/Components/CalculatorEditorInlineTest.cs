@@ -132,7 +132,7 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         await EditRequirement(editor, "category:0");
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
         OpenNewRequirement(editor);
-        Assert.That(editor.FindAll(".requirement-row form"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-list > form.requirement-form"), Has.Count.EqualTo(1));
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
         await RequirementField(editor, "#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });

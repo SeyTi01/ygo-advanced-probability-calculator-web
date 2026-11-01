@@ -61,14 +61,12 @@ public abstract class CalculatorEditorTestBase {
 
     public static void OpenNewRequirement(IRenderedFragment fragment, int? index = null) {
         int rowIndex = index ?? int.Parse(fragment.Find("div.accordion-collapse[id^='combo']").Id![5..]);
-        if (fragment.FindAll($"#combo{rowIndex} [data-new-requirement][aria-expanded=true]").Count > 0) { return; }
         string scope = $"#combo{rowIndex}";
-        IElement? row = fragment.FindAll($"{scope} [data-new-requirement]").FirstOrDefault();
-        if (row is not null) { row.Click(); }
-        else { fragment.Find($"{scope} .add-top-level-group").Click(); }
+        if (fragment.FindAll($"{scope} .add-top-level-group[aria-expanded=true]").Count > 0) { return; }
+        fragment.Find($"{scope} .add-top-level-group").Click();
     }
 
-    // Tests that author a new requirement explicitly open its concrete row first.
+    // Tests that author a new requirement explicitly open its form first.
     public static IElement RequirementField(IRenderedFragment fragment, string selector) {
         if (fragment.FindAll(selector).Count == 0) {
             string digits = new(selector.SkipWhile(character => !char.IsDigit(character)).TakeWhile(char.IsDigit).ToArray());

@@ -1,6 +1,7 @@
 <div class="expression-separator @(Operator == "OR" ? "alternative-separator" : "requirement-and-separator") @(Inline ? "expression-inline-separator" : "") @(Symbol == "+" ? "expression-copy-separator" : "")" role="@(OnAdd.HasDelegate ? null : OnOperatorChanged.HasDelegate ? "group" : "separator")" aria-label="@(OnAdd.HasDelegate ? null : Label)">
     @if (OnAdd.HasDelegate) {
-        <button type="button" class="expression-add-button @AddButtonClass control-focus-ring" aria-label="@InputLabel" title="@InputLabel" @ref="_control" @onclick="OnAdd">@(Symbol ?? Operator)</button>
+        <button type="button" class="expression-add-button @AddButtonClass control-focus-ring" aria-label="@InputLabel" title="@InputLabel"
+                aria-expanded="@(AddExpanded?.ToString().ToLowerInvariant())" @ref="_control" @onclick="OnAdd">@(Symbol ?? Operator)</button>
     }
     else if (OnOperatorChanged.HasDelegate) {
         <select id="@InputId" class="expression-operator control-focus-ring" @ref="_control" aria-invalid="@(Error is not null ? "true" : null)" aria-label="@(InputLabel ?? UiText.Format("Ui.Change0Operator", Symbol ?? Operator))" @bind:get="Symbol ?? Operator" @bind:set="Change">
@@ -23,6 +24,7 @@
     [Parameter] public string? InputId { get; set; }
     [Parameter] public string? InputLabel { get; set; }
     [Parameter] public string? AddButtonClass { get; set; }
+    [Parameter] public bool? AddExpanded { get; set; }
     [Parameter] public string? Error { get; set; }
     [Parameter] public IReadOnlyList<string> AllowedOperators { get; set; } = ["AND", "OR"];
     [Parameter] public EventCallback<string> OnOperatorChanged { get; set; }

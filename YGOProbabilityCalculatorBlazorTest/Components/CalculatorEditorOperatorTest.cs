@@ -89,7 +89,7 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
         await RequirementField(editor, "#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("3"));
-        Assert.That(editor.FindAll(".requirement-edit[aria-expanded=true]:not([data-new-requirement])"), Is.Empty);
+        Assert.That(editor.FindAll(".requirement-edit[aria-expanded=true]"), Is.Empty);
     }
 
     [Test]
@@ -104,7 +104,7 @@ public sealed class CalculatorEditorOperatorTest : CalculatorEditorTestBase {
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
         Assert.That(editor.Instance.Combo.AlternativeGroups, Has.Count.EqualTo(1));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.Empty);
-        Assert.That(editor.Find(".requirement-edit[aria-expanded=true]:not([data-new-requirement])").GetAttribute("data-requirement"), Is.EqualTo("category:0"));
+        Assert.That(editor.Find(".requirement-edit[aria-expanded=true]").GetAttribute("data-requirement"), Is.EqualTo("category:0"));
         await Button(editor, "Cancel").ClickAsync(new());
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("3"));
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
