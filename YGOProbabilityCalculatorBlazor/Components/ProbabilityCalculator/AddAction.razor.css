@@ -3,7 +3,7 @@
     align-items: center;
     justify-content: center;
     gap: .35rem;
-    min-height: 2.75rem;
+    height: 2.75rem;
     padding: .35rem .75rem;
     color: var(--bs-body-color);
     background: transparent;
@@ -19,4 +19,3 @@
 }
 
 .add-action:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
-.add-action:disabled { color: var(--bs-secondary-color); border-color: var(--bs-border-color); }
