@@ -29,31 +29,30 @@ async function change(page, locale) {
 async function blocked(page, locale, message) {
     const before = page.url();
     const saved = await page.evaluate(key => localStorage.getItem(key), preference);
+    const selected = await page.locator('#language-preference').inputValue();
     await page.locator('#language-preference').selectOption(locale);
     await page.locator('.content > .alert[role=alert]').filter({ hasText: message }).waitFor();
     await page.waitForFunction(() => !document.querySelector('.page').inert);
     assert.equal(page.url(), before);
     assert.equal(await page.evaluate(key => localStorage.getItem(key), preference), saved);
-    assert.equal(await page.locator('#language-preference').inputValue(), await page.locator('html').getAttribute('lang'));
+    assert.equal(await page.locator('#language-preference').inputValue(), selected);
 }
 
 async function header(page) {
     await usable(page, page.locator('#language-preference'));
-    assert.equal(await page.evaluate(() => {
-        const measure = document.createElement('canvas').getContext('2d');
-        return ['language-preference', 'theme-preference'].every(id => {
-            const select = document.getElementById(id);
-            if (select.value === 'eo') { return true; } // The isolated pseudo label is deliberately artificial.
-            const style = getComputedStyle(select);
-            measure.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-            const available = select.clientWidth - parseFloat(style.paddingInlineStart) - parseFloat(style.paddingInlineEnd);
-            return measure.measureText(select.selectedOptions[0].label).width <= available;
-        });
-    }), true, 'selected language and theme labels remain readable beside the native arrow');
+    await usable(page, page.locator('#theme-preference'));
+    assert.equal(await page.locator('.preference-icon[aria-hidden=true]').count(), 2);
     const language = await page.locator('#language-preference').boundingBox();
     const theme = await page.locator('#theme-preference').boundingBox();
+    const help = await page.locator('.header-navigation').boundingBox();
     assert(Math.abs(language.width - theme.width) < 1 && Math.abs(language.height - theme.height) < 1,
-        'language and theme selectors have the same size');
+        'language and theme controls have the same size');
+    assert(Math.abs(language.width - language.height) < 1, 'icon controls keep the square settings-button proportions');
+    assert(Math.abs(language.height - help.height) < 1, 'icon controls match the Help/Back button height');
+    for (const id of ['language-preference', 'theme-preference']) {
+        assert(await page.locator('#' + id).getAttribute('aria-label'), 'icon control has an accessible name');
+        assert(await page.locator('#' + id).getAttribute('title'), 'icon control has a current-choice tooltip');
+    }
     assert.equal(await page.evaluate(() => {
         const title = document.querySelector('.app-title').getBoundingClientRect();
         const controls = document.querySelector('.top-row-controls').getBoundingClientRect();
@@ -69,7 +68,7 @@ async function germanProduction(browser, url, track) {
     page.on('request', request => requests.push(request.url()));
     await page.goto(url + '/help');
     await page.waitForFunction(() => document.documentElement.lang === 'de' && !document.documentElement.classList.contains('locale-pending'));
-    assert.equal(await page.locator('#language-preference').inputValue(), 'de');
+    assert.equal(await page.locator('#language-preference').inputValue(), 'system');
     assert.equal(await page.locator('details.help-topic').count(), 9);
     assert.equal(requests.some(value => /card-names\./.test(value)), false, 'Help must not load names');
     assert.equal(requests.some(value => /\/fr\/.*resources/.test(value)), false);
@@ -206,7 +205,8 @@ async function germanProduction(browser, url, track) {
             } else { localStorage.setItem(preference, saved); }
         }, { preference, saved });
         const p = await startup.newPage(); track(p); await p.goto(url); await interactive(p);
-        assert.equal(await p.locator('#language-preference').inputValue(), saved === 'en' ? 'en' : 'de');
+        assert.equal(await p.locator('#language-preference').inputValue(), ['en', 'de'].includes(saved) ? saved : 'system');
+        assert.equal(await p.locator('html').getAttribute('lang'), saved === 'en' ? 'en' : 'de');
         await startup.close();
     }
     console.log('Real German production Help, native keyboard/history, example, demand-loaded bilingual search, canonical selection, authored names, fallback and desktop/mobile themes passed.');
@@ -234,7 +234,7 @@ async function translatedProduction(browser, url, track, locale, root) {
     page.on('request', request => requests.push(request.url()));
     await page.goto(url + '/help');
     await page.waitForFunction(id => document.documentElement.lang === id && !document.documentElement.classList.contains('locale-pending'), locale.id);
-    assert.equal(await page.locator('#language-preference').inputValue(), locale.id);
+    assert.equal(await page.locator('#language-preference').inputValue(), 'system');
     assert.equal(await page.locator('details.help-topic').count(), 9);
     assert.equal(requests.some(value => /card-names\./.test(value)), false, 'Help loads no card names');
     const satellites = requests.filter(value => /\/[^/]+\/[^/]*resources/.test(value));
@@ -349,7 +349,8 @@ async function translatedProduction(browser, url, track, locale, root) {
             else { localStorage.setItem(preference, saved); }
         }, { preference, saved });
         const cold = await startup.newPage(); track(cold); await cold.goto(url); await interactive(cold);
-        assert.equal(await cold.locator('#language-preference').inputValue(), saved === 'en' ? 'en' : locale.id);
+        assert.equal(await cold.locator('#language-preference').inputValue(), saved === 'en' ? 'en' : 'system');
+        assert.equal(await cold.locator('html').getAttribute('lang'), saved === 'en' ? 'en' : locale.id);
         await startup.close();
     }
 }
@@ -370,7 +371,8 @@ async function main() {
         const page = await context.newPage();
         track(page);
         await page.goto(prod.url); await interactive(page);
-        assert.equal(await page.locator('#language-preference').inputValue(), 'en');
+        assert.equal(await page.locator('#language-preference').inputValue(), 'system');
+        assert.equal(await page.locator('#language-preference option').first().getAttribute('value'), 'system');
         assert.equal(await page.locator('#quickCardName').getAttribute('placeholder'), 'Search cards or enter a name');
         const transfer = await page.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
         const productionRequests = await page.evaluate(() => performance.getEntriesByType('resource').map(item => item.name));
@@ -388,7 +390,10 @@ async function main() {
         const testHost = await serve(process.argv[3]); servers.push(testHost.server);
         const test = await browser.newContext({ locale: 'de-DE', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
         await test.addInitScript(key => {
-            if (!localStorage.getItem(key)) localStorage.setItem(key, 'en');
+            if (!sessionStorage.getItem('language-smoke:seeded')) {
+                localStorage.setItem(key, 'en');
+                sessionStorage.setItem('language-smoke:seeded', 'true');
+            }
             Object.defineProperty(window, 'showSaveFilePicker', { value: undefined });
             // Observe the first visible interactive card input, not only the settled language.
             window.firstInteractivePlaceholder = null;
@@ -504,7 +509,9 @@ async function main() {
             return saved.Cards[0].Copies === 3 && saved.Combos[0].Name === 'Accepted rename';
         }, recovery);
         const accepted = await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery);
-        await change(p, 'de');
+        await change(p, 'system');
+        assert.equal(await p.locator('html').getAttribute('lang'), 'de');
+        assert.equal(await p.evaluate(key => localStorage.getItem(key), preference), null, 'System clears the explicit override');
         assert.equal(await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), accepted);
         assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)3\/4(?!\d)/);
         assert.equal(await p.locator('.pinned-result').count(), 1);
@@ -594,13 +601,13 @@ async function main() {
         await help.goto(testHost.url + '/help');
         await help.locator('#language-preference').waitFor();
         await help.waitForFunction(() => !document.documentElement.classList.contains('locale-pending'));
-        assert.equal(await help.locator('#language-preference').inputValue(), 'eo');
+        assert.equal(await help.locator('#language-preference').inputValue(), 'system');
         assert.equal(await help.locator('html').getAttribute('lang'), 'eo');
         await help.getByRole('link', { name: 'Back', exact: true }).click(); await interactive(help);
         assert.equal(await help.locator('#quickCardName').getAttribute('placeholder'), '⟦Search cards⟧');
         await help.evaluate(key => localStorage.setItem(key, 'stale'), preference);
         await help.reload(); await interactive(help);
-        assert.equal(await help.locator('#language-preference').inputValue(), 'eo');
+        assert.equal(await help.locator('#language-preference').inputValue(), 'system');
         await automatic.close();
 
         if (process.argv[4]) {

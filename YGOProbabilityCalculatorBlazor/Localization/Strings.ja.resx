@@ -2692,4 +2692,7 @@
   <data name="Property.Mentions" xml:space="preserve">
     <value>記載名: {0}</value>
   </data>
+  <data name="Preference.Current" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
 </root>

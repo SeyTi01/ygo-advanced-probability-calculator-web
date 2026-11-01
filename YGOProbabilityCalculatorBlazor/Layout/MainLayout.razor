@@ -16,30 +16,54 @@
                 }
                 <div class="top-row-controls layout-row">
                     @if (LocalePreference.Available.Count > 1) {
-                        <label for="language-preference" class="visually-hidden">@UiText.Get("Language.Label")</label>
-                        <select @key="_languageControlVersion" id="language-preference" class="form-select form-select-sm language-select" aria-label="@UiText.Get("Language.Label")"
-                                title="@UiText.Get("Language.Label")" value="@System.Globalization.CultureInfo.CurrentUICulture.Name" disabled="@(_switching || !_languageReady || _languageWorkspace.Restoring)" @onchange="ChangeLanguage">
-                            @foreach (ProductionLocale locale in LocalePreference.Available) {
-                                <option value="@locale.Id">@locale.Name</option>
-                            }
-                        </select>
+                        <div class="preference-control">
+                            <label for="language-preference" class="visually-hidden">@UiText.Get("Language.Label")</label>
+                            <select @key="_languageControlVersion" id="language-preference" class="form-select preference-select" aria-label="@UiText.Get("Language.Label")"
+                                    title="@UiText.Format("Preference.Current", UiText.Get("Language.Label"), LanguagePreferenceLabel)"
+                                    value="@LanguagePreference" disabled="@(_switching || !_languageReady || _languageWorkspace.Restoring)" @onchange="ChangeLanguage">
+                                <option value="system">@UiText.Get("Ui.System")</option>
+                                @foreach (ProductionLocale locale in LocalePreference.Available) {
+                                    <option value="@locale.Id">@locale.Name</option>
+                                }
+                            </select>
+                            <svg class="preference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true" focusable="false">
+                                <circle cx="12" cy="12" r="9" />
+                                <ellipse cx="12" cy="12" rx="4" ry="9" />
+                                <path d="M3 12h18" />
+                            </svg>
+                        </div>
                     }
-                    <label class="visually-hidden" for="theme-preference">@(UiText.Get("Ui.ColorThemePreference"))</label>
-                    <select id="theme-preference"
-                            class="form-select form-select-sm theme-select"
-                            aria-label="@(UiText.Get("Ui.ColorThemePreference"))"
-                            title="@(UiText.Get("Ui.ColorThemePreference"))"
-                            value="@ThemePreference"
-                            @onchange="ChangeThemePreference">
-                        <option value="system">@(UiText.Get("Ui.System"))</option>
-                        <option value="light">@(UiText.Get("Ui.Light"))</option>
-                        <option value="dark">@(UiText.Get("Ui.Dark"))</option>
-                    </select>
+                    <div class="preference-control">
+                        <label class="visually-hidden" for="theme-preference">@(UiText.Get("Ui.ColorThemePreference"))</label>
+                        <select id="theme-preference"
+                                class="form-select preference-select"
+                                aria-label="@(UiText.Get("Ui.ColorThemePreference"))"
+                                title="@UiText.Format("Preference.Current", UiText.Get("Ui.ColorThemePreference"), ThemePreferenceLabel)"
+                                value="@ThemePreference"
+                                @onchange="ChangeThemePreference">
+                            <option value="system">@(UiText.Get("Ui.System"))</option>
+                            <option value="light">@(UiText.Get("Ui.Light"))</option>
+                            <option value="dark">@(UiText.Get("Ui.Dark"))</option>
+                        </select>
+                        <svg class="preference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                            @if (ThemePreference == "light") {
+                                <circle cx="12" cy="12" r="4" />
+                                <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" />
+                            }
+                            else if (ThemePreference == "dark") {
+                                <path d="M21 12.8A9 9 0 0 1 11.2 3 9 9 0 1 0 21 12.8Z" />
+                            }
+                            else {
+                                <rect x="3" y="4" width="18" height="13" rx="1.5" />
+                                <path d="M8 21h8m-4-4v4" />
+                            }
+                        </svg>
+                    </div>
                     @if (IsHelpPage) {
-                        <a href="/" class="btn btn-outline-primary">@(UiText.Get("Ui.Back"))</a>
+                        <a href="/" class="btn btn-outline-primary header-navigation">@(UiText.Get("Ui.Back"))</a>
                     }
                     else {
-                        <a href="/help" class="btn btn-outline-primary">@(UiText.Get("Ui.Help"))</a>
+                        <a href="/help" class="btn btn-outline-primary header-navigation">@(UiText.Get("Ui.Help"))</a>
                     }
                 </div>
             </div>
@@ -63,6 +87,14 @@
     private bool IsHelpPage => new Uri(NavigationManager.Uri).AbsolutePath.TrimEnd('/')
         .Equals("/help", StringComparison.OrdinalIgnoreCase);
     private string ThemePreference { get; set; } = "system";
+    private string LanguagePreference { get; set; } = "system";
+    private string LanguagePreferenceLabel => LanguagePreference == "system"
+        ? UiText.Get("Ui.System") : LocalePreference.Available.First(locale => locale.Id == LanguagePreference).Name;
+    private string ThemePreferenceLabel => UiText.Get(ThemePreference switch {
+        "light" => "Ui.Light",
+        "dark" => "Ui.Dark",
+        _ => "Ui.System"
+    });
     private readonly LanguageWorkspace _languageWorkspace = new();
     private LanguageHandoff? _handoff;
     private string? _languageError;
@@ -79,6 +111,8 @@
             _hasHandoff = await JSRuntime.InvokeAsync<bool>("ygoLocale.hasHandoff");
             if (_handoff?.Workspace is { } checkpoint) { _languageWorkspace.Begin(checkpoint); }
             else if (_hasHandoff && _handoff is null) { _languageError = UiText.Get("Language.UnrestoredCheckpoint"); }
+            string? preference = await JSRuntime.InvokeAsync<string?>("ygoLocale.getPreference");
+            LanguagePreference = LocalePreference.SupportedLocales.Contains(preference) ? preference! : "system";
         }
         catch (InvalidOperationException) { /* Publish-time prerendering stays English. */ }
         catch (JSException) { /* Optional shell storage must not block startup. */ }
@@ -89,7 +123,8 @@
 
     private async Task ChangeLanguage(ChangeEventArgs args) {
         string? next = args.Value?.ToString();
-        if (_switching || next == System.Globalization.CultureInfo.CurrentUICulture.Name) { return; }
+        bool supported = next == "system" || LocalePreference.SupportedLocales.Contains(next);
+        if (_switching || !supported || next == LanguagePreference) { return; }
         _switching = true;
         _languageError = null;
         bool reloading = false;
@@ -101,6 +136,7 @@
             string? checkpoint = _languageWorkspace.Capture?.Invoke();
             if (!IsHelpPage && checkpoint is null) { throw new InvalidOperationException(UiText.Get("Language.WaitForLoad")); }
             await JSRuntime.InvokeVoidAsync("ygoLocale.change", next, checkpoint);
+            LanguagePreference = next!;
             reloading = true;
         }
         catch (InvalidOperationException ex) { _languageError = ex.Message; }
