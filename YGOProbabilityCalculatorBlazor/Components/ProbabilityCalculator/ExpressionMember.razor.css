@@ -1,3 +1,4 @@
-.expression-member { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: 36px; padding: 0; border: 0; border-radius: .25rem; background: transparent; color: inherit; font: inherit; text-align: start; }
-.expression-member:hover, .expression-member[aria-expanded="true"] { background: var(--bs-secondary-bg); }
+.expression-member { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: 36px; padding: 0 .25rem; border: 0; border-radius: .25rem; background: transparent; color: inherit; font: inherit; text-align: start; }
+.expression-member:hover ::deep .badge { box-shadow: 0 0 0 .25rem var(--bs-border-color); }
+.expression-member[aria-expanded="true"] ::deep .badge { box-shadow: 0 0 0 .25rem color-mix(in srgb, var(--bs-body-color) 30%, var(--bs-tertiary-bg)); }
 @media (pointer: coarse) { .expression-member { min-height: var(--app-touch-target-size); } }
