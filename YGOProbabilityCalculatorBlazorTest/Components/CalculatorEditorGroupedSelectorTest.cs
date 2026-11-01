@@ -198,7 +198,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(2));
         Assert.That(editor.FindComponents<ExpressionForm>(), Has.Count.EqualTo(1));
         Assert.That(editor.FindComponents<ExpressionGroup>(), Has.Count.EqualTo(1));
-        Assert.That(editor.FindAll(".expanded-expression .expression-separator"), Has.Count.EqualTo(2));
+        Assert.That(editor.FindAll(".expanded-expression .expression-separator select"), Has.Count.EqualTo(2));
         Button(editor.FindComponent<ExpressionForm>(), "Cancel").Click();
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
     }

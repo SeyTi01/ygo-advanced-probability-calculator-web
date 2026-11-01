@@ -210,7 +210,7 @@ public class BackgroundCalculationComponentTest {
         CategoryBase role = new("Role");
         IRenderedComponent<CategoryListEditor> categories = _cut.FindComponent<CategoryListEditor>();
         categories.Find("[aria-label='Category name']").Input(role.Name);
-        categories.Find("button.btn-primary").Click();
+        categories.Find("[aria-label='Add category']").Click();
         Task accepted = Start();
         _calculator.Jobs[0].SetResult(Result("accepted"));
         await accepted;

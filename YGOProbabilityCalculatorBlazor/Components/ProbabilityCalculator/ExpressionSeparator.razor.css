@@ -20,7 +20,8 @@
 
 .expression-inline-separator { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0; padding: 0; }
 .expression-inline-separator::before, .expression-inline-separator::after { display: none; }
-.expression-operator {
+.expression-operator,
+.expression-add-button {
     appearance: none;
     background: var(--bs-body-bg);
     color: var(--bs-secondary-color);
@@ -33,4 +34,6 @@
     cursor: pointer;
     font: inherit;
 }
+.expression-add-button { opacity: .7; }
+.expression-add-button:is(:hover, :focus-visible, :active) { opacity: 1; }
 .expression-operator-error { white-space: normal; font-size: .8rem; font-weight: normal; line-height: 1.4; }

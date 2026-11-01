@@ -24,11 +24,12 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         IElement requirements = editor.Find(".requirement-list");
-        Assert.That(requirements.Children.Skip(1).Select(element => element.ClassList.Single(name => name is "requirement-row" or "requirement-and-separator" or "requirement-or-group")), Is.EqualTo(new[] {
+        Assert.That(requirements.Children.Skip(1).Where(element => element.QuerySelector(".add-top-level-group") is null)
+            .Select(element => element.ClassList.Single(name => name is "requirement-row" or "requirement-and-separator" or "requirement-or-group")), Is.EqualTo(new[] {
             "requirement-row", "requirement-and-separator", "requirement-row", "requirement-and-separator",
             "requirement-or-group", "requirement-and-separator", "requirement-or-group"
         }));
-        foreach (IElement separator in requirements.Children.Where(element => element.ClassList.Contains("requirement-and-separator"))) {
+        foreach (IElement separator in requirements.Children.Where(element => element.ClassList.Contains("requirement-and-separator") && element.QuerySelector("select") is not null)) {
             Assert.That(separator.QuerySelector("select")!.GetAttribute("value"), Is.EqualTo("+"));
             Assert.That(separator.GetAttribute("aria-label"), Is.EqualTo("+: separate card requirements"));
         }
@@ -39,8 +40,8 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         }
         await EditRequirement(editor, "category:0");
         await Button(editor, "Remove requirement").ClickAsync(new());
-        Assert.That(requirements.Children.Count(element => element.ClassList.Contains("requirement-and-separator")), Is.EqualTo(2));
-        Assert.That(requirements.Children[1].ClassName, Is.EqualTo("requirement-row"));
+        Assert.That(requirements.Children.Count(element => element.ClassList.Contains("requirement-and-separator") && element.QuerySelector("select") is not null), Is.EqualTo(2));
+        Assert.That(requirements.Children[1].ClassList, Does.Contain("requirement-row"));
         Assert.That(editor.FindAll(".requirement-or-group"), Has.Count.EqualTo(2));
     }
 

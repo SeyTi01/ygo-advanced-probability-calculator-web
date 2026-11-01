@@ -190,6 +190,7 @@
   <data name="Ui.AddAlternativeOR" xml:space="preserve"><value>Alternative hinzufügen (ODER)</value></data>
   <data name="Ui.AddAnAlternativeOR" xml:space="preserve"><value>Alternative hinzufügen · ODER</value></data>
   <data name="Ui.AddCard" xml:space="preserve"><value>Karte hinzufügen</value></data>
+  <data name="Ui.AddCategory" xml:space="preserve"><value>Kategorie hinzufügen</value></data>
   <data name="Ui.AddCardByName" xml:space="preserve"><value>Karte nach Namen hinzufügen</value></data>
   <data name="Ui.AddCombo" xml:space="preserve"><value>Kombo hinzufügen</value></data>
   <data name="Ui.AddComboGroup" xml:space="preserve"><value>Kombogruppe hinzufügen</value></data>
