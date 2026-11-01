@@ -1,0 +1,18 @@
+@if (_calculatorVisited) {
+    <div class="calculator-route" hidden="@(!Active)">
+        <ProbabilityCalculatorComponent Active="Active" />
+    </div>
+}
+
+@code {
+    [Parameter] public bool Active { get; set; }
+    [CascadingParameter] public LanguageWorkspace? LanguageWorkspace { get; set; }
+
+    private bool _calculatorVisited;
+
+    protected override void OnParametersSet() {
+        // The layout keeps the live calculator and editors across Help visits.
+        // A language reload on Help also restores its workspace before acknowledgement.
+        _calculatorVisited |= Active || LanguageWorkspace?.Pending is not null;
+    }
+}

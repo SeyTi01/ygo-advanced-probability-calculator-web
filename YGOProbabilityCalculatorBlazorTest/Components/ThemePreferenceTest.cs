@@ -1,6 +1,7 @@
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Layout;
 using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazorTest.Localization;
@@ -15,6 +16,7 @@ public class ThemePreferenceTest {
     public void HeaderRestoresTheLanguagePreferenceSeparatelyFromTheResolvedLanguage(string? stored, string expected) {
         using Bunit.TestContext context = new();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.ComponentFactories.AddStub<CalculatorWorkspace>();
         context.JSInterop.Setup<string>("ygoLocale.getPreference").SetResult(stored!);
 
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>();
@@ -31,6 +33,7 @@ public class ThemePreferenceTest {
         using PresentationLocale locale = new("en", production: true);
         using Bunit.TestContext context = new();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.ComponentFactories.AddStub<CalculatorWorkspace>();
         context.JSInterop.Setup<string>("ygoLocale.getPreference").SetResult(stored);
         context.Services.GetRequiredService<NavigationManager>().NavigateTo("/help");
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>();
@@ -46,6 +49,7 @@ public class ThemePreferenceTest {
     public async Task AnUnfinishedEditKeepsThePreviousLanguagePreferenceSelected() {
         using Bunit.TestContext context = new();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.ComponentFactories.AddStub<CalculatorWorkspace>();
         context.JSInterop.Setup<string>("ygoLocale.getPreference").SetResult("ja");
         context.JSInterop.Setup<bool>("ygoLocale.hasPendingEdits").SetResult(true);
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>();
@@ -66,6 +70,7 @@ public class ThemePreferenceTest {
     public void HeaderRestoresBrowserPreference(string? storedPreference, string expectedPreference) {
         using Bunit.TestContext context = new();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.ComponentFactories.AddStub<CalculatorWorkspace>();
         context.JSInterop.Setup<string>("ygoTheme.getPreference").SetResult(storedPreference!);
 
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>();
@@ -80,6 +85,7 @@ public class ThemePreferenceTest {
     public async Task ChangingThemePreferencePersistsThroughJavaScript() {
         using Bunit.TestContext context = new();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.ComponentFactories.AddStub<CalculatorWorkspace>();
         context.JSInterop.Setup<string>("ygoTheme.getPreference").SetResult("system");
 
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>();
@@ -95,6 +101,7 @@ public class ThemePreferenceTest {
     public void CalculatorHeaderUsesItsSinglePageHeading() {
         using Bunit.TestContext context = new();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.ComponentFactories.AddStub<CalculatorWorkspace>();
 
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>();
 
@@ -111,6 +118,7 @@ public class ThemePreferenceTest {
     public void HelpHeaderDoesNotDuplicateItsContentHeading(string path) {
         using Bunit.TestContext context = new();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.ComponentFactories.AddStub<CalculatorWorkspace>();
         context.Services.GetRequiredService<NavigationManager>().NavigateTo(path);
 
         IRenderedComponent<MainLayout> cut = context.RenderComponent<MainLayout>(parameters => parameters.Add(

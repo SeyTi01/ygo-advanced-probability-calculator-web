@@ -36,7 +36,7 @@
 }
 
 /* The calculator toolbar owns both insets; other pages keep the content inset. */
-.content:has(> .calculator-workspace) {
+.content:has(> .calculator-route:not([hidden])) {
     padding-top: 0;
 }
 

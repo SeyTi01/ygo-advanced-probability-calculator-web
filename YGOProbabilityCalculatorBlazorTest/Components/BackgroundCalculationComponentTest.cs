@@ -507,6 +507,25 @@ public class BackgroundCalculationComponentTest {
     }
 
     [Test]
+    public async Task LeavingTheCalculatorCancelsItsRunAndLateRepliesCannotOwnTheReturn() {
+        Task first = Start();
+        _cut.SetParametersAndRender(parameters => parameters.Add(component => component.Active, false));
+        Assert.That(_calculator.Tokens[0].IsCancellationRequested, Is.True);
+        Assert.That(_calculator.Disposals, Is.EqualTo(1));
+        await Start();
+        Assert.That(_calculator.Jobs, Has.Count.EqualTo(1));
+        _cut.SetParametersAndRender(parameters => parameters.Add(component => component.Active, true));
+        Task next = Start();
+        _calculator.Jobs[0].SetResult(Result("before Help"));
+        await first;
+        Assert.That(_cut.Markup, Does.Not.Contain("before Help"));
+        Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
+        _calculator.Jobs[1].SetResult(Result("after Help"));
+        await next;
+        Assert.That(_cut.Markup, Does.Contain("after Help"));
+    }
+
+    [Test]
     public async Task AcceptingAnotherSessionCancelsThePreviousWorkspaceCalculation() {
         SessionState replacement = new() {
             Cards = [new([], 4, id: "new")],
