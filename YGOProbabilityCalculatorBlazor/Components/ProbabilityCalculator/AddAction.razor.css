@@ -3,19 +3,22 @@
     align-items: center;
     justify-content: center;
     gap: .35rem;
-    height: 2.75rem;
-    padding: .35rem .75rem;
-    color: var(--bs-body-color);
+    padding: .375rem .75rem;
+    color: var(--bs-secondary-color);
     background: transparent;
-    border: 1px solid var(--bs-secondary-color);
+    border: 1px solid var(--bs-border-color);
     border-radius: var(--bs-border-radius);
     font: inherit;
+    line-height: 1.5;
     white-space: nowrap;
 }
 
 .add-action:not(:disabled):is(:hover, :focus-visible, :active) {
-    color: var(--bs-emphasis-color);
     background: var(--bs-secondary-bg);
 }
 
 .add-action:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+
+@media (max-width: 767.98px) {
+    .add-action { min-height: 2.75rem; }
+}

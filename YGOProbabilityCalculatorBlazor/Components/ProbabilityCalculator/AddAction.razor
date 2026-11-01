@@ -1,11 +1,11 @@
-<button id="@Id" type="button" class="add-action" disabled="@Disabled" aria-label="@Label" title="@Label" @onclick="OnClick">
+<button id="@Id" type="button" class="add-action" disabled="@Disabled" aria-label="@AccessibleLabel" title="@AccessibleLabel" @onclick="OnClick">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg>
-    @Label
+    @(UiText.Get("Ui.Add"))
 </button>
 
 @code {
     [Parameter] public string? Id { get; set; }
-    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string AccessibleLabel { get; set; } = string.Empty;
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
 }

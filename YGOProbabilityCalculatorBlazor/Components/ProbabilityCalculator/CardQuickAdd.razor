@@ -2,11 +2,11 @@
 @using YGOProbabilityCalculatorBlazor.Services.CardEffects
 @inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 
-<div class="quick-add mb-3">
+<div class="quick-add">
     <div class="quick-add-row" @oninput:stopPropagation="true">
         <CardSearchInput @ref="_search" Value="@_name" Label="@(UiText.Get("Ui.AddCardByName"))" Placeholder="@(UiText.Get("Card.SearchPlaceholder"))"
                          OnInput="NameChanged" OnSelected="AddCatalogCard" OnSubmit="AddManualCard" />
-        <AddAction Label="@(UiText.Get("Ui.AddCard"))" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="AddManualCard" />
+        <AddAction AccessibleLabel="@(UiText.Get("Ui.AddCard"))" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="AddManualCard" />
     </div>
     @if (_status.Length > 0) {
         <span class="visually-hidden" role="status">@_status</span>
