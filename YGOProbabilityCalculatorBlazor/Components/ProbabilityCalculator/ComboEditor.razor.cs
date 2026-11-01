@@ -12,11 +12,8 @@ public partial class ComboEditor {
     private readonly List<CategoryBase> _draftProperties = [];
     private readonly Dictionary<string, ExpressionRow> _rowButtons = [];
     private readonly Dictionary<string, ExpressionMember> _alternativeButtons = [];
-    private bool _hasNewRequirementRow;
     private bool _editingNewRequirement;
-    private ExpressionRow? _newRequirementRow;
     private ExpressionSeparator? _newRequirementButton;
-    private bool ShowNewRequirementRow => ConstraintCount == 0 || _hasNewRequirementRow;
     private ElementReference _minimumInput;
     private bool _focusMinimum;
     private string? _returnRowKey;
@@ -314,7 +311,6 @@ public partial class ComboEditor {
     }
 
     private void CancelRequirement() {
-        if (_editingNewRequirement) { _hasNewRequirementRow = false; }
         if (_editingRequirement is { } requirement && _editingIndex is int index) {
             _returnRowKey = RowKey(requirement, index, _editingGroupIndex);
         }

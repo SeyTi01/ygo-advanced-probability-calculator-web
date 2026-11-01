@@ -268,21 +268,14 @@ public partial class ComboEditor {
         }
     }
 
-    private void ToggleNewRequirement() {
-        if (_editingNewRequirement) { CancelRequirement(); return; }
-        BeginTopLevelRequirement();
-    }
-
     private void FinishNewRequirement(string key) {
         _editingNewRequirement = false;
-        _hasNewRequirementRow = false;
         _returnRowKey = key;
         _focusAlternativeEntry = true;
     }
 
     private void BeginTopLevelRequirement() {
         if (_editingRequirement is not null || AuthoringScope) { CancelScopedAuthoring(); }
-        _hasNewRequirementRow = true;
         _editingNewRequirement = true;
         _focusAlternativeEntry = true;
         _returnRowKey = null;

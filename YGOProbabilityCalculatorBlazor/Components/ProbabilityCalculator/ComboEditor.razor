@@ -100,18 +100,9 @@
                         </ExpressionGroup>
                     }
                 }
-                @if (ShowNewRequirementRow) {
-                    @if (ConstraintCount > 0) { <ExpressionSeparator Operator="AND" Symbol="+" AllowedOperators="@(new[] { "+" })" /> }
-                    <ExpressionRow Label="@(UiText.Get("Ui.EditNewRequirement"))" Expanded="_editingNewRequirement" OnEdit="ToggleNewRequirement" CenterContent="true" HideEditLabel="true"
-                                   @ref="_newRequirementRow" data-new-requirement="true">
-                        <ChildContent><span class="text-body-secondary">@(UiText.Get("Ui.ChooseACardCategoryOrProperty"))</span></ChildContent>
-                        <EditorContent>@if (_editingNewRequirement) { @RequirementForm() }</EditorContent>
-                    </ExpressionRow>
-                }
-                else {
-                    <ExpressionSeparator Operator="AND" Symbol="+" InputLabel="@(UiText.Get("Ui.AddASeparateCopyRequirement"))" AddButtonClass="add-top-level-group"
-                                         OnAdd="BeginTopLevelRequirement" @ref="_newRequirementButton" />
-                }
+                <ExpressionSeparator Operator="AND" Symbol="+" InputLabel="@(UiText.Get(ConstraintCount == 0 ? "Ui.AddRequirement.2d4936b2" : "Ui.AddASeparateCopyRequirement"))"
+                                     AddButtonClass="add-top-level-group" AddExpanded="_editingNewRequirement" OnAdd="BeginTopLevelRequirement" @ref="_newRequirementButton" />
+                @if (_editingNewRequirement) { @RequirementForm() }
             </div>
 
             <div class="combo-footer">
@@ -864,12 +855,7 @@
             else if (_editingNewRequirement || _editingRequirement is not null || AuthoringScope) {
                 if (_propertyPickers.TryGetValue(0, out RequirementPropertyPicker? picker)) { await picker.FocusAsync(); }
             }
-            else if (ShowNewRequirementRow && _newRequirementRow is not null) {
-                await _newRequirementRow.FocusAsync(preventScroll: true);
-            }
-            else {
-                if (_newRequirementButton is not null) { await _newRequirementButton.FocusAsync(); }
-            }
+            else if (_newRequirementButton is not null) { await _newRequirementButton.FocusAsync(); }
         }
 
     }
