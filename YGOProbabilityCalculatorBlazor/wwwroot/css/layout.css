@@ -1,0 +1,47 @@
+/* Shared layout tokens and primitives cross Razor CSS-isolation boundaries.
+   Components own wrapping and widths; rows own alignment and outer spacing. */
+:root {
+    --app-workspace-width: 60rem;
+    --app-page-gutter: clamp(0.75rem, 2.5vw, 2rem);
+    --app-content-top-spacing: 1.1rem;
+    --app-touch-target-size: 2.75rem;
+    --calculator-section-spacing: 1.5rem;
+    /* Preserve the existing desktop inset without offsetting individual controls. */
+    --calculator-toolbar-spacing: 0.975rem;
+}
+
+.layout-row {
+    --layout-row-gap: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: var(--layout-row-gap);
+}
+
+.layout-row > :is(h1, h2, h3, h4, h5, h6) {
+    margin: 0;
+}
+
+.layout-section {
+    margin-block-end: var(--calculator-section-spacing);
+}
+
+.layout-section-heading {
+    justify-content: space-between;
+    margin-block-end: var(--calculator-section-spacing);
+}
+
+.layout-input-action {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* The calculator toolbar owns both insets; other pages keep the content inset. */
+.content:has(> .calculator-workspace) {
+    padding-top: 0;
+}
+
+@media (max-width: 767.98px) {
+    :root {
+        --calculator-toolbar-spacing: var(--app-content-top-spacing);
+    }
+}

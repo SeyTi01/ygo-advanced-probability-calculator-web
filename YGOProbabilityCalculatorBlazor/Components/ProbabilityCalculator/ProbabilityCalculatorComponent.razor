@@ -13,8 +13,8 @@
 
 <LocalizedCardNames Cards="_cards" OnChanged="revision => _cardDisplayNamesRevision = revision" />
 <div class="calculator-workspace" @oninput="ObserveWorkspaceEdit">
-    <div class="session-controls">
-        <div class="session-toolbar">
+    <div class="session-controls layout-row layout-section">
+        <div class="session-toolbar layout-row">
             <ActionMenu @ref="_importMenu" Text="@(UiText.Get("Ui.Import"))" Label="@(UiText.Get("Ui.ImportDeck"))">
                 <label class="menu-command session-file-action" for="fileInput">
                     @(UiText.Get("Ui.ImportYDK"))
@@ -33,8 +33,8 @@
             </ActionMenu>
         </div>
 
-        <div class="calculation-controls">
-            <div class="hand-size-control">
+        <div class="calculation-controls layout-row">
+            <div class="hand-size-control layout-row">
                 <label for="handSize">@(UiText.Get("Ui.HandSize"))</label>
                 <input type="number"
                        id="handSize"
@@ -158,7 +158,7 @@
     />
 
     <div class="results-section">
-        <div class="calculation-controls">
+        <div class="calculation-controls layout-row">
             <div class="calculate-action">
                 <button type="button"
                         @ref="_calculationAction"

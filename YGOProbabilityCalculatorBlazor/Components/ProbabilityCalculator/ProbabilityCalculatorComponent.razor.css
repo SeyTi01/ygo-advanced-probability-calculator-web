@@ -115,23 +115,15 @@
 }
 
 .session-controls {
-    /* Half the height difference between toolbar buttons and the settings trigger. */
-    --toolbar-center-offset: .125rem;
-    display: flex;
+    --layout-row-gap: 0.5rem 1rem;
     flex-wrap: wrap;
-    align-items: start;
     justify-content: space-between;
-    gap: .5rem 1rem;
-    padding-bottom: calc(var(--app-content-top-spacing) - var(--toolbar-center-offset) - var(--toolbar-center-offset));
-    margin-bottom: var(--calculator-section-spacing);
+    padding-block: var(--calculator-toolbar-spacing);
     border-bottom: 1px solid var(--bs-border-color);
 }
 
 .hand-size-control {
-    display: flex;
     flex: 0 0 auto;
-    align-items: center;
-    gap: 0.5rem;
 }
 
 .hand-size-control label {
@@ -143,24 +135,15 @@
 }
 
 .calculation-controls {
-    display: flex;
     flex: 0 1 auto;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 1rem;
 }
 
 .session-toolbar {
+    --layout-row-gap: 0.125rem;
     flex: 1 1 auto;
     min-width: 0;
-    display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 0.125rem;
-}
-
-@media (min-width: 768px) {
-    .session-toolbar { position: relative; top: calc(0px - var(--toolbar-center-offset)); }
 }
 
 .session-file-action {
@@ -198,7 +181,6 @@
     justify-content: start;
 }
 
-.calculation-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .results-section > .calculation-controls {
     display: grid;
     grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
@@ -344,8 +326,6 @@
 }
 
 @media (max-width: 767.98px) {
-    .session-controls { padding-bottom: var(--app-content-top-spacing); }
-
     .session-controls .calculation-controls {
         width: 100%;
     }
@@ -372,7 +352,7 @@
     .calculator-workspace ::deep .btn,
     .calculator-workspace ::deep .form-control,
     .calculator-workspace ::deep .form-select {
-        min-height: 2.75rem;
+        min-height: var(--app-touch-target-size);
     }
 
     .calculator-workspace ::deep .entry-editor-header { flex-wrap: nowrap; }
@@ -462,7 +442,7 @@
     }
 }
 
-.session-action { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: .35rem .6rem; border-color: transparent; }
+.session-action { display: inline-flex; align-items: center; justify-content: center; min-height: var(--app-touch-target-size); padding: .35rem .6rem; border-color: transparent; }
 .session-secondary:empty { display: none; }
 .session-secondary > :is(form, .clear-workspace-confirmation) { margin-block: 0 1rem; }
 .clear-workspace-confirmation { padding: .75rem; background: var(--bs-secondary-bg); border-radius: var(--bs-border-radius); }
