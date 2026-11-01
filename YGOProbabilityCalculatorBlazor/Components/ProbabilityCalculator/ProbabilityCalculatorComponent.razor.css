@@ -121,7 +121,7 @@
     justify-content: space-between;
     gap: .5rem 1rem;
     padding-bottom: .65rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     border-bottom: 1px solid var(--bs-border-color);
 }
 
