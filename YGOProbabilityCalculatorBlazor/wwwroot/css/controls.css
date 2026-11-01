@@ -1,0 +1,68 @@
+/* Common control appearance; component files keep role-specific content and placement. */
+.surface-panel {
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--surface-radius, var(--bs-border-radius));
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+.workspace-action {
+    min-height: var(--app-touch-target-size);
+    padding: .35rem .6rem;
+    border-color: transparent;
+    color: var(--bs-secondary-color);
+}
+
+.action-menu-trigger:is(:hover, [aria-expanded="true"]):not(:disabled),
+.session-toolbar .workspace-action:is(:hover, :focus-visible, :active, [aria-expanded="true"]) {
+    color: var(--bs-emphasis-color);
+    background: var(--bs-secondary-bg);
+}
+
+.result-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--app-touch-target-size);
+    height: var(--app-touch-target-size);
+    padding: .5rem;
+}
+
+.reorder-button,
+.move-position-trigger {
+    display: inline-grid;
+    place-items: center;
+    width: 1.75rem;
+    min-height: 2rem;
+    border: 0;
+    border-radius: .2rem;
+    background: transparent;
+    color: inherit;
+}
+
+.reorder-button:hover:not(:disabled),
+.move-position-trigger:hover:not(:disabled) { background: var(--bs-tertiary-bg); }
+.reorder-button:disabled,
+.move-position-trigger:disabled { opacity: .3; }
+
+.control-focus-ring {
+    --control-focus-width: 2px;
+    --control-focus-color: var(--bs-primary);
+    --control-focus-offset: 2px;
+}
+
+.control-focus-ring-spaced { --control-focus-offset: 3px; }
+
+.control-focus-ring:focus-visible:not(:disabled) {
+    outline: var(--control-focus-width) solid var(--control-focus-color);
+    outline-offset: var(--control-focus-offset);
+}
+
+@media (max-width: 767.98px) {
+    .reorder-button,
+    .move-position-trigger { width: 2.5rem; min-height: var(--app-touch-target-size); }
+}
+
+@media (max-width: 374px) {
+    .session-toolbar .workspace-action { padding-inline: .4rem; }
+}

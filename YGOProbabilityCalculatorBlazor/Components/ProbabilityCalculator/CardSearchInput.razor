@@ -18,13 +18,13 @@
            @onblur="CloseSearch"
            @onkeydown="HandleSearchKeyDown" />
     @if (_searchOpen && _catalogLoading) {
-        <div class="card-search-status" role="status">@(UiText.Get("Ui.LoadingLocalCardCatalog"))</div>
+        <div class="card-search-status surface-panel" role="status">@(UiText.Get("Ui.LoadingLocalCardCatalog"))</div>
     }
     else if (_searchOpen && _searchError is not null) {
-        <div class="card-search-status card-search-error" role="status">@(UiText.Get("Ui.CardSearchIsUnavailableYouCanStillEnterAManualCard"))</div>
+        <div class="card-search-status card-search-error surface-panel" role="status">@(UiText.Get("Ui.CardSearchIsUnavailableYouCanStillEnterAManualCard"))</div>
     }
     else if (_searchOpen && _searchResults.Length > 0) {
-        <ul id="@ResultsId" class="card-search-results" role="listbox" aria-label="@(UiText.Get("Ui.CardSearchResults"))">
+        <ul id="@ResultsId" class="card-search-results surface-panel" role="listbox" aria-label="@(UiText.Get("Ui.CardSearchResults"))">
             @for (int resultIndex = 0; resultIndex < _searchResults.Length; resultIndex++) {
                 CardInfo result = _searchResults[resultIndex];
                 int currentResultIndex = resultIndex;
@@ -39,7 +39,7 @@
         </ul>
     }
     else if (_searchOpen && _searchQuery.Trim().Length >= 2) {
-        <div class="card-search-status" role="status">@(UiText.Get("Ui.NoMatchingCards"))</div>
+        <div class="card-search-status surface-panel" role="status">@(UiText.Get("Ui.NoMatchingCards"))</div>
     }
 </div>
 

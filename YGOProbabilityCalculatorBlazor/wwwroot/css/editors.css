@@ -1,0 +1,278 @@
+/* Shared card/combo chrome and category/group editing controls. */
+.card-name-field { min-width: 0; }
+
+.category-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    max-width: 100%;
+    padding: 0.15rem 0.25rem;
+    vertical-align: middle;
+}
+
+.category-name-trigger {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0.1rem 0.15rem;
+    margin: 0;
+    border: 0;
+    border-radius: 0.15rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1.35;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+.category-name-trigger:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+}
+
+.category-rename-input {
+    flex: 1 1 7rem;
+    width: clamp(4rem, 35vw, 12rem);
+    min-width: 4rem;
+    max-width: 12rem;
+}
+
+.category-icon-button {
+    display: inline-grid;
+    flex: 0 0 1.75rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--category-border);
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--category-text);
+    cursor: pointer;
+}
+
+.category-icon-button:hover {
+    background: var(--category-action-hover);
+}
+
+.category-action-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.chip-remove-button {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.72;
+}
+
+.chip-remove-button svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.chip-remove-button:hover,
+.chip-remove-button:focus-visible {
+    background-color: var(--category-action-hover);
+    opacity: 1;
+}
+
+.category-delete-button {
+    flex: 0 0 2rem;
+    box-sizing: border-box;
+    width: 2rem;
+    height: 2rem;
+    margin: 0 0 0 0.1rem;
+    border-left: 1px solid var(--category-border);
+    border-radius: 0;
+}
+
+.calculator-workspace .editor-add-row {
+    align-items: end;
+    max-width: 32rem;
+}
+
+.calculator-workspace .entry-editor-header {
+    display: flex;
+    align-items: center;
+    padding: 0;
+}
+
+.calculator-workspace .entry-heading {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    font-size: inherit;
+}
+
+.calculator-workspace .accordion-button {
+    min-width: 0;
+    gap: 0.75rem;
+}
+
+.calculator-workspace .accordion-button::after {
+    flex-shrink: 0;
+}
+
+.calculator-workspace .entry-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0;
+    padding: 0.25rem;
+}
+
+.calculator-workspace .card-header-content,
+.calculator-workspace .combo-header-content {
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.calculator-workspace .card-header-name,
+.calculator-workspace .combo-header-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.calculator-workspace .category-tag,
+.expression-badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.calculator-workspace .category-chip {
+    margin-block-end: 0.375rem;
+}
+
+.calculator-workspace .category-chip:has(.category-rename-input) {
+    flex-wrap: wrap;
+    width: min(100%, 32rem);
+}
+
+.calculator-workspace .category-name-trigger {
+    flex: 1 1 auto;
+}
+
+.calculator-workspace .category-rename-input {
+    flex-basis: 100%;
+    width: 100%;
+    max-width: none;
+}
+
+.calculator-workspace .accordion-body .category-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-block-end: 0.375rem;
+    line-height: 1.35;
+}
+
+.calculator-workspace .accordion-body .draw-selector-chip {
+    margin-block-end: 0;
+}
+
+.calculator-workspace .entry-inactive .entry-heading .accordion-button {
+    font-style: italic;
+}
+
+.calculator-workspace .workspace-management { margin: 0 0 var(--calculator-section-spacing); padding-block: .5rem; border-block: 1px solid var(--bs-border-color); }
+
+.calculator-workspace .workspace-management > summary { cursor: pointer; padding: .5rem 0; font-weight: 600; }
+
+.calculator-workspace .workspace-management > summary span { font-weight: normal; font-size: .875rem; }
+
+.calculator-workspace .workspace-management > .mb-4 { margin: .5rem 0 !important; }
+
+.calculator-workspace .combo-group-management { margin-top: var(--calculator-section-spacing); }
+
+.calculator-workspace .card-editor .accordion-button { padding-block: .55rem; }
+
+.calculator-workspace :is(.calculation-error, .category-validation-alert, .combo-group-validation-alert) .alert {
+    margin-bottom: 0;
+}
+
+@media (max-width: 767.98px) {
+    .page .calculator-workspace .btn,
+    .page .calculator-workspace .form-control,
+    .page .calculator-workspace .form-select {
+        min-height: var(--app-touch-target-size);
+    }
+
+    .calculator-workspace .entry-editor-header { flex-wrap: nowrap; }
+
+    .calculator-workspace .entry-heading .accordion-button {
+        padding: 0.75rem;
+    }
+
+    .calculator-workspace .entry-actions {
+        border-top: 0;
+    }
+
+    .calculator-workspace #cardsAccordion > .accordion-item,
+    .calculator-workspace #combosAccordion > .accordion-item {
+        border-radius: var(--bs-accordion-border-radius);
+    }
+
+    .calculator-workspace #cardsAccordion > .accordion-item > .accordion-header .accordion-button,
+    .calculator-workspace #combosAccordion > .accordion-item > .accordion-header .accordion-button {
+        border-top-left-radius: calc(var(--bs-accordion-border-radius) - var(--bs-accordion-border-width));
+        border-top-right-radius: calc(var(--bs-accordion-border-radius) - var(--bs-accordion-border-width));
+    }
+
+    .calculator-workspace #cardsAccordion > .accordion-item + .accordion-item,
+    .calculator-workspace #combosAccordion > .accordion-item + .accordion-item {
+        margin-top: 0.25rem;
+        border-top-width: var(--bs-accordion-border-width);
+        border-top-style: solid;
+        border-top-color: var(--bs-accordion-border-color);
+    }
+
+    .calculator-workspace #cardsAccordion > .accordion-item + .accordion-item.entry-inactive,
+    .calculator-workspace #combosAccordion > .accordion-item + .accordion-item.entry-inactive {
+        border-top-style: dashed;
+    }
+
+    .calculator-workspace .card-header-name,
+    .calculator-workspace .combo-header-name,
+    .calculator-workspace .combo-group-membership {
+        flex-basis: 100%;
+    }
+
+    .calculator-workspace .accordion-body {
+        padding: 0.75rem;
+    }
+
+    .calculator-workspace .category-name-trigger {
+        min-height: 2.5rem;
+    }
+
+    .calculator-workspace .category-icon-button,
+    .calculator-workspace .category-delete-button {
+        flex-basis: 2.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .calculator-workspace .category-remove-button {
+        box-sizing: border-box;
+        width: 2.5rem;
+        height: 2.5rem;
+        background-size: 0.75rem;
+    }
+}

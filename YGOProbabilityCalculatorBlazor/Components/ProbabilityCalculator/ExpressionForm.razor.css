@@ -9,5 +9,5 @@
 
 @media (max-width: 767.98px) {
     .requirement-form ::deep .requirement-form-heading:has(.btn),
-    .requirement-form ::deep .requirement-context-actions .btn { min-height: 44px; }
+    .requirement-form ::deep .requirement-context-actions .btn { min-height: var(--app-touch-target-size); }
 }

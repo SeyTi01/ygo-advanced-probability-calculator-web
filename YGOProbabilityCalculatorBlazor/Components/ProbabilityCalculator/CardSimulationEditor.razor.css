@@ -23,8 +23,7 @@
 .simulation-advanced > div { margin-top: 0.5rem; }
 .simulation-editor ::deep select { max-width: 100%; }
 .simulation-cancel { color: var(--bs-body-color); }
-button:focus-visible, summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 3px; }
 @media (max-width: 575.98px) {
-    .simulation-actions .btn, .simulation-editor .btn, .simulation-advanced summary { min-height: 2.75rem; }
+    .simulation-actions .btn, .simulation-editor .btn, .simulation-advanced summary { min-height: var(--app-touch-target-size); }
     .simulation-editor ::deep select, .simulation-editor input[type="number"] { min-height: 2.5rem; }
 }

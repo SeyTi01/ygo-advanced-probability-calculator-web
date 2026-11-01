@@ -2,7 +2,7 @@
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
 <div class="mb-4">
-    <div class="editor-add-row">
+    <div class="editor-add-row layout-row layout-input-action">
         <div class="editor-select-field">
             <input @ref="_newCategoryInput" @bind="_newCategoryName"
                    @bind:event="oninput"
@@ -91,11 +91,11 @@
                 <CategoryRuleSummary Category="category" CategoryBases="CategoryBases" />
             }
             @if (ReferenceEquals(_editingCategory, category) && _colorPickerExpanded) {
-                <div id="categoryColorPalette@(index)" class="category-color-palette mt-2" role="group"
+                <div id="categoryColorPalette@(index)" class="category-color-palette surface-panel mt-2" role="group"
                      aria-label="@(UiText.Format("Ui.ChooseAColorForCategory0", DisplayLabels.Category(category)))">
                     @foreach (CategoryColorOption color in CategoryColorPalette.Options) {
                         bool isSelected = SelectedColorIndex(category) == color.Index;
-                        <button type="button" class="category-color-swatch @color.CssClass"
+                        <button type="button" class="category-color-swatch control-focus-ring @color.CssClass"
                                 aria-label="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), DisplayLabels.Color(color.Name)))"
                                 title="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), DisplayLabels.Color(color.Name)))"
                                 aria-pressed="@(isSelected ? "true" : "false")"

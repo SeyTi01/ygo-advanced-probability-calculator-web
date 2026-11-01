@@ -1,24 +1,7 @@
-.accordion-button:focus {
-    box-shadow: none;
-}
-
-.calculation-error ::deep .alert {
-    margin-bottom: 0;
-}
-
 .probability-results-heading {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
 }
-
-.probability-results-heading h5 {
-    margin: 0;
-}
-
-.probability-results { container-type: inline-size; }
 
 .probability-result-title {
     display: flex;
@@ -26,7 +9,7 @@
     align-items: center;
     gap: .5rem;
     min-width: 0;
-    min-height: 2.75rem;
+    min-height: var(--app-touch-target-size);
 }
 
 .probability-result-title h5 { min-width: 0; overflow-wrap: anywhere; }
@@ -36,76 +19,19 @@
 
 .probability-result-status-placeholder { visibility: hidden; }
 
-.probability-total {
-    border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.3);
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.75rem;
-}
-
-.probability-total-value {
-    font-size: 1.1em;
-}
-
 .probability-groups {
     margin-bottom: 0.75rem;
 }
 .probability-groups-last { margin-bottom: 0; }
 
-.probability-group-container {
-    padding: 0.35rem 0 0.5rem;
-}
-
-.probability-group-container + .probability-group-container {
-    border-top: 1px solid rgba(var(--bs-primary-rgb), 0.2);
-    padding-top: 0.55rem;
-}
-
 .combo-probability-row.probability-group-heading {
-    align-items: center;
     font-size: 1rem;
     font-weight: 600;
-    margin-bottom: 0.25rem;
-    padding: 0.2rem 0;
-}
-
-.combo-probability-list {
-    list-style: none;
-    margin-bottom: 0;
-    padding-left: 0;
-}
-
-.combo-probability-list.probability-group-members {
-    border-left: 2px solid rgba(var(--bs-primary-rgb), 0.25);
-    margin-left: 0.5rem;
-    padding-left: 0.75rem;
-}
-
-.combo-probability-item {
-    padding: 0.35rem 0;
-}
-
-.combo-probability-item + .combo-probability-item {
-    border-top: 1px solid rgba(var(--bs-primary-rgb), 0.2);
-}
-
-.combo-probability-row {
-    align-items: baseline;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 1rem;
-    justify-content: space-between;
 }
 
 .combo-probability-name {
     min-width: 0;
     overflow-wrap: anywhere;
-}
-
-.combo-probability-value {
-    flex-shrink: 0;
-    white-space: nowrap;
 }
 
 /* One shared workspace and editor structure, including child components. */
@@ -212,7 +138,7 @@
     min-width: 0;
 }
 
-.pin-result-action { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: .5rem; grid-row: 1; grid-column: 2; }
+.pin-result-action { grid-row: 1; grid-column: 2; }
 .result-panels { display: grid; gap: 1rem; align-items: start; }
 .result-panels > * { min-width: 0; }
 .probability-results-heading h5 { grid-row: 1; grid-column: 1; }
@@ -222,107 +148,11 @@
 .result-value-group { display: flex; justify-content: flex-end; min-width: 0; }
 
 @container result-panel (max-width: 14rem) {
-    .combo-probability-row { grid-template-columns: minmax(0, 1fr); gap: .25rem; }
     .result-value-group { justify-self: end; max-width: 100%; }
 }
 
 @media (min-width: 900px) {
     .result-panels:has(.probability-results) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-}
-
-.calculator-workspace ::deep .editor-add-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: 0.5rem;
-    max-width: 32rem;
-}
-
-.calculator-workspace ::deep .entry-editor-header {
-    display: flex;
-    align-items: center;
-    padding: 0;
-}
-
-.calculator-workspace ::deep .entry-heading {
-    flex: 1 1 0;
-    min-width: 0;
-    margin: 0;
-    font-size: inherit;
-}
-
-.calculator-workspace ::deep .accordion-button {
-    min-width: 0;
-    gap: 0.75rem;
-}
-
-.calculator-workspace ::deep .accordion-button::after {
-    flex-shrink: 0;
-}
-
-.calculator-workspace ::deep .entry-actions {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.5rem;
-}
-
-.calculator-workspace ::deep .card-header-content,
-.calculator-workspace ::deep .combo-header-content {
-    display: flex;
-    flex: 1 1 0;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.25rem;
-    min-width: 0;
-}
-
-.calculator-workspace ::deep .card-header-name,
-.calculator-workspace ::deep .combo-header-name {
-    min-width: 0;
-    overflow-wrap: anywhere;
-}
-
-.calculator-workspace ::deep .category-tag {
-    max-width: 100%;
-    white-space: normal;
-    overflow-wrap: anywhere;
-}
-
-.calculator-workspace ::deep .category-chip {
-    margin-block-end: 0.375rem;
-}
-
-.calculator-workspace ::deep .category-chip:has(.category-rename-input) {
-    flex-wrap: wrap;
-    width: min(100%, 32rem);
-}
-
-.calculator-workspace ::deep .category-name-trigger {
-    flex: 1 1 auto;
-}
-
-.calculator-workspace ::deep .category-rename-input {
-    flex-basis: 100%;
-    width: 100%;
-    max-width: none;
-}
-
-.calculator-workspace ::deep .accordion-body .category-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-block-end: 0.375rem;
-    line-height: 1.35;
-}
-
-.calculator-workspace ::deep .accordion-body .draw-selector-chip {
-    margin-block-end: 0;
-}
-
-.calculator-workspace ::deep .entry-inactive .entry-heading .accordion-button {
-    font-style: italic;
 }
 
 @media (max-width: 767.98px) {
@@ -334,7 +164,7 @@
         margin-left: auto;
     }
 
-    .session-toolbar { flex-wrap: nowrap; justify-content: space-between; width: 100%; }
+    .session-toolbar { flex-wrap: wrap; justify-content: space-between; width: 100%; }
 
     .clear-workspace-confirmation {
         grid-column: 1 / -1;
@@ -349,87 +179,10 @@
         grid-column: 1 / -1;
     }
 
-    .calculator-workspace ::deep .btn,
-    .calculator-workspace ::deep .form-control,
-    .calculator-workspace ::deep .form-select {
-        min-height: var(--app-touch-target-size);
-    }
-
-    .calculator-workspace ::deep .entry-editor-header { flex-wrap: nowrap; }
-
-    .calculator-workspace ::deep .accordion-button {
-        padding: 0.75rem;
-    }
-
-    .calculator-workspace ::deep .entry-actions {
-        padding: 0.25rem;
-        border-top: 0;
-    }
-
-    .calculator-workspace ::deep #cardsAccordion > .accordion-item,
-    .calculator-workspace ::deep #combosAccordion > .accordion-item {
-        border-radius: var(--bs-accordion-border-radius);
-    }
-
-    .calculator-workspace ::deep #cardsAccordion > .accordion-item > .accordion-header .accordion-button,
-    .calculator-workspace ::deep #combosAccordion > .accordion-item > .accordion-header .accordion-button {
-        border-top-left-radius: calc(var(--bs-accordion-border-radius) - var(--bs-accordion-border-width));
-        border-top-right-radius: calc(var(--bs-accordion-border-radius) - var(--bs-accordion-border-width));
-    }
-
-    .calculator-workspace ::deep #cardsAccordion > .accordion-item + .accordion-item,
-    .calculator-workspace ::deep #combosAccordion > .accordion-item + .accordion-item {
-        margin-top: 0.25rem;
-        border-top-width: var(--bs-accordion-border-width);
-        border-top-style: solid;
-        border-top-color: var(--bs-accordion-border-color);
-    }
-
-    .calculator-workspace ::deep #cardsAccordion > .accordion-item + .accordion-item.entry-inactive,
-    .calculator-workspace ::deep #combosAccordion > .accordion-item + .accordion-item.entry-inactive {
-        border-top-style: dashed;
-    }
-
-    .calculator-workspace ::deep .card-header-name,
-    .calculator-workspace ::deep .combo-header-name,
-    .calculator-workspace ::deep .combo-group-membership {
-        flex-basis: 100%;
-    }
-
-    .calculator-workspace ::deep .accordion-body {
-        padding: 0.75rem;
-    }
-
-    .calculator-workspace ::deep .category-name-trigger {
-        min-height: 2.5rem;
-    }
-
-    .calculator-workspace ::deep .category-icon-button,
-    .calculator-workspace ::deep .category-delete-button {
-        flex-basis: 2.5rem;
-        width: 2.5rem;
-        height: 2.5rem;
-    }
-
-    .calculator-workspace ::deep .category-remove-button {
-        box-sizing: border-box;
-        width: 2.5rem;
-        height: 2.5rem;
-        background-size: 0.75rem;
-    }
-
     .probability-results {
         padding: 0.75rem;
     }
 
-    .combo-probability-row {
-        gap: 0.5rem;
-    }
-
-    .combo-probability-list.probability-group-members {
-        margin-left: 0.25rem;
-        padding-left: 0.5rem;
-    }
 }
 
 @media (max-width: 767.98px) {
@@ -442,35 +195,17 @@
     }
 }
 
-.session-action { display: inline-flex; align-items: center; justify-content: center; min-height: var(--app-touch-target-size); padding: .35rem .6rem; border-color: transparent; }
+.session-action { display: inline-flex; align-items: center; justify-content: center; }
 .session-secondary:empty { display: none; }
 .session-secondary > :is(form, .clear-workspace-confirmation) { margin-block: 0 1rem; }
 .clear-workspace-confirmation { padding: .75rem; background: var(--bs-secondary-bg); border-radius: var(--bs-border-radius); }
-.calculator-workspace ::deep .workspace-management { margin: 0 0 var(--calculator-section-spacing); padding-block: .5rem; border-block: 1px solid var(--bs-border-color); }
-.calculator-workspace ::deep .workspace-management > summary { cursor: pointer; padding: .5rem 0; font-weight: 600; }
-.calculator-workspace ::deep .workspace-management > summary span { font-weight: normal; font-size: .875rem; }
-.calculator-workspace ::deep .workspace-management > .mb-4 { margin: .5rem 0 !important; }
 @media (max-width: 374px) {
-    .session-action { padding-inline: .4rem; }
-    .session-toolbar ::deep .action-menu-trigger { padding-inline: .4rem; }
-    .session-toolbar ::deep .session-share-compact { padding-inline: .4rem; gap: .25rem !important; }
+    .session-toolbar ::deep .session-share-compact { gap: .25rem !important; }
 }
 
 .session-toolbar ::deep .btn { font-size: .875rem; white-space: nowrap; flex-shrink: 0; }
 .session-toolbar ::deep .action-menu { flex-shrink: 0; }
 .session-toolbar ::deep .share-fallback { order: 10; flex: 1 0 100%; }
-@media (max-width: 767.98px) {
-    .session-toolbar { flex-wrap: wrap; }
-}
-
-.calculator-workspace ::deep .combo-group-management { margin-top: var(--calculator-section-spacing); }
-.session-toolbar ::deep :is(.session-action, .session-share-compact, .action-menu-trigger) {
-    color: var(--bs-secondary-color);
-}
-.session-toolbar ::deep :is(.session-action, .session-share-compact, .action-menu-trigger):is(:hover, :focus-visible, :active, [aria-expanded="true"]) {
-    color: var(--bs-emphasis-color);
-    background: var(--bs-secondary-bg);
-}
 
 .session-file-action.menu-command:focus-within {
     background: var(--bs-secondary-bg);

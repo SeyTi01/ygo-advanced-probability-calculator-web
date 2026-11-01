@@ -1,8 +1,8 @@
 <span class="reorder-controls" role="group" aria-label="@(UiText.Format("Move.Reorder", ItemLabel))">
-    <button @ref="_upButton" type="button" class="reorder-button" disabled="@(Index == 0)"
+    <button @ref="_upButton" type="button" class="reorder-button control-focus-ring" disabled="@(Index == 0)"
             aria-label="@(Horizontal ? UiText.Format("Move.Left", ItemLabel) : UiText.Format("Move.Up", ItemLabel))" title="@(Horizontal ? UiText.Format("Move.Left", ItemLabel) : UiText.Format("Move.Up", ItemLabel))"
             @onclick="() => Move(-1)">@PreviousGlyph</button>
-    <button @ref="_downButton" type="button" class="reorder-button" disabled="@(Index >= Count - 1)"
+    <button @ref="_downButton" type="button" class="reorder-button control-focus-ring" disabled="@(Index >= Count - 1)"
             aria-label="@(Horizontal ? UiText.Format("Move.Right", ItemLabel) : UiText.Format("Move.Down", ItemLabel))" title="@(Horizontal ? UiText.Format("Move.Right", ItemLabel) : UiText.Format("Move.Down", ItemLabel))"
             @onclick="() => Move(1)">@NextGlyph</button>
     <MoveToPosition Index="Index" Count="Count" ItemLabel="@ItemLabel" OnMove="OnMove" />

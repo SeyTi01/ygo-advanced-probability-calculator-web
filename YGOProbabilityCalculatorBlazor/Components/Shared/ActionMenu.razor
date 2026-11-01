@@ -3,7 +3,7 @@
 @inject IJSRuntime JS
 
 <div class="action-menu" @onkeydown="HandleKeyDown" @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
-    <button @ref="_trigger" type="button" class="btn btn-outline-secondary action-menu-trigger"
+    <button @ref="_trigger" type="button" class="btn btn-outline-secondary action-menu-trigger workspace-action"
             aria-label="@Label" title="@Label" aria-expanded="@(_open ? "true" : "false")" aria-controls="@_id"
             @onclick="Toggle">
         @if (Compact) {
@@ -15,7 +15,7 @@
             <span>@Text <span aria-hidden="true">⌄</span></span>
         }
     </button>
-    <div @ref="_panel" id="@_id" class="action-menu-panel" hidden="@(!_open)" role="group" aria-label="@Label">
+    <div @ref="_panel" id="@_id" class="action-menu-panel surface-panel" hidden="@(!_open)" role="group" aria-label="@Label">
         @ChildContent
     </div>
 </div>

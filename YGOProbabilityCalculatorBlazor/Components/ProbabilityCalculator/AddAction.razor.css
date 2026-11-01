@@ -17,8 +17,6 @@
     background: var(--bs-secondary-bg);
 }
 
-.add-action:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
-
 @media (max-width: 767.98px) {
     .add-action { min-height: var(--app-touch-target-size); }
 }

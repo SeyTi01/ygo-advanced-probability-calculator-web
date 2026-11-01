@@ -22,8 +22,8 @@
                 </label>
                 <button type="button" class="menu-command" @onclick="OpenYdkeFromMenu" disabled="@_isYdkeImportOpen">@(UiText.Get("Ui.ImportYDKe"))</button>
             </ActionMenu>
-            <button type="button" class="btn btn-outline-secondary session-action" aria-label="@(UiText.Get("Ui.SaveSession"))" @onclick="SaveCurrentSession">@(UiText.Get("Ui.Save"))</button>
-            <label class="btn btn-outline-secondary session-file-action session-action" for="sessionFileInput">
+            <button type="button" class="btn btn-outline-secondary session-action workspace-action" aria-label="@(UiText.Get("Ui.SaveSession"))" @onclick="SaveCurrentSession">@(UiText.Get("Ui.Save"))</button>
+            <label class="btn btn-outline-secondary session-file-action session-action workspace-action" for="sessionFileInput">
                 @(UiText.Get("Ui.Load"))
                 <InputFile OnChange="@LoadSessionFile" accept=".json" class="session-file-input" id="sessionFileInput" aria-label="@(UiText.Get("Ui.LoadSession"))"/>
             </label>
@@ -237,7 +237,7 @@
                             }
                         </small>
                     </div>
-                    <button type="button" class="btn btn-outline-primary pin-result-action" disabled="@(!CanPin)"
+                    <button type="button" class="btn btn-outline-primary pin-result-action result-icon-action" disabled="@(!CanPin)"
                             aria-label="@(_pinnedResult is null ? UiText.Get("Ui.PinResult") : UiText.Get("Ui.ReplacePinWithCurrentResult"))"
                             title="@(_pinnedResult is null ? UiText.Get("Ui.PinResult") : UiText.Get("Ui.ReplacePinWithCurrentResult"))"
                             aria-describedby="@(!CanPin ? "pinUnavailableReason" : null)" @onclick="PinCurrentResult">

@@ -60,5 +60,4 @@
     overflow-wrap: anywhere;
 }
 
-.probability-result-export-toolbar > button { width: 2.75rem; height: 2.75rem; padding: .5rem; justify-content: center; }
 .probability-result-copy-icon-slot { font-size: 1.25rem; }

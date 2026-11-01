@@ -48,11 +48,6 @@
     flex: 0 0 auto;
 }
 
-.combo-editor .combo-editor-header .entry-actions {
-    gap: 0;
-    padding-inline: .25rem;
-}
-
 .alternative-group {
     display: inline-block;
     max-width: 100%;
@@ -126,8 +121,6 @@
     font-size: .8rem;
     margin: 0 0 .2rem;
 }
-summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
-
 .requirement-bounds { font-size: .8rem; margin-top: .5rem; }
 .requirement-bounds summary { cursor: pointer; width: fit-content; padding: .4rem 0; min-height: 32px; }
 .requirement-max { display: grid; grid-template-columns: 5rem minmax(0, 1fr); align-items: center; gap: .4rem .65rem; margin-top: .4rem; }
@@ -139,4 +132,3 @@ summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2p
 .combo-footer .combo-group-field { max-width: 20rem; }
 .combo-footer .form-label { font-size: .8rem; }
 .add-top-level-group { margin-bottom: .5rem; min-height: 36px; }
-.expanded-expression ::deep .requirement-or-group { display: grid; gap: .5rem; }
