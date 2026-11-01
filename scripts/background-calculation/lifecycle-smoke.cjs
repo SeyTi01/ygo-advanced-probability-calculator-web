@@ -8,7 +8,7 @@ async function main() {
     const { server, url } = await serve(process.argv[2]);
     const browser = await chromium.launch(launchOptions()).catch(error => { server.close(); throw error; });
     try {
-        const page = await browser.newPage();
+        const page = await browser.newPage({ locale: 'en-US' });
         const workers = [];
         page.on('worker', worker => {
             if (!worker.url().includes('calculation-worker.js')) return;

@@ -9,6 +9,7 @@
 @inject ICardInfoService _cardInfoService
 @inject IPendingSessionService _pendingSessionService
 @inject IBackgroundCalculator _backgroundCalculator
+@inject IServiceProvider _services
 @inject IJSRuntime SessionLoadingJS
 
 <LocalizedCardNames Cards="_cards" OnChanged="revision => _cardDisplayNamesRevision = revision" />
@@ -870,7 +871,7 @@
     private Task Calculate() => CalculateModel(SelectedModel);
 
     private async Task CalculateModel(CalculationModel model) {
-        if (_disposed || _calculation.IsCalculating || !CanCalculate) {
+        if (_disposed || !Active || _calculation.IsCalculating || !CanCalculate) {
             return;
         }
 

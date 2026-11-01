@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @implements IDisposable
@@ -73,7 +74,10 @@
                     }
                 </div>
             }
-            @if (_languageReady) { @Body }
+            @if (_languageReady) {
+                @Body
+                <CalculatorWorkspace Active="IsCalculatorPage" />
+            }
         </article>
     </main>
 </div>
@@ -82,6 +86,8 @@
 @code {
     private bool IsHelpPage => new Uri(NavigationManager.Uri).AbsolutePath.TrimEnd('/')
         .Equals("/help", StringComparison.OrdinalIgnoreCase);
+    private bool IsCalculatorPage => new Uri(NavigationManager.Uri).AbsolutePath.TrimEnd('/')
+        .Equals(new Uri(NavigationManager.BaseUri).AbsolutePath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
     private string ThemePreference { get; set; } = "system";
     private string LanguagePreference { get; set; } = "system";
     private string LanguagePreferenceLabel => LanguagePreference == "system"

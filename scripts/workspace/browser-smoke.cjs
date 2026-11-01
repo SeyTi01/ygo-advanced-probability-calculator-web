@@ -109,6 +109,64 @@ async function main() {
         await source.getByRole('button', { name: 'Disable simulation', exact: true }).waitFor();
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
         await page.waitForFunction(() => document.querySelector('.probability-total-value')?.closest('[aria-label]')?.getAttribute('aria-label').includes('1/2'));
+        await page.getByRole('button', { name: 'Pin result', exact: true }).click();
+
+        // Keep the live workspace (including unsaved editor state) through app links
+        // and real browser history, while keeping Help out of the calculator's tab order.
+        await source.locator('.simulation-edit').click();
+        await source.locator('#cardDraw0').selectOption('3');
+        const retainedCombo = page.locator('.combo-editor').first();
+        await retainedCombo.locator('.accordion-button').click();
+        await retainedCombo.locator('[data-requirement="card:0"]').click();
+        await retainedCombo.locator('#minCount0').fill('0');
+        await page.evaluate(() => { window.retainedWorkspace = document.querySelector('.calculator-workspace'); });
+        await page.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload)
+            .Cards[0].SimulationEnabled === true);
+        const acceptedBeforeHelp = await page.evaluate(() => JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload);
+        const resultBeforeHelp = await page.locator('.probability-total .probability-with-accuracy').getAttribute('title');
+        async function retainedCalculator() {
+            await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
+            assert.equal(await page.evaluate(() => window.retainedWorkspace === document.querySelector('.calculator-workspace')), true);
+            assert.equal(await source.locator('#cardDraw0').inputValue(), '3', 'simulation draft survives Help');
+            assert.equal(await retainedCombo.locator('#minCount0').inputValue(), '0', 'requirement draft survives Help');
+            assert.equal(await page.locator('.probability-total .probability-with-accuracy').getAttribute('title'), resultBeforeHelp);
+            assert.equal(await page.locator('.pinned-result').isVisible(), true);
+            assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload), acceptedBeforeHelp);
+            assert.equal(await page.getByRole('button', { name: 'Restore previous session', exact: true }).count(), 0);
+        }
+        async function retainedHelp() {
+            await page.locator('.help-content').waitFor();
+            assert.equal(await page.locator('.calculator-workspace').isVisible(), false);
+            assert.equal(await page.getByRole('button', { name: 'Calculate', exact: true }).count(), 0, 'hidden workspace is absent from the accessibility tree');
+            assert.match(await page.title(), /^Help \|/);
+            await usable(page, page.getByRole('link', { name: 'Back', exact: true }));
+        }
+        for (const width of [1280, 390]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.getByRole('link', { name: 'Help', exact: true }).click(); await retainedHelp();
+            await page.getByRole('link', { name: 'Back', exact: true }).click(); await retainedCalculator();
+            await page.goBack(); await retainedHelp();
+            await page.goBack(); await retainedCalculator();
+            await page.goForward(); await retainedHelp();
+            await page.goForward(); await retainedCalculator();
+        }
+        await source.locator('.simulation-cancel').click();
+        await retainedCombo.locator('#minCount0').press('Escape');
+        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+        await page.waitForFunction(() => document.querySelector('.probability-total-value')?.closest('[aria-label]')?.getAttribute('aria-label').includes('1/2'));
+        await page.getByRole('link', { name: 'Help', exact: true }).click();
+        for (const locale of ['de', 'en']) {
+            await Promise.all([page.waitForEvent('load'), page.locator('#language-preference').selectOption(locale)]);
+            await page.waitForFunction(() => !document.documentElement.classList.contains('locale-pending')
+                && sessionStorage.getItem('ygo-calculator:language-handoff:v1') === null);
+            assert.equal(await page.locator('.help-content').isVisible(), true);
+            assert.equal(await page.locator('.calculator-workspace').isVisible(), false);
+            assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload), acceptedBeforeHelp);
+        }
+        await page.getByRole('link', { name: 'Back', exact: true }).click();
+        await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
+        assert.equal(await page.locator('.probability-total .probability-with-accuracy').getAttribute('title'), resultBeforeHelp);
+        assert.equal(await page.locator('.pinned-result').isVisible(), true);
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
         await page.getByRole('link', { name: 'Help', exact: true }).click();
@@ -171,7 +229,16 @@ async function main() {
         await example.click();
         await page.waitForFunction(() => document.querySelectorAll('.card-editor').length === 24);
         assert.equal(await page.locator('.combo-editor').count(), 8);
+        // A fresh startup has no tab-local live workspace to resume. An older
+        // recovery record remains an explicit offer, even when arriving from Help.
+        await page.goto(`${url}/help`);
+        await page.getByRole('link', { name: 'Back', exact: true }).waitFor();
+        assert.equal(await page.locator('#sessionFileInput').count(), 0);
+        await page.getByRole('link', { name: 'Back', exact: true }).click();
+        await page.getByRole('button', { name: 'Restore previous session', exact: true }).waitFor();
+        assert.equal(await page.locator('.card-editor').count(), 0, 'fresh startup does not silently load an older recovery draft');
         assert.deepEqual(errors, []);
+        console.log('Published Help navigation: retained workspace/results/editor drafts, repeated app links and browser Back/Forward at desktop/mobile sizes, fresh-start recovery precedence passed.');
         console.log('Published Help: nine native disclosures, Enter/Space, hidden-link tab order, all direct fragments, links/back/forward, one real example load, desktop/mobile and light/dark passed.');
         console.log('Published workspace: keyboard editing, movement, drafts, per-entry simulation toggle, real worker results and file round trip passed at desktop/mobile sizes.');
     } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
