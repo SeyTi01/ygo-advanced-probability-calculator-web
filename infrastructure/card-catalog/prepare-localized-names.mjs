@@ -225,8 +225,9 @@ async function main(args) {
     } catch (error) {
         if (error.code !== 'ENOENT' || (!options.has('--initial') && (options.has('--provider') || options.has('--previous') || options.has('--allow-removals')))) throw error;
     }
-    audit.canonicalSha256 = sha256(catalogBytes);
-    audit.exampleSha256 = sha256(exampleBytes);
+    // Repository text checksums use LF, independent of Git checkout conversion.
+    audit.canonicalSha256 = sha256(catalogBytes.toString('utf8').replace(/\r\n/g, '\n'));
+    audit.exampleSha256 = sha256(exampleBytes.toString('utf8').replace(/\r\n/g, '\n'));
     for (const [file, content] of [
         [options.get('--snapshot'), snapshot],
         [options.get('--output'), asset], [options.get('--audit'), audit]

@@ -156,7 +156,7 @@ test('registered follow-on locale assets and audits reproduce from retained date
     ]);
     const canonical = JSON.parse(canonicalBytes);
     const session = JSON.parse(exampleBytes);
-    const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+    const hash = bytes => createHash('sha256').update(bytes.toString('utf8').replace(/\r\n/g, '\n')).digest('hex');
     for (const { id: locale } of locales.filter(locale => !['en', 'de'].includes(locale.id))) {
         const matches = snapshots.filter(name => new RegExp(`^names\\.${locale}\\.yaml-yugi\\.\\d{4}-\\d{2}-\\d{2}\\.json$`).test(name));
         assert.equal(matches.length, 1, `${locale}: one retained dated snapshot`);
@@ -189,8 +189,10 @@ test('CLI refresh validates before writing and the retained snapshot regenerates
     try {
         const paths = Object.fromEntries(['provider', 'snapshot', 'catalog', 'example', 'output', 'audit', 'allowed']
             .map(key => [key, join(directory, key + '.json')]));
-        await writeFile(paths.catalog, JSON.stringify(catalog));
-        await writeFile(paths.example, JSON.stringify(example));
+        const canonicalText = JSON.stringify(catalog, null, 2) + '\n';
+        const exampleText = JSON.stringify(example, null, 2) + '\n';
+        await writeFile(paths.catalog, canonicalText);
+        await writeFile(paths.example, exampleText);
         await writeFile(paths.provider, JSON.stringify([record(2, 'Second', 'Zweite')]));
         await writeFile(paths.snapshot, 'preserve snapshot');
         await writeFile(paths.output, JSON.stringify({ version: 1, locale: 'de', names: [[1, 'Erste']] }));
@@ -208,6 +210,11 @@ test('CLI refresh validates before writing and the retained snapshot regenerates
         execFileSync(process.execPath, args);
         assert.equal(await readFile(paths.output, 'utf8'), firstAsset);
         assert.equal(await readFile(paths.audit, 'utf8'), firstAudit);
+        await writeFile(paths.catalog, canonicalText.replace(/\n/g, '\r\n'));
+        await writeFile(paths.example, exampleText.replace(/\n/g, '\r\n'));
+        execFileSync(process.execPath, args);
+        assert.equal(await readFile(paths.output, 'utf8'), firstAsset);
+        assert.equal(await readFile(paths.audit, 'utf8'), firstAudit, 'CRLF and LF input files reproduce identical audits');
         assert.throws(() => execFileSync(process.execPath, [...args, '--previous', join(directory, 'missing.json')], { stdio: 'pipe' }),
             error => /ENOENT/.test(error.stderr));
     } finally {

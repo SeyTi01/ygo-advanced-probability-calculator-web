@@ -322,7 +322,8 @@ SHA-256 is `12767a9b89a61c06a2f19c5e6d2e8f3fbf46d0a66ceec6cd092772b079143144`.
 Archive packaging bytes differ from the earlier German download; the eligible
 German identity/name tuples were compared and are identical. Each retained
 projection records the name-only input's hash and size, and each audit records
-the projection, canonical catalog and example hashes.
+the projection, canonical catalog and example hashes. Canonical/example text
+checksums use UTF-8 with LF line endings so Git checkout conversion cannot change them.
 
 Japanese source names contain furigana. Only the exact structure
 `<ruby>base<rt>reading</rt></ruby>` is converted to its base text; malformed or other
