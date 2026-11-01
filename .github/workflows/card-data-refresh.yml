@@ -1,0 +1,86 @@
+name: Monthly card data refresh
+on:
+  schedule:
+    - cron: '23 4 3 * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: card-data-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: github.repository == 'SeyTi01/ygo-advanced-probability-calculator-web' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      REFRESH_BRANCH: codex/card-data-refresh
+      SOURCE_DIR: ${{ runner.temp }}/card-data-sources
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: dev
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Prepare reviewed automation branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          node scripts/codex/privacy-guard.mjs install --name 'github-actions[bot]' --email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin
+          expected=$(git ls-remote --heads origin "refs/heads/$REFRESH_BRANCH" | cut -f1)
+          echo "EXPECTED_SHA=$expected" >> "$GITHUB_ENV"
+          if [ -n "$expected" ]; then
+            git switch -c "$REFRESH_BRANCH" "$expected"
+            git update-ref refs/backup/card-data-refresh "$expected"
+            git rebase origin/dev
+          else
+            git switch -c "$REFRESH_BRANCH" origin/dev
+          fi
+      - name: Acquire pinned sources
+        run: python infrastructure/card-catalog/fetch-refresh.py --output "$SOURCE_DIR"
+      - name: Generate and validate offline
+        run: |
+          node infrastructure/card-catalog/refresh-card-data.mjs "$SOURCE_DIR"
+          node --test infrastructure/card-catalog/*.test.mjs
+      - name: Retain replay inputs and review evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: card-data-refresh-${{ github.run_id }}
+          path: ${{ env.SOURCE_DIR }}
+          retention-days: 90
+          if-no-files-found: ignore
+      - name: Publish review PR and request existing CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json infrastructure/card-catalog/snapshots/refresh
+          if git diff --cached --quiet; then exit 0; fi
+          node scripts/codex/privacy-guard.mjs check
+          git diff --cached --check
+          git commit -m 'Refresh canonical cards, German names and archetype audit'
+          # A changed base needs regeneration, never publication of stale outputs.
+          git fetch origin dev
+          git merge-base --is-ancestor origin/dev HEAD
+          git push "--force-with-lease=refs/heads/$REFRESH_BRANCH:$EXPECTED_SHA" origin "HEAD:refs/heads/$REFRESH_BRANCH"
+          test "$(git ls-remote origin "refs/heads/$REFRESH_BRANCH" | cut -f1)" = "$(git rev-parse HEAD)"
+          pr=$(gh pr list --head "$REFRESH_BRANCH" --base dev --state open --json number --jq '.[0].number // empty')
+          if [ -n "$pr" ]; then
+            gh pr edit "$pr" --body-file "$SOURCE_DIR/pr-body.md"
+          else
+            gh pr create --head "$REFRESH_BRANCH" --base dev --title 'Refresh card catalog and German names' --body-file "$SOURCE_DIR/pr-body.md"
+          fi
+          gh workflow run tests.yml --ref "$REFRESH_BRANCH"

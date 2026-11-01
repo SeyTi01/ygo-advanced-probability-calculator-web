@@ -1,0 +1,292 @@
+{
+  "revision": "86c467a8e14e633a6210458905f5a479c4836405",
+  "total": 14648,
+  "eligible": 12183,
+  "added": 36,
+  "missing": [
+    {
+      "id": 86120751,
+      "name": "Aleister the Invoker"
+    },
+    {
+      "id": 46986414,
+      "name": "Dark Magician"
+    },
+    {
+      "id": 80193355,
+      "name": "Dramatic Rescue"
+    },
+    {
+      "id": 4376658,
+      "name": "Familiar-Possessed - Hiita"
+    },
+    {
+      "id": 31764353,
+      "name": "Familiar-Possessed - Wynn"
+    },
+    {
+      "id": 62015408,
+      "name": "Ghost Reaper & Winter Cherries"
+    },
+    {
+      "id": 16178681,
+      "name": "Odd-Eyes Pendulum Dragon"
+    },
+    {
+      "id": 27911549,
+      "name": "Parasite Paracide"
+    },
+    {
+      "id": 74677422,
+      "name": "Red-Eyes Black Dragon"
+    }
+  ],
+  "samples": [
+    {
+      "id": 86120752,
+      "name": "Aleister the Invoker",
+      "provider": "Invoked",
+      "resolved": [
+        "Aleister"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 101403005,
+      "name": "Amazoness Chain Master - Brink of Death Chain Dance",
+      "provider": "Amazoness",
+      "resolved": [
+        "Amazoness"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 101403074,
+      "name": "Amazoness Dramatic Rescue",
+      "provider": "Amazoness",
+      "resolved": [
+        "Amazoness"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 101403006,
+      "name": "Amazoness Fighter - Instant Kill Dance",
+      "provider": "Amazoness",
+      "resolved": [
+        "Amazoness"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 101403007,
+      "name": "Amazoness Spellcaster - Forbidden Spell Dance",
+      "provider": "Amazoness",
+      "resolved": [
+        "Amazoness",
+        "Forbidden"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 100460028,
+      "name": "Aqua Leviathan @Marincess",
+      "provider": "Marincess",
+      "resolved": [
+        "Marincess"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 101403018,
+      "name": "Ashtrata Tamayori",
+      "provider": "Ashtra",
+      "resolved": [
+        "Ashtra"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 101403070,
+      "name": "Castle of Vampire",
+      "provider": "Vampire",
+      "resolved": [
+        "Vampire"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 101403065,
+      "name": "Chaos Barian's Change",
+      "provider": "Barian's",
+      "resolved": [
+        "Barian's",
+        "Change",
+        "Chaos"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 46986420,
+      "name": "Dark Magician",
+      "provider": "Dark Magician",
+      "resolved": [
+        "Dark Magician",
+        "Magician"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 80193356,
+      "name": "Dramatic Rescue",
+      "provider": "Amazoness",
+      "resolved": [],
+      "unresolved": []
+    },
+    {
+      "id": 101403053,
+      "name": "Elegant Tri-Mirror",
+      "provider": null,
+      "resolved": [],
+      "unresolved": []
+    },
+    {
+      "id": 101403075,
+      "name": "Eyelluring Mirror Wall",
+      "provider": null,
+      "resolved": [],
+      "unresolved": []
+    },
+    {
+      "id": 4376659,
+      "name": "Familiar-Possessed - Hiita",
+      "provider": "Charmer",
+      "resolved": [
+        "Familiar-Possessed",
+        "Possessed"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 31764354,
+      "name": "Familiar-Possessed - Wynn",
+      "provider": "Charmer",
+      "resolved": [
+        "Familiar-Possessed",
+        "Possessed"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 100463002,
+      "name": "Gandora-X the Blackmetal Rampaging Dragon",
+      "provider": "Gandora",
+      "resolved": [
+        "Gandora"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 62015409,
+      "name": "Ghost Reaper & Winter Cherries",
+      "provider": null,
+      "resolved": [],
+      "unresolved": []
+    },
+    {
+      "id": 101403054,
+      "name": "Harpie & Amazoness Rakshasa Formation",
+      "provider": "Amazoness",
+      "resolved": [
+        "Amazoness",
+        "Harpie"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 101403008,
+      "name": "Harpie Lady - Alluring Dance",
+      "provider": "Harpie",
+      "resolved": [
+        "Harpie"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 101403017,
+      "name": "Invincible Rocket Warrior",
+      "provider": "Dark Time Wizard",
+      "resolved": [],
+      "unresolved": []
+    },
+    {
+      "id": 295517,
+      "name": "A Legendary Ocean",
+      "provider": "Umi",
+      "resolved": [
+        "Umi"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 94886282,
+      "name": "Charge of the Light Brigade",
+      "provider": "Lightsworn",
+      "resolved": [],
+      "unresolved": []
+    },
+    {
+      "id": 49684352,
+      "name": "Double Iris Magician",
+      "provider": "Magician",
+      "resolved": [
+        "Magician",
+        "Pendulum",
+        "Pendulum Dragon"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 74335036,
+      "name": "Fusion Substitute",
+      "provider": null,
+      "resolved": [
+        "Polymerization"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 68473226,
+      "name": "Hardened Armed Dragon",
+      "provider": null,
+      "resolved": [],
+      "unresolved": []
+    },
+    {
+      "id": 34103656,
+      "name": "Lemuria, the Forgotten City",
+      "provider": "Umi",
+      "resolved": [
+        "Umi"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": 691925,
+      "name": "Solar Recharge",
+      "provider": "Lightsworn",
+      "resolved": [],
+      "unresolved": []
+    },
+    {
+      "id": 70781052,
+      "name": "Summoned Skull",
+      "provider": "Archfiend",
+      "resolved": [
+        "Archfiend"
+      ],
+      "unresolved": []
+    }
+  ],
+  "candidates": 103
+}
