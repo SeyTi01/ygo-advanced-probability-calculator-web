@@ -201,6 +201,116 @@ async function germanProduction(browser, url, track) {
     console.log('Real German production Help, native keyboard/history, example, demand-loaded bilingual search, canonical selection, authored names, fallback and desktop/mobile themes passed.');
 }
 
+async function translatedProduction(browser, url, track, locale, root) {
+    const names = new Map(JSON.parse(fs.readFileSync(path.join(root, `data/card-names.${locale.id}.v1.json`), 'utf8')).names);
+    const translatedName = names.get(35261759);
+    assert(translatedName, `${locale.id}: the representative maintained card has a verified label`);
+    const region = { fr: 'fr-FR', it: 'it-IT', pt: 'pt-BR', ja: 'ja-JP' }[locale.id];
+    const context = await browser.newContext({ locale: region, viewport: { width: 390, height: 844 } });
+    await context.addInitScript(() => {
+        window.firstInteractivePlaceholder = null;
+        const observe = () => {
+            const input = document.querySelector('#quickCardName');
+            if (!window.firstInteractivePlaceholder && input && getComputedStyle(input).visibility === 'visible') {
+                window.firstInteractivePlaceholder = input.placeholder;
+            }
+            requestAnimationFrame(observe);
+        };
+        requestAnimationFrame(observe);
+    });
+    const page = await context.newPage(); track(page);
+    const requests = [];
+    page.on('request', request => requests.push(request.url()));
+    await page.goto(url + '/help');
+    await page.waitForFunction(id => document.documentElement.lang === id && !document.documentElement.classList.contains('locale-pending'), locale.id);
+    assert.equal(await page.locator('#language-preference').inputValue(), locale.id);
+    assert.equal(await page.locator('details.help-topic').count(), 9);
+    assert.equal(requests.some(value => /card-names\./.test(value)), false, 'Help loads no card names');
+    const satellites = requests.filter(value => /\/[^/]+\/[^/]*resources/.test(value));
+    assert(satellites.some(value => value.includes(`/${locale.id}/`)), `${locale.id}: selected satellite loads`);
+    assert(satellites.every(value => value.includes(`/${locale.id}/`)), `${locale.id}: unrelated satellites stay unloaded`);
+    const uiSatelliteBytes = await page.evaluate(id => performance.getEntriesByType('resource')
+        .filter(item => item.name.includes(`/${id}/`) && /resources/.test(item.name))
+        .reduce((sum, item) => sum + item.encodedBodySize, 0), locale.id);
+    assert.match(await page.locator('meta[name=description]').getAttribute('content'), /^Help and usage guide/);
+    for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const theme of ['light', 'dark']) {
+            await page.locator('#theme-preference').selectOption(theme);
+            await header(page);
+            const summary = page.locator('#requirements > summary');
+            await summary.focus(); await summary.press('Enter');
+            assert.equal(await page.locator('#requirements').evaluate(element => element.open), true);
+            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+            await page.screenshot({ path: path.resolve(`bin/${locale.id}-help-${width}-${theme}.png`), fullPage: true });
+            await summary.press('Space');
+        }
+    }
+    await page.goto(url); await interactive(page);
+    const placeholder = await page.locator('#quickCardName').getAttribute('placeholder');
+    assert.notEqual(placeholder, 'Search cards or enter a name');
+    assert.equal(await page.evaluate(() => window.firstInteractivePlaceholder), placeholder, 'first visible input uses selected language');
+    assert.equal(requests.some(value => /card-names\./.test(value)), false, 'empty calculator defers card names');
+    const initial = await page.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
+    await page.locator('#quickCardName').fill(translatedName);
+    await page.locator('#quickCardOption-35261759').waitFor();
+    assert.equal(await page.locator('#quickCardOption-35261759').innerText(), translatedName);
+    assert.equal(await page.locator('#quickCardOption-35261759').count(), 1, 'localized matches deduplicate by identity');
+    await page.locator('#quickCardName').fill('Pot of Desires');
+    await page.locator('#quickCardOption-35261759').waitFor();
+    assert.equal(await page.locator('#quickCardOption-35261759').innerText(), translatedName);
+    assert.deepEqual(requests.filter(value => /card-names\./.test(value)).map(value => new URL(value).pathname), [`/data/card-names.${locale.id}.v1.json`]);
+    const nameAssetBytes = await page.evaluate(id => performance.getEntriesByType('resource')
+        .filter(item => item.name.includes(`/card-names.${id}.v1.json`))
+        .reduce((sum, item) => sum + item.encodedBodySize, 0), locale.id);
+    await page.locator('#quickCardOption-35261759').click();
+    await page.waitForFunction(key => {
+        try { return JSON.parse(JSON.parse(localStorage.getItem(key)).payload).Cards[0].Name === 'Pot of Desires'; } catch { return false; }
+    }, recovery);
+    const accepted = await page.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery);
+    const card = JSON.parse(accepted).Cards[0];
+    assert.equal(card.ExternalCardId, 35261759);
+    assert.equal(card.DrawCount, 2);
+    assert.equal(card.PreDrawDeckRemovalCount, 10);
+    await change(page, 'en'); await change(page, locale.id);
+    await page.locator('.card-header-name').filter({ hasText: translatedName }).waitFor();
+    assert.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), accepted);
+    await page.locator('.card-editor .accordion-button').first().click();
+    await page.locator('#cardName0').fill('Authored name 日本語 ç');
+    await page.locator('#cardName0').press('Escape');
+    for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const theme of ['light', 'dark']) {
+            await page.locator('#theme-preference').selectOption(theme); await header(page);
+            await page.screenshot({ path: path.resolve(`bin/${locale.id}-calculator-${width}-${theme}.png`), fullPage: true });
+        }
+    }
+    await change(page, 'en'); await change(page, locale.id);
+    assert.equal(await page.locator('.card-header-name').first().innerText(), 'Authored name 日本語 ç (1)');
+    console.log(`${locale.id} selected UI satellite encoded body: ${uiSatelliteBytes} bytes; calculator resource bodies: ${initial} bytes; selected name asset: ${nameAssetBytes} bytes; translated Help, bilingual canonical selection and preserved authored state passed.`);
+    await context.close();
+
+    const fallback = await browser.newContext({ locale: region });
+    const missing = await fallback.newPage(); track(missing);
+    await missing.route(`**/card-names.${locale.id}.v1.json`, route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 1, locale: locale.id, names: [] }) }));
+    await missing.goto(url); await interactive(missing);
+    await missing.locator('#quickCardName').fill('Pot of Desires');
+    await missing.locator('#quickCardOption-35261759').waitFor();
+    assert.equal(await missing.locator('#quickCardOption-35261759').innerText(), 'Pot of Desires', 'missing selected-language name retains canonical English');
+    await fallback.close();
+
+    for (const saved of ['en', 'stale', 'denied']) {
+        const startup = await browser.newContext({ locale: region });
+        await startup.addInitScript(({ preference, saved }) => {
+            if (saved === 'denied') { Storage.prototype.getItem = () => { throw new Error('Storage denied'); }; }
+            else { localStorage.setItem(preference, saved); }
+        }, { preference, saved });
+        const cold = await startup.newPage(); track(cold); await cold.goto(url); await interactive(cold);
+        assert.equal(await cold.locator('#language-preference').inputValue(), saved === 'en' ? 'en' : locale.id);
+        await startup.close();
+    }
+}
+
 async function main() {
     const browser = await chromium.launch(launchOptions());
     const servers = [];
@@ -221,12 +331,16 @@ async function main() {
         assert.equal(await page.locator('#quickCardName').getAttribute('placeholder'), 'Search cards or enter a name');
         const transfer = await page.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
         const productionRequests = await page.evaluate(() => performance.getEntriesByType('resource').map(item => item.name));
-        assert.equal(productionRequests.some(url => /\/(fr|de)\/.*resources/.test(url)), false);
+        assert.equal(productionRequests.some(url => /\/(de|fr|it|pt|ja)\/.*resources/.test(url)), false);
         assert.equal(productionRequests.some(url => /card-names\./.test(url)), false);
         console.log(`Production English first visit encoded resource bodies: ${transfer} bytes.`);
         await usable(page, page.locator('#theme-preference'));
         await context.close();
         await germanProduction(browser, prod.url, track);
+        const productionLocales = JSON.parse(fs.readFileSync(path.join(process.argv[2], 'localization/locales.json'), 'utf8'));
+        for (const locale of productionLocales.filter(locale => !['en', 'de'].includes(locale.id))) {
+            await translatedProduction(browser, prod.url, track, locale, process.argv[2]);
+        }
 
         const testHost = await serve(process.argv[3]); servers.push(testHost.server);
         const test = await browser.newContext({ locale: 'de-DE', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
@@ -251,16 +365,16 @@ async function main() {
         p.on('request', request => { requests.push(request.url()); if (request.isNavigationRequest() && request.frame() === p.mainFrame()) documents++; });
         await p.goto(testHost.url); await interactive(p);
         assert.equal(await p.locator('#language-preference').inputValue(), 'en', 'explicit English overrides supported de-DE');
-        console.log('Satellite requests on English:', requests.filter(url => /\/(fr|de)\//.test(url)));
-        assert.equal(requests.some(url => /\/(fr|de)\/.*resources/.test(url)), false, 'English downloads no pseudo satellites');
+        console.log('Satellite requests on English:', requests.filter(url => /\/(eo|de)\//.test(url)));
+        assert.equal(requests.some(url => /\/(eo|de)\/.*resources/.test(url)), false, 'English downloads no pseudo satellites');
         await usable(p, p.locator('#language-preference'));
         const box = await p.locator('#language-preference').boundingBox(); assert(box.height >= 44);
         const beforeEmpty = documents;
-        await change(p, 'fr');
+        await change(p, 'eo');
         assert.equal(documents - beforeEmpty, 1, 'exactly one document reload');
         assert.equal(await p.locator('#quickCardName').getAttribute('placeholder'), '⟦Search cards⟧');
         assert.equal(await p.evaluate(() => window.firstInteractivePlaceholder), '⟦Search cards⟧');
-        assert(requests.some(url => /\/fr\/.*resources/.test(url)), 'selected satellite requested');
+        assert(requests.some(url => /\/eo\/.*resources/.test(url)), 'selected satellite requested');
         assert.equal(requests.some(url => /\/de\/.*resources/.test(url)), false, 'unselected satellite not requested');
 
         // A supported German browser still keeps explicitly selected English after a reload and a new context.
@@ -272,7 +386,7 @@ async function main() {
             await p.keyboard.press('Enter');
         })()]);
         await interactive(p);
-        assert.equal(await p.locator('#language-preference').inputValue(), 'fr');
+        assert.equal(await p.locator('#language-preference').inputValue(), 'eo');
         assert.equal(documents - beforeKeyboard, 1, 'keyboard selection takes one reload');
         await change(p, 'en');
         await p.reload(); await interactive(p);
@@ -308,31 +422,31 @@ async function main() {
         await p.locator('#comboName0').fill('Accepted rename');
 
         await p.locator('#quickCardName').fill('Unsubmitted card draft');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'eo', /Save\/apply or cancel/);
         assert.equal(await p.locator('#quickCardName').inputValue(), 'Unsubmitted card draft');
         await p.locator('#quickCardName').fill('');
         await p.locator('.simulation-edit').first().click();
         await p.locator('#cardDraw0').selectOption('2');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'eo', /Save\/apply or cancel/);
         assert.equal(await p.locator('#cardDraw0').inputValue(), '2');
         await p.locator('.simulation-editor').getByRole('button', { name: 'Cancel', exact: true }).click();
         await p.locator("button[data-requirement='category:0']").click();
         await p.locator('#minCount0').fill('0');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'eo', /Save\/apply or cancel/);
         await p.locator('.requirement-form').getByRole('button', { name: 'Cancel', exact: true }).click();
         await p.locator('.category-management > summary').click();
         await p.getByRole('textbox', { name: 'Category name', exact: true }).fill('Unsubmitted role');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'eo', /Save\/apply or cancel/);
         await p.getByRole('textbox', { name: 'Category name', exact: true }).fill('');
         await p.locator('.combo-group-management > summary').click();
         await p.getByRole('textbox', { name: 'New combo group name', exact: true }).fill('Unsubmitted group');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'eo', /Save\/apply or cancel/);
         await p.getByRole('textbox', { name: 'New combo group name', exact: true }).fill('');
         await p.locator('.category-management .category-name-trigger').first().click();
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'eo', /Save\/apply or cancel/);
         await p.getByRole('button', { name: 'Cancel category edit', exact: true }).click();
         await p.locator('#cardCopies0').fill('');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'eo', /Save\/apply or cancel/);
         await p.locator('#cardCopies0').fill('3');
         assert.equal(await p.evaluate(() => ygoLocale.hasPendingEdits()), false);
 
@@ -364,7 +478,7 @@ async function main() {
         await p.locator('#calculationModel').press('Escape');
         await change(p, 'en');
         assert.equal(await p.locator('.pinned-result').innerText(), pinned);
-        await change(p, 'fr');
+        await change(p, 'eo');
         assert.equal(await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), accepted);
         assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)3\/4(?!\d)/);
         assert.equal(await p.locator('.pinned-result').innerText(), pinned);
@@ -386,7 +500,7 @@ async function main() {
         await p.evaluate(fragment => { location.hash = fragment; }, shared);
         await p.getByRole('button', { name: 'Load shared session', exact: true }).waitFor();
         assert.equal(await p.locator('#language-preference').inputValue(), 'en');
-        await change(p, 'fr');
+        await change(p, 'eo');
         assert.equal(await p.evaluate(key => localStorage.getItem(key), recovery), foreign);
         assert.equal(await p.getByRole('button', { name: 'Load shared session', exact: true }).count(), 1);
         await change(p, 'en');
@@ -394,7 +508,7 @@ async function main() {
             const original = Storage.prototype.setItem;
             Storage.prototype.setItem = function (name, value) { if (name === key) throw new Error('Storage denied for test'); return original.call(this, name, value); };
         }, preference);
-        await blocked(p, 'fr', /Language was not changed/);
+        await blocked(p, 'eo', /Language was not changed/);
         assert.equal(await p.evaluate(key => sessionStorage.getItem(key), handoff), null);
         await test.close();
 
@@ -410,7 +524,7 @@ async function main() {
         });
         await pending.getByRole('button', { name: 'Calculate', exact: true }).click();
         await pending.waitForFunction(() => window.heldCalculation);
-        await blocked(pending, 'fr', /calculation to finish or cancel/);
+        await blocked(pending, 'eo', /calculation to finish or cancel/);
         await pending.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
         await pending.waitForFunction(() => document.querySelector('.calculate-action > button').getAttribute('aria-busy') === 'false');
         await pending.evaluate(() => {
@@ -423,27 +537,27 @@ async function main() {
         const replacement = structuredClone(session); replacement.Cards[0].Name = 'Pending replacement';
         await pending.locator('#sessionFileInput').setInputFiles({ name: 'pending.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(replacement)) });
         await pending.waitForFunction(() => typeof releaseLoad === 'function');
-        await blocked(pending, 'fr', /session or deck import to finish/);
+        await blocked(pending, 'eo', /session or deck import to finish/);
         await pending.evaluate(() => releaseLoad());
         await pending.waitForFunction(key => JSON.parse(JSON.parse(localStorage.getItem(key)).payload).Cards[0].Name === 'Pending replacement', recovery);
-        await change(pending, 'fr');
+        await change(pending, 'eo');
         await work.close();
 
         // Browser detection, unsupported saved preference, and canonical Help transition.
-        const automatic = await browser.newContext({ locale: 'fr-FR' });
+        const automatic = await browser.newContext({ locale: 'eo' });
         const help = await automatic.newPage();
         track(help);
         await help.route('**/help', route => route.fulfill({ contentType: 'text/html', body: fs.readFileSync(path.join(process.argv[3], 'help.html')) }));
         await help.goto(testHost.url + '/help');
         await help.locator('#language-preference').waitFor();
         await help.waitForFunction(() => !document.documentElement.classList.contains('locale-pending'));
-        assert.equal(await help.locator('#language-preference').inputValue(), 'fr');
-        assert.equal(await help.locator('html').getAttribute('lang'), 'fr');
+        assert.equal(await help.locator('#language-preference').inputValue(), 'eo');
+        assert.equal(await help.locator('html').getAttribute('lang'), 'eo');
         await help.getByRole('link', { name: 'Back', exact: true }).click(); await interactive(help);
         assert.equal(await help.locator('#quickCardName').getAttribute('placeholder'), '⟦Search cards⟧');
         await help.evaluate(key => localStorage.setItem(key, 'stale'), preference);
         await help.reload(); await interactive(help);
-        assert.equal(await help.locator('#language-preference').inputValue(), 'fr');
+        assert.equal(await help.locator('#language-preference').inputValue(), 'eo');
         await automatic.close();
 
         if (process.argv[4]) {

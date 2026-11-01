@@ -1,7 +1,9 @@
 using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 using System.Text.Json;
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -10,10 +12,22 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
 [TestFixture]
 public class CardInfoServiceTests {
-    [Test]
-    [SetUICulture("de")]
-    public async Task BundledGermanNamesResolveBothLanguagesToCanonicalCards() {
-        string nameAssetPath = "YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json";
+    private static IEnumerable<string> ProductionLanguages =>
+        LocalePreference.Available.Where(locale => locale.Id != "en").Select(locale => locale.Id);
+
+    [TestCaseSource(nameof(ProductionLanguages))]
+    public async Task BundledNamesResolveBothLanguagesToCanonicalCards(string language) {
+        string expectedName = language switch {
+            "de" => "Bezwingerseele Razen",
+            "ja" => "ＶＳ ラゼン",
+            "fr" => "Âme du Vainqueur Razen",
+            "it" => "Sgomina Anima Razen",
+            "pt" => "Alma Aniquiladora Razen",
+            _ => throw new InvalidOperationException($"Add reviewed card-name expectations for {language}.")
+        };
+        string missingName = language == "ja" ? "Lunalight Scarlet Tiger" : "Mooyan Curry";
+        string assetFile = $"card-names.{language}.v1.json";
+        string nameAssetPath = $"YGOProbabilityCalculatorBlazor/wwwroot/data/{assetFile}";
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, nameAssetPath))) {
             directory = directory.Parent;
@@ -21,31 +35,38 @@ public class CardInfoServiceTests {
         Assert.That(directory, Is.Not.Null, "Bundled card names must be available to the integration test.");
         string data = Path.Combine(directory!.FullName, "YGOProbabilityCalculatorBlazor/wwwroot/data");
         string catalog = await File.ReadAllTextAsync(Path.Combine(data, "card-catalog.v1.json"));
-        string names = await File.ReadAllTextAsync(Path.Combine(data, "card-names.de.v1.json"));
+        string names = await File.ReadAllTextAsync(Path.Combine(data, assetFile));
         RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(Response(HttpStatusCode.OK,
-            request.RequestUri!.AbsolutePath.EndsWith("card-names.de.v1.json") ? names : catalog)));
+            request.RequestUri!.AbsolutePath.EndsWith(assetFile) ? names : catalog)));
         using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
         CardInfoService service = new(new TestLocalStorage(null), client);
 
-        CardInfo german = (await service.SearchCardsAsync("Bezwingerseele Razen")).Single();
-        CardInfo english = (await service.SearchCardsAsync("Vanquish Soul Razen")).Single();
-        Assert.That(german, Is.SameAs(english));
-        Assert.That((german.Id, german.Name), Is.EqualTo((29302858, "Vanquish Soul Razen")));
-        Assert.That(service.GetLocalizedCardName(german), Is.EqualTo("Bezwingerseele Razen"));
-        Assert.That(german.ResolvedArchetypes, Does.Contain("Vanquish Soul"));
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+            CardInfo localized = (await service.SearchCardsAsync(expectedName)).Single();
+            CardInfo english = (await service.SearchCardsAsync("Vanquish Soul Razen")).Single();
+            Assert.That(localized, Is.SameAs(english));
+            Assert.That((localized.Id, localized.Name), Is.EqualTo((29302858, "Vanquish Soul Razen")));
+            Assert.That(service.GetLocalizedCardName(localized), Is.EqualTo(expectedName));
+            Assert.That(localized.ResolvedArchetypes, Does.Contain("Vanquish Soul"));
 
-        Card imported = CuratedDrawEffectPresets.CreateImportedCard(german, 3, german.Id);
-        string before = JsonSerializer.Serialize(imported);
-        await service.EnsureLocalizedCardNamesAsync([imported]);
-        Assert.That(service.GetLocalizedCardName(imported), Is.EqualTo("Bezwingerseele Razen"));
-        Assert.That(JsonSerializer.Serialize(imported), Is.EqualTo(before));
-        Assert.That(service.GetLocalizedCardName(imported.WithName("My Razen")), Is.Null);
-        Assert.That((await service.SearchCardsAsync("Wiedergeburt")).First().Id, Is.EqualTo(83764719));
-        Assert.That((await service.SearchCardsAsync("Slifer der Himmelsdrache")).First().Id, Is.EqualTo(10000020));
-        CardInfo missing = (await service.SearchCardsAsync("Mooyan Curry")).Single();
-        Assert.That(service.GetLocalizedCardName(missing), Is.Null);
-        Assert.That(missing.Name, Is.EqualTo("Mooyan Curry"));
-        Assert.That(handler.Requests, Has.Length.EqualTo(2));
+            Card imported = CuratedDrawEffectPresets.CreateImportedCard(localized, 3, localized.Id);
+            string before = JsonSerializer.Serialize(imported);
+            await service.EnsureLocalizedCardNamesAsync([imported]);
+            Assert.That(service.GetLocalizedCardName(imported), Is.EqualTo(expectedName));
+            Assert.That(JsonSerializer.Serialize(imported), Is.EqualTo(before));
+            Assert.That(service.GetLocalizedCardName(imported.WithName("My Razen")), Is.Null);
+            if (language == "de") {
+                Assert.That((await service.SearchCardsAsync("Wiedergeburt")).First().Id, Is.EqualTo(83764719));
+                Assert.That((await service.SearchCardsAsync("Slifer der Himmelsdrache")).First().Id, Is.EqualTo(10000020));
+            }
+            CardInfo missing = (await service.SearchCardsAsync(missingName)).Single();
+            Assert.That(service.GetLocalizedCardName(missing), Is.Null);
+            Assert.That(missing.Name, Is.EqualTo(missingName));
+            Assert.That(handler.Requests, Has.Length.EqualTo(2));
+        }
+        finally { CultureInfo.CurrentUICulture = previous; }
     }
 
     [Test]

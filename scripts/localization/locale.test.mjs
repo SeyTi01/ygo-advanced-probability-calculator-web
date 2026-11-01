@@ -7,7 +7,7 @@ const source = fs.readFileSync(new URL('../../YGOProbabilityCalculatorBlazor/www
 const preference = 'ygo-calculator:language:v1';
 const handoff = 'ygo-calculator:language-handoff:v1';
 const available = [{ id: 'en', name: 'English' }, { id: 'de', name: 'Test Deutsch' }, { id: 'fr', name: 'Test français' }];
-async function host({ saved, languages = ['de-DE'], local = new Map(), tab = new Map(), navigation = 'navigate', fail, silent } = {}) {
+async function host({ saved, languages = ['de-DE'], local = new Map(), tab = new Map(), navigation = 'navigate', fail, silent, registry = available } = {}) {
     if (saved !== undefined) local.set(preference, saved);
     const classes = new Set();
     let reloads = 0;
@@ -20,7 +20,7 @@ async function host({ saved, languages = ['de-DE'], local = new Map(), tab = new
         removeItem: key => map.delete(key)
     });
     const root = {
-        fetch: async () => ({ ok: true, json: async () => available }),
+        fetch: async () => ({ ok: true, json: async () => registry }),
         document: { querySelector: () => null, documentElement: { classList: { add: value => classes.add(value), remove: value => classes.delete(value) } } },
         localStorage: storage(local, 'local'), sessionStorage: storage(tab, 'tab'),
         navigator: { languages }, location: { href: 'https://example.test/#ygo-session=sentinel', reload: () => reloads++ },
@@ -123,3 +123,17 @@ test('malformed, expired, mismatched or claimed checkpoints are kept without rep
         assert.equal(next.reloads(), 0);
     }
 });
+
+const production = JSON.parse(fs.readFileSync(new URL('../../YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json', import.meta.url), 'utf8'));
+for (const locale of production) {
+    test('production startup resolves and persists ' + locale.id + ' independently of numeric culture', async () => {
+        const regional = locale.id + '-ZZ';
+        const first = await host({ registry: production, languages: [regional] });
+        assert.equal(first.api.getStartup().locale, locale.id);
+        assert.equal(first.api.getStartup().numericCulture, regional);
+        const saved = await host({ registry: production, saved: locale.id, languages: ['es-ES'] });
+        assert.equal(saved.api.getStartup().locale, locale.id);
+        assert.equal(saved.api.getStartup().numericCulture, 'es-ES');
+        assert.equal((await host({ registry: production, saved: 'en', languages: [regional] })).api.getStartup().locale, 'en');
+    });
+}

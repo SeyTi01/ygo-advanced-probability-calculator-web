@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { readFile, readdir, mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -79,6 +80,52 @@ test('projection omits unrelated data and audits invalid or missing labels witho
     }
 });
 
+test('each supported locale projects only its selected names and preserves canonical identity rules', () => {
+    const first = { password: 1, name: { en: 'First', de: 'Erste', fr: 'Première', it: 'Prima', pt: 'Primeira', ja: '一番' } };
+    const third = { password: 8, name: { en: 'Third', de: 'Dritte', fr: 'Troisième', it: 'Terza', pt: 'Terceira', ja: '三番' } };
+    for (const locale of ['de', 'fr', 'it', 'pt', 'ja']) {
+        const bytes = Buffer.from(JSON.stringify([first, third, { password: 2, name: { en: 'Second' } }]));
+        const retained = retainYamlYugiSnapshot(bytes, revision, retrievedAt, locale);
+        const result = buildLocalizedNames(retained, catalog, example);
+        assert.equal(retained.locale, locale);
+        assert.equal(result.asset.locale, locale);
+        assert.deepEqual(result.asset.names, [[1, first.name[locale]], [3, third.name[locale]]]);
+        assert.deepEqual(result.audit.aliasMatches, [{ sourceId: 8, canonicalId: 3 }]);
+        assert.deepEqual(result.audit.missingIds, [2]);
+        assert.equal(retained.cards[0].name, first.name[locale]);
+        assert.equal(JSON.stringify(retained.cards).includes('Troisième'), locale === 'fr');
+    }
+    for (const locale of ['en', 'es', 'ja-JP', 'pt-BR', '', null, {}, '__proto__']) {
+        assert.throws(() => retainYamlYugiSnapshot(Buffer.from(JSON.stringify([first])), revision, retrievedAt, locale), /locale/);
+        assert.throws(() => buildLocalizedNames({ ...snapshot([record(1, 'First', 'Erste')]), locale }, catalog, example), /snapshot/);
+    }
+});
+
+test('Japanese ruby supplies plain base labels while retained source and normalization evidence remain reproducible', () => {
+    const raw = '<ruby>強<rt>ごう</rt></ruby><ruby>欲<rt>よく</rt></ruby>で<ruby>貪<rt>どん</rt></ruby><ruby>欲<rt>よく</rt></ruby>な<ruby>壺<rt>つぼ</rt></ruby>';
+    const source = [{ password: 1, name: { en: 'First', ja: raw } },
+        { password: 8, name: { en: 'Third', ja: '<ruby>ＶＳ<rt>ヴァンキッシュ・ソウル</rt></ruby> ラゼン' } }];
+    const retained = retainYamlYugiSnapshot(Buffer.from(JSON.stringify(source)), revision, retrievedAt, 'ja');
+    assert.equal(retained.cards[0].name, raw);
+    const result = buildLocalizedNames(retained, catalog, example);
+    assert.deepEqual(result.asset.names, [[1, '強欲で貪欲な壺'], [3, 'ＶＳ ラゼン']]);
+    assert.deepEqual(result.audit.normalizedNames, [
+        { sourceId: 1, canonicalId: 1, sourceName: raw, name: '強欲で貪欲な壺' },
+        { sourceId: 8, canonicalId: 3, sourceName: source[1].name.ja, name: 'ＶＳ ラゼン' }
+    ]);
+    assert.deepEqual(buildLocalizedNames(JSON.parse(JSON.stringify(retained)), catalog, example), result);
+    for (const name of ['<b>基</b>', '<ruby>基</ruby>', '<ruby>基<rt>き</ruby>', '<ruby>基<rt>き</rt>',
+        '<ruby onclick="x">基<rt>き</rt></ruby>', '<ruby>基<rt><b>き</b></rt></ruby>',
+        '<ruby><ruby>基<rt>き</rt></ruby><rt>き</rt></ruby>', '<ruby>基<rt>き\n</rt></ruby>',
+        '<ruby>基<rt>き</rt></ruby><script>x</script>', '<ruby>基<rt>き</rt></ruby>&amp;', 'Ｍ∀ＬＩＣＥ＜Ｐ＞<P>']) {
+        const input = retainYamlYugiSnapshot(Buffer.from(JSON.stringify([{ password: 1, name: { en: 'First', ja: name } }])), revision, retrievedAt, 'ja');
+        const rejected = buildLocalizedNames(input, catalog, example);
+        assert.deepEqual(rejected.asset.names, [], name);
+        assert.equal(rejected.audit.rejectedNames.length, 1, name);
+        assert.deepEqual(rejected.audit.normalizedNames, [], name);
+    }
+});
+
 test('shipped names reproduce from the sole retained source and cover every actual example entry', async () => {
     const read = async path => JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
     const retained = await read('./snapshots/names.de.yaml-yugi.2026-10-31.json');
@@ -97,6 +144,34 @@ test('shipped names reproduce from the sole retained source and cover every actu
     assert.equal(new Map(shipped.names).get(83764719), 'Wiedergeburt');
     assert.equal(new Map(shipped.names).get(10000020), 'Slifer der Himmelsdrache');
     assert.equal(new Map(shipped.names).has(58074572), false, 'missing source translation uses English fallback');
+});
+
+test('registered follow-on locale assets and audits reproduce from retained dated snapshots', async () => {
+    const read = async path => readFile(new URL(path, import.meta.url));
+    const locales = JSON.parse(await read('../../YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json'));
+    const [canonicalBytes, exampleBytes, snapshots] = await Promise.all([
+        read('../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json'),
+        read('../../YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json'),
+        readdir(new URL('./snapshots/', import.meta.url))
+    ]);
+    const canonical = JSON.parse(canonicalBytes);
+    const session = JSON.parse(exampleBytes);
+    const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+    for (const { id: locale } of locales.filter(locale => !['en', 'de'].includes(locale.id))) {
+        const matches = snapshots.filter(name => new RegExp(`^names\\.${locale}\\.yaml-yugi\\.\\d{4}-\\d{2}-\\d{2}\\.json$`).test(name));
+        assert.equal(matches.length, 1, `${locale}: one retained dated snapshot`);
+        const retained = JSON.parse(await read(`./snapshots/${matches[0]}`));
+        const shipped = JSON.parse(await read(`../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.${locale}.v1.json`));
+        const { canonicalSha256, exampleSha256, ...audit } = JSON.parse(await read(`./snapshots/${matches[0].replace('.json', '.audit.json')}`));
+        const result = buildLocalizedNames(retained, canonical, session);
+        assert.equal(retained.locale, locale);
+        assert.deepEqual(result.asset, shipped, locale);
+        assert.deepEqual(result.audit, audit, locale);
+        assert.equal(canonicalSha256, hash(canonicalBytes), locale);
+        assert.equal(exampleSha256, hash(exampleBytes), locale);
+        assert.equal(result.audit.matchedRecords + result.audit.missingIds.length, canonical.cards.length, locale);
+        assert.equal(result.audit.example.matched, session.Cards.length, locale);
+    }
 });
 
 test('coverage changes require explicit reviewed removal IDs', () => {
@@ -135,6 +210,34 @@ test('CLI refresh validates before writing and the retained snapshot regenerates
         assert.equal(await readFile(paths.audit, 'utf8'), firstAudit);
         assert.throws(() => execFileSync(process.execPath, [...args, '--previous', join(directory, 'missing.json')], { stdio: 'pipe' }),
             error => /ENOENT/.test(error.stderr));
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+test('CLI initial locale generation requires a new output and rejects mismatched replay or coverage locales', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'localized-names-'));
+    try {
+        const paths = Object.fromEntries(['provider', 'snapshot', 'catalog', 'example', 'output', 'audit']
+            .map(key => [key, join(directory, key + '.json')]));
+        await writeFile(paths.catalog, JSON.stringify(catalog));
+        await writeFile(paths.example, JSON.stringify(example));
+        await writeFile(paths.provider, JSON.stringify([{ password: 1, name: { en: 'First', fr: 'Première', ja: '一番' } }]));
+        const args = [fileURLToPath(new URL('./prepare-localized-names.mjs', import.meta.url)),
+            '--snapshot', paths.snapshot, '--catalog', paths.catalog, '--example', paths.example,
+            '--output', paths.output, '--audit', paths.audit];
+        const refresh = [...args, '--provider', paths.provider, '--revision', revision, '--retrieved-at', retrievedAt, '--locale', 'fr'];
+        assert.throws(() => execFileSync(process.execPath, refresh, { stdio: 'pipe' }), error => /ENOENT/.test(error.stderr));
+        execFileSync(process.execPath, [...refresh, '--initial']);
+        const initial = await readFile(paths.output, 'utf8');
+        assert.deepEqual(JSON.parse(initial), { version: 1, locale: 'fr', names: [[1, 'Première']] });
+        assert.throws(() => execFileSync(process.execPath, [...refresh, '--initial'], { stdio: 'pipe' }), error => /new output/.test(error.stderr));
+        assert.throws(() => execFileSync(process.execPath, [...refresh, '--locale', 'ja'], { stdio: 'pipe' }), error => /baseline locale/.test(error.stderr));
+        assert.throws(() => execFileSync(process.execPath, [...args, '--locale', 'it'], { stdio: 'pipe' }), error => /Snapshot locale/.test(error.stderr));
+        assert.throws(() => execFileSync(process.execPath, [...refresh, '--initial', '--previous', paths.output], { stdio: 'pipe' }), error => /baseline/.test(error.stderr));
+        assert.equal(await readFile(paths.output, 'utf8'), initial);
+        execFileSync(process.execPath, args);
+        assert.equal(await readFile(paths.output, 'utf8'), initial);
     } finally {
         await rm(directory, { recursive: true, force: true });
     }

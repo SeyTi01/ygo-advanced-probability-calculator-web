@@ -1,0 +1,2650 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="Card.SearchPlaceholder" xml:space="preserve">
+    <value>カードを検索、または名前を入力</value>
+  </data>
+  <data name="Combo.GroupLabel" xml:space="preserve">
+    <value>グループ: {0}</value>
+  </data>
+  <data name="Combo.MoreRequirements" xml:space="preserve">
+    <value>ほか{0}件</value>
+  </data>
+  <data name="Combo.NoRequirements" xml:space="preserve">
+    <value>（条件なし）</value>
+  </data>
+  <data name="Requirement.MaximumAny" xml:space="preserve">
+    <value>上限: 指定なし</value>
+  </data>
+  <data name="Requirement.MaximumCount" xml:space="preserve">
+    <value>上限: {0}</value>
+  </data>
+  <data name="Effect.Advanced" xml:space="preserve">
+    <value>詳細設定</value>
+  </data>
+  <data name="Effect.UnavailableWithConfiguredDraws" xml:space="preserve">
+    <value>{0} 設定済みのドロー効果を使用する場合のみ適用します。</value>
+  </data>
+  <data name="Effect.AdvancedWithBanish" xml:space="preserve">
+    <value>詳細設定 · デッキから{0}枚除外</value>
+  </data>
+  <data name="Result.DetailedDrawWarning" xml:space="preserve">
+    <value>ドロー効果の詳細な処理が必要なため、計算に時間がかかったり、リソース制限を超えたりする場合があります。</value>
+  </data>
+  <data name="Ui.Actions" xml:space="preserve">
+    <value>操作</value>
+  </data>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data xml:space="preserve" name="Card.PropertiesCount">
+    <value>カードの特性（{0}）</value>
+  </data>
+  <data xml:space="preserve" name="Category.ManyMatches">
+    <value>一致する項目{0}件（{1}枚）</value>
+  </data>
+  <data xml:space="preserve" name="Category.OneMatch">
+    <value>一致する項目{0}件（{1}枚）</value>
+  </data>
+  <data xml:space="preserve" name="Category.RuleHeading">
+    <value>{0}の特性</value>
+  </data>
+  <data xml:space="preserve" name="Category.RuleLabel">
+    <value>{0}のルール</value>
+  </data>
+  <data xml:space="preserve" name="Category.SavedRuleLabel">
+    <value>{0}の保存済み特性ルール</value>
+  </data>
+  <data xml:space="preserve" name="Deck.Count">
+    <value>デッキ（{0}）</value>
+  </data>
+  <data xml:space="preserve" name="Effect.AfterDrawing">
+    <value>ドロー後</value>
+  </data>
+  <data xml:space="preserve" name="Effect.AfterDrawingRemoval">
+    <value>ドロー後: 手札から取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Effect.AfterSearching">
+    <value>サーチ後</value>
+  </data>
+  <data xml:space="preserve" name="Effect.AfterSearchingRemoval">
+    <value>サーチ後: 手札から取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Effect.BeforeDrawing">
+    <value>ドロー前</value>
+  </data>
+  <data xml:space="preserve" name="Effect.BeforeDrawingRemoval">
+    <value>ドロー前: 手札から取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Effect.BeforeSearching">
+    <value>サーチ前</value>
+  </data>
+  <data xml:space="preserve" name="Effect.BeforeSearchingRemoval">
+    <value>サーチ前: 手札から取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Effect.PreservedAllowance">
+    <value>項目ごとに最大{0}回発動できます。この回数は保存時に維持されます。</value>
+  </data>
+  <data xml:space="preserve" name="Effect.PreservedHandSize">
+    <value>発動前に手札が{0}枚以上必要です。この条件は保存時に維持されます。</value>
+  </data>
+  <data xml:space="preserve" name="Effect.PreservedMill">
+    <value>ドロー後にデッキの上から{0}枚を墓地へ送る処理は維持されます。ドロー効果全体を削除するには「なし」を選んでください。</value>
+  </data>
+  <data xml:space="preserve" name="Effect.SavedRevision">
+    <value>保存済み組み込みモデルの改訂{0}</value>
+  </data>
+  <data xml:space="preserve" name="Effect.Targets">
+    <value>このデッキの対象: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Effects.11317977.Limitations">
+    <value>Polymerizationをサーチする処理をモデル化します。墓地から回収する別の処理は対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.11317977.Summary">
+    <value>このカードを捨ててデッキからPolymerizationを手札に加えます。1ターンに1度の制限はありません。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.1475311.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.1475311.Summary">
+    <value>2枚ドローし、その後手札から闇属性カード1枚を取り除きます。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.20508881.Limitations">
+    <value>デッキまたは墓地からMystical Space Typhoonを手札に加える選択肢はモデル化しません。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.20508881.Summary">
+    <value>2枚ドローし、その後手札から条件に合う速攻魔法またはRadiant Typhoonカード1枚を捨てます。1ターンに1度。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.24940422.Limitations">
+    <value>墓地に魔法・罠がないことを前提とします。他の魔法・罠に関する制約と墓地での引き直し効果はモデル化しません。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.24940422.Summary">
+    <value>2枚ドローします。1ターンに1度。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.26845680.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.26845680.Summary">
+    <value>ドロー前に手札からOrcustまたはWorld Legacyモンスター1枚を取り除き、2枚ドローします。1ターンに1度。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.32807846.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.32807846.Summary">
+    <value>レベル1～4の戦士族モンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.33782437.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.33782437.Summary">
+    <value>1枚ドローします。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.34041788.Limitations">
+    <value>魔法使い族を特殊召喚する任意効果と破壊の身代わり効果は、初手のサーチモデルの対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.34041788.Summary">
+    <value>Regulus, the Prince of Endymionまたはそのカード名が記されたモンスターをサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.35261759.Limitations">
+    <value>デッキ枚数の減少をモデル化します。サーチ対象の残存は結果の精度に従います。高速計算は厳密な場合と不確かな場合があり、完了した物理的厳密計算では残存を考慮します。除外をきっかけに発動する効果はシミュレートしません。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.35261759.Summary">
+    <value>デッキの未確認カード10枚を除外し、その後2枚ドローします。1ターンに1度。デッキに12枚以上必要です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.36637374.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.36637374.Summary">
+    <value>他のカード1枚を捨ててDespiaモンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.38120068.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.38120068.Summary">
+    <value>ドロー前に手札からレベル8のカード1枚を取り除き、2枚ドローします。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.38943357.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.38943357.Summary">
+    <value>Endymionカード1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.42544773.Limitations">
+    <value>捨ててサーチする処理をモデル化します。攻撃力を下げる効果と墓地での装備効果は対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.42544773.Summary">
+    <value>このカードを捨てて、他のMagistusモンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.45171524.Limitations">
+    <value>リリースせずサーチする処理をモデル化します。ダメージと特殊召喚を行う別の処理は対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.45171524.Summary">
+    <value>Mitsurugiモンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.48805472.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.48805472.Summary">
+    <value>手札からレベル4の昆虫族・植物族モンスター1枚、または通常罠1枚を捨てて2枚ドローします。1ターンに1度。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.49238328.Limitations">
+    <value>2枚ドローする選択肢のためにEXデッキのカード6枚を除外できることを前提とします。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.49238328.Summary">
+    <value>最初のドロー効果の発動のみ。2枚ドローし、以降はドローできません。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.52782439.Limitations">
+    <value>Diagram Tokenを特殊召喚する任意効果は、このデッキサーチモデルの対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.52782439.Summary">
+    <value>Special ScheduleまたはUrgent Scheduleを1枚サーチします。1ターンに1度。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.52840267.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.52840267.Summary">
+    <value>手札からIxchelと他のDarklordカード1枚を捨てて2枚ドローします。1ターンに1度。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.55144522.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.55144522.Summary">
+    <value>2枚ドローします。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56506740.Limitations">
+    <value>発動時のデッキサーチをモデル化します。通常モンスターを特殊召喚する別の効果は対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56506740.Summary">
+    <value>発動時に他のPrimiteカード1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56673480.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.56673480.Summary">
+    <value>1枚ドローします。1ターンに1度。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56725612.Limitations">
+    <value>デッキサーチをモデル化します。除外する選択肢や他のフィールド魔法効果は初手モデルの対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.56725612.Summary">
+    <value>Fairy TailモンスターまたはFairy Tail Talesをサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.57103969.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.57103969.Summary">
+    <value>レベル1～4の獣戦士族モンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.60764609.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.60764609.Summary">
+    <value>Fiendsmith魔法・罠1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.6153210.Limitations">
+    <value>相手に依存する融合召喚は初手のサーチモデルの対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.6153210.Summary">
+    <value>Dracotailモンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.63166095.Limitations">
+    <value>自分のメインモンスターゾーンにモンスターがいないことを前提とします。墓地に魔法が3枚以上ある場合の任意ドローは、このサーチモデルの対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.63166095.Summary">
+    <value>デッキから他のSky Strikerカード1枚をサーチします。1ターンに1度の制限はありません。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.67115133.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.67115133.Summary">
+    <value>レベル1～4のRadiant TyphoonモンスターまたはMystical Space Typhoonをサーチ。各処理は項目ごとに1回</value>
+  </data>
+  <data xml:space="preserve" name="Effects.67616300.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.67616300.Summary">
+    <value>1枚ドローします。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.691925.Limitations">
+    <value>墓地へ送ることでデッキ枚数が減少します。サーチ対象の残存は結果の精度に従います。高速計算は厳密な場合と不確かな場合があり、完了した物理的厳密計算では残存を考慮します。墓地で発動する効果はシミュレートしません。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.691925.Summary">
+    <value>Lightswornモンスター1枚を捨てて2枚ドローし、その後デッキの上から2枚を墓地へ送ります。デッキに4枚以上必要です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.70368879.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.70368879.Summary">
+    <value>1枚ドローします。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.72323266.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.72323266.Summary">
+    <value>レベル1～3の悪魔族チューナーモンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.74117290.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.74117290.Summary">
+    <value>1枚ドローし、その後手札から1枚取り除きます。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.78058681.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.78058681.Summary">
+    <value>他のKewl Tuneカードをサーチ。項目ごとに最大2回</value>
+  </data>
+  <data xml:space="preserve" name="Effects.78679226.Limitations">
+    <value>条件付きのバトルフェイズのドローは、サーチのみを扱う初手モデルの対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.78679226.Summary">
+    <value>Shining Sarcophagusのカード名が記されたモンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.7925734.Limitations">
+    <value>EXデッキの公開条件を満たしてドローできることを前提とします。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.7925734.Summary">
+    <value>1枚ドローします。1ターンに1度。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.79571449.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.79571449.Summary">
+    <value>3枚ドローし、その後手札から2枚取り除きます。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.80181649.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.80181649.Summary">
+    <value>K9モンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.80845034.Limitations">
+    <value>メインデッキからのサーチのみをモデル化します。墓地から手札に加える選択肢と墓地での別のドロー効果は対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.80845034.Summary">
+    <value>メインデッキからDiabellstarモンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.81101309.Limitations">
+    <value>墓地を対象とする処理とデュエル中に1度の別の効果は、初手のサーチモデルの対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.81101309.Summary">
+    <value>このカードを捨ててデッキからTrain ConnectionまたはRevolving Switchyardを手札に加えます。1ターンに1度。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.85106525.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.85106525.Summary">
+    <value>レベル1～4の炎族モンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.92221402.Limitations">
+    <value>メインデッキからのサーチのみです。墓地からの回収、任意のフィールド破壊、墓地での効果はモデル化しません。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.92221402.Summary">
+    <value>レベル5以上の光属性・闇属性かつ炎族・水族のモンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.93946239.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.93946239.Summary">
+    <value>手札が3枚以上ある場合、1枚ドローします。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.96729612.Limitations">
+    <value>墓地から儀式魔法を回収する任意効果は、このデッキサーチモデルの対象外です。</value>
+  </data>
+  <data xml:space="preserve" name="Effects.96729612.Summary">
+    <value>レベル1～7の儀式モンスター1枚をサーチ</value>
+  </data>
+  <data xml:space="preserve" name="Effects.98567237.Limitations">
+    <value />
+  </data>
+  <data xml:space="preserve" name="Effects.98567237.Summary">
+    <value>光属性の悪魔族モンスターをサーチし、その後手札1枚を捨てる</value>
+  </data>
+  <data xml:space="preserve" name="Move.CurrentPosition">
+    <value>（現在: {0}）</value>
+  </data>
+  <data xml:space="preserve" name="Move.Down">
+    <value>{0}を下へ移動</value>
+  </data>
+  <data xml:space="preserve" name="Move.Left">
+    <value>{0}を左へ移動</value>
+  </data>
+  <data xml:space="preserve" name="Move.PositionRange">
+    <value>位置1～{0}</value>
+  </data>
+  <data xml:space="preserve" name="Move.Reorder">
+    <value>{0}を並べ替え</value>
+  </data>
+  <data xml:space="preserve" name="Move.Right">
+    <value>{0}を右へ移動</value>
+  </data>
+  <data xml:space="preserve" name="Move.ToPosition">
+    <value>{0}の移動先を指定</value>
+  </data>
+  <data xml:space="preserve" name="Move.Up">
+    <value>{0}を上へ移動</value>
+  </data>
+  <data xml:space="preserve" name="NumericProperty.Level">
+    <value>レベル</value>
+  </data>
+  <data xml:space="preserve" name="NumericProperty.Link">
+    <value>リンク数</value>
+  </data>
+  <data xml:space="preserve" name="NumericProperty.Rank">
+    <value>ランク</value>
+  </data>
+  <data xml:space="preserve" name="NumericRange.Between">
+    <value>{0} {1}–{2}</value>
+  </data>
+  <data xml:space="preserve" name="NumericRange.Exact">
+    <value>{0} {1}</value>
+  </data>
+  <data xml:space="preserve" name="NumericRange.Maximum">
+    <value>{0} &lt;= {1}</value>
+  </data>
+  <data xml:space="preserve" name="NumericRange.Minimum">
+    <value>{0} &gt;= {1}</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.Card">
+    <value>カード: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.MaximumProperty">
+    <value>{0}の上限</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.RowOperator">
+    <value>行の演算子</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.Subject">
+    <value>{0}: {1}</value>
+  </data>
+  <data xml:space="preserve" name="Requirement.WithRange">
+    <value>{0} ({1})</value>
+  </data>
+  <data xml:space="preserve" name="Result.ActiveCount">
+    <value>（{0}件有効）</value>
+  </data>
+  <data xml:space="preserve" name="Result.Mode">
+    <value>モード: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Result.PerformanceContributors">
+    <value>負荷の要因となり得る効果: {0}。「モデル注記」の「処理負荷」を確認してください。</value>
+  </data>
+  <data xml:space="preserve" name="Selector.Except">
+    <value>{0}を除く</value>
+  </data>
+  <data xml:space="preserve" name="Selector.Verified">
+    <value>確認済みの{0}</value>
+  </data>
+  <data xml:space="preserve" name="Session.LastSaved">
+    <value>最終保存: {0}。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.01234Width56">
+    <value>- {0}: [{1}/{2}, {3}/{4}]; 幅{5}（{6}）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.012Active">
+    <value>- **{0}** — {1}（{2}件有効）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.01PerEntry">
+    <value>{0}: 項目ごとに{1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0AnyActiveCombo1">
+    <value>{0}、いずれかのコンボ: {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Combo12">
+    <value>{0}、コンボ{1}: {2}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Custom1">
+    <value>{0}（カスタム{1}）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Entry1">
+    <value>{0}（項目{1}）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Group12">
+    <value>{0}、グループ{1}: {2}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0MatchingEntries">
+    <value>一致する項目なし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Max">
+    <value>{0} 上限</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Min">
+    <value>{0} 下限</value>
+  </data>
+  <data xml:space="preserve" name="Ui.0Width1">
+    <value>{0} · 幅{1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ACategoryWithThisNameAlreadyExists">
+    <value>同じ名前のカテゴリーが既にあります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AGroupWithThatNameAlreadyExists">
+    <value>同じ名前のグループが既にあります。</value>
+  </data>
+  <data xml:space="preserve" name="Expression.AndSeparator">
+    <value> AND </value>
+  </data>
+  <data xml:space="preserve" name="Ui.ANDSameCardProperties">
+    <value>AND: 同じカードの特性</value>
+  </data>
+  <data xml:space="preserve" name="Ui.APreviousWorkingSessionIsSavedLocally">
+    <value>以前の作業セッションがこのブラウザーに保存されています。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ASelectedCategoryWasRemovedUpdateTheEligibilityFilter">
+    <value>選択したカテゴリーが削除されました。対象フィルターを更新してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ASharedSessionIsAvailable">
+    <value>共有セッションを読み込めます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AboutPriority">
+    <value>優先順位について</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Accuracy0Completion1ContractV2">
+    <value>精度: {0}; 完了状態: {1}; 契約v{2}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AccuracyDetails">
+    <value>精度の詳細</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AccuracyUnavailableForThisResult">
+    <value>この結果の精度は不明です。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ActionsFor0">
+    <value>{0}の操作</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Activate">
+    <value>有効にする</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Add">
+    <value>追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddANDPropertyToAlternative0">
+    <value>選択肢{0}にAND特性を追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddASeparateCopyRequirement">
+    <value>別の1枚を必要とする条件を追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddAlternative">
+    <value>選択肢を追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddAlternativeOR">
+    <value>選択肢を追加（OR）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddAnAlternativeOR">
+    <value>選択肢を追加 · OR</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddCard">
+    <value>カードを追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddCardByName">
+    <value>名前でカードを追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddCombo">
+    <value>コンボを追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddComboGroup">
+    <value>コンボグループを追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddProperty">
+    <value>特性を追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddPropertyAND">
+    <value>特性を追加（AND）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddRequirement">
+    <value>+ 条件を追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddRequirement.2d4936b2">
+    <value>条件を追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddRuleAlternative">
+    <value>ルールの選択肢を追加</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Added0">
+    <value>{0}を追加しました。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AllEligibilityRowsMatchTheSameCard">
+    <value>すべての対象条件の行が同じカードに一致</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AlternativeGroup">
+    <value>選択肢グループ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AlternativeGroup0">
+    <value>選択肢グループ{0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnActiveComboHasAMissingCardReferenceRepairOrRemoveItOrDeactivateTheCombo">
+    <value>有効なコンボに参照先のないカードがあります。参照を修正・削除するか、コンボを無効にしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AndOthers">
+    <value> ほか</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnotherPropertySameCard">
+    <value>別の特性 · 同じカード</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Any">
+    <value>指定なし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnyActiveCombo">
+    <value>いずれかのコンボ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnyActiveCombo0">
+    <value>いずれかのコンボ: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnyCard">
+    <value>任意のカード</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AnyEligibilityRowMayMatch">
+    <value>対象条件のいずれかの行に一致</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Anycardclearfilter">
+    <value>フィルターを解除</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ApplyRule">
+    <value>ルールを適用</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AtLeast">
+    <value>最小枚数</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AtLeast0CardsInHandBeforeActivation">
+    <value>発動前に手札が{0}枚以上</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AtMost">
+    <value>最大枚数</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Automatic">
+    <value>自動</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Back">
+    <value>戻る</value>
+  </data>
+  <data xml:space="preserve" name="Ui.BackToRow">
+    <value>行に戻る</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Banish01">
+    <value>{0}枚除外 · {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Banish0UnseenDeckCards">
+    <value>デッキの未確認カード{0}枚を除外</value>
+  </data>
+  <data xml:space="preserve" name="Ui.BanishFromDeck">
+    <value>デッキから除外</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Between">
+    <value>範囲</value>
+  </data>
+  <data xml:space="preserve" name="Ui.BoundscertifyonlyDecksearchtargetsurvivalunderthefixedmodeleddrawremovalpolicynotfullgameplayoroptimalplayProbabilityrangesareavailableoneachresult">
+    <value>上下限が保証するのは、固定されたドロー・除去方針のもとでサーチ対象がデッキに残ることに関する精度のみです。ゲーム全体や最適なプレイを保証するものではありません。各結果で確率の範囲を確認できます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.BuiltInSimulation">
+    <value>組み込みシミュレーション</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Calculate">
+    <value>計算</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculateAValidResultBeforePinning">
+    <value>固定する前に有効な結果を計算してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculateWithAtMost0ActiveCombosDeactivateOrRemoveExtraCombos">
+    <value>有効なコンボは最大{0}件です。超過分を無効にするか削除してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculatesPhysicalDeckSearchSurvivalExactlyWithoutAWorkCutoffSubjectToStorageLimitsAndCa">
+    <value>計算量による打ち切りを行わず、デッキ内のサーチ対象の物理的な残存を厳密に計算します。メモリー制限とキャンセルは適用されます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculatesProbabilitiesQuicklyButResultsMayBeApproximate">
+    <value>確率を高速に計算しますが、結果が近似値になる場合があります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculationFailed0">
+    <value>計算に失敗しました: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculationIsRunning">
+    <value>計算中です。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculationModel">
+    <value>計算モデル</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CalculationSettings">
+    <value>計算設定</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Cancel">
+    <value>キャンセル</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CancelCalculation">
+    <value>計算をキャンセル</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CancelCategoryEdit">
+    <value>カテゴリーの編集をキャンセル</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CancelExactUpgrade">
+    <value>厳密計算への更新をキャンセル</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CancelGroupEdit">
+    <value>グループの編集をキャンセル</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Card0">
+    <value>カード{0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Card0Row1">
+    <value>カード{0}、行{1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardArtworkFor0">
+    <value>{0}のカード画像</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardPasscode0IsOutsideTheSupportedCardIDRange">
+    <value>カードパスワード{0}は対応するカードIDの範囲外です。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardProperty">
+    <value>カードの特性</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardSearchIsUnavailableYouCanStillEnterAManualCard">
+    <value>カード検索を利用できません。カードを手動で入力することはできます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardSearchResults">
+    <value>カード検索結果</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CardSimulation">
+    <value>カードのシミュレーション</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Cards">
+    <value>カード</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Categories">
+    <value>カテゴリー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Category">
+    <value>カテゴリー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Category0">
+    <value>カテゴリー{0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CategoryName">
+    <value>カテゴリー名</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CategoryNameCannotBeEmpty">
+    <value>カテゴリー名を入力してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CategoryRemoveButtonMs1">
+    <value>category-remove-button ms-1</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CertifiedRange01RationalEndpoints23">
+    <value>保証範囲: [{0}, {1}]; 有理数の端点[{2}, {3}]。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Change0Operator">
+    <value>{0}の演算子を変更</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Choose">
+    <value>選択…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseACardCategoryOrProperty">
+    <value>カード、カテゴリー、特性を選択</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseACardCategoryOrProperty.d85ff195">
+    <value>カード、カテゴリー、特性を選択してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseAColorForCategory0">
+    <value>カテゴリー{0}の色を選択</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseADeckBanishCountFrom0To60">
+    <value>デッキから除外する枚数を0～60で選んでください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseAProperty">
+    <value>特性を選択</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseAPropertyOrCategory">
+    <value>特性またはカテゴリーを選択してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseColorForCategory0">
+    <value>カテゴリー{0}の色を選択</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseNoneDraw13OrSearch1">
+    <value>「なし」「1～3枚ドロー」「1枚サーチ」から選んでください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChooseNoneRemove1OrRemove2">
+    <value>「なし」「1枚取り除く」「2枚取り除く」から選んでください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ChoosesTheHighestLegalEffectAfterEachCompletedResolutionIncludingNewlyDrawnEffects">
+    <value>ドロー効果を解決してから、サーチ効果を解決します。各段階では、優先順位が最も高い効果から解決します。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Clear">
+    <value>クリア</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ClearWorkspace">
+    <value>作業内容をクリア</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Clearthecurrentdeckcategoriesandcombos">
+    <value>現在のデッキ、カテゴリー、コンボをクリアしますか？</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ClipboardAccessWasDeniedSelectAndCopyThisLink">
+    <value>クリップボードへのアクセスが拒否されました。次のリンクを選択してコピーしてください:</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ClipboardCopyingWasUnavailableSelectTheTextBelowAndCopyItManually">
+    <value>クリップボードにコピーできませんでした。下のテキストを選択して手動でコピーしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Close">
+    <value>閉じる</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CloseCopyFallback">
+    <value>コピー補助を閉じる</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CloseEditor">
+    <value>エディターを閉じる</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CloseManualCopyText">
+    <value>手動コピー用テキストを閉じる</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ColorThemePreference">
+    <value>カラーテーマの設定</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Combo">
+    <value>コンボ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Combo0">
+    <value>コンボ{0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Combo0Row1">
+    <value>コンボ{0}、行{1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ComboGroups">
+    <value>コンボグループ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ComboRequirements">
+    <value>コンボの条件</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Combos">
+    <value>コンボ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CommonProperties">
+    <value>共通の特性</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Comparison">
+    <value>比較</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CompleteOrDeactivateEveryIncompleteActiveComboBeforeCalculating">
+    <value>計算前に、未完成の有効なコンボをすべて完成させるか無効にしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ConfigureSimulation">
+    <value>シミュレーションを設定</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ConfirmCategoryDeletion">
+    <value>カテゴリーの削除を確認</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ConfirmClearingWorkspace">
+    <value>作業内容のクリアを確認</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ConfirmGroupDeletion">
+    <value>グループの削除を確認</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Copies">
+    <value>枚数</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CopyALinkToTheAcceptedSession">
+    <value>確定済みセッションのリンクをコピー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CopyResults">
+    <value>結果をコピー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CopyShareLink">
+    <value>共有リンクをコピー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Cost01">
+    <value>コスト{0} · {1}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Costcandependoneffectcombinationsanddeckconstraintsnoindividualeffectisidentified">
+    <value>負荷は効果の組み合わせやデッキの制約に依存する場合があり、特定の効果は示していません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentResult">
+    <value>現在の結果</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentSearchTargets">
+    <value>現在のサーチ対象</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedDuringImportImportAgainToReplaceIt">
+    <value>インポート中に作業内容が変更されました。置き換えるには、もう一度インポートしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileLoadingLoadTheSessionAgainToReplaceIt">
+    <value>読み込み中に作業内容が変更されました。置き換えるには、セッションをもう一度読み込んでください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileLoadingReviewTheSharedSessionAndLoadItAgain">
+    <value>読み込み中に作業内容が変更されました。共有セッションを確認し、もう一度読み込んでください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileLoadingTheExampleLoadTheExampleAgainToReplaceIt">
+    <value>例の読み込み中に作業内容が変更されました。置き換えるには、例をもう一度読み込んでください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileRestoringReviewTheDraftAndTryAgain">
+    <value>復元中に作業内容が変更されました。下書きを確認して再試行してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CustomPriority">
+    <value>カスタム優先順位</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CustomSimulation">
+    <value>カスタムシミュレーション</value>
+  </data>
+  <data xml:space="preserve" name="Ui.CustomizeSimulation">
+    <value>シミュレーションを編集</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Dark">
+    <value>ダーク</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Deactivate">
+    <value>無効にする</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DeckSearchAvailability">
+    <value>デッキからのサーチ可否: </value>
+  </data>
+  <data xml:space="preserve" name="Ui.DeckSearchAvailability0">
+    <value>デッキからのサーチ可否: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Deckdepletionismodeledsearchtargetsurvivalfollowsthereportedresultaccuracy">
+    <value>デッキ枚数の減少をモデル化します。サーチ対象の残存は表示された結果の精度に従います。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DefineByProperties">
+    <value>特性で定義</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Delete">
+    <value>削除</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Delete0AllMemberCombosIncludingInactiveOnesRemainInTheirCurrentOrderAndBecomeUngrouped">
+    <value>{0}を削除しますか？ 無効なものも含め、このグループのコンボは現在の順序で残り、グループなしになります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Delete0AndRemoveEveryMembershipComboRequirementAndEffectSearchRemovalReferenceIncludingI">
+    <value>{0}を削除し、無効な項目も含め、すべての所属、コンボ条件、効果・サーチ・除去の参照を取り除きますか？ 関係のない条件やコンボは残ります。空になったコンボは無効になり、空になった効果フィルターは編集するまでどのカードにも一致しません。特性ルールはメタデータだけを使うため変更されません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DeleteCategory0">
+    <value>カテゴリー{0}を削除</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DeleteGroup0">
+    <value>グループ{0}を削除</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DiscardSavedDraft">
+    <value>保存済み下書きを破棄</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Dismiss">
+    <value>閉じる</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DismissSharedLink">
+    <value>共有リンクを閉じる</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DismisskeepsthedraftandpausesautosaveDiscarddeletesityournexteditstartsautosavingagain">
+    <value>閉じると下書きを保持し、自動保存を一時停止します。破棄すると下書きを削除し、次の編集から自動保存を再開します。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Draw0">
+    <value>{0}枚ドロー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Draw1">
+    <value>1枚ドロー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Draw2">
+    <value>2枚ドロー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Draw3">
+    <value>3枚ドロー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DrawActivationPriority">
+    <value>発動の優先順位</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DrawActivationPriorityHighestFirst">
+    <value>発動の優先順位（高い順）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DrawConfiguredOff">
+    <value>ドロー設定済み · 無効</value>
+  </data>
+  <data xml:space="preserve" name="Ui.DrawSimulationIsOffThisConfiguredDrawEffectIsCurrentlyIgnored">
+    <value>ドローのシミュレーションが無効なため、この設定済みドロー効果は現在無視されます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Duplicate">
+    <value>複製</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EachActiveCardMustHaveAtLeastOneCopyOrBeDeactivated">
+    <value>有効なカードは1枚以上にするか、無効にしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Edit">
+    <value>編集</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Edit0">
+    <value>{0}を編集</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditAlternativesInORGroup0">
+    <value>ORグループ{0}の選択肢を編集</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditCategory0">
+    <value>カテゴリー{0}を編集</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditGroup0">
+    <value>グループ{0}を編集</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditNewRequirement">
+    <value>新しい条件を編集</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditRequirement">
+    <value>条件を編集</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EditRule">
+    <value>ルールを編集</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Effect">
+    <value>効果</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EffectScope">
+    <value>効果の範囲: </value>
+  </data>
+  <data xml:space="preserve" name="Ui.EffectsExact">
+    <value>効果あり — 厳密</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EffectsFast">
+    <value>効果あり — 高速</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Eligible">
+    <value>対象</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Encounterorderdefault">
+    <value>出現順（既定）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EnterANonNegativeWholeNumberOrAnOrderedRange">
+    <value>0以上の整数、または下限から上限への範囲を入力してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EnterAWholeNumberFrom1To0">
+    <value>1～{0}の整数を入力してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.EnterValidMinimumAndMaximumCounts">
+    <value>有効な最小枚数と最大枚数を入力してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ExactModeledFraction">
+    <value>モデルの厳密な分数</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ExactOnly">
+    <value>厳密のみ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ExactWithRespectToDeckSearchAvailability">
+    <value>デッキからのサーチ可否について厳密</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ExactWithinTheAcceptedCalculationScope">
+    <value>確定済みの計算範囲内で厳密です。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Exactly">
+    <value>ちょうど</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToDeserializeSessionData">
+    <value>セッションデータを復元できませんでした</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToImportDeck0">
+    <value>デッキをインポートできませんでした: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToLoadExampleSession0">
+    <value>例のセッションを読み込めませんでした: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToLoadSession0">
+    <value>セッションを読み込めませんでした: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FailedToSaveSession0">
+    <value>セッションを保存できませんでした: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FastCompletedAPhysicalExactCalculation">
+    <value>高速計算で物理的な厳密計算が完了しました。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FastCompletedAfterTheAutomaticExactOpportunityNoAdditionalAttemptWasStartedSelectExactOn">
+    <value>自動の厳密計算に割り当てた機会が終了した後に高速計算が完了したため、追加の試行は開始しませんでした。計算時間を増やすには「厳密のみ」を選んでください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FastMaySimplifyWhetherDeckSearchTargetsSurviveWhenExactCountingIsTooExpensiveCertifiedBo">
+    <value>厳密な数え上げの負荷が高すぎる場合、高速計算はデッキ内のサーチ対象の残存を簡略化することがあります。保証された±の範囲はモデルの不確かさを表し、統計的な信頼区間ではありません。「保証なし」には誤差の保証がありません。厳密（±0%）はモデルの前提内でこの不確かさを解消します。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FastOnly">
+    <value>高速のみ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FileNameCannotBeEmpty">
+    <value>ファイル名を入力してください</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FilterIsTooLargeOrTooDeeplyGrouped">
+    <value>フィルターが大きすぎるか、グループの階層が深すぎます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.FirstDrawActivationOnly">
+    <value>最初のドロー効果の発動のみ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Group0">
+    <value>グループ{0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupFor0">
+    <value>{0}のグループ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupName">
+    <value>グループ名</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupNameCannotBeEmpty">
+    <value>グループ名を入力してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupProbabilities">
+    <value>グループの確率:</value>
+  </data>
+  <data xml:space="preserve" name="Ui.GroupedEligibilityFilter">
+    <value>グループ化された対象フィルター</value>
+  </data>
+  <data xml:space="preserve" name="Ui.HandSize">
+    <value>手札枚数:</value>
+  </data>
+  <data xml:space="preserve" name="Ui.HandSize0">
+    <value>手札枚数: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.HandSize01Cards">
+    <value>手札{0}枚 · カード{1}枚</value>
+  </data>
+  <data xml:space="preserve" name="Ui.HandSizeMustBeAtLeast1">
+    <value>手札枚数は1枚以上にしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Help">
+    <value>ヘルプ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.High65536entries524288cells">
+    <value>高（65,536項目 / 524,288セル）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Higherlimitsmayallowmorecomplexexactcalculationstocompleteandcanusesubstantiallymorebrowsermemorytheydonotchangeprobabilityaccuracy">
+    <value>上限を増やすと複雑な厳密計算が完了しやすくなりますが、ブラウザーのメモリー使用量が大幅に増える場合があります。確率の精度は変わりません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.IfUnavailableFailBranch">
+    <value>不足する場合: この分岐は失敗。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Import">
+    <value>インポート</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ImportDeck">
+    <value>デッキをインポート</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ImportYDK">
+    <value>YDKをインポート</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ImportYDKe">
+    <value>YDKeをインポート</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Inactive">
+    <value>無効</value>
+  </data>
+  <data xml:space="preserve" name="Ui.IndividualCombos">
+    <value>個別のコンボ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.IndividualCombos.dc8d9abb">
+    <value>個別のコンボ:</value>
+  </data>
+  <data xml:space="preserve" name="Ui.InputsChanged">
+    <value>入力が変更されました</value>
+  </data>
+  <data xml:space="preserve" name="Ui.InvalidSessionFileFormat">
+    <value>無効なセッションファイル形式</value>
+  </data>
+  <data xml:space="preserve" name="Ui.IsAnAbsoluteChangeOnThe0100ProbabilityScaleNotARelativePercentageBoundedValuesShowADispl">
+    <value>±は0%～100%の確率尺度での絶対的な変化であり、相対的な割合ではありません。範囲保証付きの値は、保証区間を覆うよう外向きに丸めた半径と表示用の中点を示します。区間内の特定の値がより起こりやすいとは限りません。統計的な信頼区間ではありません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LeaveEmptyForAny">
+    <value>指定しない場合は空欄</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LeaveEmptyForAnyNumberSetBothCountsTo0ToExcludeMatchingCards">
+    <value>枚数を指定しない場合は空欄にします。一致するカードを除くには、両方の枚数を0にしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Level">
+    <value>レベル</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Level0">
+    <value>レベル &gt;= {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Light">
+    <value>ライト</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Link">
+    <value>リンク</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LinksAreNotEncryptedAnyoneWithThisLinkOrAccessToBrowserHistoryCanReadTheSession">
+    <value>リンクは暗号化されていません。リンクまたはブラウザーの履歴にアクセスできる人は、セッションを読むことができます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Load">
+    <value>読み込む</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadSession">
+    <value>セッションを読み込む</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadSharedSession">
+    <value>共有セッションを読み込む</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadingLocalCardCatalog">
+    <value>ローカルのカード一覧を読み込み中…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadingReplacesThisWorkspaceIncludingEditorDraftsAndAnySavedRecoveryDraftYouCanDismissTh">
+    <value>読み込むと、編集中の下書きと保存済みの復元用下書きを含む現在の作業内容が置き換わります。代わりにこのリンクを閉じるか、下のローカル下書きを復元できます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LoadingSession">
+    <value>セッションを読み込み中…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LocalCatalogUnavailable">
+    <value>ローカルのカード一覧を利用できません</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LocalRecoveryCouldNotCaptureThisSessionSaveASessionFileToKeepYourWork">
+    <value>このセッションをローカル復元用に記録できませんでした。作業内容を残すには、セッションファイルを保存してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.LocalRecoveryIsUnavailableSaveASessionFileToKeepYourWork">
+    <value>ローカル復元を利用できません。作業内容を残すには、セッションファイルを保存してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ManageCardRoles">
+    <value>· カードの役割を管理</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Manual">
+    <value>手動</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Maximum0">
+    <value>上限{0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MaximumCountMustBeAWholeNumberAtLeastEqualToMinimumCount">
+    <value>最大枚数は最小枚数以上の整数にしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Mill0">
+    <value> · 墓地へ{0}枚</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Minimum0">
+    <value>下限{0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MinimumCountMustBeANonNegativeWholeNumber">
+    <value>最小枚数は0以上の整数にしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MissingCard">
+    <value>参照先のないカード</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MissingCard0">
+    <value>参照先のないカード（{0}）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MissingCardReferenceRemoveTheMissingRequirementThenAddAnotherCardIfNeeded">
+    <value>カードの参照先がありません。該当する条件を削除し、必要に応じて別のカードを追加してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModelLimits">
+    <value>モデルの制限:</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModelNotes">
+    <value>モデル注記</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModelNotesIncludePerformanceGuidance">
+    <value>モデル注記に処理負荷の説明があります</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModeledPrimaryFraction">
+    <value>主モデルの分数</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModeledPrimaryFraction0">
+    <value>主モデルの分数: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ModeledPrimaryFraction0.75f14642">
+    <value>主モデルの分数: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.More">
+    <value>その他</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoreWorkspaceActions">
+    <value>その他の作業操作</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Move">
+    <value>移動</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoveDown">
+    <value>下へ移動</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoveToPosition">
+    <value>移動先を指定</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoveToPosition.8d5ae4bd">
+    <value>移動先を指定…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.MoveUp">
+    <value>上へ移動</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Name">
+    <value>名前</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NestedConditions">
+    <value>入れ子の条件</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NewComboGroupName">
+    <value>新しいコンボグループ名</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NewNameForCategory0">
+    <value>カテゴリー{0}の新しい名前</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NewNameForGroup0">
+    <value>グループ{0}の新しい名前</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoActiveDeckSearches">
+    <value>有効なデッキサーチなし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoBuiltInSimulation">
+    <value>組み込みシミュレーションなし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoDrawEffect">
+    <value>ドロー効果なし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoDrawEffectsConfigured">
+    <value>有効なドロー・サーチ効果はありません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoEffectSimulation">
+    <value>効果をシミュレートしない</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoEligibleCards">
+    <value>対象カードなし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoFurtherDraws">
+    <value>以降のドロー不可</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoMatchingCards">
+    <value>一致するカードはありません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoProbabilityWasCalculatedForThisRequest">
+    <value> この要求の確率は計算されませんでした。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NoProbabilityWasReturnedForThisRequest">
+    <value> この要求の確率は返されませんでした。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.None">
+    <value>なし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NotCertified">
+    <value>保証なし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.NumberOfCopiesMustBeAtLeast1">
+    <value>枚数は1枚以上にしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Expression.OrSeparator">
+    <value> OR </value>
+  </data>
+  <data xml:space="preserve" name="Ui.ORAnyAlternative">
+    <value>OR: いずれかの選択肢</value>
+  </data>
+  <data xml:space="preserve" name="Ui.OncePerTurn">
+    <value>1ターンに1度</value>
+  </data>
+  <data xml:space="preserve" name="Ui.OncePerTurn.e31d0a49">
+    <value>1ターンに1度</value>
+  </data>
+  <data xml:space="preserve" name="Ui.OpeningHandOnlySavedSimulationIsOff">
+    <value>初手のみ · 保存済みシミュレーションは無効です。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.OrganizeCombos">
+    <value>· コンボを整理</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Partial">
+    <value>一部のみ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PasteYdke">
+    <value>ydke://... を貼り付け</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Performance">
+    <value>処理負荷:</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PinResult">
+    <value>結果を固定</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PinnedResult">
+    <value>固定した結果</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PleaseSelectACardToAdd">
+    <value>追加するカードを選択してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PleaseSelectACategoryToAdd">
+    <value>追加するカテゴリーを選択してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Preliminary">
+    <value>暫定</value>
+  </data>
+  <data xml:space="preserve" name="Ui.PreviousResultCurrentInputsHaveChanged">
+    <value>以前の結果 — 現在の入力は変更されています。
+</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ProbabilityResults">
+    <value>確率の結果</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Progressive">
+    <value>段階計算</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Progressivedefault">
+    <value>段階計算（既定）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Properties">
+    <value>特性:</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Property">
+    <value>特性</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Rank">
+    <value>ランク</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RationalEndpoints01ModeledOptimisticPrimary2">
+    <value>有理数の端点[{0}, {1}]; 楽観的な主モデル: {2}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RecalculateUsingExact">
+    <value>厳密計算で再計算</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Recoverydraftkeptautosavepaused">
+    <value>復元用下書きを保持しました。自動保存は一時停止中です。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RelevantProperties">
+    <value>関連する特性</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove">
+    <value>取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove0">
+    <value> · {0}枚取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove0FromHand1">
+    <value>手札から{0}枚取り除く（{1}）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove0FromHand1.af3ec21f">
+    <value>手札から{0}枚取り除く（{1}）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove1">
+    <value>1枚取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Remove2">
+    <value>2枚取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveCategory0">
+    <value>カテゴリー{0}を取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveCategory0FromCard1">
+    <value>カード{1}からカテゴリー{0}を取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveGroup0">
+    <value>グループ{0}を取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveManuallyAddedCardProperty0FromCard1">
+    <value>カード{1}から手動追加した特性{0}を取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveProperty0">
+    <value>特性{0}を取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveProperty0FromAlternative1">
+    <value>選択肢{1}から特性{0}を取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveRequirement">
+    <value>条件を取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RemoveRule">
+    <value>ルールを取り除く</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ReplaceCurrentWorkAndRestore">
+    <value>現在の作業を置き換えて復元</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ReplaceEmptyFilter">
+    <value>空のフィルターを置き換える</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ReplacePinWithCurrentResult">
+    <value>固定した結果を現在の結果に置き換える</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ReplaceVerifiedFilter">
+    <value>確認済みフィルターを置き換える</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Requirement">
+    <value>条件</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RequirementOrGroupExpressionGroupNested">
+    <value>requirement-or-group expression-group-nested</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RestoreBuiltInSimulation">
+    <value>組み込みシミュレーションに戻す</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RestorePreviousSession">
+    <value>以前のセッションを復元</value>
+  </data>
+  <data xml:space="preserve" name="Ui.RestoringWillReplaceYourCurrentEdits">
+    <value>復元すると現在の編集内容が置き換わります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ResultGroup">
+    <value>結果のグループ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ResultReady">
+    <value>結果が出ました。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ResultSummary">
+    <value>結果の概要</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ResultsCopied">
+    <value>結果をコピーしました。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SameCardProperty0">
+    <value>同じカードの特性{0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Save">
+    <value>保存</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveCategoryName">
+    <value>カテゴリー名を保存</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveGroupName">
+    <value>グループ名を保存</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveOrCancelTheConditionEditFirst">
+    <value>先に条件の編集を保存するかキャンセルしてください</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveOrCancelThePendingRowBeforeChangingItsGrouping">
+    <value>グループ化を変更する前に、編集中の行を保存するかキャンセルしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SaveSession">
+    <value>セッションを保存</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SavedSimulation">
+    <value>保存済みシミュレーション</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Savedsettingsnobuiltinrevisionrecorded">
+    <value>保存済み設定。組み込みモデルの改訂は記録されていません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Search1">
+    <value>1枚サーチ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Search10">
+    <value>1枚サーチ（{0}）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Search1CardFromDeck">
+    <value>デッキから1枚サーチ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SearchConfiguredOff">
+    <value>サーチ設定済み · 無効</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SelectACategoryToAddAsAnANDCondition">
+    <value>AND条件として追加するカテゴリーを選択してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SelectATargetForThisAlternative">
+    <value>この選択肢の対象を選択してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SelectCategory">
+    <value>カテゴリーを選択…</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SelectedCategoryNotFound">
+    <value>選択したカテゴリーが見つかりません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Send0UnseenTopDeckCardsToTheGY">
+    <value>デッキの上から未確認の{0}枚を墓地へ送る</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SeparateCardRequirements">
+    <value>+: 別々のカードを必要とする条件</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsDuplicateCardIDs">
+    <value>セッションに重複するカードIDがあります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsDuplicateCategoryIdentities">
+    <value>セッションに重複するカテゴリー識別子があります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsInvalidOrDuplicateComboGroupIdentities">
+    <value>セッションに無効または重複するコンボグループ識別子があります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsMissingComboRequirements">
+    <value>セッションに不足しているコンボ条件があります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionContainsMissingModelCollectionsOrEntries">
+    <value>セッションのモデルのコレクションまたは項目が不足しています。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SessionRecovery">
+    <value>セッションの復元</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Set0ColorTo1">
+    <value>{0}の色を{1}に設定</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ShareLinkCopied">
+    <value>共有リンクをコピーしました。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SharedSession">
+    <value>共有セッション</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ShowRecovery">
+    <value>復元を表示</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ShowsFastFirstThenAttemptsExact">
+    <value>まず高速計算の結果を表示し、その後厳密計算を試みます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Simulation">
+    <value>シミュレーション</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SortAZ">
+    <value>A–Z順に並べ替え</value>
+  </data>
+  <data xml:space="preserve" name="Ui.SortDeckAZ">
+    <value>デッキをA–Z順に並べ替え</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Standard32768entries262144cells">
+    <value>標準（32,768項目 / 262,144セル）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.StorageSafetyLimit">
+    <value>メモリーの安全上限</value>
+  </data>
+  <data xml:space="preserve" name="Ui.System">
+    <value>システム</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheANDGroupWouldExceed16PropertiesRemoveAPropertyBeforeCombining">
+    <value>ANDグループの特性が16件を超えます。結合する前に特性を取り除いてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheActiveDeckHas0CopiesFewerThanTheHandSizeOf1">
+    <value>有効なデッキは{0}枚で、手札枚数{1}より少なくなっています。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheActiveDeckIsTooLargeToCalculateReduceTheNumberOfCopiesOrDeactivateCards">
+    <value>有効なデッキが大きすぎて計算できません。枚数を減らすかカードを無効にしてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactAttemptCouldNotCompleteTheCompletedFastResultIsRetained">
+    <value>自動の厳密計算を完了できませんでした。完了済みの高速計算の結果は保持されます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactAttemptReachedTheRemainingWorkAllowanceTheCompletedFastResultIsRetained">
+    <value>自動の厳密計算が残りの計算量上限に達しました。完了済みの高速計算の結果は保持されます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactAttemptReachedTheStorageLimitTheCompletedFastResultIsRetained">
+    <value>自動の厳密計算がメモリー上限に達しました。完了済みの高速計算の結果は保持されます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactOpportunityEndedTheCompletedFastResultIsRetainedSelectExactOnlyToAllowM">
+    <value>自動の厳密計算に割り当てた機会が終了しました。完了済みの高速計算の結果は保持されます。計算時間を増やすには「厳密のみ」を選んでください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheAutomaticExactRouteWasUnsupportedTheCompletedFastResultIsRetained">
+    <value>自動の厳密計算ではこの構成に対応していませんでした。完了済みの高速計算の結果は保持されます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheDecodedYDKe0DeckSectionLengthMustBeDivisibleByFourBytes">
+    <value>デコード後のYDKeの{0}デッキ区間の長さは4バイトの倍数である必要があります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheLocalDraftCouldNotBeRestoredYourCurrentWorkAndSavedDraftAreKept">
+    <value>ローカル下書きを復元できませんでした。現在の作業内容と保存済み下書きは保持されます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheLocalDraftIsInvalidOrFromAnUnsupportedSessionVersionItIsKeptUntilYouDiscardOrReplaceI">
+    <value>ローカル下書きが無効か、未対応のセッションバージョンです。破棄または置換するまで保持されます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheORGroupWouldExceed16AlternativesRemoveAnAlternativeBeforeSplitting">
+    <value>ORグループの選択肢が16件を超えます。分割する前に選択肢を取り除いてください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheOriginalResultContextIsUnavailable">
+    <value>元の結果の入力情報を利用できません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheSharedSessionIsInvalidOrUsesAnUnsupportedSessionVersionYourWorkAndSavedDraftAreKept">
+    <value>共有セッションが無効か、未対応のセッションバージョンです。作業内容と保存済み下書きは保持されます。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheSharedSessionLinkIsInvalidOrCorrupted">
+    <value>共有セッションのリンクが無効か破損しています。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.TheYDKe0DeckSectionIsNotValidBase64">
+    <value>YDKeの{0}デッキ区間が有効なBase64ではありません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisCategoryIsAlreadyAddedToTheCard">
+    <value>このカテゴリーは既にカードに追加されています。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisEffectRequiresDetailedHandStateCalculationInEffectModesAndCanBecomeExpensiveInComple">
+    <value>この効果は効果モードで詳細な手札状態の計算が必要なため、複雑なデッキでは負荷が高くなる場合があります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisSavedEffectCannotRunInThisCalculator">
+    <value>この保存済み効果は計算機で実行できません。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisSessionIsTooLargeForAShareLinkShareANormalSessionFileInstead">
+    <value>このセッションは共有リンクに収まりません。代わりに通常のセッションファイルを共有してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisSessionIsTooLargeOrUnsupportedForAShareLinkShareANormalSessionFileInstead">
+    <value>このセッションは大きすぎるか、共有リンクに対応していません。代わりに通常のセッションファイルを共有してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.ThisSharedLinkIsTooLargeRequestANormalSessionFileInstead">
+    <value>この共有リンクは大きすぎます。代わりに通常のセッションファイルを依頼してください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Uncertified">
+    <value>⚠ 保証なし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UncertifiedAccuracyUnavailable">
+    <value>保証なし · 精度不明</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Ungrouped">
+    <value>グループなし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UngroupedCombos">
+    <value>グループなしのコンボ</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UngroupedCombos.ec9c0ff4">
+    <value>グループなしのコンボ:</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Uninformative">
+    <value>有用な下限なし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UninformativeLowerBound">
+    <value> （有用な下限なし）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnknownCalculationMode">
+    <value>不明な計算モードです。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Unlimited">
+    <value>無制限</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Unmodeled">
+    <value>モデル化なし</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnnamedCard">
+    <value>名前のないカード</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnnamedCombo0">
+    <value>名前のないコンボ{0}</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnpinResult">
+    <value>結果の固定を解除</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnsupportedEffect">
+    <value>未対応の効果</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnsupportedExecutionModel">
+    <value>未対応の実行モデル</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UnsupportedSharedLinkFormatVersion">
+    <value>未対応の共有リンク形式のバージョンです。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UpTo0ActivationsPerEntry">
+    <value>項目ごとに最大{0}回発動</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UpdateRequirement">
+    <value>条件を更新</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UseThisWorkspaceForRecovery">
+    <value>この作業内容を復元用に使用</value>
+  </data>
+  <data xml:space="preserve" name="Ui.UserCategories">
+    <value>ユーザーカテゴリー</value>
+  </data>
+  <data xml:space="preserve" name="Ui.Veryhigh131072entries1048576cells">
+    <value>非常に高（131,072項目 / 1,048,576セル）</value>
+  </data>
+  <data xml:space="preserve" name="Ui.WaitForTheCalculationToFinishBeforeCopyingResults">
+    <value>結果をコピーする前に計算の完了を待ってください。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeCodeMustContainExactlyThreeBase64SectionsEachFollowedBy">
+    <value>YDKeコードにはBase64の区間がちょうど3つ必要で、各区間の後に「!」が必要です。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeCodeMustIncludeAMainDeckSection">
+    <value>YDKeコードにはメインデッキの区間が必要です。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeCodeMustStartWithYdke">
+    <value>YDKeコードは「ydke://」で始まる必要があります。</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeDeckCode">
+    <value>YDKeデッキコード</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YDKeDeckImport">
+    <value>YDKeデッキのインポート</value>
+  </data>
+  <data xml:space="preserve" name="Ui.YuGiOhAdvancedProbabilityCalculator">
+    <value>Yu-Gi-Oh! Advanced Probability Calculator</value>
+  </data>
+  <data xml:space="preserve" name="Help.PageTitle">
+    <value>ヘルプ | Yu-Gi-Oh! Advanced Probability Calculator</value>
+  </data>
+  <data xml:space="preserve" name="Help.EmptyExample">
+    <value>例のセッションファイルが空です</value>
+  </data>
+  <data xml:space="preserve" name="Help.ExampleError">
+    <value>例のセッションを読み込めませんでした: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Help.TryExample">
+    <value>サンプルデータで試す</value>
+  </data>
+  <data xml:space="preserve" name="Probability.Summary">
+    <value>{0} {1}</value>
+  </data>
+  <data xml:space="preserve" name="Probability.UninformativeSummary">
+    <value>{0} {1} · 有用な下限なし</value>
+  </data>
+  <data xml:space="preserve" name="Probability.BoundedDetail">
+    <value>{0} 表示用の中点 ± 保守的な絶対不確かさ。保持された楽観的な主モデルの値は、保証された上端を超える場合があります。</value>
+  </data>
+  <data xml:space="preserve" name="Probability.UninformativeDetail">
+    <value>{0} 有用な下限なし: 真の確率はゼロの可能性があります。</value>
+  </data>
+  <data xml:space="preserve" name="Probability.CertificationLimited">
+    <value>保証の制限: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Probability.CertificationError">
+    <value>保証のエラー: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Probability.NoInterval">
+    <value>完全で有効な区間なし: {0}</value>
+  </data>
+  <data xml:space="preserve" name="Probability.DetailWithPrimary">
+    <value>{0} 主モデルの分数: {1}。</value>
+  </data>
+  <data xml:space="preserve" name="Result.Heading">
+    <value>結果</value>
+  </data>
+  <data xml:space="preserve" name="Expression.Objective">
+    <value>客観的特性</value>
+  </data>
+  <data xml:space="preserve" name="Expression.Not">
+    <value>NOT</value>
+  </data>
+  <data name="Language.Label" xml:space="preserve">
+    <value>言語</value>
+  </data>
+  <data name="Language.CaptureFailed" xml:space="preserve">
+    <value>確定済みの作業内容を安全に記録できませんでした。セッションファイルを保存して再試行してください。</value>
+  </data>
+  <data name="Language.ChangeFailed" xml:space="preserve">
+    <value>言語は変更されませんでした。現在の作業内容は保持されます。作業内容を保存し、サイトのストレージを確認して再試行してください。{0}</value>
+  </data>
+  <data name="Language.RestoreFailed" xml:space="preserve">
+    <value>言語変更時の作業内容を完全に復元できませんでした。引き継ぎデータはこのタブに保持されます。ブラウザーデータを消去する前にダウンロードしてください。{0}</value>
+  </data>
+  <data name="Language.DownloadHandoff" xml:space="preserve">
+    <value>保持された引き継ぎデータをダウンロード</value>
+  </data>
+  <data name="Language.WaitForLoad" xml:space="preserve">
+    <value>現在のセッションの読み込みまたはデッキのインポートが完了してから言語を変更してください。</value>
+  </data>
+  <data name="Language.UnfinishedEdit" xml:space="preserve">
+    <value>編集中の内容を保存・適用するかキャンセルしてから言語を変更してください。</value>
+  </data>
+  <data name="Language.WaitForCalculation" xml:space="preserve">
+    <value>計算の完了を待つか、キャンセルしてから言語を変更してください。</value>
+  </data>
+  <data name="Language.UnrestoredCheckpoint" xml:space="preserve">
+    <value>以前の言語変更時の作業記録が復元されていません。このタブに保持されているので、ブラウザーデータを消去する前にダウンロードしてください。</value>
+  </data>
+  <data name="Ui.DisableSimulation" xml:space="preserve">
+    <value>シミュレーションを無効にする</value>
+  </data>
+  <data name="Ui.EnableSimulation" xml:space="preserve">
+    <value>シミュレーションを有効にする</value>
+  </data>
+  <data name="Ui.SimulationDisabled" xml:space="preserve">
+    <value>この項目のシミュレーションは無効です</value>
+  </data>
+  <data name="Priority.DrawEffects" xml:space="preserve">
+    <value>ドロー効果</value>
+  </data>
+  <data name="Priority.SearchEffects" xml:space="preserve">
+    <value>サーチ効果</value>
+  </data>
+  <data name="Help.Introduction.Overview" xml:space="preserve">
+    <value>対応するドロー・サーチ効果を含め、初手のコンボ成立確率を計算します。自分のデッキを使うか、例で試してください。</value>
+  </data>
+  <data name="Help.Introduction.ReplaceWarning" xml:space="preserve">
+    <value>読み込むと現在の作業内容が置き換わります。残す場合は先にセッションを保存してください。</value>
+  </data>
+  <data name="Help.GettingStarted.Question" xml:space="preserve">
+    <value>使い始めるには？</value>
+  </data>
+  <data name="Help.GettingStarted.AddDeck.Part0" xml:space="preserve">
+    <value>デッキを追加します。</value>
+  </data>
+  <data name="Help.GettingStarted.AddDeck.Part1" xml:space="preserve">
+    <value>.ydk</value>
+  </data>
+  <data name="Help.GettingStarted.AddDeck" xml:space="preserve">
+    <value>{0} {1}ファイルやYDKeコードをインポートするか、カードを手動で入力します。枚数と手札枚数を確認してください。</value>
+  </data>
+  <data name="Help.GettingStarted.DefineCombo.Part0" xml:space="preserve">
+    <value>コンボを定義します。</value>
+  </data>
+  <data name="Help.GettingStarted.DefineCombo" xml:space="preserve">
+    <value>{0} 成功とする手札に必要なカード、カテゴリー、特性を追加します。</value>
+  </data>
+  <data name="Help.GettingStarted.CheckEffects.Part0" xml:space="preserve">
+    <value>カード効果を確認します。</value>
+  </data>
+  <data name="Help.GettingStarted.CheckEffects" xml:space="preserve">
+    <value>{0} 効果を持つカードを展開し、設定済みのシミュレーションを確認します。</value>
+  </data>
+  <data name="Help.GettingStarted.Calculate.Part0" xml:space="preserve">
+    <value>計算します。</value>
+  </data>
+  <data name="Help.GettingStarted.Calculate.Part1" xml:space="preserve">
+    <value>段階計算</value>
+  </data>
+  <data name="Help.GettingStarted.Calculate" xml:space="preserve">
+    <value>{0} まず{1}を使い、各結果の横にある精度表示を確認します。</value>
+  </data>
+  <data name="Help.GettingStarted.Deactivate" xml:space="preserve">
+    <value>カードやコンボは削除せず、一時的に無効にできます。</value>
+  </data>
+  <data name="Help.Properties.Question" xml:space="preserve">
+    <value>カテゴリーと特性の使い方は？</value>
+  </data>
+  <data name="Help.Properties.RolesAndProperties.Part0" xml:space="preserve">
+    <value>特性</value>
+  </data>
+  <data name="Help.Properties.RolesAndProperties.Part1" xml:space="preserve">
+    <value>カテゴリー</value>
+  </data>
+  <data name="Help.Properties.RolesAndProperties" xml:space="preserve">
+    <value>カード固有の特徴には{0}、自分で割り当てる役割には{1}を使います。</value>
+  </data>
+  <data name="Help.Properties.PropertyExamples.Part0" xml:space="preserve">
+    <value>特性:</value>
+  </data>
+  <data name="Help.Properties.PropertyExamples" xml:space="preserve">
+    <value>{0} 炎属性、戦士族、レベル4など、カードデータに含まれる値です。</value>
+  </data>
+  <data name="Help.Properties.CategoryExamples.Part0" xml:space="preserve">
+    <value>カテゴリー:</value>
+  </data>
+  <data name="Help.Properties.CategoryExamples" xml:space="preserve">
+    <value>{0} 初動、展開補助など、デッキで役立つ役割です。</value>
+  </data>
+  <data name="Help.Properties.Overlaps" xml:space="preserve">
+    <value>1枚のカードが複数の特性やカテゴリーに一致することがあります。独自に割り当てた役割は、組み込みサーチ効果の対象条件を変更しません。</value>
+  </data>
+  <data name="Help.Properties.NumericRanges.Part0" xml:space="preserve">
+    <value>レベル1～4 AND 戦士族</value>
+  </data>
+  <data name="Help.Properties.NumericRanges" xml:space="preserve">
+    <value>レベル、ランク、リンク数には数値比較と両端を含む範囲を指定できます。例えば、{0}はそのレベル範囲の戦士族カードを選びます。該当する値を持たないカードは一致しません。</value>
+  </data>
+  <data name="Help.Requirements.Question" xml:space="preserve">
+    <value>コンボの条件を定義するには？</value>
+  </data>
+  <data name="Help.Requirements.Create.Part0" xml:space="preserve">
+    <value>条件を追加</value>
+  </data>
+  <data name="Help.Requirements.Create.Part1" xml:space="preserve">
+    <value>最小枚数</value>
+  </data>
+  <data name="Help.Requirements.Create.Part2" xml:space="preserve">
+    <value>上限</value>
+  </data>
+  <data name="Help.Requirements.Create.Part3" xml:space="preserve">
+    <value>0</value>
+  </data>
+  <data name="Help.Requirements.Create" xml:space="preserve">
+    <value>{0}を選び、対象と{1}を設定します。一致する枚数を制限するには{2}を使います。両方を{3}にすると、一致するカードを除く条件になります。</value>
+  </data>
+  <data name="Help.Requirements.FinalHand" xml:space="preserve">
+    <value>効果の解決後の最終手札が、コンボ内のすべての条件を満たす必要があります。</value>
+  </data>
+  <data name="Help.Requirements.Combining" xml:space="preserve">
+    <value>条件の組み合わせ</value>
+  </data>
+  <data name="Help.Requirements.Expression" xml:space="preserve">
+    <value>式</value>
+  </data>
+  <data name="Help.Requirements.Meaning" xml:space="preserve">
+    <value>意味</value>
+  </data>
+  <data name="Help.Requirements.DistinctExample.Part0" xml:space="preserve">
+    <value>初動 + 炎属性</value>
+  </data>
+  <data name="Help.Requirements.DistinctCopies" xml:space="preserve">
+    <value>別々の2枚が必要です。1枚は初動、もう1枚は炎属性カードです。両方に一致する1枚で2つの条件を満たすことはできません。</value>
+  </data>
+  <data name="Help.Requirements.SameCardExample.Part0" xml:space="preserve">
+    <value>炎属性 AND 戦士族</value>
+  </data>
+  <data name="Help.Requirements.SameCard" xml:space="preserve">
+    <value>一致する各カードは、両方の特性を持つ必要があります。</value>
+  </data>
+  <data name="Help.Requirements.AlternativesExample.Part0" xml:space="preserve">
+    <value>Razen + (炎属性 OR 闇属性)</value>
+  </data>
+  <data name="Help.Requirements.Alternatives" xml:space="preserve">
+    <value>Razenと、いずれかの選択肢を満たす別の1枚が必要です。</value>
+  </data>
+  <data name="Help.Requirements.Counting" xml:space="preserve">
+    <value>枚数の数え方</value>
+  </data>
+  <data name="Help.Requirements.Maximum.Part0" xml:space="preserve">
+    <value>一致するすべてのカード</value>
+  </data>
+  <data name="Help.Requirements.Maximum.Part1" xml:space="preserve">
+    <value>指定なし</value>
+  </data>
+  <data name="Help.Requirements.Maximum" xml:space="preserve">
+    <value>上限には、最終手札の{0}を数えます。上限が空欄なら{1}になります。</value>
+  </data>
+  <data name="Help.Requirements.AlternativeCounts.Part0" xml:space="preserve">
+    <value>炎属性（2–2）OR 闇属性（2–2）</value>
+  </data>
+  <data name="Help.Requirements.AlternativeCounts" xml:space="preserve">
+    <value>ORの各選択肢は個別の枚数条件を持ちます。{0}はどちらか一方が2枚あることを要求します。</value>
+  </data>
+  <data name="Help.Requirements.RepeatedTarget.Part0" xml:space="preserve">
+    <value>最小枚数</value>
+  </data>
+  <data name="Help.Requirements.RepeatedTarget" xml:space="preserve">
+    <value>複数枚を要求するには{0}を増やしてください。同じ対象を繰り返すと、それぞれの範囲の共通部分が適用されます。</value>
+  </data>
+  <data name="Help.Requirements.Editing.Part0" xml:space="preserve">
+    <value>Enter</value>
+  </data>
+  <data name="Help.Requirements.Editing.Part1" xml:space="preserve">
+    <value>Escape</value>
+  </data>
+  <data name="Help.Requirements.Editing.Part2" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
+  <data name="Help.Requirements.Editing" xml:space="preserve">
+    <value>既存の条件を選んで編集します。{0}で保存、{1}または{2}で編集を破棄します。</value>
+  </data>
+  <data name="Help.Simulations.Question" xml:space="preserve">
+    <value>カード効果を設定するには？</value>
+  </data>
+  <data name="Help.Simulations.Inspect.Part0" xml:space="preserve">
+    <value>モデル注記</value>
+  </data>
+  <data name="Help.Simulations.Inspect" xml:space="preserve">
+    <value>カードを展開して、保存済みシミュレーションと{0}を確認します。</value>
+  </data>
+  <data name="Help.Simulations.BuiltIn.Part0" xml:space="preserve">
+    <value>組み込みシミュレーション:</value>
+  </data>
+  <data name="Help.Simulations.BuiltIn" xml:space="preserve">
+    <value>{0} 対応する効果のために保守されているモデルです。</value>
+  </data>
+  <data name="Help.Simulations.Partial.Part0" xml:space="preserve">
+    <value>一部のみ:</value>
+  </data>
+  <data name="Help.Simulations.Partial" xml:space="preserve">
+    <value>{0} カードに記された動作の一部を省略しています。</value>
+  </data>
+  <data name="Help.Simulations.Custom.Part0" xml:space="preserve">
+    <value>カスタムシミュレーション:</value>
+  </data>
+  <data name="Help.Simulations.Custom" xml:space="preserve">
+    <value>{0} 効果エディターで保存した処理手順です。</value>
+  </data>
+  <data name="Help.Simulations.Editing.Part0" xml:space="preserve">
+    <value>シミュレーションを編集</value>
+  </data>
+  <data name="Help.Simulations.Editing.Part1" xml:space="preserve">
+    <value>シミュレーションを設定</value>
+  </data>
+  <data name="Help.Simulations.Editing.Part2" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Help.Simulations.Editing.Part3" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
+  <data name="Help.Simulations.Editing.Part4" xml:space="preserve">
+    <value>なし</value>
+  </data>
+  <data name="Help.Simulations.Editing" xml:space="preserve">
+    <value>{0}または{1}を選び、変更してから{2}します。{3}なら以前の手順を維持します。{4}を選ぶと、カードをデッキに残したまま通常のカードとして扱います。</value>
+  </data>
+  <data name="Help.Simulations.Restore.Part0" xml:space="preserve">
+    <value>組み込みシミュレーションに戻す</value>
+  </data>
+  <data name="Help.Simulations.Restore" xml:space="preserve">
+    <value>セッションは保存時の効果設定を保持します。{0}を選ぶと、その設定を現在の組み込みモデルに明示的に置き換えます。</value>
+  </data>
+  <data name="Help.Simulations.Limitations.Part0" xml:space="preserve">
+    <value>モデル注記</value>
+  </data>
+  <data name="Help.Simulations.Limitations" xml:space="preserve">
+    <value>実行されるのは設定済みの効果のみです。シミュレーションをカードに記された動作全体として扱う前に、{0}を確認してください。</value>
+  </data>
+  <data name="Help.EffectResolution.Question" xml:space="preserve">
+    <value>効果はどの順番で解決されますか？</value>
+  </data>
+  <data name="Help.EffectResolution.Phases" xml:space="preserve">
+    <value>効果は2段階の固定された方針で処理されます。</value>
+  </data>
+  <data name="Help.EffectResolution.DrawHeading" xml:space="preserve">
+    <value>1. ドロー効果</value>
+  </data>
+  <data name="Help.EffectResolution.Draws" xml:space="preserve">
+    <value>発動可能なドロー効果は自動的に発動し、発動元のカードを消費します。各効果はコスト、ドロー、取り除く処理をすべて終えてから、次の効果に進みます。</value>
+  </data>
+  <data name="Help.EffectResolution.Restrictions.Part0" xml:space="preserve">
+    <value>1ターンに1度</value>
+  </data>
+  <data name="Help.EffectResolution.Restrictions" xml:space="preserve">
+    <value>{0}の制限は同じカード項目の各コピーで共有します。発動前にコスト、発動条件、デッキの残り枚数を確認します。必須の取り除く処理に失敗した場合、その結果は失敗と数えます。</value>
+  </data>
+  <data name="Help.EffectResolution.SearchHeading" xml:space="preserve">
+    <value>2. サーチ効果</value>
+  </data>
+  <data name="Help.EffectResolution.Searches" xml:space="preserve">
+    <value>ドローが完了した後、手札の発動元を消費する任意のサーチで、デッキに残る対象カードを手札に加えられます。サーチは実際の残り枚数とデッキ容量を共有します。手札に加えたカードの効果は発動せず、どちらの段階も再開しません。</value>
+  </data>
+  <data name="Help.EffectResolution.PriorityHeading" xml:space="preserve">
+    <value>優先順位とカード選択</value>
+  </data>
+  <data name="Help.EffectResolution.Priority" xml:space="preserve">
+    <value>既定では出現順です。カスタム優先順位は各段階内の効果を順位付けします。画面上のデッキを並べ替えても、この優先順位は変わりません。</value>
+  </data>
+  <data name="Help.EffectResolution.KeepPolicy" xml:space="preserve">
+    <value>手札のコストと取り除く処理は、コンボパーツと使用可能な効果を保護する共通の保持方針を使います。そのため、有効なコンボを変更すると、取り除くカードが変わる場合があります。結果の各行で異なる合法なサーチ選択を使うことがあります。</value>
+  </data>
+  <data name="Help.EffectResolution.ModelScope.Part0" xml:space="preserve">
+    <value>計算モデル</value>
+  </data>
+  <data name="Help.EffectResolution.ModelScope" xml:space="preserve">
+    <value>この計算は、省略される動作も含めた設定済みの方針をモデル化します。最適なプレイを決定するものではありません。対応する処理と制限は{0}を参照してください。</value>
+  </data>
+  <data name="Help.Modes.Question" xml:space="preserve">
+    <value>利用できる計算モードは？</value>
+  </data>
+  <data name="Help.Modes.Default.Part0" xml:space="preserve">
+    <value>段階計算</value>
+  </data>
+  <data name="Help.Modes.Default" xml:space="preserve">
+    <value>{0}が既定で、最初に試すのに適しています。</value>
+  </data>
+  <data name="Help.Modes.Mode" xml:space="preserve">
+    <value>モード</value>
+  </data>
+  <data name="Help.Modes.Behavior" xml:space="preserve">
+    <value>動作</value>
+  </data>
+  <data name="Help.Modes.Progressive" xml:space="preserve">
+    <value>段階計算</value>
+  </data>
+  <data name="Help.Modes.ProgressiveDescription" xml:space="preserve">
+    <value>完了した高速計算の結果を表示し、必要に応じて厳密計算を試みます。</value>
+  </data>
+  <data name="Help.Modes.Fast" xml:space="preserve">
+    <value>高速のみ</value>
+  </data>
+  <data name="Help.Modes.FastDescription" xml:space="preserve">
+    <value>高速計算を1回行います。結果は「厳密」「範囲保証あり」「保証なし」のいずれかになります。</value>
+  </data>
+  <data name="Help.Modes.Exact" xml:space="preserve">
+    <value>厳密のみ</value>
+  </data>
+  <data name="Help.Modes.ExactDescription" xml:space="preserve">
+    <value>物理的な厳密計算が完了した場合のみ、新しい値を表示します。</value>
+  </data>
+  <data name="Help.Modes.NoEffects" xml:space="preserve">
+    <value>効果をシミュレートしない</value>
+  </data>
+  <data name="Help.Modes.NoEffectsDescription" xml:space="preserve">
+    <value>設定済みの効果を無視し、配られた手札を評価します。保存済みの効果設定は変更しません。</value>
+  </data>
+  <data name="Help.Modes.Cancel" xml:space="preserve">
+    <value>段階計算で厳密計算への更新をキャンセルしても、完了済みの高速計算の結果は保持されます。</value>
+  </data>
+  <data name="Help.Modes.Limits.Part0" xml:space="preserve">
+    <value>精度と処理負荷</value>
+  </data>
+  <data name="Help.Modes.Limits" xml:space="preserve">
+    <value>厳密計算に計算期限はありませんが、メモリー制限、未対応の構成、エラーによって完了できない場合があります。リソース制限は{0}を参照してください。</value>
+  </data>
+  <data name="Help.Results.Question" xml:space="preserve">
+    <value>結果の読み方は？</value>
+  </data>
+  <data name="Help.Results.Union.Part0" xml:space="preserve">
+    <value>いずれかのコンボ</value>
+  </data>
+  <data name="Help.Results.Union" xml:space="preserve">
+    <value>各コンボは独立に評価します。{0}は、有効なコンボの少なくとも1つが成立する確率です。グループの合計も、そのグループ内で同じように数えます。</value>
+  </data>
+  <data name="Help.Results.OverlapWarning.Part0" xml:space="preserve">
+    <value>重複する成功は1回だけ数えます。個別の確率を足さないでください。</value>
+  </data>
+  <data name="Help.Results.Accuracy" xml:space="preserve">
+    <value>精度</value>
+  </data>
+  <data name="Help.Results.Label" xml:space="preserve">
+    <value>表示</value>
+  </data>
+  <data name="Help.Results.Meaning" xml:space="preserve">
+    <value>意味</value>
+  </data>
+  <data name="Help.Results.Exact" xml:space="preserve">
+    <value>厳密 / ±0%</value>
+  </data>
+  <data name="Help.Results.ExactDescription" xml:space="preserve">
+    <value>設定済みモデルに対して確率が証明されています。</value>
+  </data>
+  <data name="Help.Results.Bounded" xml:space="preserve">
+    <value>範囲保証あり / ±</value>
+  </data>
+  <data name="Help.Results.BoundedDescription" xml:space="preserve">
+    <value>物理モデルの確率は保証区間内にあります。表示する割合はその中点で、半径は外向きに丸めています。</value>
+  </data>
+  <data name="Help.Results.Uncertified" xml:space="preserve">
+    <value>保証なし</value>
+  </data>
+  <data name="Help.Results.UncertifiedDescription" xml:space="preserve">
+    <value>モデル上の結果はありますが、物理モデルに対する誤差の上限は証明されていません。</value>
+  </data>
+  <data name="Help.Results.ModelScope" xml:space="preserve">
+    <value>厳密さは、省略されるゲーム動作も含めた設定済みモデルに対して適用されます。</value>
+  </data>
+  <data name="Help.Results.State" xml:space="preserve">
+    <value>結果の状態</value>
+  </data>
+  <data name="Help.Results.Preliminary.Part0" xml:space="preserve">
+    <value>暫定:</value>
+  </data>
+  <data name="Help.Results.Preliminary" xml:space="preserve">
+    <value>{0} 完了した高速計算の結果で、厳密計算による更新の可能性が残っています。</value>
+  </data>
+  <data name="Help.Results.Stale.Part0" xml:space="preserve">
+    <value>入力が変更されました:</value>
+  </data>
+  <data name="Help.Results.Stale" xml:space="preserve">
+    <value>{0} 結果は以前の作業状態を示しています。</value>
+  </data>
+  <data name="Help.Results.Pinned.Part0" xml:space="preserve">
+    <value>固定済み:</value>
+  </data>
+  <data name="Help.Results.Pinned" xml:space="preserve">
+    <value>{0} 比較のために、取得時の入力と精度を保持しています。</value>
+  </data>
+  <data name="Help.Results.Fraction" xml:space="preserve">
+    <value>値にマウスを合わせるかキーボードでフォーカスすると、主モデルの分数を確認できます。範囲保証付きの結果では、この分数は主モデルに由来し、表示中点と異なることがあり、保証上端を超える場合もあります。精度の情報とともに結果をコピーしてください。</value>
+  </data>
+  <data name="Help.Sessions.Question" xml:space="preserve">
+    <value>作業内容を保存・共有・復元するには？</value>
+  </data>
+  <data name="Help.Sessions.SaveHeading" xml:space="preserve">
+    <value>セッションを保存</value>
+  </data>
+  <data name="Help.Sessions.Save.Part0" xml:space="preserve">
+    <value>セッションを保存</value>
+  </data>
+  <data name="Help.Sessions.Save" xml:space="preserve">
+    <value>{0}を選ぶと、デッキ、条件、グループ、効果設定、計算設定をダウンロードできます。編集中の変更は先に保存してください。未保存の下書き、結果、カード画像、テーマ設定は含まれません。</value>
+  </data>
+  <data name="Help.Sessions.ShareHeading" xml:space="preserve">
+    <value>設定を共有</value>
+  </data>
+  <data name="Help.Sessions.Share.Part0" xml:space="preserve">
+    <value>共有リンクをコピー</value>
+  </data>
+  <data name="Help.Sessions.Share" xml:space="preserve">
+    <value>{0}を選びます。リンクを開くと、作業内容を置き換える前に読み込むか選択できます。リンクを知る人は内容を読めます。大きい設定では、代わりにセッションファイルが必要な場合があります。</value>
+  </data>
+  <data name="Help.Sessions.RecoveryHeading" xml:space="preserve">
+    <value>ローカルの作業を復元</value>
+  </data>
+  <data name="Help.Sessions.Recovery" xml:space="preserve">
+    <value>ローカル復元は、このブラウザーでの作業内容の変更を記録します。ストレージが消去されたり利用できなかったりすると復元できないため、長期保存にはセッションファイルを使ってください。</value>
+  </data>
+  <data name="Help.Sessions.MultipleTabs" xml:space="preserve">
+    <value>複数のタブで復元記録が競合する場合があります。残す作業内容を選んでください。タブ間で編集は自動同期されません。</value>
+  </data>
+  <data name="Help.Example.Question" xml:space="preserve">
+    <value>Vanquish Soul / K9の例はどのように動作しますか？</value>
+  </data>
+  <data name="Help.Example.Contents" xml:space="preserve">
+    <value>例には次が含まれます:</value>
+  </data>
+  <data name="Help.Example.Copies.Part0" xml:space="preserve">
+    <value>カード40枚</value>
+  </data>
+  <data name="Help.Example.Copies" xml:space="preserve">
+    <value>24項目にわたる{0}と、初手5枚の設定です。</value>
+  </data>
+  <data name="Help.Example.Groups.Part0" xml:space="preserve">
+    <value>8つのコンボ定義</value>
+  </data>
+  <data name="Help.Example.Groups.Part1" xml:space="preserve">
+    <value>Full VS</value>
+  </data>
+  <data name="Help.Example.Groups.Part2" xml:space="preserve">
+    <value>Full K9</value>
+  </data>
+  <data name="Help.Example.Groups" xml:space="preserve">
+    <value>{0}を{1}と{2}に分けています。</value>
+  </data>
+  <data name="Help.Example.Requirements" xml:space="preserve">
+    <value>独自カテゴリーを使わず、カードの識別と特性に基づく条件です。</value>
+  </data>
+  <data name="Help.Example.Alternatives.Part0" xml:space="preserve">
+    <value>VS Starter + (FIRE OR DARK)</value>
+  </data>
+  <data name="Help.Example.Alternatives" xml:space="preserve">
+    <value>{0}は選択肢を含む条件の例です。サーチ効果はデッキに残る対象モンスターを手札に加え、そのカードの識別と特性が条件に寄与します。</value>
+  </data>
+  <data name="Help.Example.Result.Part0" xml:space="preserve">
+    <value>85.92% (565375/658008)</value>
+  </data>
+  <data name="Help.Example.Result.Part1" xml:space="preserve">
+    <value>いずれかのコンボ</value>
+  </data>
+  <data name="Help.Example.Result" xml:space="preserve">
+    <value>8つのコンボをすべて有効にした場合、確定した段階計算の結果は厳密で、{1}の確率は{0}です。</value>
+  </data>
+  <data name="Help.Footer.Heading" xml:space="preserve">
+    <value>詳しい資料とクレジット</value>
+  </data>
+  <data name="Help.Footer.Reading.Part0" xml:space="preserve">
+    <value>計算モデル</value>
+  </data>
+  <data name="Help.Footer.Reading.Part1" xml:space="preserve">
+    <value>確率計算の具体例</value>
+  </data>
+  <data name="Help.Footer.Reading.Part2" xml:space="preserve">
+    <value>精度ガイド</value>
+  </data>
+  <data name="Help.Footer.Reading" xml:space="preserve">
+    <value>{0}、{1}、{2}も参照してください。ドキュメントは開発ブランチに対応するため、安定版サイトと異なる場合があります。</value>
+  </data>
+  <data name="Help.Footer.Credits.Part0" xml:space="preserve">
+    <value>SeyTi01</value>
+  </data>
+  <data name="Help.Footer.Credits.Part1" xml:space="preserve">
+    <value>YGOPRODeck</value>
+  </data>
+  <data name="Help.Footer.Credits" xml:space="preserve">
+    <value>{0}が作成。カード画像は{1}から提供され、プロジェクトのホスティングに保持されています。画像がなくても計算には影響しません。第三者の画像はソフトウェアライセンスの対象外です。</value>
+  </data>
+  <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve">
+    <value>YAML Yugi</value>
+  </data>
+  <data name="Help.Footer.NameCompilation" xml:space="preserve">
+    <value>翻訳データの編集: {0}とその上流の貢献者。カードの内容は各権利者に帰属します。</value>
+  </data>
+  <data name="Accuracy.ExactRange" xml:space="preserve">
+    <value>≈ {0}%（厳密）</value>
+  </data>
+  <data name="Ui.Share" xml:space="preserve">
+    <value>共有</value>
+  </data>
+  <data name="Ui.TargetsInThisDeck" xml:space="preserve">
+    <value>このデッキの対象</value>
+  </data>
+  <data name="Result.HandSize" xml:space="preserve">
+    <value>手札枚数: {0}</value>
+  </data>
+  <data name="Result.DeckSize" xml:space="preserve">
+    <value>デッキ枚数: {0}</value>
+  </data>
+  <data name="Color.Blue" xml:space="preserve">
+    <value>青</value>
+  </data>
+  <data name="Color.Cyan" xml:space="preserve">
+    <value>シアン</value>
+  </data>
+  <data name="Color.Gold" xml:space="preserve">
+    <value>金</value>
+  </data>
+  <data name="Color.Green" xml:space="preserve">
+    <value>緑</value>
+  </data>
+  <data name="Color.Lime" xml:space="preserve">
+    <value>ライム</value>
+  </data>
+  <data name="Color.Magenta" xml:space="preserve">
+    <value>マゼンタ</value>
+  </data>
+  <data name="Color.Orange" xml:space="preserve">
+    <value>オレンジ</value>
+  </data>
+  <data name="Color.Pink" xml:space="preserve">
+    <value>ピンク</value>
+  </data>
+  <data name="Color.Purple" xml:space="preserve">
+    <value>紫</value>
+  </data>
+  <data name="Color.Red" xml:space="preserve">
+    <value>赤</value>
+  </data>
+  <data name="Color.Slate" xml:space="preserve">
+    <value>青灰色</value>
+  </data>
+  <data name="Color.Teal" xml:space="preserve">
+    <value>青緑</value>
+  </data>
+  <data name="Metadata.attribute:dark" xml:space="preserve">
+    <value>属性: 闇</value>
+  </data>
+  <data name="Metadata.attribute:divine" xml:space="preserve">
+    <value>属性: 神</value>
+  </data>
+  <data name="Metadata.attribute:earth" xml:space="preserve">
+    <value>属性: 地</value>
+  </data>
+  <data name="Metadata.attribute:fire" xml:space="preserve">
+    <value>属性: 炎</value>
+  </data>
+  <data name="Metadata.attribute:light" xml:space="preserve">
+    <value>属性: 光</value>
+  </data>
+  <data name="Metadata.attribute:water" xml:space="preserve">
+    <value>属性: 水</value>
+  </data>
+  <data name="Metadata.attribute:wind" xml:space="preserve">
+    <value>属性: 風</value>
+  </data>
+  <data name="Metadata.kind:monster" xml:space="preserve">
+    <value>モンスター</value>
+  </data>
+  <data name="Metadata.kind:spell" xml:space="preserve">
+    <value>魔法</value>
+  </data>
+  <data name="Metadata.kind:trap" xml:space="preserve">
+    <value>罠</value>
+  </data>
+  <data name="Metadata.level:1" xml:space="preserve">
+    <value>レベル1</value>
+  </data>
+  <data name="Metadata.level:10" xml:space="preserve">
+    <value>レベル10</value>
+  </data>
+  <data name="Metadata.level:11" xml:space="preserve">
+    <value>レベル11</value>
+  </data>
+  <data name="Metadata.level:12" xml:space="preserve">
+    <value>レベル12</value>
+  </data>
+  <data name="Metadata.level:2" xml:space="preserve">
+    <value>レベル2</value>
+  </data>
+  <data name="Metadata.level:3" xml:space="preserve">
+    <value>レベル3</value>
+  </data>
+  <data name="Metadata.level:4" xml:space="preserve">
+    <value>レベル4</value>
+  </data>
+  <data name="Metadata.level:5" xml:space="preserve">
+    <value>レベル5</value>
+  </data>
+  <data name="Metadata.level:6" xml:space="preserve">
+    <value>レベル6</value>
+  </data>
+  <data name="Metadata.level:7" xml:space="preserve">
+    <value>レベル7</value>
+  </data>
+  <data name="Metadata.level:8" xml:space="preserve">
+    <value>レベル8</value>
+  </data>
+  <data name="Metadata.level:9" xml:space="preserve">
+    <value>レベル9</value>
+  </data>
+  <data name="Metadata.link:1" xml:space="preserve">
+    <value>リンク数1</value>
+  </data>
+  <data name="Metadata.link:2" xml:space="preserve">
+    <value>リンク数2</value>
+  </data>
+  <data name="Metadata.link:3" xml:space="preserve">
+    <value>リンク数3</value>
+  </data>
+  <data name="Metadata.link:4" xml:space="preserve">
+    <value>リンク数4</value>
+  </data>
+  <data name="Metadata.link:5" xml:space="preserve">
+    <value>リンク数5</value>
+  </data>
+  <data name="Metadata.link:6" xml:space="preserve">
+    <value>リンク数6</value>
+  </data>
+  <data name="Metadata.monster-race:aqua" xml:space="preserve">
+    <value>種族: 水族</value>
+  </data>
+  <data name="Metadata.monster-race:beast" xml:space="preserve">
+    <value>種族: 獣族</value>
+  </data>
+  <data name="Metadata.monster-race:beast-warrior" xml:space="preserve">
+    <value>種族: 獣戦士族</value>
+  </data>
+  <data name="Metadata.monster-race:creator%20god" xml:space="preserve">
+    <value>種族: 創造神族</value>
+  </data>
+  <data name="Metadata.monster-race:cyberse" xml:space="preserve">
+    <value>種族: サイバース族</value>
+  </data>
+  <data name="Metadata.monster-race:dinosaur" xml:space="preserve">
+    <value>種族: 恐竜族</value>
+  </data>
+  <data name="Metadata.monster-race:divine-beast" xml:space="preserve">
+    <value>種族: 幻神獣族</value>
+  </data>
+  <data name="Metadata.monster-race:dragon" xml:space="preserve">
+    <value>種族: ドラゴン族</value>
+  </data>
+  <data name="Metadata.monster-race:fairy" xml:space="preserve">
+    <value>種族: 天使族</value>
+  </data>
+  <data name="Metadata.monster-race:fiend" xml:space="preserve">
+    <value>種族: 悪魔族</value>
+  </data>
+  <data name="Metadata.monster-race:fish" xml:space="preserve">
+    <value>種族: 魚族</value>
+  </data>
+  <data name="Metadata.monster-race:illusion" xml:space="preserve">
+    <value>種族: 幻想魔族</value>
+  </data>
+  <data name="Metadata.monster-race:insect" xml:space="preserve">
+    <value>種族: 昆虫族</value>
+  </data>
+  <data name="Metadata.monster-race:machine" xml:space="preserve">
+    <value>種族: 機械族</value>
+  </data>
+  <data name="Metadata.monster-race:plant" xml:space="preserve">
+    <value>種族: 植物族</value>
+  </data>
+  <data name="Metadata.monster-race:psychic" xml:space="preserve">
+    <value>種族: サイキック族</value>
+  </data>
+  <data name="Metadata.monster-race:pyro" xml:space="preserve">
+    <value>種族: 炎族</value>
+  </data>
+  <data name="Metadata.monster-race:reptile" xml:space="preserve">
+    <value>種族: 爬虫類族</value>
+  </data>
+  <data name="Metadata.monster-race:rock" xml:space="preserve">
+    <value>種族: 岩石族</value>
+  </data>
+  <data name="Metadata.monster-race:sea%20serpent" xml:space="preserve">
+    <value>種族: 海竜族</value>
+  </data>
+  <data name="Metadata.monster-race:spellcaster" xml:space="preserve">
+    <value>種族: 魔法使い族</value>
+  </data>
+  <data name="Metadata.monster-race:thunder" xml:space="preserve">
+    <value>種族: 雷族</value>
+  </data>
+  <data name="Metadata.monster-race:warrior" xml:space="preserve">
+    <value>種族: 戦士族</value>
+  </data>
+  <data name="Metadata.monster-race:winged%20beast" xml:space="preserve">
+    <value>種族: 鳥獣族</value>
+  </data>
+  <data name="Metadata.monster-race:wyrm" xml:space="preserve">
+    <value>種族: 幻竜族</value>
+  </data>
+  <data name="Metadata.monster-race:zombie" xml:space="preserve">
+    <value>種族: アンデット族</value>
+  </data>
+  <data name="Metadata.monster-trait:effect" xml:space="preserve">
+    <value>効果モンスター</value>
+  </data>
+  <data name="Metadata.monster-trait:flip" xml:space="preserve">
+    <value>リバースモンスター</value>
+  </data>
+  <data name="Metadata.monster-trait:gemini" xml:space="preserve">
+    <value>デュアルモンスター</value>
+  </data>
+  <data name="Metadata.monster-trait:normal" xml:space="preserve">
+    <value>通常モンスター</value>
+  </data>
+  <data name="Metadata.monster-trait:pendulum" xml:space="preserve">
+    <value>ペンデュラムモンスター</value>
+  </data>
+  <data name="Metadata.monster-trait:spirit" xml:space="preserve">
+    <value>スピリットモンスター</value>
+  </data>
+  <data name="Metadata.monster-trait:toon" xml:space="preserve">
+    <value>トゥーンモンスター</value>
+  </data>
+  <data name="Metadata.monster-trait:tuner" xml:space="preserve">
+    <value>チューナーモンスター</value>
+  </data>
+  <data name="Metadata.monster-trait:union" xml:space="preserve">
+    <value>ユニオンモンスター</value>
+  </data>
+  <data name="Metadata.monster-type:fusion" xml:space="preserve">
+    <value>融合モンスター</value>
+  </data>
+  <data name="Metadata.monster-type:link" xml:space="preserve">
+    <value>リンクモンスター</value>
+  </data>
+  <data name="Metadata.monster-type:ritual" xml:space="preserve">
+    <value>儀式モンスター</value>
+  </data>
+  <data name="Metadata.monster-type:synchro" xml:space="preserve">
+    <value>シンクロモンスター</value>
+  </data>
+  <data name="Metadata.monster-type:xyz" xml:space="preserve">
+    <value>エクシーズモンスター</value>
+  </data>
+  <data name="Metadata.rank:0" xml:space="preserve">
+    <value>ランク0</value>
+  </data>
+  <data name="Metadata.rank:1" xml:space="preserve">
+    <value>ランク1</value>
+  </data>
+  <data name="Metadata.rank:10" xml:space="preserve">
+    <value>ランク10</value>
+  </data>
+  <data name="Metadata.rank:11" xml:space="preserve">
+    <value>ランク11</value>
+  </data>
+  <data name="Metadata.rank:12" xml:space="preserve">
+    <value>ランク12</value>
+  </data>
+  <data name="Metadata.rank:13" xml:space="preserve">
+    <value>ランク13</value>
+  </data>
+  <data name="Metadata.rank:2" xml:space="preserve">
+    <value>ランク2</value>
+  </data>
+  <data name="Metadata.rank:3" xml:space="preserve">
+    <value>ランク3</value>
+  </data>
+  <data name="Metadata.rank:4" xml:space="preserve">
+    <value>ランク4</value>
+  </data>
+  <data name="Metadata.rank:5" xml:space="preserve">
+    <value>ランク5</value>
+  </data>
+  <data name="Metadata.rank:6" xml:space="preserve">
+    <value>ランク6</value>
+  </data>
+  <data name="Metadata.rank:7" xml:space="preserve">
+    <value>ランク7</value>
+  </data>
+  <data name="Metadata.rank:8" xml:space="preserve">
+    <value>ランク8</value>
+  </data>
+  <data name="Metadata.rank:9" xml:space="preserve">
+    <value>ランク9</value>
+  </data>
+  <data name="Metadata.scale:0" xml:space="preserve">
+    <value>ペンデュラムスケール0</value>
+  </data>
+  <data name="Metadata.scale:1" xml:space="preserve">
+    <value>ペンデュラムスケール1</value>
+  </data>
+  <data name="Metadata.scale:10" xml:space="preserve">
+    <value>ペンデュラムスケール10</value>
+  </data>
+  <data name="Metadata.scale:11" xml:space="preserve">
+    <value>ペンデュラムスケール11</value>
+  </data>
+  <data name="Metadata.scale:12" xml:space="preserve">
+    <value>ペンデュラムスケール12</value>
+  </data>
+  <data name="Metadata.scale:13" xml:space="preserve">
+    <value>ペンデュラムスケール13</value>
+  </data>
+  <data name="Metadata.scale:2" xml:space="preserve">
+    <value>ペンデュラムスケール2</value>
+  </data>
+  <data name="Metadata.scale:3" xml:space="preserve">
+    <value>ペンデュラムスケール3</value>
+  </data>
+  <data name="Metadata.scale:4" xml:space="preserve">
+    <value>ペンデュラムスケール4</value>
+  </data>
+  <data name="Metadata.scale:5" xml:space="preserve">
+    <value>ペンデュラムスケール5</value>
+  </data>
+  <data name="Metadata.scale:6" xml:space="preserve">
+    <value>ペンデュラムスケール6</value>
+  </data>
+  <data name="Metadata.scale:7" xml:space="preserve">
+    <value>ペンデュラムスケール7</value>
+  </data>
+  <data name="Metadata.scale:8" xml:space="preserve">
+    <value>ペンデュラムスケール8</value>
+  </data>
+  <data name="Metadata.scale:9" xml:space="preserve">
+    <value>ペンデュラムスケール9</value>
+  </data>
+  <data name="Metadata.spell-type:continuous" xml:space="preserve">
+    <value>永続魔法</value>
+  </data>
+  <data name="Metadata.spell-type:equip" xml:space="preserve">
+    <value>装備魔法</value>
+  </data>
+  <data name="Metadata.spell-type:field" xml:space="preserve">
+    <value>フィールド魔法</value>
+  </data>
+  <data name="Metadata.spell-type:normal" xml:space="preserve">
+    <value>通常魔法</value>
+  </data>
+  <data name="Metadata.spell-type:quick-play" xml:space="preserve">
+    <value>速攻魔法</value>
+  </data>
+  <data name="Metadata.spell-type:ritual" xml:space="preserve">
+    <value>儀式魔法</value>
+  </data>
+  <data name="Metadata.trap-type:continuous" xml:space="preserve">
+    <value>永続罠</value>
+  </data>
+  <data name="Metadata.trap-type:counter" xml:space="preserve">
+    <value>カウンター罠</value>
+  </data>
+  <data name="Metadata.trap-type:normal" xml:space="preserve">
+    <value>通常罠</value>
+  </data>
+</root>
