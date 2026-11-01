@@ -76,6 +76,18 @@ main {
     opacity: .45;
 }
 
+.theme-icon-dark {
+    display: none;
+}
+
+:root[data-bs-theme="dark"] .theme-icon-light {
+    display: none;
+}
+
+:root[data-bs-theme="dark"] .theme-icon-dark {
+    display: inline;
+}
+
 .header-navigation {
     display: inline-flex;
     align-items: center;
