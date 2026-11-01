@@ -188,6 +188,8 @@
   <data name="Ui.AddASeparateCopyRequirement" xml:space="preserve"><value>Anforderung für ein separates Exemplar hinzufügen</value></data>
   <data name="Ui.AddAlternative" xml:space="preserve"><value>Alternative hinzufügen</value></data>
   <data name="Ui.AddAlternativeOR" xml:space="preserve"><value>Alternative hinzufügen (ODER)</value></data>
+  <data name="Ui.AddOR" xml:space="preserve"><value>ODER hinzufügen</value></data>
+  <data name="Ui.AddAND" xml:space="preserve"><value>UND hinzufügen</value></data>
   <data name="Ui.AddAnAlternativeOR" xml:space="preserve"><value>Alternative hinzufügen · ODER</value></data>
   <data name="Ui.AddCard" xml:space="preserve"><value>Karte hinzufügen</value></data>
   <data name="Ui.AddCategory" xml:space="preserve"><value>Kategorie hinzufügen</value></data>

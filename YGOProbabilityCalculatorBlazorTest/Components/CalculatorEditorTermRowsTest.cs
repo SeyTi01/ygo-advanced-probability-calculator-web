@@ -43,7 +43,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         selectorEditor.Find(".requirement-edit").Click();
         foreach (IRenderedComponent<RequirementActions> actions in new[] { comboEditor.FindComponent<RequirementActions>(), selectorEditor.FindComponent<RequirementActions>() }) {
             Assert.That(actions.FindAll("button").Select(button => button.TextContent.Trim()),
-                Is.EqualTo(new[] { "Add alternative (OR)", "Add property (AND)", "Remove requirement" }));
+                Is.EqualTo(new[] { "Add OR", "Add AND", "Remove" }));
         }
         Assert.That(selectorEditor.FindAll("details"), Is.Empty);
     }

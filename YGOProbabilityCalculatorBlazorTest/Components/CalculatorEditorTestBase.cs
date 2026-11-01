@@ -94,7 +94,7 @@ public abstract class CalculatorEditorTestBase {
 
     protected static async Task AddEligibilityProperty(IRenderedFragment editor, string label, string identity) {
         await EligibilityRow(editor, label).ClickAsync(new());
-        await Button(editor, "Add property (AND)").ClickAsync(new());
+        await Button(editor, "Add AND").ClickAsync(new());
         await editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").ChangeAsync(new() { Value = identity });
         await editor.Find(".selector-expression form").SubmitAsync();
     }

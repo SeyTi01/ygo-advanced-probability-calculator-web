@@ -11,6 +11,20 @@ using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorLocalizationTest : CalculatorEditorTestBase {
+    [TestCase("en", "Add OR", "Add AND", "Remove")]
+    [TestCase("de", "ODER hinzufügen", "UND hinzufügen", "Entfernen")]
+    [TestCase("fr", "Ajouter OU", "Ajouter ET", "Retirer")]
+    [TestCase("it", "Aggiungi O", "Aggiungi E", "Rimuovi")]
+    [TestCase("ja", "ORを追加", "ANDを追加", "取り除く")]
+    [TestCase("pt", "Adicionar OU", "Adicionar E", "Remover")]
+    public void RequirementActionsUseCompactLocalizedLabels(string language, string addOr, string addAnd, string remove) {
+        using PresentationLocale locale = new(language, production: true);
+        IRenderedComponent<RequirementActions> actions = context.RenderComponent<RequirementActions>();
+
+        Assert.That(actions.FindAll("button").Select(button => button.TextContent.Trim()), Is.EqualTo(new[] { addOr, addAnd, remove }));
+        Assert.That(actions.Find("button.btn-outline-danger").GetAttribute("aria-label"), Is.EqualTo(UiText.Get("Ui.RemoveRequirement")));
+    }
+
     [Test]
     public async Task JapaneseArchetypeLabelsTranslateAcrossPropertiesAndRequirementsWithoutChangingSavedNames() {
         using PresentationLocale locale = new("ja", production: true);
