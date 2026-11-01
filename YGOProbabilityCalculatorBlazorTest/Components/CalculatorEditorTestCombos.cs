@@ -27,8 +27,12 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
             Categories = [], Cards = [], Combos = [new([], "Existing")], HandSize = 5
         });
         IElement cardAdd = cut.Find(".quick-add button.add-action");
+        IElement comboAdd = cut.Find(".combo-heading #addCombo");
         Assert.That(cardAdd.HasAttribute("disabled"), Is.True);
-        Assert.That(cut.Find(".combo-heading #addCombo").ClassList.Contains("add-action"), Is.True);
+        Assert.That(comboAdd.ClassList.Contains("add-action"), Is.True);
+        Assert.That(cardAdd.TextContent.Trim(), Is.EqualTo(comboAdd.TextContent.Trim()));
+        Assert.That(cardAdd.GetAttribute("aria-label"), Is.EqualTo("Add card"));
+        Assert.That(comboAdd.GetAttribute("aria-label"), Is.EqualTo("Add combo"));
         await cut.Find("#quickCardName").InputAsync(new() { Value = "Custom card" });
         Assert.That(cut.Find(".quick-add button.add-action").HasAttribute("disabled"), Is.False);
         await cut.Find(".quick-add button.add-action").ClickAsync(new());

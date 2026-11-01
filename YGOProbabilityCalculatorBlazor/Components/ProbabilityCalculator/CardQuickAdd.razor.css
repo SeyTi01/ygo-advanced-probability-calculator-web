@@ -1,5 +1,2 @@
+.quick-add { margin-bottom: .75rem; }
 .quick-add-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .5rem; }
-@media (max-width: 500px) {
-    .quick-add-row { grid-template-columns: minmax(0, 1fr); }
-    .quick-add-row ::deep .add-action { justify-self: end; }
-}

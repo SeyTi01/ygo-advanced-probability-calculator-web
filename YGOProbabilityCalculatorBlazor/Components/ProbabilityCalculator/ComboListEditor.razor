@@ -5,7 +5,7 @@
 <div class="mb-4">
     <div class="combo-heading">
         <h4 class="mb-0">@(UiText.Get("Ui.Combos"))</h4>
-        <AddAction Id="addCombo" Label="@(UiText.Get("Ui.AddCombo"))" OnClick="AddNewCombo" />
+        <AddAction Id="addCombo" AccessibleLabel="@(UiText.Get("Ui.AddCombo"))" OnClick="AddNewCombo" />
     </div>
     <div class="accordion" id="combosAccordion">
         @for (int index = 0; index < Combos.Count; index++) {
