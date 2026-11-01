@@ -298,6 +298,38 @@ async function translatedProduction(browser, url, track, locale, root) {
     }
     await change(page, 'en'); await change(page, locale.id);
     assert.equal(await page.locator('.card-header-name').first().innerText(), 'Authored name 日本語 ç (1)');
+    if (locale.id === 'ja') {
+        await page.locator('#quickCardName').fill(names.get(29302858));
+        await page.locator('#quickCardOption-29302858').click();
+        await page.waitForFunction(key => {
+            try { return JSON.parse(JSON.parse(localStorage.getItem(key)).payload).Cards.some(card => card.ExternalCardId === 29302858); }
+            catch { return false; }
+        }, recovery);
+        const session = JSON.parse(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery));
+        const razen = session.Cards.find(card => card.ExternalCardId === 29302858);
+        const archetype = razen.Categories.find(category => category.MetadataKey === 'archetype:vanquish%20soul');
+        assert.equal(archetype.Name, 'Archetype: Vanquish Soul');
+        session.Cards = [razen]; session.Categories = []; session.HandSize = 1; session.ComboGroups = [];
+        session.Combos = [{ Name: 'VS archetype', Categories: [{ BaseCategory: archetype, MinCount: 1, MaxCount: 1 }] }];
+        await load(page, session);
+        const comboToggle = page.locator('.combo-editor .accordion-button').first();
+        if (await comboToggle.getAttribute('aria-expanded') === 'true') { await comboToggle.click(); }
+        await page.locator('.combo-header-requirements').filter({ hasText: 'テーマ: ＶＳ' }).waitFor();
+        assert.match(await page.locator('.combo-header-requirements').innerText(), /テーマ: ＶＳ/);
+        const cardToggle = page.locator('.card-editor .accordion-button').first();
+        if (await cardToggle.getAttribute('aria-expanded') !== 'true') { await cardToggle.click(); }
+        const inspector = page.locator('.card-property-inspector').first();
+        if (!await inspector.evaluate(element => element.open)) { await inspector.locator('summary').click(); }
+        await page.locator('.detected-card-properties').filter({ hasText: 'テーマ: ＶＳ' }).waitFor();
+        assert.match(await page.locator('.detected-card-properties').innerText(), /テーマ: ＶＳ/);
+        for (const [width, theme] of [[1280, 'light'], [390, 'dark']]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.locator('#theme-preference').selectOption(theme); await header(page);
+            await page.screenshot({ path: path.resolve(`bin/ja-archetype-${width}-${theme}.png`), fullPage: true });
+        }
+        const stored = JSON.parse(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery));
+        assert.equal(stored.Cards[0].Categories.find(category => category.MetadataKey === archetype.MetadataKey).Name, archetype.Name);
+    }
     console.log(`${locale.id} selected UI satellite encoded body: ${uiSatelliteBytes} bytes; calculator resource bodies: ${initial} bytes; selected name asset: ${nameAssetBytes} bytes; translated Help, bilingual canonical selection and preserved authored state passed.`);
     await context.close();
 

@@ -2647,4 +2647,46 @@
   <data name="Metadata.scale:13" xml:space="preserve">
     <value>Valore Pendulum 13</value>
   </data>
+  <data name="Property.Archetype" xml:space="preserve">
+    <value>Archetipo: {0}</value>
+  </data>
+  <data name="Requirement.ExpressionExplanation" xml:space="preserve">
+    <value>+ separa i requisiti di copie fisiche distinte; E/O descrivono una sola carta.</value>
+  </data>
+  <data name="OperatorEdit.ConditionsChanged" xml:space="preserve">
+    <value>Le condizioni in modifica sono cambiate. Riapri il gruppo.</value>
+  </data>
+  <data name="OperatorEdit.CompleteConditionRequired" xml:space="preserve">
+    <value>Scegli un operatore e almeno una condizione completa.</value>
+  </data>
+  <data name="OperatorEdit.CategoryOperandsRequired" xml:space="preserve">
+    <value>E sulla stessa carta richiede operandi di categoria/proprietà. Le condizioni su carte specifiche possono usare + oppure O.</value>
+  </data>
+  <data name="OperatorEdit.SavedAnyMaximaDiffer" xml:space="preserve">
+    <value>I massimi salvati come Qualsiasi sono diversi. Scegli un unico massimo fisso condiviso per combinare senza eliminare un limite salvato.</value>
+  </data>
+  <data name="OperatorEdit.MatchingBoundsRequired" xml:space="preserve">
+    <value>E sulla stessa carta richiede limiti corrispondenti. Imposta ogni operando allo stesso minimo e allo stesso massimo fisso o Qualsiasi, poi salva.</value>
+  </data>
+  <data name="OperatorEdit.IrreversibleChange" xml:space="preserve">
+    <value>Questo cambio di operatore non può essere annullato senza perdere requisiti o raggruppamenti.</value>
+  </data>
+  <data name="OperatorEdit.ExistingAlternativesOnly" xml:space="preserve">
+    <value>Cambia solo l'operatore delle alternative esistenti.</value>
+  </data>
+  <data name="Property.Identity" xml:space="preserve">
+    <value>Identità: {0}</value>
+  </data>
+  <data name="Property.Name" xml:space="preserve">
+    <value>Nome: {0}</value>
+  </data>
+  <data name="Property.Type" xml:space="preserve">
+    <value>Tipo: {0}</value>
+  </data>
+  <data name="Property.Attribute" xml:space="preserve">
+    <value>Attributo: {0}</value>
+  </data>
+  <data name="Property.Mentions" xml:space="preserve">
+    <value>Menziona: {0}</value>
+  </data>
 </root>

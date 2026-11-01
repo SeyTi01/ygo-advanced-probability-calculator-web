@@ -2047,4 +2047,20 @@
   <data name="Metadata.scale:11" xml:space="preserve"><value>Échelle Pendule 11</value></data>
   <data name="Metadata.scale:12" xml:space="preserve"><value>Échelle Pendule 12</value></data>
   <data name="Metadata.scale:13" xml:space="preserve"><value>Échelle Pendule 13</value></data>
+  <data name="Property.Archetype" xml:space="preserve">
+    <value>Archétype : {0}</value>
+  </data>
+  <data name="Requirement.ExpressionExplanation" xml:space="preserve"><value>+ sépare les conditions portant sur des cartes physiques distinctes ; ET/OU décrivent une seule carte.</value></data>
+  <data name="OperatorEdit.ConditionsChanged" xml:space="preserve"><value>Les conditions en cours de modification ont changé. Rouvrir le groupe.</value></data>
+  <data name="OperatorEdit.CompleteConditionRequired" xml:space="preserve"><value>Choisir un opérateur et au moins une condition complète.</value></data>
+  <data name="OperatorEdit.CategoryOperandsRequired" xml:space="preserve"><value>ET sur la même carte nécessite des opérandes de catégorie/propriété. Les conditions sur une carte précise peuvent utiliser + ou OU.</value></data>
+  <data name="OperatorEdit.SavedAnyMaximaDiffer" xml:space="preserve"><value>Les maximums enregistrés de type « Sans limite » diffèrent. Choisir un même maximum fixe pour combiner sans supprimer une borne enregistrée.</value></data>
+  <data name="OperatorEdit.MatchingBoundsRequired" xml:space="preserve"><value>ET sur la même carte nécessite des bornes identiques. Définir le même minimum et le même maximum fixe ou « Sans limite » pour chaque opérande, puis enregistrer.</value></data>
+  <data name="OperatorEdit.IrreversibleChange" xml:space="preserve"><value>Ce changement d’opérateur ne peut pas être annulé sans perdre des conditions ou leur groupement.</value></data>
+  <data name="OperatorEdit.ExistingAlternativesOnly" xml:space="preserve"><value>Modifier uniquement l’opérateur des alternatives existantes.</value></data>
+  <data name="Property.Identity" xml:space="preserve"><value>Identité : {0}</value></data>
+  <data name="Property.Name" xml:space="preserve"><value>Nom : {0}</value></data>
+  <data name="Property.Type" xml:space="preserve"><value>Type : {0}</value></data>
+  <data name="Property.Attribute" xml:space="preserve"><value>Attribut : {0}</value></data>
+  <data name="Property.Mentions" xml:space="preserve"><value>Mentionne : {0}</value></data>
 </root>

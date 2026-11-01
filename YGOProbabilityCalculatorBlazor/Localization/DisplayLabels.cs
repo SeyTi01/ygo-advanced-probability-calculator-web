@@ -23,14 +23,28 @@ public static class DisplayLabels {
     }
 
     private static string AutomaticCategoryName(CategoryBase category) {
-        (string Prefix, string Label)? abbreviation = category.MetadataKey switch {
-            string key when key.StartsWith("catalog-id:", StringComparison.Ordinal) => ("Card identity: ", "Identity: "),
-            string key when key.StartsWith("card-name:", StringComparison.Ordinal) => ("Card name: ", "Name: "),
-            string key when key.StartsWith("monster-race:", StringComparison.Ordinal) => ("Monster Type: ", "Type: "),
+        const string archetypePrefix = "Archetype: ";
+        if (category.MetadataKey!.StartsWith("archetype:", StringComparison.Ordinal)
+            && category.Name.StartsWith(archetypePrefix, StringComparison.Ordinal)) {
+            string canonicalName = category.Name[archetypePrefix.Length..];
+            bool matchesCanonicalKey = canonicalName.Length > 0
+                && string.Equals(canonicalName, canonicalName.Trim(), StringComparison.Ordinal)
+                && string.Equals(category.MetadataKey, "archetype:" + Uri.EscapeDataString(canonicalName.ToLowerInvariant()), StringComparison.Ordinal);
+            if (matchesCanonicalKey) {
+                return UiText.Format("Property.Archetype", Archetype(canonicalName, canonicalName));
+            }
+        }
+
+        (string Prefix, string Resource)? label = category.MetadataKey switch {
+            string key when key.StartsWith("catalog-id:", StringComparison.Ordinal) => ("Card identity: ", "Property.Identity"),
+            string key when key.StartsWith("card-name:", StringComparison.Ordinal) => ("Card name: ", "Property.Name"),
+            string key when key.StartsWith("monster-race:", StringComparison.Ordinal) => ("Monster Type: ", "Property.Type"),
+            string key when key.StartsWith("attribute:", StringComparison.Ordinal) => ("Attribute: ", "Property.Attribute"),
+            string key when key.StartsWith("mentions:", StringComparison.Ordinal) => ("Mentions: ", "Property.Mentions"),
             _ => null
         };
-        return abbreviation is { } label && category.Name.StartsWith(label.Prefix, StringComparison.Ordinal)
-            ? label.Label + category.Name[label.Prefix.Length..] : category.Name;
+        return label is { } presentation && category.Name.StartsWith(presentation.Prefix, StringComparison.Ordinal)
+            ? UiText.Format(presentation.Resource, category.Name[presentation.Prefix.Length..]) : category.Name;
     }
 
     public static string? CategoryOrNull(CategoryBase? category) => category is null ? null : Category(category);

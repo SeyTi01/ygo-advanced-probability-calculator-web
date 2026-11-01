@@ -1,3 +1,4 @@
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
@@ -33,33 +34,33 @@ public static class ComboOperatorEditing {
     ) {
         sameCard = null;
         if (positions.Count == 0 || positions.Distinct().Count() != positions.Count || positions.Any(position => !combo.RequirementOrder.Contains(position))) {
-            return "The edited conditions changed. Reopen the group.";
+            return UiText.Get("OperatorEdit.ConditionsChanged");
         }
         if (edit.Operands.Count == 0 || edit.Operator is not ("+" or "AND" or "OR")) {
-            return "Choose an operator and at least one complete condition.";
+            return UiText.Get("OperatorEdit.CompleteConditionRequired");
         }
 
         if (edit.Operator == "AND") {
             ComboCategory[] categories = edit.Operands.Select(operand => operand.Category).OfType<ComboCategory>().ToArray();
             if (categories.Length != edit.Operands.Count) {
-                return "Same-card AND requires category/property operands. Direct-card conditions can use + or OR.";
+                return UiText.Get("OperatorEdit.CategoryOperandsRequired");
             }
             ComboCategory first = categories[0];
             if (categories.Any(category => category.MinCount != first.MinCount || category.MaxCount != first.MaxCount || category.MaximumMode != first.MaximumMode)) {
                 if (categories.All(category => category.MaximumMode == RequirementMaximumMode.HandSize && category.MinCount == first.MinCount)) {
-                    return "The saved Any maxima differ. Choose one shared fixed maximum to combine without discarding a saved bound.";
+                    return UiText.Get("OperatorEdit.SavedAnyMaximaDiffer");
                 }
-                return "Same-card AND requires matching bounds. Set every operand to the same minimum and fixed/Any maximum, then save.";
+                return UiText.Get("OperatorEdit.MatchingBoundsRequired");
             }
             if (positions.Count != 1 || positions[0].Kind != ComboRequirementKind.Group
                 || categories.Any(category => category.CategoryBases.Count != 1)
                 || categories.Select(category => category.BaseCategory.Identity).Distinct(StringComparer.Ordinal).Count() != categories.Length) {
-                return "This operator change cannot be reversed without losing requirements or grouping.";
+                return UiText.Get("OperatorEdit.IrreversibleChange");
             }
             IReadOnlyList<ComboAlternative> original = combo.AlternativeGroups[positions[0].Index].Alternatives;
             if (original.Count != edit.Operands.Count
                 || !original.Zip(edit.Operands).All(pair => ReferenceEquals(pair.First.Category, pair.Second.Category))) {
-                return "Change only the operator of the existing alternatives.";
+                return UiText.Get("OperatorEdit.ExistingAlternativesOnly");
             }
             sameCard = ComboCategory.SameCard(categories.SelectMany(category => category.CategoryBases), first.MinCount, first.MaxCount, first.MaximumMode);
         }

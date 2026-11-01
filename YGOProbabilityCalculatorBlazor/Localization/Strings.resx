@@ -1930,4 +1930,46 @@
   <data name="Result.DeckSize" xml:space="preserve">
     <value>Deck size: {0}</value>
   </data>
+  <data name="Property.Archetype" xml:space="preserve">
+    <value>Archetype: {0}</value>
+  </data>
+  <data name="Requirement.ExpressionExplanation" xml:space="preserve">
+    <value>+ separates physical card requirements; AND/OR describe one card.</value>
+  </data>
+  <data name="OperatorEdit.ConditionsChanged" xml:space="preserve">
+    <value>The edited conditions changed. Reopen the group.</value>
+  </data>
+  <data name="OperatorEdit.CompleteConditionRequired" xml:space="preserve">
+    <value>Choose an operator and at least one complete condition.</value>
+  </data>
+  <data name="OperatorEdit.CategoryOperandsRequired" xml:space="preserve">
+    <value>Same-card AND requires category/property operands. Direct-card conditions can use + or OR.</value>
+  </data>
+  <data name="OperatorEdit.SavedAnyMaximaDiffer" xml:space="preserve">
+    <value>The saved Any maxima differ. Choose one shared fixed maximum to combine without discarding a saved bound.</value>
+  </data>
+  <data name="OperatorEdit.MatchingBoundsRequired" xml:space="preserve">
+    <value>Same-card AND requires matching bounds. Set every operand to the same minimum and fixed/Any maximum, then save.</value>
+  </data>
+  <data name="OperatorEdit.IrreversibleChange" xml:space="preserve">
+    <value>This operator change cannot be reversed without losing requirements or grouping.</value>
+  </data>
+  <data name="OperatorEdit.ExistingAlternativesOnly" xml:space="preserve">
+    <value>Change only the operator of the existing alternatives.</value>
+  </data>
+  <data name="Property.Identity" xml:space="preserve">
+    <value>Identity: {0}</value>
+  </data>
+  <data name="Property.Name" xml:space="preserve">
+    <value>Name: {0}</value>
+  </data>
+  <data name="Property.Type" xml:space="preserve">
+    <value>Type: {0}</value>
+  </data>
+  <data name="Property.Attribute" xml:space="preserve">
+    <value>Attribute: {0}</value>
+  </data>
+  <data name="Property.Mentions" xml:space="preserve">
+    <value>Mentions: {0}</value>
+  </data>
 </root>
