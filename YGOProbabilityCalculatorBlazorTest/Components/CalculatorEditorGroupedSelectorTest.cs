@@ -167,11 +167,11 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             .Add(component => component.Deck, new[] { source, target }).Add(component => component.OnChanged, card => saved = card));
         editor.Find(".simulation-edit").Click();
         Node(editor, CardSelectorKind.Category).Find(".requirement-edit").Click();
-        Button(editor, "Add alternative (OR)").Click();
+        Button(editor, "Add OR").Click();
         editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change(b.Identity);
         SaveRow(editor);
         Node(editor, CardSelectorKind.AnyOf).Find(".requirement-edit").Click();
-        Button(editor, "Add property (AND)").Click();
+        Button(editor, "Add AND").Click();
         editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change("metadata:kind:monster");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.DrawEffectsEnabled, false));
         Assert.That(editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo("metadata:kind:monster"));

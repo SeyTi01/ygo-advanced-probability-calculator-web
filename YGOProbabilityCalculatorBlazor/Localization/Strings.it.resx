@@ -546,6 +546,8 @@
   <data xml:space="preserve" name="Ui.AddAlternativeOR">
     <value>Aggiungi alternativa (O)</value>
   </data>
+  <data name="Ui.AddOR" xml:space="preserve"><value>Aggiungi O</value></data>
+  <data name="Ui.AddAND" xml:space="preserve"><value>Aggiungi E</value></data>
   <data xml:space="preserve" name="Ui.AddAnAlternativeOR">
     <value>Aggiungi un'alternativa · O</value>
   </data>

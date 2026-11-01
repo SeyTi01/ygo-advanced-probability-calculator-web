@@ -546,6 +546,8 @@
   <data xml:space="preserve" name="Ui.AddAlternativeOR">
     <value>選択肢を追加（OR）</value>
   </data>
+  <data name="Ui.AddOR" xml:space="preserve"><value>ORを追加</value></data>
+  <data name="Ui.AddAND" xml:space="preserve"><value>ANDを追加</value></data>
   <data xml:space="preserve" name="Ui.AddAnAlternativeOR">
     <value>選択肢を追加 · OR</value>
   </data>
