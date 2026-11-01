@@ -33,7 +33,7 @@ main {
 
 .top-row-controls {
     --header-control-size: calc(2.25rem + 2px);
-    --layout-row-gap: 0.75rem;
+    --layout-row-gap: 0.5rem;
     flex: 0 0 auto;
 }
 
@@ -128,7 +128,6 @@ article {
 
     .top-row-controls {
         --header-control-size: max(calc(2.25rem + 2px), var(--app-touch-target-size));
-        --layout-row-gap: 0.5rem;
         margin-inline-start: auto;
         flex-wrap: wrap;
         justify-content: flex-end;
