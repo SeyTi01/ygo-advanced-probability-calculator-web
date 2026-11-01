@@ -2,12 +2,6 @@
     box-shadow: none;
 }
 
-.results-section {
-    border-top: 2px solid var(--bs-border-color);
-    padding-top: 2rem;
-    margin-top: 2rem;
-}
-
 .calculation-error ::deep .alert {
     margin-bottom: 0;
 }
