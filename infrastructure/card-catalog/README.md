@@ -304,3 +304,54 @@ umlauts and ß remain distinct, with no accent stripping or ß/ss conflation.
 Display labels require a verified external ID and an exact stored English name;
 custom labels stay verbatim. The data-label accessor accepts only verified
 catalog objects, and no localized fields are added to sessions.
+
+## Additional locales
+
+Japanese uses the same ID-based YAML Yugi projection and demand-loaded runtime
+format. Its terminology is documented in [localization-ja.md](../../docs/localization-ja.md).
+For the 12,156 eligible canonical cards it provides 12,080 labels, with 76 English
+fallbacks: 50 cards have no matching source identity and 26 have no Japanese name.
+All 24 bundled example entries have labels. No eligible source identity is joined
+through an unknown or ambiguous artwork ID. The audit records 17 unique-artwork
+matches and six explicitly source-assigned IDs.
+
+The pinned revision remains `86c467a8e14e633a6210458905f5a479c4836405`.
+The November 1 projections were read directly from `data/cards/*.json` in that
+revision's archive; no upstream pipeline was executed. The downloaded archive's
+SHA-256 is `12767a9b89a61c06a2f19c5e6d2e8f3fbf46d0a66ceec6cd092772b079143144`.
+Archive packaging bytes differ from the earlier German download; the eligible
+German identity/name tuples were compared and are identical. Each retained
+projection records the name-only input's hash and size, and each audit records
+the projection, canonical catalog and example hashes.
+
+Japanese source names contain furigana. Only the exact structure
+`<ruby>base<rt>reading</rt></ruby>` is converted to its base text; malformed or other
+markup remains rejected by the label policy. The snapshot keeps the original
+text and the audit records all 7,592 transformed labels. Readings and romanization
+are not added as search aliases. No width, accent or kana folding is introduced.
+Representative printed names were checked against the official database:
+[VS Razen](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=18727&ope=2&request_locale=ja)
+and [Pot of Desires](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=12465&ope=2&request_locale=ja).
+This is a bounded source/identity check, not a claim of comprehensive official or
+native-speaker review.
+
+Rebuild the Japanese runtime asset and full audit offline:
+
+```sh
+node infrastructure/card-catalog/prepare-localized-names.mjs --locale ja --snapshot infrastructure/card-catalog/snapshots/names.ja.yaml-yugi.2026-11-01.json --catalog YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --example YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.ja.v1.json --audit infrastructure/card-catalog/snapshots/names.ja.yaml-yugi.2026-11-01.audit.json
+```
+
+For a source refresh, `fetch-refresh.py --output SOURCE_DIRECTORY` retains all
+language names from one immutable source revision in `yaml-cards.json` and records
+its revision/retrieval time in `sources.json`. Supply those values and the file
+with `--provider`, `--revision`, and `--retrieved-at`, keeping the shipped locale
+asset as the coverage baseline. Use `--previous` when the output path changes.
+Only the first generation of a new locale may use `--initial`; it rejects an
+existing output or a previous baseline. Review the per-locale identity,
+normalization, missing-name and example audit before committing. Retain the
+compact projection, not the full archive. Builds and tests need no provider access.
+
+The existing monthly workflow still publishes German data only. Additional
+locales use this manual refresh path; multilingual workflow staging is a separate
+task. Existing compilation credit and rights-holder attribution apply to every
+language.

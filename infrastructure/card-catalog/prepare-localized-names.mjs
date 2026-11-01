@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Offline German display names. Canonical metadata and saved identities stay English.
+// Offline localized display names. Canonical metadata and saved identities stay English.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
@@ -12,9 +12,22 @@ const validName = name => typeof name === 'string' && name.trim().length > 0 && 
 const validLabel = name => validName(name) && !/[<>\x00-\x1f\x7f]|&(?:#\d+|#x[\da-f]+|[a-z]+);/i.test(name);
 const numericOrder = (left, right) => left - right;
 const validId = (id, assigned) => Number.isInteger(id) && id > 0 && id <= (assigned ? 2147483647 : 99999999);
+const supportedLocales = new Set(['de', 'fr', 'it', 'pt', 'ja']);
+
+function validateLocale(locale) {
+    if (!supportedLocales.has(locale)) throw new Error('Unsupported name locale');
+    return locale;
+}
+
+// YAML Yugi stores Japanese furigana as ruby. Keep only plain base text from
+// this exact structure; all other markup remains subject to the label rejection.
+function displayName(name, locale) {
+    if (locale !== 'ja' || typeof name !== 'string' || /[\x00-\x1f\x7f]/.test(name)) return name;
+    return name.replace(/<ruby>([^<>]+)<rt>[^<>]+<\/rt><\/ruby>/g, '$1');
+}
 
 function validateSnapshot(snapshot) {
-    if (snapshot.version !== 1 || snapshot.locale !== 'de' || !Array.isArray(snapshot.cards)
+    if (snapshot.version !== 1 || !supportedLocales.has(snapshot.locale) || !Array.isArray(snapshot.cards)
         || snapshot.cards.length > 30000 || !/^[a-f0-9]{40}$/.test(snapshot.revision)
         || !/^[a-f0-9]{64}$/.test(snapshot.sourceSha256)) throw new Error('Unsupported name snapshot');
     const seen = new Set();
@@ -26,7 +39,8 @@ function validateSnapshot(snapshot) {
     }
 }
 
-export function retainYamlYugiSnapshot(bytes, revision, retrievedAt) {
+export function retainYamlYugiSnapshot(bytes, revision, retrievedAt, locale = 'de') {
+    validateLocale(locale);
     if (!/^[a-f0-9]{40}$/.test(revision)) throw new Error('Supply the verified YAML Yugi source commit');
     if (bytes.length > 160 * 1024 * 1024) throw new Error('Provider snapshot too large');
     const source = JSON.parse(bytes);
@@ -37,7 +51,7 @@ export function retainYamlYugiSnapshot(bytes, revision, retrievedAt) {
         const id = card.password ?? card.fake_password ?? null;
         if (id !== null && (!validId(id, assigned) || seen.has(id))) throw new Error('Invalid or duplicate YAML Yugi identity');
         if (id !== null) seen.add(id);
-        return { id, ...(assigned ? { assigned: true } : {}), name: card.name?.de ?? null, name_en: card.name?.en ?? null };
+        return { id, ...(assigned ? { assigned: true } : {}), name: card.name?.[locale] ?? null, name_en: card.name?.en ?? null };
     });
     cards.sort((left, right) => {
         const order = (left.id ?? 0) - (right.id ?? 0);
@@ -46,7 +60,7 @@ export function retainYamlYugiSnapshot(bytes, revision, retrievedAt) {
         const rightText = JSON.stringify(right);
         return leftText < rightText ? -1 : leftText > rightText ? 1 : 0;
     });
-    return { version: 1, locale: 'de', source: 'https://dawnbrandbots.github.io/yaml-yugi/cards.json',
+    return { version: 1, locale, source: 'https://dawnbrandbots.github.io/yaml-yugi/cards.json',
         revision, retrievedAt, sourceBytes: bytes.length, sourceSha256: sha256(bytes), cards };
 }
 
@@ -112,11 +126,13 @@ export function buildLocalizedNames(snapshot, catalog, example) {
     const aliasMatches = [];
     const assignedIds = [];
     const englishNameDifferences = [];
+    const normalizedNames = [];
     for (const card of [...snapshot.cards].sort((left, right) => (left.id ?? 0) - (right.id ?? 0))) {
         if (card.id === null) continue;
         if (excludedIds.has(card.id)) continue;
         if (card.name === null) continue;
-        if (!validLabel(card.name) || !validName(card.name_en)) {
+        const name = displayName(card.name, snapshot.locale);
+        if (!validLabel(name) || !validName(card.name_en)) {
             rejectedNames.push(card);
             continue;
         }
@@ -133,12 +149,13 @@ export function buildLocalizedNames(snapshot, catalog, example) {
                 continue;
             }
         }
-        if (names.has(match.id) && names.get(match.id) !== card.name) throw new Error(`Conflicting German names for canonical ID ${match.id}`);
-        names.set(match.id, card.name);
+        if (names.has(match.id) && names.get(match.id) !== name) throw new Error(`Conflicting ${snapshot.locale === 'de' ? 'German' : snapshot.locale} names for canonical ID ${match.id}`);
+        names.set(match.id, name);
+        if (name !== card.name) normalizedNames.push({ sourceId: card.id, canonicalId: match.id, sourceName: card.name, name });
         if (card.assigned) assignedIds.push({ sourceId: card.id, canonicalId: match.id });
         if (card.name_en !== match.name) englishNameDifferences.push({ id: match.id, sourceId: card.id, provider: card.name_en, canonical: match.name });
     }
-    const asset = { version: 1, locale: 'de', names: [...names].sort(([left], [right]) => left - right) };
+    const asset = { version: 1, locale: snapshot.locale, names: [...names].sort(([left], [right]) => left - right) };
     const byName = new Map();
     for (const [id, name] of asset.names) byName.set(name, [...(byName.get(name) ?? []), id]);
     const bytes = Buffer.from(JSON.stringify(asset) + '\n');
@@ -149,7 +166,7 @@ export function buildLocalizedNames(snapshot, catalog, example) {
             projectionSha256: sha256(Buffer.from(JSON.stringify(snapshot) + '\n')) },
         returnedRecords: snapshot.cards.length, canonicalRecords: canonical.size, matchedRecords: names.size,
         withoutId: snapshot.cards.filter(card => card.id === null).length,
-        withoutGermanName: snapshot.cards.filter(card => card.name === null).length,
+        [snapshot.locale === 'de' ? 'withoutGermanName' : 'withoutLocalizedName']: snapshot.cards.filter(card => card.name === null).length,
         missingIds: [...canonical.keys()].filter(id => !names.has(id)).sort(numericOrder),
         rejectedNames, unexpectedIds, ambiguousIds, aliasMatches, assignedIds, englishNameDifferences,
         unchangedNames: asset.names.filter(([id, name]) => canonical.get(id).name === name).map(([id]) => id),
@@ -157,6 +174,7 @@ export function buildLocalizedNames(snapshot, catalog, example) {
         example: exampleNameCoverage(asset, catalog, example),
         sizes: { bytes: bytes.length, gzip: gzipSync(bytes).length, brotli: brotliCompressSync(bytes).length }
     };
+    if (snapshot.locale === 'ja') audit.normalizedNames = normalizedNames;
     return { asset, audit };
 }
 
@@ -171,20 +189,28 @@ export function assertNoNameRegression(previous, next, allowedRemovals = []) {
 
 async function main(args) {
     const options = new Map();
-    for (let index = 0; index < args.length; index += 2) {
+    for (let index = 0; index < args.length; index += 1) {
+        if (args[index] === '--initial') {
+            options.set('--initial', true);
+            continue;
+        }
         if (!['--provider', '--snapshot', '--catalog', '--output', '--audit', '--previous',
-            '--revision', '--retrieved-at', '--example', '--allow-removals'].includes(args[index]) || !args[index + 1]) {
-            throw new Error('Use --snapshot FILE --catalog FILE --example FILE --output FILE --audit FILE; optionally --provider FILE --revision SHA --retrieved-at ISO_TIMESTAMP');
+            '--revision', '--retrieved-at', '--example', '--allow-removals', '--locale'].includes(args[index]) || !args[index + 1]) {
+            throw new Error('Use --snapshot FILE --catalog FILE --example FILE --output FILE --audit FILE; optionally --provider FILE --revision SHA --retrieved-at ISO_TIMESTAMP --locale de|fr|it|pt|ja; --initial permits only a new output');
         }
         options.set(args[index], args[index + 1]);
+        index += 1;
     }
     for (const option of ['--snapshot', '--catalog', '--example', '--output', '--audit',
         ...(options.has('--provider') ? ['--revision', '--retrieved-at'] : [])]) {
         if (!options.has(option)) throw new Error(`Missing ${option}`);
     }
+    if (options.has('--locale')) validateLocale(options.get('--locale'));
+    if (options.has('--initial') && (options.has('--previous') || options.has('--allow-removals'))) throw new Error('--initial cannot replace a coverage baseline');
     const sourceSnapshot = options.has('--provider')
-        ? retainYamlYugiSnapshot(await readFile(options.get('--provider')), options.get('--revision'), options.get('--retrieved-at'))
+        ? retainYamlYugiSnapshot(await readFile(options.get('--provider')), options.get('--revision'), options.get('--retrieved-at'), options.get('--locale') ?? 'de')
         : JSON.parse(await readFile(options.get('--snapshot'), 'utf8'));
+    if (options.has('--locale') && sourceSnapshot.locale !== options.get('--locale')) throw new Error('Snapshot locale does not match --locale');
     const catalogBytes = await readFile(options.get('--catalog'));
     const catalog = JSON.parse(catalogBytes);
     const snapshot = retainEligibleNames(sourceSnapshot, catalog);
@@ -192,9 +218,12 @@ async function main(args) {
     const { asset, audit } = buildLocalizedNames(snapshot, catalog, JSON.parse(exampleBytes));
     const allowedRemovals = options.has('--allow-removals') ? JSON.parse(await readFile(options.get('--allow-removals'), 'utf8')) : [];
     try {
-        assertNoNameRegression(JSON.parse(await readFile(options.get('--previous') ?? options.get('--output'), 'utf8')), asset, allowedRemovals);
+        const previous = JSON.parse(await readFile(options.get('--previous') ?? options.get('--output'), 'utf8'));
+        if (options.has('--initial')) throw new Error('--initial requires a new output path');
+        if (previous.locale !== asset.locale) throw new Error('Coverage baseline locale does not match');
+        assertNoNameRegression(previous, asset, allowedRemovals);
     } catch (error) {
-        if (error.code !== 'ENOENT' || options.has('--provider') || options.has('--previous') || options.has('--allow-removals')) throw error;
+        if (error.code !== 'ENOENT' || (!options.has('--initial') && (options.has('--provider') || options.has('--previous') || options.has('--allow-removals')))) throw error;
     }
     audit.canonicalSha256 = sha256(catalogBytes);
     audit.exampleSha256 = sha256(exampleBytes);

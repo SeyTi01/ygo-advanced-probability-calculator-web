@@ -16,9 +16,9 @@ fs.cpSync(path.join(root, 'YGOProbabilityCalculatorBlazor'), target, {
 });
 fs.writeFileSync(marker, 'Generated pseudo-locale integration host; never publish as production.\n');
 fs.writeFileSync(path.join(target, 'wwwroot/localization/locales.json'), JSON.stringify([
-    { id: 'en', name: 'English' }, { id: 'fr', name: 'Pseudo français' }, { id: 'de', name: 'Deutsch' }
+    { id: 'en', name: 'English' }, { id: 'eo', name: 'Pseudo Esperanto' }, { id: 'de', name: 'Deutsch' }
 ]));
-for (const locale of ['fr']) {
+for (const locale of ['eo']) {
     fs.copyFileSync(path.join(root, 'YGOProbabilityCalculatorBlazorTest/Localization/Strings.fr.resx'),
         path.join(target, `Localization/Strings.${locale}.resx`));
 }
