@@ -120,7 +120,8 @@
     align-items: start;
     justify-content: space-between;
     gap: .5rem 1rem;
-    padding-bottom: .65rem;
+    /* Match the page's 1.1rem top padding, allowing for taller toolbar buttons. */
+    padding-bottom: .85rem;
     margin-bottom: 1.5rem;
     border-bottom: 1px solid var(--bs-border-color);
 }
@@ -338,6 +339,8 @@
 }
 
 @media (max-width: 767.98px) {
+    .session-controls { padding-bottom: 1.1rem; }
+
     .session-controls .calculation-controls {
         width: 100%;
     }
