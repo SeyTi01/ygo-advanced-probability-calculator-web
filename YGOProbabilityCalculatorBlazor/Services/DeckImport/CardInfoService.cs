@@ -11,7 +11,8 @@ public class CardInfoService : ICardInfoService {
     // Register only reviewed, deployed name assets. English needs no additional data.
     private static readonly IReadOnlyDictionary<string, string> LocalizedNameAssets = new Dictionary<string, string> {
         ["de"] = "data/card-names.de.v1.json",
-        ["ja"] = "data/card-names.ja.v1.json"
+        ["ja"] = "data/card-names.ja.v1.json",
+        ["fr"] = "data/card-names.fr.v1.json"
     };
 
     private readonly HttpClient _httpClient;

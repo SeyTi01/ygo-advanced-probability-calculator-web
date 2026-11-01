@@ -323,6 +323,7 @@ Archive packaging bytes differ from the earlier German download; the eligible
 German identity/name tuples were compared and are identical. Each retained
 projection records the name-only input's hash and size, and each audit records
 the projection, canonical catalog and example hashes. Canonical/example text
+checksums use UTF-8 with LF line endings so Git checkout conversion cannot change them. Canonical/example text
 checksums use UTF-8 with LF line endings so Git checkout conversion cannot change them.
 
 Japanese source names contain furigana. Only the exact structure
@@ -356,3 +357,13 @@ The existing monthly workflow still publishes German data only. Additional
 locales use this manual refresh path; multilingual workflow staging is a separate
 task. Existing compilation credit and rights-holder attribution apply to every
 language.
+
+### French names (`fr`)
+
+The same pinned revision supplies 11,956 labels and 200 English fallbacks
+for 12,156 eligible cards; all 24 example entries are covered. There are 50 missing
+source identities, 143 missing translations and seven literal Maliss labels
+withheld by the existing angle-bracket policy. See [French terminology](../../docs/localization-fr.md).
+Rebuild with the command above, replacing every `ja` locale/path segment with `fr`;
+the dated snapshot and audit use the same November 1 date. Refresh and identity
+validation follow the same manual path; no additional catalog is loaded at startup.
