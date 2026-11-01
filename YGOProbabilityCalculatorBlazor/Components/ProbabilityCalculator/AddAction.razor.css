@@ -1,0 +1,22 @@
+.add-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    min-height: 2.75rem;
+    padding: .35rem .75rem;
+    color: var(--bs-body-color);
+    background: transparent;
+    border: 1px solid var(--bs-secondary-color);
+    border-radius: var(--bs-border-radius);
+    font: inherit;
+    white-space: nowrap;
+}
+
+.add-action:not(:disabled):is(:hover, :focus-visible, :active) {
+    color: var(--bs-emphasis-color);
+    background: var(--bs-secondary-bg);
+}
+
+.add-action:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.add-action:disabled { color: var(--bs-secondary-color); border-color: var(--bs-border-color); }

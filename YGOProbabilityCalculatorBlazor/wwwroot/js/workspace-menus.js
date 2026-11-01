@@ -8,7 +8,8 @@
             && ['ArrowDown', 'ArrowUp'].includes(event.key)) event.preventDefault();
     });
     window.workspaceSearch = {
-        reveal(id) { if (id) document.getElementById(id)?.scrollIntoView({ block: 'nearest' }); }
+        reveal(id) { if (id) document.getElementById(id)?.scrollIntoView({ block: 'nearest' }); },
+        focus(id) { if (id) document.getElementById(id)?.focus(); }
     };
     const cleanups = new WeakMap();
     const dispose = panel => { cleanups.get(panel)?.(); cleanups.delete(panel); };
