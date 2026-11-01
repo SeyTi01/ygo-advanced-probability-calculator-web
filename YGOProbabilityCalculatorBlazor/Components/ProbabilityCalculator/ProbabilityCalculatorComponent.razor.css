@@ -115,13 +115,14 @@
 }
 
 .session-controls {
+    /* Half the height difference between toolbar buttons and the settings trigger. */
+    --toolbar-center-offset: .125rem;
     display: flex;
     flex-wrap: wrap;
     align-items: start;
     justify-content: space-between;
     gap: .5rem 1rem;
-    /* The toolbar buttons are .25rem taller than the settings trigger. */
-    padding-bottom: calc(var(--app-content-top-spacing) - .25rem);
+    padding-bottom: calc(var(--app-content-top-spacing) - var(--toolbar-center-offset) - var(--toolbar-center-offset));
     margin-bottom: var(--calculator-section-spacing);
     border-bottom: 1px solid var(--bs-border-color);
 }
@@ -156,6 +157,10 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.125rem;
+}
+
+@media (min-width: 768px) {
+    .session-toolbar { position: relative; top: calc(0px - var(--toolbar-center-offset)); }
 }
 
 .session-file-action {
