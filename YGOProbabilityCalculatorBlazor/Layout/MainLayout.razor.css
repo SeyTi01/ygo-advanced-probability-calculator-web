@@ -39,6 +39,7 @@ main {
 .theme-select, .language-select {
     flex: 0 0 auto;
     width: 6.5rem;
+    padding-inline-end: 1.75rem;
 }
 
 .top-row ::deep a, .top-row ::deep .btn-link {

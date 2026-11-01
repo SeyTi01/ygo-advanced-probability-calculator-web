@@ -13,7 +13,8 @@ public class CardInfoService : ICardInfoService {
         ["de"] = "data/card-names.de.v1.json",
         ["ja"] = "data/card-names.ja.v1.json",
         ["fr"] = "data/card-names.fr.v1.json",
-        ["it"] = "data/card-names.it.v1.json"
+        ["it"] = "data/card-names.it.v1.json",
+        ["pt"] = "data/card-names.pt.v1.json"
     };
 
     private readonly HttpClient _httpClient;

@@ -39,6 +39,17 @@ async function blocked(page, locale, message) {
 
 async function header(page) {
     await usable(page, page.locator('#language-preference'));
+    assert.equal(await page.evaluate(() => {
+        const measure = document.createElement('canvas').getContext('2d');
+        return ['language-preference', 'theme-preference'].every(id => {
+            const select = document.getElementById(id);
+            if (select.value === 'eo') { return true; } // The isolated pseudo label is deliberately artificial.
+            const style = getComputedStyle(select);
+            measure.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+            const available = select.clientWidth - parseFloat(style.paddingInlineStart) - parseFloat(style.paddingInlineEnd);
+            return measure.measureText(select.selectedOptions[0].label).width <= available;
+        });
+    }), true, 'selected language and theme labels remain readable beside the native arrow');
     const language = await page.locator('#language-preference').boundingBox();
     const theme = await page.locator('#theme-preference').boundingBox();
     assert(Math.abs(language.width - theme.width) < 1 && Math.abs(language.height - theme.height) < 1,
