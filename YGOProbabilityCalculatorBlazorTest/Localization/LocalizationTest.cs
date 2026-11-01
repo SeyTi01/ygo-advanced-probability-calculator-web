@@ -173,6 +173,79 @@ public sealed class LocalizationTest {
         Assert.That(DisplayLabels.Category(automatic), Is.EqualTo(expected), "An absent locale label falls back to abbreviated English.");
     }
 
+    [TestCase("catalog-id:123", "Card identity: Target", "Property.Identity", "Target")]
+    [TestCase("card-name:target", "Card name: Target", "Property.Name", "Target")]
+    [TestCase("monster-race:unlisted", "Monster Type: Unlisted", "Property.Type", "Unlisted")]
+    [TestCase("attribute:unlisted", "Attribute: Unlisted", "Property.Attribute", "Unlisted")]
+    [TestCase("mentions:target", "Mentions: Target", "Property.Mentions", "Target")]
+    public void JapaneseAutomaticPropertyPrefixesUseLocalizedMessagesWithoutChangingStoredOrAuthoredNames(
+        string key,
+        string name,
+        string resource,
+        string suffix
+    ) {
+        CategoryBase automatic = new(name, CategorySource.Metadata, key);
+        using PresentationLocale locale = new("ja", production: true);
+
+        Assert.Multiple(() => {
+            Assert.That(UiText.Get(resource), Does.Contain("{0}"));
+            Assert.That(DisplayLabels.Category(automatic), Is.EqualTo(UiText.Format(resource, suffix)));
+            Assert.That(automatic.Name, Is.EqualTo(name));
+            Assert.That(automatic.MetadataKey, Is.EqualTo(key));
+            Assert.That(automatic.Identity, Is.EqualTo("metadata:" + key));
+            Assert.That(DisplayLabels.Category(new CategoryBase(name)), Is.EqualTo(name));
+            Assert.That(DisplayLabels.Category(new CategoryBase("Custom label", CategorySource.Metadata, key)), Is.EqualTo("Custom label"));
+        });
+    }
+
+    [Test]
+    public void JapaneseArchetypeLabelsTranslateOnlyAutomaticPresentationAndKeepUnknownNames() {
+        CategoryBase automatic = CardPropertyProvider.GetCategories(new CardInfo { ResolvedArchetypes = ["Vanquish Soul"] }).Single();
+        CategoryBase unknown = new("Archetype: New Theme", CategorySource.Metadata, "archetype:new%20theme");
+        CategoryBase authored = new(automatic.Name);
+        CategoryBase mismatched = new(automatic.Name, CategorySource.Metadata, "mentions:vanquish%20soul");
+        CategoryBase customMetadata = new("My theme label", CategorySource.Metadata, automatic.MetadataKey);
+        CategoryBase[] invalidArchetypes = [
+            new(automatic.Name, CategorySource.Metadata, "archetype:k9"),
+            new(automatic.Name, CategorySource.Metadata, "archetype:"),
+            new("Archetype: ", CategorySource.Metadata, "archetype:"),
+            new("Archetype:  Vanquish Soul", CategorySource.Metadata, "archetype:%20vanquish%20soul"),
+            new("Archetype: Vanquish Soul ", CategorySource.Metadata, "archetype:vanquish%20soul%20")
+        ];
+        SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        SessionState session = new() { Cards = [new([automatic, unknown, authored, mismatched], 1, "Saved name")] };
+        string saved = codec.SerializeSession(session);
+        using PresentationLocale locale = new("ja", production: true);
+
+        Assert.Multiple(() => {
+            Assert.That(DisplayLabels.Category(automatic), Is.EqualTo("テーマ: ＶＳ"));
+            Assert.That(DisplayLabels.Category(unknown), Is.EqualTo("テーマ: New Theme"));
+            Assert.That(DisplayLabels.Category(authored), Is.EqualTo(authored.Name));
+            Assert.That(DisplayLabels.Category(mismatched), Is.EqualTo(mismatched.Name));
+            Assert.That(DisplayLabels.Category(customMetadata), Is.EqualTo(customMetadata.Name));
+            foreach (CategoryBase invalid in invalidArchetypes) {
+                Assert.That(DisplayLabels.Category(invalid), Is.EqualTo(invalid.Name));
+            }
+            Assert.That(automatic.Name, Is.EqualTo("Archetype: Vanquish Soul"));
+            Assert.That(automatic.MetadataKey, Is.EqualTo("archetype:vanquish%20soul"));
+            Assert.That(automatic.Identity, Is.EqualTo("metadata:archetype:vanquish%20soul"));
+            Assert.That(CardSelector.For(automatic).CategoryIdentities, Is.EqualTo(new[] { automatic.Identity }));
+            Assert.That(codec.SerializeSession(session), Is.EqualTo(saved));
+        });
+    }
+
+    [Test]
+    public void ExactMetadataLabelOverridesTheAutomaticArchetypePresentation() {
+        CategoryBase automatic = new("Archetype: Vanquish Soul", CategorySource.Metadata, "archetype:vanquish%20soul");
+        Mock<ResourceManager> resources = new();
+        resources.Setup(manager => manager.GetString("Property.Archetype", It.IsAny<CultureInfo>())).Returns("Archetype: {0}");
+        resources.Setup(manager => manager.GetString("Archetypes.Vanquish Soul", It.IsAny<CultureInfo>())).Returns("Optional theme");
+        resources.Setup(manager => manager.GetString("Metadata.archetype:vanquish%20soul", It.IsAny<CultureInfo>())).Returns("Exact metadata label");
+        using IDisposable scope = UiText.UseResources(resources.Object);
+
+        Assert.That(DisplayLabels.Category(automatic), Is.EqualTo("Exact metadata label"));
+    }
+
     [Test]
     public void LabelsUseVerifiedCatalogIdentityAndNeverGuessStoredNameAuthorship() {
         using PresentationLocale locale = new();

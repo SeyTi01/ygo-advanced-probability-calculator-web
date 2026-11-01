@@ -1,6 +1,7 @@
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -10,6 +11,48 @@ using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorLocalizationTest : CalculatorEditorTestBase {
+    [Test]
+    public async Task JapaneseArchetypeLabelsTranslateAcrossPropertiesAndRequirementsWithoutChangingSavedNames() {
+        using PresentationLocale locale = new("ja", production: true);
+        CategoryBase archetype = new("Archetype: Vanquish Soul", CategorySource.Metadata, "archetype:vanquish%20soul");
+        CategoryBase custom = new("Archetype: Authored role");
+        SessionState original = new() {
+            Cards = [new([archetype, custom], 3, "Authored card")], Categories = [custom],
+            Combos = [new([new(archetype, 1, 3)])], HandSize = 1
+        };
+        ISessionService codec = context.Services.GetRequiredService<ISessionService>();
+        string saved = codec.SerializeSession(original);
+        SessionState restored = await codec.LoadSessionAsync(saved);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(restored);
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
+        card.Find(".accordion-button").Click();
+        Assert.That(card.Find(".detected-card-properties").TextContent, Does.Contain("テーマ: ＶＳ"));
+        IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
+        Assert.That(combo.Find(".combo-header-requirements").TextContent, Does.Contain("テーマ: ＶＳ"));
+        combo.Find(".accordion-button").Click();
+        Assert.That(combo.Find(".requirement-explanation").TextContent, Is.EqualTo(UiText.Get("Requirement.ExpressionExplanation")));
+        OpenNewRequirement(combo);
+        Assert.That(combo.Find(".requirement-property-picker").TextContent,
+            Does.Contain("テーマ: ＶＳ").And.Contain(custom.Name));
+        Assert.That(restored.Cards[0].Categories.Select(category => category.Name),
+            Is.EqualTo(original.Cards[0].Categories.Select(category => category.Name)));
+        Assert.That(codec.SerializeSession(restored), Is.EqualTo(saved));
+    }
+
+    [Test]
+    public void JapaneseOperatorValidationUsesTheLocalizedEditorMessage() {
+        using PresentationLocale locale = new("ja", production: true);
+        ComboCategory category = new(new CategoryBase("Authored role"), 1, 1);
+        ComboCard card = new("card", 1, 1);
+        Combo combo = new([category], cards: [card]);
+        ComboRequirementPosition[] positions = [new(ComboRequirementKind.Category, 0), new(ComboRequirementKind.Card, 0)];
+        ComboGroupEdit edit = new("AND", [ComboAlternative.For(category), ComboAlternative.For(card)]);
+
+        ArgumentException error = Assert.Throws<ArgumentException>(() => ComboOperatorEditing.Apply(combo, positions, edit))!;
+
+        Assert.That(error.Message, Is.EqualTo(UiText.Get("OperatorEdit.CategoryOperandsRequired")));
+    }
+
     [Test]
     public async Task RestoredAutomaticNamesAreAbbreviatedAcrossPropertiesSelectorsAndComboReferences() {
         CategoryBase[] metadata = [

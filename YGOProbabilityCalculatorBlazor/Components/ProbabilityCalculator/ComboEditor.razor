@@ -76,7 +76,7 @@
 
             <div class="requirement-list expanded-expression" aria-label="@(UiText.Get("Ui.ComboRequirements"))">
                 @if (ConstraintCount > 0) {
-                    <p class="requirement-explanation text-body-secondary">+ separates physical card requirements; AND/OR describe one card.</p>
+                    <p class="requirement-explanation text-body-secondary">@UiText.Get("Requirement.ExpressionExplanation")</p>
                 }
                 @foreach (ComboRequirementPosition position in Combo.RequirementOrder) {
                     @if (position != Combo.RequirementOrder[0]) { @RequirementSeparator(position) }

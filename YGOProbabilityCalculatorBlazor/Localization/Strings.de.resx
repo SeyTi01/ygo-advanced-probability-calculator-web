@@ -883,4 +883,46 @@
   <data name="Ui.TargetsInThisDeck" xml:space="preserve"><value>Ziele in diesem Deck</value></data>
   <data name="Result.HandSize" xml:space="preserve"><value>Handgröße: {0}</value></data>
   <data name="Result.DeckSize" xml:space="preserve"><value>Deckgröße: {0}</value></data>
+  <data name="Property.Archetype" xml:space="preserve">
+    <value>Archetyp: {0}</value>
+  </data>
+  <data name="Requirement.ExpressionExplanation" xml:space="preserve">
+    <value>+ trennt Anforderungen an verschiedene Karten; UND/ODER beschreiben dieselbe Karte.</value>
+  </data>
+  <data name="OperatorEdit.ConditionsChanged" xml:space="preserve">
+    <value>Die bearbeiteten Bedingungen haben sich geändert. Öffne die Gruppe erneut.</value>
+  </data>
+  <data name="OperatorEdit.CompleteConditionRequired" xml:space="preserve">
+    <value>Wähle einen Operator und mindestens eine vollständige Bedingung.</value>
+  </data>
+  <data name="OperatorEdit.CategoryOperandsRequired" xml:space="preserve">
+    <value>UND auf derselben Karte erfordert Kategorien oder Eigenschaften als Operanden. Direkte Kartenbedingungen können + oder ODER verwenden.</value>
+  </data>
+  <data name="OperatorEdit.SavedAnyMaximaDiffer" xml:space="preserve">
+    <value>Die gespeicherten Beliebig-Maxima unterscheiden sich. Wähle ein gemeinsames festes Maximum, um sie zu verbinden, ohne eine gespeicherte Grenze zu verwerfen.</value>
+  </data>
+  <data name="OperatorEdit.MatchingBoundsRequired" xml:space="preserve">
+    <value>UND auf derselben Karte erfordert übereinstimmende Grenzen. Setze alle Operanden auf dasselbe Minimum und dasselbe feste oder Beliebig-Maximum und speichere dann.</value>
+  </data>
+  <data name="OperatorEdit.IrreversibleChange" xml:space="preserve">
+    <value>Diese Operatoränderung lässt sich nicht rückgängig machen, ohne Anforderungen oder Gruppierungen zu verlieren.</value>
+  </data>
+  <data name="OperatorEdit.ExistingAlternativesOnly" xml:space="preserve">
+    <value>Ändere nur den Operator der vorhandenen Alternativen.</value>
+  </data>
+  <data name="Property.Identity" xml:space="preserve">
+    <value>Identität: {0}</value>
+  </data>
+  <data name="Property.Name" xml:space="preserve">
+    <value>Name: {0}</value>
+  </data>
+  <data name="Property.Type" xml:space="preserve">
+    <value>Typ: {0}</value>
+  </data>
+  <data name="Property.Attribute" xml:space="preserve">
+    <value>Attribut: {0}</value>
+  </data>
+  <data name="Property.Mentions" xml:space="preserve">
+    <value>Erwähnt: {0}</value>
+  </data>
 </root>

@@ -2647,4 +2647,49 @@
   <data name="Metadata.trap-type:normal" xml:space="preserve">
     <value>通常罠</value>
   </data>
+  <data name="Property.Archetype" xml:space="preserve">
+    <value>テーマ: {0}</value>
+  </data>
+  <data name="Archetypes.Vanquish Soul" xml:space="preserve">
+    <value>ＶＳ</value>
+  </data>
+  <data name="Requirement.ExpressionExplanation" xml:space="preserve">
+    <value>+は別々のカードを必要とする条件を区切り、AND/ORは1枚のカードに関する条件を表します。</value>
+  </data>
+  <data name="OperatorEdit.ConditionsChanged" xml:space="preserve">
+    <value>編集中の条件が変更されました。グループを開き直してください。</value>
+  </data>
+  <data name="OperatorEdit.CompleteConditionRequired" xml:space="preserve">
+    <value>演算子と、少なくとも1つの完成した条件を選んでください。</value>
+  </data>
+  <data name="OperatorEdit.CategoryOperandsRequired" xml:space="preserve">
+    <value>同じカードのAND条件には、カテゴリーまたは特性の条件が必要です。カードを直接指定する条件では、+またはORを使えます。</value>
+  </data>
+  <data name="OperatorEdit.SavedAnyMaximaDiffer" xml:space="preserve">
+    <value>「指定なし」として保存された上限値が異なります。保存済みの上限を破棄せずに結合するには、共通の固定上限を選んでください。</value>
+  </data>
+  <data name="OperatorEdit.MatchingBoundsRequired" xml:space="preserve">
+    <value>同じカードのAND条件には、同じ枚数範囲が必要です。すべての条件を同じ最小枚数と、同じ固定上限または「指定なし」に設定し、保存してください。</value>
+  </data>
+  <data name="OperatorEdit.IrreversibleChange" xml:space="preserve">
+    <value>この演算子の変更を元に戻すと、条件またはグループ構造が失われます。</value>
+  </data>
+  <data name="OperatorEdit.ExistingAlternativesOnly" xml:space="preserve">
+    <value>既存の選択肢の演算子のみを変更してください。</value>
+  </data>
+  <data name="Property.Identity" xml:space="preserve">
+    <value>識別: {0}</value>
+  </data>
+  <data name="Property.Name" xml:space="preserve">
+    <value>名前: {0}</value>
+  </data>
+  <data name="Property.Type" xml:space="preserve">
+    <value>種族: {0}</value>
+  </data>
+  <data name="Property.Attribute" xml:space="preserve">
+    <value>属性: {0}</value>
+  </data>
+  <data name="Property.Mentions" xml:space="preserve">
+    <value>記載名: {0}</value>
+  </data>
 </root>

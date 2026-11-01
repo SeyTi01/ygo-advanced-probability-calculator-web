@@ -33,6 +33,12 @@ indices and comparison operators remain unchanged. Gameplay vocabulary follows
 the [official Japanese how-to guide](https://www.yugioh-card.com/japan/howto/).
 The calculator models its documented policy, not all OCG or TCG play.
 
+Automatic archetype badges use `テーマ: {0}`. The reviewed Vanquish Soul display
+alias is `ＶＳ`, matching the family in the [official Japanese Razen entry](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=18727&ope=2&request_locale=ja).
+Other archetype proper names retain their canonical English fallback when no
+reviewed alias exists. Stored metadata names/keys and user-authored categories
+remain unchanged.
+
 ## Intentional fallback and preserved content
 
 - The product name **Yu-Gi-Oh! Advanced Probability Calculator**, URLs, filenames,
