@@ -87,6 +87,8 @@
     min-width: 0;
 }
 
+/* OR members add .25rem of button padding to the shared .5rem term gap. */
+.same-card-group { --expression-term-gap: .75rem; }
 .single-card-group { display: contents; }
 .centered-same-card-group { display: block; width: 100%; min-width: 0; max-width: 100%; }
 
