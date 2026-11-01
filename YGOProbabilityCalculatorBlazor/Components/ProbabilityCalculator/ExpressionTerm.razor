@@ -1,14 +1,15 @@
-<span class="expression-term-content @(Compact ? "expression-term-compact" : "")">
+<span class="expression-term-content @(Compact ? "expression-term-compact" : "") @(CenterOperands ? "expression-term-centered" : "") @(CenterOperands && Count > 2 ? "expression-term-many" : "") @(CenterOperands && Count > 3 ? "expression-term-crowded" : "")">
     @for (int index = 0; index < Count; index++) {
         <span class="expression-term-part" @key="OperandKey?.Invoke(index)">
             @if (index == 0) { @PrefixContent }
             @if (index > 0) {
-                <span @onclick:stopPropagation="@(OnOperatorChanged.HasDelegate || SeparatorContent is not null)">
+                <span class="expression-term-separator" @onclick:stopPropagation="@(OnOperatorChanged.HasDelegate || SeparatorContent is not null)">
                     @if (SeparatorContent is not null) { @SeparatorContent(index) }
                     else { <ExpressionSeparator Operator="@Operator" Inline="true" AllowedOperators="AllowedOperators" Error="@Error" OnOperatorChanged="OnOperatorChanged" /> }
                 </span>
             }
-            @OperandContent(index)
+            @if (CenterOperands) { <span class="expression-term-operand">@OperandContent(index)</span> }
+            else { @OperandContent(index) }
             @if (index == Count - 1) { @SuffixContent }
         </span>
     }
@@ -18,6 +19,7 @@
     [Parameter] public int Count { get; set; }
     [Parameter] public string Operator { get; set; } = "AND";
     [Parameter] public bool Compact { get; set; }
+    [Parameter] public bool CenterOperands { get; set; }
     [Parameter] public Func<int, object>? OperandKey { get; set; }
     [Parameter, EditorRequired] public RenderFragment<int> OperandContent { get; set; } = default!;
     [Parameter] public RenderFragment<int>? SeparatorContent { get; set; }

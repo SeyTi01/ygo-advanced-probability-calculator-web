@@ -64,7 +64,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         Assert.That(CategoryColorClass(combo, ".accordion-body .category-tag", "C"), Is.EqualTo(colorC));
 
         cut.Find("[placeholder='Category name']").Input("D");
-        cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
+        Button(cut.FindComponent<CategoryListEditor>(), "Add category").Click();
         string colorD = CategoryColorClass(categoryList, ".category-chip", "D");
         Assert.That(colorD, Is.Not.EqualTo(colorA).And.Not.EqualTo(colorC));
     }
@@ -215,7 +215,7 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         Assert.That(CategoryColorClass(categories, ".category-chip", "B"), Is.EqualTo("category-color-7"));
         Assert.That(CategoryColorClass(categories, ".category-chip", "C"), Is.EqualTo("category-color-0"));
         await categories.Find("[placeholder='Category name']").InputAsync(new() { Value = "D" });
-        await categories.Find("button.btn.btn-primary").ClickAsync(new());
+        await Button(categories, "Add category").ClickAsync(new());
         categories = cut.FindComponent<CategoryListEditor>();
         Assert.That(CategoryColorClass(categories, ".category-chip", "D"), Is.EqualTo("category-color-1"),
             "automatic assignment uses the first unused palette slot after existing duplicate choices");
@@ -242,14 +242,14 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render();
         AddManualCardAsync(cut).GetAwaiter().GetResult();
         Button(cut, "Add combo").Click();
-        cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
+        Button(cut.FindComponent<CategoryListEditor>(), "Add category").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("cannot be empty"));
         cut.Find("[placeholder='Category name']").Input("A");
-        cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
+        Button(cut.FindComponent<CategoryListEditor>(), "Add category").Click();
         OpenNewRequirement(cut);
         Assert.That(cut.FindAll("select option[value='user:A']"), Has.Count.EqualTo(2));
         cut.Find("[placeholder='Category name']").Input("a");
-        cut.FindComponent<CategoryListEditor>().Find("button.btn.btn-primary").Click();
+        Button(cut.FindComponent<CategoryListEditor>(), "Add category").Click();
         Assert.That(cut.Find("[role=alert]").TextContent, Does.Contain("already exists"));
         IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
         card.Find("select[id^='cardCategory']").Change("user:A");
@@ -270,6 +270,8 @@ public sealed class CalculatorEditorTestCategories : CalculatorEditorTestBase {
         IElement addButton = categoryManagement.QuerySelector(".editor-add-row button")!;
 
         Assert.That(addButton.HasAttribute("disabled"), Is.True);
+        Assert.That(addButton.GetAttribute("aria-label"), Is.EqualTo("Add category"));
+        Assert.That(addButton.GetAttribute("title"), Is.EqualTo("Add category"));
         input.Input("Keyboard role");
         input.KeyUp(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
 

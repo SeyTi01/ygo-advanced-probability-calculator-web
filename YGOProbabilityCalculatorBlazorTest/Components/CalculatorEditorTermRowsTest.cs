@@ -352,6 +352,34 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
     }
 
     [Test]
+    public async Task ComboRequirementBoxesOpenWithoutVisibleEditLabels() {
+        Combo combo = new([Requirement(2)], alternativeGroups: [new([Leaf(0), Leaf(1)])]);
+        IRenderedComponent<ProbabilityCalculatorComponent> calculator = Render(new SessionState {
+            Categories = Properties.ToList(), Combos = [combo]
+        });
+        IRenderedComponent<ComboEditor> editor = calculator.FindComponent<ComboEditor>();
+        await editor.Find(".accordion-button").ClickAsync(new());
+
+        IElement simple = editor.Find("[data-requirement='category:0']");
+        Assert.That(simple.TextContent, Does.Not.Contain("Edit"));
+        Assert.That(simple.GetAttribute("aria-label"), Does.StartWith("Edit "));
+        await simple.ClickAsync(new());
+        Assert.That(editor.Find("[data-requirement='category:0']").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        await Button(editor, "Cancel").ClickAsync(new());
+
+        IElement groupButton = editor.Find(".requirement-or-group .requirement-edit");
+        Assert.That(groupButton.TextContent.Trim(), Is.Empty);
+        Assert.That(groupButton.GetAttribute("aria-label"), Is.EqualTo("Edit alternatives in OR group 1"));
+        Assert.That(groupButton.GetAttribute("title"), Is.EqualTo(groupButton.GetAttribute("aria-label")));
+        Assert.That(groupButton.QuerySelector("button, select"), Is.Null);
+        await groupButton.ClickAsync(new());
+        Assert.That(editor.Find(".requirement-or-group .requirement-edit").GetAttribute("aria-expanded"), Is.EqualTo("true"));
+        Assert.That(editor.FindAll(".requirement-or-group form"), Has.Count.EqualTo(1));
+        await Button(editor, "Cancel").ClickAsync(new());
+        Assert.That(editor.FindAll(".requirement-or-group form"), Is.Empty);
+    }
+
+    [Test]
     public async Task EmptyComboUsesOneClosedDraftRowAndOnlyConcreteRowsOpenForms() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Categories = Properties.ToList(), Combos = [new([])] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
@@ -364,7 +392,10 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(editor.Instance.Combo.RequirementCount, Is.EqualTo(1));
         Assert.That(editor.FindAll(".requirement-form, [data-new-requirement]"), Is.Empty);
-        await Button(editor, "+ Add requirement").ClickAsync(new());
+        IElement addRequirement = Button(editor, "Add a separate-copy requirement");
+        Assert.That(addRequirement.TextContent.Trim(), Is.EqualTo("+"));
+        Assert.That(addRequirement.GetAttribute("title"), Is.EqualTo("Add a separate-copy requirement"));
+        await addRequirement.ClickAsync(new());
         Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(2));
         Assert.That(editor.FindAll(".requirement-row form"), Has.Count.EqualTo(1));
         await Button(editor, "Cancel").ClickAsync(new());

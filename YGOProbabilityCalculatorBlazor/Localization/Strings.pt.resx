@@ -532,6 +532,9 @@
   <data xml:space="preserve" name="Ui.AddCard">
     <value>Adicionar carta</value>
   </data>
+  <data xml:space="preserve" name="Ui.AddCategory">
+    <value>Adicionar categoria</value>
+  </data>
   <data xml:space="preserve" name="Ui.AddCardByName">
     <value>Adicionar carta por nome</value>
   </data>

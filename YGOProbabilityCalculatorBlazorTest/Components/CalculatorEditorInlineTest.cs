@@ -180,7 +180,7 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         await Button(editor, "Cancel").ClickAsync(new());
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
-        await Button(editor, "+ Add requirement").ClickAsync(new());
+        await Button(editor, "Add a separate-copy requirement").ClickAsync(new());
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Combo nested = editor.Instance.Combo;

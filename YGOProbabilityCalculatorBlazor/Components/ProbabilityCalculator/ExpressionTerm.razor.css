@@ -21,3 +21,37 @@
     margin-inline-start: .25rem;
     max-width: calc(100% - .25rem);
 }
+
+.expression-term-centered {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+.expression-term-centered > .expression-term-part { display: contents; }
+.expression-term-centered .expression-term-operand {
+    display: flex;
+    justify-content: center;
+    flex: 1 1 0;
+    min-width: 0;
+}
+.expression-term-centered > .expression-term-part:first-child > .expression-term-operand { justify-content: flex-end; }
+.expression-term-centered > .expression-term-part:last-child > .expression-term-operand { justify-content: flex-start; }
+.expression-term-centered .expression-term-separator { flex: 0 0 auto; }
+
+/* Many alternatives can wrap as paired terms when equal columns become too narrow. */
+.expression-term-crowded {
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.expression-term-crowded > .expression-term-part {
+    display: inline-flex;
+    flex: 0 1 auto;
+    justify-content: center;
+}
+.expression-term-crowded .expression-term-operand { flex: 0 1 auto; }
+
+@media (max-width: 991.98px) {
+    .expression-term-many { flex-wrap: wrap; justify-content: center; }
+    .expression-term-many > .expression-term-part { display: inline-flex; flex: 0 1 auto; justify-content: center; }
+    .expression-term-many .expression-term-operand { flex: 0 1 auto; }
+}

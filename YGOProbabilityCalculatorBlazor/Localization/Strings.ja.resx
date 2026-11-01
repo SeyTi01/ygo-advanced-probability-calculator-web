@@ -552,6 +552,9 @@
   <data xml:space="preserve" name="Ui.AddCard">
     <value>カードを追加</value>
   </data>
+  <data xml:space="preserve" name="Ui.AddCategory">
+    <value>カテゴリを追加</value>
+  </data>
   <data xml:space="preserve" name="Ui.AddCardByName">
     <value>名前でカードを追加</value>
   </data>

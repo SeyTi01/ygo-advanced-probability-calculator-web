@@ -88,6 +88,7 @@
 }
 
 .single-card-group { display: contents; }
+.centered-same-card-group { display: block; width: 100%; min-width: 0; max-width: 100%; }
 
 .expression-parenthesis {
     position: relative;
@@ -131,4 +132,3 @@
 .combo-footer { margin-top: 1rem; }
 .combo-footer .combo-group-field { max-width: 20rem; }
 .combo-footer .form-label { font-size: .8rem; }
-.add-top-level-group { margin-bottom: .5rem; min-height: 36px; }

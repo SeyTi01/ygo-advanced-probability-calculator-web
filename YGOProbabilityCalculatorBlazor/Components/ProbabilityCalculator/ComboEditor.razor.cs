@@ -15,7 +15,7 @@ public partial class ComboEditor {
     private bool _hasNewRequirementRow;
     private bool _editingNewRequirement;
     private ExpressionRow? _newRequirementRow;
-    private ElementReference _newRequirementButton;
+    private ExpressionSeparator? _newRequirementButton;
     private bool ShowNewRequirementRow => ConstraintCount == 0 || _hasNewRequirementRow;
     private ElementReference _minimumInput;
     private bool _focusMinimum;

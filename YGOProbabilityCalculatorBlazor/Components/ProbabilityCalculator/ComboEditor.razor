@@ -102,17 +102,17 @@
                 }
                 @if (ShowNewRequirementRow) {
                     @if (ConstraintCount > 0) { <ExpressionSeparator Operator="AND" Symbol="+" AllowedOperators="@(new[] { "+" })" /> }
-                    <ExpressionRow Label="@(UiText.Get("Ui.EditNewRequirement"))" Expanded="_editingNewRequirement" OnEdit="ToggleNewRequirement"
+                    <ExpressionRow Label="@(UiText.Get("Ui.EditNewRequirement"))" Expanded="_editingNewRequirement" OnEdit="ToggleNewRequirement" CenterContent="true" HideEditLabel="true"
                                    @ref="_newRequirementRow" data-new-requirement="true">
                         <ChildContent><span class="text-body-secondary">@(UiText.Get("Ui.ChooseACardCategoryOrProperty"))</span></ChildContent>
                         <EditorContent>@if (_editingNewRequirement) { @RequirementForm() }</EditorContent>
                     </ExpressionRow>
                 }
+                else {
+                    <ExpressionSeparator Operator="AND" Symbol="+" InputLabel="@(UiText.Get("Ui.AddASeparateCopyRequirement"))" AddButtonClass="add-top-level-group"
+                                         OnAdd="BeginTopLevelRequirement" @ref="_newRequirementButton" />
+                }
             </div>
-            @if (!ShowNewRequirementRow) {
-                <button type="button" class="btn btn-sm btn-outline-secondary add-top-level-group" title="@(UiText.Get("Ui.AddASeparateCopyRequirement"))"
-                        @ref="_newRequirementButton" @onclick="BeginTopLevelRequirement">@(UiText.Get("Ui.AddRequirement"))</button>
-            }
 
             <div class="combo-footer">
                 <div class="combo-group-field">
@@ -138,7 +138,7 @@
 
     private RenderFragment RequirementRow(ComboAlternative requirement, int index, int? groupIndex) => @<ExpressionRow
         @key="TermIdentity(requirement, index, groupIndex)" Label="@(UiText.Format("Ui.Edit0", AlternativeTargetLabel(requirement)))" Expanded="IsOpenRow(requirement, index, groupIndex)"
-        InteractiveSummary="@(requirement.Category?.CategoryBases.Count > 1)"
+        InteractiveSummary="@(requirement.Category?.CategoryBases.Count > 1)" CenterContent="true" HideEditLabel="true"
         @ref="_rowButtons[RowKey(requirement, index, groupIndex)]" data-requirement="@RowKey(requirement, index, groupIndex)"
         OnEdit="() => BeginEdit(requirement, index, groupIndex)">
         <ChildContent>
@@ -157,10 +157,10 @@
     private RenderFragment AlternativeTerm(ComboAlternativeGroup group, int groupIndex, int start, int count) => @<ExpressionRow
         @key="TermIdentity(group.Alternatives[start], start, groupIndex)" Label="@(UiText.Format("Ui.EditAlternativesInORGroup0", groupIndex + 1))"
         Expanded="@Enumerable.Range(start, count).Any(index => IsOpenRow(group.Alternatives[index], index, groupIndex))"
-        InteractiveSummary="true" @ref="_rowButtons[RowKey(group.Alternatives[start], start, groupIndex)]"
+        InteractiveSummary="true" CenterContent="true" HideEditLabel="true" @ref="_rowButtons[RowKey(group.Alternatives[start], start, groupIndex)]"
         OnEdit="() => ToggleAlternativeTerm(group, groupIndex, start, count)">
         <ChildContent>
-            <ExpressionTerm Count="count" Operator="OR" OperandKey="offset => RowIdentity(group.Alternatives[start + offset], start + offset, groupIndex)">
+            <ExpressionTerm Count="count" Operator="OR" CenterOperands="@(count > 1)" OperandKey="offset => RowIdentity(group.Alternatives[start + offset], start + offset, groupIndex)">
                 <SeparatorContent>@GroupSeparator(groupIndex, inline: true)</SeparatorContent>
                 <OperandContent Context="offset">
                     @{ int leafIndex = start + offset; ComboAlternative leaf = group.Alternatives[leafIndex]; }
@@ -296,10 +296,10 @@
         return UiText.Format("Requirement.WithRange", subject, AlternativeRange(alternative));
     }
 
-    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null, bool showParentheses = true) => @<span class="@(category.CategoryBases.Count > 1 ? (showParentheses ? "composite-alternative same-card-group" : "same-card-group") : "single-card-group")">
+    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null, bool showParentheses = true) => @<span class="@(category.CategoryBases.Count > 1 ? (showParentheses ? "composite-alternative same-card-group" : "same-card-group") : "single-card-group") @(category.CategoryBases.Count > 1 && !showParentheses && changeOperator is not null ? "centered-same-card-group" : null)">
         @if (category.CategoryBases.Count == 1) { @PropertyBadge(category, 0) }
         else {
-            <ExpressionTerm Count="category.CategoryBases.Count" Compact="showParentheses" OperandKey="index => category.CategoryBases[index].Identity"
+            <ExpressionTerm Count="category.CategoryBases.Count" Compact="showParentheses" CenterOperands="@(!showParentheses && changeOperator is not null)" OperandKey="index => category.CategoryBases[index].Identity"
                 AllowedOperators="@(allowedOperators ?? ["AND", "OR"])" Error="@operatorError"
                 OnOperatorChanged="@(changeOperator is null ? default : EventCallback.Factory.Create(this, changeOperator))">
                 <PrefixContent>@if (showParentheses && category.CategoryBases.Count > 1) { @ExpressionParenthesis(true) }</PrefixContent>
@@ -868,7 +868,7 @@
                 await _newRequirementRow.FocusAsync(preventScroll: true);
             }
             else {
-                await _newRequirementButton.FocusAsync(preventScroll: true);
+                if (_newRequirementButton is not null) { await _newRequirementButton.FocusAsync(); }
             }
         }
 
