@@ -4,11 +4,11 @@
   <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>めくる効果を設定済み（無効）</value></data>
   <data name="Effect.Excavate0Add1" xml:space="preserve"><value>{0}枚めくり、1枚を手札に加える</value></data>
   <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>効果でドローした後は使用不可</value></data>
-  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>ドロー後、サーチ前に使用可能なめくる効果を1つだけ発動します。めくる枚数が多い効果を優先し、同数なら固定順に従います。めくって手札に加えたカードの効果は発動しません。</value></data>
+  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>ドロー後、サーチ前に使用可能なめくる効果を1つだけ発動します。めくる枚数が多い効果を優先します。</value></data>
+  <data name="Effects.98645731.Limitations" xml:space="preserve"><value></value></data>
   <data name="Effects.98645731.Summary" xml:space="preserve"><value>3枚めくり、1枚を手札に加え、残りをデッキに戻してシャッフルする。</value></data>
-  <data name="Effects.98645731.Limitations" xml:space="preserve"><value>特殊召喚の可否はモデル化しません。</value></data>
   <data name="Effects.84211599.Summary" xml:space="preserve"><value>6枚めくり、1枚を手札に加え、残りをデッキの一番下に戻す。</value></data>
-  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>エクストラデッキに使用可能なカードが6枚あると仮定し、常に6枚めくります。効果でドローした後は発動しません。エクストラデッキやダメージへの影響はモデル化しません。</value></data>
+  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>エクストラデッキに使用可能なカードが6枚あると仮定し、常に6枚めくります。効果でドローした後は発動しません。</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve">
     <value>カードを検索、または名前を入力</value>
   </data>

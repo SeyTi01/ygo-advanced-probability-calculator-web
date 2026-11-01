@@ -4,11 +4,11 @@
   <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Escavação configurada (desativada)</value></data>
   <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Escavar {0} cards; adicionar 1 à mão</value></data>
   <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Indisponível após comprar por efeito</value></data>
-  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Após as compras, apenas uma escavação permitida é ativada antes das buscas; a maior quantidade tem prioridade. Empates seguem uma ordem fixa. Cards obtidos por escavação não ativam seus efeitos.</value></data>
+  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Após as compras, apenas uma escavação permitida é ativada antes das buscas; a maior quantidade tem prioridade.</value></data>
+  <data name="Effects.98645731.Limitations" xml:space="preserve"><value></value></data>
   <data name="Effects.98645731.Summary" xml:space="preserve"><value>Escavar 3 cards; adicionar 1 à mão; embaralhar o restante de volta no Deck.</value></data>
-  <data name="Effects.98645731.Limitations" xml:space="preserve"><value>A legalidade das Invocações-Especiais não é modelada.</value></data>
   <data name="Effects.84211599.Summary" xml:space="preserve"><value>Escavar 6 cards; adicionar 1 à mão; colocar o restante no fundo do Deck.</value></data>
-  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Sempre escava 6 cards, supondo que seis cards do Deck Adicional estejam disponíveis. Ignorado após comprar por efeito. Consequências sobre o Deck Adicional e dano não são modeladas.</value></data>
+  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Sempre escava 6 cards, supondo que seis cards do Deck Adicional estejam disponíveis. Ignorado após comprar por efeito.</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve"><value>Busque cartas ou digite um nome</value></data>
   <data name="Combo.GroupLabel" xml:space="preserve"><value>Grupo: {0}</value></data>
   <data name="Combo.MoreRequirements" xml:space="preserve"><value>+{0} mais</value></data>
