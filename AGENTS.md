@@ -47,7 +47,13 @@ For Windows Codex tasks using the verified restricted environment:
   - Git commands that write shared repository metadata, including fetch,
     branch creation, checkout, staging, commits, and rebases.
   - `scripts/codex/setup.ps1`.
-  - `dotnet --info`, `dotnet restore`, and `dotnet test`.
+  - `dotnet --info`, `dotnet restore`, `dotnet test`, and `dotnet run`.
+- Start local preview servers with approved execution, including
+  `dotnet run --no-build --no-restore`. A server launched inside the restricted
+  Windows sandbox can report “Now listening” while HTTP requests from the
+  in-app browser and other host processes time out. Restart that server with
+  approved execution on the same localhost port; verify that the page finishes
+  loading. This is a per-launch requirement, not a persistent browser fix.
 - These operations have already encountered sandbox restrictions in this
   environment. Do not repeat a restricted attempt merely to reproduce the
   known failure before requesting approval.
