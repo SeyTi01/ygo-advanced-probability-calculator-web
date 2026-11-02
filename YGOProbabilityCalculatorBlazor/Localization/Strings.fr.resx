@@ -2064,7 +2064,6 @@
   <data name="Property.Archetype" xml:space="preserve">
     <value>Archétype : {0}</value>
   </data>
-  <data name="Requirement.ExpressionExplanation" xml:space="preserve"><value>+ sépare les conditions portant sur des cartes physiques distinctes ; ET/OU décrivent une seule carte.</value></data>
   <data name="OperatorEdit.ConditionsChanged" xml:space="preserve"><value>Les conditions en cours de modification ont changé. Rouvrir le groupe.</value></data>
   <data name="OperatorEdit.CompleteConditionRequired" xml:space="preserve"><value>Choisir un opérateur et au moins une condition complète.</value></data>
   <data name="OperatorEdit.CategoryOperandsRequired" xml:space="preserve"><value>ET sur la même carte nécessite des opérandes de catégorie/propriété. Les conditions sur une carte précise peuvent utiliser + ou OU.</value></data>
@@ -2080,4 +2079,7 @@
   <data name="Preference.Current" xml:space="preserve">
     <value>{0} : {1}</value>
   </data>
+  <data name="Requirement.HintSeparate" xml:space="preserve"><value>Ajouter une condition pour une carte distincte.</value></data>
+  <data name="Requirement.HintAnd" xml:space="preserve"><value>La même carte doit satisfaire les deux conditions.</value></data>
+  <data name="Requirement.HintOr" xml:space="preserve"><value>La même carte peut satisfaire l’une ou l’autre condition.</value></data>
 </root>

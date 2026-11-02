@@ -93,18 +93,22 @@ public abstract class CalculatorEditorTestBase {
         .QuerySelector(".requirement-edit")!;
 
     protected static async Task AddEligibilityProperty(IRenderedFragment editor, string label, string identity) {
-        await EligibilityRow(editor, label).ClickAsync(new());
         await Button(editor, "Add AND").ClickAsync(new());
         await editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").ChangeAsync(new() { Value = identity });
         await editor.Find(".selector-expression form").SubmitAsync();
     }
 
-    protected static async Task RemoveEligibility(IRenderedFragment editor, string label, string identity) {
+    protected static async Task AddEligibilityAlternative(IRenderedFragment editor, string label, string identity) {
         await EligibilityRow(editor, label).ClickAsync(new());
-        int index = editor.FindAll(".selector-expression form .requirement-operand .requirement-property-picker > select").ToList()
-            .FindIndex(select => select.GetAttribute("value") == identity);
-        await Button(editor, $"Remove property {index + 1}").ClickAsync(new());
+        await Button(editor, "Add OR").ClickAsync(new());
+        await editor.Find(".selector-expression form .requirement-property-picker > select").ChangeAsync(new() { Value = identity });
         await editor.Find(".selector-expression form").SubmitAsync();
+    }
+
+    protected static async Task RemoveEligibility(IRenderedFragment editor, string label, string identity) {
+        IElement? member = editor.FindAll(".expression-member").FirstOrDefault(button => button.TextContent.Contains(label, StringComparison.OrdinalIgnoreCase));
+        await (member ?? EligibilityRow(editor, label)).ClickAsync(new());
+        await Button(editor, "Remove requirement").ClickAsync(new());
     }
 
     protected static string SimulationDetails(IRenderedFragment editor) {
@@ -118,7 +122,14 @@ public abstract class CalculatorEditorTestBase {
     protected static string CardTarget(string id) => string.IsNullOrEmpty(id) ? string.Empty : $"card:{id}";
 
     protected static Task EditRequirement(IRenderedFragment editor, string target) =>
-        editor.Find($"button[data-requirement='{target}']").ClickAsync(new());
+        ConditionButton(editor, target, 0).ClickAsync(new());
+
+    protected static IElement ConditionButton(IRenderedFragment editor, string target, int property) {
+        IElement scope = editor.Find($"[data-requirement='{target}']");
+        if (scope.ClassList.Contains("requirement-edit-overlay")) { scope = scope.ParentElement!; }
+        IElement[] members = scope.QuerySelectorAll(".expression-member").ToArray();
+        return members.Length > 0 ? members[property] : scope.TagName == "BUTTON" ? scope : scope.QuerySelector(".requirement-edit")!;
+    }
 
     protected static async Task ExtendRequirement(IRenderedFragment editor, string target, bool sameCard = false) {
         if (target.StartsWith("group:", StringComparison.Ordinal)) {
@@ -137,9 +148,8 @@ public abstract class CalculatorEditorTestBase {
     }
 
     protected static async Task RemoveProperty(IRenderedFragment editor, string target, int property) {
-        await EditRequirement(editor, target);
-        await editor.Find($"[aria-label='Remove property {property}']").ClickAsync(new());
-        await Button(editor, "Save").ClickAsync(new());
+        await ConditionButton(editor, target, property - 1).ClickAsync(new());
+        await Button(editor, "Remove requirement").ClickAsync(new());
     }
 
     protected static void AssertAnyMaximumDraft(IRenderedFragment fragment, int index = 0) {

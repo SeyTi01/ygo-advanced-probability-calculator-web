@@ -6,11 +6,11 @@
         <div class="small" role="note">@DrawEffectPresentation.DescribeSelector(Selector, CategoryBases)</div>
         <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">@(Selector.Kind == CardSelectorKind.Not && Selector.Children[0].Kind == CardSelectorKind.Any ? UiText.Get("Ui.ReplaceEmptyFilter") : UiText.Get("Ui.ReplaceVerifiedFilter"))</button>
     }
-    else if (!Grouped || Selector.Kind == CardSelectorKind.Any) {
+    else if (Selector.Kind == CardSelectorKind.Any) {
         <RequirementPropertyPicker Id="@Id" Label="@(UiText.Get("Ui.Eligible"))" AccessibleLabel="@(UiText.Get("Ui.Eligible"))" AllowAny="true" Categories="Available"
             RelevantIdentities="_categoryOptions.RelevantMetadataIdentities" OnChanged="AddProperty" />
     }
-    @if (Grouped && Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
+    @if (Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
         <button type="button" class="btn btn-link btn-sm p-0" @onclick="Clear">@(UiText.Get("Ui.Anycardclearfilter"))</button>
     }
     @if (Selector.Kind != CardSelectorKind.Any && !HasVerifiedPredicate(Selector)) {
@@ -43,8 +43,6 @@
     private string? _error;
     private static bool HasVerifiedPredicate(CardSelector selector) => selector.Kind is CardSelectorKind.Objective or CardSelectorKind.Not
         || selector.Children.Any(HasVerifiedPredicate);
-
-    private bool Grouped => Selector.IsGrouped;
 
     private Task Clear() => PublishGrouped(CardSelector.Any);
 

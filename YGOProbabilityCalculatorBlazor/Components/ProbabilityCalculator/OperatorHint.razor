@@ -1,0 +1,12 @@
+<span id="@Id" class="operator-hint" role="tooltip" hidden>@(Text ?? UiText.Get(Key))</span>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = string.Empty;
+    [Parameter] public string Operator { get; set; } = "AND";
+    [Parameter] public string? Text { get; set; }
+    private string Key => Operator switch {
+        "+" => "Requirement.HintSeparate",
+        "OR" => "Requirement.HintOr",
+        _ => "Requirement.HintAnd"
+    };
+}

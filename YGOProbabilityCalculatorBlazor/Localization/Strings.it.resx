@@ -2664,9 +2664,6 @@
   <data name="Property.Archetype" xml:space="preserve">
     <value>Archetipo: {0}</value>
   </data>
-  <data name="Requirement.ExpressionExplanation" xml:space="preserve">
-    <value>+ separa i requisiti di copie fisiche distinte; E/O descrivono una sola carta.</value>
-  </data>
   <data name="OperatorEdit.ConditionsChanged" xml:space="preserve">
     <value>Le condizioni in modifica sono cambiate. Riapri il gruppo.</value>
   </data>
@@ -2706,4 +2703,7 @@
   <data name="Preference.Current" xml:space="preserve">
     <value>{0}: {1}</value>
   </data>
+  <data name="Requirement.HintSeparate" xml:space="preserve"><value>Aggiungi un requisito per una carta distinta.</value></data>
+  <data name="Requirement.HintAnd" xml:space="preserve"><value>La stessa carta deve soddisfare entrambi i requisiti.</value></data>
+  <data name="Requirement.HintOr" xml:space="preserve"><value>La stessa carta può soddisfare uno dei due requisiti.</value></data>
 </root>

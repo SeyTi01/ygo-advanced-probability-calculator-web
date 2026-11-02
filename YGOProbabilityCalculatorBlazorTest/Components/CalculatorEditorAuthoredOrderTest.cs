@@ -201,7 +201,7 @@ public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
             }));
         await editor.Find("#removalSelector").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#removalSelector").ChangeAsync(new() { Value = a.Identity });
+        await AddEligibilityAlternative(editor, "B", a.Identity);
         Assert.That(editor.FindAll(".draw-selector-chip").Select(element => element.TextContent), Is.EqualTo(new[] { "B", "A" }));
         Assert.That(selector.Signature, Is.EqualTo(CardSelector.AnyOf([a.Identity, b.Identity]).Signature));
     }

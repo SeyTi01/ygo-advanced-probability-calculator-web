@@ -9,6 +9,7 @@ public partial class ComboEditor {
     private ComboAlternative? _editingRequirement;
     private int? _editingIndex;
     private int? _editingGroupIndex;
+    private int _editingProperty;
     private readonly List<CategoryBase> _draftProperties = [];
     private readonly Dictionary<string, ExpressionRow> _rowButtons = [];
     private readonly Dictionary<string, ExpressionMember> _alternativeButtons = [];
@@ -64,7 +65,7 @@ public partial class ComboEditor {
         while (_propertyKeys.Count <= index) { _propertyKeys.Add(new object()); }
         return _propertyKeys[index];
     }
-    private int FormOperandCount => _editingRequirement is not null && _draftProperties.Count > 1 ? _draftProperties.Count : 1;
+    private bool EditingComposite => _editingRequirement?.Category?.CategoryBases.Count > 1;
     private string? PropertyError => _propertyErrors.Values.FirstOrDefault();
     private CategoryBase? FindRequirementCategory(string? identity) {
         if (identity is not null && _numericCategories.TryGetValue(identity, out CategoryBase? numeric)) { return numeric; }
@@ -76,7 +77,7 @@ public partial class ComboEditor {
         if (change.Error is not null) { _propertyErrors[index] = change.Error; return; }
         _propertyErrors.Remove(index);
         if (change.Category is { } category) { _numericCategories[category.Identity] = category; }
-        if (FormOperandCount > 1) { ChangeProperty(index, change.Value); }
+        if (EditingComposite) { ChangeProperty(_editingProperty, change.Value); }
         else { SelectTarget(change.Value); }
     }
 
@@ -97,8 +98,8 @@ public partial class ComboEditor {
         }
     }
 
-    private void BeginEdit(ComboAlternative requirement, int index, int? groupIndex) {
-        if (IsOpenRow(requirement, index, groupIndex)) {
+    private void BeginEdit(ComboAlternative requirement, int index, int? groupIndex, int property = 0) {
+        if (IsOpenRow(requirement, index, groupIndex) && _editingProperty == property) {
             _returnRowKey = RowKey(requirement, index, groupIndex);
             CancelScopedAuthoring();
             return;
@@ -116,6 +117,7 @@ public partial class ComboEditor {
         _editingRequirement = requirement;
         _editingIndex = index;
         _editingGroupIndex = groupIndex;
+        _editingProperty = property;
         _selectedKind = requirement.Kind;
         _selectedCategory = requirement.Category?.BaseCategory.Identity ?? string.Empty;
         _selectedCardId = requirement.Card?.CardId ?? string.Empty;
@@ -126,31 +128,20 @@ public partial class ComboEditor {
         _draftProperties.Clear();
         if (requirement.Category is { } category) {
             _draftProperties.AddRange(category.CategoryBases);
+            _selectedCategory = _draftProperties[property].Identity;
         }
 
         _error = null;
         _returnRowKey = null;
-        _focusMinimum = _draftProperties.Count > 1;
-        _focusAlternativeEntry = _draftProperties.Count <= 1;
+        _focusMinimum = false;
+        _focusAlternativeEntry = true;
     }
 
     private void ChangeProperty(int index, string? identity) {
         CategoryBase? category = FindRequirementCategory(identity);
         if (category is not null && index >= 0 && index < _draftProperties.Count) {
             _draftProperties[index] = category;
-            _selectedCategory = _draftProperties[0].Identity;
-        }
-    }
-
-    private void RemoveDraftProperty(int index) {
-        if (index >= 0 && index < _draftProperties.Count && _draftProperties.Count > 1) {
-            _draftProperties.RemoveAt(index);
-            Dictionary<int, string> remainingErrors = _propertyErrors.Where(pair => pair.Key != index).ToDictionary(pair => pair.Key > index ? pair.Key - 1 : pair.Key, pair => pair.Value);
-            _propertyErrors.Clear();
-            foreach (KeyValuePair<int, string> error in remainingErrors) { _propertyErrors[error.Key] = error.Value; }
-            if (index < _propertyKeys.Count) { _propertyKeys.RemoveAt(index); }
-            _selectedCategory = _draftProperties[0].Identity;
-            _focusAlternativeEntry = _draftProperties.Count == 1;
+            _selectedCategory = _draftProperties[index].Identity;
         }
     }
 
@@ -231,6 +222,11 @@ public partial class ComboEditor {
         }
 
         Combo updated = ReplaceEditedRequirement(replacement!);
+        int index = _editingIndex!.Value;
+        if (_editingGroupIndex is null && replacement!.Kind != _editingRequirement!.Kind) {
+            index = replacement.Category is not null ? updated.Categories.Count - 1 : updated.Cards.Count - 1;
+        }
+        _returnRowKey = RowKey(replacement!, index, _editingGroupIndex);
         CancelScopedAuthoring();
         return ReferenceEquals(updated, Combo) ? Task.CompletedTask : OnReplaceCombo.InvokeAsync((Index, updated));
     }
@@ -292,6 +288,14 @@ public partial class ComboEditor {
             return Task.CompletedTask;
         }
 
+        if (requirement.Category is { CategoryBases.Count: > 1 } categoryGroup) {
+            ComboCategory remaining = ComboCategory.SameCard(categoryGroup.CategoryBases.Where((_, position) => position != _editingProperty),
+                categoryGroup.MinCount, categoryGroup.MaxCount, categoryGroup.MaximumMode);
+            Combo updated = ReplaceEditedRequirement(ComboAlternative.For(remaining));
+            CancelRequirement();
+            return OnReplaceCombo.InvokeAsync((Index, updated));
+        }
+
         int index = _editingIndex!.Value;
         int? groupIndex = _editingGroupIndex;
         CancelScopedAuthoring();
@@ -302,24 +306,12 @@ public partial class ComboEditor {
         return requirement.Category is { } category ? RemoveCategory(category, index) : RemoveCard(requirement.Card!, index);
     }
 
-    private Task HandleRequirementKeyDown(KeyboardEventArgs args) {
-        if (args.Key == "Escape") {
-            CancelRequirement();
-        }
-
-        return Task.CompletedTask;
-    }
-
     private void CancelRequirement() {
         if (_editingRequirement is { } requirement && _editingIndex is int index) {
             _returnRowKey = RowKey(requirement, index, _editingGroupIndex);
         }
         CancelScopedAuthoring();
     }
-
-    private Task HandleCountKeyDown(KeyboardEventArgs args) => args.Key == "Enter"
-        ? AddConstraint()
-        : HandleRequirementKeyDown(args);
 
     private void ReconcileEditingRequirement() {
         if (_editingRequirement is not { } original) { return; }

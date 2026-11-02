@@ -75,9 +75,6 @@
             </div>
 
             <div class="requirement-list expanded-expression" aria-label="@(UiText.Get("Ui.ComboRequirements"))">
-                @if (ConstraintCount > 0) {
-                    <p class="requirement-explanation text-body-secondary">@UiText.Get("Requirement.ExpressionExplanation")</p>
-                }
                 @foreach (ComboRequirementPosition position in Combo.RequirementOrder) {
                     @if (position != Combo.RequirementOrder[0]) { @RequirementSeparator(position) }
                     @if (position.Kind == ComboRequirementKind.Category) {
@@ -133,7 +130,7 @@
         @ref="_rowButtons[RowKey(requirement, index, groupIndex)]" data-requirement="@RowKey(requirement, index, groupIndex)"
         OnEdit="() => BeginEdit(requirement, index, groupIndex)">
         <ChildContent>
-            @if (requirement.Category is { } category) { @CategoryBadge(category, operation => ConvertSameCard(requirement, index, groupIndex, operation), SameCardOperators(requirement, index, groupIndex), ConnectorError($"same:{RowKey(requirement, index, groupIndex)}"), showParentheses: false) }
+            @if (requirement.Category is { } category) { @CategoryBadge(category, operation => ConvertSameCard(requirement, index, groupIndex, operation), SameCardOperators(requirement, index, groupIndex), ConnectorError($"same:{RowKey(requirement, index, groupIndex)}"), showParentheses: false, editProperty: property => BeginEdit(requirement, index, groupIndex, property), activeProperty: IsOpenRow(requirement, index, groupIndex) ? _editingProperty : null) }
             else { @CardBadge(requirement.Card!) }
         </ChildContent>
         <EditorContent>
@@ -151,14 +148,23 @@
         InteractiveSummary="true" CenterContent="true" HideEditLabel="true" @ref="_rowButtons[RowKey(group.Alternatives[start], start, groupIndex)]"
         OnEdit="() => ToggleAlternativeTerm(group, groupIndex, start, count)">
         <ChildContent>
-            <ExpressionTerm Count="count" Operator="OR" CenterOperands="@(count > 1)" OperandKey="offset => RowIdentity(group.Alternatives[start + offset], start + offset, groupIndex)">
+            <ExpressionTerm Count="count" Operator="OR" CenterOperands="@(count > 1 && !group.Alternatives.Skip(start).Take(count).Any(IsComposite))" OperandKey="offset => RowIdentity(group.Alternatives[start + offset], start + offset, groupIndex)">
                 <SeparatorContent>@GroupSeparator(groupIndex, inline: true)</SeparatorContent>
                 <OperandContent Context="offset">
                     @{ int leafIndex = start + offset; ComboAlternative leaf = group.Alternatives[leafIndex]; }
+                    @if (IsComposite(leaf)) {
+                        <span data-requirement="@RowKey(leaf, leafIndex, groupIndex)">
+                        @CategoryBadge(leaf.Category!, showParentheses: true,
+                            editProperty: property => BeginEdit(leaf, leafIndex, groupIndex, property),
+                            activeProperty: IsOpenRow(leaf, leafIndex, groupIndex) ? _editingProperty : null)
+                        </span>
+                    }
+                    else {
                     <ExpressionMember @ref="_alternativeButtons[RowKey(leaf, leafIndex, groupIndex)]" data-requirement="@RowKey(leaf, leafIndex, groupIndex)"
                         Label="@(UiText.Format("Ui.Edit0", AlternativeTargetLabel(leaf)))" Expanded="IsOpenRow(leaf, leafIndex, groupIndex)" OnEdit="() => BeginEdit(leaf, leafIndex, groupIndex)">
                         @AlternativeBadge(leaf, showParentheses: false)
                     </ExpressionMember>
+                    }
                 </OperandContent>
             </ExpressionTerm>
         </ChildContent>
@@ -172,14 +178,12 @@
         UpdateExisting="@(_editingRequirement is null && !AuthoringScope && HasSelectedConstraint)"
         ShowActions="@(_editingRequirement is not null)" ActionOperators="@(_selectedKind == "Category" ? new[] { "AND", "OR" } : new[] { "OR" })"
         OnAddAlternative="ExtendWithAlternative" OnAddProperty="ExtendWithProperty" OnRemoveRequirement="DeleteEditingRequirement"
-        OperandCount="FormOperandCount" OperandKey="FormOperandKey" Error="@PropertyError" OnSubmit="AddConstraint" OnCancel="CancelRequirement" OnKeyDown="HandleRequirementKeyDown"
-        OnRemoveOperand="RemoveDraftProperty" AllowedOperators="@(new[] { "AND" })">
+        OperandCount="1" OperandKey="FormOperandKey" Error="@PropertyError" OnSubmit="AddConstraint" OnCancel="CancelRequirement">
         <OperandContent Context="position">
             <RequirementPropertyPicker @ref="_propertyPickers[position]" Id="@(position == 0 ? $"comboTarget{Index}" : $"comboProperty{Index}-{position}")"
-                Value="@(FormOperandCount > 1 ? _draftProperties[position].Identity : SelectedTarget)"
+                Value="@SelectedTarget"
                 Label="@(UiText.Get("Ui.Requirement"))"
-                AccessibleLabel="@(FormOperandCount > 1 ? UiText.Format("Ui.SameCardProperty0", position + 1) : null)"
-                Categories="@(FormOperandCount > 1 ? _availableCategories : SelectableCategories.ToArray())" Cards="@(AndScope || FormOperandCount > 1 ? [] : Cards)"
+                Categories="@(EditingComposite ? _availableCategories : SelectableCategories.ToArray())" Cards="@(AndScope || EditingComposite ? [] : Cards)"
                 RelevantIdentities="_categoryOptions.RelevantMetadataIdentities" CardLabel="card => CardSelectionLabel(card.Id)"
                 OnChanged="change => ChangeRequirementTarget(position, change)" />
         </OperandContent>
@@ -187,7 +191,6 @@
             <label for="minCount@(Index)" class="form-label">@(UiText.Get("Ui.AtLeast"))</label>
             <input id="minCount@(Index)" class="form-control" type="number" min="0" step="1" value="@_minCount"
                    @ref="_minimumInput"
-                   @onkeydown="HandleCountKeyDown" @onkeydown:stopPropagation
                    @oninput="e => _minCount = e.Value?.ToString() ?? string.Empty" />
         </QuantityContent>
         <AfterContent>
@@ -196,7 +199,6 @@
             <div class="requirement-max">
                 <label for="maxCount@(Index)" class="form-label">@(UiText.Get("Ui.AtMost"))</label>
                 <input id="maxCount@(Index)" class="form-control" type="number" min="0" step="1" placeholder="@(UiText.Get("Ui.Any"))"
-                       @onkeydown="HandleCountKeyDown" @onkeydown:stopPropagation
                        title="@(UiText.Get("Ui.LeaveEmptyForAny"))" value="@_maxCount" @oninput="e => _maxCount = e.Value?.ToString() ?? string.Empty" />
                 <small class="text-body-secondary">@(UiText.Get("Ui.LeaveEmptyForAnyNumberSetBothCountsTo0ToExcludeMatchingCards"))</small>
             </div>
@@ -287,15 +289,19 @@
         return UiText.Format("Requirement.WithRange", subject, AlternativeRange(alternative));
     }
 
-    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null, bool showParentheses = true) => @<span class="@(category.CategoryBases.Count > 1 ? (showParentheses ? "composite-alternative same-card-group" : "same-card-group") : "single-card-group") @(category.CategoryBases.Count > 1 && !showParentheses && changeOperator is not null ? "centered-same-card-group" : null)">
+    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null, bool showParentheses = true, Action<int>? editProperty = null, int? activeProperty = null) => @<span class="@(category.CategoryBases.Count > 1 ? (showParentheses ? "composite-alternative same-card-group" : "same-card-group") : "single-card-group") @(category.CategoryBases.Count > 1 && !showParentheses && changeOperator is not null ? "centered-same-card-group" : null)">
         @if (category.CategoryBases.Count == 1) { @PropertyBadge(category, 0) }
         else {
-            <ExpressionTerm Count="category.CategoryBases.Count" Compact="showParentheses" CenterOperands="@(!showParentheses && changeOperator is not null)" OperandKey="index => category.CategoryBases[index].Identity"
+            <ExpressionTerm Count="category.CategoryBases.Count" Compact="@(showParentheses && editProperty is null)" CenterOperands="@(!showParentheses && changeOperator is not null)" OperandKey="index => category.CategoryBases[index].Identity"
                 AllowedOperators="@(allowedOperators ?? ["AND", "OR"])" Error="@operatorError"
                 OnOperatorChanged="@(changeOperator is null ? default : EventCallback.Factory.Create(this, changeOperator))">
                 <PrefixContent>@if (showParentheses && category.CategoryBases.Count > 1) { @ExpressionParenthesis(true) }</PrefixContent>
                 <SuffixContent>@if (showParentheses && category.CategoryBases.Count > 1) { @ExpressionParenthesis(false) }</SuffixContent>
-                <OperandContent Context="index">@PropertyBadge(category, index)</OperandContent>
+                <OperandContent Context="index">
+                    @if (editProperty is not null) {
+                        <ExpressionMember Label="@(UiText.Format("Ui.Edit0", DisplayLabels.Category(category.CategoryBases[index])))" Expanded="@(activeProperty == index)" OnEdit="() => editProperty(index)">@PropertyBadge(category, index)</ExpressionMember>
+                    } else { @PropertyBadge(category, index) }
+                </OperandContent>
             </ExpressionTerm>
         }
     </span>;

@@ -22,11 +22,11 @@ public class CalculatorEditorPreDrawTest : CalculatorEditorTestBase {
         await SaveSimulation(editor);
         await AddEligibilityProperty(editor, "A", "metadata:kind:monster");
         await SaveSimulation(editor);
-        await editor.Find("#cardCostEligibility0").ChangeAsync(new() { Value = "user:B" });
+        await AddEligibilityAlternative(editor, "A", "user:B");
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PreDrawRemovalCount, Is.EqualTo(2));
-        Assert.That(editor.Instance.Card.PreDrawSelector.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
-        Assert.That(editor.Instance.Card.PreDrawSelector.Children.Any(child => child.Kind == CardSelectorKind.AllOf), Is.True);
+        Assert.That(editor.Instance.Card.PreDrawSelector.Kind, Is.EqualTo(CardSelectorKind.AllOf));
+        Assert.That(editor.Instance.Card.PreDrawSelector.Children.Any(child => child.Kind == CardSelectorKind.AnyOf), Is.True);
         await cut.Find("[aria-label='Remove category A']").ClickAsync(new());
         Assert.That(cut.FindAll("[aria-label='Edit category A']"), Has.Count.EqualTo(1));
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
@@ -52,7 +52,7 @@ public class CalculatorEditorPreDrawTest : CalculatorEditorTestBase {
         await editor.Find("#cardCostEligibility0").ChangeAsync(new() { Value = "user:A" });
         await SaveSimulation(editor);
         AssertPreviousResult(cut);
-        await editor.Find("#cardCostEligibility0").ChangeAsync(new() { Value = "metadata:attribute:dark" });
+        await AddEligibilityAlternative(editor, "A", "metadata:attribute:dark");
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PreDrawSelector.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
@@ -65,7 +65,7 @@ public class CalculatorEditorPreDrawTest : CalculatorEditorTestBase {
         await RemoveEligibility(editor, "A", a.Identity);
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PreDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Category));
-        await editor.Find("#cardCostEligibility1").ChangeAsync(new() { Value = "any" });
+        await Button(editor, "Clear filter").ClickAsync(new());
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PreDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Any));
         await editor.Find("#cardCostEligibility1").ChangeAsync(new() { Value = "user:B" });
