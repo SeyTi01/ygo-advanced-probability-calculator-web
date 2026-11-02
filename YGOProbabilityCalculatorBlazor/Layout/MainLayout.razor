@@ -22,9 +22,9 @@
                             <select @key="_languageControlVersion" id="language-preference" class="form-select preference-select" aria-label="@UiText.Get("Language.Label")"
                                     title="@UiText.Format("Preference.Current", UiText.Get("Language.Label"), LanguagePreferenceLabel)"
                                     value="@LanguagePreference" disabled="@(_switching || !_languageReady || _languageWorkspace.Restoring)" @onchange="ChangeLanguage">
-                                <option value="system">@UiText.Get("Ui.System")</option>
+                                <option value="system">&nbsp;&nbsp;&nbsp;@UiText.Get("Ui.System")&nbsp;&nbsp;&nbsp;</option>
                                 @foreach (ProductionLocale locale in LocalePreference.Available) {
-                                    <option value="@locale.Id">@locale.Name</option>
+                                    <option value="@locale.Id">&nbsp;&nbsp;&nbsp;@locale.Name&nbsp;&nbsp;&nbsp;</option>
                                 }
                             </select>
                             <svg class="preference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true" focusable="false">
@@ -42,9 +42,9 @@
                                 title="@UiText.Format("Preference.Current", UiText.Get("Ui.ColorThemePreference"), ThemePreferenceLabel)"
                                 value="@ThemePreference"
                                 @onchange="ChangeThemePreference">
-                            <option value="system">@(UiText.Get("Ui.System"))</option>
-                            <option value="light">@(UiText.Get("Ui.Light"))</option>
-                            <option value="dark">@(UiText.Get("Ui.Dark"))</option>
+                            <option value="system">&nbsp;&nbsp;&nbsp;@(UiText.Get("Ui.System"))&nbsp;&nbsp;&nbsp;</option>
+                            <option value="light">&nbsp;&nbsp;&nbsp;@(UiText.Get("Ui.Light"))&nbsp;&nbsp;&nbsp;</option>
+                            <option value="dark">&nbsp;&nbsp;&nbsp;@(UiText.Get("Ui.Dark"))&nbsp;&nbsp;&nbsp;</option>
                         </select>
                         <svg class="preference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                             <g class="theme-icon-light">
