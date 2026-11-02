@@ -1,11 +1,12 @@
 .combo-name-row {
     max-width: 48rem;
+    margin-bottom: var(--expression-section-spacing);
 }
 
 .combo-editor .combo-editor-header .combo-header-content {
     display: grid;
     grid-template-columns: fit-content(35%) minmax(0, 1fr);
-    column-gap: .5rem;
+    column-gap: var(--expression-stack-gap);
 }
 
 .combo-header-identity {
@@ -21,7 +22,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .25rem;
+    gap: var(--expression-inline-gap);
     max-width: 100%;
     min-width: 0;
     overflow-wrap: anywhere;
@@ -60,7 +61,7 @@
     flex: 0 1 auto;
     flex-wrap: nowrap;
     align-items: center;
-    gap: .25rem;
+    gap: var(--expression-inline-gap);
     max-width: 100%;
     min-width: 0;
 }
@@ -71,9 +72,9 @@
 
 .expression-and,
 .combo-header-requirements > .expression-term:first-child::before {
-    flex: 0 0 .6rem;
+    flex: 0 0 var(--expression-header-gutter);
     /* Firefox's intrinsic sizing also needs the gutter's explicit width. */
-    width: .6rem;
+    width: var(--expression-header-gutter);
     text-align: center;
 }
 
@@ -87,8 +88,8 @@
     min-width: 0;
 }
 
-/* OR members add .25rem of button padding to the shared .5rem term gap. */
-.same-card-group { --expression-term-gap: .75rem; }
+/* Match the visible badge/operator gap when same-card terms lack member buttons. */
+.same-card-group { --expression-term-gap: calc(var(--expression-stack-gap) + var(--expression-member-padding-inline)); }
 .single-card-group { display: contents; }
 .centered-same-card-group { display: block; width: 100%; min-width: 0; max-width: 100%; }
 
@@ -117,21 +118,21 @@
 /* Expanded requirements use rows; compact header expressions keep their chips. */
 .requirement-list {
     display: grid;
-    gap: .5rem;
-    margin-bottom: .75rem;
+    gap: var(--expression-stack-gap);
+    margin-bottom: var(--expression-panel-spacing);
 }
 .requirement-list ::deep > .requirement-form { margin-block-start: 0; }
 .requirement-explanation {
     font-size: .8rem;
     margin: 0 0 .2rem;
 }
-.requirement-bounds { font-size: .8rem; margin-top: .5rem; }
-.requirement-bounds summary { cursor: pointer; width: fit-content; padding: .4rem 0; min-height: 32px; }
-.requirement-max { display: grid; grid-template-columns: 5rem minmax(0, 1fr); align-items: center; gap: .4rem .65rem; margin-top: .4rem; }
+.requirement-bounds { font-size: .8rem; margin-top: var(--expression-stack-gap); }
+.requirement-bounds summary { cursor: pointer; width: fit-content; padding: var(--expression-row-gap) 0; min-height: 32px; }
+.requirement-max { display: grid; grid-template-columns: 5rem minmax(0, 1fr); align-items: center; gap: var(--expression-row-gap) var(--expression-field-gap); margin-top: var(--expression-row-gap); }
 .requirement-max label { margin: 0; }
 .requirement-max input { max-width: 7rem; }
 .requirement-max small { grid-column: 1 / -1; }
 
-.combo-footer { margin-top: 1rem; }
+.combo-footer { margin-top: var(--expression-section-spacing); }
 .combo-footer .combo-group-field { max-width: 20rem; }
 .combo-footer .form-label { font-size: .8rem; }

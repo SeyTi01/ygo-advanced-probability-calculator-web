@@ -1,11 +1,8 @@
-.requirement-or-group { display: grid; gap: .5rem; min-width: 0; }
+.requirement-or-group { display: grid; gap: var(--expression-stack-gap); min-width: 0; }
 .expression-group-nested {
     display: grid;
-    gap: .5rem;
+    gap: var(--expression-stack-gap);
     border-inline-start: 2px solid var(--bs-border-color);
-    padding-inline-start: .65rem;
-    margin-inline-start: .2rem;
-}
-@media (max-width: 575.98px) {
-    .expression-group-nested { padding-inline-start: .4rem; margin-inline-start: 0; }
+    padding-inline-start: var(--expression-nested-inset);
+    margin-inline-start: var(--expression-nested-offset);
 }

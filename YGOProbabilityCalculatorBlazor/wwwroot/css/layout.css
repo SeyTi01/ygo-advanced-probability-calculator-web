@@ -6,6 +6,22 @@
     --app-content-top-spacing: 1.1rem;
     --app-touch-target-size: 2.75rem;
     --calculator-section-spacing: 1.5rem;
+    /* Shared expression rhythm crosses Razor isolation boundaries, including
+       selector editors outside combos. Components choose roles, not raw gaps. */
+    --expression-inline-gap: .25rem;
+    --expression-stack-gap: .5rem;
+    --expression-field-gap: .65rem;
+    --expression-panel-spacing: .75rem;
+    --expression-section-spacing: 1rem;
+    --expression-row-gap: .4rem;
+    --expression-row-padding-block: .25rem;
+    --expression-row-padding-inline: .4rem;
+    --expression-member-padding-inline: .25rem;
+    --expression-control-height: 36px;
+    --expression-quantity-width: 5.5rem;
+    --expression-nested-inset: .65rem;
+    --expression-nested-offset: .2rem;
+    --expression-header-gutter: .6rem;
     /* Preserve the existing desktop inset without offsetting individual controls. */
     --calculator-toolbar-spacing: 0.975rem;
 }
@@ -42,6 +58,18 @@
 
 @media (max-width: 767.98px) {
     :root {
+        --expression-control-height: var(--app-touch-target-size);
         --calculator-toolbar-spacing: var(--app-content-top-spacing);
     }
+}
+
+@media (max-width: 575.98px) {
+    :root {
+        --expression-nested-inset: var(--expression-row-gap);
+        --expression-nested-offset: 0;
+    }
+}
+
+@media (pointer: coarse) {
+    :root { --expression-control-height: var(--app-touch-target-size); }
 }
