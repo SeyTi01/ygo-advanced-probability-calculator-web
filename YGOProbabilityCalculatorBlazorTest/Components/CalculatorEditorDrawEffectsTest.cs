@@ -53,7 +53,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         OpenSimulation(allureEditor);
         Assert.That(allureEditor.FindAll("#cardDrawModeHelp0"), Is.Empty);
         Assert.That(allureEditor.Find("#cardDiscard0").HasAttribute("disabled"), Is.False);
-        Assert.That(allureEditor.Find("#cardEligibility0"), Is.Not.Null);
+        Assert.That(EligibilityRow(allureEditor, "Dark"), Is.Not.Null);
         Assert.That(gracefulEditor.Find(".accordion-button").TextContent, Does.Contain("Draw 3").And.Not.Contain("Remove"));
         Assert.That(gracefulEditor.FindAll("#cardDrawModeHelp1"), Is.Empty);
         Assert.That(ordinaryEditor.FindAll(".accordion-button .badge").ToArray(), Is.Empty);
@@ -71,7 +71,7 @@ public sealed class CalculatorEditorDrawEffectsTest : CalculatorEditorTestBase {
         Assert.That(inactiveHeader, Does.Contain("Draw configured · Off").And.Not.Contain("Draw 2").And.Not.Contain("Remove 1"));
         Assert.That(allureEditor.Find("#cardDrawModeHelp0").GetAttribute("role"), Is.EqualTo("note"));
         Assert.That(allureEditor.Find("#cardDiscard0").HasAttribute("disabled"), Is.False);
-        Assert.That(allureEditor.Find("#cardEligibility0"), Is.Not.Null);
+        Assert.That(EligibilityRow(allureEditor, "Dark"), Is.Not.Null);
         Assert.That((allureEditor.Instance.Card.DrawCount,
             allureEditor.Instance.Card.DrawOncePerTurn,
             allureEditor.Instance.Card.PostDrawDiscardCount,

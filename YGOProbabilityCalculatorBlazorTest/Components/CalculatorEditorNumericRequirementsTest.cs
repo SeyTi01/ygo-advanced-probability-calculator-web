@@ -46,7 +46,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
         simulation.Find(".requirement-property-picker > select").Change(target);
         SetRange(simulation, property, "3", "5");
         simulation.Find($"input[aria-label='Maximum {property}']").Input("2");
-        Assert.That(simulation.Find(".requirement-context-actions button[type=submit]").HasAttribute("disabled"), Is.True);
+        Assert.That(simulation.Find(".requirement-form button[type=submit]").HasAttribute("disabled"), Is.True);
         simulation.Find("form").Submit();
         Assert.That(selector, Is.EqualTo(CardSelector.For(a)));
         Button(simulation, "Cancel").Click();
@@ -59,18 +59,19 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
     }
 
     [Test]
-    public void RemovingAnotherPropertyKeepsInvalidNumericDraftAndSaveProtection() {
+    public void InvalidNumericDraftBlocksSaveAndSwitchingConditionsDiscardsOnlyTheDraft() {
         Combo combo = new([ComboCategory.SameCard([new NumericPropertyRange(NumericPropertyKind.Level, 2, 5).ToCategory(), a, b], 1, 3)]);
         IRenderedComponent<ComboEditor> editor = context.RenderComponent<ComboEditor>(parameters => parameters
             .Add(component => component.Combo, combo).Add(component => component.CategoryBases, new[] { a, b }));
         editor.Find(".requirement-edit").Click();
         editor.Find("input[aria-label='Maximum Level']").Input("1");
-        RequirementPropertyPicker picker = editor.FindComponents<RequirementPropertyPicker>()[0].Instance;
-        editor.Find("button[aria-label='Remove property 2']").Click();
-        Assert.That(editor.FindComponents<RequirementPropertyPicker>()[0].Instance, Is.SameAs(picker));
         Assert.That(editor.Find("input[aria-label='Maximum Level']").GetAttribute("value"), Is.EqualTo("1"));
         Assert.That(editor.Find(".requirement-submit button").HasAttribute("disabled"), Is.True);
         editor.Find("form").Submit();
+        Assert.That(editor.Instance.Combo, Is.SameAs(combo));
+        ConditionButton(editor, "category:0", 1).Click();
+        Assert.That(editor.FindAll("form .requirement-property-picker"), Has.Count.EqualTo(1));
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(a.Identity));
         Assert.That(editor.Instance.Combo, Is.SameAs(combo));
     }
 

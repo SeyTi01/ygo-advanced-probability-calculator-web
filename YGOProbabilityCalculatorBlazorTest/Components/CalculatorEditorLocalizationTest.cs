@@ -11,6 +11,54 @@ using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorLocalizationTest : CalculatorEditorTestBase {
+    [TestCase("en")]
+    [TestCase("de")]
+    [TestCase("fr")]
+    [TestCase("it")]
+    [TestCase("ja")]
+    [TestCase("pt")]
+    public void OperatorControlsDescribeTheirMeaningWithoutReplacingTheirAction(string language) {
+        using PresentationLocale locale = new(language, production: true);
+        foreach (string operation in new[] { "+", "AND", "OR" }) {
+            bool added = false;
+            string? changed = null;
+            IRenderedComponent<ExpressionSeparator> separator = context.RenderComponent<ExpressionSeparator>(parameters => {
+                parameters.Add(component => component.Operator, operation);
+                if (operation == "+") {
+                    parameters.Add(component => component.OnAdd, () => added = true);
+                } else {
+                    parameters.Add(component => component.OnOperatorChanged, value => changed = value);
+                }
+            });
+            AngleSharp.Dom.IElement control = separator.Find("button, select");
+            if (operation == "+") {
+                string? hintId = control.GetAttribute("aria-describedby");
+                AngleSharp.Dom.IElement hint = separator.Find($"[id='{hintId}']");
+                string key = operation switch { "+" => "Separate", "AND" => "And", _ => "Or" };
+                Assert.Multiple(() => {
+                    Assert.That(control.GetAttribute("data-operator-hint"), Is.EqualTo(hintId));
+                    Assert.That(hint.GetAttribute("role"), Is.EqualTo("tooltip"));
+                    Assert.That(hint.HasAttribute("hidden"), Is.True);
+                    Assert.That(hint.TextContent, Is.EqualTo(UiText.Get($"Requirement.Hint{key}")));
+                });
+                } else {
+                Assert.That(control.HasAttribute("data-operator-hint"), Is.False);
+                Assert.That(separator.FindAll("[role=tooltip]"), Is.Empty);
+            }
+            if (operation == "+") {
+                control.Click();
+                Assert.That(added, Is.True);
+            } else {
+                control.Change(operation == "AND" ? "OR" : "AND");
+                Assert.That(changed, Is.EqualTo(operation == "AND" ? "OR" : "AND"));
+            }
+        }
+        IRenderedComponent<RequirementActions> actions = context.RenderComponent<RequirementActions>();
+        foreach (AngleSharp.Dom.IElement action in actions.FindAll("[data-operator-hint]")) {
+            Assert.That(actions.Find($"[id='{action.GetAttribute("aria-describedby")}']").GetAttribute("role"), Is.EqualTo("tooltip"));
+        }
+    }
+
     [TestCase("en", "Add OR", "Add AND", "Remove")]
     [TestCase("de", "ODER hinzufügen", "UND hinzufügen", "Entfernen")]
     [TestCase("fr", "Ajouter OU", "Ajouter ET", "Retirer")]
@@ -44,7 +92,6 @@ public sealed class CalculatorEditorLocalizationTest : CalculatorEditorTestBase 
         IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
         Assert.That(combo.Find(".combo-header-requirements").TextContent, Does.Contain("テーマ: ＶＳ"));
         combo.Find(".accordion-button").Click();
-        Assert.That(combo.Find(".requirement-explanation").TextContent, Is.EqualTo(UiText.Get("Requirement.ExpressionExplanation")));
         OpenNewRequirement(combo);
         Assert.That(combo.Find(".requirement-property-picker").TextContent,
             Does.Contain("テーマ: ＶＳ").And.Contain(custom.Name));

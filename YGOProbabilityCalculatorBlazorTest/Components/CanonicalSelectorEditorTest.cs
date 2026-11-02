@@ -9,12 +9,27 @@ using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CanonicalSelectorEditorTest : CalculatorEditorTestBase {
+    private static IEnumerable<int> BuiltInCards => CardEffectRegistry.Default.All.Select(effect => effect.CanonicalCardId);
+
+    [TestCaseSource(nameof(BuiltInCards))]
+    public void OpeningAndSavingEveryBuiltInSimulationPreservesItsDefinition(int id) {
+        Card source = CardEffectRegistry.Default.RestoreBuiltIn(new([], externalCardId: id));
+        Card result = source;
+        string original = JsonSerializer.Serialize(source.EffectPlan);
+        IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
+            .Add(component => component.Card, source).Add(component => component.OnChanged, card => result = card));
+        editor.Find(".simulation-edit").Click();
+        editor.Find(".simulation-save").Click();
+        Assert.That(JsonSerializer.Serialize(result.EffectPlan), Is.EqualTo(original));
+        Assert.That(result.EffectProfile, Is.EqualTo(source.EffectProfile));
+    }
+
     [TestCase(32807846, 4, 2)]
     [TestCase(85106525, 4, 2)]
     [TestCase(57103969, 4, 2)]
     [TestCase(72323266, 3, 3)]
     [TestCase(96729612, 7, 2)]
-    public void FreshAndRestoredRangesHaveOneFieldAndAnEditableRealNumericOperand(int id, int maximum, int operands) {
+    public void FreshAndRestoredRangesKeepTheirGroupingAndAnEditableNumericOperand(int id, int maximum, int operands) {
         Card source = CardEffectRegistry.Default.CreateImportedCard(new() { Id = id, Name = "Source" }, 1, id);
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
@@ -23,15 +38,16 @@ public sealed class CanonicalSelectorEditorTest : CalculatorEditorTestBase {
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(1));
         Assert.That(editor.FindAll(".requirement-edit"), Has.Count.EqualTo(1));
         Assert.That(editor.FindComponents<ExpressionGroup>(), Is.Empty);
-        editor.Find(".requirement-edit").Click();
-        Assert.That(editor.FindAll(".requirement-operand"), Has.Count.EqualTo(operands));
+        Assert.That(editor.FindAll(".expression-member"), Has.Count.EqualTo(operands));
+        editor.FindAll(".expression-member").Single(member => member.TextContent.Contains("Level")).Click();
+        Assert.That(editor.FindAll(".requirement-operand"), Has.Count.EqualTo(1));
         Assert.That(editor.Find("select[aria-label='Comparison']").GetAttribute("value"), Is.EqualTo("range"));
         Assert.That(editor.Find("input[aria-label='Minimum Level']").GetAttribute("value"), Is.EqualTo("1"));
         Assert.That(editor.Find("input[aria-label='Maximum Level']").GetAttribute("value"), Is.EqualTo(maximum.ToString()));
         editor.Find("input[aria-label='Minimum Level']").Input("2");
         editor.Find(".selector-expression form").KeyDown(new KeyboardEventArgs { Key = "Escape" });
         Assert.That(saved, Is.Null);
-        editor.Find(".requirement-edit").Click();
+        editor.FindAll(".expression-member").Single(member => member.TextContent.Contains("Level")).Click();
         Assert.That(editor.Find("input[aria-label='Minimum Level']").GetAttribute("value"), Is.EqualTo("1"));
         editor.Find("input[aria-label='Minimum Level']").Input("2");
         editor.Find(".selector-expression form").Submit();
@@ -122,7 +138,7 @@ public sealed class CanonicalSelectorEditorTest : CalculatorEditorTestBase {
             editor.Find(".simulation-edit").Click();
             Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(2));
             Assert.That(editor.FindComponents<ExpressionGroup>(), Has.Count.EqualTo(1));
-            Assert.That(editor.FindAll(".selector-expression .expression-separator > select").Select(select => select.GetAttribute("value")), Does.Contain("AND"));
+            Assert.That(editor.FindAll(".selector-expression .expression-separator select").Select(separator => separator.GetAttribute("value")), Does.Contain("AND"));
         }
         foreach (int id in new[] { 67115133, 48805472, 78058681 }) {
             Card source = CardEffectRegistry.Default.RestoreBuiltIn(new([], externalCardId: id));

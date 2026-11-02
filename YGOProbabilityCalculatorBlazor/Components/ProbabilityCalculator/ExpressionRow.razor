@@ -5,7 +5,7 @@
                 <button type="button" class="requirement-edit requirement-edit-overlay control-focus-ring" @attributes="AdditionalAttributes" aria-label="@Label"
                         title="@Label" aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @onclick:stopPropagation @ref="_button"></button>
             }
-            <span class="requirement-description">@ChildContent</span>
+            <span class="requirement-description"><CascadingValue Value="this" IsFixed="true">@ChildContent</CascadingValue></span>
             @if (!HideEditLabel) {
                 <button type="button" class="requirement-edit control-focus-ring" @attributes="AdditionalAttributes" aria-label="@Label"
                         aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @onclick:stopPropagation @ref="_button">@(UiText.Get("Ui.Edit"))</button>
@@ -36,6 +36,13 @@
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private ElementReference _button;
+    private ExpressionMember? _lastMember;
 
-    public ValueTask FocusAsync(bool preventScroll = false) => _button.FocusAsync(preventScroll);
+    internal void RememberMember(ExpressionMember member) => _lastMember = member;
+    internal void ForgetMember(ExpressionMember member) {
+        if (ReferenceEquals(_lastMember, member)) { _lastMember = null; }
+    }
+
+    public ValueTask FocusAsync(bool preventScroll = false) => _lastMember is { } member
+        ? member.FocusAsync(preventScroll) : _button.FocusAsync(preventScroll);
 }

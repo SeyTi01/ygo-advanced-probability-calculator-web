@@ -1,18 +1,19 @@
 <div class="expression-separator @(Operator == "OR" ? "alternative-separator" : "requirement-and-separator") @(Inline ? "expression-inline-separator" : "") @(Symbol == "+" ? "expression-copy-separator" : "")" role="@(OnAdd.HasDelegate ? null : OnOperatorChanged.HasDelegate ? "group" : "separator")" aria-label="@(OnAdd.HasDelegate ? null : Label)">
     @if (OnAdd.HasDelegate) {
-        <button type="button" class="expression-add-button @AddButtonClass control-focus-ring" aria-label="@InputLabel" title="@InputLabel"
+        <button type="button" class="expression-add-button @AddButtonClass control-focus-ring" aria-label="@InputLabel" aria-describedby="@_hintId" data-operator-hint="@_hintId"
                 aria-expanded="@(AddExpanded?.ToString().ToLowerInvariant())" @ref="_control" @onclick="OnAdd">@(Symbol ?? Operator)</button>
     }
     else if (OnOperatorChanged.HasDelegate) {
         <select id="@InputId" class="expression-operator control-focus-ring" @ref="_control" aria-invalid="@(Error is not null ? "true" : null)" aria-label="@(InputLabel ?? UiText.Format("Ui.Change0Operator", Symbol ?? Operator))" @bind:get="Symbol ?? Operator" @bind:set="Change">
             @foreach (string choice in AllowedOperators) {
-                <option value="@choice">@choice</option>
+                <option @key="choice" value="@choice">@choice</option>
             }
         </select>
     }
     else {
         <span aria-hidden="true">@(Symbol ?? Operator)</span>
     }
+    @if (OnAdd.HasDelegate) { <OperatorHint Id="@_hintId" Operator="@(Symbol ?? Operator)" /> }
     @if (Error is not null) { <small class="expression-operator-error text-danger" role="alert">@Error</small> }
 </div>
 
@@ -30,6 +31,7 @@
     [Parameter] public EventCallback<string> OnOperatorChanged { get; set; }
     [Parameter] public EventCallback OnAdd { get; set; }
     private ElementReference _control;
+    private readonly string _hintId = $"operator-hint-{Guid.NewGuid():N}";
     public ValueTask FocusAsync() => _control.FocusAsync(preventScroll: true);
     private string Label => AccessibleLabel ?? ((Symbol ?? Operator) switch {
         "+" => UiText.Get("Ui.SeparateCardRequirements"),

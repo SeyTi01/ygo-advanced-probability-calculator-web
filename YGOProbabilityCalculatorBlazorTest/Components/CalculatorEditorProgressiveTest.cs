@@ -24,7 +24,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         IElement requirements = editor.Find(".requirement-list");
-        Assert.That(requirements.Children.Skip(1).Where(element => element.QuerySelector(".add-top-level-group") is null)
+        Assert.That(requirements.Children.Where(element => element.QuerySelector(".add-top-level-group") is null)
             .Select(element => element.ClassList.Single(name => name is "requirement-row" or "requirement-and-separator" or "requirement-or-group")), Is.EqualTo(new[] {
             "requirement-row", "requirement-and-separator", "requirement-row", "requirement-and-separator",
             "requirement-or-group", "requirement-and-separator", "requirement-or-group"
@@ -41,7 +41,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         await EditRequirement(editor, "category:0");
         await Button(editor, "Remove requirement").ClickAsync(new());
         Assert.That(requirements.Children.Count(element => element.ClassList.Contains("requirement-and-separator") && element.QuerySelector("select") is not null), Is.EqualTo(2));
-        Assert.That(requirements.Children[1].ClassList, Does.Contain("requirement-row"));
+        Assert.That(requirements.Children[0].ClassList, Does.Contain("requirement-row"));
         Assert.That(editor.FindAll(".requirement-or-group"), Has.Count.EqualTo(2));
     }
 
@@ -96,7 +96,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         Assert.That(editor.Find("details").HasAttribute("open"), Is.False);
         AssertAnyMaximumDraft(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:r" });
-        await RequirementField(editor, "#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+        await editor.Find(".requirement-form").SubmitAsync(); // Native Enter submission is verified in the browser.
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Cards.Single().CardId, Is.EqualTo("r"));
@@ -194,8 +194,8 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
             Assert.That(parentheses.Select(element => element.TextContent.Trim()), Is.EqualTo(new[] { "(", ")" }));
             Assert.That(parentheses.All(element => element.QuerySelector("svg")?.GetAttribute("aria-hidden") == "true"), Is.True);
         }
-        await EditRequirement(editor, "alternative:0:0");
-        await editor.Find("[aria-label='Same-card property 2']").ChangeAsync(new() { Value = c.Identity });
+        await ConditionButton(editor, "alternative:0:0", 1).ClickAsync(new());
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = c.Identity });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
         await Button(editor, "Save").ClickAsync(new());
         ComboCategory changed = editor.Instance.Combo.AlternativeGroups.Single().Alternatives[0].Category!;

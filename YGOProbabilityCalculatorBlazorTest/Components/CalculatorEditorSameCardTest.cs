@@ -210,21 +210,21 @@ public class CalculatorEditorSameCardTest : CalculatorEditorTestBase {
         await SaveSimulation(card);
         await AddEligibilityProperty(card, "A", b.Identity);
         await SaveSimulation(card);
-        await card.Find("#cardEligibility0").ChangeAsync(new() { Value = "metadata:attribute:dark" });
+        await AddEligibilityAlternative(card, "A", "metadata:attribute:dark");
         await SaveSimulation(card);
-        await AddEligibilityProperty(card, "DARK", a.Identity);
+        await AddEligibilityAlternative(card, "B", a.Identity);
         await SaveSimulation(card);
         Assert.That(card.Instance.Card.PostDrawSelector.Children, Has.Count.EqualTo(2));
-        Assert.That(card.Instance.Card.PostDrawSelector.Children.All(child => child.Kind == CardSelectorKind.AllOf), Is.True);
+        Assert.That(card.Instance.Card.PostDrawSelector.Children.All(child => child.Kind == CardSelectorKind.AnyOf), Is.True);
         await cut.Find("[aria-label='Edit category A']").ClickAsync(new());
         await cut.Find("[aria-label='New name for category A']").InputAsync(new() { Value = "Renamed" });
         await cut.Find("[aria-label='New name for category A']").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
         IRenderedComponent<ComboEditor> combo = cut.FindComponents<ComboEditor>().ToArray()[0];
         Assert.That(combo.Instance.Combo.AllCategories.All(category => category.Selector.CategoryIdentities.Contains("user:Renamed")), Is.True);
         Assert.That(card.Instance.Card.PostDrawSelector.CategoryIdentities, Does.Contain("user:Renamed").And.Not.Contain(a.Identity));
-        Assert.That(card.Instance.Card.PostDrawSelector.Children.All(child => child.Kind == CardSelectorKind.AllOf), Is.True);
+        Assert.That(card.Instance.Card.PostDrawSelector.Children.All(child => child.Kind == CardSelectorKind.AnyOf), Is.True);
         await RemoveEligibility(card, "B", b.Identity);
         await SaveSimulation(card);
-        Assert.That(card.Instance.Card.PostDrawSelector.Alternatives.Any(child => child.Kind == CardSelectorKind.Category), Is.True);
+        Assert.That(card.Instance.Card.PostDrawSelector.AuthoredTerms.Any(child => child.Kind == CardSelectorKind.Category), Is.True);
     }
 }

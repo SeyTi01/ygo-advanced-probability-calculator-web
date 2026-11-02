@@ -1,8 +1,11 @@
 @using YGOProbabilityCalculatorBlazor.Models
 
 <div class="selector-expression" data-selector-path="@Path">
-    @if (IsGroup && Rows.Length > 1) {
-        @if (IsEditing) { @EditForm() }
+    @if (FocusedEntry) {
+        @if (IsEditing && _mode != "row") { @EditForm() }
+    }
+    else if (IsGroup && Rows.Length > 1) {
+        @if (IsEditing && _mode != "row") { @EditForm() }
         <ExpressionGroup Label="@(Selector.Kind == CardSelectorKind.AllOf ? UiText.Get("Ui.AllEligibilityRowsMatchTheSameCard") : UiText.Get("Ui.AnyEligibilityRowMayMatch"))">
             @for (int index = 0; index < Rows.Length; index++) {
                 int position = index;
@@ -13,37 +16,39 @@
                     Selector="Rows[index].Value" IsRoot="false" Path="@($"{Path}.{index}")" Available="Available"
                     CategoryColorIndices="CategoryColorIndices" RelevantMetadataIdentities="RelevantMetadataIdentities" CategoryRename="CategoryRename" Session="EditorSession"
                     ReplaceSelector="value => ReplaceRow(position, value)" OnRemove="() => RemoveRow(position)"
-                    OnValidation="OnValidation" OnEditingChanged="OnEditingChanged"
-                    CanReplaceOperator="(updated, restored) => CanReplaceRowOperator(position, updated, restored)" />
+                    OnValidation="OnValidation" OnEditingChanged="OnEditingChanged" CanReplaceOperator="(updated, restored) => CanReplaceRowOperator(position, updated, restored)" />
                 </div>
             }
         </ExpressionGroup>
     }
     else {
-        <ExpressionRow Label="@(UiText.Format("Ui.Edit0", Description(Selector)))" Expanded="IsEditing" OnEdit="ToggleEdit" InteractiveSummary="IsGroup" @ref="_row">
+        <ExpressionRow Label="@(UiText.Format("Ui.Edit0", Description(Selector)))" Expanded="@(IsEditing && _mode != "row" || _nestedIndex is not null)" OnEdit="ToggleEdit" InteractiveSummary="IsGroup"
+            CenterContent="true" HideEditLabel="true" @ref="_row">
             <ChildContent>@Summary(Selector, true)</ChildContent>
-            <EditorContent>@if (IsEditing) { @EditForm() }</EditorContent>
+            <EditorContent>@if (IsEditing && _mode != "row") { @EditForm() }</EditorContent>
         </ExpressionRow>
     }
     @if (_nestedIndex is { } nestedIndex && nestedIndex < Terms.Length) {
-        <ExpressionGroup Label="@(UiText.Get("Ui.NestedConditions"))" Nested="true">
-            <button type="button" class="btn btn-link btn-sm p-0" @onclick="Back">@(UiText.Get("Ui.BackToRow"))</button>
-            <SelectorExpressionEditor Selector="Terms[nestedIndex]" IsRoot="false" @ref="_nestedEditor" Path="@($"{Path}.nested")"
+            <SelectorExpressionEditor @key="_nestedEditorKey" Selector="Terms[nestedIndex]" IsRoot="false" FocusedEntry="true" @ref="_nestedEditor" Path="@($"{Path}.nested")"
                 Available="Available" CategoryColorIndices="CategoryColorIndices" RelevantMetadataIdentities="RelevantMetadataIdentities" CategoryRename="CategoryRename"
                 Session="EditorSession" ReplaceSelector="value => ReplaceTerm(nestedIndex, value)" OnRemove="() => RemoveTerm(nestedIndex)"
-                OnValidation="OnValidation" OnEditingChanged="OnEditingChanged" />
-        </ExpressionGroup>
+                OnValidation="OnValidation" OnEditingChanged="NestedEditingChanged" />
+    }
+    @if (IsRoot && !FocusedEntry) {
+        <ExpressionSeparator Operator="@(IsEditing && _mode == "row" && _operation == CardSelectorKind.AnyOf ? "OR" : "AND")" InputLabel="@(UiText.Get(IsEditing && _mode == "row" && _operation == CardSelectorKind.AnyOf ? "Ui.AddOR" : "Ui.AddAND"))"
+            OnAdd="BeginAddRow" AddExpanded="@(IsEditing && _mode == "row")" @ref="_addRow" />
+        @if (IsEditing && _mode == "row") { @EditForm() }
     }
 </div>
 
 @code {
     private RenderFragment EditForm() => @<RequirementEditForm @key="_mode" @ref="_editForm"
-        Mode="@(_mode == "edit" ? "edit" : _operation == CardSelectorKind.AnyOf ? "OR" : "AND")"
-        SubmitWithActions="true" ShowActions="@(_mode == "edit")" OnAddAlternative="() => Add(CardSelectorKind.AnyOf)"
+        Mode="@(_mode == "row" ? "add" : _mode == "edit" ? "edit" : _operation == CardSelectorKind.AnyOf ? "OR" : "AND")"
+        ShowActions="@(_mode == "edit")" OnAddAlternative="() => Add(CardSelectorKind.AnyOf)"
         OnAddProperty="() => Add(CardSelectorKind.AllOf)" OnRemoveRequirement="RemoveSelf"
         OperandCount="_operands.Count" OperandKey="index => _operands[index]" Operator="@(_operation == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@_error"
-        OnSubmit="Save" OnCancel="Cancel" OnKeyDown="HandleKeyDown" OnRemoveOperand="RemoveOperand"
-        AllowedOperators="GroupOperators" OnOperatorChanged="ChangeGroupOperator">
+        OnSubmit="Save" OnCancel="Cancel" OnRemoveOperand="RemoveOperand"
+        ShowJoinOperator="@(_mode == "row")" OnOperatorChanged="ChangeDraftOperator">
         <OperandContent Context="position">
             @{ OperandDraft operand = _operands[position]; }
             @if (operand.Group is { } group) {
@@ -59,10 +64,12 @@
     private RenderFragment Summary(CardSelector selector, bool interactive = false) => @<text>
         @if (selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
             CardSelector[] terms = selector.AuthoredTerms.ToArray();
-            <ExpressionTerm Count="terms.Length" Operator="@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@(interactive ? _operatorError : null)"
-                AllowedOperators="@(interactive ? GroupOperators : new[] { "AND", "OR" })"
-                OnOperatorChanged="@(interactive ? EventCallback.Factory.Create<string>(this, ChangeGroupOperator) : default)">
-                <OperandContent Context="index">@Summary(terms[index])</OperandContent>
+            <ExpressionTerm Count="terms.Length" CenterOperands="interactive" Operator="@(selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR")" Error="@(interactive ? _operatorError : null)" AllowedOperators="GroupOperators" OnOperatorChanged="@(interactive ? EventCallback.Factory.Create<string>(this, ChangeGroupOperator) : default)">
+                <OperandContent Context="index">
+                    @if (interactive) {
+                        <ExpressionMember Label="@(UiText.Format("Ui.Edit0", Description(terms[index])))" Expanded="@(_nestedIndex == index)" OnEdit="() => EditNested(index)">@Summary(terms[index])</ExpressionMember>
+                    } else { @Summary(terms[index]) }
+                </OperandContent>
             </ExpressionTerm>
         }
         else {
@@ -72,6 +79,7 @@
 
     [Parameter] public CardSelector Selector { get; set; } = CardSelector.Any;
     [Parameter] public bool IsRoot { get; set; } = true;
+    [Parameter] public bool FocusedEntry { get; set; }
     [Parameter] public string Path { get; set; } = "root";
     [Parameter] public IReadOnlyList<CategoryBase> Available { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<string, int> CategoryColorIndices { get; set; } = new Dictionary<string, int>();
@@ -127,6 +135,9 @@
     private bool _openNested;
     private int? _nestedIndex;
     private CardSelector? _nestedTarget;
+    private object _nestedEditorKey = new();
+    private ExpressionSeparator? _addRow;
+    private bool _focusAdd;
     private ExpressionRow? _row;
     private SelectorExpressionEditor? _nestedEditor;
 
@@ -154,7 +165,7 @@
     private static string FallbackChipClass(string identity) => identity.StartsWith("metadata:", StringComparison.Ordinal)
         ? "card-property-tag " + CardPropertyColorPalette.GetCssClass(identity[9..]) : CategoryChipPalette.GetFallbackCssClass(identity);
 
-    // A row is a maximal adjacent run of direct operands. Nested groups remain
+    // A legacy row is a maximal adjacent run of direct operands. Nested groups remain
     // independent terms; the projection never changes the stored Boolean tree.
     private static SelectorRow[] ProjectRows(CardSelectorKind operation, CardSelector[] terms) {
         List<SelectorRow> rows = [];
@@ -344,7 +355,12 @@
         return false;
     }
 
-    private Task ToggleEdit() => IsEditing ? Close(true) : BeginEdit();
+    private async Task ToggleEdit() {
+        if (IsGroup && !FocusedEntry) { await EditNested(0); return; }
+        if (IsEditing && _mode == "edit") { await Close(true); return; }
+        if (IsEditing) { await Close(false); }
+        await BeginEdit();
+    }
 
     private async Task BeginEdit() {
         if (IsEditing) { return; }
@@ -369,16 +385,16 @@
         await SetError(null);
         if (EditorSession.ClearOperatorError is { } clear) { await clear(); }
         EditorSession.ClearOperatorError = null;
-        EditorSession.ActiveNode = null;
         EditorSession.ActiveSelector = null;
         EditorSession.HasChanges = null;
+        EditorSession.ActiveNode = null;
         EditorSession.CancelActive = null;
-        _focusRow = focus;
+        _focusAdd = focus && _mode == "row";
+        _focusRow = focus && !_focusAdd;
         await OnEditingChanged.InvokeAsync(false);
         StateHasChanged();
     }
     private Task Cancel() => Close(true);
-    private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? Cancel() : Task.CompletedTask;
 
     private async Task ChangeIdentity(int index, RequirementPropertyPicker.Change change) {
         _operands[index].Error = change.Error;
@@ -398,6 +414,25 @@
         await OnValidation.InvokeAsync((_validationOwner ?? Selector, message));
     }
     private CardSelector Edited() => Combine(_operation, _operands.Select(operand => operand.Build()));
+
+    private async Task BeginAddRow() {
+        if (IsEditing && _mode == "row") { return; }
+        await BeginEdit();
+        _nestedIndex = null;
+        _nestedTarget = null;
+        _mode = "row";
+        _operation = CardSelectorKind.AllOf;
+        _operands.Clear();
+        _operands.Add(new(CardSelector.Any));
+        _focusEntry = true;
+        await SetError(null);
+    }
+
+    private void ChangeDraftOperator(string operation) {
+        if (_mode == "row" && operation is "AND" or "OR") {
+            _operation = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf;
+        }
+    }
 
     private async Task Add(CardSelectorKind operation) {
         await Validate();
@@ -420,7 +455,11 @@
         if (_error is not null || _operands.Count == 0) { return; }
         if (await Apply(BuildResult)) { await Close(true); }
     }
-    private CardSelector BuildResult() => _mode == "add" ? Combine(_operation, [_seed!, Edited()]) : Edited();
+    private CardSelector BuildResult() => _mode switch {
+        "row" => Combine(_operation, [Selector, Edited()]),
+        "add" => Combine(_operation, [_seed!, Edited()]),
+        _ => Edited()
+    };
     private static CardSelector Combine(CardSelectorKind kind, IEnumerable<CardSelector> terms) => kind == CardSelectorKind.AllOf
         ? CardSelector.AllOfSelectors(terms) : CardSelector.AnyOfSelectors(terms);
     private async Task Publish(CardSelector value) {
@@ -469,15 +508,23 @@
     }
     private async Task RemoveSelf() { await Close(false); await OnRemove.InvokeAsync(); }
     private async Task EditNested(int index) {
-        await Close(false);
+        if (_nestedIndex == index && EditorSession.CancelActive is { } cancelCurrent) {
+            await cancelCurrent();
+            return;
+        }
+        if (EditorSession.CancelActive is { } cancel) { await cancel(); }
         _nestedIndex = index;
         _nestedTarget = Terms[index];
+        _nestedEditorKey = new();
         _openNested = true;
     }
-    private async Task Back() {
-        if (EditorSession.CancelActive is { } cancel) { await cancel(); }
-        _nestedIndex = null;
-        await BeginEdit();
+    private async Task NestedEditingChanged(bool editing) {
+        if (!editing) {
+            _nestedIndex = null;
+            _nestedTarget = null;
+            _focusRow = true;
+        }
+        await OnEditingChanged.InvokeAsync(editing);
     }
     private async ValueTask FocusFirstRow() {
         if (!(IsGroup && Rows.Length > 1) && _row is not null) { await _row.FocusAsync(); return; }
@@ -510,6 +557,10 @@
                 _focusEntry = false;
                 await _editForm.FocusAsync();
             }
+        }
+        if (_focusAdd && _addRow is not null) {
+            _focusAdd = false;
+            await _addRow.FocusAsync();
         }
         if (_focusRow) {
             _focusRow = false;

@@ -1,15 +1,19 @@
-<ExpressionForm OnSubmit="OnSubmit" OnKeyDown="OnKeyDown" StopKeyPropagation="true">
+<ExpressionForm OnSubmit="OnSubmit" OnKeyDown="HandleKeyDown" StopKeyPropagation="true">
     <div class="requirement-form-heading">
         <strong>@Title</strong>
-        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnCancel">@(UiText.Get("Ui.Cancel"))</button>
+        <button type="button" class="btn btn-sm btn-link text-body-secondary requirement-cancel" @onclick="OnCancel">@(UiText.Get("Ui.Cancel"))</button>
     </div>
-    <div class="requirement-edit-grid @(SubmitInActionBar ? "requirement-edit-action-submit" : "") @(OperandCount > 1 ? "requirement-edit-multiple" : "") @(QuantityContent is null ? "requirement-edit-no-quantity" : "")">
+    <div class="requirement-edit-grid @(OperandCount > 1 ? "requirement-edit-multiple" : "") @(QuantityContent is null ? "requirement-edit-no-quantity" : "")">
         <div class="requirement-inputs">
             @for (int index = 0; index < OperandCount; index++) {
                 int position = index;
                 @if (index > 0) { <ExpressionSeparator Operator="@Operator" AllowedOperators="AllowedOperators" InputLabel="@(UiText.Get("Requirement.RowOperator"))" OnOperatorChanged="ChangeOperator" /> }
                 <div class="requirement-operand" @key="OperandKey?.Invoke(index)">
                     @OperandContent(index)
+                    @if (ShowJoinOperator) {
+                        <ExpressionSeparator Operator="@Operator" Inline="true" InputLabel="@(UiText.Get("Requirement.RowOperator"))"
+                            AllowedOperators="AllowedOperators" OnOperatorChanged="OnOperatorChanged" />
+                    }
                     @if (OnRemoveOperand.HasDelegate && OperandCount > 1) {
                         <button type="button" class="btn btn-outline-secondary" aria-label="@(UiText.Format("Ui.RemoveProperty0", index + 1))" @onclick="() => OnRemoveOperand.InvokeAsync(position)">×</button>
                     }
@@ -17,29 +21,29 @@
             }
         </div>
         @if (QuantityContent is not null) { <div class="requirement-quantity">@QuantityContent</div> }
-        @if (!SubmitInActionBar) {
-            <div class="requirement-submit">@SubmitButton</div>
-        }
+        @if (InlineSubmit) { <div class="requirement-submit">@SubmitButton</div> }
     </div>
-    @AfterContent
+    @if (!InlineSubmit || AfterContent is not null) {
+    <div class="requirement-edit-footer">
+        <div class="requirement-options">@AfterContent</div>
+        @if (!InlineSubmit) { <div class="requirement-submit">@SubmitButton</div> }
+    </div>
+    }
     @if (Error is not null) { <div class="text-danger small mt-2" role="alert">@Error</div> }
     @if (ShowActions) {
         <div class="requirement-context-actions">
             <RequirementActions AllowedOperators="ActionOperators" OnAddAlternative="OnAddAlternative"
                 OnAddProperty="OnAddProperty" OnRemove="OnRemoveRequirement" />
-            @if (SubmitInActionBar) {
-                <div class="requirement-action-submit">@SubmitButton</div>
-            }
         </div>
     }
 </ExpressionForm>
 
 @code {
+    private bool InlineSubmit => OperandCount == 1;
+    [Parameter] public bool ShowJoinOperator { get; set; }
     [Parameter] public string Mode { get; set; } = "edit";
     [Parameter] public bool UpdateExisting { get; set; }
     [Parameter] public bool ShowActions { get; set; }
-    [Parameter] public bool SubmitWithActions { get; set; }
-    private bool SubmitInActionBar => ShowActions && SubmitWithActions;
     private RenderFragment SubmitButton => @<button type="submit" class="btn btn-primary" @ref="_submit" disabled="@(Error is not null)" @onclick="OnSubmit" @onclick:preventDefault>@SubmitLabel</button>;
     [Parameter] public IReadOnlyList<string> ActionOperators { get; set; } = ["AND", "OR"];
     [Parameter] public EventCallback OnAddAlternative { get; set; }
@@ -67,7 +71,7 @@
     [Parameter] public RenderFragment? AfterContent { get; set; }
     [Parameter] public EventCallback OnSubmit { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
-    [Parameter] public EventCallback<Microsoft.AspNetCore.Components.Web.KeyboardEventArgs> OnKeyDown { get; set; }
+    private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
     [Parameter] public EventCallback<string> OnOperatorChanged { get; set; }
     [Parameter] public EventCallback<int> OnRemoveOperand { get; set; }
 

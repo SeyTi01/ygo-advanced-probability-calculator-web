@@ -83,7 +83,7 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         await editor.Find("#cardEligibility0").ChangeAsync(new() { Value = "user:A" });
         await SaveSimulation(editor);
         AssertPreviousResult(cut);
-        await editor.Find("#cardEligibility0").ChangeAsync(new() { Value = "metadata:attribute:dark" });
+        await AddEligibilityAlternative(editor, "A", "metadata:attribute:dark");
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
@@ -96,7 +96,7 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         await RemoveEligibility(editor, "A", a.Identity);
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Category));
-        await editor.Find("#cardEligibility1").ChangeAsync(new() { Value = "any" });
+        await Button(editor, "Clear filter").ClickAsync(new());
         await SaveSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Any));
         await editor.Find("#cardEligibility1").ChangeAsync(new() { Value = "user:B" });

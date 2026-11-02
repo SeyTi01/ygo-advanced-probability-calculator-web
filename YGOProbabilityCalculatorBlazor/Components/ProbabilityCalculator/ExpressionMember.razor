@@ -1,5 +1,6 @@
+@implements IDisposable
 <button type="button" class="expression-member control-focus-ring" @attributes="AdditionalAttributes" aria-label="@Label"
-        aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @onclick:stopPropagation @ref="_button">@ChildContent</button>
+        aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="Edit" @onclick:stopPropagation @ref="_button">@ChildContent</button>
 
 @code {
     [Parameter, EditorRequired] public string Label { get; set; } = "";
@@ -9,6 +10,14 @@
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private ElementReference _button;
+    [CascadingParameter] public ExpressionRow? Row { get; set; }
+
+    private Task Edit() {
+        Row?.RememberMember(this);
+        return OnEdit.InvokeAsync();
+    }
+
+    public void Dispose() => Row?.ForgetMember(this);
 
     public ValueTask FocusAsync(bool preventScroll = false) => _button.FocusAsync(preventScroll);
 }

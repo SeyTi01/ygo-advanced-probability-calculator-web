@@ -1947,9 +1947,6 @@
   <data name="Property.Archetype" xml:space="preserve">
     <value>Archetype: {0}</value>
   </data>
-  <data name="Requirement.ExpressionExplanation" xml:space="preserve">
-    <value>+ separates physical card requirements; AND/OR describe one card.</value>
-  </data>
   <data name="OperatorEdit.ConditionsChanged" xml:space="preserve">
     <value>The edited conditions changed. Reopen the group.</value>
   </data>
@@ -1989,4 +1986,7 @@
   <data name="Preference.Current" xml:space="preserve">
     <value>{0}: {1}</value>
   </data>
+  <data name="Requirement.HintSeparate" xml:space="preserve"><value>Add a separate card requirement.</value></data>
+  <data name="Requirement.HintAnd" xml:space="preserve"><value>The same card must match both.</value></data>
+  <data name="Requirement.HintOr" xml:space="preserve"><value>The same card can match either.</value></data>
 </root>

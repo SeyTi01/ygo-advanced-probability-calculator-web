@@ -2064,7 +2064,6 @@
   <data name="Property.Archetype" xml:space="preserve">
     <value>Arquétipo: {0}</value>
   </data>
-  <data name="Requirement.ExpressionExplanation" xml:space="preserve"><value>+ separa requisitos de cópias físicas; E/OU descrevem uma única carta.</value></data>
   <data name="OperatorEdit.ConditionsChanged" xml:space="preserve"><value>As condições em edição foram alteradas. Abra o grupo novamente.</value></data>
   <data name="OperatorEdit.CompleteConditionRequired" xml:space="preserve"><value>Escolha um operador e pelo menos uma condição completa.</value></data>
   <data name="OperatorEdit.CategoryOperandsRequired" xml:space="preserve"><value>E na mesma carta exige operandos de categoria/propriedade. Condições de carta direta podem usar + ou OU.</value></data>
@@ -2080,4 +2079,7 @@
   <data name="Preference.Current" xml:space="preserve">
     <value>{0}: {1}</value>
   </data>
+  <data name="Requirement.HintSeparate" xml:space="preserve"><value>Adicionar um requisito para uma carta separada.</value></data>
+  <data name="Requirement.HintAnd" xml:space="preserve"><value>A mesma carta deve cumprir ambas as condições.</value></data>
+  <data name="Requirement.HintOr" xml:space="preserve"><value>A mesma carta pode cumprir qualquer uma das condições.</value></data>
 </root>

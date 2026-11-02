@@ -898,9 +898,6 @@
   <data name="Property.Archetype" xml:space="preserve">
     <value>Archetyp: {0}</value>
   </data>
-  <data name="Requirement.ExpressionExplanation" xml:space="preserve">
-    <value>+ trennt Anforderungen an verschiedene Karten; UND/ODER beschreiben dieselbe Karte.</value>
-  </data>
   <data name="OperatorEdit.ConditionsChanged" xml:space="preserve">
     <value>Die bearbeiteten Bedingungen haben sich geändert. Öffne die Gruppe erneut.</value>
   </data>
@@ -940,4 +937,7 @@
   <data name="Preference.Current" xml:space="preserve">
     <value>{0}: {1}</value>
   </data>
+  <data name="Requirement.HintSeparate" xml:space="preserve"><value>Eine Anforderung für eine separate Karte hinzufügen.</value></data>
+  <data name="Requirement.HintAnd" xml:space="preserve"><value>Dieselbe Karte muss beide Eigenschaften erfüllen.</value></data>
+  <data name="Requirement.HintOr" xml:space="preserve"><value>Dieselbe Karte kann eine der beiden Bedingungen erfüllen.</value></data>
 </root>

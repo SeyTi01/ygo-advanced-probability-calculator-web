@@ -10,6 +10,31 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
+    [TestCase("AND")]
+    [TestCase("OR")]
+    public void NewSimulationConditionCanChooseOperatorWithoutChangingItsDraft(string operation) {
+        CardSelector original = CardSelector.AllOf(Properties.Take(2).Select(property => property.Identity));
+        CardSelector current = original;
+        IRenderedComponent<SelectorExpressionEditor>? editor = null;
+        editor = context.RenderComponent<SelectorExpressionEditor>(parameters => parameters
+            .Add(component => component.Selector, current).Add(component => component.Available, Properties)
+            .Add(component => component.OnChanged, value => {
+                current = value;
+                editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
+            }));
+        Button(editor, "Add AND").Click();
+        editor.Find("form .requirement-property-picker > select").Change(Properties[2].Identity);
+        editor.Find("form .expression-operator").Change("OR");
+        editor.Find("form .expression-operator").Change(operation);
+        Assert.That(current, Is.SameAs(original));
+        Assert.That(editor.Find("form .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo(Properties[2].Identity));
+        editor.Find("form").Submit();
+        CardSelector added = CardSelector.For(Properties[2]);
+        Assert.That(current, Is.EqualTo(operation == "AND"
+            ? CardSelector.AllOfSelectors([original, added]) : CardSelector.AnyOfSelectors([original, added])));
+        Assert.That(editor.FindAll("form"), Is.Empty);
+    }
+
     private static readonly CategoryBase[] Properties = [new("A"), new("B"), new("C"), new("D"), new("E")];
     private static ComboCategory Requirement(int index) => new(Properties[index], 1, 3);
     private static ComboAlternative Leaf(int index) => ComboAlternative.For(Requirement(index));
@@ -49,7 +74,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
     }
 
     [Test]
-    public async Task SimulationOperatorChangesPreserveRowsAndProtectPendingEdits() {
+    public void SimulationRowAdditionSupportsCancelAndRequiresEveryRowToMatch() {
         CardSelector original = CardSelector.AllOfSelectors([
             CardSelector.AnyOf(Properties.Take(2).Select(property => property.Identity)),
             CardSelector.AnyOf(Properties.Skip(2).Take(2).Select(property => property.Identity))
@@ -62,22 +87,61 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
                 current = value;
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, current));
             }));
-        await editor.Find("[data-selector-path='root'] > .requirement-or-group > .requirement-and-separator select").ChangeAsync(new() { Value = "OR" });
-        Assert.That(current.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
+        Assert.That(editor.FindAll(".expression-operator"), Is.Not.Empty);
         Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(2));
         Assert.That(editor.FindAll("form"), Is.Empty);
-        editor.FindAll(".requirement-edit").First().Click();
+        Button(editor, "Add AND").Click();
         editor.Find("form .requirement-property-picker > select").Change(Properties[4].Identity);
-        await editor.Find("[data-selector-path='root'] > .requirement-or-group > .alternative-separator select").ChangeAsync(new() { Value = "AND" });
-        Assert.That(current.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
+        Button(editor, "Add AND").Click();
+        Assert.That(current, Is.SameAs(original));
         Assert.That(editor.Find("form .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo(Properties[4].Identity));
-        Assert.That(editor.FindAll("[role='alert']").Select(alert => alert.TextContent), Has.Some.Contains("Save or cancel"));
         Button(editor, "Cancel").Click();
-        await editor.Find("[data-selector-path='root'] > .requirement-or-group > .alternative-separator select").ChangeAsync(new() { Value = "AND" });
-        Assert.That(current.Kind, Is.EqualTo(CardSelectorKind.AllOf));
         Assert.That(current, Is.EqualTo(original));
         Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(2));
         Assert.That(editor.FindAll("form"), Is.Empty);
+        Button(editor, "Add AND").Click();
+        editor.Find("form .requirement-property-picker > select").Change(Properties[4].Identity);
+        editor.Find("form").Submit();
+        Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(3));
+        Assert.That(editor.FindAll("form"), Is.Empty);
+        Assert.That(current, Is.EqualTo(CardSelector.AllOfSelectors([original, CardSelector.For(Properties[4])])));
+        for (int mask = 0; mask < 32; mask++) {
+            CategoryBase[] selected = Properties.Where((_, index) => (mask & (1 << index)) != 0).ToArray();
+            Assert.That(current.Matches(new Card(selected)), Is.EqualTo((mask & 3) != 0 && (mask & 12) != 0 && (mask & 16) != 0));
+        }
+        Assert.That(JsonSerializer.Deserialize<CardSelector>(JsonSerializer.Serialize(current)), Is.EqualTo(current));
+    }
+
+    [Test]
+    public void SimulationNewRowValidatesAndSwitchesBackToOneExistingCondition() {
+        CardSelector current = CardSelector.For(Properties[0]);
+        IRenderedComponent<SelectorExpressionEditor>? editor = null;
+        editor = context.RenderComponent<SelectorExpressionEditor>(parameters => parameters
+            .Add(component => component.Selector, current).Add(component => component.Available, Properties)
+            .Add(component => component.OnChanged, value => {
+                current = value;
+                editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
+            }));
+        Button(editor, "Add AND").Click();
+        editor.Find("form").Submit();
+        Assert.That(editor.Find("form button[type=submit]").HasAttribute("disabled"), Is.True);
+        Assert.That(current, Is.EqualTo(CardSelector.For(Properties[0])));
+        editor.Find("form .requirement-property-picker > select").Change(Properties[1].Identity);
+        editor.Find(".requirement-edit").Click();
+        Assert.That(editor.FindAll("form"), Has.Count.EqualTo(1));
+        Assert.That(editor.Find("form .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo(Properties[0].Identity));
+        editor.Find("form").Submit();
+        Assert.That(current, Is.EqualTo(CardSelector.For(Properties[0])));
+        Button(editor, "Add AND").Click();
+        editor.Find("form .requirement-property-picker > select").Change(Properties[1].Identity);
+        // A parent update must not erase the addition draft or be overwritten by it.
+        current = CardSelector.AllOf(Properties.Take(1).Concat(Properties.Skip(2).Take(1)).Select(property => property.Identity));
+        editor.SetParametersAndRender(parameters => parameters.Add(component => component.Selector, current));
+        Assert.That(editor.Find("form .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo(Properties[1].Identity));
+        editor.Find("form").Submit();
+        Assert.That(current.AuthoredTerms, Is.EqualTo(new[] {
+            CardSelector.For(Properties[0]), CardSelector.For(Properties[2]), CardSelector.For(Properties[1])
+        }));
     }
 
     [Test]
@@ -151,7 +215,6 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
             Is.EqualTo(new[] { "A", "D", "B" }));
     }
 
-    [TestCase("AND")]
     [TestCase("OR")]
     public void ComboAndSimulationTermsUseTheSamePresentationComponents(string operation) {
         Combo combo = operation == "AND" ? new([Same(0, 1)]) : new([], alternativeGroups: [new([Leaf(0), Leaf(1)])]);
@@ -167,7 +230,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
             Assert.That(term.Instance.Operator, Is.EqualTo(operation));
             Assert.That(term.FindComponents<ExpressionBadge>(), Has.Count.EqualTo(2));
             Assert.That(term.FindComponents<ExpressionSeparator>().Single().Instance.Inline, Is.True);
-            Assert.That(term.Find("select.expression-operator").GetAttribute("value"), Is.EqualTo(operation));
+            Assert.That(term.FindComponents<ExpressionSeparator>().Single().Instance.Operator, Is.EqualTo(operation));
             Assert.That(row.FindAll("button button, button select"), Is.Empty);
         }
     }
@@ -227,7 +290,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
     [TestCase("run-and-or", 2, "AB;CD", "AND")]
     [TestCase("separated-runs", 3, "A;BC;DE", "AND")]
     [TestCase("deep", 4, "A;BC;D;E", "AND")]
-    public void SelectorFieldsUseMaximalAdjacentRunsAndRetainNestedBoundaries(string shape, int count, string contents, string operation) {
+    public void SelectorFieldsSeparateAndConditionsAndRetainLegacyNestedBoundaries(string shape, int count, string contents, string operation) {
         CardSelector A(int index) => CardSelector.For(Properties[index]);
         CardSelector And(params int[] indices) => CardSelector.AllOf(indices.Select(index => Properties[index].Identity));
         CardSelector Or(params int[] indices) => CardSelector.AnyOf(indices.Select(index => Properties[index].Identity));
@@ -250,16 +313,15 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         Assert.That(editor.FindAll(".requirement-row").Select(row => string.Concat(row.QuerySelectorAll(".draw-selector-chip").Select(chip => chip.TextContent))),
             Is.EqualTo(contents.Split(';')));
         if (count > 1) {
-            IElement[] connectors = editor.FindAll("[data-selector-path='root'] > .requirement-or-group > .requirement-and-separator select, [data-selector-path='root'] > .requirement-or-group > .alternative-separator select").ToArray();
-            Assert.That(connectors, Has.Length.EqualTo(shape is "deep" or "separated-runs" ? 2 : 1));
-            Assert.That(connectors.Select(select => select.GetAttribute("value")), Is.All.EqualTo(operation));
-            Assert.That(editor.FindAll(".selector-nested-term"), Is.Not.Empty);
+            IElement[] connectors = editor.FindAll("[data-selector-path='root'] > .requirement-or-group > .expression-separator").ToArray();
+            Assert.That(connectors.Select(separator => separator.QuerySelector("select")!.GetAttribute("value")), Is.All.EqualTo(operation));
+            Assert.That(editor.FindAll(".expression-operator"), Is.Not.Empty);
         }
         foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
             row.Find(".requirement-edit").Click();
             Assert.That(editor.FindAll("form"), Has.Count.EqualTo(1));
             int operands = row.FindAll(".draw-selector-chip").Count;
-            Assert.That(editor.FindAll("form .requirement-operand"), Has.Count.EqualTo(operands));
+            Assert.That(editor.FindAll("form .requirement-operand"), Has.Count.EqualTo(1));
             row.Find(".requirement-edit").Click();
             Assert.That(editor.FindAll("form"), Is.Empty, "Clicking the same field closes its draft.");
             row.Find(".requirement-edit").Click();
@@ -281,8 +343,8 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
             }));
         foreach (string action in new[] { "Cancel", "Escape", "Save" }) {
-            editor.Find(".requirement-edit").Click();
-            editor.FindAll(".requirement-operand .requirement-property-picker > select").ToArray()[2].Change(Properties[3].Identity);
+            editor.FindAll(".expression-member").ToArray()[2].Click();
+            editor.Find(".requirement-operand .requirement-property-picker > select").Change(Properties[3].Identity);
             if (action == "Cancel") { Button(editor, "Cancel").Click(); }
             else if (action == "Escape") { editor.Find("form").KeyDown(new KeyboardEventArgs { Key = "Escape" }); }
             else { editor.Find("form").Submit(); }
@@ -340,12 +402,12 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
             }));
         SelectorExpressionEditor first = editor.FindComponents<SelectorExpressionEditor>().Single(child => !child.Instance.IsRoot && child.Instance.Selector.Kind == CardSelectorKind.AllOf).Instance;
-        editor.Find(".requirement-edit").Click();
-        editor.FindAll("form .requirement-operand .requirement-property-picker > select").ToArray()[1].Change(Properties[4].Identity);
+        editor.FindAll(".expression-member").ToArray()[1].Click();
+        editor.Find("form .requirement-operand .requirement-property-picker > select").Change(Properties[4].Identity);
         current = CardSelector.AllOfSelectors([CardSelector.For(Properties[0]), CardSelector.For(Properties[1]), CardSelector.LevelAtLeast(5), nested]);
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Selector, current));
         Assert.That(editor.FindComponents<SelectorExpressionEditor>().Any(child => ReferenceEquals(child.Instance, first)), Is.True);
-        Assert.That(editor.FindAll("form .requirement-operand .requirement-property-picker > select").ToArray()[1].GetAttribute("value"), Is.EqualTo(Properties[4].Identity));
+        Assert.That(editor.Find("form .requirement-operand .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo(Properties[4].Identity));
         editor.Find("form").Submit();
         Assert.That(current.AuthoredTerms.Take(3), Is.EqualTo(new[] { CardSelector.For(Properties[0]), CardSelector.For(Properties[4]), CardSelector.LevelAtLeast(5) }));
         Assert.That(current.AuthoredTerms.Last(), Is.SameAs(nested));
@@ -400,7 +462,7 @@ public sealed class CalculatorEditorTermRowsTest : CalculatorEditorTestBase {
         Assert.That(editor.FindAll(".requirement-form"), Is.Empty);
         addRequirement = Button(editor, "Add a separate-copy requirement");
         Assert.That(addRequirement.TextContent.Trim(), Is.EqualTo("+"));
-        Assert.That(addRequirement.GetAttribute("title"), Is.EqualTo("Add a separate-copy requirement"));
+        Assert.That(editor.Find($"[id='{addRequirement.GetAttribute("aria-describedby")}']").GetAttribute("role"), Is.EqualTo("tooltip"));
         await addRequirement.ClickAsync(new());
         Assert.That(Button(editor, "Add a separate-copy requirement").GetAttribute("aria-expanded"), Is.EqualTo("true"));
         Assert.That(editor.FindAll(".requirement-row"), Has.Count.EqualTo(1));
