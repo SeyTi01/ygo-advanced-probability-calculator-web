@@ -37,6 +37,11 @@
 }
 .expression-term-centered .expression-term-separator { flex: 0 0 auto; }
 
+/* Keep a single operator centered across requirement rows. */
+.expression-term-centered:not(.expression-term-many):has(> .expression-term-part:nth-child(2)) .expression-term-operand { flex: 1 1 0; }
+.expression-term-centered:not(.expression-term-many):has(> .expression-term-part:nth-child(2)) > .expression-term-part:first-child > .expression-term-operand { justify-content: flex-end; }
+.expression-term-centered:not(.expression-term-many):has(> .expression-term-part:nth-child(2)) > .expression-term-part:last-child > .expression-term-operand { justify-content: flex-start; }
+
 /* Many alternatives can wrap as paired terms when the row becomes too narrow. */
 .expression-term-crowded {
     flex-wrap: wrap;
