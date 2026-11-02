@@ -3,12 +3,12 @@
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--expression-term-gap, .5rem);
+    gap: var(--expression-term-gap, var(--expression-stack-gap));
     min-width: 0;
     max-width: 100%;
 }
 .expression-term-compact {
-    --expression-term-gap: .25rem;
+    --expression-term-gap: var(--expression-inline-gap);
     display: inline;
 }
 .expression-term-compact > .expression-term-part {
@@ -18,8 +18,8 @@
     vertical-align: middle;
 }
 .expression-term-compact > .expression-term-part + .expression-term-part {
-    margin-inline-start: .25rem;
-    max-width: calc(100% - .25rem);
+    margin-inline-start: var(--expression-term-gap);
+    max-width: calc(100% - var(--expression-term-gap));
 }
 
 .expression-term-centered {

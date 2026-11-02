@@ -65,7 +65,7 @@
             @if (Combo.AllCards.Any(card => !Cards.Any(row => row.Id == card.CardId))) {
                 <p class="text-danger" role="status">@(UiText.Get("Ui.MissingCardReferenceRemoveTheMissingRequirementThenAddAnotherCardIfNeeded"))</p>
             }
-            <div class="combo-name-row mb-3">
+            <div class="combo-name-row">
                 <div class="combo-name-field">
                     <label for="comboName@(Index)" class="form-label">@(UiText.Get("Ui.Name"))</label>
                     <input id="comboName@(Index)" class="form-control"
