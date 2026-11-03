@@ -35,21 +35,24 @@ responses cannot be recovered from its moving endpoint after artifact expiry.
 Permanent private R2 archival is a separate future option, not provisioned here.
 Normal builds, tests and app startup never run acquisition.
 
-Review `snapshots/refresh/audit.json`: canonical additions/changes, German label
+Review `snapshots/refresh/audit.json`: canonical additions/changes, per-locale label
 changes, source hashes, candidate additions/removals and source evidence,
 unresolved identity declarations, membership differences/overlaps, provider
-conflicts and example-session coverage. `names.de.json` is the compact retained
-name input. Generated timestamps and irrelevant upstream fields do not create
-repeat PRs. Monthly source refreshes update German names; other registered
-locales use the manual source refresh path described below.
+conflicts and example-session coverage. `names.LOCALE.json` retains the compact
+input for each translation language registered in `wwwroot/localization/locales.json`:
+German, Japanese, French, Italian and Portuguese. Every locale is generated from
+the same pinned YAML Yugi response; no additional source downloads are needed.
+Generated timestamps and irrelevant upstream fields do not create repeat PRs,
+but a name change in any one language updates the bundle.
 
-After generation, shipped-name checks use the refreshed German projection and
-audit. Other registered locales keep their manually reviewed snapshots and assets;
-`audit.json` records their source paths and new audits against the refreshed
-catalog, including catalog/example hashes. Historical dated audits remain intact.
-A lost or changed retained translation stops generation before any bundle files
-are written and requires an explicit manual locale refresh. The monthly job does
-not acquire or publish new translations for those locales.
+After generation, shipped-name checks use each refreshed projection and its
+entry in `localizedNames`, with `nameChanges` grouped by locale. Audit format 2
+records the shared catalog/example hashes, source and normalization evidence,
+missing labels and example coverage. Historical dated snapshots/audits remain intact;
+the checks can also read the previous German-only refresh audit format. Each
+locale must retain its existing label coverage and coverage ratio before any
+bundle files are written. The workflow stages all locale assets and projections
+together in one review PR; it never adds a locale without an existing baseline.
 
 Some upstream responses move a primary ID to another artwork or replace a prerelease
 ID with an official passcode. An established canonical ID survives only if exactly
@@ -58,7 +61,7 @@ and its English name/type are unchanged. Every such change and its link type is 
 current artwork IDs remain intact for artwork lookup and translation password joins.
 Names alone never join identities; ambiguous owners or changed identities fail.
 Unexplained card/label removals fail, as do more than 25 newly unresolved cards
-or a German coverage-ratio drop over 0.5 percentage points. Existing null/empty
+or a coverage-ratio drop over 0.5 percentage points in any locale. Existing null/empty
 membership semantics and all reviewed eligibility/name policies remain intact.
 
 The bot never writes policy files. Review new candidate evidence, update
@@ -363,10 +366,13 @@ existing output or a previous baseline. Review the per-locale identity,
 normalization, missing-name and example audit before committing. Retain the
 compact projection, not the full archive. Builds and tests need no provider access.
 
-The existing monthly workflow still publishes German data only. Additional
-locales use this manual refresh path; multilingual workflow staging is a separate
-task. Existing compilation credit and rights-holder attribution apply to every
-language.
+The monthly workflow refreshes every registered translation locale automatically
+from that same pinned source, with individual coverage guards, projections and
+audits. The dated commands above reproduce historical source snapshots; replay a
+monthly bundle with `refresh-card-data.mjs` and its retained workflow inputs.
+Use the manual path for an explicitly reviewed repair or a new locale's initial
+baseline, then register that locale for subsequent monthly refreshes. Existing
+compilation credit and rights-holder attribution apply to every language.
 
 ### French names (`fr`)
 
