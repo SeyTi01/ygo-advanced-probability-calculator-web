@@ -36,6 +36,21 @@ public sealed class BoundedEffectSessionTest {
     }
 
     [Test]
+    public async Task UnrestrictedModeSurvivesCategoryRemovalAndSessionRoundTrip() {
+        CategoryBase role = new("Role");
+        SearchEffectMode[] modes = [new(CardSelector.Any, 1), new(CardSelector.For(role), 2)];
+        Card source = new([], search: new(SearchEffectPlan.ModeTargetUnion(modes), false, modes));
+        Card updated = CategoryRemoval.Remove(source, role.Identity);
+        Assert.That(updated.Search!.Selector, Is.EqualTo(CardSelector.Any));
+        Assert.That(updated.Search.Modes![0], Is.EqualTo(modes[0]));
+        Assert.That(updated.Search.Modes[1].Selector, Is.EqualTo(CardSelector.Not(CardSelector.Any)));
+        Assert.That(updated.Search.Modes[1].ActivationLimit, Is.EqualTo(2));
+        SessionState decoded = await Codec().LoadSessionAsync(Codec().SerializeSession(new() { Cards = [updated] }));
+        Assert.That(decoded.Cards.Single().Search, Is.EqualTo(updated.Search));
+        Assert.Throws<ArgumentException>(() => new Card([], search: source.Search! with { Selector = CardSelector.For(role) }));
+    }
+
+    [Test]
     public async Task SchemaEightPreservesAllModesAndExplicitCustomOverridesWithoutRefreshingDefinitions() {
         Card old = new([], drawCount: 1, drawOncePerTurn: false, externalCardId: 93946239,
             effectProfile: new(EffectSource.BuiltIn, 93946239, 1, "Draw 1", EffectSupport.Partial, "Minimum hand size is not checked."));

@@ -140,18 +140,12 @@ public sealed class CanonicalSelectorEditorTest : CalculatorEditorTestBase {
             Assert.That(editor.FindComponents<ExpressionGroup>(), Has.Count.EqualTo(1));
             Assert.That(editor.FindAll(".selector-expression .expression-separator select").Select(separator => separator.GetAttribute("value")), Does.Contain("AND"));
         }
-        foreach (int id in new[] { 67115133, 48805472, 78058681 }) {
+        foreach (int id in new[] { 48805472, 78058681 }) {
             Card source = CardEffectRegistry.Default.RestoreBuiltIn(new([], externalCardId: id));
             IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters.Add(component => component.Card, source));
             editor.Find(".simulation-edit").Click();
             Assert.That(editor.FindAll(".requirement-edit"), Is.Empty, $"{id}: protected Objective/Not/catalog filters cannot be weakened by display editing.");
-            if (id == 67115133) {
-                Assert.That(editor.Markup, Does.Contain("each mode once"));
-                Assert.That(editor.Instance.Card.Search!.Modes, Has.Count.EqualTo(2));
-            }
-            else {
-                Assert.That(editor.FindAll("button").Any(button => button.TextContent.Contains("Replace verified filter")), Is.True);
-            }
+            Assert.That(editor.FindAll("button").Any(button => button.TextContent.Contains("Replace verified filter")), Is.True);
         }
     }
 }

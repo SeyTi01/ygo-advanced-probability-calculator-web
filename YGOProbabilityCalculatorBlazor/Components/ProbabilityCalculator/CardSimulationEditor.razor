@@ -173,9 +173,26 @@
             @if (_draft.MinimumHandSize > 0) {
                 <div class="form-text">@(UiText.Format("Effect.PreservedHandSize", _draft.MinimumHandSize))</div>
             }
-            @if (_draft.Search?.Modes is not null) {
-                <div class="form-text">@(_effect.Source == EffectSource.BuiltIn && _draft.Search == Card.Search
-                    ? _effect.Summary : DrawEffectPresentation.DescribePlan(_draft.EffectPlan, CategoryBases))</div>
+            @if (_draft.Search?.Modes is { } modes) {
+                <div class="simulation-search-modes">
+                    @for (int modeIndex = 0; modeIndex < modes.Count; modeIndex++) {
+                        int position = modeIndex;
+                        SearchEffectMode mode = modes[position];
+                        string field = SearchModeField(position);
+                        string label = UiText.Format("Result.Mode", position + 1);
+                        <section @key="position" class="simulation-search-mode" aria-label="@label">
+                            <div class="simulation-search-mode-heading">
+                                <span>@label</span>
+                                <span class="badge text-bg-secondary" title="@ModeAllowance(label, mode)" aria-label="@ModeAllowance(label, mode)">@(mode.ActivationLimit is int allowance ? $"{allowance}×" : "∞")</span>
+                            </div>
+                            <PostDrawSelectorEditor Id="@($"cardSearchMode{Index}-{position}")" Selector="mode.Selector"
+                                CategoryBases="CategoryBases" RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
+                                CategoryColorIndices="CategoryColorIndices" ShowHelp="false" MetadataOnly="_draft.Search.ObjectiveMetadataOnly"
+                                CategoryRename="CategoryRename" OnEditingChanged="editing => SelectorEditing(field, editing)"
+                                OnChanged="selector => ChangeSearchModeSelector(position, selector)" OnError="error => SelectorError(field, error)" />
+                        </section>
+                    }
+                </div>
             }
             else if (_draft.Search is { } draftSearch) {
                 <PostDrawSelectorEditor Id="@($"cardSearchEligibility{Index}")" Selector="draftSearch.Selector"
@@ -334,6 +351,7 @@
 
         bool missingCategory = plan.HandCostSelector.CategoryIdentities.Concat(plan.RemovalSelector.CategoryIdentities)
             .Concat(plan.Search?.Selector.CategoryIdentities ?? [])
+            .Concat(plan.Search?.Modes?.SelectMany(mode => mode.Selector.CategoryIdentities) ?? [])
             .Any(identity => identity.StartsWith("user:", StringComparison.Ordinal) && !CategoryBases.Any(category => category.Identity == identity));
         if (missingCategory) {
             _errors["selector"] = UiText.Get("Ui.ASelectedCategoryWasRemovedUpdateTheEligibilityFilter");
@@ -371,6 +389,11 @@
         _errors.Remove(field);
         _errors.Remove("selector");
         if (draft.Search is null) { ClearSelectorState("search-filter"); }
+        if (draft.Search?.Modes is null) {
+            foreach (string fieldName in _filterEdits.Concat(_filterErrors.Keys).Where(name => name.StartsWith("search-mode-", StringComparison.Ordinal)).Distinct().ToArray()) {
+                ClearSelectorState(fieldName);
+            }
+        }
         if (draft.PreDrawRemovalCount == 0) { ClearSelectorState("cost-filter"); }
         if (draft.PostDrawDiscardCount == 0) { ClearSelectorState("removal-filter"); }
         if (draft.DrawCount is null) {
@@ -407,6 +430,23 @@
         // assigned roles/properties. Merely opening/saving an older draft keeps
         // its saved provenance policy, including schema-6 true/false values.
         SetDraft(_draft!.WithSearch(_draft.Search! with { Selector = selector, ObjectiveMetadataOnly = false }), "selector");
+    }
+
+    private static string SearchModeField(int position) => $"search-mode-{position}";
+
+    private static string ModeAllowance(string label, SearchEffectMode mode) => UiText.Format("Ui.01PerEntry", label,
+        mode.ActivationLimit?.ToString() ?? UiText.Get("Ui.Unlimited"));
+
+    private void ChangeSearchModeSelector(int position, CardSelector selector) {
+        SearchEffectPlan search = _draft!.Search!;
+        SearchEffectMode[] modes = search.Modes!.ToArray();
+        if (modes[position].Selector.Equals(selector)) {
+            return;
+        }
+
+        modes[position] = modes[position] with { Selector = selector };
+        SearchEffectPlan updated = search with { Modes = modes, Selector = SearchEffectPlan.ModeTargetUnion(modes) };
+        SetDraft(_draft.WithSearch(updated), "selector");
     }
 
     private void SelectorError(string field, string? error) {
