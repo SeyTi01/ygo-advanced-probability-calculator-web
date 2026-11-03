@@ -1,5 +1,5 @@
 // Offline bundle generation. All validation completes before any tracked file changes.
-import { readFile, writeFile, mkdir, rename, rm } from 'node:fs/promises';
+import { readFile, readdir, writeFile, mkdir, rename, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -89,16 +89,38 @@ export async function refresh(input, root = '.', minimumCards, minimumEligible) 
     let previousAudit;
     try { previousAudit = await readJson(at(`${auditRoot}/audit.json`)); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
+    const exampleBytes = await readFile(at('YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json'), 'utf8');
+    const example = JSON.parse(exampleBytes);
     const result = buildRefresh({ provider: await readJson(resolve(input, 'cardinfo.json')),
         yamlBytes: await readFile(resolve(input, 'yaml-cards.json')), manifest,
         series: await readJson(resolve(input, 'series.json')), vocabulary: await readJson(resolve(input, 'archetypes.json')),
         previousCatalog: await readJson(at(`${dataRoot}/card-catalog.v1.json`)),
         previousNames: await readJson(at(`${dataRoot}/card-names.de.v1.json`)),
         previousCandidates: previousAudit?.candidates.names,
-        example: await readJson(at('YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json')),
+        example,
         minimumCards, minimumEligible });
+    // Other locales retain their manually reviewed sources and assets. Re-audit
+    // those sources against the new catalog without rewriting historical evidence.
+    const locales = await readJson(at('YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json'));
+    const snapshots = await readdir(at('infrastructure/card-catalog/snapshots'));
+    result.audit.retainedLocales = {};
+    for (const { id: locale } of locales.filter(locale => !['en', 'de'].includes(locale.id))) {
+        const matches = snapshots.filter(name => new RegExp(`^names\\.${locale}\\.yaml-yugi\\.\\d{4}-\\d{2}-\\d{2}\\.json$`).test(name));
+        if (matches.length !== 1) throw new Error(`Expected one retained snapshot for ${locale}`);
+        const path = `infrastructure/card-catalog/snapshots/${matches[0]}`;
+        const snapshot = await readJson(at(path));
+        const previous = await readJson(at(`${dataRoot}/card-names.${locale}.v1.json`));
+        if (snapshot.locale !== locale || previous.locale !== locale) throw new Error(`Mismatched retained locale: ${locale}`);
+        const { asset, audit } = buildLocalizedNames(snapshot, result.catalog, example);
+        assertNoNameRegression(previous, asset);
+        if (json(asset) !== json(previous)) throw new Error(`Retained ${locale} names changed; refresh that locale explicitly`);
+        result.audit.retainedLocales[locale] = { snapshot: path, audit };
+    }
+    result.audit.canonicalSha256 = hash(serializeCatalog(result.catalog));
+    result.audit.exampleSha256 = hash(exampleBytes.replace(/\r\n/g, '\n'));
     // Compare useful state, excluding retrieval dates, raw upstream noise and relative diffs.
     const fingerprint = hash(json({ catalog: result.catalog, names: result.names,
+        retainedLocales: result.audit.retainedLocales, exampleSha256: result.audit.exampleSha256,
         candidates: result.audit.candidates.names, membership: result.audit.membership }));
     if (previousAudit?.fingerprint === fingerprint) return false;
     result.audit.fingerprint = fingerprint;

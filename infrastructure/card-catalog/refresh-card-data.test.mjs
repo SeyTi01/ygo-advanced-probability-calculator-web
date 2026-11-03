@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { buildCatalog } from './prepare-catalog.mjs';
+import { retainYamlYugiSnapshot, buildLocalizedNames } from './prepare-localized-names.mjs';
 import { createResolver } from './archetype-membership.mjs';
 
 const card = (id, name, desc = 'Ordinary effect.') => ({ id, name, type: 'Effect Monster', desc });
@@ -118,6 +119,13 @@ test('offline replay is a no-op despite retrieval time changes; corrupted inputs
         await put(join(root, dataRoot, 'card-catalog.v1.json'), input.previousCatalog);
         await put(join(root, dataRoot, 'card-names.de.v1.json'), input.previousNames);
         await put(join(root, 'YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json'), input.example);
+        await put(join(root, 'YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json'), [{ id: 'en' }, { id: 'de' }, { id: 'fr' }]);
+        const retainedPath = join(root, 'infrastructure/card-catalog/snapshots/names.fr.yaml-yugi.2026-11-01.json');
+        const retained = retainYamlYugiSnapshot(Buffer.from(JSON.stringify(input.previousCatalog.cards.map(card =>
+            ({ password: card.id, name: { en: card.name, fr: `Français ${card.id}` } })))), input.manifest.revision, input.manifest.retrievedAt, 'fr');
+        const french = buildLocalizedNames(retained, input.previousCatalog, input.example).asset;
+        await put(retainedPath, retained);
+        await put(join(root, dataRoot, 'card-names.fr.v1.json'), french);
         const entries = [];
         for (const [file, value] of [['cardinfo.json', input.provider], ['archetypes.json', input.vocabulary], ['yaml-cards.json', JSON.parse(input.yamlBytes)], ['series.json', input.series], ['yaml-yugi.tar.gz', 'fixture']]) {
             await put(join(sources, file), value);
@@ -128,8 +136,22 @@ test('offline replay is a no-op despite retrieval time changes; corrupted inputs
         await put(join(sources, 'sources.json'), manifest);
         assert.equal(await refresh(sources, root, 1, 1), true);
         const accepted = await readFile(join(root, auditRoot, 'audit.json'), 'utf8');
+        const audit = JSON.parse(accepted);
+        assert.equal(audit.retainedLocales.fr.audit.canonicalRecords, 3);
+        assert.deepEqual(audit.retainedLocales.fr.audit.missingIds, [3]);
+        assert.deepEqual(JSON.parse(await readFile(join(root, dataRoot, 'card-names.fr.v1.json'))), french);
+        assert.deepEqual(JSON.parse(await readFile(retainedPath)), retained);
         await put(join(sources, 'sources.json'), { ...manifest, retrievedAt: '2026-12-01T00:00:00Z' });
         assert.equal(await refresh(sources, root, 1, 1), false);
+        const protectedFiles = [`${dataRoot}/card-catalog.v1.json`, `${dataRoot}/card-names.de.v1.json`,
+            `${dataRoot}/card-names.fr.v1.json`, `${auditRoot}/names.de.json`, `${auditRoot}/audit.json`];
+        const acceptedFiles = await Promise.all(protectedFiles.map(path => readFile(join(root, path), 'utf8')));
+        for (const name of [null, 'Unreviewed change']) {
+            await put(retainedPath, { ...retained, cards: [{ ...retained.cards[0], name }, ...retained.cards.slice(1)] });
+            await assert.rejects(refresh(sources, root, 1, 1), name === null ? /coverage regression/ : /refresh that locale explicitly/);
+            assert.deepEqual(await Promise.all(protectedFiles.map(path => readFile(join(root, path), 'utf8'))), acceptedFiles);
+        }
+        await put(retainedPath, retained);
         await put(join(sources, 'cardinfo.json'), '{}');
         await assert.rejects(refresh(sources, root, 1, 1), /hash mismatch/);
         assert.equal(await readFile(join(root, auditRoot, 'audit.json'), 'utf8'), accepted);

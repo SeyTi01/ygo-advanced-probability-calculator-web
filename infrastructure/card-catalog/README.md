@@ -40,8 +40,16 @@ changes, source hashes, candidate additions/removals and source evidence,
 unresolved identity declarations, membership differences/overlaps, provider
 conflicts and example-session coverage. `names.de.json` is the compact retained
 name input. Generated timestamps and irrelevant upstream fields do not create
-repeat PRs. Only German is currently enabled; future locale support must extend
-the retained projection and invoke the same validation per locale.
+repeat PRs. Monthly source refreshes update German names; other registered
+locales use the manual source refresh path described below.
+
+After generation, shipped-name checks use the refreshed German projection and
+audit. Other registered locales keep their manually reviewed snapshots and assets;
+`audit.json` records their source paths and new audits against the refreshed
+catalog, including catalog/example hashes. Historical dated audits remain intact.
+A lost or changed retained translation stops generation before any bundle files
+are written and requires an explicit manual locale refresh. The monthly job does
+not acquire or publish new translations for those locales.
 
 Some upstream responses move a primary ID to another artwork or replace a prerelease
 ID with an official passcode. An established canonical ID survives only if exactly
