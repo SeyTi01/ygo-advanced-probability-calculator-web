@@ -171,7 +171,8 @@ test('multilingual offline replay handles later refreshes, locale-only changes a
         }
         await put(join(root, 'YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json'), input.example);
         await put(join(root, 'YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json'),
-            ['en', ...locales].map(id => ({ id })));
+            [{ id: 'en' }, { id: 'es', name: 'Español' },
+                ...locales.map(id => ({ id, cardNames: { asset: `data/card-names.${id}.v1.json` } }))]);
         const historicalPath = join(root, 'infrastructure/card-catalog/snapshots/historical.audit.json');
         await put(historicalPath, 'preserve historical evidence');
         const values = { 'cardinfo.json': input.provider, 'archetypes.json': input.vocabulary,
@@ -188,6 +189,8 @@ test('multilingual offline replay handles later refreshes, locale-only changes a
         };
         await saveSources();
         assert.equal(await refresh(sources, root, 1, 1), true);
+        await assert.rejects(readFile(join(root, dataRoot, 'card-names.es.v1.json')),
+            { code: 'ENOENT' }, 'UI-only locales do not trigger card-name asset generation');
         const protectedFiles = [`${dataRoot}/card-catalog.v1.json`,
             ...locales.flatMap(locale => [`${dataRoot}/card-names.${locale}.v1.json`, `${auditRoot}/names.${locale}.json`]),
             `${auditRoot}/audit.json`];

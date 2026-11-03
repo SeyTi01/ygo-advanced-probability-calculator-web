@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildLocalizedNames, retainYamlYugiSnapshot, exampleNameCoverage, assertNoNameRegression } from './prepare-localized-names.mjs';
+import { cardNameLocales, isValidLocaleId, localeRegistry } from './locale-capabilities.mjs';
 
 const revision = 'a'.repeat(40);
 const retrievedAt = '2026-10-31T00:00:00Z';
@@ -173,11 +174,11 @@ test('registered follow-on locale assets and current audits reproduce from retai
     const canonical = JSON.parse(canonicalBytes);
     const session = JSON.parse(exampleBytes);
     const hash = bytes => createHash('sha256').update(bytes.toString('utf8').replace(/\r\n/g, '\n')).digest('hex');
-    for (const { id: locale } of locales.filter(locale => !['en', 'de'].includes(locale.id))) {
+    for (const { id: locale, cardNames } of locales.filter(locale => locale.cardNames && locale.id !== 'de')) {
         const matches = snapshots.filter(name => new RegExp(`^names\\.${locale}\\.yaml-yugi\\.\\d{4}-\\d{2}-\\d{2}\\.json$`).test(name));
         assert.equal(matches.length, 1, `${locale}: one retained dated snapshot`);
         const { retained, savedAudit } = await shippedEvidence(locale, matches[0]);
-        const shipped = JSON.parse(await read(`../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.${locale}.v1.json`));
+        const shipped = JSON.parse(await read(`../../YGOProbabilityCalculatorBlazor/wwwroot/${cardNames.asset}`));
         const { canonicalSha256, exampleSha256, ...audit } = savedAudit;
         const result = buildLocalizedNames(retained, canonical, session);
         assert.equal(retained.locale, locale);
@@ -188,6 +189,11 @@ test('registered follow-on locale assets and current audits reproduce from retai
         assert.equal(result.audit.matchedRecords + result.audit.missingIds.length, canonical.cards.length, locale);
         assert.equal(result.audit.example.matched, session.Cards.length, locale);
     }
+    assert.deepEqual(cardNameLocales, locales.filter(locale => locale.cardNames).map(locale => locale.id));
+    assert.equal(localeRegistry.find(locale => locale.id === 'en').cardNames, undefined);
+    assert.equal(isValidLocaleId('es-MX'), true, 'regional locale IDs follow the browser resolver');
+    assert.equal(isValidLocaleId('zh-Hant-TW'), true);
+    assert.equal(isValidLocaleId('en_US'), false);
 });
 
 test('coverage changes require explicit reviewed removal IDs', () => {

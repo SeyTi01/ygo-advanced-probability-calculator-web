@@ -60,7 +60,9 @@ async function header(page) {
     }), true, 'title and language controls do not overlap');
 }
 
-async function germanProduction(browser, url, track) {
+async function germanProduction(browser, url, track, nameAsset) {
+    assert(nameAsset, 'German card-name smoke requires a declared card-name capability');
+    const nameAssetPath = `/${nameAsset}`;
     const context = await browser.newContext({ locale: 'de-DE', viewport: { width: 390, height: 844 } });
     const page = await context.newPage(); track(page);
     page.setDefaultTimeout(15000);
@@ -121,13 +123,14 @@ async function germanProduction(browser, url, track) {
     await interactive(page);
     assert.equal(await page.locator('.combo-editor').count(), 8);
     await page.waitForFunction(() => [...document.querySelectorAll('.card-header-name')].some(node => node.textContent.includes('Aschenblüte')));
-    assert.equal(requests.filter(value => /card-names\./.test(value)).length, 1, 'populated German deck loads display names once');
+    assert.equal(requests.filter(value => new URL(value).pathname === nameAssetPath).length, 1,
+        'populated German deck loads its declared display-name asset once');
     await context.close();
 
     const searchContext = await browser.newContext({ locale: 'de-DE' });
     const search = await searchContext.newPage(); track(search);
     const nameRequests = [];
-    search.on('request', request => { if (/card-names\./.test(request.url())) nameRequests.push(request.url()); });
+    search.on('request', request => { if (new URL(request.url()).pathname === nameAssetPath) nameRequests.push(request.url()); });
     await search.goto(url); await interactive(search);
     assert.equal(nameRequests.length, 0, 'empty German calculator does not load names');
     const initial = await search.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
@@ -187,7 +190,7 @@ async function germanProduction(browser, url, track) {
 
     const failureContext = await browser.newContext({ locale: 'de-DE' });
     const failure = await failureContext.newPage();
-    await failure.route('**/card-names.de.v1.json', route => route.fulfill({ status: 503, body: '' }));
+    await failure.route(`**/${nameAsset}`, route => route.fulfill({ status: 503, body: '' }));
     await failure.goto(url); await interactive(failure);
     await failure.locator('#quickCardName').fill('Pot of Desires');
     await failure.locator('#quickCardOption-35261759').waitFor();
@@ -213,10 +216,13 @@ async function germanProduction(browser, url, track) {
 }
 
 async function translatedProduction(browser, url, track, locale, root) {
-    const names = new Map(JSON.parse(fs.readFileSync(path.join(root, `data/card-names.${locale.id}.v1.json`), 'utf8')).names);
-    const translatedName = names.get(35261759);
-    assert(translatedName, `${locale.id}: the representative maintained card has a verified label`);
-    const region = { fr: 'fr-FR', it: 'it-IT', pt: 'pt-BR', ja: 'ja-JP' }[locale.id];
+    const nameAsset = locale.cardNames?.asset;
+    const names = nameAsset
+        ? new Map(JSON.parse(fs.readFileSync(path.join(root, nameAsset), 'utf8')).names)
+        : null;
+    const translatedName = names?.get(35261759);
+    if (nameAsset) assert(translatedName, `${locale.id}: the representative maintained card has a verified label`);
+    const region = { fr: 'fr-FR', it: 'it-IT', pt: 'pt-BR', ja: 'ja-JP' }[locale.id] ?? locale.id;
     const context = await browser.newContext({ locale: region, viewport: { width: 390, height: 844 } });
     await context.addInitScript(() => {
         window.firstInteractivePlaceholder = null;
@@ -263,6 +269,16 @@ async function translatedProduction(browser, url, track, locale, root) {
     assert.equal(await page.evaluate(() => window.firstInteractivePlaceholder), placeholder, 'first visible input uses selected language');
     assert.equal(requests.some(value => /card-names\./.test(value)), false, 'empty calculator defers card names');
     const initial = await page.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
+    if (!nameAsset) {
+        await change(page, locale.id);
+        assert.equal(await page.locator('html').getAttribute('lang'), locale.id, `${locale.id}: explicit UI-only locale reloads`);
+        assert.equal(requests.some(value => /card-names\./.test(value)), false, `${locale.id}: UI-only locale never requests card names`);
+        await change(page, 'en');
+        assert.equal(await page.locator('html').getAttribute('lang'), 'en');
+        console.log(`${locale.id} UI-only locale satellite encoded body: ${uiSatelliteBytes} bytes; calculator resource bodies: ${initial} bytes; translated Help, first interactive frame and language reload passed.`);
+        await context.close();
+        return;
+    }
     await page.locator('#quickCardName').fill(translatedName);
     await page.locator('#quickCardOption-35261759').waitFor();
     assert.equal(await page.locator('#quickCardOption-35261759').innerText(), translatedName);
@@ -270,10 +286,11 @@ async function translatedProduction(browser, url, track, locale, root) {
     await page.locator('#quickCardName').fill('Pot of Desires');
     await page.locator('#quickCardOption-35261759').waitFor();
     assert.equal(await page.locator('#quickCardOption-35261759').innerText(), translatedName);
-    assert.deepEqual(requests.filter(value => /card-names\./.test(value)).map(value => new URL(value).pathname), [`/data/card-names.${locale.id}.v1.json`]);
-    const nameAssetBytes = await page.evaluate(id => performance.getEntriesByType('resource')
-        .filter(item => item.name.includes(`/card-names.${id}.v1.json`))
-        .reduce((sum, item) => sum + item.encodedBodySize, 0), locale.id);
+    const nameAssetPath = `/${nameAsset}`;
+    assert.deepEqual(requests.filter(value => /card-names\./.test(value)).map(value => new URL(value).pathname), [nameAssetPath]);
+    const nameAssetBytes = await page.evaluate(assetPath => performance.getEntriesByType('resource')
+        .filter(item => new URL(item.name).pathname === assetPath)
+        .reduce((sum, item) => sum + item.encodedBodySize, 0), nameAssetPath);
     await page.locator('#quickCardOption-35261759').click();
     await page.waitForFunction(key => {
         try { return JSON.parse(JSON.parse(localStorage.getItem(key)).payload).Cards[0].Name === 'Pot of Desires'; } catch { return false; }
@@ -335,7 +352,7 @@ async function translatedProduction(browser, url, track, locale, root) {
 
     const fallback = await browser.newContext({ locale: region });
     const missing = await fallback.newPage(); track(missing);
-    await missing.route(`**/card-names.${locale.id}.v1.json`, route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 1, locale: locale.id, names: [] }) }));
+    await missing.route(`**/${nameAsset}`, route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 1, locale: locale.id, names: [] }) }));
     await missing.goto(url); await interactive(missing);
     await missing.locator('#quickCardName').fill('Pot of Desires');
     await missing.locator('#quickCardOption-35261759').waitFor();
@@ -381,10 +398,13 @@ async function main() {
         console.log(`Production English first visit encoded resource bodies: ${transfer} bytes.`);
         await usable(page, page.locator('#theme-preference'));
         await context.close();
-        await germanProduction(browser, prod.url, track);
         const productionLocales = JSON.parse(fs.readFileSync(path.join(process.argv[2], 'localization/locales.json'), 'utf8'));
-        for (const locale of productionLocales.filter(locale => !['en', 'de'].includes(locale.id))) {
-            await translatedProduction(browser, prod.url, track, locale, process.argv[2]);
+        for (const locale of productionLocales.filter(locale => locale.id !== 'en')) {
+            if (locale.id === 'de' && locale.cardNames?.asset) {
+                await germanProduction(browser, prod.url, track, locale.cardNames.asset);
+            } else {
+                await translatedProduction(browser, prod.url, track, locale, process.argv[2]);
+            }
         }
 
         const testHost = await serve(process.argv[3]); servers.push(testHost.server);

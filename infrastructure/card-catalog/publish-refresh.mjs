@@ -64,5 +64,5 @@ export async function publishRefresh({ branch, expectedSha, sourceDir, locales, 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
     const registry = JSON.parse(await readFile('YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json', 'utf8'));
     await publishRefresh({ branch: process.env.REFRESH_BRANCH, expectedSha: process.env.EXPECTED_SHA,
-        sourceDir: process.env.SOURCE_DIR, locales: registry.filter(locale => locale.id !== 'en').map(locale => locale.id) });
+        sourceDir: process.env.SOURCE_DIR, locales: registry });
 }

@@ -6,17 +6,15 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gzipSync, brotliCompressSync } from 'node:zlib';
 import { eligibleCatalog, exclusionReason } from './card-eligibility.mjs';
+import { cardNameLocaleSet, getCardNameLocale } from './locale-capabilities.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const validName = name => typeof name === 'string' && name.trim().length > 0 && name.length <= 512;
 const validLabel = name => validName(name) && !/[<>\x00-\x1f\x7f]|&(?:#\d+|#x[\da-f]+|[a-z]+);/i.test(name);
 const numericOrder = (left, right) => left - right;
 const validId = (id, assigned) => Number.isInteger(id) && id > 0 && id <= (assigned ? 2147483647 : 99999999);
-const supportedLocales = new Set(['de', 'fr', 'it', 'pt', 'ja']);
-
 function validateLocale(locale) {
-    if (!supportedLocales.has(locale)) throw new Error('Unsupported name locale');
-    return locale;
+    return getCardNameLocale(locale);
 }
 
 // YAML Yugi stores Japanese furigana as ruby. Keep only plain base text from
@@ -27,7 +25,7 @@ function displayName(name, locale) {
 }
 
 function validateSnapshot(snapshot) {
-    if (snapshot.version !== 1 || !supportedLocales.has(snapshot.locale) || !Array.isArray(snapshot.cards)
+    if (snapshot.version !== 1 || !cardNameLocaleSet.has(snapshot.locale) || !Array.isArray(snapshot.cards)
         || snapshot.cards.length > 30000 || !/^[a-f0-9]{40}$/.test(snapshot.revision)
         || !/^[a-f0-9]{64}$/.test(snapshot.sourceSha256)) throw new Error('Unsupported name snapshot');
     const seen = new Set();
@@ -196,7 +194,7 @@ async function main(args) {
         }
         if (!['--provider', '--snapshot', '--catalog', '--output', '--audit', '--previous',
             '--revision', '--retrieved-at', '--example', '--allow-removals', '--locale'].includes(args[index]) || !args[index + 1]) {
-            throw new Error('Use --snapshot FILE --catalog FILE --example FILE --output FILE --audit FILE; optionally --provider FILE --revision SHA --retrieved-at ISO_TIMESTAMP --locale de|fr|it|pt|ja; --initial permits only a new output');
+            throw new Error(`Use --snapshot FILE --catalog FILE --example FILE --output FILE --audit FILE; optionally --provider FILE --revision SHA --retrieved-at ISO_TIMESTAMP --locale ${[...cardNameLocaleSet].join('|')}; --initial permits only a new output`);
         }
         options.set(args[index], args[index + 1]);
         index += 1;
