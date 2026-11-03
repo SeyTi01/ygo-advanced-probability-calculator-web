@@ -5,9 +5,46 @@ using YGOProbabilityCalculatorBlazor.Models;
 namespace YGOProbabilityCalculatorBlazor.Services.Converter;
 
 public class CardConverter : JsonConverter<Card> {
+    private sealed class StrictJsonFieldReader(JsonElement root) {
+        public JsonElement? FindUnique(string name, string duplicateError) {
+            JsonElement? result = null;
+
+            foreach (JsonProperty property in root.EnumerateObject()) {
+                if (!property.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) {
+                    continue;
+                }
+
+                if (result is not null) {
+                    throw new JsonException(duplicateError);
+                }
+
+                result = property.Value;
+            }
+
+            return result;
+        }
+
+        public static bool ReadBoolean(JsonElement value, string error) {
+            if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) {
+                throw new JsonException(error);
+            }
+
+            return value.GetBoolean();
+        }
+
+        public static int ReadInt32(JsonElement value, string error) {
+            if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out int result)) {
+                throw new JsonException(error);
+            }
+
+            return result;
+        }
+    }
+
     public override Card Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) {
         using JsonDocument document = JsonDocument.ParseValue(ref reader);
         JsonElement root = document.RootElement;
+        StrictJsonFieldReader fields = new(root);
 
         List<CategoryBase> categories = JsonSerializer.Deserialize<List<CategoryBase>>(
             root.GetProperty("Categories").GetRawText(),
@@ -21,14 +58,10 @@ public class CardConverter : JsonConverter<Card> {
         string? name = root.GetProperty("Name").GetString();
         // Older session files predate Active; keep their entries enabled.
         bool active = !root.TryGetProperty("Active", out JsonElement activeProperty) || activeProperty.GetBoolean();
-        JsonProperty[] simulationFlags = root.EnumerateObject().Where(property => property.Name.Equals("SimulationEnabled", StringComparison.OrdinalIgnoreCase)).ToArray();
-
-        if (simulationFlags.Length > 1 || (simulationFlags.Length == 1
-            && simulationFlags[0].Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))) {
-            throw new JsonException("Simulation enablement must be a single boolean.");
-        }
-
-        bool simulationEnabled = simulationFlags.Length == 0 || simulationFlags[0].Value.GetBoolean();
+        JsonElement? simulationFlag = fields.FindUnique("SimulationEnabled", "Simulation enablement must be a single boolean.");
+        bool simulationEnabled = simulationFlag is null || StrictJsonFieldReader.ReadBoolean(
+            simulationFlag.Value,
+            "Simulation enablement must be a single boolean.");
         string? id = null;
 
         if (root.TryGetProperty("Id", out JsonElement idProperty)) {
@@ -45,176 +78,108 @@ public class CardConverter : JsonConverter<Card> {
             ? JsonSerializer.Deserialize<List<string>>(manualProperty.GetRawText(), options) ?? throw new JsonException("Manual card properties must be an array.")
             : [];
 
-        JsonProperty[] drawProperties = root.EnumerateObject().Where(property => property.Name.Equals("DrawCount", StringComparison.OrdinalIgnoreCase)).ToArray();
-
-        if (drawProperties.Length > 1) {
-            throw new JsonException("Draw count is duplicated.");
-        }
-
+        JsonElement? drawProperty = fields.FindUnique("DrawCount", "Draw count is duplicated.");
         int? drawCount = null;
 
-        if (drawProperties.Length == 1 && drawProperties[0].Value.ValueKind != JsonValueKind.Null) {
-            JsonElement value = drawProperties[0].Value;
+        if (drawProperty is { ValueKind: not JsonValueKind.Null } value) {
+            int count = StrictJsonFieldReader.ReadInt32(value, "Draw count must be 1, 2, 3, or absent.");
 
-            if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out int count) || count is < 1 or > 3) {
+            if (count is < 1 or > 3) {
                 throw new JsonException("Draw count must be 1, 2, 3, or absent.");
             }
 
             drawCount = count;
         }
 
-        JsonProperty[] limitProperties = root.EnumerateObject().Where(property => property.Name.Equals("DrawOncePerTurn", StringComparison.OrdinalIgnoreCase)).ToArray();
-
-        if (limitProperties.Length > 1) {
-            throw new JsonException("Draw once-per-turn setting is duplicated.");
-        }
-
+        JsonElement? limitProperty = fields.FindUnique("DrawOncePerTurn", "Draw once-per-turn setting is duplicated.");
         bool drawOncePerTurn = true;
 
-        if (limitProperties.Length == 1) {
-            JsonElement value = limitProperties[0].Value;
-
-            if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) {
-                throw new JsonException("Draw once-per-turn setting must be a boolean.");
-            }
-
-            drawOncePerTurn = value.GetBoolean();
+        if (limitProperty is JsonElement drawLimit) {
+            drawOncePerTurn = StrictJsonFieldReader.ReadBoolean(drawLimit, "Draw once-per-turn setting must be a boolean.");
         }
 
-        JsonProperty[] sharedLimits = root.EnumerateObject().Where(property => property.Name.Equals("OncePerTurn", StringComparison.OrdinalIgnoreCase)).ToArray();
-
-        if (sharedLimits.Length > 1) {
-            throw new JsonException("Once-per-turn setting is duplicated.");
-        }
-
+        JsonElement? sharedLimit = fields.FindUnique("OncePerTurn", "Once-per-turn setting is duplicated.");
         bool? oncePerTurn = null;
 
-        if (sharedLimits.Length == 1) {
-            JsonElement value = sharedLimits[0].Value;
-
-            if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) {
-                throw new JsonException("Once-per-turn setting must be a boolean.");
-            }
-
-            oncePerTurn = value.GetBoolean();
+        if (sharedLimit is JsonElement oncePerTurnValue) {
+            oncePerTurn = StrictJsonFieldReader.ReadBoolean(oncePerTurnValue, "Once-per-turn setting must be a boolean.");
         }
 
-        JsonProperty[] discardProperties = root.EnumerateObject().Where(property => property.Name.Equals("PostDrawDiscardCount", StringComparison.OrdinalIgnoreCase)).ToArray();
-
-        if (discardProperties.Length > 1) {
-            throw new JsonException("Post-draw discard count is duplicated.");
-        }
-
+        JsonElement? discardProperty = fields.FindUnique("PostDrawDiscardCount", "Post-draw discard count is duplicated.");
         int discardCount = 0;
 
-        if (discardProperties.Length == 1) {
-            JsonElement value = discardProperties[0].Value;
+        if (discardProperty is JsonElement discardValue) {
+            discardCount = StrictJsonFieldReader.ReadInt32(discardValue, "Post-draw discard requires a draw effect and must be 0, 1, or 2.");
 
-            if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out discardCount) || discardCount is < 0 or > 2) {
+            if (discardCount is < 0 or > 2) {
                 throw new JsonException("Post-draw discard requires a draw effect and must be 0, 1, or 2.");
             }
         }
 
         CardSelector selector = CardSelector.Any;
-        JsonProperty[] selectorProperties = root.EnumerateObject().Where(property => property.Name.Equals("PostDrawSelector", StringComparison.OrdinalIgnoreCase)).ToArray();
-        JsonProperty[] failureProperties = root.EnumerateObject().Where(property => property.Name.Equals("PostDrawFailureBehavior", StringComparison.OrdinalIgnoreCase)).ToArray();
+        JsonElement? selectorProperty = fields.FindUnique("PostDrawSelector", "Post-draw requirement fields are duplicated.");
+        JsonElement? failureProperty = fields.FindUnique("PostDrawFailureBehavior", "Post-draw requirement fields are duplicated.");
 
-        if (selectorProperties.Length > 1 || failureProperties.Length > 1) {
-            throw new JsonException("Post-draw requirement fields are duplicated.");
+        if (selectorProperty is JsonElement postDrawSelector) {
+            selector = JsonSerializer.Deserialize<CardSelector>(postDrawSelector.GetRawText(), options) ?? throw new JsonException("Missing post-draw selector.");
         }
 
-        if (selectorProperties.Length == 1) {
-            selector = JsonSerializer.Deserialize<CardSelector>(selectorProperties[0].Value.GetRawText(), options) ?? throw new JsonException("Missing post-draw selector.");
-        }
-
-        if (failureProperties.Length == 1 && (failureProperties[0].Value.ValueKind != JsonValueKind.String || failureProperties[0].Value.GetString() != "FailBranch")) {
+        if (failureProperty is JsonElement failureBehavior
+            && (failureBehavior.ValueKind != JsonValueKind.String || failureBehavior.GetString() != "FailBranch")) {
             throw new JsonException("Unsupported post-draw failure behavior.");
         }
 
-        JsonProperty[] costProperties = root.EnumerateObject().Where(property => property.Name.Equals("PreDrawRemovalCount", StringComparison.OrdinalIgnoreCase)).ToArray();
-        JsonProperty[] costSelectors = root.EnumerateObject().Where(property => property.Name.Equals("PreDrawSelector", StringComparison.OrdinalIgnoreCase)).ToArray();
-
-        if (costProperties.Length > 1 || costSelectors.Length > 1) {
-            throw new JsonException("Pre-draw cost fields are duplicated.");
-        }
-
+        JsonElement? costProperty = fields.FindUnique("PreDrawRemovalCount", "Pre-draw cost fields are duplicated.");
+        JsonElement? costSelectorProperty = fields.FindUnique("PreDrawSelector", "Pre-draw cost fields are duplicated.");
         int costCount = 0;
 
-        if (costProperties.Length == 1 && (costProperties[0].Value.ValueKind != JsonValueKind.Number || !costProperties[0].Value.TryGetInt32(out costCount))) {
-            throw new JsonException("Pre-draw count must be an integer.");
+        if (costProperty is JsonElement preDrawCount) {
+            costCount = StrictJsonFieldReader.ReadInt32(preDrawCount, "Pre-draw count must be an integer.");
         }
 
-        CardSelector costSelector = costSelectors.Length == 0
+        CardSelector costSelector = costSelectorProperty is null
             ? CardSelector.Any
-            : JsonSerializer.Deserialize<CardSelector>(costSelectors[0].Value.GetRawText(), options) ?? throw new JsonException("Missing pre-draw selector.");
+            : JsonSerializer.Deserialize<CardSelector>(costSelectorProperty.Value.GetRawText(), options) ?? throw new JsonException("Missing pre-draw selector.");
 
-        JsonProperty[] deckCostProperties = root.EnumerateObject().Where(property => property.Name.Equals("PreDrawDeckRemovalCount", StringComparison.OrdinalIgnoreCase)).ToArray();
-
+        JsonElement? deckCostProperty = fields.FindUnique("PreDrawDeckRemovalCount", "Hidden deck removal must be a single integer.");
         int deckCost = 0;
 
-        if (deckCostProperties.Length > 1 || (deckCostProperties.Length == 1 && (deckCostProperties[0].Value.ValueKind != JsonValueKind.Number || !deckCostProperties[0].Value.TryGetInt32(out deckCost)))) {
-            throw new JsonException("Hidden deck removal must be a single integer.");
+        if (deckCostProperty is JsonElement hiddenDeckCost) {
+            deckCost = StrictJsonFieldReader.ReadInt32(hiddenDeckCost, "Hidden deck removal must be a single integer.");
         }
 
-        JsonProperty[] millProperties = root.EnumerateObject().Where(property => property.Name.Equals("PostDrawDeckMillCount", StringComparison.OrdinalIgnoreCase)).ToArray();
+        JsonElement? millProperty = fields.FindUnique("PostDrawDeckMillCount", "Post-draw milling must be a single integer.");
         int millCount = 0;
 
-        if (millProperties.Length > 1 || (millProperties.Length == 1
-            && (millProperties[0].Value.ValueKind != JsonValueKind.Number || !millProperties[0].Value.TryGetInt32(out millCount)))) {
-            throw new JsonException("Post-draw milling must be a single integer.");
+        if (millProperty is JsonElement millValue) {
+            millCount = StrictJsonFieldReader.ReadInt32(millValue, "Post-draw milling must be a single integer.");
         }
 
-        JsonProperty[] profileProperties = root.EnumerateObject().Where(property => property.Name.Equals("EffectProfile", StringComparison.OrdinalIgnoreCase)).ToArray();
-
-        if (profileProperties.Length > 1) {
-            throw new JsonException("Effect profile is duplicated.");
-        }
-
-        EffectProfile? profile = profileProperties.Length == 0
+        JsonElement? profileProperty = fields.FindUnique("EffectProfile", "Effect profile is duplicated.");
+        EffectProfile? profile = profileProperty is null
             ? null
-            : JsonSerializer.Deserialize<EffectProfile>(profileProperties[0].Value.GetRawText(), options) ?? throw new JsonException("Missing effect profile.");
+            : JsonSerializer.Deserialize<EffectProfile>(profileProperty.Value.GetRawText(), options) ?? throw new JsonException("Missing effect profile.");
 
         bool ReadRestriction(string name) {
-            JsonProperty[] properties = root.EnumerateObject().Where(property => property.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToArray();
-
-            if (properties.Length > 1 || (properties.Length == 1
-                && properties[0].Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))) {
-                throw new JsonException($"{name} must be a single boolean.");
-            }
-
-            return properties.Length == 1 && properties[0].Value.GetBoolean();
+            JsonElement? property = fields.FindUnique(name, $"{name} must be a single boolean.");
+            return property is JsonElement value && StrictJsonFieldReader.ReadBoolean(value, $"{name} must be a single boolean.");
         }
 
-        JsonProperty[] searches = root.EnumerateObject().Where(property => property.Name.Equals("Search", StringComparison.OrdinalIgnoreCase)).ToArray();
-
-        if (searches.Length > 1) {
-            throw new JsonException("Search operation is duplicated.");
-        }
-
-        SearchEffectPlan? search = searches.Length == 0
+        JsonElement? searchProperty = fields.FindUnique("Search", "Search operation is duplicated.");
+        SearchEffectPlan? search = searchProperty is null
             ? null
-            : JsonSerializer.Deserialize<SearchEffectPlan>(searches[0].Value.GetRawText(), options) ?? throw new JsonException("Missing search operation.");
+            : JsonSerializer.Deserialize<SearchEffectPlan>(searchProperty.Value.GetRawText(), options) ?? throw new JsonException("Missing search operation.");
 
-        JsonProperty[] excavations = root.EnumerateObject().Where(property => property.Name.Equals("Excavation", StringComparison.OrdinalIgnoreCase)).ToArray();
-        if (excavations.Length > 1) {
-            throw new JsonException("Excavation operation is duplicated.");
-        }
-
-        ExcavationEffectPlan? excavation = excavations.Length == 0
+        JsonElement? excavationProperty = fields.FindUnique("Excavation", "Excavation operation is duplicated.");
+        ExcavationEffectPlan? excavation = excavationProperty is null
             ? null
-            : JsonSerializer.Deserialize<ExcavationEffectPlan>(excavations[0].Value.GetRawText(), options) ?? throw new JsonException("Missing excavation operation.");
+            : JsonSerializer.Deserialize<ExcavationEffectPlan>(excavationProperty.Value.GetRawText(), options) ?? throw new JsonException("Missing excavation operation.");
 
         int? ReadInteger(string name) {
-            JsonProperty[] values = root.EnumerateObject().Where(property => property.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToArray();
-
-            if (values.Length == 0) {
-                return null;
-            }
-            if (values.Length != 1 || values[0].Value.ValueKind != JsonValueKind.Number || !values[0].Value.TryGetInt32(out int value)) {
-                throw new JsonException($"{name} must be a single integer.");
-            }
-
-            return value;
+            JsonElement? property = fields.FindUnique(name, $"{name} must be a single integer.");
+            return property is JsonElement value
+                ? StrictJsonFieldReader.ReadInt32(value, $"{name} must be a single integer.")
+                : null;
         }
 
         bool firstActivationOnly = ReadRestriction("FirstActivationOnly");
