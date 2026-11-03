@@ -1,11 +1,4 @@
 /* Common control appearance; component files keep role-specific content and placement. */
-.surface-panel {
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--surface-radius, var(--bs-border-radius));
-    background: var(--bs-body-bg);
-    color: var(--bs-body-color);
-}
-
 .workspace-action {
     min-height: var(--app-touch-target-size);
     padding: .35rem .6rem;

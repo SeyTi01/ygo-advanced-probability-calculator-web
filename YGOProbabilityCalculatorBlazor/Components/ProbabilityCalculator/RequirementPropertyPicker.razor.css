@@ -4,7 +4,6 @@
 .requirement-numeric-fields > div { min-width: 0; }
 
 .requirement-picker-trigger { text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.requirement-picker-panel { position: fixed; z-index: 1080; max-width: calc(100vw - 1rem); padding: .35rem; box-shadow: var(--bs-box-shadow); }
 .requirement-groups { display: flex; flex-wrap: wrap; gap: var(--expression-inline-gap); margin-bottom: .35rem; }
 .requirement-groups .btn { min-height: 32px; flex: 1 1 auto; padding: .2rem .5rem; }
 .requirement-options { background-image: none; padding: .25rem; max-height: min(18rem, 50dvh); }

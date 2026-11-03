@@ -4,11 +4,12 @@
 @inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Models
 @using Microsoft.AspNetCore.Components.Web
+@using YGOProbabilityCalculatorBlazor.Components.Shared
 <div class="requirement-property-picker">
     <label for="@(Id + "-trigger")" class="form-label">@Label</label>
     <button id="@(Id + "-trigger")" type="button" class="form-select requirement-picker-trigger" aria-label="@(AccessibleLabel ?? Label)"
         aria-expanded="@(_open ? "true" : "false")" aria-controls="@(Id + "-panel")" aria-haspopup="listbox" @onclick="Toggle" @onkeydown="TriggerKeyDown" @ref="_trigger">@SelectedLabel</button>
-    <div id="@(Id + "-panel")" class="requirement-picker-panel surface-panel" hidden="@(!_open)" @ref="_panel" @onkeydown="PanelKeyDown" @onkeydown:stopPropagation>
+    <div id="@(Id + "-panel")" class="requirement-picker-panel surface-panel surface-overlay surface-overlay-fixed" hidden="@(!_open)" @ref="_panel" @onkeydown="PanelKeyDown" @onkeydown:stopPropagation>
         @if (BrowseGroups.Count() > 2) {
             <div class="requirement-groups" role="group" aria-label="@(UiText.Get("Requirement.Groups"))">
                 @foreach (string group in BrowseGroups) {
@@ -57,7 +58,8 @@
     private string _group = "all";
     private ElementReference _trigger;
     private ElementReference _panel;
-    private DotNetObjectReference<RequirementPropertyPicker>? _reference;
+    private PopupRegistration<RequirementPropertyPicker>? _popup;
+    private PopupRegistration<RequirementPropertyPicker> Popup => _popup ??= new(JS, this);
     private bool _open;
     private bool _attach;
     private bool _focusChoices;
@@ -109,21 +111,17 @@
     private Task Choose() => Close();
     private async Task Close() {
         _groupScrollPositions[_group] = await JS.InvokeAsync<double>("workspaceMenus.getScroll", _target);
-        _open = false;
-        await JS.InvokeVoidAsync("workspaceMenus.close", _panel, _trigger, false);
+        _open = _attach = false;
+        await Popup.CloseAsync(_panel, _trigger);
         if (_focusNumber) { _focusNumber = false; await _numberInput.FocusAsync(); }
     }
     [JSInvokable]
     public async Task Dismiss() {
         _groupScrollPositions[_group] = await JS.InvokeAsync<double>("workspaceMenus.getScroll", _target);
-        _open = false;
+        _open = _attach = false;
         StateHasChanged();
     }
-    public async ValueTask DisposeAsync() {
-        try { await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel); }
-        catch (Exception exception) when (exception is JSDisconnectedException or OperationCanceledException) { }
-        _reference?.Dispose();
-    }
+    public ValueTask DisposeAsync() => _popup?.DisposeAsync() ?? ValueTask.CompletedTask;
 
     private ElementReference _target;
     private ElementReference _numberInput;
@@ -189,8 +187,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_attach) {
             _attach = false;
-            _reference ??= DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("workspaceMenus.open", _panel, _trigger, _reference, false, true);
+            await Popup.OpenAsync(_panel, _trigger, false, true);
         }
         if (_focusChoices && _open) { _focusChoices = false; await _target.FocusAsync(); }
         if (_restoreGroupScroll && _open) {
