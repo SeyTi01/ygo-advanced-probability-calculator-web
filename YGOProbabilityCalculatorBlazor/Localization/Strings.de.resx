@@ -940,4 +940,7 @@
   <data name="Requirement.HintSeparate" xml:space="preserve"><value>Eine Anforderung für eine separate Karte hinzufügen.</value></data>
   <data name="Requirement.HintAnd" xml:space="preserve"><value>Dieselbe Karte muss beide Eigenschaften erfüllen.</value></data>
   <data name="Requirement.HintOr" xml:space="preserve"><value>Dieselbe Karte kann eine der beiden Bedingungen erfüllen.</value></data>
+  <data name="Requirement.Groups" xml:space="preserve"><value>Anforderungsgruppen</value></data>
+  <data name="Requirement.All" xml:space="preserve"><value>Alle</value></data>
+  <data name="Requirement.Properties" xml:space="preserve"><value>Eigenschaften</value></data>
 </root>

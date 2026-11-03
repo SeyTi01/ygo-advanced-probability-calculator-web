@@ -219,7 +219,7 @@ public class BackgroundCalculationComponentTest {
         Task pending = Start();
         _cut.Find("[aria-label='Edit category Role']").Click();
         _cut.Find("[aria-label='Define by properties']").Click();
-        _cut.Find("[aria-label='Add rule alternative']").Change("metadata:kind:monster");
+        _cut.Find("select[aria-label='Add rule alternative']").Change("metadata:kind:monster");
         _cut.FindComponent<CategoryRuleEditor>().Find("button.btn-primary").Click();
         Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
         _calculator.Jobs[1].SetResult(Result("late rule result"));

@@ -2082,4 +2082,7 @@
   <data name="Requirement.HintSeparate" xml:space="preserve"><value>Ajouter une condition pour une carte distincte.</value></data>
   <data name="Requirement.HintAnd" xml:space="preserve"><value>La même carte doit satisfaire les deux conditions.</value></data>
   <data name="Requirement.HintOr" xml:space="preserve"><value>La même carte peut satisfaire l’une ou l’autre condition.</value></data>
+  <data name="Requirement.Groups" xml:space="preserve"><value>Groupes de conditions</value></data>
+  <data name="Requirement.All" xml:space="preserve"><value>Tout</value></data>
+  <data name="Requirement.Properties" xml:space="preserve"><value>Propriétés</value></data>
 </root>

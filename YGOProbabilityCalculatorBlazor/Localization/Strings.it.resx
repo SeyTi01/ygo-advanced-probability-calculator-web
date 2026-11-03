@@ -2706,4 +2706,7 @@
   <data name="Requirement.HintSeparate" xml:space="preserve"><value>Aggiungi un requisito per una carta distinta.</value></data>
   <data name="Requirement.HintAnd" xml:space="preserve"><value>La stessa carta deve soddisfare entrambi i requisiti.</value></data>
   <data name="Requirement.HintOr" xml:space="preserve"><value>La stessa carta può soddisfare uno dei due requisiti.</value></data>
+  <data name="Requirement.Groups" xml:space="preserve"><value>Gruppi di requisiti</value></data>
+  <data name="Requirement.All" xml:space="preserve"><value>Tutti</value></data>
+  <data name="Requirement.Properties" xml:space="preserve"><value>Proprietà</value></data>
 </root>

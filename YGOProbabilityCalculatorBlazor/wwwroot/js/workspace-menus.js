@@ -3,7 +3,8 @@
     document.addEventListener('keydown', event => {
         // Enter applies a destination in Blazor; its native default must not
         // activate the trigger that receives focus after the move.
-        if (event.key === 'Enter' && event.target.matches?.('.move-position-panel input')) event.preventDefault();
+        if (event.key === 'Enter' && event.target.matches?.('.move-position-panel input, .requirement-picker-panel select')) event.preventDefault();
+        if (['ArrowDown', 'ArrowUp'].includes(event.key) && event.target.matches?.('.requirement-picker-trigger')) event.preventDefault();
         if (event.target.matches?.('.card-name-field input[aria-expanded="true"]')
             && ['ArrowDown', 'ArrowUp'].includes(event.key)) event.preventDefault();
     });
@@ -14,6 +15,13 @@
     const cleanups = new WeakMap();
     const dispose = panel => { cleanups.get(panel)?.(); cleanups.delete(panel); };
     window.workspaceMenus = {
+        getScroll(element) { return element.scrollTop; },
+        async restoreScroll(element, top) {
+            // Native selects reveal their selected option after focus/layout.
+            // Restore the user's position after that deferred browser work.
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            element.scrollTop = top;
+        },
         watchOutside(panel, trigger, receiver) {
             dispose(panel);
             const outside = event => {
@@ -28,13 +36,14 @@
                 document.removeEventListener('focusin', outside, true);
             });
         },
-        open(panel, trigger, receiver, focusFirst = true) {
+        open(panel, trigger, receiver, focusFirst = true, matchWidth = false) {
             dispose(panel);
             const position = () => {
                 const anchor = trigger.getBoundingClientRect();
+                if (matchWidth) panel.style.width = `${anchor.width}px`;
                 const box = panel.getBoundingClientRect();
                 panel.style.left = `${Math.max(8, Math.min(anchor.right - box.width, innerWidth - box.width - 8))}px`;
-                panel.style.top = `${Math.max(8, anchor.bottom + box.height + 8 <= innerHeight ? anchor.bottom + 4 : anchor.top - box.height - 4)}px`;
+                panel.style.top = `${matchWidth ? anchor.bottom + 4 : Math.max(8, anchor.bottom + box.height + 8 <= innerHeight ? anchor.bottom + 4 : anchor.top - box.height - 4)}px`;
             };
             const dismiss = () => {
                 dispose(panel);
@@ -51,7 +60,7 @@
                     trigger.focus({ preventScroll: true });
                     dismiss();
                 }
-                if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+                if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) && event.target.tagName !== 'SELECT') {
                     const items = [...panel.querySelectorAll('button:not(:disabled), input:not(:disabled)')];
                     if (!items.length) return;
                     event.preventDefault();
