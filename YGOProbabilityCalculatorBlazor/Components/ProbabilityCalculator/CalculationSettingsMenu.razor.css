@@ -17,15 +17,15 @@
 }
 
 .calculation-settings-panel {
+    --surface-overlay-viewport-inset: .75rem;
+    --surface-overlay-padding: 1rem;
+    --surface-overlay-shadow: 0 .5rem 1.25rem rgb(0 0 0 / 16%);
     position: absolute;
-    z-index: 1080;
     top: calc(100% + 0.5rem);
     right: 0;
-    width: min(24rem, calc(100vw - 1.5rem));
+    width: 24rem;
     max-height: min(32rem, calc(100vh - 2rem));
     overflow-y: auto;
-    padding: 1rem;
-    box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 16%);
 }
 
 .calculation-settings-panel[hidden] {

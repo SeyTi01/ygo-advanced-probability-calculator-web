@@ -15,7 +15,7 @@
             <span>@Text <span aria-hidden="true">⌄</span></span>
         }
     </button>
-    <div @ref="_panel" id="@_id" class="action-menu-panel surface-panel" hidden="@(!_open)" role="group" aria-label="@Label">
+    <div @ref="_panel" id="@_id" class="action-menu-panel surface-panel surface-overlay surface-overlay-fixed" hidden="@(!_open)" role="group" aria-label="@Label">
         @ChildContent
     </div>
 </div>
@@ -28,7 +28,8 @@
     private readonly string _id = "actions-" + Guid.NewGuid().ToString("N");
     private ElementReference _trigger;
     private ElementReference _panel;
-    private DotNetObjectReference<ActionMenu>? _reference;
+    private PopupRegistration<ActionMenu>? _popup;
+    private PopupRegistration<ActionMenu> Popup => _popup ??= new(JS, this);
     private bool _open;
     private bool _attach;
     private bool _focusFirst;
@@ -46,20 +47,19 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_attach) {
             _attach = false;
-            _reference ??= DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("workspaceMenus.open", _panel, _trigger, _reference, _focusFirst);
+            await Popup.OpenAsync(_panel, _trigger, _focusFirst);
         }
     }
 
     [JSInvokable]
     public async Task Dismiss() {
-        _open = false;
+        _open = _attach = false;
         await InvokeAsync(StateHasChanged);
     }
 
     public async Task Close(bool removing = false) {
-        _open = false;
-        await JS.InvokeVoidAsync("workspaceMenus.close", _panel, _trigger, removing);
+        _open = _attach = false;
+        await Popup.CloseAsync(_panel, _trigger, removing);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -67,12 +67,5 @@
 
     private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? Close() : Task.CompletedTask;
 
-    public async ValueTask DisposeAsync() {
-        try {
-            await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
-        }
-        catch (Exception exception) when (exception is JSDisconnectedException or OperationCanceledException) {
-        }
-        _reference?.Dispose();
-    }
+    public ValueTask DisposeAsync() => _popup?.DisposeAsync() ?? ValueTask.CompletedTask;
 }

@@ -11,19 +11,19 @@
 
 .move-position-panel {
     --surface-radius: .35rem;
-    position: fixed;
-    z-index: 1085;
+    --surface-overlay-layer: 1085;
+    --surface-overlay-viewport-inset: 1rem;
+    --surface-overlay-padding: .6rem;
+    --surface-overlay-shadow: 0 .25rem .75rem #0003;
     display: grid;
     gap: .4rem;
-    width: min(16rem, calc(100vw - 2rem));
+    width: 16rem;
     max-height: calc(100dvh - 1rem);
     overflow-y: auto;
-    padding: .6rem;
-    box-shadow: 0 .25rem .75rem #0003;
 }
 
 .move-position:has(.menu-command) { display: block; }
-.move-position:has(.menu-command) .move-position-panel { position: static; width: 100%; box-shadow: none; }
+.move-position:has(.menu-command) .move-position-panel { --surface-overlay-shadow: none; position: static; width: 100%; }
 .move-position-current { color: var(--bs-secondary-color); }
 .move-position-fields { display: flex; gap: .3rem; }
 .move-position-fields input { width: 4rem; min-width: 0; }

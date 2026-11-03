@@ -1,6 +1,7 @@
 @inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using Microsoft.JSInterop
+@using YGOProbabilityCalculatorBlazor.Components.Shared
 @using YGOProbabilityCalculatorBlazor.Models
 @implements IAsyncDisposable
 @inject IJSRuntime JS
@@ -19,7 +20,7 @@
     </button>
 
     <section @ref="_panel" id="calculationSettingsPanel"
-             class="calculation-settings-panel surface-panel"
+             class="calculation-settings-panel surface-panel surface-overlay"
              role="dialog"
              aria-labelledby="calculationSettingsHeading"
              hidden="@(!_isOpen)">
@@ -183,7 +184,8 @@
     private bool _focusTriggerAfterRender;
     private ElementReference _trigger;
     private ElementReference _panel;
-    private DotNetObjectReference<CalculationSettingsMenu>? _reference;
+    private PopupRegistration<CalculationSettingsMenu>? _popup;
+    private PopupRegistration<CalculationSettingsMenu> Popup => _popup ??= new(JS, this);
     private ElementReference _drawEffectsInput;
     private string? ModelHelp => Model switch {
         CalculationModel.Fast => Strategy == FastExecutionStrategy.FastOnly
@@ -202,12 +204,11 @@
         if (_focusDrawEffectsAfterRender) {
             _focusDrawEffectsAfterRender = false;
             await _drawEffectsInput.FocusAsync();
-            _reference ??= DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("workspaceMenus.watchOutside", _panel, _trigger, _reference);
+            await Popup.WatchOutsideAsync(_panel, _trigger);
         }
         else if (_focusTriggerAfterRender) {
             _focusTriggerAfterRender = false;
-            await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
+            await Popup.DetachAsync();
             await _trigger.FocusAsync();
         }
     }
@@ -217,18 +218,11 @@
         _isOpen = false;
         _focusDrawEffectsAfterRender = false;
         _focusTriggerAfterRender = false;
-        await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
+        await Popup.DetachAsync();
         await InvokeAsync(StateHasChanged);
     }
 
-    public async ValueTask DisposeAsync() {
-        try {
-            await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel);
-        }
-        catch (Exception exception) when (exception is JSDisconnectedException or OperationCanceledException) {
-        }
-        _reference?.Dispose();
-    }
+    public ValueTask DisposeAsync() => _popup?.DisposeAsync() ?? ValueTask.CompletedTask;
 
     private Task ToggleMenu() {
         _isOpen = !_isOpen;

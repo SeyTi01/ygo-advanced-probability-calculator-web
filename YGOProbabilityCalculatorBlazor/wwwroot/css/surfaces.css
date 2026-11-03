@@ -1,0 +1,16 @@
+/* Shared surfaces; owners choose placement and explicit variants where needed. */
+.surface-panel {
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--surface-radius, var(--bs-border-radius));
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+.surface-overlay {
+    z-index: var(--surface-overlay-layer, 1080);
+    max-width: calc(100vw - 2 * var(--surface-overlay-viewport-inset, .5rem));
+    padding: var(--surface-overlay-padding, .35rem);
+    box-shadow: var(--surface-overlay-shadow, var(--bs-box-shadow));
+}
+
+.surface-overlay-fixed { position: fixed; }
