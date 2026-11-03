@@ -17,6 +17,9 @@ Failed test runs remain visible for review rather than being retried automatical
 After workflow changes, start a new **Run workflow** on `dev`: GitHub reruns retain
 the old workflow definition even when checkout obtains current code. Generation
 rejects that mismatch before writing a bundle.
+To retry after a code/workflow fix without downloading provider data again, start
+a new **Run workflow** on `dev` and set `source_run_id` to the earlier refresh run ID.
+Leave it blank for a fresh monthly acquisition.
 
 Manual acquisition and generation use the same commands as the schedule:
 
@@ -33,8 +36,18 @@ adapter retains the existing password/fake-password and unique-artwork join rule
 YAML Yugi is the sole translation source. The raw archive and canonical response
 stay in the source directory, outside the app and committed projections.
 
-Download the run's `card-data-refresh-RUN_ID` artifact for offline replay with
-the second command. Source hashes and sizes are verified before generation.
+Successful acquisition is checkpointed as `card-data-refresh-RUN_ID` before
+generation, tests or publication. **Re-run jobs** restores that run's checkpoint
+automatically and skips all provider requests. A new run with `source_run_id`
+copies the selected checkpoint into its own artifact, so subsequent retries do
+not depend on the older artifact's retention. Existing checkpoints are not overwritten.
+Download the same artifact for offline replay with the second command. Source
+hashes and sizes are verified after restoration and again before generation.
+An explicit missing/expired replay, a corrupt/incomplete artifact, or a GitHub
+download error fails without silently fetching new provider data. Expired checkpoints
+require a new run. An automatic retry with no checkpoint acquires fresh inputs;
+acquisition must finish and its upload must succeed before later failures can be
+recovered this way.
 Artifacts have 90-day retention; download needed historical inputs before expiry.
 YAML Yugi remains retrievable by pinned revision; exact historical YGOPRODeck
 responses cannot be recovered from its moving endpoint after artifact expiry.

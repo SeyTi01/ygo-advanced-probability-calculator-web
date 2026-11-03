@@ -104,10 +104,8 @@ export function buildRefresh({ provider, yamlBytes, manifest, series, vocabulary
         candidates, membership, localizedNames, source: manifest } };
 }
 
-export async function refresh(input, root = '.', minimumCards, minimumEligible) {
-    const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
-    const at = path => resolve(root, path);
-    const manifest = await readJson(resolve(input, 'sources.json'));
+export async function readRefreshSources(input) {
+    const manifest = JSON.parse(await readFile(resolve(input, 'sources.json'), 'utf8'));
     if (manifest.version !== 1 || !Array.isArray(manifest.sources)) throw new Error('Invalid source manifest');
     for (const required of ['cardinfo.json', 'archetypes.json', 'yaml-cards.json', 'series.json', 'yaml-yugi.tar.gz']) {
         const entry = manifest.sources.find(source => source.file === required);
@@ -115,6 +113,13 @@ export async function refresh(input, root = '.', minimumCards, minimumEligible) 
         const bytes = await readFile(resolve(input, required));
         if (bytes.length !== entry.bytes || hash(bytes) !== entry.sha256) throw new Error('Source hash mismatch: ' + required);
     }
+    return manifest;
+}
+
+export async function refresh(input, root = '.', minimumCards, minimumEligible) {
+    const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
+    const at = path => resolve(root, path);
+    const manifest = await readRefreshSources(input);
     let previousAudit;
     try { previousAudit = await readJson(at(`${auditRoot}/audit.json`)); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
