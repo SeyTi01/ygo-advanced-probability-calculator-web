@@ -94,16 +94,6 @@ public static class ProbabilityPresentation {
     private static string WithPrimary(string detail, ProbabilityFraction? raw) => raw is null
         ? detail : UiText.Format("Probability.DetailWithPrimary", detail, Ratio(raw));
 
-    public static int GroupIndex(IReadOnlyList<GroupProbabilityResult>? groups, string id) {
-        for (int index = 0; index < (groups?.Count ?? 0); index++) {
-            if (groups![index].GroupId == id) {
-                return index;
-            }
-        }
-
-        return -1;
-    }
-
     private static T? At<T>(ImmutableArray<T> values, int index) where T : class =>
         !values.IsDefault && index >= 0 && index < values.Length ? values[index] : null;
 

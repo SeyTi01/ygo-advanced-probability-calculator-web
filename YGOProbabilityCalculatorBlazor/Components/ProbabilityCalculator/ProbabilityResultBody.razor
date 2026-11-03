@@ -1,0 +1,67 @@
+@using System.Collections.Immutable
+@using YGOProbabilityCalculatorBlazor.Services.Interface
+
+<div class="@(Pinned ? "pinned-row pinned-total" : "combo-probability-row probability-total")">
+    <span class="@NameClass">@(UiText.Get("Ui.AnyActiveCombo"))</span>
+    @Value(Projection.Total, ProbabilityRow.Total, 0, "probability-total-value")
+</div>
+@if (Projection.Groups.Length > 0) {
+    <div class="@(Pinned ? null : Projection.Ungrouped.Length == 0 ? "probability-groups probability-groups-last" : "probability-groups")">
+        @foreach (ProbabilityGroupRow group in Projection.Groups) {
+            <section class="@(Pinned ? "pinned-group" : "probability-group-container")">
+                <h6 class="@(Pinned ? "pinned-row" : "combo-probability-row probability-group probability-group-heading")">
+                    <span class="@NameClass">
+                        @group.Label <small class="text-body-secondary fw-normal">@UiText.Format("Result.ActiveCount", group.ActiveCount)</small>
+                    </span>
+                    @Value(group.Probability, ProbabilityRow.Group, group.Index)
+                </h6>
+                @if (group.Members.Length > 0) {
+                    @ComboList(group.Members, true)
+                }
+            </section>
+        }
+    </div>
+}
+@if (Projection.Ungrouped.Length > 0) {
+    <h6 class="@(!Pinned && Projection.Groups.Length > 0 ? "fw-bold" : null)">@(Projection.Groups.Length > 0 ? UiText.Get("Ui.UngroupedCombos") : UiText.Get("Ui.IndividualCombos"))</h6>
+    @ComboList(Projection.Ungrouped, false)
+}
+
+@code {
+    [Parameter, EditorRequired] public ProbabilityResultProjection Projection { get; set; } = null!;
+    [Parameter] public CalculationResultContract? Contract { get; set; }
+    [Parameter] public SearchAvailabilityCertificate? Certificate { get; set; }
+    [Parameter] public bool Pinned { get; set; }
+
+    private string RowClass => Pinned ? "pinned-row" : "combo-probability-row";
+    private string? NameClass => Pinned ? null : "combo-probability-name";
+
+    private string ListClass(bool members) => (Pinned, members) switch {
+        (true, true) => "pinned-list pinned-members",
+        (true, false) => "pinned-list",
+        (false, true) => "combo-probability-list probability-group-members",
+        (false, false) => "combo-probability-list probability-ungrouped-combos"
+    };
+
+    private RenderFragment ComboList(ImmutableArray<ProbabilityComboRow> rows, bool members) => @<ol class="@ListClass(members)">
+        @foreach (ProbabilityComboRow row in rows) {
+            <li class="@(Pinned ? null : "combo-probability-item")">
+                <div class="@RowClass">
+                    <span class="@NameClass">@row.Label</span>
+                    @Value(row.Probability, ProbabilityRow.Combo, row.Index)
+                </div>
+            </li>
+        }
+    </ol>;
+
+    private RenderFragment Value(double probability, ProbabilityRow row, int index, string? valueClass = null) => @<text>
+        @if (Pinned) {
+            <ProbabilityValue Probability="probability" Contract="Contract" Certificate="Certificate" Row="row" Index="index" ValueClass="@valueClass" />
+        }
+        else {
+            <span class="result-value-group">
+                <ProbabilityValue Probability="probability" Contract="Contract" Certificate="Certificate" Row="row" Index="index" ValueClass="@valueClass" />
+            </span>
+        }
+    </text>;
+}

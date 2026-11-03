@@ -19,21 +19,6 @@
 
 .probability-result-status-placeholder { visibility: hidden; }
 
-.probability-groups {
-    margin-bottom: 0.75rem;
-}
-.probability-groups-last { margin-bottom: 0; }
-
-.combo-probability-row.probability-group-heading {
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.combo-probability-name {
-    min-width: 0;
-    overflow-wrap: anywhere;
-}
-
 /* One shared workspace and editor structure, including child components. */
 .calculator-workspace {
     max-width: var(--app-workspace-width, 60rem);
@@ -145,11 +130,6 @@
 .probability-results-heading ::deep .probability-result-export-toolbar { grid-row: 1; grid-column: 3; }
 .probability-results-heading ::deep .probability-result-copy-fallback { grid-column: 1 / -1; }
 .probability-results { container: result-panel / inline-size; }
-.result-value-group { display: flex; justify-content: flex-end; min-width: 0; }
-
-@container result-panel (max-width: 14rem) {
-    .result-value-group { justify-self: end; max-width: 100%; }
-}
 
 @media (min-width: 900px) {
     .result-panels:has(.probability-results) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

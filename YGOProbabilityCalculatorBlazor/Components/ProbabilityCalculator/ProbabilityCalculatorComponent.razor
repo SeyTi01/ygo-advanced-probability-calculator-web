@@ -254,71 +254,7 @@
                 <CalculationAccuracyResult Contract="result.Contract" Context="_calculation.Snapshot?.Context"
                     ModeDescription="@(_calculation.Snapshot?.Context.ModeDescription)" />
                 <CalculationAccuracyDetails />
-                <div class="combo-probability-row probability-total">
-                    <span class="combo-probability-name">@(UiText.Get("Ui.AnyActiveCombo"))</span>
-                    <div class="result-value-group">
-                        <ProbabilityValue Probability="result.TotalProbability" Contract="result.Contract" Certificate="result.SearchAvailability" ValueClass="probability-total-value" />
-                    </div>
-                </div>
-                @{
-                    List<GroupProbabilityResult> groupResults = (result.GroupProbabilities ?? [])
-                        .Where(group => group.ActiveComboCount > 0)
-                        .ToList();
-                    HashSet<string> renderedGroupIds = groupResults
-                        .Select(group => group.GroupId)
-                        .ToHashSet(StringComparer.Ordinal);
-                    List<ComboProbabilityResult> ungroupedComboResults = result.ComboProbabilities
-                        .Where(comboResult => comboResult.GroupId is null || !renderedGroupIds.Contains(comboResult.GroupId))
-                        .ToList();
-                }
-                @if (groupResults.Count > 0) {
-                    <div class="probability-groups @(ungroupedComboResults.Count == 0 ? "probability-groups-last" : null)">
-                        @foreach (GroupProbabilityResult group in groupResults) {
-                            List<ComboProbabilityResult> groupComboResults = result.ComboProbabilities
-                                .Where(comboResult => comboResult.GroupId == group.GroupId)
-                                .ToList();
-                            <section class="probability-group-container">
-                                <h6 class="combo-probability-row probability-group probability-group-heading">
-                                    <span class="combo-probability-name">
-                                        @group.GroupName <small class="text-body-secondary fw-normal">@UiText.Format("Result.ActiveCount", group.ActiveComboCount)</small>
-                                    </span>
-                                    <span class="result-value-group">
-                                        <ProbabilityValue Probability="group.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Group" Index="@ProbabilityPresentation.GroupIndex(result.GroupProbabilities, group.GroupId)" />
-                                    </span>
-                                </h6>
-                                @if (groupComboResults.Count > 0) {
-                                    <ol class="combo-probability-list probability-group-members">
-                                        @foreach (ComboProbabilityResult comboResult in groupComboResults) {
-                                            <li class="combo-probability-item">
-                                                <div class="combo-probability-row">
-                                                    <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
-                                                    <span class="result-value-group">
-                                                        <ProbabilityValue Probability="comboResult.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Combo" Index="comboResult.ComboIndex" />
-                                                    </span>
-                                                </div>
-                                            </li>
-                                        }
-                                    </ol>
-                                }
-                            </section>
-                        }
-                    </div>
-                }
-                @if (ungroupedComboResults.Count > 0) {
-                    <h6 class="@(groupResults.Count > 0 ? "fw-bold" : null)">@(groupResults.Count > 0 ? UiText.Get("Ui.UngroupedCombos") : UiText.Get("Ui.IndividualCombos"))</h6>
-                    <ol class="combo-probability-list probability-ungrouped-combos">
-                        @foreach (ComboProbabilityResult comboResult in ungroupedComboResults) {
-                            <li class="combo-probability-item">
-                                <div class="combo-probability-row">
-                                    <span class="combo-probability-name">@ComboResultDisplayName(comboResult)</span>
-                                    <span class="result-value-group">
-                                        <ProbabilityValue Probability="comboResult.Probability" Contract="result.Contract" Certificate="result.SearchAvailability" Row="ProbabilityRow.Combo" Index="comboResult.ComboIndex" />
-                                    </span>
-                                </div>
-                            </li>
-                        }
-                    </ol>
-                }
+                <ProbabilityResultBody Projection="ProbabilityResultProjection.Create(result)" Contract="result.Contract" Certificate="result.SearchAvailability" />
             </section>
         }
         @if (_pinnedResult is { } pinned) {
@@ -435,11 +371,6 @@
     }
 
     private bool CanCalculate => ActiveCardCount > 0 && ActiveComboCount > 0 && CalculationUnavailableMessage is null;
-
-    private static string ComboResultDisplayName(ComboProbabilityResult result) =>
-        string.IsNullOrWhiteSpace(result.ComboName)
-            ? UiText.Format("Ui.UnnamedCombo0", result.ComboIndex + 1)
-            : result.ComboName;
 
     private Task ReplaceCard((int Index, Card NewCard) payload) {
         (int index, Card newCard) = payload;
