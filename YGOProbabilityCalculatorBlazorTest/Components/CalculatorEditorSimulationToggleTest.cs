@@ -5,7 +5,7 @@ using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
-using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
@@ -14,7 +14,7 @@ public sealed class CalculatorEditorSimulationToggleTest : CalculatorEditorTestB
     [TestCase(false)]
     [TestCase(true)]
     public async Task TogglePreservesEntryIdentityPlansDraftsAndAllSavedChannels(bool custom) {
-        Card source = SearchEffectsTest.Rota();
+        Card source = SearchCardFixtures.Rota();
         if (custom) {
             source = source.WithSearch(new(CardSelector.For(a), false)).WithOncePerTurn(true);
         }
@@ -70,7 +70,7 @@ public sealed class CalculatorEditorSimulationToggleTest : CalculatorEditorTestB
         background.Setup(calculator => calculator.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
             .Returns((CalculationSnapshot _, CancellationToken token) => { captured = token; return completion.Task; });
         context.Services.AddSingleton(background.Object);
-        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [SearchEffectsTest.Rota(), SearchEffectsTest.Warrior()],
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Cards = [SearchCardFixtures.Rota(), SearchCardFixtures.Warrior()],
             HandSize = 1, Combos = [new([], cards: [new("target", 1, 1)])] });
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
         editor.Find(".accordion-button").Click();

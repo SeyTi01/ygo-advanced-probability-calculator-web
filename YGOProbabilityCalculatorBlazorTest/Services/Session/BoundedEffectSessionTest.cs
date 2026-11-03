@@ -3,19 +3,18 @@ using System.Text.Json.Nodes;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 public sealed class BoundedEffectSessionTest {
-    private static SessionService Codec() => new(null!, new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-
     [TestCase("ActivationLimit", "0"), TestCase("ActivationLimit", "61"), TestCase("ActivationLimit", "1.5")]
     [TestCase("ActivationLimit", "true"), TestCase("MinimumHandSize", "-1"), TestCase("MinimumHandSize", "61")]
     public void InvalidActivationFieldsAreRejectedAsSessionErrors(string field, string value) {
         Card source = CardEffectRegistry.Default.RestoreBuiltIn(new([], externalCardId: 78058681));
-        JsonObject root = JsonNode.Parse(Codec().SerializeSession(new() { Cards = [source] }))!.AsObject();
+        JsonObject root = JsonNode.Parse(SessionFixture.CreateCodec().SerializeSession(new() { Cards = [source] }))!.AsObject();
         root["Cards"]![0]![field] = JsonNode.Parse(value);
-        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(root.ToJsonString()));
+        Assert.ThrowsAsync<InvalidOperationException>(() => SessionFixture.CreateCodec().LoadSessionAsync(root.ToJsonString()));
     }
 
     [Test]
@@ -45,7 +44,7 @@ public sealed class BoundedEffectSessionTest {
         Assert.That(updated.Search.Modes![0], Is.EqualTo(modes[0]));
         Assert.That(updated.Search.Modes[1].Selector, Is.EqualTo(CardSelector.Not(CardSelector.Any)));
         Assert.That(updated.Search.Modes[1].ActivationLimit, Is.EqualTo(2));
-        SessionState decoded = await Codec().LoadSessionAsync(Codec().SerializeSession(new() { Cards = [updated] }));
+        SessionState decoded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionFixture.CreateCodec().SerializeSession(new() { Cards = [updated] }));
         Assert.That(decoded.Cards.Single().Search, Is.EqualTo(updated.Search));
         Assert.Throws<ArgumentException>(() => new Card([], search: source.Search! with { Selector = CardSelector.For(role) }));
     }
@@ -58,10 +57,10 @@ public sealed class BoundedEffectSessionTest {
             if (mode is not (CalculationModel.Fast or CalculationModel.Exact or CalculationModel.OpeningHand)) {
                 continue;
             }
-            JsonObject root = JsonNode.Parse(Codec().SerializeSession(new() { Cards = [old, old.Duplicate().WithDrawCount(2)], CalculationModel = mode }))!.AsObject();
+            JsonObject root = JsonNode.Parse(SessionFixture.CreateCodec().SerializeSession(new() { Cards = [old, old.Duplicate().WithDrawCount(2)], CalculationModel = mode }))!.AsObject();
             root["SchemaVersion"] = 8;
             root.Remove("FastExecutionStrategy");
-            SessionState saved = await Codec().LoadSessionAsync(root.ToJsonString());
+            SessionState saved = await SessionFixture.CreateCodec().LoadSessionAsync(root.ToJsonString());
             Assert.That(saved.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
             Assert.That(saved.CalculationModel, Is.EqualTo(mode));
             Assert.That(saved.Cards[0].EffectPlan, Is.EqualTo(old.EffectPlan));

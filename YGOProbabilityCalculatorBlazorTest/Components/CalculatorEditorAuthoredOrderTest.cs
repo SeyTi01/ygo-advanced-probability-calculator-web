@@ -47,8 +47,10 @@ public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase
             Categories = [a, b], Cards = [new([a], 2, "Physical", id: "physical")], Combos = [new([])], HandSize = 2
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:physical" });
         await Button(editor, "Add").ClickAsync(new());
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(RowKinds(editor), Is.EqualTo(new[] { "card:0", "category:0" }));

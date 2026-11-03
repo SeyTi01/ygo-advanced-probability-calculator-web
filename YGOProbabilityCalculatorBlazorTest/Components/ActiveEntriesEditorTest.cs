@@ -278,6 +278,7 @@ public class ActiveEntriesEditorTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:B");
+        CalculatorEditorTestBase.OpenNewRequirement(combo);
         CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").Change("user:B");
         CalculatorEditorTestBase.RequirementField(combo, "#minCount0").Input("0");
         CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").Input("0");
@@ -355,6 +356,7 @@ public class ActiveEntriesEditorTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:A");
+        CalculatorEditorTestBase.OpenNewRequirement(combo);
         CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").Change("user:A");
         CalculatorEditorTestBase.RequirementField(combo, "#minCount0").Input("0");
         CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").Input("0");

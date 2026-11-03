@@ -97,6 +97,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         AssertAnyMaximumDraft(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:r" });
         await editor.Find(".requirement-form").SubmitAsync(); // Native Enter submission is verified in the browser.
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Cards.Single().CardId, Is.EqualTo("r"));
@@ -147,12 +148,14 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         Combo original = new([new(a, 1, 3)]);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Categories = [a, b], Combos = [original] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
         await EditRequirement(editor, "category:0");
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
         await RequirementField(editor, "#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
+        OpenNewRequirement(editor);
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
         Assert.That(editor.FindAll("[aria-expanded='true'].requirement-edit"), Is.Empty);
@@ -250,6 +253,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(sameCard.ToString("P2")));
         await RemoveProperty(editor, "category:0", 2);
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await Button(editor, "Add").ClickAsync(new());
         double separate = SmallDeckOracle.EnumerateProbability([both, blank], [editor.Instance.Combo], 1);

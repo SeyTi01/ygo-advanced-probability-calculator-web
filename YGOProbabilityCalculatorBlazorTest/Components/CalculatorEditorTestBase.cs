@@ -66,14 +66,7 @@ public abstract class CalculatorEditorTestBase {
         fragment.Find($"{scope} .add-top-level-group").Click();
     }
 
-    // Tests that author a new requirement explicitly open its form first.
-    public static IElement RequirementField(IRenderedFragment fragment, string selector) {
-        if (fragment.FindAll(selector).Count == 0) {
-            string digits = new(selector.SkipWhile(character => !char.IsDigit(character)).TakeWhile(char.IsDigit).ToArray());
-            OpenNewRequirement(fragment, digits.Length == 0 ? null : int.Parse(digits));
-        }
-        return fragment.Find(selector);
-    }
+    public static IElement RequirementField(IRenderedFragment fragment, string selector) => fragment.Find(selector);
 
     protected static void OpenSimulation(IRenderedFragment editor) {
         if (editor.FindAll(".simulation-editor").Count == 0) {
@@ -82,17 +75,16 @@ public abstract class CalculatorEditorTestBase {
     }
 
     protected static async Task SaveSimulation(IRenderedFragment editor) {
-        if (!editor.Find(".simulation-save").HasAttribute("disabled")) {
-            await editor.Find(".simulation-save").ClickAsync(new());
-            OpenSimulation(editor);
-        }
+        IElement save = editor.Find(".simulation-save");
+        Assert.That(save.HasAttribute("disabled"), Is.False, "Simulation Save must be enabled.");
+        await save.ClickAsync(new());
     }
 
     protected static IElement EligibilityRow(IRenderedFragment editor, string label) => editor.FindAll(".selector-expression .requirement-row")
         .First(row => row.QuerySelectorAll(".draw-selector-chip").Any(chip => (chip.TextContent.Equals(label, StringComparison.OrdinalIgnoreCase) || chip.TextContent.EndsWith(": " + label, StringComparison.OrdinalIgnoreCase))))
         .QuerySelector(".requirement-edit")!;
 
-    protected static async Task AddEligibilityProperty(IRenderedFragment editor, string label, string identity) {
+    protected static async Task AddEligibilityProperty(IRenderedFragment editor, string identity) {
         await Button(editor, "Add AND").ClickAsync(new());
         await editor.Find(".selector-expression form .requirement-operand .requirement-property-picker select.requirement-options").ChangeAsync(new() { Value = identity });
         await editor.Find(".selector-expression form").SubmitAsync();
@@ -105,7 +97,7 @@ public abstract class CalculatorEditorTestBase {
         await editor.Find(".selector-expression form").SubmitAsync();
     }
 
-    protected static async Task RemoveEligibility(IRenderedFragment editor, string label, string identity) {
+    protected static async Task RemoveEligibility(IRenderedFragment editor, string label) {
         IElement? member = editor.FindAll(".expression-member").FirstOrDefault(button => button.TextContent.Contains(label, StringComparison.OrdinalIgnoreCase));
         await (member ?? EligibilityRow(editor, label)).ClickAsync(new());
         await Button(editor, "Remove requirement").ClickAsync(new());

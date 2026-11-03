@@ -2,12 +2,11 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 public sealed class CalculationModeSessionTest {
-    private static SessionService Codec() => new(null!, new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-
     public static IEnumerable<TestCaseData> LegacyModes() => Enumerable.Range(0, 8)
         .SelectMany(version => new string?[] { null, "true", "false" }.Select(value => new TestCaseData(version, value)));
 
@@ -17,10 +16,10 @@ public sealed class CalculationModeSessionTest {
         if (enabled is not null) {
             root["DrawEffectsEnabled"] = JsonNode.Parse(enabled);
         }
-        SessionState loaded = await Codec().LoadSessionAsync(root.ToJsonString());
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(root.ToJsonString());
         Assert.That(loaded.FastExecutionStrategy, Is.EqualTo(FastExecutionStrategy.Progressive));
         Assert.That(loaded.CalculationModel, Is.EqualTo(enabled == "false" ? CalculationModel.OpeningHand : CalculationModel.Fast));
-        JsonObject saved = JsonNode.Parse(Codec().SerializeSession(loaded))!.AsObject();
+        JsonObject saved = JsonNode.Parse(SessionFixture.CreateCodec().SerializeSession(loaded))!.AsObject();
         Assert.That(saved["SchemaVersion"]!.GetValue<int>(), Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(saved.ContainsKey("DrawEffectsEnabled"), Is.False);
     }
@@ -32,15 +31,15 @@ public sealed class CalculationModeSessionTest {
             DrawActivationPriority = new(DrawActivationMode.CustomPriority, ["d"]),
             CategoryColorIndices = new() { ["custom"] = 4 }
         };
-        string json = Codec().SerializeSession(state);
+        string json = SessionFixture.CreateCodec().SerializeSession(state);
         string shared = SessionShareCodec.CreateLink("https://example.invalid/", json);
-        SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(new Uri(shared).Fragment));
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionShareCodec.Decode(new Uri(shared).Fragment));
         Assert.That(loaded.CalculationModel, Is.EqualTo(mode));
         Assert.That(loaded.Cards[0].EffectPlan, Is.EqualTo(state.Cards[0].EffectPlan));
         Assert.That(loaded.Cards[0].EffectProfile, Is.EqualTo(state.Cards[0].EffectProfile));
         Assert.That(loaded.DrawActivationPriority.CardIds, Is.EqualTo(new[] { "d" }));
         Assert.That(loaded.CategoryColorIndices, Is.EqualTo(state.CategoryColorIndices));
-        Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
+        Assert.That(SessionFixture.CreateCodec().SerializeSession(loaded), Is.EqualTo(json));
     }
 
     [TestCase("{\"SchemaVersion\":8,\"CalculationModel\":999}")]
@@ -55,6 +54,6 @@ public sealed class CalculationModeSessionTest {
     [TestCase("{\"SchemaVersion\":7,\"DrawEffectsEnabled\":false,\"draweffectsenabled\":true}")]
     [TestCase("{\"SchemaVersion\":11}")]
     public void UnknownDuplicateAndContradictoryRepresentationsAreRejected(string json) {
-        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(json));
+        Assert.ThrowsAsync<InvalidOperationException>(() => SessionFixture.CreateCodec().LoadSessionAsync(json));
     }
 }

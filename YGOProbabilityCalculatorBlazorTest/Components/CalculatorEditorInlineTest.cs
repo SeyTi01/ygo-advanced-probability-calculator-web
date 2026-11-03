@@ -127,6 +127,7 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
     public async Task BottomPlusReturnsToTheSeparateCopyDraftAndDoesNotCommitAnOpenRow() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [new([new(a, 1, 3)])] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
         await EditRequirement(editor, "category:0");

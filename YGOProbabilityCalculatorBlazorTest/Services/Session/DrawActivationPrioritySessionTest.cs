@@ -1,17 +1,15 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Microsoft.JSInterop;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 public class DrawActivationPrioritySessionTest {
-    private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
     private static SessionState Session(DrawActivationPriority priority) => new() {
         Cards = [new([], id: "a", drawCount: 1), new([], id: "b", search: new(CardSelector.Any, false)), new([], 2, id: "f")],
         Combos = [new([], cards: [new("b", 1, 1)])], HandSize = 2, DrawActivationPriority = priority
@@ -20,13 +18,13 @@ public class DrawActivationPrioritySessionTest {
     [Test]
     public async Task OptionalPolicyRoundTripsSaveRecoveryCodecAndShareWithoutSchemaBump() {
         SessionState session = Session(new(DrawActivationMode.CustomPriority, ["b", "a", "removed"]));
-        string saved = Codec().SerializeSession(session);
+        string saved = SessionFixture.CreateCodec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", saved)).Fragment;
-        SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.DrawActivationPriority.Mode, Is.EqualTo(DrawActivationMode.CustomPriority));
         Assert.That(loaded.DrawActivationPriority.CardIds, Is.EqualTo(new[] { "b", "a" }));
-        Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(saved));
+        Assert.That(SessionFixture.CreateCodec().SerializeSession(loaded), Is.EqualTo(saved));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 2, [], options: new(loaded.DrawActivationPriority));
         Assert.That(JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!.Options!.DrawActivationPriority!.CardIds, Is.EqualTo(new[] { "b", "a" }));
         Assert.DoesNotThrow(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
@@ -34,7 +32,7 @@ public class DrawActivationPrioritySessionTest {
 
     [TestCase(0), TestCase(1), TestCase(2), TestCase(3), TestCase(4), TestCase(5)]
     public async Task MissingPolicyInReleasedSchemasDefaultsToEncounterOrder(int schema) {
-        SessionState session = await Codec().LoadSessionAsync($$"""{"SchemaVersion":{{schema}},"Cards":[],"HandSize":5}""");
+        SessionState session = await SessionFixture.CreateCodec().LoadSessionAsync($$"""{"SchemaVersion":{{schema}},"Cards":[],"HandSize":5}""");
         Assert.That(session.DrawActivationPriority.Mode, Is.EqualTo(DrawActivationMode.EncounterOrder));
         Assert.That(session.DrawActivationPriority.CardIds, Is.Empty);
     }
@@ -42,10 +40,10 @@ public class DrawActivationPrioritySessionTest {
     [TestCase("{\"Mode\":99}"), TestCase("{\"Mode\":1,\"CardIds\":[\"a\",\"a\"]}")]
     [TestCase("{\"Mode\":1,\"CardIds\":[null]}"), TestCase("{\"Mode\":1,\"CardIds\":[\" \"]}")]
     public void InvalidPolicyIsRejectedAtSessionAndWorkerBoundaries(string policy) {
-        string json = Codec().SerializeSession(Session(DrawActivationPriority.Default));
+        string json = SessionFixture.CreateCodec().SerializeSession(Session(DrawActivationPriority.Default));
         JsonObject document = JsonNode.Parse(json)!.AsObject();
         document[nameof(SessionState.DrawActivationPriority)] = JsonNode.Parse(policy);
-        Assert.That(async () => await Codec().LoadSessionAsync(document.ToJsonString()), Throws.Exception);
+        Assert.That(async () => await SessionFixture.CreateCodec().LoadSessionAsync(document.ToJsonString()), Throws.Exception);
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(Session(DrawActivationPriority.Default).Cards, [], 2, [], options: new());
         JsonObject input = JsonNode.Parse(snapshot.Json)!.AsObject();
         input["Options"]!["DrawActivationPriority"] = JsonNode.Parse(policy);
@@ -83,9 +81,9 @@ public class DrawActivationPrioritySessionTest {
     public async Task LegacyDrawOnlyListAppendsSearchIdsWithoutReorderingAuthoredOrDormantEntries() {
         SessionState session = Session(new(DrawActivationMode.CustomPriority, ["a"]));
         session.Cards.Add(new([], id: "c", search: new(CardSelector.Any, false), simulationEnabled: false));
-        JsonObject document = JsonNode.Parse(Codec().SerializeSession(session))!.AsObject();
+        JsonObject document = JsonNode.Parse(SessionFixture.CreateCodec().SerializeSession(session))!.AsObject();
         document[nameof(SessionState.DrawActivationPriority)]![nameof(DrawActivationPriority.CardIds)] = new JsonArray("a", "removed");
-        SessionState loaded = await Codec().LoadSessionAsync(document.ToJsonString());
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(document.ToJsonString());
         DrawActivationPriority migrated = loaded.DrawActivationPriority.ForWorkspace(loaded.Cards.AsEnumerable().Reverse());
         Assert.That(migrated.CardIds, Is.EqualTo(new[] { "a", "b", "c" }));
         Assert.That(migrated.ForWorkspace(loaded.Cards).CardIds, Is.EqualTo(migrated.CardIds));

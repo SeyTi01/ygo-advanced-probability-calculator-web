@@ -95,6 +95,7 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase {
             Assert.That(editor.Instance.Combo.Cards.Select(c => c.MaximumMode), Is.EqualTo(new[] { RequirementMaximumMode.HandSize, RequirementMaximumMode.Fixed }));
             Assert.That(editor.Instance.Combo.Categories.Select(c => c.GetEffectiveMaximum(6)), Is.EqualTo(new[] { 6, 0 }));
             Assert.That(editor.Instance.Combo.Cards.Select(c => c.GetEffectiveMaximum(6)), Is.EqualTo(new[] { 6, 5 }));
+            OpenNewRequirement(editor);
             await RequirementField(editor, "#comboTarget" + editor.Instance.Index).ChangeAsync(new() { Value = CardTarget(session.Cards[1].Id) });
             Assert.That(editor.FindAll("[id^='maxAny']"), Is.Empty);
             Assert.That(RequirementField(editor, "#maxCount" + editor.Instance.Index).GetAttribute("value"), Is.EqualTo("5"));
@@ -173,12 +174,14 @@ public sealed class CalculatorEditorTestSession : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.FindAll(".probability-results"), Has.Count.EqualTo(1));
         IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(combo);
         await RequirementField(combo, "select[id^='comboTarget']").ChangeAsync(new() { Value = "user:B" });
         await RequirementField(combo, "#minCount0").InputAsync(new() { Value = "2" });
         await combo.Find(".accordion-button").ClickAsync(new());
         await cut.Find("[placeholder='Category name']").InputAsync(new() { Value = "Old draft" });
         cut.FindComponents<InputFile>()[1].UploadFiles(InputFileContent.CreateFromText(json, "session.json"));
         IRenderedComponent<ComboEditor> loaded = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(loaded);
         Assert.That(RequirementField(loaded, "select[id^='comboTarget']").GetAttribute("value"), Is.Null.Or.Empty);
         Assert.That(RequirementField(loaded, "#minCount0").GetAttribute("value"), Is.EqualTo("1"));
         Assert.That(loaded.Find(".accordion-button").GetAttribute("aria-expanded"), Is.EqualTo("false"));

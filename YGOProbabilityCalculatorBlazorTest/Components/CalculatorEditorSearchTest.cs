@@ -4,7 +4,7 @@ using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
-using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 using static YGOProbabilityCalculatorBlazorTest.Components.WorkspaceActions;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
@@ -12,8 +12,8 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
     [Test]
     public async Task SearchTargetsCustomizeCancelDisableRestoreAndSavedChannels() {
-        Card rota = SearchEffectsTest.Rota();
-        Card target = SearchEffectsTest.Warrior();
+        Card rota = SearchCardFixtures.Rota();
+        Card target = SearchCardFixtures.Warrior();
         SessionState session = new() { Cards = [rota, target, new([], 3)], HandSize = 2,
             Combos = [new([], cards: [new(target.Id, 1, 2)])] };
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
@@ -53,7 +53,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
     [Test]
     public async Task CustomSelectorAndDraftSurviveCategoryRename() {
         CategoryBase role = new("Role");
-        Card source = SearchEffectsTest.Rota().WithSearch(new(CardSelector.For(role), false)).WithSimulationEnabled(false);
+        Card source = SearchCardFixtures.Rota().WithSearch(new(CardSelector.For(role), false)).WithSimulationEnabled(false);
         SessionState state = new() { Cards = [source, new([role])], Categories = [role], HandSize = 1 };
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(state);
         IRenderedComponent<CardEditor> editor = cut.FindComponents<CardEditor>()[0];
@@ -74,8 +74,8 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
 
     [Test]
     public void TargetPreviewUpdatesOnDeckEditsWithoutOverwritingSearchDraft() {
-        Card rota = SearchEffectsTest.Rota();
-        Card target = SearchEffectsTest.Warrior();
+        Card rota = SearchCardFixtures.Rota();
+        Card target = SearchCardFixtures.Warrior();
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, rota).Add(component => component.Deck, new[] { rota, target }));
         editor.Find(".simulation-edit").Click();
@@ -90,7 +90,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
 
     [Test]
     public void SearchSummaryKeepsCustomPlansOnTheGenericFallback() {
-        Card builtIn = SearchEffectsTest.Rota();
+        Card builtIn = SearchCardFixtures.Rota();
         Card custom = builtIn.WithEffect(builtIn.EffectPlan, builtIn.EffectProfile.AsCustom());
         Card changed = builtIn.WithSearch(new(CardSelector.Any, false));
 
@@ -106,8 +106,8 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
 
     [Test]
     public void SearchTargetNamesOmitUniqueIdsAndDisambiguateOnlyNameCollisions() {
-        Card source = SearchEffectsTest.Rota();
-        Card catalogTarget = SearchEffectsTest.Warrior();
+        Card source = SearchCardFixtures.Rota();
+        Card catalogTarget = SearchCardFixtures.Warrior();
         Card sameCatalogEntry = new(catalogTarget.Categories, name: "target", id: "duplicate-entry", externalCardId: 29302858);
         Card otherCatalogTarget = new(catalogTarget.Categories, name: "target", id: "other-catalog", externalCardId: 12345);
         Card customTarget = new(catalogTarget.Categories, name: "target", id: "8b106ff0-4a99-467d-b2f9-533181f24a56");
@@ -128,13 +128,13 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
 
     private IRenderedComponent<CardSimulationEditor> RenderSearchEditor(Card card) => context.RenderComponent<CardSimulationEditor>(parameters => parameters
         .Add(component => component.Card, card)
-        .Add(component => component.Deck, new[] { card, SearchEffectsTest.Warrior() }));
+        .Add(component => component.Deck, new[] { card, SearchCardFixtures.Warrior() }));
 
     [TestCase(false), TestCase(true)]
     public void BuiltInToCustomRoleWorksWithoutProvenanceOption(bool automatic) {
         CategoryBase fire = new("FIRE", CategorySource.Metadata, "attribute:fire");
         CategoryBase role = new("My targets", rule: automatic ? CardSelector.For(fire) : null);
-        Card rota = SearchEffectsTest.Rota();
+        Card rota = SearchCardFixtures.Rota();
         Card target = new(automatic ? [fire] : [role], name: "Custom target", id: "custom-target");
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
@@ -158,7 +158,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
 
     [TestCase(false), TestCase(true)]
     public void OpeningAndSavingOldCustomPlanKeepsItsMatchingPolicy(bool objective) {
-        Card source = SearchEffectsTest.Rota().WithSearch(new(CardSelector.Any, objective));
+        Card source = SearchCardFixtures.Rota().WithSearch(new(CardSelector.Any, objective));
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source)
@@ -175,7 +175,7 @@ public sealed class CalculatorEditorSearchTest : CalculatorEditorTestBase {
 
     [TestCase(false), TestCase(true)]
     public void DrawAndSearchEditorsUseTheSameOncePerTurnFlag(bool draw) {
-        Card source = SearchEffectsTest.Preset(80181649);
+        Card source = SearchCardFixtures.Preset(80181649);
         if (draw) {
             source = source.WithDrawCount(1);
         }

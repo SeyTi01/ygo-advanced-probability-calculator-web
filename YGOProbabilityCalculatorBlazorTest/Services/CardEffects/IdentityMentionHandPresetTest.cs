@@ -1,4 +1,3 @@
-using System.Net;
 using System.Text.Json;
 using Microsoft.JSInterop;
 using Moq;
@@ -6,20 +5,18 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
-using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 
 public sealed class IdentityMentionHandPresetTest {
     private const string RegulusName = "Regulus, the Prince of Endymion";
-    private static readonly JsonSerializerOptions CatalogJsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly int[] CatalogFixtureIds = [
         34041788, 56725612, 78679226,
         96228804, 22623509, 59106048, 40732515,
         19144622, 91957038, 92110878, 46986414
     ];
-    private static readonly Lazy<Task<IReadOnlyList<CardInfo>>> Catalog = new(LoadCatalogCardsAsync);
 
     private static readonly ICardEffectDefinition[] Definitions = [
         new EmpireOfEndymionEffect(),
@@ -36,7 +33,7 @@ public sealed class IdentityMentionHandPresetTest {
     [Test]
     public async Task DefinitionsUseVerifiedCatalogIdentitiesAndOncePerEntryObjectiveSearchPlans() {
         CardEffectRegistry registry = CreateRegistry();
-        IReadOnlyList<CardInfo> catalog = await Catalog.Value;
+        IReadOnlyList<CardInfo> catalog = await CatalogFixture.LoadCardsAsync(CatalogFixtureIds);
 
         Assert.That(registry.All.Select(effect => (effect.CanonicalCardId, effect.Name)), Is.EqualTo(Identities));
 
@@ -70,7 +67,7 @@ public sealed class IdentityMentionHandPresetTest {
     [Test]
     public async Task ImportedSelectedRestoredSavedAndWorkerPlansRetainIdentityAndMentionSelectors() {
         CardEffectRegistry registry = CreateRegistry();
-        IReadOnlyList<CardInfo> catalog = await Catalog.Value;
+        IReadOnlyList<CardInfo> catalog = await CatalogFixture.LoadCardsAsync(CatalogFixtureIds);
         SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
 
         foreach ((int id, string name) in Identities) {
@@ -102,7 +99,7 @@ public sealed class IdentityMentionHandPresetTest {
     [Test]
     public async Task RegulusAndFairyTailTargetsUseObjectiveIdentityAndMentionMetadata() {
         CardEffectRegistry registry = CreateRegistry();
-        IReadOnlyList<CardInfo> catalog = await Catalog.Value;
+        IReadOnlyList<CardInfo> catalog = await CatalogFixture.LoadCardsAsync(CatalogFixtureIds);
         SearchEffectPlan empire = registry.Find(34041788)!.Plan.Search!;
         SearchEffectPlan fairyTail = registry.Find(56725612)!.Plan.Search!;
 
@@ -135,7 +132,7 @@ public sealed class IdentityMentionHandPresetTest {
     [Test]
     public async Task ShiningSarcophagusMentionSelectorRequiresMonsterAndIgnoresManualProxies() {
         CardEffectRegistry registry = CreateRegistry();
-        IReadOnlyList<CardInfo> catalog = await Catalog.Value;
+        IReadOnlyList<CardInfo> catalog = await CatalogFixture.LoadCardsAsync(CatalogFixtureIds);
         SearchEffectPlan futureSilence = registry.Find(78679226)!.Plan.Search!;
 
         Card gadgetTrio = Import(registry, catalog, 92110878);
@@ -161,48 +158,4 @@ public sealed class IdentityMentionHandPresetTest {
 
     private static CardInfo CatalogCard(IReadOnlyList<CardInfo> catalog, int id) =>
         catalog.Single(card => card.Id == id);
-
-    private static async Task<IReadOnlyList<CardInfo>> LoadCatalogCardsAsync() {
-        string catalogPath = FindCatalogPath();
-        using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(catalogPath));
-        CardInfo[] cards = document.RootElement.GetProperty("cards").EnumerateArray()
-            .Where(card => CatalogFixtureIds.Contains(card.GetProperty("id").GetInt32()))
-            .Select(card => card.Deserialize<CardInfo>(CatalogJsonOptions)!)
-            .ToArray();
-
-        if (cards.Length != CatalogFixtureIds.Length) {
-            throw new InvalidDataException("The checked-in catalog is missing an identity/mention test fixture.");
-        }
-
-        string subsetJson = JsonSerializer.Serialize(new { version = 2, cards }, CatalogJsonOptions);
-        using HttpClient httpClient = new(new CatalogResponseHandler(subsetJson)) {
-            BaseAddress = new Uri("https://calculator.test/")
-        };
-        CardInfoService service = new(Mock.Of<ILocalStorageService>(), httpClient);
-
-        return await service.GetCatalogCardsAsync();
-    }
-
-    private static string FindCatalogPath() {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null) {
-            string path = Path.Combine(directory.FullName, "YGOProbabilityCalculatorBlazor", "wwwroot", "data", "card-catalog.v1.json");
-
-            if (File.Exists(path)) {
-                return path;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new FileNotFoundException("Could not locate the checked-in card catalog from the test output directory.");
-    }
-
-    private sealed class CatalogResponseHandler(string catalogJson) : HttpMessageHandler {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(request.RequestUri!.AbsolutePath.EndsWith("/data/card-catalog.v1.json", StringComparison.Ordinal)
-                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(catalogJson) }
-                : new HttpResponseMessage(HttpStatusCode.NotFound));
-    }
 }

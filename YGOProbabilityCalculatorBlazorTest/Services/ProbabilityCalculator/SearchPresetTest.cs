@@ -7,6 +7,8 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
+using static YGOProbabilityCalculatorBlazorTest.Fixtures.SearchCardFixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -32,9 +34,6 @@ public sealed partial class SearchEffectsTest {
             }
         }
     }
-
-    internal static Card Preset(int identity, int copies = 1, string? id = null) => CardEffectRegistry.Default.RestoreBuiltIn(
-        new([Spell], copies, id: id ?? $"source-{identity}", externalCardId: identity));
 
     private static Card Element(int level = 5, string attribute = "dark", string race = "aqua", string id = "element") => new([
         A, B, new("Monster", CategorySource.Metadata, "kind:monster"), new("K9", CategorySource.Metadata, "archetype:k9"),
@@ -161,8 +160,8 @@ public sealed partial class SearchEffectsTest {
 
     [Test]
     public async Task UpdatedExampleKeepsOnlyGenuineMetadataAndExactTargetSets() {
-        SessionState session = await LoadExample("search_example_session_state.json");
-        SessionState previous = await LoadExample("rota_search_example_session_state.json");
+        SessionState session = await ExampleSessionFixture.LoadAsync("search_example_session_state.json");
+        SessionState previous = await ExampleSessionFixture.LoadAsync("rota_search_example_session_state.json");
         Assert.That(session.Cards.Count, Is.EqualTo(25));
         Assert.That(session.Cards.Sum(card => card.Copies), Is.EqualTo(40));
         Assert.That(session.Cards.Select(card => (card.Id, card.Copies)), Is.EqualTo(previous.Cards.Select(card => (card.Id, card.Copies))));

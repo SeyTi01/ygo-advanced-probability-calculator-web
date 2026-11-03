@@ -6,6 +6,7 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -170,7 +171,7 @@ public sealed partial class SearchEffectsTest {
                 "126994447/3236522016", "8635987385/15257889504", "32999/669256", "14915003/215333118",
                 "75445150015/106805226528", "3465516165/5933623696"]
         ];
-        SessionState session = await LoadExample("search_example_session_state.json");
+        SessionState session = await ExampleSessionFixture.LoadAsync("search_example_session_state.json");
         if (copies > 0) {
             int index = session.Cards.FindIndex(card => card.Name == "Mulcharmy Fuwalos");
             Card original = session.Cards[index];

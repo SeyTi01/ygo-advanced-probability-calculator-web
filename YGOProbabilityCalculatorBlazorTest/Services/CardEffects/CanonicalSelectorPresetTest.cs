@@ -1,11 +1,10 @@
 using System.Text.Json;
-using Microsoft.JSInterop;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 
@@ -26,8 +25,6 @@ public sealed class CanonicalSelectorPresetTest {
     private static IEnumerable<CardSelector> Nodes(CardSelector selector) => new[] { selector }.Concat(selector.Children.SelectMany(Nodes));
     private static CardSelector Selector(DrawEffectPlan plan) => plan.Search?.Selector ?? plan.HandCostSelector;
     private static bool Matches(DrawEffectPlan plan, Card card) => plan.Search?.Matches(card) ?? plan.HandCostSelector.Matches(card);
-    private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-
     [Test]
     public void NewRevisionsUseOneRealNumericPredicateWithoutLiteralLevelBranches() {
         foreach ((int id, int minimum, int maximum, string[] _) in NumericPresets) {
@@ -145,13 +142,13 @@ public sealed class CanonicalSelectorPresetTest {
                 EffectProfile profile = source == EffectSource.BuiltIn
                     ? maintained.Profile with { Revision = LegacySelectorPlans.Revision(id) } : maintained.Profile.AsCustom();
                 Card saved = new Card([], externalCardId: id).WithEffect(legacy, profile);
-                string json = Codec().SerializeSession(new() { Cards = [saved], HandSize = 1 });
+                string json = SessionFixture.CreateCodec().SerializeSession(new() { Cards = [saved], HandSize = 1 });
                 string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
-                SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
+                SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
                 Card retained = loaded.Cards.Single();
                 Assert.That(retained.EffectPlan, Is.EqualTo(legacy), $"{id} {source} saved predicate");
                 Assert.That(retained.EffectProfile, Is.EqualTo(profile));
-                Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json), "Save never upgrades a plan.");
+                Assert.That(SessionFixture.CreateCodec().SerializeSession(loaded), Is.EqualTo(json), "Save never upgrades a plan.");
                 CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, [], 1, []);
                 CalculationInput worker = JsonSerializer.Deserialize(snapshot.Json, CalculationJsonContext.Default.CalculationInput)!;
                 Assert.That(worker.Cards.Single().Search, Is.EqualTo(legacy.Search));
@@ -173,7 +170,7 @@ public sealed class CanonicalSelectorPresetTest {
             CardSelector.AnyOf(["metadata:level:1", "metadata:level:3", "metadata:level:4"])
         ]);
         Card source = new Card([]).WithSearch(new(gapped, false));
-        SessionState loaded = await Codec().LoadSessionAsync(Codec().SerializeSession(new() { Cards = [source] }));
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionFixture.CreateCodec().SerializeSession(new() { Cards = [source] }));
         CardSelector retained = loaded.Cards.Single().Search!.Selector;
         Assert.That(retained.HasNumericPredicate, Is.False);
         foreach (int level in new[] { 1, 2, 3, 4 }) {

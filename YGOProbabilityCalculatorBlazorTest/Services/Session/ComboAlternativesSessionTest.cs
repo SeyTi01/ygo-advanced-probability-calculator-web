@@ -1,19 +1,15 @@
 using System.Text.Json.Nodes;
-using Microsoft.JSInterop;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
-using YGOProbabilityCalculatorBlazor.Services.Shared;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 using static YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator.ComboAlternativesTest;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 [TestFixture]
 public class ComboAlternativesSessionTest {
-    private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new JsonSerializer());
-
     [Test]
     public async Task FileRecoveryAndShareCodecRoundTripOrderedMixedAlternatives() {
         CategoryBase metadata = new("Fire", CategorySource.Metadata, "attribute:fire");
@@ -21,14 +17,14 @@ public class ComboAlternativesSessionTest {
             .WithName("Mixed").WithActive(false).WithGroup("g");
         SessionState session = new() { Cards = [new([metadata], id: "a", manualMetadataCategoryKeys: ["attribute:fire"])],
             Combos = [combo], ComboGroups = [new("g", "Group")], HandSize = 3 };
-        string json = Codec().SerializeSession(session);
+        string json = SessionFixture.CreateCodec().SerializeSession(session);
         Assert.That(JsonNode.Parse(json)!["SchemaVersion"]!.GetValue<int>(), Is.EqualTo(SessionState.CurrentSchemaVersion));
-        SessionState loaded = await Codec().LoadSessionAsync(json);
-        Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(json);
+        Assert.That(SessionFixture.CreateCodec().SerializeSession(loaded), Is.EqualTo(json));
         string link = SessionShareCodec.CreateLink("https://example.invalid/", json);
         Assert.That(link, Does.Contain("/#ygo-session=v1."));
-        SessionState shared = await Codec().LoadSessionAsync(SessionShareCodec.Decode(new Uri(link).Fragment));
-        Assert.That(Codec().SerializeSession(shared), Is.EqualTo(json));
+        SessionState shared = await SessionFixture.CreateCodec().LoadSessionAsync(SessionShareCodec.Decode(new Uri(link).Fragment));
+        Assert.That(SessionFixture.CreateCodec().SerializeSession(shared), Is.EqualTo(json));
         Assert.That(shared.Combos[0].AlternativeGroups[0].Alternatives.Select(a => a.Kind), Is.EqualTo(new[] { "Card", "Category", "Category" }));
     }
 
@@ -38,7 +34,7 @@ public class ComboAlternativesSessionTest {
         ComboCard cardLeaf = new("a", 0, 0);
         SessionState session = new() { SchemaVersion = 3, Combos = [new([], cards: [], alternativeGroups: [
             new([ComboAlternative.For(categoryLeaf)]), new([ComboAlternative.For(cardLeaf)])])] };
-        SessionService codec = Codec();
+        SessionService codec = SessionFixture.CreateCodec();
 
         string json = codec.SerializeSession(session);
         SessionState loaded = await codec.LoadSessionAsync(json);
@@ -62,7 +58,7 @@ public class ComboAlternativesSessionTest {
     [TestCase("[{\"Alternatives\":[{\"Kind\":\"Card\",\"Alternatives\":[]}]}]")]
     public void MalformedExpressionsFailBeforeSessionAcceptance(string groups) {
         string json = "{\"SchemaVersion\":3,\"Combos\":[{\"Categories\":[],\"AlternativeGroups\":" + groups + "}]}";
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await Codec().LoadSessionAsync(json));
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await SessionFixture.CreateCodec().LoadSessionAsync(json));
     }
 
     [TestCase(0)]
@@ -70,7 +66,7 @@ public class ComboAlternativesSessionTest {
     [TestCase(2)]
     public async Task OldSchemasRetainAndRequirements(int version) {
         string json = $$"""{"SchemaVersion":{{version}},"Combos":[{"Categories":[{"BaseCategory":{"Name":"A"},"MinCount":0,"MaxCount":0}],"Cards":[{"CardId":"a","MinCount":1,"MaxCount":2}]}]}""";
-        SessionState loaded = await Codec().LoadSessionAsync(json);
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(json);
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Combos[0].AlternativeGroups, Is.Empty);
         Assert.That(loaded.Combos[0].Categories[0].MaximumMode, Is.EqualTo(RequirementMaximumMode.Fixed));
@@ -80,7 +76,7 @@ public class ComboAlternativesSessionTest {
     [Test]
     public async Task ShippedExampleOrDefinitionHasParityWithItsTwoUnderlyingRoutes() {
         string path = Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "example_session_state.json");
-        SessionState original = await Codec().LoadSessionAsync(await File.ReadAllTextAsync(path));
+        SessionState original = await SessionFixture.CreateCodec().LoadSessionAsync(await File.ReadAllTextAsync(path));
         Combo combined = original.Combos.Single(combo => combo.Name == "VS Starter + (Fire OR Dark)");
         IReadOnlyList<ComboAlternative> alternatives = combined.AlternativeGroups.Single().Alternatives;
         List<Combo> routes = alternatives.Select((alternative, index) => new Combo(
@@ -112,7 +108,7 @@ public class ComboAlternativesSessionTest {
     }
 
     private static async Task VerifyCombinedExample(string path) {
-        SessionState original = await Codec().LoadSessionAsync(await File.ReadAllTextAsync(path));
+        SessionState original = await SessionFixture.CreateCodec().LoadSessionAsync(await File.ReadAllTextAsync(path));
         Combo first = original.Combos[0];
         Combo second = original.Combos[1];
         List<ComboCategory> common = first.Categories.Where(a => second.Categories.Any(b => a.BaseCategory.Identity == b.BaseCategory.Identity)).ToList();

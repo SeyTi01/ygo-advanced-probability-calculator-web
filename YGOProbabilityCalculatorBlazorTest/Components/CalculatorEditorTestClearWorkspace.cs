@@ -78,6 +78,7 @@ public sealed class CalculatorEditorTestClearWorkspace : CalculatorEditorTestBas
 
         await freshCard.Find("#cardCategory0").ChangeAsync(new() { Value = "metadata:attribute:dark" });
         await Button(freshCard, "Add").ClickAsync(new());
+        OpenNewRequirement(freshCombo);
         await RequirementField(freshCombo, "#comboTarget0").ChangeAsync(new() { Value = "metadata:level:8" });
         await Button(freshCombo, "Add").ClickAsync(new());
         Assert.That(freshCard.Instance.Card.ManualMetadataCategoryKeys, Is.EquivalentTo(new[] { "attribute:dark" }));

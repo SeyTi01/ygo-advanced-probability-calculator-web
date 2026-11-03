@@ -82,9 +82,11 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         OpenSimulation(editor);
         await editor.Find("#cardEligibility0").ChangeAsync(new() { Value = "user:A" });
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         AssertPreviousResult(cut);
         await AddEligibilityAlternative(editor, "A", "metadata:attribute:dark");
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.AnyOf));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
         await Button(cut, "Save Session").ClickAsync(new());
@@ -93,16 +95,20 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
         await RowAction(cut, "card First, row 1", "Move down").ClickAsync(new());
         editor = cut.FindComponents<CardEditor>().ToArray()[1];
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(id));
-        await RemoveEligibility(editor, "A", a.Identity);
+        await RemoveEligibility(editor, "A");
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Category));
         await Button(editor, "Clear filter").ClickAsync(new());
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Any));
         await editor.Find("#cardEligibility1").ChangeAsync(new() { Value = "user:B" });
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         await editor.Find("#cardDraw1").ChangeAsync(new() { Value = "" });
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         Assert.That(editor.Instance.Card.PostDrawSelector.Kind, Is.EqualTo(CardSelectorKind.Any));
         Assert.That(editor.Instance.Card.PostDrawDiscardCount, Is.Zero);
     }

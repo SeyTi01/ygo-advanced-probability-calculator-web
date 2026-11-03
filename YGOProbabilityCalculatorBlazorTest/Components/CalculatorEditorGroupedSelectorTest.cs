@@ -6,6 +6,7 @@ using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
@@ -35,7 +36,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
 
     [Test]
     public void ThreeTermsEachOpenTheirOwnConditionFieldsAndOneOperator() {
-        Card source = SearchEffectsTest.Preset(92221402);
+        Card source = SearchCardFixtures.Preset(92221402);
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));
@@ -63,7 +64,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
     public void RenameKeepsFlatTermAndTheActiveConditionDraftWhenCanonicalOrderChanges() {
         CategoryBase[] categories = new[] { "A", "B", "C", "D", "E" }.Select(name => new CategoryBase(name)).ToArray();
         CardSelector original = CardSelector.AllOf(categories.Take(4).Select(category => category.Identity));
-        Card source = SearchEffectsTest.Rota().WithSearch(new(original, false));
+        Card source = SearchCardFixtures.Rota().WithSearch(new(original, false));
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source).Add(component => component.CategoryBases, categories));
         editor.Find(".simulation-edit").Click();
@@ -102,7 +103,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
 
     [Test]
     public void CompactExpressionEditsThresholdAndGroupsWithPreviewSaveCancelAndRestore() {
-        Card source = SearchEffectsTest.Preset(92221402);
+        Card source = SearchCardFixtures.Preset(92221402);
         Card target = SelectorExpressionTest.Target();
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
@@ -152,7 +153,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
 
     [Test]
     public void InvalidThresholdBlocksSaveAcrossOtherDraftEditsUntilCorrectedCanceledOrRemoved() {
-        Card source = SearchEffectsTest.Preset(92221402);
+        Card source = SearchCardFixtures.Preset(92221402);
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source));
         editor.Find(".simulation-edit").Click();
@@ -183,7 +184,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
     public void ExistingFlatSelectorCanBecomeGroupedWithoutLosingDraftOnParentUpdate() {
         CategoryBase a = new("A");
         CategoryBase b = new("B");
-        Card source = SearchEffectsTest.Rota().WithSearch(new(CardSelector.For(a), false));
+        Card source = SearchCardFixtures.Rota().WithSearch(new(CardSelector.For(a), false));
         Card target = new([a, b], name: "Target");
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
@@ -231,7 +232,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         CategoryBase a = new("A");
         CategoryBase renamed = new("Z");
         CardSelector selector = CardSelector.AllOfSelectors([CardSelector.For(a), CardSelector.LevelAtLeast(5)]);
-        Card source = SearchEffectsTest.Rota().WithSearch(new(selector, false));
+        Card source = SearchCardFixtures.Rota().WithSearch(new(selector, false));
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source).Add(component => component.CategoryBases, new[] { a }));
         editor.Find(".simulation-edit").Click();
@@ -301,7 +302,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
 
     [Test]
     public void SavingUntouchedRowPreservesObjectivePolicyAndBuiltInProvenance() {
-        Card source = SearchEffectsTest.Preset(92221402);
+        Card source = SearchCardFixtures.Preset(92221402);
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));

@@ -16,6 +16,7 @@ public sealed class CalculatorEditorTestDrafts : CalculatorEditorTestBase {
             HandSize = 5
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = CardTarget("draft") });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
         await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "0" });
@@ -36,6 +37,7 @@ public sealed class CalculatorEditorTestDrafts : CalculatorEditorTestBase {
         Assert.That(editor.Instance.Combo.Name, Is.EqualTo("Renamed while extending"));
         Assert.That(editor.Instance.Combo.Categories[0], Is.SameAs(accepted.Categories[0]));
         Assert.That(editor.Instance.Combo.AlternativeGroups, Is.Empty);
+        OpenNewRequirement(editor);
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget("draft")));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         Assert.That(RequirementField(editor, "#maxCount0").GetAttribute("value"), Is.EqualTo("0"));
@@ -76,6 +78,7 @@ public sealed class CalculatorEditorTestDrafts : CalculatorEditorTestBase {
             new ComboRequirementPosition(ComboRequirementKind.Group, 0),
             new ComboRequirementPosition(ComboRequirementKind.Category, 1)
         }));
+        OpenNewRequirement(editor);
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.Empty);
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("1"));
         AssertAnyMaximumDraft(editor);

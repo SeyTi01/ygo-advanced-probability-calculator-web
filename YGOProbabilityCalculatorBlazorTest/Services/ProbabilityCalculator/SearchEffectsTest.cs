@@ -1,17 +1,16 @@
 using System.Diagnostics;
 using System.Numerics;
-using Microsoft.JSInterop;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
+using static YGOProbabilityCalculatorBlazorTest.Fixtures.SearchCardFixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -21,15 +20,6 @@ public sealed partial class SearchEffectsTest {
     private static readonly CategoryBase B = new("B");
     private static readonly CategoryBase Spell = new("Spell", CategorySource.Metadata, "kind:spell");
     private static readonly ComboGroup[] Groups = [new("g1", "First"), new("g2", "Second")];
-
-    internal static Card Warrior(int copies = 1, int level = 4, string race = "warrior", string id = "target") => new([
-        A, B, new("Monster", CategorySource.Metadata, "kind:monster"),
-        new("Warrior", CategorySource.Metadata, $"monster-race:{race}"),
-        new($"Level {level}", CategorySource.Metadata, $"level:{level}")
-    ], copies, id, id: id, externalCardId: 29302858);
-
-    internal static Card Rota(int copies = 1) => CardEffectRegistry.Default.RestoreBuiltIn(
-        new([Spell], copies, "ROTA", id: "rota", externalCardId: 32807846));
 
     [TestCase("a-source", "z-blank")]
     [TestCase("z-source", "a-blank")]
@@ -182,7 +172,7 @@ public sealed partial class SearchEffectsTest {
 
     [Test]
     public async Task BundledExampleHasOnlyRazenAndCompletesUnderStandard() {
-        SessionState session = await LoadExample("rota_search_example_session_state.json");
+        SessionState session = await ExampleSessionFixture.LoadAsync("rota_search_example_session_state.json");
         Card rota = session.Cards.Single(card => card.ExternalCardId == 32807846);
         Card razen = session.Cards.Single(card => card.ExternalCardId == 29302858);
         Assert.Multiple(() => {
@@ -254,7 +244,7 @@ public sealed partial class SearchEffectsTest {
     [TestCase(1, 0.8629362147164005)]
     [TestCase(3, 0.9089511612294494)]
     public async Task RepresentativeMixedSearchKeepsCountStateAndStandardCapacity(int copies, double expected) {
-        SessionState session = await LoadExample("rota_search_example_session_state.json");
+        SessionState session = await ExampleSessionFixture.LoadAsync("rota_search_example_session_state.json");
         int row = session.Cards.FindIndex(card => card.Name == "Mulcharmy Fuwalos");
         Card original = session.Cards[row];
         session.Cards[row] = original.WithCopies(copies).WithDrawCount(2).WithDrawOncePerTurn(false);
@@ -335,10 +325,6 @@ public sealed partial class SearchEffectsTest {
             Assert.That(copy.ManualMetadataCategoryKeys, Is.EqualTo(source.ManualMetadataCategoryKeys));
         });
     }
-
-    internal static async Task<SessionState> LoadExample(string filename) => await new SessionService(
-        Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer()).LoadSessionAsync(
-            File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", filename)));
 
     private static void Compare(List<Card> cards, List<Combo> combos, int handSize, DrawActivationPriority? priority = null) {
         (BigInteger denominator, BigInteger[] wins) = SearchAccessOracle.Count(cards, combos, handSize, Groups, priority?.CardIds);

@@ -932,24 +932,8 @@ public class CardInfoServiceTests {
         Assert.That(storage.WriteCount, Is.Zero);
     }
 
-    [Test]
-    public async Task MalformedCache_DoesNotBreakImportAndAttemptsFreshFetch() {
-        TestLocalStorage storage = new("{malformed json");
-        RecordingHttpMessageHandler handler = HandlerWithTargetedCards(200, (5678, "Dark Magician"));
-
-        using HttpClient httpClient = new(handler);
-        CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
-
-        string result = (await service.GetCardInfoAsync(5678)).Name;
-
-        Assert.That(result, Is.EqualTo("Dark Magician"));
-        Assert.That(handler.Requests, Has.Length.EqualTo(1));
-        AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
-    }
-
-    [TestCase(null)]
-    [TestCase("{}")]
-    public async Task MissingOrEmptyCache_FetchesOnlyRequestedCard(string? rawCache) {
+    [TestCaseSource(nameof(UnusableCacheCases))]
+    public async Task UnusableCache_FetchesOnlyRequestedCard(string? rawCache) {
         TestLocalStorage storage = new(rawCache);
         RecordingHttpMessageHandler handler = HandlerWithTargetedCards(200, (5678, "Dark Magician"));
 
@@ -963,32 +947,14 @@ public class CardInfoServiceTests {
         AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
     }
 
-    [Test]
-    public async Task UnsupportedCacheVersion_IsDiscardedAndRefreshed() {
-        TestLocalStorage storage = new("{\"SchemaVersion\":99,\"Cards\":{\"1234\":{\"Name\":\"Future Name\"}}}");
-        RecordingHttpMessageHandler handler = HandlerWithTargetedCards(200, (5678, "Dark Magician"));
-
-        using HttpClient httpClient = new(handler);
-        CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
-
-        string result = (await service.GetCardInfoAsync(5678)).Name;
-
-        Assert.That(result, Is.EqualTo("Dark Magician"));
-        Assert.That(handler.Requests, Has.Length.EqualTo(1));
-        AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
-    }
-
-    [Test]
-    public async Task MalformedEnvelopeWithFreshTimestamp_IsDiscardedAndRefreshed() {
-        TestLocalStorage storage = new("{\"SchemaVersion\":1,\"LastFullRefreshUtc\":\"2026-10-01T09:00:00Z\",\"Cards\":{\"not-a-card-id\":{\"Name\":\"Unusable\"}}}");
-        RecordingHttpMessageHandler handler = HandlerWithTargetedCards(200, (5678, "Dark Magician"));
-
-        using HttpClient httpClient = new(handler);
-        CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
-
-        Assert.That((await service.GetCardInfoAsync(5678)).Name, Is.EqualTo("Dark Magician"));
-        Assert.That(handler.Requests, Has.Length.EqualTo(1));
-        AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
+    private static IEnumerable<TestCaseData> UnusableCacheCases() {
+        yield return new TestCaseData((object?)null).SetName("Missing cache");
+        yield return new TestCaseData("{}").SetName("Empty cache");
+        yield return new TestCaseData("{malformed json").SetName("Malformed JSON cache");
+        yield return new TestCaseData("{\"SchemaVersion\":99,\"Cards\":{\"1234\":{\"Name\":\"Future Name\"}}}")
+            .SetName("Unsupported cache version");
+        yield return new TestCaseData("{\"SchemaVersion\":1,\"LastFullRefreshUtc\":\"2026-10-01T09:00:00Z\",\"Cards\":{\"not-a-card-id\":{\"Name\":\"Unusable\"}}}")
+            .SetName("Invalid card key in fresh cache envelope");
     }
 
     [Test]

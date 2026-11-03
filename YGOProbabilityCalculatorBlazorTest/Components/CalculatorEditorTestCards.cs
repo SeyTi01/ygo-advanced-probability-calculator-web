@@ -158,6 +158,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         cut.FindComponents<CardEditor>()[0].Find(".accordion-button").Click();
         cut.FindComponents<CardEditor>()[0].Find("#cardCategory0").Change("user:B");
         cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").Click();
+        OpenNewRequirement(cut.FindComponents<ComboEditor>()[0]);
         RequirementField(cut.FindComponents<ComboEditor>()[0], "#comboTarget0").Change("user:B");
         RequirementField(cut.FindComponents<ComboEditor>()[0], "#minCount0").Input("0");
 
@@ -260,6 +261,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         await editor.Find(".accordion-button").ClickAsync(new());
         Assert.That(editor.Find("[role='status']").TextContent, Does.Contain("Missing card reference"));
 
+        OpenNewRequirement(editor);
         IElement selector = RequirementField(editor, "#comboTarget0");
         Assert.That(selector.QuerySelectorAll("optgroup[label='Cards'] option").Select(option => option.TextContent.Trim()), Is.EqualTo(new[] {
             "alpha #2", "Alpha #3", "beta #4", "Beta #5", "beta #6", "zebra #1",
@@ -320,6 +322,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> comboEditor = cut.FindComponent<ComboEditor>();
         ComboEditor originalComboEditor = comboEditor.Instance;
         await comboEditor.Find(".accordion-button").ClickAsync(new());
+        OpenNewRequirement(comboEditor);
         await RequirementField(comboEditor, "#comboTarget0").ChangeAsync(new() { Value = CardTarget(alphaLower.Id) });
         await RequirementField(comboEditor, "#minCount0").InputAsync(new() { Value = "2" });
         await RequirementField(comboEditor, "#maxCount0").InputAsync(new() { Value = "3" });
@@ -413,6 +416,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:A");
+        OpenNewRequirement(combo);
         RequirementField(combo, "select[id^='comboTarget']").Change("user:A");
         RequirementField(combo, "#minCount1").Input("0");
         RequirementField(combo, "#maxCount1").Input("0");
@@ -447,6 +451,7 @@ public sealed class CalculatorEditorTestCards : CalculatorEditorTestBase {
                 .Add(component => component.CategoryBases, session.Categories);
         });
         cards.FindComponents<CardEditor>()[0].Find("select[id^='cardCategory']").Change("user:B");
+        OpenNewRequirement(combos.FindComponents<ComboEditor>()[0]);
         RequirementField(combos.FindComponents<ComboEditor>()[0], "select[id^='comboTarget']").Change("user:B");
         RequirementField(combos.FindComponents<ComboEditor>()[0], "#minCount0").Input("0");
         RequirementField(combos.FindComponents<ComboEditor>()[0], "#maxCount0").Input("0");

@@ -33,6 +33,7 @@ public sealed class CalculatorEditorMovePositionTest : CalculatorEditorTestBase 
         }
         if (kind == "combo") {
             await cut.FindComponents<ComboEditor>()[0].Find(".accordion-button").ClickAsync(new());
+            OpenNewRequirement(cut.FindComponents<ComboEditor>()[0]);
             await RequirementField(cut.FindComponents<ComboEditor>()[0], "#minCount0").InputAsync(new() { Value = "0" });
         }
         object identity = kind == "card" ? cut.FindComponents<CardEditor>()[0].Instance : cut.FindComponents<ComboEditor>()[0].Instance;
