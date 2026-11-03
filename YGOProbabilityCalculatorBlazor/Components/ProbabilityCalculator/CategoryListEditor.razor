@@ -26,14 +26,14 @@
         </div>
     }
 
-    <div class="mt-2">
+    <div class="mt-2 category-chip-list">
         @for (int index = 0; index < CategoryBases.Count; index++) {
             CategoryBase category = CategoryBases[index];
             if (category.Source != CategorySource.User) {
                 continue;
             }
 
-            <span @key="category" class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
+            <span @key="category" class="badge category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
                 @if (ReferenceEquals(_editingCategory, category)) {
                     <input @ref="_renameInputReference" data-language-edit="true"
                            class="form-control form-control-sm category-rename-input"
@@ -91,6 +91,7 @@
                 <CategoryRuleSummary Category="category" CategoryBases="CategoryBases" />
             }
             @if (ReferenceEquals(_editingCategory, category) && _colorPickerExpanded) {
+                <div class="category-chip-detail">
                 <div id="categoryColorPalette@(index)" class="category-color-palette surface-panel mt-2" role="group"
                      aria-label="@(UiText.Format("Ui.ChooseAColorForCategory0", DisplayLabels.Category(category)))">
                     @foreach (CategoryColorOption color in CategoryColorPalette.Options) {
@@ -107,6 +108,7 @@
                             }
                         </button>
                     }
+                </div>
                 </div>
             }
         }

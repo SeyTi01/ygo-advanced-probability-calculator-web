@@ -118,9 +118,9 @@
                         @if (AutomaticProperties.Any()) {
                             <div class="detected-card-properties mb-2">
                                 <div class="form-text mb-1">@(UiText.Get("Ui.Automatic"))</div>
-                                <div class="d-flex flex-wrap">
+                                <div class="card-property-list">
                                     @foreach (CategoryBase property in AutomaticProperties) {
-                                        <span class="badge category-tag card-property-tag me-2 mb-1 detected-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">@DisplayLabels.Category(property)</span>
+                                        <span class="badge category-tag card-property-tag detected-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">@DisplayLabels.Category(property)</span>
                                     }
                                 </div>
                             </div>
@@ -128,9 +128,9 @@
                         @if (ManuallyAssignedProperties.Any()) {
                             <div class="manual-card-properties">
                                 <div class="form-text mb-1">@(UiText.Get("Ui.Manual"))</div>
-                                <div class="d-flex flex-wrap">
+                                <div class="card-property-list">
                                     @foreach (CategoryBase property in ManuallyAssignedProperties) {
-                                        <span class="badge category-tag card-property-tag me-2 mb-1 manual-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">
+                                        <span class="badge category-tag card-property-tag manual-card-property @CategoryChipPalette.GetCssClass(property, CategoryColorIndices)">
                                             @DisplayLabels.Category(property)
                                             @if (property.Source == CategorySource.User) {
                                                 <ChipRemoveButton Class="category-remove-button ms-1"

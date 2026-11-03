@@ -178,7 +178,8 @@
         UpdateExisting="@(_draft.Editing is null && !AuthoringScope && HasSelectedConstraint)"
         ShowActions="@(_draft.Editing is not null)" ActionOperators="@(_draft.Values.Target.Kind == ComboDraftTargetKind.Category ? new[] { "AND", "OR" } : new[] { "OR" })"
         OnAddAlternative="ExtendWithAlternative" OnAddProperty="ExtendWithProperty" OnRemoveRequirement="DeleteEditingRequirement"
-        OperandCount="1" OperandKey="FormOperandKey" Error="@PropertyError" OnSubmit="AddConstraint" OnCancel="CancelRequirement">
+        OperandCount="1" OperandKey="FormOperandKey" Error="@PropertyError" OnSubmit="AddConstraint" OnCancel="CancelRequirement"
+        QuantityLabel="@(UiText.Get("Ui.AtLeast"))" QuantityId="@($"minCount{Index}")">
         <OperandContent Context="position">
             <RequirementPropertyPicker @ref="_propertyPickers[position]" Id="@(position == 0 ? $"comboTarget{Index}" : $"comboProperty{Index}-{position}")"
                 Value="@SelectedTarget"
@@ -188,7 +189,6 @@
                 OnChanged="change => ChangeRequirementTarget(position, change)" />
         </OperandContent>
         <QuantityContent>
-            <label for="minCount@(Index)" class="form-label">@(UiText.Get("Ui.AtLeast"))</label>
             <input id="minCount@(Index)" class="form-control" type="number" min="0" step="1" value="@_draft.Values.Minimum"
                    @ref="_minimumInput"
                    @oninput="e => _draft.Values.Minimum = e.Value?.ToString() ?? string.Empty" />

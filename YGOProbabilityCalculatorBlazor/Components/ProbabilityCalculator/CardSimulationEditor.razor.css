@@ -22,11 +22,17 @@
 .simulation-advanced summary { padding-block: 0.5rem; font-size: 0.875rem; }
 .simulation-advanced > div { margin-top: 0.5rem; }
 .simulation-editor ::deep select { max-width: 100%; }
+.simulation-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), max-content)); grid-template-rows: auto auto auto auto; column-gap: var(--expression-section-spacing); }
+.simulation-fields > ::deep .editor-field { grid-template-rows: subgrid; grid-row: span 4; }
+.simulation-fields ::deep .form-check { display: flex; align-items: center; gap: var(--expression-inline-gap); min-height: var(--editor-compact-control-height); }
+.simulation-fields ::deep .form-check-input { margin-top: 0; }
+.simulation-editor ::deep .simulation-selector-field { margin-top: var(--expression-stack-gap); }
+.simulation-advanced ::deep .simulation-deck-cost { margin-top: var(--expression-stack-gap); }
+.simulation-advanced ::deep .simulation-deck-cost input { width: 4.5rem; }
 .simulation-cancel { color: var(--bs-body-color); }
 .simulation-search-modes { display: grid; gap: .75rem; margin-top: .75rem; }
 .simulation-search-mode { min-width: 0; padding: .65rem; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); }
 .simulation-search-mode-heading { display: flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--bs-secondary-color); }
 @media (max-width: 575.98px) {
     .simulation-actions .btn, .simulation-editor .btn, .simulation-advanced summary { min-height: var(--app-touch-target-size); }
-    .simulation-editor ::deep select, .simulation-editor input[type="number"] { min-height: 2.5rem; }
 }

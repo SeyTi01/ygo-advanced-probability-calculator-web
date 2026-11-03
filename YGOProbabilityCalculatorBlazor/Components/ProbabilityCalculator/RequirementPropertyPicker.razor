@@ -5,8 +5,9 @@
 @using YGOProbabilityCalculatorBlazor.Models
 @using Microsoft.AspNetCore.Components.Web
 @using YGOProbabilityCalculatorBlazor.Components.Shared
-<div class="requirement-property-picker">
-    <label for="@(Id + "-trigger")" class="form-label">@Label</label>
+<div class="requirement-property-picker editor-field">
+    <label for="@(Id + "-trigger")" class="form-label editor-field-label">@Label</label>
+    <div class="editor-field-control">
     <button id="@(Id + "-trigger")" type="button" class="form-select requirement-picker-trigger" aria-label="@(AccessibleLabel ?? Label)"
         aria-expanded="@(_open ? "true" : "false")" aria-controls="@(Id + "-panel")" aria-haspopup="listbox" @onclick="Toggle" @onkeydown="TriggerKeyDown" @ref="_trigger">@SelectedLabel</button>
     <div id="@(Id + "-panel")" class="requirement-picker-panel surface-panel surface-overlay surface-overlay-fixed" hidden="@(!_open)" @ref="_panel" @onkeydown="PanelKeyDown" @onkeydown:stopPropagation>
@@ -30,13 +31,20 @@
         }
     </select>
     </div>
+    </div>
     @if (_property is { } property) {
-        <div class="requirement-numeric-fields">
-            <div><label for="@(Id + "-comparison")" class="form-label">@(UiText.Get("Ui.Comparison"))</label>
-                <select id="@(Id + "-comparison")" class="form-select" aria-label="@(UiText.Get("Ui.Comparison"))" value="@_comparison" @onchange="ChangeComparison"><option value="exact">@(UiText.Get("Ui.Exactly"))</option><option value="minimum">@(UiText.Get("Ui.AtLeast"))</option><option value="maximum">@(UiText.Get("Ui.AtMost"))</option><option value="range">@(UiText.Get("Ui.Between"))</option></select></div>
-            <div><label for="@(Id + "-number")" class="form-label">@NumberLabel</label>
-                <input id="@(Id + "-number")" class="form-control" type="number" min="0" max="2147483647" step="1" aria-label="@NumberLabel" value="@_number" @oninput="ChangeNumber" @ref="_numberInput" /></div>
-            @if (_comparison == "range") { <div><label for="@(Id + "-maximum")" class="form-label">@(UiText.Format("Requirement.MaximumProperty", DisplayLabels.NumericProperty(property)))</label><input id="@(Id + "-maximum")" class="form-control" type="number" min="0" max="2147483647" step="1" aria-label="@(UiText.Format("Ui.Maximum0", DisplayLabels.NumericProperty(property)))" value="@_maximum" @oninput="ChangeMaximum" /></div> }
+        <div class="editor-field-additional requirement-numeric-fields">
+            <EditorField Label="@(UiText.Get("Ui.Comparison"))" For="@(Id + "-comparison")">
+                <select id="@(Id + "-comparison")" class="form-select" aria-label="@(UiText.Get("Ui.Comparison"))" value="@_comparison" @onchange="ChangeComparison"><option value="exact">@(UiText.Get("Ui.Exactly"))</option><option value="minimum">@(UiText.Get("Ui.AtLeast"))</option><option value="maximum">@(UiText.Get("Ui.AtMost"))</option><option value="range">@(UiText.Get("Ui.Between"))</option></select>
+            </EditorField>
+            <EditorField Label="@NumberLabel" For="@(Id + "-number")">
+                <input id="@(Id + "-number")" class="form-control" type="number" min="0" max="2147483647" step="1" aria-label="@NumberLabel" value="@_number" @oninput="ChangeNumber" @ref="_numberInput" />
+            </EditorField>
+            @if (_comparison == "range") {
+                <EditorField Label="@(UiText.Format("Requirement.MaximumProperty", DisplayLabels.NumericProperty(property)))" For="@(Id + "-maximum")">
+                    <input id="@(Id + "-maximum")" class="form-control" type="number" min="0" max="2147483647" step="1" aria-label="@(UiText.Format("Ui.Maximum0", DisplayLabels.NumericProperty(property)))" value="@_maximum" @oninput="ChangeMaximum" />
+                </EditorField>
+            }
         </div>
     }
 </div>

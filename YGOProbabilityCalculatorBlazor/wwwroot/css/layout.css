@@ -17,7 +17,9 @@
     --expression-row-padding-block: .25rem;
     --expression-row-padding-inline: .4rem;
     --expression-member-padding-inline: .25rem;
-    --expression-control-height: 36px;
+    --editor-compact-control-height: 2.25rem;
+    --editor-form-control-height: 2.375rem;
+    --expression-control-height: var(--editor-compact-control-height);
     --expression-quantity-width: 5.5rem;
     --expression-nested-inset: .65rem;
     --expression-nested-offset: .2rem;
@@ -51,6 +53,20 @@
     grid-template-columns: minmax(0, 1fr) auto;
 }
 
+/* Fields expose a primary-control row separately from details and help. A
+   containing grid can share these tracks without measuring a picker’s height. */
+.editor-field {
+    display: grid;
+    grid-template-rows: var(--editor-field-rows, auto auto auto auto);
+    min-width: 0;
+}
+.editor-field-label { grid-row: 1; margin: 0 0 var(--expression-inline-gap); font-size: .8rem; align-self: end; }
+.editor-field-control { grid-row: 2; min-width: 0; align-self: start; }
+.editor-field-control > :is(.form-control, .form-select) { min-height: var(--editor-form-control-height); }
+.editor-field-compact > .editor-field-control > :is(.form-control, .form-select) { min-height: var(--editor-compact-control-height); }
+.editor-field-additional { grid-row: 3; min-width: 0; }
+.editor-field-help { grid-row: 4; min-width: 0; margin-top: 0; }
+
 /* The calculator toolbar owns both insets; other pages keep the content inset. */
 .content:has(> .calculator-route:not([hidden])) {
     padding-top: 0;
@@ -58,7 +74,8 @@
 
 @media (max-width: 767.98px) {
     :root {
-        --expression-control-height: var(--app-touch-target-size);
+        --editor-compact-control-height: var(--app-touch-target-size);
+        --editor-form-control-height: var(--app-touch-target-size);
         --calculator-toolbar-spacing: var(--app-content-top-spacing);
     }
 }
@@ -71,5 +88,8 @@
 }
 
 @media (pointer: coarse) {
-    :root { --expression-control-height: var(--app-touch-target-size); }
+    :root {
+        --editor-compact-control-height: var(--app-touch-target-size);
+        --editor-form-control-height: var(--app-touch-target-size);
+    }
 }

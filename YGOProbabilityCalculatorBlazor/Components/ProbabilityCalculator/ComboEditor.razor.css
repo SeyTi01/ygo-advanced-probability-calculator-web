@@ -88,8 +88,6 @@
     min-width: 0;
 }
 
-/* Match the visible badge/operator gap when same-card terms lack member buttons. */
-.same-card-group { --expression-term-gap: calc(var(--expression-stack-gap) + var(--expression-member-padding-inline)); }
 .single-card-group { display: contents; }
 .centered-same-card-group { display: block; width: 100%; min-width: 0; max-width: 100%; }
 

@@ -12,6 +12,7 @@
 .card-property-inspector summary {
     padding-block: 0.5rem;
 }
+.card-property-list { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .5rem; }
 
 .card-expanded-identity { display: flex; gap: 1rem; align-items: flex-start; }
 .card-expanded-identity .card-identity-fields { flex: 1; min-width: 0; }
