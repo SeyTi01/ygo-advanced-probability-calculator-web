@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir, rename, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import { buildCatalog, serializeCatalog, MIN_FULL_CATALOG_CARDS, MIN_ELIGIBLE_CARDS } from './prepare-catalog.mjs';
 import { assertNoCatalogRegression, exclusionReason } from './card-eligibility.mjs';
 import { auditMembership, membershipPolicy } from './archetype-membership.mjs';
@@ -12,6 +13,23 @@ const json = value => JSON.stringify(value) + '\n';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export const dataRoot = 'YGOProbabilityCalculatorBlazor/wwwroot/data';
 export const auditRoot = 'infrastructure/card-catalog/snapshots/refresh';
+
+export function refreshPaths(locales) {
+    return [`${dataRoot}/card-catalog.v1.json`,
+        ...locales.flatMap(locale => [`${dataRoot}/card-names.${locale}.v1.json`, `${auditRoot}/names.${locale}.json`]),
+        `${auditRoot}/audit.json`];
+}
+
+export async function assertCurrentRefreshWorkflow(env = process.env, read = readFile,
+    git = args => execFileSync('git', args, { encoding: 'utf8' })) {
+    if (env.GITHUB_ACTIONS !== 'true' || env.GITHUB_WORKFLOW !== 'Monthly card data refresh') return;
+    const path = '.github/workflows/card-data-refresh.yml';
+    const current = await read(path, 'utf8');
+    const executing = git(['show', `${env.GITHUB_SHA}:${path}`]);
+    if (current.replace(/\r\n/g, '\n') !== executing.replace(/\r\n/g, '\n')) {
+        throw new Error('Refresh workflow changed since this run started. Start a new workflow_dispatch on dev instead of rerunning an old run.');
+    }
+}
 
 // Providers sometimes move the primary ID to another artwork or replace a beta ID.
 // Retain an established identity only through a unique numeric link and unchanged name/type.
@@ -122,7 +140,24 @@ export async function refresh(input, root = '.', minimumCards, minimumEligible) 
         localizedNames: Object.fromEntries(Object.entries(result.audit.localizedNames).map(([locale, { source, ...audit }]) => [locale, audit])),
         exampleSha256: result.audit.exampleSha256,
         candidates: result.audit.candidates.names, membership: result.audit.membership }));
-    if (previousAudit?.fingerprint === fingerprint) return false;
+    if (previousAudit?.fingerprint === fingerprint) {
+        // A fingerprint describes intended output, not what an earlier workflow committed.
+        // Preserve original provenance on a no-op, but repair stale/missing bundle files.
+        const expected = [[`${dataRoot}/card-catalog.v1.json`, serializeCatalog(result.catalog)],
+            ...Object.entries(result.names).map(([locale, names]) => [`${dataRoot}/card-names.${locale}.v1.json`, json(names)])];
+        let complete = true;
+        for (const [path, bytes] of expected) {
+            try { complete &&= (await readFile(at(path), 'utf8')).replace(/\r\n/g, '\n') === bytes.toString('utf8'); }
+            catch (error) { if (error.code !== 'ENOENT') throw error; complete = false; }
+        }
+        for (const locale of Object.keys(result.names)) {
+            try {
+                const bytes = (await readFile(at(`${auditRoot}/names.${locale}.json`), 'utf8')).replace(/\r\n/g, '\n');
+                complete &&= hash(bytes) === previousAudit.localizedNames?.[locale]?.source.projectionSha256;
+            } catch (error) { if (error.code !== 'ENOENT') throw error; complete = false; }
+        }
+        if (complete) return false;
+    }
     result.audit.fingerprint = fingerprint;
     const localeSummary = Object.entries(result.audit.localizedNames).map(([locale, audit]) =>
         `${locale}: labels: ${audit.matchedRecords}; missing: ${audit.missingIds.length}; added/changed: ${result.audit.nameChanges[locale].length}.`).join('\n');
@@ -142,6 +177,6 @@ export async function refresh(input, root = '.', minimumCards, minimumEligible) 
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
     if (process.argv.length !== 3) throw new Error('Usage: node refresh-card-data.mjs SOURCE_DIRECTORY');
-    refresh(resolve(process.argv[2])).then(changed => console.log(changed ? 'Refresh generated' : 'No meaningful changes'))
+    assertCurrentRefreshWorkflow().then(() => refresh(resolve(process.argv[2]))).then(changed => console.log(changed ? 'Refresh generated' : 'No meaningful changes'))
         .catch(error => { console.error(error.message); process.exitCode = 1; });
 }

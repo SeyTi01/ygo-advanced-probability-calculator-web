@@ -3,6 +3,8 @@ name: Full test suite
 run-name: Tests — ${{ github.ref_name }}
 
 on:
+  # Human pushes run once here. GITHUB_TOKEN refresh pushes are suppressed;
+  # publish-refresh.mjs dispatches this same workflow for an untested head.
   push:
   workflow_dispatch:
 
