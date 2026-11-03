@@ -24,9 +24,9 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             }));
         editor.FindAll(".expression-member").ToArray()[1].Click();
         Assert.That(editor.FindAll("form .requirement-property-picker"), Has.Count.EqualTo(1));
-        editor.Find("form .requirement-property-picker > select").Change(categories[3].Identity);
+        editor.Find("form .requirement-property-picker select.requirement-options").Change(categories[3].Identity);
         editor.FindAll(".expression-member").ToArray()[2].Click();
-        Assert.That(editor.Find("form .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo(categories[2].Identity));
+        Assert.That(editor.Find("form .requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo(categories[2].Identity));
         Assert.That(current, Is.EqualTo(original));
         Button(editor, "Remove requirement").Click();
         Assert.That(current, Is.EqualTo(CardSelector.AnyOf(categories.Take(2).Select(category => category.Identity))));
@@ -70,12 +70,12 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         IRenderedComponent<SelectorExpressionEditor> first = editor.FindComponents<SelectorExpressionEditor>()
             .Single(component => component.Instance.Selector.CategoryIdentities.Contains("user:A"));
         first.Find(".requirement-edit").Click();
-        editor.Find(".requirement-operand .requirement-property-picker > select").Change("user:E");
+        editor.Find(".requirement-operand .requirement-property-picker select.requirement-options").Change("user:E");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card,
             source.WithSearch(source.Search! with { Selector = original.RenameCategory("user:A", "user:Z") }))
             .Add(component => component.CategoryBases, categories.Skip(1).Append(new CategoryBase("Z")).ToArray())
             .Add(component => component.CategoryRename, new CategoryRenameNotice(1, "A", "Z")));
-        Assert.That(editor.Find(".requirement-operand .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo("user:E"));
+        Assert.That(editor.Find(".requirement-operand .requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo("user:E"));
         Assert.That(editor.FindComponents<SelectorExpressionEditor>().Any(component => ReferenceEquals(component.Instance, first.Instance)), Is.True);
         SaveRow(editor);
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Contain("E"));
@@ -192,12 +192,12 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         editor.Find(".simulation-edit").Click();
         Node(editor, CardSelectorKind.Category).Find(".requirement-edit").Click();
         Button(editor, "Add OR").Click();
-        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change(b.Identity);
+        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker select.requirement-options").Change(b.Identity);
         SaveRow(editor);
         Button(editor, "Add AND").Click();
-        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change("metadata:kind:monster");
+        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker select.requirement-options").Change("metadata:kind:monster");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.DrawEffectsEnabled, false));
-        Assert.That(editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo("metadata:kind:monster"));
+        Assert.That(editor.Find(".selector-expression form .requirement-operand .requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo("metadata:kind:monster"));
         SaveRow(editor);
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(2));
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));
@@ -250,7 +250,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Contain("Z"));
         OpenLevel(editor);
-        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change("numeric:level");
+        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker select.requirement-options").Change("numeric:level");
         editor.Find("select[aria-label='Comparison']").Change("minimum");
         editor.Find(".requirement-operand input").Input("12");
         CategoryBase final = new("Final");
@@ -279,7 +279,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         IRenderedComponent<SelectorExpressionEditor> branch = editor.FindComponents<SelectorExpressionEditor>()
             .Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity));
         branch.Find(".requirement-edit").Click();
-        editor.Find("form .requirement-operand .requirement-property-picker > select").Change("numeric:level");
+        editor.Find("form .requirement-operand .requirement-property-picker select.requirement-options").Change("numeric:level");
         editor.Find("select[aria-label='Comparison']").Change("minimum");
         editor.Find("input[aria-label='Minimum Level']").Input("6");
         SaveRow(editor);
@@ -290,7 +290,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         IRenderedComponent<SelectorExpressionEditor> nested = editor.FindComponents<SelectorExpressionEditor>()
             .Single(component => !component.Instance.IsRoot && component.Instance.Selector.HasNumericPredicate);
         nested.Find(".requirement-edit").Click();
-        editor.Find("form .requirement-operand .requirement-property-picker > select").Change(a.Identity);
+        editor.Find("form .requirement-operand .requirement-property-picker select.requirement-options").Change(a.Identity);
         SaveRow(editor);
         Assert.That(current, Is.EqualTo(initial));
         editor.FindComponents<SelectorExpressionEditor>().Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity)).Find(".requirement-edit").Click();

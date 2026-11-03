@@ -1,27 +1,34 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 @inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Models
 @using Microsoft.AspNetCore.Components.Web
 <div class="requirement-property-picker">
-    <label for="@Id" class="form-label">@Label</label>
-    <select id="@Id" class="form-select" aria-label="@AccessibleLabel" value="@Selection" @onchange="Select" @ref="_target">
-        <option value="">@(UiText.Get("Ui.Choose"))</option>
-        @if (AllowAny) { <option value="any">@(UiText.Get("Ui.Anycardclearfilter"))</option> }
-        @if (Cards.Count > 0) {
-            <optgroup label="@(UiText.Get("Ui.Cards"))">@foreach (Card card in CardOrdering.Alphabetize(Cards)) { <option value="@($"card:{card.Id}")">@(CardLabel?.Invoke(card) ?? DisplayLabels.Card(card, CardInfoService))</option> }</optgroup>
+    <label for="@(Id + "-trigger")" class="form-label">@Label</label>
+    <button id="@(Id + "-trigger")" type="button" class="form-select requirement-picker-trigger" aria-label="@(AccessibleLabel ?? Label)"
+        aria-expanded="@(_open ? "true" : "false")" aria-controls="@(Id + "-panel")" aria-haspopup="listbox" @onclick="Toggle" @onkeydown="TriggerKeyDown" @ref="_trigger">@SelectedLabel</button>
+    <div id="@(Id + "-panel")" class="requirement-picker-panel surface-panel" hidden="@(!_open)" @ref="_panel" @onkeydown="PanelKeyDown" @onkeydown:stopPropagation>
+        @if (BrowseGroups.Count() > 2) {
+            <div class="requirement-groups" role="group" aria-label="@(UiText.Get("Requirement.Groups"))">
+                @foreach (string group in BrowseGroups) {
+                    <button type="button" class="btn btn-sm @(_group == group ? "btn-secondary" : "btn-outline-secondary")" aria-pressed="@(_group == group ? "true" : "false")"
+                        @onclick="() => FilterGroup(group)">@GroupLabel(group)</button>
+                }
+            </div>
         }
-        @if (Value.StartsWith("card:", StringComparison.Ordinal) && !Cards.Any(card => Value == $"card:{card.Id}")) { <option value="@Value">@(UiText.Get("Ui.MissingCard"))</option> }
-        @if (Selectable.Any(category => category.Source == CategorySource.User)) {
-            <optgroup label="@(UiText.Get("Ui.Categories"))">@foreach (CategoryBase category in Selectable.Where(category => category.Source == CategorySource.User)) { <option value="@category.Identity">@DisplayLabels.Category(category)</option> }</optgroup>
+    <select id="@Id" class="form-select requirement-options" size="8" aria-label="@(AccessibleLabel ?? Label)" value="@Selection" @onchange="Select" @onclick="Choose" @ref="_target">
+        <option value="" hidden disabled selected="@(Selection.Length == 0)"></option>
+        @foreach (IGrouping<string, PickerOption> group in VisibleOptions.GroupBy(option => option.Section)) {
+            @if (group.Key.Length == 0) {
+                @foreach (PickerOption option in group) { <option value="@option.Value" selected="@(option.Value == Selection)">@option.Label</option> }
+            }
+            else {
+                <optgroup label="@group.Key">@foreach (PickerOption option in group) { <option value="@option.Value" selected="@(option.Value == Selection)">@option.Label</option> }</optgroup>
+            }
         }
-        @if (Selectable.Any(category => category.Source == CategorySource.Metadata && (RelevantIdentities.Contains(category.Identity) || !CategoryCatalog.IsCommonMetadata(category)))) {
-            <optgroup label="@(UiText.Get("Ui.RelevantProperties"))">@foreach (CategoryBase category in Selectable.Where(category => category.Source == CategorySource.Metadata && (RelevantIdentities.Contains(category.Identity) || !CategoryCatalog.IsCommonMetadata(category)))) { <option value="@category.Identity">@DisplayLabels.Category(category)</option> }</optgroup>
-        }
-        <optgroup label="@(UiText.Get("Ui.CommonProperties"))">
-            @foreach (CategoryBase category in Selectable.Where(category => category.Source == CategorySource.Metadata && CategoryCatalog.IsCommonMetadata(category) && !RelevantIdentities.Contains(category.Identity))) { <option value="@category.Identity">@DisplayLabels.Category(category)</option> }
-            <option value="numeric:level">@(UiText.Get("Ui.Level"))</option><option value="numeric:rank">@(UiText.Get("Ui.Rank"))</option><option value="numeric:link">@(UiText.Get("Ui.Link"))</option>
-        </optgroup>
-        @if (Selection.Length > 0 && !Selection.StartsWith("numeric:", StringComparison.Ordinal) && !Selection.StartsWith("card:", StringComparison.Ordinal) && !Selectable.Any(category => category.Identity == Selection)) { <option value="@Selection">@Value</option> }
     </select>
+    </div>
     @if (_property is { } property) {
         <div class="requirement-numeric-fields">
             <div><label for="@(Id + "-comparison")" class="form-label">@(UiText.Get("Ui.Comparison"))</label>
@@ -46,6 +53,78 @@
     [Parameter] public IReadOnlySet<string> RelevantIdentities { get; set; } = new HashSet<string>();
     [Parameter] public EventCallback<Change> OnChanged { get; set; }
 
+    private sealed record PickerOption(string Value, string Label, string Group, string Section);
+    private string _group = "all";
+    private ElementReference _trigger;
+    private ElementReference _panel;
+    private DotNetObjectReference<RequirementPropertyPicker>? _reference;
+    private bool _open;
+    private bool _attach;
+    private bool _focusChoices;
+    private readonly Dictionary<string, double> _groupScrollPositions = [];
+    private bool _restoreGroupScroll;
+    private string SelectedLabel => Options.FirstOrDefault(option => option.Value == Selection)?.Label ?? UiText.Get("Ui.Choose");
+    private IEnumerable<string> BrowseGroups => new[] { "all", "cards", "categories", "properties" }
+        .Where(group => group == "all" || Options.Any(option => option.Group == group));
+    private string GroupLabel(string group) => UiText.Get(group switch {
+        "cards" => "Ui.Cards", "categories" => "Ui.Categories", "properties" => "Requirement.Properties", _ => "Requirement.All"
+    });
+    private IEnumerable<PickerOption> Options {
+        get {
+            if (AllowAny) { yield return new("any", UiText.Get("Ui.Anycardclearfilter"), "all", ""); }
+            foreach (Card card in CardOrdering.Alphabetize(Cards)) {
+                yield return new($"card:{card.Id}", CardLabel?.Invoke(card) ?? DisplayLabels.Card(card, CardInfoService), "cards", UiText.Get("Ui.Cards"));
+            }
+            if (Value.StartsWith("card:", StringComparison.Ordinal) && !Cards.Any(card => Value == $"card:{card.Id}")) {
+                yield return new(Value, UiText.Get("Ui.MissingCard"), "cards", "");
+            }
+            foreach (CategoryBase category in Selectable.OrderBy(category => category.Source == CategorySource.User ? 0
+                : RelevantIdentities.Contains(category.Identity) || !CategoryCatalog.IsCommonMetadata(category) ? 1 : 2)) {
+                bool user = category.Source == CategorySource.User;
+                bool relevant = RelevantIdentities.Contains(category.Identity) || !CategoryCatalog.IsCommonMetadata(category);
+                yield return new(category.Identity, DisplayLabels.Category(category), user ? "categories" : "properties",
+                    UiText.Get(user ? "Ui.Categories" : relevant ? "Ui.RelevantProperties" : "Ui.CommonProperties"));
+            }
+            foreach (string property in new[] { "level", "rank", "link" }) {
+                yield return new("numeric:" + property, UiText.Get("Ui." + char.ToUpperInvariant(property[0]) + property[1..]), "properties", UiText.Get("Ui.CommonProperties"));
+            }
+            if (Selection.Length > 0 && Selection != "any" && !Selection.StartsWith("numeric:", StringComparison.Ordinal)
+                && !Selection.StartsWith("card:", StringComparison.Ordinal) && !Selectable.Any(category => category.Identity == Selection)) {
+                yield return new(Selection, Value, "categories", "");
+            }
+        }
+    }
+    private IEnumerable<PickerOption> VisibleOptions => Options.Where(option =>
+        _group == "all" || option.Group == _group || option.Value == "any");
+    private async Task FilterGroup(string group) {
+        if (_group == group) { return; }
+        _groupScrollPositions[_group] = await JS.InvokeAsync<double>("workspaceMenus.getScroll", _target);
+        _group = group;
+        _focusChoices = _restoreGroupScroll = true;
+    }
+    private Task Toggle() => _open ? Close() : Open();
+    private Task Open() { _open = _attach = _focusChoices = _restoreGroupScroll = true; return Task.CompletedTask; }
+    private Task TriggerKeyDown(KeyboardEventArgs args) => args.Key is "ArrowDown" or "ArrowUp" ? Open() : Task.CompletedTask;
+    private Task PanelKeyDown(KeyboardEventArgs args) => args.Key is "Escape" or "Enter" ? Close() : Task.CompletedTask;
+    private Task Choose() => Close();
+    private async Task Close() {
+        _groupScrollPositions[_group] = await JS.InvokeAsync<double>("workspaceMenus.getScroll", _target);
+        _open = false;
+        await JS.InvokeVoidAsync("workspaceMenus.close", _panel, _trigger, false);
+        if (_focusNumber) { _focusNumber = false; await _numberInput.FocusAsync(); }
+    }
+    [JSInvokable]
+    public async Task Dismiss() {
+        _groupScrollPositions[_group] = await JS.InvokeAsync<double>("workspaceMenus.getScroll", _target);
+        _open = false;
+        StateHasChanged();
+    }
+    public async ValueTask DisposeAsync() {
+        try { await JS.InvokeVoidAsync("workspaceMenus.dispose", _panel); }
+        catch (Exception exception) when (exception is JSDisconnectedException or OperationCanceledException) { }
+        _reference?.Dispose();
+    }
+
     private ElementReference _target;
     private ElementReference _numberInput;
     private string? _previousValue;
@@ -64,6 +143,7 @@
     private IEnumerable<CategoryBase> Selectable => Categories.Where(category => !NumericPropertyRange.TryFromIdentity(category.Identity, out _));
 
     protected override void OnParametersSet() {
+        if (!BrowseGroups.Contains(_group)) { _group = "all"; }
         if (_previousValue == Value) { return; }
         _previousValue = Value;
         _property = null;
@@ -105,8 +185,18 @@
         _previousValue = category.Identity;
         return OnChanged.InvokeAsync(new(category.Identity, category));
     }
-    public ValueTask FocusAsync(bool number = false) => number && _property is not null ? _numberInput.FocusAsync() : _target.FocusAsync();
+    public ValueTask FocusAsync(bool number = false) => number && _property is not null ? _numberInput.FocusAsync() : _trigger.FocusAsync();
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_focusNumber) { _focusNumber = false; await _numberInput.FocusAsync(); }
+        if (_attach) {
+            _attach = false;
+            _reference ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("workspaceMenus.open", _panel, _trigger, _reference, false, true);
+        }
+        if (_focusChoices && _open) { _focusChoices = false; await _target.FocusAsync(); }
+        if (_restoreGroupScroll && _open) {
+            _restoreGroupScroll = false;
+            await JS.InvokeVoidAsync("workspaceMenus.restoreScroll", _target, _groupScrollPositions.GetValueOrDefault(_group));
+        }
+        if (_focusNumber && !_open) { _focusNumber = false; await _numberInput.FocusAsync(); }
     }
 }

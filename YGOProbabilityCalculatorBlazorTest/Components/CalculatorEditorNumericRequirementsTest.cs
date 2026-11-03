@@ -43,7 +43,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
         Assert.That(simulation.FindComponent<RequirementEditForm>().Instance.QuantityContent, Is.Null);
         Assert.That(simulation.FindAll(".requirement-quantity"), Is.Empty);
         AssertCollapsedNumericChoices(simulation);
-        simulation.Find(".requirement-property-picker > select").Change(target);
+        simulation.Find(".requirement-property-picker select.requirement-options").Change(target);
         SetRange(simulation, property, "3", "5");
         simulation.Find($"input[aria-label='Maximum {property}']").Input("2");
         Assert.That(simulation.Find(".requirement-form button[type=submit]").HasAttribute("disabled"), Is.True);
@@ -51,8 +51,8 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
         Assert.That(selector, Is.EqualTo(CardSelector.For(a)));
         Button(simulation, "Cancel").Click();
         simulation.Find(".requirement-edit").Click();
-        Assert.That(simulation.Find(".requirement-property-picker > select").GetAttribute("value"), Is.EqualTo(a.Identity));
-        simulation.Find(".requirement-property-picker > select").Change(target);
+        Assert.That(simulation.Find(".requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo(a.Identity));
+        simulation.Find(".requirement-property-picker select.requirement-options").Change(target);
         SetRange(simulation, property, "3", "5");
         simulation.Find("form").Submit();
         Assert.That(selector.NumericRange, Is.EqualTo(saved.Selector.NumericRange));
@@ -85,7 +85,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
             .Add(component => component.OnChanged, _ => changes++));
         Assert.That(editor.Find(".draw-selector-chip").TextContent, Is.EqualTo("Level 5"));
         editor.Find(".requirement-edit").Click();
-        Assert.That(editor.Find("form .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo("numeric:level"));
+        Assert.That(editor.Find("form .requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo("numeric:level"));
         editor.Find("form").Submit();
         Assert.That(changes, Is.Zero);
         Assert.That(editor.Instance.Selector, Is.SameAs(original));
@@ -151,7 +151,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
             .Add(component => component.Category, role).Add(component => component.CategoryBases, CardPropertyProvider.CommonCategories)
             .Add(component => component.OnApply, rule => applied = rule));
         AssertCollapsedNumericChoices(editor);
-        editor.Find("[aria-label='Add AND property to alternative 1']").Change("numeric:" + property.ToString().ToLowerInvariant());
+        editor.Find("select[aria-label='Add AND property to alternative 1']").Change("numeric:" + property.ToString().ToLowerInvariant());
         SetRange(editor, property, "3", "5");
         RequirementPropertyPicker picker = editor.FindComponents<RequirementPropertyPicker>().Single(component => component.Instance.Value.StartsWith("metadata:numeric:")).Instance;
         editor.Find($"input[aria-label='Maximum {property}']").Input("2");
@@ -192,7 +192,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
         IRenderedComponent<CategoryRuleEditor> editor = context.RenderComponent<CategoryRuleEditor>(parameters => parameters
             .Add(component => component.Category, new CategoryBase("Role"))
             .Add(component => component.OnApply, value => applied = value));
-        editor.Find("[aria-label='Add rule alternative']").Change("numeric:level");
+        editor.Find("select[aria-label='Add rule alternative']").Change("numeric:level");
         editor.Find("select[aria-label='Comparison']").Change(comparison);
         string numberLabel = comparison == "maximum" ? "Maximum Level" : comparison == "exact" ? "Level" : "Minimum Level";
         editor.Find($"input[aria-label='{numberLabel}']").Input("");

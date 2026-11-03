@@ -1989,4 +1989,7 @@
   <data name="Requirement.HintSeparate" xml:space="preserve"><value>Add a separate card requirement.</value></data>
   <data name="Requirement.HintAnd" xml:space="preserve"><value>The same card must match both.</value></data>
   <data name="Requirement.HintOr" xml:space="preserve"><value>The same card can match either.</value></data>
+  <data name="Requirement.Groups" xml:space="preserve"><value>Requirement groups</value></data>
+  <data name="Requirement.All" xml:space="preserve"><value>All</value></data>
+  <data name="Requirement.Properties" xml:space="preserve"><value>Properties</value></data>
 </root>

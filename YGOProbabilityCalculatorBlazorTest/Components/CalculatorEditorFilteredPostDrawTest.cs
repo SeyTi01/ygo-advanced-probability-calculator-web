@@ -41,7 +41,7 @@ public class CalculatorEditorFilteredPostDrawTest : CalculatorEditorTestBase {
 
         foreach (IRenderedComponent<PostDrawSelectorEditor> selector in new[] { pre, post }) {
             selector.Find(".requirement-edit").Click();
-            string[] optionValues = selector.FindAll("form .requirement-operand .requirement-property-picker > select").First().QuerySelectorAll("optgroup option").Select(static option => option.GetAttribute("value")!).ToArray();
+            string[] optionValues = selector.FindAll("form .requirement-operand .requirement-property-picker select.requirement-options").First().QuerySelectorAll("optgroup option").Select(static option => option.GetAttribute("value")!).ToArray();
             Assert.That(optionValues, Does.Contain(monster.Identity).And.Contain(dark.Identity)
                 .And.Contain("numeric:level")
                 .And.Contain(spell.Identity));

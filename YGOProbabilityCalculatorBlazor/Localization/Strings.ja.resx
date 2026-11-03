@@ -2709,4 +2709,7 @@
   <data name="Requirement.HintSeparate" xml:space="preserve"><value>別のカードに対する条件を追加します。</value></data>
   <data name="Requirement.HintAnd" xml:space="preserve"><value>同じカードが両方の条件を満たす必要があります。</value></data>
   <data name="Requirement.HintOr" xml:space="preserve"><value>同じカードがどちらかの条件を満たせば有効です。</value></data>
+  <data name="Requirement.Groups" xml:space="preserve"><value>条件グループ</value></data>
+  <data name="Requirement.All" xml:space="preserve"><value>すべて</value></data>
+  <data name="Requirement.Properties" xml:space="preserve"><value>特性</value></data>
 </root>
