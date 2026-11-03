@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Microsoft.JSInterop;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -10,9 +8,8 @@ using YGOProbabilityCalculatorBlazor.Services.Session;
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 // Opt in: dotnet test YGOProbabilityCalculatorBlazor.sln -c Release --filter FullyQualifiedName~UnionBenchmark --logger "console;verbosity=detailed"
-// For stable native comparisons, set DOTNET_TieredCompilation=0 for both revisions.
-// Keep expensive physical-hand enumeration and timing out of ordinary test runs.
-[TestFixture, Explicit("Reproducible exact-union benchmark and full physical-hand oracle")]
+// Keep expensive physical-hand enumeration out of ordinary test runs.
+[TestFixture, Explicit("Full physical-hand exact-union oracle")]
 public class UnionBenchmark {
     internal static async Task<SessionState> LoadModel() {
         string json = await File.ReadAllTextAsync(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "vsmodel.json"));
@@ -77,60 +74,4 @@ public class UnionBenchmark {
         }
     }
 
-    [Test]
-    public async Task MeasureFixedWorkloads() {
-        TestContext.Out.WriteLine($"{RuntimeInformation.FrameworkDescription}; {RuntimeInformation.OSDescription}; {RuntimeInformation.ProcessArchitecture}; CPUs={Environment.ProcessorCount}");
-        SessionState session = await LoadModel();
-        List<Card> deck = session.Cards.Where(c => c.Active).ToList();
-        List<Combo> combos = session.Combos.Where(c => c.Active).ToList();
-        Measure("VS/K9-10", deck, combos, 5, session.ComboGroups);
-        Measure("VS/K9-30-duplicates", deck, Enumerable.Range(0, 30).Select(i => combos[i % 10]).ToList(), 5, session.ComboGroups);
-        foreach (int count in new[] { 10, 15, 20, 30 }) {
-            List<Combo> alternatives = deck.Take(count - 5).Select((c, i) => new Combo([new(session.Categories[0], 1, 5)],
-                groupId: session.ComboGroups[i % 2].Id, cards: [new(c.Id, 1, 5)])).ToList();
-            alternatives.AddRange(combos.Take(5));
-            Measure($"VS/K9-{alternatives.Count}-alternatives", deck, alternatives, 5, session.ComboGroups);
-        }
-        foreach (int count in new[] { 6, 10, 18 }) {
-            CategoryBase[] categories = Enumerable.Range(0, count).Select(i => new CategoryBase($"Distinct{i}")).ToArray();
-            List<Card> distinctDeck = categories.Select(c => new Card([c], 2)).Append(new Card([], 60 - count * 2)).ToList();
-            // Min=2 alternatives cannot be replaced by two copies from a union:
-            // drawing one copy from each of two selectors must still fail.
-            List<Combo> distinct = categories.Select((c, i) => new Combo([new(c, 2, 2)], groupId: $"g{i % 2}")).ToList();
-            Measure($"distinct-restrictive-{count}", distinctDeck, distinct, 5, [new("g0", "Even"), new("g1", "Odd")]);
-            if (count == 18) {
-                Measure("distinct-zero-max-18", distinctDeck,
-                    categories.Select(c => new Combo([new(c, 0, 0)])).ToList(), 5, []);
-            }
-        }
-    }
-
-    private static void Measure(string name, List<Card> deck, List<Combo> combos, int hand, List<ComboGroup> groups) {
-        ProbabilityCalculatorService service = new();
-        (double Ms, long Bytes, string Outcome) cold = Run();
-
-        for (int i = 0; i < 3; i++) {
-            Run();
-        }
-
-        (double Ms, long Bytes, string Outcome)[] trials = Enumerable.Range(0, 7).Select(_ => Run()).ToArray();
-        double[] times = trials.Select(trial => trial.Ms).Order().ToArray();
-        TestContext.Out.WriteLine($"{name}: cold={cold.Ms:F3}ms; median={times[3]:F3}ms range={times[0]:F3}..{times[^1]:F3}; bytes={trials[0].Bytes}; {trials[0].Outcome}");
-
-        (double Ms, long Bytes, string Outcome) Run() {
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            Stopwatch timer = Stopwatch.StartNew();
-            string outcome;
-
-            try {
-                ProbabilityCalculationResult result = service.CalculateProbabilityResults(deck, combos, hand, groups);
-                outcome = $"p={result.TotalProbability:R}";
-            } catch (ProbabilityCalculationLimitException) {
-                outcome = "explicit work/storage limit";
-            }
-
-            timer.Stop();
-            return (timer.Elapsed.TotalMilliseconds, GC.GetAllocatedBytesForCurrentThread() - before, outcome);
-        }
-    }
 }

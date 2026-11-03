@@ -2,9 +2,7 @@ using System.Text.Json;
 using Microsoft.JSInterop;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
-using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
-using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
@@ -69,33 +67,5 @@ internal static class TradeInAllureFixture {
                 Is.EqualTo(effective.Where(card => card.Categories.Any(category => category.Identity == dark.Identity)).Sum(card => card.Copies)));
         });
         return session;
-    }
-}
-
-[TestFixture, Explicit("Isolated bounded acceptance measurements"), NonParallelizable]
-public class TradeInAllureBenchmark {
-    [Test]
-    public async Task Export() {
-        SessionState session = await TradeInAllureFixture.Load();
-        // Keep the original 50M comparison explicit and reproducible after the policy change.
-        long work = long.TryParse(Environment.GetEnvironmentVariable("YGO_ACCEPTANCE_WORK"), out long value) ? value : 50_000_000;
-        CalculationStorageTier tier = Enum.TryParse(Environment.GetEnvironmentVariable("YGO_ACCEPTANCE_TIER"), out CalculationStorageTier selected)
-            ? selected : CalculationStorageTier.Standard;
-        bool custom = Environment.GetEnvironmentVariable("YGO_ACCEPTANCE_CUSTOM") == "1";
-        DrawActivationPriority priority = custom ? new(DrawActivationMode.CustomPriority, ["benchmark-allure", "benchmark-trade-in"])
-            : DrawActivationPriority.Default;
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups,
-            new(work), storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(priority));
-        SessionService codec = new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-        SessionState exported = new() {
-            Cards = session.Cards, Categories = session.Categories, Combos = session.Combos,
-            ComboGroups = session.ComboGroups, HandSize = session.HandSize,
-            CategoryColorIndices = session.CategoryColorIndices, DrawActivationPriority = priority
-        };
-        File.WriteAllText(Environment.GetEnvironmentVariable("YGO_AUDIT_INPUT")!, JsonSerializer.Serialize(new[] { new {
-            Name = $"trade-in-allure-{tier}-{work}-{(custom ? "custom" : "encounter")}",
-            Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json),
-            Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(exported))
-        } }));
     }
 }
