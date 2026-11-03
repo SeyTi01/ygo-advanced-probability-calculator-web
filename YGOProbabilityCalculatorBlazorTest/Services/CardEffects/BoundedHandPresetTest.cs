@@ -1,18 +1,14 @@
-using System.Net;
-using System.Text.Json;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
-using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 
 [TestFixture]
 public sealed class BoundedHandPresetTest {
     private const int DarkMagicianId = 46986414;
-    private static readonly JsonSerializerOptions CatalogJsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly ICardEffectDefinition[] Definitions = [
         new BrandedOpeningEffect(),
         new FiendsmithTractEffect(),
@@ -27,11 +23,10 @@ public sealed class BoundedHandPresetTest {
         67115133, 54143349, 85315450, 25940932, 5318639,
         DarkMagicianId
     ];
-    private static readonly Lazy<Task<IReadOnlyList<CardInfo>>> Catalog = new(LoadCatalogCardsAsync);
 
     [Test]
     public async Task ImportedSearchTargetsUseObjectiveCatalogMetadata() {
-        IReadOnlyList<CardInfo> catalog = await Catalog.Value;
+        IReadOnlyList<CardInfo> catalog = await CatalogFixture.LoadCardsAsync(CatalogFixtureIds);
         SearchEffectPlan brandedOpening = Search(36637374);
         Card brandedMonster = Import(catalog, 62962630);
         Card darkMagician = Import(catalog, DarkMagicianId);
@@ -95,7 +90,7 @@ public sealed class BoundedHandPresetTest {
 
     [Test]
     public async Task ExplicitSelectionAndRestoreRetainEachMaintainedSearchPlan() {
-        IReadOnlyList<CardInfo> catalog = await Catalog.Value;
+        IReadOnlyList<CardInfo> catalog = await CatalogFixture.LoadCardsAsync(CatalogFixtureIds);
 
         foreach (ICardEffectDefinition definition in Definitions) {
             CardInfo sourceInfo = CatalogCard(catalog, definition.CanonicalCardId);
@@ -115,7 +110,7 @@ public sealed class BoundedHandPresetTest {
 
     [Test]
     public async Task SearchActivationConsumesItsSourceAndReturnsExpectedFastAndExactFractions() {
-        IReadOnlyList<CardInfo> catalog = await Catalog.Value;
+        IReadOnlyList<CardInfo> catalog = await CatalogFixture.LoadCardsAsync(CatalogFixtureIds);
         ProbabilityCalculatorService calculator = new();
 
         foreach (ICardEffectDefinition definition in Definitions) {
@@ -170,47 +165,4 @@ public sealed class BoundedHandPresetTest {
 
     private static CardInfo CatalogCard(IReadOnlyList<CardInfo> catalog, int id) =>
         catalog.Single(card => card.Id == id);
-
-    private static async Task<IReadOnlyList<CardInfo>> LoadCatalogCardsAsync() {
-        using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(FindCatalogPath()));
-        CardInfo[] cards = document.RootElement.GetProperty("cards").EnumerateArray()
-            .Where(card => CatalogFixtureIds.Contains(card.GetProperty("id").GetInt32()))
-            .Select(card => card.Deserialize<CardInfo>(CatalogJsonOptions)!)
-            .ToArray();
-
-        if (cards.Length != CatalogFixtureIds.Length) {
-            throw new InvalidDataException("The checked-in catalog is missing a bounded hand preset fixture.");
-        }
-
-        string subsetJson = JsonSerializer.Serialize(new { version = 2, cards }, CatalogJsonOptions);
-        using HttpClient httpClient = new(new CatalogResponseHandler(subsetJson)) {
-            BaseAddress = new Uri("https://calculator.test/")
-        };
-        CardInfoService service = new(Mock.Of<ILocalStorageService>(), httpClient);
-
-        return await service.GetCatalogCardsAsync();
-    }
-
-    private static string FindCatalogPath() {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null) {
-            string path = Path.Combine(directory.FullName, "YGOProbabilityCalculatorBlazor", "wwwroot", "data", "card-catalog.v1.json");
-
-            if (File.Exists(path)) {
-                return path;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new FileNotFoundException("Could not locate the checked-in card catalog from the test output directory.");
-    }
-
-    private sealed class CatalogResponseHandler(string catalogJson) : HttpMessageHandler {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(request.RequestUri!.AbsolutePath.EndsWith("/data/card-catalog.v1.json", StringComparison.Ordinal)
-                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(catalogJson) }
-                : new HttpResponseMessage(HttpStatusCode.NotFound));
-    }
 }

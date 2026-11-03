@@ -20,7 +20,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 [SetCulture("en-US")]
 public partial class PinnedResultTest {
     private TestContext _context = null!;
-    private ControlledCalculator _worker = null!;
+    private ControlledBackgroundCalculator _worker = null!;
     private IRenderedComponent<ProbabilityCalculatorComponent> _cut = null!;
     private ISessionService _sessions = null!;
     private BunitJSModuleInterop _clipboard = null!;
@@ -100,7 +100,7 @@ public partial class PinnedResultTest {
     }
 
     private ProbabilityCalculationResult Result(int job, double total) {
-        CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs[job].Json)!;
+        CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Calls[job].Snapshot.Json)!;
         List<ComboProbabilityResult> comboResults = input.Combos
             .Select((combo, index) => new ComboProbabilityResult(index, combo.Name, total, combo.GroupId))
             .ToList();
@@ -112,20 +112,20 @@ public partial class PinnedResultTest {
                 input.Combos.Count(combo => combo.GroupId == group.Id)))
             .ToList();
 
-        CalculationResultContract contract = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[job].Json)).Contract!;
+        CalculationResultContract contract = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Calls[job].Snapshot.Json)).Contract!;
         return new(total, comboResults, groupResults, Contract: contract);
     }
 
     private async Task Accept(double probability = .814) {
         Task action = Start();
-        int job = _worker.Jobs.Count - 1;
-        _worker.Jobs[job].SetResult(Result(job, probability));
+        int job = _worker.Calls.Count - 1;
+        _worker.Calls[job].Completion.SetResult(Result(job, probability));
         await action;
     }
 
     private async Task<PinnedResultSnapshot> AcceptWithAccuracy(CalculationAccuracy accuracy, double probability) {
         Task action = Start();
-        int job = _worker.Jobs.Count - 1;
+        int job = _worker.Calls.Count - 1;
         ProbabilityCalculationResult result = Result(job, probability);
         AutomaticExactOutcome automaticExact = accuracy == CalculationAccuracy.Exact
             ? AutomaticExactOutcome.Completed
@@ -137,7 +137,7 @@ public partial class PinnedResultTest {
         SearchAvailabilityCertificate certificate = new(
             SearchAvailabilityStatus.NotApplicable,
             "No search effects are modeled in this result.");
-        _worker.Jobs[job].SetResult(result with { Contract = contract, SearchAvailability = certificate });
+        _worker.Calls[job].Completion.SetResult(result with { Contract = contract, SearchAvailability = certificate });
         await action;
         return Accepted;
     }
@@ -154,8 +154,8 @@ public partial class PinnedResultTest {
         await _cut.Find("#calculationModel").ChangeAsync(new() { Value = "Exact" });
 
         Task initialCalculation = Start();
-        int firstJob = _worker.Jobs.Count - 1;
-        _worker.Jobs[firstJob].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[firstJob].Json)));
+        int firstJob = _worker.Calls.Count - 1;
+        _worker.Calls[firstJob].Completion.SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Calls[firstJob].Snapshot.Json)));
         await initialCalculation;
 
         PinnedResultSnapshot initial = Accepted;
@@ -169,8 +169,8 @@ public partial class PinnedResultTest {
         await Call("ReplaceCombo", (2, combos[2].WithActive(false)));
 
         Task currentCalculation = Start();
-        int currentJob = _worker.Jobs.Count - 1;
-        _worker.Jobs[currentJob].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[currentJob].Json)));
+        int currentJob = _worker.Calls.Count - 1;
+        _worker.Calls[currentJob].Completion.SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Calls[currentJob].Snapshot.Json)));
         await currentCalculation;
 
         PinnedResultSnapshot current = Accepted;
@@ -222,15 +222,15 @@ public partial class PinnedResultTest {
     [Test]
     public async Task PinOwnsRequestContextAndCopiesMutableResultRows() {
         Task action = Start();
-        CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs[0].Json)!;
-        Assert.That(input.WorkUnits, Is.EqualTo(150_000_000), "ordinary Calculate selects the interactive policy on its first request");
+        CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Calls[0].Snapshot.Json)!;
+        Assert.That(input.WorkUnits, Is.EqualTo(CalculationWorkPolicy.Interactive.WorkUnits), "ordinary Calculate selects the interactive policy on its first request");
         Assert.That(input.HandSize, Is.EqualTo(2));
         ProbabilityCalculationResult result = Result(0, .814);
         // An unannounced edit specifically verifies capture timing, independent of invalidation.
         Field<List<Card>>("_cards")[0].Categories.Clear();
         Field<List<Combo>>("_combos")[0].Cards.Clear();
         typeof(ProbabilityCalculatorComponent).GetField("_handSize", Private)!.SetValue(_cut.Instance, 3);
-        _worker.Jobs[0].SetResult(result);
+        _worker.Calls[0].Completion.SetResult(result);
         await action;
         await Pin();
         PinnedResultSnapshot frozen = Pinned;
@@ -295,7 +295,7 @@ public partial class PinnedResultTest {
         Assert.That(Accepted, Is.SameAs(accepted));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("aria-describedby"), Is.False);
-        Assert.That(_worker.Jobs, Has.Count.EqualTo(2), "pinning a stale result must not start another calculation");
+        Assert.That(_worker.Calls, Has.Count.EqualTo(2), "pinning a stale result must not start another calculation");
 
         await Pin();
 
@@ -339,12 +339,12 @@ public partial class PinnedResultTest {
         await Pin();
         Assert.That(Pinned, Is.SameAs(accepted));
         Assert.That(Pinned.Context.HandSize, Is.EqualTo(2));
-        Assert.That(_worker.Jobs, Has.Count.EqualTo(2));
+        Assert.That(_worker.Calls, Has.Count.EqualTo(2));
 
         Task action = Start();
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.True);
-        _worker.Jobs[^1].SetCanceled();
+        _worker.Calls[^1].Completion.SetCanceled();
         await action;
         Assert.That(Accepted, Is.SameAs(accepted));
     }
@@ -362,7 +362,7 @@ public partial class PinnedResultTest {
         Assert.That(stalePin, Is.SameAs(previous));
         Task action = Start();
 
-        _worker.Jobs[^1].SetResult(Result(_worker.Jobs.Count - 1, .786));
+        _worker.Calls[^1].Completion.SetResult(Result(_worker.Calls.Count - 1, .786));
         await action;
 
         PinnedResultSnapshot accepted = Accepted;
@@ -402,21 +402,21 @@ public partial class PinnedResultTest {
             await _cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
             await Accept(.842);
             if (completion == "late-success") {
-                _worker.Jobs[2].SetResult(Result(2, .1));
+                _worker.Calls[2].Completion.SetResult(Result(2, .1));
             }
             else {
-                _worker.Jobs[2].SetException(new Exception("Obsolete error"));
+                _worker.Calls[2].Completion.SetException(new Exception("Obsolete error"));
             }
         }
         else if (completion == "cancelled") {
-            _worker.Jobs[2].SetCanceled();
+            _worker.Calls[2].Completion.SetCanceled();
         }
         else if (completion.EndsWith("limit")) {
-            _worker.Jobs[2].SetException(new ProbabilityCalculationLimitException(
+            _worker.Calls[2].Completion.SetException(new ProbabilityCalculationLimitException(
                 completion == "work-limit" ? ProbabilityCalculationLimitReason.Work : ProbabilityCalculationLimitReason.Storage));
         }
         else {
-            _worker.Jobs[2].SetException(new Exception("Current failure"));
+            _worker.Calls[2].Completion.SetException(new Exception("Current failure"));
         }
 
         await action;
@@ -441,12 +441,12 @@ public partial class PinnedResultTest {
         await _cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
         Task current = Start();
-        Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs[2].Json)!.WorkUnits, Is.EqualTo(150_000_000));
+        Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Calls[2].Snapshot.Json)!.WorkUnits, Is.EqualTo(CalculationWorkPolicy.Interactive.WorkUnits));
         if (limit) {
-            _worker.Jobs[1].SetException(new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage));
+            _worker.Calls[1].Completion.SetException(new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage));
         }
         else {
-            _worker.Jobs[1].SetResult(Result(1, .1));
+            _worker.Calls[1].Completion.SetResult(Result(1, .1));
         }
         await old;
         Assert.That(Accepted, Is.SameAs(accepted));
@@ -454,7 +454,7 @@ public partial class PinnedResultTest {
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.True);
         Assert.That(_cut.FindAll("[role='alert']"), Is.Empty);
-        _worker.Jobs[2].SetResult(Result(2, .842));
+        _worker.Calls[2].Completion.SetResult(Result(2, .842));
         await current;
         Assert.That(Accepted.Context.HandSize, Is.EqualTo(6));
         Assert.That(Pinned.Context.HandSize, Is.EqualTo(2));
@@ -590,7 +590,7 @@ public partial class PinnedResultTest {
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "5" });
         Task calculation = Start();
         ProbabilityCalculationResult original = Result(0, .814);
-        _worker.Jobs[0].SetResult(original);
+        _worker.Calls[0].Completion.SetResult(original);
         await calculation;
         if (pin) {
             await Pin();
@@ -624,7 +624,7 @@ public partial class PinnedResultTest {
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
         Assert.That(_clipboard.Invocations["copyText"].Last().Arguments[0], Is.EqualTo(expected));
-        _worker.Jobs[1].SetResult(Result(1, .1));
+        _worker.Calls[1].Completion.SetResult(Result(1, .1));
         await running;
         await Accept(.842);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
@@ -658,7 +658,7 @@ public partial class PinnedResultTest {
         Assert.That(Pinned, Is.SameAs(pin));
         Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
         Assert.That(Accepted, Is.Null);
-        _worker.Jobs[1].SetResult(Result(1, .1));
+        _worker.Calls[1].Completion.SetResult(Result(1, .1));
         await oldWork;
         delayed.SetResult(false);
         await copying;
@@ -739,7 +739,7 @@ public partial class PinnedResultTest {
         Assert.That(_cut.Find(".pin-result-action").HasAttribute("disabled"), Is.False);
         await Accept(.75);
 
-        CalculationInput offInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Inputs.Last().Json)!;
+        CalculationInput offInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Calls.Last().Snapshot.Json)!;
         Assert.That(offInput.Cards[0].DrawCount, Is.Null);
         Assert.That((cards[0].DrawCount, cards[0].DrawOncePerTurn), Is.EqualTo(((int?)2, false)));
         AssertContextDescriptions("Hand size: 2 · Deck size: 8",
@@ -755,18 +755,6 @@ public partial class PinnedResultTest {
         public long Size => Encoding.UTF8.GetByteCount(json);
         public string ContentType => "application/json";
         public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default) => new MemoryStream(Encoding.UTF8.GetBytes(json));
-    }
-
-    private sealed class ControlledCalculator : IBackgroundCalculator {
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-        public List<TaskCompletionSource<ProbabilityCalculationResult>> Jobs { get; } = [];
-        public List<CalculationSnapshot> Inputs { get; } = [];
-        public Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken token) {
-            TaskCompletionSource<ProbabilityCalculationResult> source = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            Inputs.Add(snapshot);
-            Jobs.Add(source);
-            return source.Task;
-        }
     }
 
 }

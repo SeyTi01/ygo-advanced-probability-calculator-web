@@ -396,6 +396,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         OpenSimulation(editor);
         await editor.Find("#cardDrawOnce0").ChangeAsync(new() { Value = false });
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         await editor.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = userCategory.Identity });
         await Button(editor, "Add").ClickAsync(new());
 
@@ -607,6 +608,7 @@ public sealed class CalculatorEditorCardSearchTest : CalculatorEditorTestBase {
         OpenSimulation(editor);
         await editor.Find("#cardDrawOnce0").ChangeAsync(new() { Value = false });
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         Card manual = editor.Instance.Card;
         IElement nameInput = editor.Find("#cardName0");
 

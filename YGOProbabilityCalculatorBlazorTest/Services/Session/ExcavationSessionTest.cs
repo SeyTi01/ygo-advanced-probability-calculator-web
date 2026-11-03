@@ -1,17 +1,14 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Microsoft.JSInterop;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 public sealed class ExcavationSessionTest {
-    private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-
     [TestCase(98645731, 3, false)]
     [TestCase(84211599, 6, true)]
     public async Task ImportedPresetAndCustomDisabledSnapshotsSurviveSessionShareAndWorkerTransport(int identity, int count, bool drawRestriction) {
@@ -26,7 +23,7 @@ public sealed class ExcavationSessionTest {
             Card copy = snapshot.Duplicate().WithName("Renamed").WithCopies(3).WithCategories([]).WithActive(false).WithActive(true);
             Assert.That(copy.EffectPlan, Is.EqualTo(snapshot.EffectPlan));
             Assert.That(copy.SimulationEnabled, Is.EqualTo(snapshot.SimulationEnabled));
-            SessionService codec = Codec();
+            SessionService codec = SessionFixture.CreateCodec();
             string json = codec.SerializeSession(new() { Cards = [snapshot] });
             string link = SessionShareCodec.CreateLink("https://example.invalid/", json);
             foreach (string payload in new[] { json, SessionShareCodec.Decode(new Uri(link).Fragment) }) {
@@ -50,7 +47,7 @@ public sealed class ExcavationSessionTest {
 
     [Test]
     public async Task OlderSessionNeverAcquiresExcavationFromItsIdentityOrAnIgnoredExtension() {
-        SessionService codec = Codec();
+        SessionService codec = SessionFixture.CreateCodec();
         Card historical = new([], name: "Pot of Prosperity", externalCardId: 84211599, drawCount: 2);
         JsonObject root = JsonNode.Parse(codec.SerializeSession(new() { Cards = [historical] }))!.AsObject();
         root["SchemaVersion"] = 13;
@@ -71,7 +68,7 @@ public sealed class ExcavationSessionTest {
     [TestCase("{\"Count\":3,\"UnknownFutureOperation\":true}")]
     public void MalformedExcavationSnapshotsAreRejected(string operation) {
         string json = $$"""{"SchemaVersion":14,"CalculationModel":"Fast","FastExecutionStrategy":"Progressive","Cards":[{"Name":"Source","Copies":1,"Categories":[],"Excavation":{{operation}}}]}""";
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await Codec().LoadSessionAsync(json));
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await SessionFixture.CreateCodec().LoadSessionAsync(json));
     }
 
     [Test]

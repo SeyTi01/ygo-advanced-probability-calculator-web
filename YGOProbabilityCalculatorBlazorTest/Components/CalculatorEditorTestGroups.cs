@@ -105,6 +105,7 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         IRenderedComponent<ComboEditor> first = cut.FindComponents<ComboEditor>()[0];
         Assert.That(first.Find(".combo-header-content").QuerySelector(".combo-group-membership"), Is.Null);
+        OpenNewRequirement(first);
         RequirementField(first, "#comboTarget0").Change("user:B");
         RequirementField(first, "#minCount0").Input("0");
         RequirementField(first, "#maxCount0").Input("0");

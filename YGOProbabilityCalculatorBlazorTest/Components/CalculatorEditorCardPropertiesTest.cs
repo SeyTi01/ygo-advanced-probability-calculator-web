@@ -156,10 +156,12 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
 
         await RequirementField(combo, "#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
         await Button(combo, "Add").ClickAsync(new());
+        OpenNewRequirement(combo);
         await RequirementField(combo, "#comboTarget1").ChangeAsync(new() { Value = user.Identity });
         await Button(combo, "Add").ClickAsync(new());
         Assert.That(combo.Instance.Combo.Categories.Select(c => c.BaseCategory.Source),
             Is.EqualTo(new[] { CategorySource.Metadata, CategorySource.User }));
+        OpenNewRequirement(combo);
         await RequirementField(combo, "#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
         await RequirementField(combo, "#minCount1").InputAsync(new() { Value = "0" });
         await RequirementField(combo, "#maxCount1").InputAsync(new() { Value = "0" });
@@ -171,6 +173,7 @@ public sealed class CalculatorEditorTestCardProperties : CalculatorEditorTestBas
         await card.Find("select[id^='cardCategory']").ChangeAsync(new() { Value = user.Identity });
         await Button(card, "Add").ClickAsync(new());
         Assert.That(card.Instance.Card.Categories, Has.Count.EqualTo(3));
+        OpenNewRequirement(combo);
         await RequirementField(combo, "#comboTarget1").ChangeAsync(new() { Value = spell.Identity });
         await categories.Find("[aria-label='Edit category Spell']").ClickAsync(new());
         await categories.Find("[aria-label='New name for category Spell']").InputAsync(new() { Value = "Role" });

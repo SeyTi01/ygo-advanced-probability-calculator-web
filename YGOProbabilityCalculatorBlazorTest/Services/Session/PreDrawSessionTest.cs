@@ -1,30 +1,27 @@
 using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 using System.Text.Json;
-using Microsoft.JSInterop;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 [TestFixture]
 public class PreDrawSessionTest {
-    private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-
     [TestCase(38120068), TestCase(26845680)]
     public async Task PreDrawSchemaFiveSaveShareRecoveryAndWorkerPreserveCompositeSelectors(int id) {
         Card card = CuratedDrawEffectPresets.CreateImportedCard(new() { Id = id, Name = "Effect" }, 1, id);
         SessionState session = new() { Cards = [card, new([], 3, id: "f")], Combos = [new([])], HandSize = 1 };
-        string json = Codec().SerializeSession(session);
+        string json = SessionFixture.CreateCodec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
-        SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Cards[0].PreDrawRemovalCount, Is.EqualTo(1));
         Assert.That(loaded.Cards[0].PreDrawSelector, Is.EqualTo(card.PreDrawSelector));
-        Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
+        Assert.That(SessionFixture.CreateCodec().SerializeSession(loaded), Is.EqualTo(json));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 1, [], options: new());
         CalculationInput input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
         Assert.That(input.Cards[0].PreDrawSelector, Is.EqualTo(card.PreDrawSelector));
@@ -38,7 +35,7 @@ public class PreDrawSessionTest {
     public async Task PreDrawOlderSchemasNeverInferOrActivateCosts(int schema) {
         foreach (int id in new[] { 38120068, 26845680 }) {
             string json = $$$"""{"SchemaVersion":{{{schema}}},"Cards":[{"Categories":[],"Copies":1,"Name":"Old","ExternalCardId":{{{id}}},"DrawCount":2,"PreDrawRemovalCount":1,"PreDrawSelector":{"Kind":"Any"}}]}""";
-            SessionState loaded = await Codec().LoadSessionAsync(json);
+            SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(json);
             Card card = loaded.Cards.Single();
             Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
             Assert.That(card.PreDrawRemovalCount, Is.Zero);
@@ -83,6 +80,6 @@ public class PreDrawSessionTest {
     [TestCase("\"PreDrawSelector\":{\"Kind\":\"Category\",\"Categories\":[\"user:A\"]}")]
     public void PreDrawMalformedOrDuplicateFieldsFailClosed(string fields) {
         string json = "{\"SchemaVersion\":5,\"Cards\":[{\"Categories\":[],\"Copies\":1,\"Name\":null,\"DrawCount\":2," + fields + "}]}";
-        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(json));
+        Assert.ThrowsAsync<InvalidOperationException>(() => SessionFixture.CreateCodec().LoadSessionAsync(json));
     }
 }

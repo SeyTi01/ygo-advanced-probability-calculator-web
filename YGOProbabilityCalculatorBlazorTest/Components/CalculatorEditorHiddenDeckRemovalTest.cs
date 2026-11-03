@@ -21,6 +21,7 @@ public class CalculatorEditorHiddenDeckRemovalTest : CalculatorEditorTestBase {
         OpenSimulation(editor);
         await editor.Find("#cardDeckCost0").ChangeAsync(new() { Value = "10" });
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         AssertPreviousResult(cut);
         Assert.That(editor.Instance.Card.PreDrawDeckRemovalCount, Is.EqualTo(10));
         Assert.That(editor.Find("#cardCategory0").GetAttribute("value"), Is.EqualTo("user:B"));
@@ -34,11 +35,12 @@ public class CalculatorEditorHiddenDeckRemovalTest : CalculatorEditorTestBase {
         Assert.That(editor.Find("#cardDrawModeHelp0").TextContent, Does.Contain("saved simulation is off"));
         foreach (string invalid in new[] { "-1", "61", "wrong" }) {
             await editor.Find("#cardDeckCost0").ChangeAsync(new() { Value = invalid });
-            await SaveSimulation(editor);
+            Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.True);
             Assert.That(editor.Instance.Card.PreDrawDeckRemovalCount, Is.EqualTo(10));
         }
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "" });
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         Assert.That(editor.Instance.Card.PreDrawDeckRemovalCount, Is.Zero);
         Assert.That(editor.FindAll("#cardDeckCost0"), Is.Empty);
     }

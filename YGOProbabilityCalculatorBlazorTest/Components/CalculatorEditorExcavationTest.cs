@@ -19,6 +19,7 @@ public sealed class CalculatorEditorExcavationTest : CalculatorEditorTestBase {
         Assert.That(editor.Find("#cardDraw0").GetAttribute("value"), Is.EqualTo("excavation"));
         Assert.That(editor.FindAll("#cardCost0, #cardDiscard0, #cardDrawOnce0"), Is.Empty);
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         Assert.That(editor.Instance.Card.EffectPlan, Is.EqualTo(card.EffectPlan));
 
         await editor.Find(".simulation-toggle").ClickAsync(new());
@@ -27,6 +28,7 @@ public sealed class CalculatorEditorExcavationTest : CalculatorEditorTestBase {
         OpenSimulation(editor);
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "1" });
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         Assert.That(editor.Instance.Card.Excavation, Is.Null);
         Assert.That(editor.Instance.Card.DrawCount, Is.EqualTo(1));
         Assert.That(editor.Instance.Card.Id, Is.EqualTo(card.Id));
@@ -37,6 +39,7 @@ public sealed class CalculatorEditorExcavationTest : CalculatorEditorTestBase {
         OpenSimulation(editor);
         await editor.Find("#cardDraw0").ChangeAsync(new() { Value = "" });
         await SaveSimulation(editor);
+        OpenSimulation(editor);
         Assert.That(editor.Instance.Card.HasEffect, Is.False);
     }
 
