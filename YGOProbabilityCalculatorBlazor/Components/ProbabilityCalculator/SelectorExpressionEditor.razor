@@ -50,9 +50,11 @@
         OnSubmit="Save" OnCancel="Cancel" OnRemoveOperand="RemoveOperand"
         ShowJoinOperator="@(_mode == "row")" OnOperatorChanged="ChangeDraftOperator">
         <OperandContent Context="position">
-            @{ OperandDraft operand = _operands[position]; }
+            @{ SelectorOperandDraft operand = _operands[position]; }
             @if (operand.Group is { } group) {
-                <button type="button" class="btn btn-outline-secondary w-100" @onclick="() => EditNested(position)">@Summary(group) <span class="small">@(UiText.Get("Ui.Edit"))</span></button>
+                <EditorField>
+                    <button type="button" class="btn btn-outline-secondary w-100" @onclick="() => EditNested(position)">@Summary(group) <span class="small">@(UiText.Get("Ui.Edit"))</span></button>
+                </EditorField>
             }
             else {
                 <RequirementPropertyPicker @key="operand" @ref="_entryInputs[position]" Id="@OperandId(position)" Value="@operand.Identity"
@@ -93,30 +95,12 @@
     [Parameter] public EventCallback<bool> OnEditingChanged { get; set; }
     [Parameter] public EventCallback<(CardSelector Selector, string? Message)> OnValidation { get; set; }
 
-    private sealed class OperandDraft(CardSelector selector) {
-        public CardSelector Original { get; set; } = selector;
-        public string Identity { get; set; } = selector.Kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.NumericRange && NumericPropertyRange.TryFromSelector(selector, out NumericPropertyRange? range) ? range.Identity : selector.CategoryIdentities.FirstOrDefault() ?? "";
-        public string? Error { get; set; }
-        public CardSelector? Group { get; set; } = selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf ? selector : null;
-        public CardSelector Build() {
-            if (Group is not null) { return Group; }
-            if ((Original.Kind == CardSelectorKind.Category || IsCatalogIdentity(Original)) && Identity == Original.CategoryIdentities[0]
-                || NumericPropertyRange.TryFromSelector(Original, out NumericPropertyRange? originalRange) && Identity == originalRange.Identity) { return Original; }
-            if (Identity.StartsWith("metadata:catalog-id:", StringComparison.Ordinal)) {
-                return CardSelector.Objective(new(CardSelectorKind.Category, [Identity]));
-            }
-            return Identity.StartsWith("metadata:numeric:", StringComparison.Ordinal) && NumericPropertyRange.TryFromIdentity(Identity, out NumericPropertyRange? range)
-                ? range.ToSelector() : new(CardSelectorKind.Category, [Identity]);
-        }
-    }
-
-    private sealed record SelectorRow(CardSelector Value, CardSelector[] Terms);
     private readonly SelectorEditSession _session = new();
     private readonly object _node = new();
     private readonly string _fieldId = "selector-clause-" + Guid.NewGuid().ToString("N");
     private readonly Dictionary<string, object> _termKeys = new(StringComparer.Ordinal);
     private readonly Dictionary<object, SelectorExpressionEditor> _childEditors = [];
-    private readonly List<OperandDraft> _operands = [];
+    private readonly List<SelectorOperandDraft> _operands = [];
     private readonly Dictionary<int, RequirementPropertyPicker> _entryInputs = [];
     private RequirementEditForm? _editForm;
     private SelectorEditSession EditorSession => Session ?? _session;
@@ -145,9 +129,7 @@
     private SelectorExpressionEditor? _nestedEditor;
 
     private string OperandId(int index) => $"{_fieldId}-{index}";
-    internal static bool IsCatalogIdentity(CardSelector selector) => selector.Kind == CardSelectorKind.Objective
-        && selector.Children[0].Kind == CardSelectorKind.Category
-        && selector.Children[0].CategoryIdentities[0].StartsWith("metadata:catalog-id:", StringComparison.Ordinal);
+    internal static bool IsCatalogIdentity(CardSelector selector) => SelectorExpressionEditing.IsCatalogIdentity(selector);
     private string IdentityLabel(string identity) {
         if (Available.FirstOrDefault(category => category.Identity == identity) is { } category) { return DisplayLabels.Category(category); }
         bool metadata = identity.StartsWith("metadata:", StringComparison.Ordinal);
@@ -173,45 +155,6 @@
     private static string FallbackChipClass(string identity) => identity.StartsWith("metadata:", StringComparison.Ordinal)
         ? "card-property-tag " + CardPropertyColorPalette.GetCssClass(identity[9..]) : CategoryChipPalette.GetFallbackCssClass(identity);
 
-    // A legacy row is a maximal adjacent run of direct operands. Nested groups remain
-    // independent terms; the projection never changes the stored Boolean tree.
-    private static SelectorRow[] ProjectRows(CardSelectorKind operation, CardSelector[] terms) {
-        List<SelectorRow> rows = [];
-        List<CardSelector> run = [];
-        foreach (CardSelector term in terms) {
-            if (term.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf) {
-                FlushRun();
-                rows.Add(new(term, [term]));
-            }
-            else {
-                run.Add(term);
-            }
-        }
-        FlushRun();
-
-        return rows.ToArray();
-
-        void FlushRun() {
-            if (run.Count == 0) { return; }
-            CardSelector[] operands = run.ToArray();
-            rows.Add(new(Combine(operation, operands), operands));
-            run.Clear();
-        }
-    }
-
-    private static SelectorRow[] RetainRows(CardSelectorKind operation, CardSelector[] terms, SelectorRow[]? retained) {
-        if (retained is null) { return ProjectRows(operation, terms); }
-        List<SelectorRow> rows = [];
-        HashSet<CardSelector> assigned = [];
-        foreach (SelectorRow row in retained) {
-            CardSelector[] members = row.Terms.SelectMany(term => term.Kind == operation ? term.AuthoredTerms : [term])
-                .Where(term => terms.Contains(term) && assigned.Add(term)).ToArray();
-            if (members.Length > 0) { rows.Add(new(Combine(operation, members), members)); }
-        }
-        foreach (SelectorRow row in ProjectRows(operation, terms.Where(term => !assigned.Contains(term)).ToArray())) { rows.Add(row); }
-        return rows.ToArray();
-    }
-
     protected override void OnParametersSet() {
         if (CategoryRename is { } rename && rename.Version != _renameVersion) {
             string oldIdentity = $"user:{rename.OldName}";
@@ -221,13 +164,10 @@
                     _termKeys.TryAdd(row.Value.RenameCategory(oldIdentity, newIdentity).Signature, key);
                 }
             }
-            foreach (OperandDraft operand in _operands) {
-                if (operand.Identity == oldIdentity) { operand.Identity = newIdentity; }
-                operand.Group = operand.Group?.RenameCategory(oldIdentity, newIdentity);
-                operand.Original = operand.Original.RenameCategory(oldIdentity, newIdentity);
+            foreach (SelectorOperandDraft operand in _operands) {
+                operand.RenameCategory(oldIdentity, newIdentity);
             }
-            Rows = Rows.Select(row => new SelectorRow(row.Value.RenameCategory(oldIdentity, newIdentity),
-                row.Terms.Select(term => term.RenameCategory(oldIdentity, newIdentity)).ToArray())).ToArray();
+            Rows = RenameRows(Rows, oldIdentity, newIdentity);
             _seed = _seed?.RenameCategory(oldIdentity, newIdentity);
             _nestedTarget = _nestedTarget?.RenameCategory(oldIdentity, newIdentity);
             _renameVersion = rename.Version;
@@ -236,9 +176,7 @@
             CardSelector[] previousTerms = Terms;
             SelectorRow[] previousRows = Rows;
             Terms = IsGroup ? Selector.AuthoredTerms.ToArray() : [Selector];
-            bool previousRowsCoverTerms = Terms.All(term => previousRows.Any(row => row.Terms.Any(previous =>
-                previous.Equals(term) || previous.Kind == Selector.Kind && previous.AuthoredTerms.Contains(term))));
-            Rows = IsGroup ? RetainRows(Selector.Kind, Terms, _retainedRows ?? (previousRowsCoverTerms ? previousRows : null)) : [];
+            Rows = ReconcileRows(Selector, previousRows, _retainedRows);
             _retainedRows = null;
             HashSet<object> retainedKeys = Rows.Where(row => _termKeys.ContainsKey(row.Value.Signature))
                 .Select(row => _termKeys[row.Value.Signature]).ToHashSet();
@@ -258,14 +196,7 @@
                 }
             }
             if (IsEditing && _mode == "edit" && _previous?.Kind == Selector.Kind) {
-                // Preserve local changes, and incorporate newly inserted siblings in
-                // authored order so saving a draft cannot erase a concurrent addition.
-                List<OperandDraft> refreshed = [];
-                foreach (CardSelector term in Terms) {
-                    OperandDraft? draft = _operands.FirstOrDefault(operand => operand.Original.Equals(term));
-                    if (draft is not null) { refreshed.Add(draft); }
-                    else if (!previousTerms.Contains(term)) { refreshed.Add(new(term)); }
-                }
+                SelectorOperandDraft[] refreshed = ReconcileOperands(_operands, previousTerms, Terms);
                 _operands.Clear();
                 _operands.AddRange(refreshed);
             }
@@ -285,37 +216,21 @@
     private IReadOnlyList<string> GroupOperators => new[] { "AND", "OR" }.Where(operation =>
         operation == (Selector.Kind == CardSelectorKind.AllOf ? "AND" : "OR") || CanChangeOperator(operation)).ToArray();
 
-    private static bool SameRows(SelectorRow[] original, SelectorRow[] restored) => original.Length == restored.Length
-        && original.Zip(restored).All(pair => OperatorReversibility.SameExpression(pair.First.Value, pair.Second.Value));
-
     private bool CanChangeOperator(string operation) {
-        if (!IsGroup) { return false; }
         CardSelectorKind kind = operation == "AND" ? CardSelectorKind.AllOf : CardSelectorKind.AnyOf;
-        try {
-            CardSelector updated = Combine(kind, Rows.Length > 1 ? Rows.Select(row => row.Value) : Terms);
-            if (updated.Kind is not (CardSelectorKind.AllOf or CardSelectorKind.AnyOf)) { return false; }
-            SelectorRow[] updatedRows = RetainRows(updated.Kind, updated.AuthoredTerms.ToArray(), Rows);
-            CardSelector restored = Combine(Selector.Kind, updatedRows.Length > 1 ? updatedRows.Select(row => row.Value) : updated.AuthoredTerms);
-            SelectorRow[] restoredRows = RetainRows(restored.Kind, restored.AuthoredTerms.ToArray(), updatedRows);
-            return OperatorReversibility.SameExpression(Selector, restored) && SameRows(Rows, restoredRows)
-                && (CanReplaceOperator?.Invoke(updated, restored) ?? true);
-        }
-        catch (ArgumentException) { return false; }
+        SelectorOperatorChange? change = ChangeOperator(Selector, Rows, kind);
+
+        return CanPublishOperatorChange(change);
     }
 
     private bool CanReplaceRowOperator(int position, CardSelector updated, CardSelector restored) {
-        try {
-            SelectorRow[] replaced = Rows.Select((row, index) => index == position ? new SelectorRow(updated, [updated]) : row).ToArray();
-            CardSelector forward = Combine(Selector.Kind, replaced.Select(row => row.Value));
-            SelectorRow[] forwardRows = RetainRows(forward.Kind, forward.AuthoredTerms.ToArray(), replaced);
-            int target = Array.FindIndex(forwardRows, row => OperatorReversibility.SameExpression(row.Value, updated));
-            if (target < 0) { return false; }
-            SelectorRow[] reversed = forwardRows.Select((row, index) => index == target ? new SelectorRow(restored, [restored]) : row).ToArray();
-            CardSelector backward = Combine(Selector.Kind, reversed.Select(row => row.Value));
-            SelectorRow[] backwardRows = RetainRows(backward.Kind, backward.AuthoredTerms.ToArray(), reversed);
-            return OperatorReversibility.SameExpression(Selector, backward) && SameRows(Rows, backwardRows)
-                && (CanReplaceOperator?.Invoke(forward, backward) ?? true);
-        }
+        SelectorOperatorChange? change = ReplaceRowOperator(Selector, Rows, position, updated, restored);
+
+        return CanPublishOperatorChange(change);
+    }
+
+    private bool CanPublishOperatorChange(SelectorOperatorChange? change) {
+        try { return change is not null && (CanReplaceOperator?.Invoke(change.Updated, change.Restored) ?? true); }
         catch (ArgumentException) { return false; }
     }
 
@@ -340,9 +255,6 @@
             return updated;
         });
     }
-
-    private static bool ContainsSelector(CardSelector parent, CardSelector target) => parent.Equals(target)
-        || parent.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf && parent.AuthoredTerms.Any(child => ContainsSelector(child, target));
 
     private bool HasChanges() {
         if (_mode != "edit" || _operands.Any(operand => operand.Error is not null)) { return true; }
@@ -378,7 +290,7 @@
         _mode = "edit";
         _seed = null;
         _operands.Clear();
-        _operands.AddRange(Terms.Select(term => new OperandDraft(term)));
+        _operands.AddRange(Terms.Select(term => new SelectorOperandDraft(term)));
         _operation = IsGroup ? Selector.Kind : CardSelectorKind.AllOf;
         _validationOwner = Selector;
         EditorSession.ActiveNode = _node;
@@ -411,7 +323,7 @@
     }
     private Task Validate() {
         string? error = null;
-        foreach (OperandDraft operand in _operands.Where(operand => operand.Group is null)) {
+        foreach (SelectorOperandDraft operand in _operands.Where(operand => operand.Group is null)) {
             if (operand.Error is not null) { error = operand.Error; break; }
             if (operand.Identity.Length == 0) { error = UiText.Get("Ui.ChooseAPropertyOrCategory"); break; }
         }
@@ -468,8 +380,6 @@
         "add" => Combine(_operation, [_seed!, Edited()]),
         _ => Edited()
     };
-    private static CardSelector Combine(CardSelectorKind kind, IEnumerable<CardSelector> terms) => kind == CardSelectorKind.AllOf
-        ? CardSelector.AllOfSelectors(terms) : CardSelector.AnyOfSelectors(terms);
     private async Task Publish(CardSelector value) {
         if (Selector.Equals(value)) { return; }
         if (ReplaceSelector is { } replace) { await replace(value); }
@@ -485,7 +395,7 @@
         _termKeys.TryAdd(value.Signature, _termKeys[row.Value.Signature]);
         bool rowRetained = updated.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf
             && ProjectRows(updated.Kind, updated.AuthoredTerms.ToArray()).Any(projected => projected.Value.Equals(value));
-        _retainedRows = Rows.Select((current, index) => index == position ? new SelectorRow(value, [value]) : current).ToArray();
+        _retainedRows = WithRow(Rows, position, value);
         await Publish(updated);
         if (!rowRetained) { _focusRow = true; StateHasChanged(); }
     }
