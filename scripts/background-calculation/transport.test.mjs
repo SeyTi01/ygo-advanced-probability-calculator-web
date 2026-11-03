@@ -1,26 +1,21 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createJob } from '../../YGOProbabilityCalculatorBlazor/wwwroot/js/background-calculation.js';
+import { installFakeWorker } from './fake-worker.mjs';
 
 let workers;
-class FakeWorker {
-    constructor() { workers.push(this); }
-    postMessage(message) { this.sent = message; }
-    terminate() { this.terminated = true; }
-    emit(data) { this.onmessage?.({ data }); }
-}
-beforeEach(() => { workers = []; globalThis.Worker = FakeWorker; });
+beforeEach(t => { workers = installFakeWorker(t); });
 
 test('startup handshake sends one snapshot and resolves matching response, releasing handlers', async () => {
     const job = createJob();
     const result = job.run('snapshot');
     const worker = workers[0];
-    assert.equal(worker.sent, undefined);
+    assert.deepEqual(worker.sent, []);
     worker.emit({ ready: true });
-    assert.deepEqual(worker.sent, { id: 1, json: 'snapshot' });
+    assert.deepEqual(worker.sent, [{ id: 1, json: 'snapshot' }]);
     worker.emit({ id: 1, response: 'result' });
     assert.equal(await result, 'result');
-    assert.equal(worker.terminated, true);
+    assert.equal(worker.terminated, 1);
     assert.equal(worker.onmessage, null);
     job.dispose();
 });
@@ -32,7 +27,7 @@ for (const running of [false, true]) test(`termination cancels ${running ? 'CPU 
     if (running) worker.emit({ ready: true });
     const lateCallback = worker.onmessage;
     job.dispose();
-    assert.equal(worker.terminated, true);
+    assert.equal(worker.terminated, 1);
     await assert.rejects(result, /cancelled/);
     lateCallback({ data: { ready: true } });
     lateCallback({ data: { id: 1, response: 'late' } });
@@ -46,7 +41,7 @@ test('rapid restart owns a different worker and old callbacks cannot settle it',
     await assert.rejects(oldResult);
     const next = createJob(), result = next.run('new');
     late({ data: { error: 'old failure' } });
-    assert.equal(workers[1].terminated, undefined);
+    assert.equal(workers[1].terminated, 0);
     workers[1].emit({ ready: true });
     workers[1].emit({ id: 1, response: 'new result' });
     assert.equal(await result, 'new result');
@@ -56,7 +51,7 @@ for (const event of ['onerror', 'onmessageerror']) test(`${event} rejects and te
     const job = createJob(), result = job.run('snapshot');
     workers[0][event]({ preventDefault() {} });
     await assert.rejects(result, /Background calculation/);
-    assert.equal(workers[0].terminated, true);
+    assert.equal(workers[0].terminated, 1);
 });
 
 test('unsupported runtime fails clearly without running any fallback', async () => {
@@ -69,14 +64,14 @@ test('initialization error before run is retained', async () => {
     const job = createJob();
     workers[0].emit({ error: 'runtime unavailable' });
     await assert.rejects(job.run('snapshot'), /runtime unavailable/);
-    assert.equal(workers[0].terminated, true);
+    assert.equal(workers[0].terminated, 1);
 });
 
 test('invalid response rejects instead of leaving a stuck busy job', async () => {
     const job = createJob(), result = job.run('snapshot');
     workers[0].emit({ id: 99 });
     await assert.rejects(result, /invalid response/);
-    assert.equal(workers[0].terminated, true);
+    assert.equal(workers[0].terminated, 1);
 });
 
 test('duplicate run is rejected without abandoning the first request', async () => {
@@ -92,7 +87,7 @@ test('startup timeout terminates an unresponsive runtime', async t => {
     const rejected = assert.rejects(result, /within 30 seconds/);
     t.mock.timers.tick(30000);
     await rejected;
-    assert.equal(workers[0].terminated, true);
+    assert.equal(workers[0].terminated, 1);
 });
 
 test('postMessage failure terminates instead of retaining a pending request', async () => {
@@ -100,5 +95,5 @@ test('postMessage failure terminates instead of retaining a pending request', as
     workers[0].postMessage = () => { throw new Error('clone failure'); };
     workers[0].emit({ ready: true });
     await assert.rejects(result, /Could not send/);
-    assert.equal(workers[0].terminated, true);
+    assert.equal(workers[0].terminated, 1);
 });
