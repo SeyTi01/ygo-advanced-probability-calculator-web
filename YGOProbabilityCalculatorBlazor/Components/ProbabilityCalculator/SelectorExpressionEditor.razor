@@ -100,8 +100,11 @@
         public CardSelector? Group { get; set; } = selector.Kind is CardSelectorKind.AllOf or CardSelectorKind.AnyOf ? selector : null;
         public CardSelector Build() {
             if (Group is not null) { return Group; }
-            if (Original.Kind == CardSelectorKind.Category && Identity == Original.CategoryIdentities[0]
+            if ((Original.Kind == CardSelectorKind.Category || IsCatalogIdentity(Original)) && Identity == Original.CategoryIdentities[0]
                 || NumericPropertyRange.TryFromSelector(Original, out NumericPropertyRange? originalRange) && Identity == originalRange.Identity) { return Original; }
+            if (Identity.StartsWith("metadata:catalog-id:", StringComparison.Ordinal)) {
+                return CardSelector.Objective(new(CardSelectorKind.Category, [Identity]));
+            }
             return Identity.StartsWith("metadata:numeric:", StringComparison.Ordinal) && NumericPropertyRange.TryFromIdentity(Identity, out NumericPropertyRange? range)
                 ? range.ToSelector() : new(CardSelectorKind.Category, [Identity]);
         }
@@ -142,6 +145,9 @@
     private SelectorExpressionEditor? _nestedEditor;
 
     private string OperandId(int index) => $"{_fieldId}-{index}";
+    internal static bool IsCatalogIdentity(CardSelector selector) => selector.Kind == CardSelectorKind.Objective
+        && selector.Children[0].Kind == CardSelectorKind.Category
+        && selector.Children[0].CategoryIdentities[0].StartsWith("metadata:catalog-id:", StringComparison.Ordinal);
     private string IdentityLabel(string identity) {
         if (Available.FirstOrDefault(category => category.Identity == identity) is { } category) { return DisplayLabels.Category(category); }
         bool metadata = identity.StartsWith("metadata:", StringComparison.Ordinal);
@@ -150,6 +156,8 @@
         return metadata ? System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(value) : value;
     }
     private string Description(CardSelector selector) => selector.Kind switch {
+        CardSelectorKind.Objective when IsCatalogIdentity(selector) => UiText.Format("Requirement.Card",
+            Available.FirstOrDefault(category => category.Identity == selector.CategoryIdentities[0])?.Name ?? UiText.Get("Ui.MissingCard")),
         CardSelectorKind.AllOf => string.Join(UiText.Get("Expression.AndSeparator"), selector.AuthoredTerms.Select(Description)),
         CardSelectorKind.AnyOf => string.Join(UiText.Get("Expression.OrSeparator"), selector.AuthoredTerms.Select(Description)),
         CardSelectorKind.LevelAtLeast => UiText.Format("Ui.Level0", selector.MinimumLevel),
@@ -158,7 +166,7 @@
     };
     private string FullLabel(CardSelector selector) => selector.Kind == CardSelectorKind.Category
         ? DisplayLabels.CategoryOrNull(Available.FirstOrDefault(category => category.Identity == selector.CategoryIdentities[0])) ?? Description(selector) : Description(selector);
-    private string ChipClass(CardSelector selector) => selector.Kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.NumericRange
+    private string ChipClass(CardSelector selector) => IsCatalogIdentity(selector) ? "combo-card-tag" : selector.Kind is CardSelectorKind.LevelAtLeast or CardSelectorKind.NumericRange
         ? "card-property-tag " + CardPropertyColorPalette.GetCssClass((selector.NumericRange?.Key ?? "level") + ":0")
         : Available.FirstOrDefault(category => category.Identity == selector.CategoryIdentities.FirstOrDefault()) is { } category
             ? CategoryChipPalette.GetCssClass(category, CategoryColorIndices) : FallbackChipClass(selector.CategoryIdentities.FirstOrDefault() ?? "");

@@ -33,7 +33,7 @@ public static class CategoryRemoval {
         if (search is not null) {
             SearchEffectMode[]? modes = search.Modes?.Select(mode => mode with { Selector = RemoveFilter(mode.Selector, identity) }).ToArray();
             search = search with {
-                Selector = modes is null ? RemoveFilter(search.Selector, identity) : CardSelector.AnyOfSelectors(modes.Select(mode => mode.Selector)),
+                Selector = modes is null ? RemoveFilter(search.Selector, identity) : SearchEffectPlan.ModeTargetUnion(modes),
                 Modes = modes
             };
         }

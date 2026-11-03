@@ -30,12 +30,17 @@ public sealed record SearchEffectPlan(CardSelector Selector, bool ObjectiveMetad
         Modes = Modes?.Select(mode => mode with { Selector = mode.Selector.RenameCategory(previous, replacement) }).ToArray()
     };
 
+    public static CardSelector ModeTargetUnion(IReadOnlyList<SearchEffectMode> modes) =>
+        modes.Any(mode => mode.Selector.Kind == CardSelectorKind.Any)
+            ? CardSelector.Any
+            : CardSelector.AnyOfSelectors(modes.Select(mode => mode.Selector));
+
     public void Validate() {
         if (Modes is null) {
             return;
         }
         if (Modes.Count is < 1 or > 8 || Modes.Any(mode => mode is null || mode.Selector is null || mode.ActivationLimit is < 1 or > 60)
-            || !Selector.Equals(CardSelector.AnyOfSelectors(Modes.Select(mode => mode.Selector)))) {
+            || !Selector.Equals(ModeTargetUnion(Modes))) {
             throw new ArgumentException("Search modes require bounded allowances and their exact target union.");
         }
     }
