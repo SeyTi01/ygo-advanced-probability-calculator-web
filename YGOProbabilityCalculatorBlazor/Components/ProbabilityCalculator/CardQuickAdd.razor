@@ -4,7 +4,7 @@
 
 <div class="quick-add layout-section">
     <div class="quick-add-row layout-row layout-input-action" @oninput:stopPropagation="true">
-        <CardSearchInput @ref="_search" Value="@_name" Label="@(UiText.Get("Ui.AddCardByName"))" Placeholder="@(UiText.Get("Card.SearchPlaceholder"))"
+        <CardSearchInput @ref="_search" Value="@_name" RequiresSubmission="true" Label="@(UiText.Get("Ui.AddCardByName"))" Placeholder="@(UiText.Get("Card.SearchPlaceholder"))"
                          OnInput="NameChanged" OnSelected="AddCatalogCard" OnSubmit="AddManualCard" />
         <AddAction AccessibleLabel="@(UiText.Get("Ui.AddCard"))" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="AddManualCard" />
     </div>

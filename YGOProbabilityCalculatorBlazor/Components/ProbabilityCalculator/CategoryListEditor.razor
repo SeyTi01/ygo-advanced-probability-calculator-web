@@ -4,7 +4,7 @@
 <div class="mb-4">
     <div class="editor-add-row layout-row layout-input-action">
         <div class="editor-select-field">
-            <input @ref="_newCategoryInput" @bind="_newCategoryName"
+            <input @ref="_newCategoryInput" @bind="_newCategoryName" data-language-draft-input="true"
                    @bind:event="oninput"
                    @onkeyup="@(async e => {
                                  if (e.Key == "Enter") {
@@ -35,7 +35,7 @@
 
             <span @key="category" class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
                 @if (ReferenceEquals(_editingCategory, category)) {
-                    <input @ref="_renameInputReference"
+                    <input @ref="_renameInputReference" data-language-edit="true"
                            class="form-control form-control-sm category-rename-input"
                            aria-label="@(UiText.Format("Ui.NewNameForCategory0", DisplayLabels.Category(category)))"
                            @bind="_editingCategoryName"

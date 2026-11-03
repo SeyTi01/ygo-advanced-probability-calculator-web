@@ -35,7 +35,7 @@
         <div class="mb-4">
             <div class="editor-add-row layout-row layout-input-action">
                 <div class="editor-select-field">
-                    <input class="form-control" type="text"
+                    <input class="form-control" type="text" data-language-draft-input="true"
                            aria-label="@(UiText.Get("Ui.NewComboGroupName"))" placeholder="@(UiText.Get("Ui.GroupName"))"
                            @bind="_newGroupName" @bind:event="oninput"
                            @onkeyup="HandleAddGroupKeyUp" />
@@ -59,7 +59,7 @@
                     ComboGroup group = ComboGroups[index];
                     <span class="badge me-2 category-chip category-tag combo-group-chip" @key="group.Id">
                         @if (_editingGroupId == group.Id) {
-                            <input @ref="_groupRenameInputReference"
+                            <input @ref="_groupRenameInputReference" data-language-edit="true"
                                    class="form-control form-control-sm category-rename-input"
                                    aria-label="@(UiText.Format("Ui.NewNameForGroup0", group.Name))"
                                    @bind="_editingGroupName"

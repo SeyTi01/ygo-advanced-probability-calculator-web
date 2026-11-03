@@ -142,21 +142,53 @@ test('a preexisting handoff is never overwritten', async () => {
     assert.equal(current.reloads(), 0);
 });
 
-for (const kind of ['open form', 'nonempty draft', 'incomplete number']) {
-    test(kind + ' blocks before storage or navigation', async () => {
+function markedWorkspace(document, { editing = false, drafts = [], numbers = [] } = {}) {
+    // No IDs, class names or wrapper ancestry are part of this contract.
+    document.querySelector = selector => {
+        assert.equal(selector, '[data-language-workspace]');
+        return {
+            querySelector: selector => {
+                assert.equal(selector, '[data-language-edit="true"]');
+                return editing ? {} : null;
+            },
+            querySelectorAll: selector => {
+                if (selector === '[data-language-draft-input]') return drafts;
+                assert.equal(selector, '[data-language-number-input]');
+                return numbers;
+            }
+        };
+    };
+}
+
+for (const [kind, state] of [
+    ['open form', { editing: true }],
+    ['nonempty text draft', { drafts: [{ value: 'Unsubmitted' }] }],
+    ['whitespace draft', { drafts: [{ value: ' ' }] }],
+    ['unapplied selection', { drafts: [{ value: 'category-identity' }] }],
+    ['empty number', { numbers: [{ value: '', validity: { valid: true } }] }],
+    ['invalid number', { numbers: [{ value: '0', validity: { valid: false } }] }]
+]) {
+    test(kind + ' blocks before storage or navigation using semantic markers', async () => {
         const current = await host({ saved: 'en' });
-        current.document.querySelector = () => ({
-            querySelector: () => kind === 'open form' ? {} : null,
-            querySelectorAll: selector => selector.includes('#quickCardName')
-                ? (kind === 'nonempty draft' ? [{ value: 'Unsubmitted' }] : [])
-                : (kind === 'incomplete number' ? [{ value: '', validity: { valid: true } }] : [])
-        });
+        markedWorkspace(current.document, state);
         assert.throws(() => current.api.change('fr', 'accepted workspace'), /Save\/apply or cancel/);
         assert.equal(current.local.get(preference), 'en');
         assert.equal(current.tab.has(handoff), false);
         assert.equal(current.reloads(), 0);
     });
 }
+
+test('accepted numbers and empty draft controls allow a language handoff', async () => {
+    const current = await host({ saved: 'en' });
+    markedWorkspace(current.document, {
+        drafts: [{ value: '' }, { value: '' }],
+        numbers: [{ value: '5', validity: { valid: true } }, { value: '1', validity: { valid: true } }]
+    });
+    assert.equal(current.api.hasPendingEdits(), false);
+    current.api.change('fr', 'accepted workspace');
+    assert.equal(current.reloads(), 1);
+    assert.equal(current.local.get(preference), 'fr');
+});
 
 test('malformed, expired, mismatched or claimed checkpoints are kept without replay', async () => {
     const first = await host();

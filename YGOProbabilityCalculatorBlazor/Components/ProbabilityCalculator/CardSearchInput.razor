@@ -6,6 +6,7 @@
 
 <div class="card-name-field">
     <input @ref="_input" id="@Id" aria-label="@Label" placeholder="@Placeholder" class="form-control"
+           data-language-draft-input="@(RequiresSubmission ? "true" : null)"
            value="@(_inputDraft ?? Value)"
            role="combobox" aria-autocomplete="list" aria-haspopup="listbox"
            aria-expanded="@(_searchOpen && _searchResults.Length > 0)"
@@ -47,6 +48,7 @@
     [Parameter] public string Id { get; set; } = "quickCardName";
     [Parameter] public string Identity { get; set; } = "quick-add";
     [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public bool RequiresSubmission { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Placeholder { get; set; }
     [Parameter] public string ResultsId { get; set; } = "quickCardResults";
