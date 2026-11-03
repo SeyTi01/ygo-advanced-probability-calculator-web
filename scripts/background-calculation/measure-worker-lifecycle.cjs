@@ -1,160 +1,145 @@
-// Opt-in production UI/service measurement. No timing thresholds; freeze a baseline
-// output and pass it as the final argument for complete response parity on a candidate.
-// node measure-worker-lifecycle.cjs <published-wwwroot> <output.json> [trials=3] [baseline.json]
+// Opt-in UI-to-worker timing observation, with no performance thresholds.
+// node scripts/background-calculation/measure-worker-lifecycle.cjs <published-wwwroot> <output.json> [trials=3]
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const http = require('node:http');
+const fs = require('node:fs/promises');
 const path = require('node:path');
-const { chromium, firefox } = require('playwright');
-const [base, output, trialArgument = '3', referencePath] = process.argv.slice(2);
-const trials = Number(trialArgument);
+const { chromium } = require('playwright');
+const { serve, load, launchOptions } = require('./browser-support.cjs');
 
-const category = Name => ({ Name, Source: 'User' });
-const [starter, extender, dark, material] = ['Starter', 'Extender', 'DARK material', 'Return material'].map(category);
-const card = (Id, Copies, Categories = [], extra = {}) => ({ Id, Name: null, Copies, Categories, ...extra });
-const requirement = (BaseCategory, MinCount) => ({ BaseCategory, MinCount, MaxCount: 0, MaximumMode: 'HandSize' });
-const combos = [
-    { Name: 'Starter + extender', GroupId: 'g', Categories: [requirement(starter, 1), requirement(extender, 1)] },
-    { Name: 'Two starters', GroupId: 'g', Categories: [requirement(starter, 2)] }
-];
-const session = Cards => ({ SchemaVersion: 5, Cards, Categories: [starter, extender, dark, material],
-    Combos: combos, ComboGroups: [{ Id: 'g', Name: 'Routes' }], HandSize: 5 });
-const engineCards = [card('a', 6, [starter, dark, material]), card('b', 6, [extender, dark, material]),
-    card('c', 3, [dark, material]), card('d', 3, [starter]), card('e', 3, [extender])];
-const allure = card('allure', 2, [], { DrawCount: 2, DrawOncePerTurn: false, PostDrawDiscardCount: 1,
-    PostDrawSelector: { Kind: 'Category', Categories: ['user:DARK material'] } });
-const drawReturn = card('return', 2, [], { DrawCount: 2, DrawOncePerTurn: true, PreDrawRemovalCount: 1,
-    PreDrawSelector: { Kind: 'Category', Categories: ['user:Return material'] } });
-const fixtures = [
-    { name: 'opening-40', session: session([...engineCards, card('blank', 19)]) },
-    { name: 'allure-40', session: session([...engineCards, allure, card('blank', 17)]) },
-    { name: 'return-allure-40', session: session([...engineCards, drawReturn, allure, card('blank', 15)]) }
-];
+const starter = { Name: 'Starter', Source: 'User' };
+const extender = { Name: 'Extender', Source: 'User' };
+// A small effect-bearing workload exercises the real UI/provider/worker boundary.
+// Probability and lifecycle correctness belong to the regular tests and smokes.
+const session = { SchemaVersion: 14, CalculationModel: 'Fast', FastExecutionStrategy: 'FastOnly', HandSize: 5,
+    Categories: [starter, extender], ComboGroups: [],
+    Cards: [
+        { Id: 'starter', Name: 'Measurement starter', Copies: 6, Categories: [starter] },
+        { Id: 'extender', Name: 'Measurement extender', Copies: 6, Categories: [extender] },
+        { Id: 'draw', Name: 'Measurement draw', Copies: 2, Categories: [], DrawCount: 2, DrawOncePerTurn: true },
+        { Id: 'blank', Name: 'Measurement filler', Copies: 26, Categories: [] }
+    ],
+    Combos: [{ Name: 'Starter plus extender', Categories: [starter, extender].map(BaseCategory =>
+        ({ BaseCategory, MinCount: 1, MaxCount: 0, MaximumMode: 'HandSize' })) }] };
 
 function installProbe() {
-    window.lifecycle = { workers: [], requests: [], runs: [], cancellations: [] };
+    window.lifecycle = { workers: [], requests: [], runs: [] };
     const NativeWorker = Worker;
+    function observeTerminal() {
+        const run = lifecycle.runs.at(-1);
+        if (!run || run.uiTerminalObservedMs !== undefined) return;
+        const requests = lifecycle.requests.slice(run.requestStart);
+        if (!requests.length || requests.some(request => request.received === undefined)) return;
+        const button = document.querySelector('.calculate-action > button');
+        if (button?.getAttribute('aria-busy') !== 'false' || !document.querySelector('.probability-total-value')
+            || document.querySelector('.probability-result-status')) return;
+        run.uiTerminalObservedMs = performance.now() - run.started;
+    }
     window.Worker = class extends NativeWorker {
         constructor(...args) {
             super(...args);
             if (!String(args[0]).includes('calculation-worker.js')) return;
             const entry = { created: performance.now(), index: lifecycle.workers.length };
-            this.entry = entry;
+            this.measurementEntry = entry;
             lifecycle.workers.push(entry);
             this.addEventListener('message', ({ data }) => {
                 if (data.ready) entry.bootstrapMs = performance.now() - entry.created;
-                if (typeof data.response === 'string') {
-                    const request = lifecycle.requests.findLast(r => r.worker === entry.index && r.id === data.id);
-                    request.response = JSON.parse(data.response);
-                    request.responseMs = performance.now() - request.sent;
+                if (typeof data.response === 'string' || data.error) {
+                    const request = lifecycle.requests.findLast(request => request.worker === entry.index && request.id === data.id
+                        && request.received === undefined);
+                    if (request) {
+                        request.received = performance.now();
+                        request.roundTripMs = request.received - request.sent;
+                        if (data.error) request.error = data.error;
+                        else request.response = JSON.parse(data.response);
+                    } else if (data.error) entry.error = data.error;
+                    requestAnimationFrame(observeTerminal);
                 }
             });
         }
         postMessage(data, ...rest) {
-            if (this.entry) lifecycle.requests.push({ worker: this.entry.index, id: data.id,
-                sent: performance.now(), input: data.json });
+            if (this.measurementEntry) lifecycle.requests.push({ worker: this.measurementEntry.index, id: data.id,
+                sent: performance.now(), input: data.json, stage: data.fastStage || data.execution || 'calculate' });
             return super.postMessage(data, ...rest);
         }
         terminate() {
-            if (this.entry) this.entry.terminated = performance.now();
+            if (this.measurementEntry) this.measurementEntry.terminated = performance.now();
             return super.terminate();
         }
     };
     document.addEventListener('click', event => {
-        const button = event.target.closest('.calculate-action > button');
-        if (!button) return;
-        const run = { started: performance.now() };
-        if (button.getAttribute('aria-busy') === 'true') lifecycle.cancellations.push(run);
-        else lifecycle.runs.push(run);
-        let busySeen = button.getAttribute('aria-busy') === 'true';
-        const observer = new MutationObserver(() => {
-            const button = document.querySelector('.calculate-action > button');
-            if (button?.getAttribute('aria-busy') === 'true') busySeen = true;
-            else if (busySeen && button) {
-                run.uiMs = performance.now() - run.started;
-                observer.disconnect();
-            }
-        });
-        observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+        if (!event.target.closest('.calculate-action > button')) return;
+        lifecycle.runs.push({ started: performance.now(), requestStart: lifecycle.requests.length,
+            workersAtStart: lifecycle.workers.length });
     }, true);
-}
-
-async function load(page, fixture) {
-    await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
-    await page.locator('#sessionFileInput').setInputFiles({ name: 'lifecycle.json', mimeType: 'application/json',
-        buffer: Buffer.from(JSON.stringify(fixture)) });
-    await page.waitForFunction(() => { try { return JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Cards.length > 0; } catch { return false; } });
-}
-
-async function run(page, hand) {
-    await page.locator('#handSize').fill(String(hand));
-    await page.locator('#handSize').press('Tab');
-    const index = await page.evaluate(() => lifecycle.runs.length);
-    await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-    await page.waitForFunction(index => lifecycle.runs[index]?.uiMs !== undefined, index, { timeout: 60000 });
-    await page.locator('.probability-total-value').waitFor();
-    assert.equal(await page.getByRole('alert').count(), 0);
-    return page.evaluate(index => ({ ...lifecycle.runs[index], ...lifecycle.requests[index],
-        bootstrapMs: lifecycle.workers[lifecycle.requests[index].worker].bootstrapMs,
-        workersCreated: lifecycle.workers.length,
-        retained: lifecycle.workers.filter(w => !w.terminated).length }), index);
-}
-
-async function serve(rootArgument) {
-    const root = path.resolve(rootArgument);
-    const types = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm', '.html': 'text/html', '.css': 'text/css' };
-    const server = http.createServer(async (request, response) => {
-        try {
-            const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-            let file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
-            if (!file.startsWith(root + path.sep)) return response.writeHead(403).end();
-            if (!path.extname(file) && !fs.existsSync(file)) file = path.join(root, 'index.html');
-            response.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
-            response.end(await fs.promises.readFile(file));
-        } catch { response.writeHead(404).end(); }
-    });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    return { server, url: `http://127.0.0.1:${server.address().port}` };
+    new MutationObserver(observeTerminal).observe(document, { attributes: true, childList: true, subtree: true });
 }
 
 async function main() {
-    assert(base && output && Number.isInteger(trials) && trials > 0 && trials <= 30);
-    const { server, url } = await serve(base);
-    const engine = process.env.YGO_BROWSER_ENGINE || 'firefox';
-    const browser = await ({ chromium, firefox }[engine]).launch({ headless: true }).catch(error => { server.close(); throw error; });
-    const deadline = setTimeout(() => browser.close(), 300000);
-    const evidence = { engine, version: browser.version(), trials, cases: [] };
-    const reference = referencePath ? JSON.parse(fs.readFileSync(referencePath, 'utf8')) : null;
+    const [root, output, trialArgument = '3'] = process.argv.slice(2);
+    const trials = Number(trialArgument);
+    assert(root && output && process.argv.length <= 5 && Number.isInteger(trials) && trials > 0 && trials <= 30,
+        'Usage: measure-worker-lifecycle.cjs <published-wwwroot> <output.json> [trials=3; 1..30]');
+    const evidence = { metadata: { trials, viewport: [1440, 1000], timeoutMs: 60000, fixture: session,
+        cache: 'fresh context/app per trial; first then two requests on same app/worker',
+        network: 'uncompressed loopback; artwork requests aborted',
+        metrics: 'captured UI click to idle result DOM observation; worker creation to ready; postMessage to received response (includes scheduling/serialization)' }, cases: [] };
+    await fs.mkdir(path.dirname(path.resolve(output)), { recursive: true });
+    const { server, url } = await serve(root);
+    let browser;
     try {
-        for (const fixture of fixtures) {
-            for (let trial = 0; trial < trials; trial++) {
-                const context = await browser.newContext();
-                const page = await context.newPage();
+        browser = await chromium.launch(launchOptions());
+        evidence.metadata.browser = browser.version();
+        for (let trial = 0; trial < trials; trial++) {
+            const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: 'en-US' });
+            const result = { trial, status: 'running', runs: [], errors: [] };
+            evidence.cases.push(result);
+            let page;
+            try {
+                page = await context.newPage();
+                page.on('pageerror', error => result.errors.push(error.message));
+                await page.route('https://ygo-calculator-artwork.ygo-probability.workers.dev/**', route => route.abort());
                 await page.addInitScript(installProbe);
                 await page.goto(url);
-                await load(page, fixture.session);
-                const runs = [];
-                for (const hand of [5, 6, 5, 5]) runs.push(await run(page, hand));
-                const sent = JSON.parse(runs[0].input);
-                assert.equal(sent.Cards.filter(card => card.DrawCount).length,
-                    fixture.session.Cards.filter(card => card.DrawCount).length, 'Imported effects must survive migration');
-                assert.deepEqual(runs[0].response, runs[2].response);
-                assert.deepEqual(runs[0].response, runs[3].response);
-                if (reference) {
-                    const previous = reference.cases.find(c => c.name === fixture.name && c.trial === trial);
-                    for (let i = 0; i < runs.length; i++) {
-                        assert.equal(runs[i].input, previous.runs[i].input);
-                        assert.deepEqual(runs[i].response, previous.runs[i].response);
-                    }
+                await load(page, session);
+                for (const temperature of ['first', 'warm1', 'warm2']) {
+                    const index = await page.evaluate(() => lifecycle.runs.length);
+                    await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+                    await page.waitForFunction(index => {
+                        const run = lifecycle.runs[index];
+                        return run?.uiTerminalObservedMs !== undefined || lifecycle.workers.some(worker => worker.error)
+                            || lifecycle.requests.slice(run?.requestStart ?? 0).some(request => request.error)
+                            || document.querySelector('.alert-danger');
+                    }, index, { timeout: 60000 });
+                    const run = await page.evaluate(index => {
+                        const run = lifecycle.runs[index];
+                        return { ...run, requests: lifecycle.requests.slice(run.requestStart),
+                            workersCreatedDuringRun: lifecycle.workers.length - run.workersAtStart,
+                            retainedWorkers: lifecycle.workers.filter(worker => worker.terminated === undefined).length };
+                    }, index);
+                    result.runs.push({ temperature, ...run });
+                    assert(run.uiTerminalObservedMs !== undefined, 'calculation failed before a terminal result');
+                    assert.equal(await page.locator('.alert-danger').count(), 0);
+                    assert.deepEqual(result.errors, []);
                 }
-                evidence.cases.push({ name: fixture.name, trial, runs });
-                console.log(JSON.stringify({ name: fixture.name, trial, runs: runs.map(({ uiMs, responseMs, bootstrapMs, workersCreated, retained }) =>
-                    ({ uiMs, responseMs, bootstrapMs, workersCreated, retained })) }));
-                await context.close();
-            }
+                result.workers = await page.evaluate(() => lifecycle.workers);
+                result.status = 'complete';
+                console.log(JSON.stringify({ trial, status: result.status, workers: result.workers,
+                    runs: result.runs.map(({ temperature, uiTerminalObservedMs, workersCreatedDuringRun, retainedWorkers, requests }) =>
+                        ({ temperature, uiTerminalObservedMs, workersCreatedDuringRun, retainedWorkers,
+                            requestRoundTripsMs: requests.map(request => request.roundTripMs) })) }));
+            } catch (error) {
+                result.status = error.name === 'TimeoutError' ? 'timeout' : 'error';
+                result.error = error.message;
+                result.partial = await page?.evaluate(() => lifecycle).catch(() => undefined);
+                // A timeout is recorded, never converted to a completed duration.
+                throw error;
+            } finally { await context.close(); }
         }
-        fs.writeFileSync(output, JSON.stringify(evidence, null, 2));
-    } finally { clearTimeout(deadline); await browser.close(); server.close(); }
+    } finally {
+        await browser?.close();
+        await new Promise(resolve => server.close(resolve));
+        await fs.writeFile(output, JSON.stringify(evidence, null, 2));
+    }
 }
+
 if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });
-module.exports = { fixtures, installProbe, load, run, serve };

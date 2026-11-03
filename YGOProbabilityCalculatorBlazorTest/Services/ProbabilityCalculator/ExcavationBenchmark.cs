@@ -1,12 +1,11 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using YGOProbabilityCalculatorBlazor.Services.Session;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -14,15 +13,19 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 public sealed class ExcavationBenchmark {
     [Test]
     public void Measure() {
-        int trials = int.TryParse(Environment.GetEnvironmentVariable("YGO_EXCAVATION_TRIALS"), out int requested)
-            ? Math.Clamp(requested, 1, 20) : 3;
+        using MeasurementCulture culture = new();
+        string? requested = Environment.GetEnvironmentVariable("YGO_EXCAVATION_TRIALS");
+        if (!int.TryParse(requested ?? "3", NumberStyles.None, CultureInfo.InvariantCulture, out int trials) || trials is < 1 or > 20) {
+            throw new ArgumentException("YGO_EXCAVATION_TRIALS must be an integer from 1 to 20.");
+        }
         string? filter = Environment.GetEnvironmentVariable("YGO_EXCAVATION_CASE");
         string? exclude = Environment.GetEnvironmentVariable("YGO_EXCAVATION_EXCLUDE");
         string? modeFilter = Environment.GetEnvironmentVariable("YGO_EXCAVATION_MODE");
-        string? output = Environment.GetEnvironmentVariable("YGO_EXCAVATION_BENCHMARK");
-        List<object> exports = [];
-        SessionService codec = new(Moq.Mock.Of<Microsoft.JSInterop.IJSRuntime>(),
-            new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
+        if (modeFilter is not null && !new[] { "Fast", "Exact" }.Contains(modeFilter, StringComparer.OrdinalIgnoreCase)) {
+            throw new ArgumentException("YGO_EXCAVATION_MODE must be Fast or Exact.");
+        }
+        string output = FrozenCalculationFixture.OutputPath("YGO_EXCAVATION_BENCHMARK");
+        List<FrozenCalculationFixture> exports = [];
         foreach ((string name, SessionState session) in Fixtures()) {
             if (filter is not null && !name.Contains(filter, StringComparison.OrdinalIgnoreCase)
                 || exclude is not null && name.Contains(exclude, StringComparison.OrdinalIgnoreCase)) {
@@ -32,54 +35,33 @@ public sealed class ExcavationBenchmark {
                 if (modeFilter is not null && !mode.ToString().Equals(modeFilter, StringComparison.OrdinalIgnoreCase)) {
                     continue;
                 }
-                CalculationOptions options = new(Mode: mode);
                 CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize,
-                    session.ComboGroups, CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.Standard, options: options);
+                    session.ComboGroups, CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.Standard, options: new(Mode: mode));
+                string? execution = mode == CalculationModel.Exact ? "interactive-exact-v1" : null;
                 List<double> times = [];
                 List<long> allocations = [];
-                WorkBudget budget = null!;
-                CalculationResponse response = null!;
-                string outcome = "Success";
-                for (int trial = 0; trial < trials + 1; trial++) {
-                    budget = new(mode == CalculationModel.Exact ? CalculationWorkPolicy.Unlimited : CalculationWorkPolicy.Interactive,
-                        CalculationStoragePolicy.Standard);
+                JsonElement reference = default;
+                for (int trial = 0; trial <= trials; trial++) {
                     long before = GC.GetAllocatedBytesForCurrentThread();
-                    Stopwatch timer = Stopwatch.StartNew();
-                    try {
-                        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateWithBudget(session.Cards,
-                            session.Combos, session.HandSize, session.ComboGroups, budget, options);
-                        response = new(result, null);
-                    }
-                    catch (ProbabilityCalculationLimitException exception) {
-                        outcome = exception.Reason.ToString();
-                        response = new(null, exception.Message, exception.Reason,
-                            Contract: CalculationResultContract.Failure(mode,
-                                exception.Reason == ProbabilityCalculationLimitReason.Work ? CalculationCompletion.WorkLimit : CalculationCompletion.StorageLimit,
-                                exception.Message));
-                    }
-                    timer.Stop();
-                    // Preserve cold and warm trials separately in the export.
-                    times.Add(timer.Elapsed.TotalMilliseconds);
+                    long start = Stopwatch.GetTimestamp();
+                    string reply = FrozenCalculationFixture.Execute(snapshot.Json, execution);
+                    times.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
                     allocations.Add(GC.GetAllocatedBytesForCurrentThread() - before);
+                    JsonElement response = JsonSerializer.Deserialize<JsonElement>(reply);
+                    if (trial == 0) {
+                        reference = response;
+                    } else {
+                        Assert.That(JsonElement.DeepEquals(response, reference), Is.True, name + "/" + mode);
+                    }
                 }
-                ProbabilityCalculationResult? measured = response.Result;
-                CalculationFractions? fractions = measured?.Contract?.Fractions;
-                string[]? exact = fractions is null ? null : new[] { fractions.Total }.Concat(fractions.Combos).Concat(fractions.Groups)
-                    .Select(value => $"{value.Numerator}/{value.Denominator}").ToArray();
-                TestContext.Out.WriteLine($"{name}/{mode}: {outcome}; cold={times[0]:F2}ms; warmMedian={times.Skip(1).Order().ElementAt(trials / 2):F2}ms; "
-                    + $"work={budget.Spent}; cells={budget.PeakCells}; allocatedMedian={allocations.Skip(1).Order().ElementAt(trials / 2)}; p={measured?.TotalProbability:R}");
-                exports.Add(new {
-                    Name = name, Mode = mode.ToString(), Outcome = outcome, Milliseconds = times, AllocatedBytes = allocations,
-                    Probability = measured?.TotalProbability, Work = budget.Spent, Entries = budget.PeakEntries, Cells = budget.PeakCells,
-                    ReferenceResults = measured, ReferenceResponse = response, ExactResults = exact,
-                    Session = JsonSerializer.Deserialize<JsonElement>(codec.SerializeSession(session)),
-                    Input = JsonSerializer.Deserialize<JsonElement>(snapshot.Json)
-                });
-                if (output is not null) {
-                    File.WriteAllText(output, JsonSerializer.Serialize(exports));
-                }
+                TestContext.Out.WriteLine($"{name}/{mode}: first={times[0]:F2}ms; warmMedian={times.Skip(1).Order().ElementAt(trials / 2):F2}ms; "
+                    + $"allocatedMedian={allocations.Skip(1).Order().ElementAt(trials / 2)}");
+                exports.Add(new(name + "/" + mode, snapshot.Json, execution, reference));
+                FrozenCalculationFixture.Validate(exports);
+                File.WriteAllText(output, JsonSerializer.Serialize(exports));
             }
         }
+        FrozenCalculationFixture.Validate(exports);
     }
 
     internal static IEnumerable<(string Name, SessionState Session)> Fixtures() {
