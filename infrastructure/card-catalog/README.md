@@ -43,9 +43,11 @@ name input. Generated timestamps and irrelevant upstream fields do not create
 repeat PRs. Only German is currently enabled; future locale support must extend
 the retained projection and invoke the same validation per locale.
 
-Some upstream responses move a primary ID to another artwork. An established
-canonical ID survives only if exactly one source record owns that numeric artwork
-ID and its English name/type are unchanged. Every such change is audited.
+Some upstream responses move a primary ID to another artwork or replace a prerelease
+ID with an official passcode. An established canonical ID survives only if exactly
+one source record links it through a numeric artwork ID or `misc_info.beta_id`
+and its English name/type are unchanged. Every such change and its link type is audited;
+current artwork IDs remain intact for artwork lookup and translation password joins.
 Names alone never join identities; ambiguous owners or changed identities fail.
 Unexplained card/label removals fail, as do more than 25 newly unresolved cards
 or a German coverage-ratio drop over 0.5 percentage points. Existing null/empty

@@ -13,8 +13,8 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export const dataRoot = 'YGOProbabilityCalculatorBlazor/wwwroot/data';
 export const auditRoot = 'infrastructure/card-catalog/snapshots/refresh';
 
-// Providers sometimes move the primary ID to another artwork. Retain an established
-// canonical identity only through a unique numeric artwork link and unchanged identity.
+// Providers sometimes move the primary ID to another artwork or replace a beta ID.
+// Retain an established identity only through a unique numeric link and unchanged name/type.
 export function stabilizeCanonicalIds(provider, previousCatalog) {
     if (!Array.isArray(provider?.data)) throw new Error('Invalid canonical source');
     const currentIds = new Set(provider.data.map(card => card.id));
@@ -22,13 +22,15 @@ export function stabilizeCanonicalIds(provider, previousCatalog) {
     const remaps = new Map();
     const identityChanges = [];
     for (const old of missing) {
-        const owners = provider.data.filter(card => card.card_images?.some(image => image.id === old.id));
-        if (owners.length > 1) throw new Error(`Ambiguous canonical artwork owner: ${old.id}`);
+        const owners = provider.data.filter(card => card.card_images?.some(image => image.id === old.id)
+            || card.misc_info?.some(info => info.beta_id === old.id));
+        if (owners.length > 1) throw new Error(`Ambiguous canonical identity owner: ${old.id}`);
         if (owners.length === 1) {
             const source = owners[0];
             if (source.name !== old.name || source.type !== old.type || remaps.has(source.id)) throw new Error(`Changed canonical identity: ${old.id}`);
             remaps.set(source.id, old.id);
-            identityChanges.push({ canonicalId: old.id, providerId: source.id, name: old.name, evidence: 'unique-artwork-id' });
+            const evidence = source.card_images?.some(image => image.id === old.id) ? 'unique-artwork-id' : 'unique-beta-id';
+            identityChanges.push({ canonicalId: old.id, providerId: source.id, name: old.name, evidence });
         }
     }
     return { provider: { ...provider, data: provider.data.map(card => remaps.has(card.id) ? { ...card, id: remaps.get(card.id) } : card) }, identityChanges };

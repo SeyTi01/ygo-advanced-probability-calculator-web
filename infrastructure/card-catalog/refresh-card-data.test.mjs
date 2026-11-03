@@ -70,6 +70,44 @@ test('provider primary-artwork changes preserve canonical IDs only through uniqu
     assert.equal(stabilizeCanonicalIds({ data: [{ ...source, card_images: [] }] }, previous).provider.data[0].id, 2);
 });
 
+test('released beta cards retain canonical IDs, official artwork and translated password joins', () => {
+    const input = fixture();
+    const released = { ...input.provider.data[0], id: 10, card_images: [{ id: 10 }], misc_info: [{ beta_id: 1 }] };
+    input.provider.data = [released, input.provider.data[1]];
+    input.yamlBytes = Buffer.from(JSON.stringify([{ password: 10, name: { en: released.name, de: 'Neuer Name' } }]));
+    input.previousNames.names = [[1, 'Alter Name']];
+    const result = buildRefresh(input);
+    const retained = result.catalog.cards.find(item => item.id === 1);
+    assert.equal(retained.canonicalCardId, 1);
+    assert.deepEqual(retained.artworkImageIds, [10]);
+    assert.ok(!result.catalog.cards.some(item => item.id === 10));
+    assert.deepEqual(result.names.names, [[1, 'Neuer Name']]);
+    assert.deepEqual(result.audit.identityChanges, [{ canonicalId: 1, providerId: 10, name: released.name, evidence: 'unique-beta-id' }]);
+    assert.equal(released.id, 10);
+    assert.deepEqual(buildRefresh({ ...input, provider: { data: [...input.provider.data].reverse() } }), result);
+});
+
+test('beta links reject ambiguous owners, changed identities and many-to-one remaps', () => {
+    const previous = { cards: [card(1, 'Existing')] };
+    const source = { ...card(10, 'Existing'), misc_info: [{ beta_id: 1 }] };
+    assert.throws(() => stabilizeCanonicalIds({ data: [source, { ...source, id: 20 }] }, previous), /Ambiguous/);
+    assert.throws(() => stabilizeCanonicalIds({ data: [source, { ...card(20, 'Existing'), card_images: [{ id: 1 }] }] }, previous), /Ambiguous/);
+    for (const changed of [{ name: 'Different' }, { type: 'Spell Card' }]) {
+        assert.throws(() => stabilizeCanonicalIds({ data: [{ ...source, ...changed }] }, previous), /Changed/);
+    }
+    assert.throws(() => stabilizeCanonicalIds({ data: [{ ...source, misc_info: [{ beta_id: 1 }, { beta_id: 2 }] }] },
+        { cards: [card(1, 'Existing'), card(2, 'Existing')] }), /Changed/);
+});
+
+test('beta support never accepts name-only matches, nonnumeric links or newly excluded cards', () => {
+    const input = fixture();
+    const source = { ...input.provider.data[0], id: 10 };
+    for (const misc_info of [[], [{ beta_id: '1' }], [{ beta_id: 99 }], [{ beta_name: source.name }],
+        [{ beta_id: 1, formats: ['Speed Duel'] }]]) {
+        assert.throws(() => buildRefresh({ ...input, provider: { data: [{ ...source, misc_info }, ...input.provider.data.slice(1)] } }), /Canonical coverage regression: 1/);
+    }
+});
+
 test('offline replay is a no-op despite retrieval time changes; corrupted inputs preserve accepted files', async () => {
     const root = await mkdtemp(join(tmpdir(), 'card-refresh-'));
     try {
