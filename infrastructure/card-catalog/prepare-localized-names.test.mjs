@@ -22,6 +22,21 @@ const example = { Cards: [
     { ExternalCardId: 3, Name: 'Third' }, { ExternalCardId: 1, Name: 'My label' }
 ] };
 
+async function shippedEvidence(locale, historicalSnapshot) {
+    const read = async path => JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
+    let refresh;
+    try { refresh = await read('./snapshots/refresh/audit.json'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    if (!refresh) return { retained: await read(`./snapshots/${historicalSnapshot}`),
+        savedAudit: await read(`./snapshots/${historicalSnapshot.replace('.json', '.audit.json')}`) };
+    const evidence = locale === 'de'
+        ? { snapshot: 'infrastructure/card-catalog/snapshots/refresh/names.de.json', audit: refresh.localizedNames }
+        : refresh.retainedLocales[locale];
+    return { retained: await read(`../../${evidence.snapshot}`), savedAudit: {
+        ...evidence.audit, canonicalSha256: refresh.canonicalSha256, exampleSha256: refresh.exampleSha256
+    } };
+}
+
 test('canonical IDs win over aliases; unique artwork IDs join, ambiguous IDs and translated names do not', () => {
     const raw = [record(1, 'FIRST', 'Weißer Drache'), record(2, 'Second', 'Weißer Drache'),
         record(8, 'Third', 'Dritte'), record(9, 'First', 'Mehrdeutig'), record(99, 'First', 'Unbekannt')];
@@ -128,11 +143,10 @@ test('Japanese ruby supplies plain base labels while retained source and normali
 
 test('shipped names reproduce from the sole retained source and cover every actual example entry', async () => {
     const read = async path => JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
-    const retained = await read('./snapshots/names.de.yaml-yugi.2026-10-31.json');
+    const { retained, savedAudit } = await shippedEvidence('de', 'names.de.yaml-yugi.2026-10-31.json');
     const canonical = await read('../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json');
     const session = await read('../../YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json');
     const shipped = await read('../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json');
-    const savedAudit = await read('./snapshots/names.de.yaml-yugi.2026-10-31.audit.json');
     const { canonicalSha256, exampleSha256, ...audit } = savedAudit;
     const result = buildLocalizedNames(retained, canonical, session);
     assert.deepEqual(result.asset, shipped);
@@ -146,7 +160,7 @@ test('shipped names reproduce from the sole retained source and cover every actu
     assert.equal(new Map(shipped.names).has(58074572), false, 'missing source translation uses English fallback');
 });
 
-test('registered follow-on locale assets and audits reproduce from retained dated snapshots', async () => {
+test('registered follow-on locale assets and current audits reproduce from retained sources', async () => {
     const read = async path => readFile(new URL(path, import.meta.url));
     const locales = JSON.parse(await read('../../YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json'));
     const [canonicalBytes, exampleBytes, snapshots] = await Promise.all([
@@ -160,9 +174,9 @@ test('registered follow-on locale assets and audits reproduce from retained date
     for (const { id: locale } of locales.filter(locale => !['en', 'de'].includes(locale.id))) {
         const matches = snapshots.filter(name => new RegExp(`^names\\.${locale}\\.yaml-yugi\\.\\d{4}-\\d{2}-\\d{2}\\.json$`).test(name));
         assert.equal(matches.length, 1, `${locale}: one retained dated snapshot`);
-        const retained = JSON.parse(await read(`./snapshots/${matches[0]}`));
+        const { retained, savedAudit } = await shippedEvidence(locale, matches[0]);
         const shipped = JSON.parse(await read(`../../YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.${locale}.v1.json`));
-        const { canonicalSha256, exampleSha256, ...audit } = JSON.parse(await read(`./snapshots/${matches[0].replace('.json', '.audit.json')}`));
+        const { canonicalSha256, exampleSha256, ...audit } = savedAudit;
         const result = buildLocalizedNames(retained, canonical, session);
         assert.equal(retained.locale, locale);
         assert.deepEqual(result.asset, shipped, locale);
