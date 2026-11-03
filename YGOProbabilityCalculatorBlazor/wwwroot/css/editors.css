@@ -156,10 +156,6 @@
     overflow-wrap: anywhere;
 }
 
-.calculator-workspace .category-chip {
-    margin-block-end: 0.375rem;
-}
-
 .calculator-workspace .category-chip:has(.category-rename-input) {
     flex-wrap: wrap;
     width: min(100%, 32rem);
@@ -179,12 +175,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    margin-block-end: 0.375rem;
     line-height: 1.35;
-}
-
-.calculator-workspace .accordion-body .draw-selector-chip {
-    margin-block-end: 0;
 }
 
 .calculator-workspace .entry-inactive .entry-heading .accordion-button {

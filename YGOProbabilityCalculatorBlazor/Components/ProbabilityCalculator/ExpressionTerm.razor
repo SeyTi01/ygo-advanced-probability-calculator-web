@@ -8,8 +8,7 @@
                     else { <ExpressionSeparator Operator="@Operator" Inline="true" AllowedOperators="AllowedOperators" Error="@Error" OnOperatorChanged="OnOperatorChanged" /> }
                 </span>
             }
-            @if (CenterOperands) { <span class="expression-term-operand">@OperandContent(index)</span> }
-            else { @OperandContent(index) }
+            <span class="expression-term-operand">@OperandContent(index)</span>
             @if (index == Count - 1) { @SuffixContent }
         </span>
     }

@@ -1,3 +1,6 @@
+.category-chip-list { display: flex; align-items: flex-start; flex-wrap: wrap; gap: .375rem .5rem; }
+.category-chip-list > ::deep .category-rule-summary, .category-chip-detail { flex-basis: 100%; }
+
 .category-rule-trigger {
     margin-inline: 0.75rem;
     padding: 0.35rem 0.5rem;

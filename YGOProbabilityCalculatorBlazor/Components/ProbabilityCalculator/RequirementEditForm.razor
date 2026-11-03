@@ -7,20 +7,24 @@
         <div class="requirement-inputs">
             @for (int index = 0; index < OperandCount; index++) {
                 int position = index;
-                @if (index > 0) { <ExpressionSeparator Operator="@Operator" AllowedOperators="AllowedOperators" InputLabel="@(UiText.Get("Requirement.RowOperator"))" OnOperatorChanged="ChangeOperator" /> }
+                @if (index > 0) { <ExpressionSeparator Operator="@Operator" ControlSize="ExpressionControlSize.Form" AllowedOperators="AllowedOperators" InputLabel="@(UiText.Get("Requirement.RowOperator"))" OnOperatorChanged="ChangeOperator" /> }
                 <div class="requirement-operand" @key="OperandKey?.Invoke(index)">
                     @OperandContent(index)
                     @if (ShowJoinOperator) {
-                        <ExpressionSeparator Operator="@Operator" Inline="true" InputLabel="@(UiText.Get("Requirement.RowOperator"))"
-                            AllowedOperators="AllowedOperators" OnOperatorChanged="OnOperatorChanged" />
+                        <div class="requirement-operand-action">
+                            <ExpressionSeparator Operator="@Operator" Inline="true" ControlSize="ExpressionControlSize.Form" InputLabel="@(UiText.Get("Requirement.RowOperator"))"
+                                AllowedOperators="AllowedOperators" OnOperatorChanged="OnOperatorChanged" />
+                        </div>
                     }
                     @if (OnRemoveOperand.HasDelegate && OperandCount > 1) {
-                        <button type="button" class="btn btn-outline-secondary" aria-label="@(UiText.Format("Ui.RemoveProperty0", index + 1))" @onclick="() => OnRemoveOperand.InvokeAsync(position)">×</button>
+                        <div class="requirement-operand-action"><button type="button" class="btn btn-outline-secondary" aria-label="@(UiText.Format("Ui.RemoveProperty0", index + 1))" @onclick="() => OnRemoveOperand.InvokeAsync(position)">×</button></div>
                     }
                 </div>
             }
         </div>
-        @if (QuantityContent is not null) { <div class="requirement-quantity">@QuantityContent</div> }
+        @if (QuantityContent is not null) {
+            <div class="requirement-quantity"><EditorField Label="@QuantityLabel" For="@QuantityId">@QuantityContent</EditorField></div>
+        }
         @if (InlineSubmit) { <div class="requirement-submit">@SubmitButton</div> }
     </div>
     @if (!InlineSubmit || AfterContent is not null) {
@@ -68,6 +72,8 @@
     [Parameter] public int OperandCount { get; set; } = 1;
     [Parameter, EditorRequired] public RenderFragment<int> OperandContent { get; set; } = default!;
     [Parameter] public RenderFragment? QuantityContent { get; set; }
+    [Parameter] public string? QuantityLabel { get; set; }
+    [Parameter] public string? QuantityId { get; set; }
     [Parameter] public RenderFragment? AfterContent { get; set; }
     [Parameter] public EventCallback OnSubmit { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }

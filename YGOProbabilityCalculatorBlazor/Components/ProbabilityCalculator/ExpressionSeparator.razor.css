@@ -28,11 +28,19 @@
     border: 1px solid var(--bs-border-color);
     border-radius: .3rem;
     padding: var(--expression-inline-gap) var(--expression-stack-gap);
-    min-height: 2rem;
+    min-height: var(--editor-compact-control-height);
     min-width: var(--app-touch-target-size);
     text-align: center;
     cursor: pointer;
     font: inherit;
+}
+.expression-form-control .expression-operator {
+    min-height: var(--editor-form-control-height);
+    padding: .375rem .75rem;
+    border-radius: var(--bs-border-radius);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
 }
 .expression-add-button { opacity: .7; }
 .expression-add-button:is(:hover, :focus-visible, :active) { opacity: 1; }

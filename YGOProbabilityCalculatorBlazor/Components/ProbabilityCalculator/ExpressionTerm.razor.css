@@ -11,6 +11,15 @@
     --expression-term-gap: var(--expression-inline-gap);
     display: inline;
 }
+.expression-term-operand {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    min-height: var(--expression-control-height);
+    padding-inline: var(--expression-member-padding-inline);
+}
+.expression-term-compact .expression-term-operand { min-height: 0; padding-inline: 0; }
 .expression-term-compact > .expression-term-part {
     display: inline-flex;
     width: max-content;

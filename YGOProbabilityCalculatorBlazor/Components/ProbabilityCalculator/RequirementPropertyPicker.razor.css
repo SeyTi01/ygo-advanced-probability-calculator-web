@@ -1,7 +1,7 @@
 .requirement-property-picker { min-width: 0; }
 .requirement-property-picker .form-select { min-width: 0; }
 .requirement-numeric-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--expression-stack-gap); margin-top: var(--expression-stack-gap); }
-.requirement-numeric-fields > div { min-width: 0; }
+.requirement-numeric-fields > ::deep .editor-field { min-width: 0; }
 
 .requirement-picker-trigger { text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .requirement-groups { display: flex; flex-wrap: wrap; gap: var(--expression-inline-gap); margin-bottom: .35rem; }

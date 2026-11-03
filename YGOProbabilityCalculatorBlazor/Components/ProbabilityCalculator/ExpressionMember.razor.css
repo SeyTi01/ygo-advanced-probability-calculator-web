@@ -1,3 +1,3 @@
-.expression-member { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: var(--expression-control-height); padding: 0 var(--expression-member-padding-inline); border: 0; border-radius: .25rem; background: transparent; color: inherit; font: inherit; text-align: start; }
+.expression-member { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: var(--expression-control-height); padding: 0; border: 0; border-radius: .25rem; background: transparent; color: inherit; font: inherit; text-align: start; }
 .expression-member:hover ::deep .badge { box-shadow: 0 0 0 .25rem var(--bs-border-color); }
 .expression-member[aria-expanded="true"] ::deep .badge { box-shadow: 0 0 0 .25rem color-mix(in srgb, var(--bs-body-color) 30%, var(--bs-tertiary-bg)); }
