@@ -21,7 +21,7 @@ test('publication stages every locale asset and projection, including future reg
         run('git', ['init']);
         run('git', ['config', 'user.name', 'Refresh Test']);
         run('git', ['config', 'user.email', 'refresh@example.invalid']);
-        const locales = ['de', 'ja', 'fr', 'it', 'pt', 'es'];
+        const locales = ['de', 'ja', 'fr', 'it', 'pt', 'es'].map(id => ({ id, cardNames: { asset: `data/card-names.${id}.v1.json` } }));
         for (const path of refreshPaths(locales)) {
             await mkdir(dirname(join(root, path)), { recursive: true });
             await writeFile(join(root, path), 'baseline\n');
@@ -33,7 +33,7 @@ test('publication stages every locale asset and projection, including future reg
         assert.equal(stageRefreshBundle(locales, run), true);
         assert.deepEqual(run('git', ['diff', '--cached', '--name-only']).split('\n').sort(), refreshPaths(locales).sort());
         run('git', ['commit', '-m', 'Complete bundle']);
-        for (const locale of locales) assert.equal(run('git', ['show', `HEAD:${dataRoot}/card-names.${locale}.v1.json`]), 'refreshed');
+        for (const locale of locales) assert.equal(run('git', ['show', `HEAD:YGOProbabilityCalculatorBlazor/wwwroot/${locale.cardNames.asset}`]), 'refreshed');
         assert.equal(stageRefreshBundle(locales, run), false);
         run('git', ['add', 'policy.json']);
         assert.throws(() => stageRefreshBundle(locales, run), /Unexpected staged/);
@@ -82,7 +82,8 @@ function publicationFixture({ expectedSha = sha, remoteSha = sha, fail, runs = [
         }
         return '';
     };
-    return { calls, options: { branch, expectedSha, sourceDir: tmpdir(), locales: ['de', 'ja', 'fr', 'it', 'pt'], run } };
+    return { calls, options: { branch, expectedSha, sourceDir: tmpdir(),
+        locales: ['de', 'ja', 'fr', 'it', 'pt'].map(id => ({ id, cardNames: { asset: `data/card-names.${id}.v1.json` } })), run } };
 }
 
 test('unchanged generation recovers PR creation/CI dispatch after an interrupted publication', async () => {

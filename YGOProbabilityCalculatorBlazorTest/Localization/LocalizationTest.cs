@@ -357,6 +357,9 @@ public sealed class LocalizationTest {
             Assert.That(LocalePreference.Resolve("en", ["de-DE"]), Is.EqualTo("en"));
             Assert.That(LocalePreference.Resolve(), Is.EqualTo("en"));
             Assert.That(LocalePreference.SupportedLocales, Does.Contain("en"));
+            Assert.That(LocalePreference.Available.Single(locale => locale.Id == "en").CardNames, Is.Null);
+            Assert.That(LocalePreference.Available.Where(locale => locale.CardNames is not null)
+                .All(locale => locale.CardNames!.Asset == $"data/card-names.{locale.Id}.v1.json"), Is.True);
             foreach (ProductionLocale registered in LocalePreference.Available) {
                 Assert.That(LocalePreference.Resolve(registered.Id.ToUpperInvariant() + "-ZZ", ["en"]), Is.EqualTo(registered.Id));
             }

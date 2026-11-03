@@ -8,6 +8,7 @@ import { buildCatalog, serializeCatalog, MIN_FULL_CATALOG_CARDS, MIN_ELIGIBLE_CA
 import { assertNoCatalogRegression, exclusionReason } from './card-eligibility.mjs';
 import { auditMembership, membershipPolicy } from './archetype-membership.mjs';
 import { retainYamlYugiSnapshot, retainEligibleNames, buildLocalizedNames, assertNoNameRegression } from './prepare-localized-names.mjs';
+import { cardNameAssetPaths, cardNameLocales } from './locale-capabilities.mjs';
 
 const json = value => JSON.stringify(value) + '\n';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -15,8 +16,9 @@ export const dataRoot = 'YGOProbabilityCalculatorBlazor/wwwroot/data';
 export const auditRoot = 'infrastructure/card-catalog/snapshots/refresh';
 
 export function refreshPaths(locales) {
+    const nameLocales = locales.filter(locale => locale.cardNames?.asset);
     return [`${dataRoot}/card-catalog.v1.json`,
-        ...locales.flatMap(locale => [`${dataRoot}/card-names.${locale}.v1.json`, `${auditRoot}/names.${locale}.json`]),
+        ...nameLocales.flatMap(locale => [`YGOProbabilityCalculatorBlazor/wwwroot/${locale.cardNames.asset}`, `${auditRoot}/names.${locale.id}.json`]),
         `${auditRoot}/audit.json`];
 }
 
@@ -126,9 +128,14 @@ export async function refresh(input, root = '.', minimumCards, minimumEligible) 
     const exampleBytes = await readFile(at('YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json'), 'utf8');
     const example = JSON.parse(exampleBytes);
     const locales = await readJson(at('YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json'));
+    const configuredNameLocales = locales.filter(locale => locale.cardNames?.asset);
+    const registryMatches = configuredNameLocales.length === cardNameLocales.length
+        && configuredNameLocales.every(locale => cardNameAssetPaths.get(locale.id)
+            === `YGOProbabilityCalculatorBlazor/wwwroot/${locale.cardNames.asset}`);
+    if (!registryMatches) throw new Error('Card-name locale registry is inconsistent');
     const previousNames = {};
-    for (const { id: locale } of locales.filter(locale => locale.id !== 'en')) {
-        previousNames[locale] = await readJson(at(`${dataRoot}/card-names.${locale}.v1.json`));
+    for (const { id: locale } of configuredNameLocales) {
+        previousNames[locale] = await readJson(at(cardNameAssetPaths.get(locale)));
     }
     const result = buildRefresh({ provider: await readJson(resolve(input, 'cardinfo.json')),
         yamlBytes: await readFile(resolve(input, 'yaml-cards.json')), manifest,
@@ -149,7 +156,7 @@ export async function refresh(input, root = '.', minimumCards, minimumEligible) 
         // A fingerprint describes intended output, not what an earlier workflow committed.
         // Preserve original provenance on a no-op, but repair stale/missing bundle files.
         const expected = [[`${dataRoot}/card-catalog.v1.json`, serializeCatalog(result.catalog)],
-            ...Object.entries(result.names).map(([locale, names]) => [`${dataRoot}/card-names.${locale}.v1.json`, json(names)])];
+            ...Object.entries(result.names).map(([locale, names]) => [cardNameAssetPaths.get(locale), json(names)])];
         let complete = true;
         for (const [path, bytes] of expected) {
             try { complete &&= (await readFile(at(path), 'utf8')).replace(/\r\n/g, '\n') === bytes.toString('utf8'); }
@@ -168,7 +175,7 @@ export async function refresh(input, root = '.', minimumCards, minimumEligible) 
         `${locale}: labels: ${audit.matchedRecords}; missing: ${audit.missingIds.length}; added/changed: ${result.audit.nameChanges[locale].length}.`).join('\n');
     const summary = `Monthly card-data refresh\n\nCards: ${result.catalog.cards.length}; added: ${result.audit.changes.filter(change => !change.before).length}; changed: ${result.audit.changes.filter(change => change.before).length}.\n${localeSummary}\nArchetype candidates requiring review: ${result.audit.candidates.reviewRequired.length}; unresolved declarations: ${result.audit.membership.unresolved.length}.\n\nReview infrastructure/card-catalog/snapshots/refresh/audit.json for identities, per-locale name changes, missing labels, source and normalization evidence, membership changes, conflicts, overlaps, candidates and example coverage. Policy files are never generated.\n`;
     const files = [[`${dataRoot}/card-catalog.v1.json`, serializeCatalog(result.catalog)],
-        ...Object.entries(result.names).flatMap(([locale, names]) => [[`${dataRoot}/card-names.${locale}.v1.json`, json(names)],
+        ...Object.entries(result.names).flatMap(([locale, names]) => [[cardNameAssetPaths.get(locale), json(names)],
             [`${auditRoot}/names.${locale}.json`, json(result.snapshots[locale])]]),
         [`${auditRoot}/audit.json`, json(result.audit)]];
     // Stage the complete validated bundle. Failure cannot publish a partial bundle: the workflow commits only on success.

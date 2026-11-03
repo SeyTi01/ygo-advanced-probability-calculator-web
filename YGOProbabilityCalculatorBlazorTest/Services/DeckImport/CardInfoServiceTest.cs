@@ -13,7 +13,7 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 [TestFixture]
 public class CardInfoServiceTests {
     private static IEnumerable<string> ProductionLanguages =>
-        LocalePreference.Available.Where(locale => locale.Id != "en").Select(locale => locale.Id);
+        LocalePreference.Available.Where(locale => locale.CardNames is not null).Select(locale => locale.Id);
 
     [TestCaseSource(nameof(ProductionLanguages))]
     public async Task BundledNamesResolveBothLanguagesToCanonicalCards(string language) {
