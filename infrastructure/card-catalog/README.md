@@ -11,6 +11,12 @@ The workflow needs repository permission for Actions to create pull requests.
 It uses the explicit public `github-actions[bot]` identity through the publication
 guard, and dispatches `tests.yml` explicitly because token-authored pushes do
 not trigger its push event. No Cloudflare secret is required.
+The publisher checks for an existing push or manual test run on the exact branch
+head before dispatching, including on a no-change retry after interrupted publication.
+Failed test runs remain visible for review rather than being retried automatically.
+After workflow changes, start a new **Run workflow** on `dev`: GitHub reruns retain
+the old workflow definition even when checkout obtains current code. Generation
+rejects that mismatch before writing a bundle.
 
 Manual acquisition and generation use the same commands as the schedule:
 
@@ -44,6 +50,10 @@ German, Japanese, French, Italian and Portuguese. Every locale is generated from
 the same pinned YAML Yugi response; no additional source downloads are needed.
 Generated timestamps and irrelevant upstream fields do not create repeat PRs,
 but a name change in any one language updates the bundle.
+The no-change check also verifies the generated assets and retained projections;
+a saved fingerprint cannot hide an incompletely committed bundle. Publication
+uses the same registered-locale file list as generation and stages the entire
+validated bundle before committing.
 
 After generation, shipped-name checks use each refreshed projection and its
 entry in `localizedNames`, with `nameChanges` grouped by locale. Audit format 2

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildRefresh, candidateAudit, refresh, dataRoot, auditRoot, stabilizeCanonicalIds } from './refresh-card-data.mjs';
+import { buildRefresh, candidateAudit, refresh, dataRoot, auditRoot, stabilizeCanonicalIds, assertCurrentRefreshWorkflow } from './refresh-card-data.mjs';
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -21,6 +21,14 @@ function fixture() {
 
 const locales = ['de', 'ja', 'fr', 'it', 'pt'];
 const label = (locale, id) => locale === 'ja' ? `名前${id}` : `${locale} name ${id}`;
+
+test('old workflow reruns cannot combine current generation with stale publication steps', async () => {
+    const env = { GITHUB_ACTIONS: 'true', GITHUB_WORKFLOW: 'Monthly card data refresh', GITHUB_SHA: 'a'.repeat(40) };
+    const read = async () => 'current\n';
+    await assertCurrentRefreshWorkflow(env, read, () => 'current\r\n');
+    await assert.rejects(assertCurrentRefreshWorkflow(env, read, () => 'old German-only publication\n'), /new workflow_dispatch/);
+    await assertCurrentRefreshWorkflow({}, () => { throw new Error('Local replay must not require GitHub'); });
+});
 function multilingualFixture() {
     const input = fixture();
     input.example = { Cards: [{ ExternalCardId: 1, Name: input.provider.data[0].name }] };
@@ -189,6 +197,17 @@ test('multilingual offline replay handles later refreshes, locale-only changes a
         await saveSources();
         assert.equal(await refresh(sources, root, 1, 1), false);
         assert.deepEqual(await outputs(), acceptedFiles);
+        // Reproduce an incomplete commit: current fingerprint/snapshots but stale shipped names.
+        for (const locale of locales) {
+            await put(join(root, dataRoot, `card-names.${locale}.v1.json`), input.previousNames[locale]);
+            assert.equal(await refresh(sources, root, 1, 1), true, `${locale}: repairs stale output despite matching fingerprint`);
+            assert.deepEqual(JSON.parse(await readFile(join(root, dataRoot, `card-names.${locale}.v1.json`))).names,
+                [1, 2, 3].map(id => [id, label(locale, id)]));
+            assert.equal(await refresh(sources, root, 1, 1), false);
+        }
+        await rm(join(root, auditRoot, 'names.pt.json'));
+        assert.equal(await refresh(sources, root, 1, 1), true, 'repairs a missing retained projection');
+        assert.equal(await refresh(sources, root, 1, 1), false);
         const german = await readFile(join(root, dataRoot, 'card-names.de.v1.json'), 'utf8');
         // Only a non-German label changes: it must still publish the complete bundle.
         values['yaml-cards.json'][0].name.fr = 'Nom corrigé';
