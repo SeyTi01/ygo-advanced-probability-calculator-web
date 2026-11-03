@@ -29,7 +29,9 @@ async function shippedEvidence(locale, historicalSnapshot) {
     catch (error) { if (error.code !== 'ENOENT') throw error; }
     if (!refresh) return { retained: await read(`./snapshots/${historicalSnapshot}`),
         savedAudit: await read(`./snapshots/${historicalSnapshot.replace('.json', '.audit.json')}`) };
-    const evidence = locale === 'de'
+    const evidence = refresh.version === 2
+        ? { snapshot: `infrastructure/card-catalog/snapshots/refresh/names.${locale}.json`, audit: refresh.localizedNames[locale] }
+        : locale === 'de'
         ? { snapshot: 'infrastructure/card-catalog/snapshots/refresh/names.de.json', audit: refresh.localizedNames }
         : refresh.retainedLocales[locale];
     return { retained: await read(`../../${evidence.snapshot}`), savedAudit: {

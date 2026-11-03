@@ -1,5 +1,5 @@
 // Offline bundle generation. All validation completes before any tracked file changes.
-import { readFile, readdir, writeFile, mkdir, rename, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rename, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -54,12 +54,26 @@ export function buildRefresh({ provider, yamlBytes, manifest, series, vocabulary
     provider = stabilized.provider;
     const catalog = buildCatalog(provider, minimumCards, minimumEligible);
     assertNoCatalogRegression(previousCatalog, catalog);
-    const snapshot = retainEligibleNames(retainYamlYugiSnapshot(yamlBytes, manifest.revision, manifest.retrievedAt), catalog);
-    snapshot.source = `https://github.com/DawnbrandBots/yaml-yugi/tree/${manifest.revision}/data/cards`;
-    const { asset: names, audit: nameAudit } = buildLocalizedNames(snapshot, catalog, example);
-    assertNoNameRegression(previousNames, names);
-    const previousRatio = previousNames.names.length / previousCatalog.cards.length;
-    if (names.names.length / catalog.cards.length < previousRatio - 0.005) throw new Error('German coverage ratio regression');
+    const names = {};
+    const snapshots = {};
+    const localizedNames = {};
+    const nameChanges = {};
+    for (const [locale, previous] of Object.entries(previousNames)) {
+        if (previous.locale !== locale) throw new Error(`Mismatched coverage baseline locale: ${locale}`);
+        const snapshot = retainEligibleNames(retainYamlYugiSnapshot(yamlBytes, manifest.revision, manifest.retrievedAt, locale), catalog);
+        snapshot.source = `https://github.com/DawnbrandBots/yaml-yugi/tree/${manifest.revision}/data/cards`;
+        const { asset, audit } = buildLocalizedNames(snapshot, catalog, example);
+        try { assertNoNameRegression(previous, asset); }
+        catch (error) { throw new Error(`${locale}: ${error.message}`); }
+        const previousRatio = previous.names.length / previousCatalog.cards.length;
+        if (asset.names.length / catalog.cards.length < previousRatio - 0.005) throw new Error(`${locale}: coverage ratio regression`);
+        const oldNames = new Map(previous.names);
+        nameChanges[locale] = asset.names.filter(([id, name]) => oldNames.get(id) !== name)
+            .map(([id, name]) => ({ id, before: oldNames.get(id) ?? null, after: name }));
+        names[locale] = asset;
+        snapshots[locale] = snapshot;
+        localizedNames[locale] = audit;
+    }
     const candidates = candidateAudit(vocabulary, series, previousCandidates);
     if (minimumCards > 1 && (vocabulary.length < 300 || Object.keys(series).length < 300)) throw new Error('Incomplete candidate vocabulary');
     const old = new Map(previousCatalog.cards.map(card => [card.id, card]));
@@ -68,11 +82,8 @@ export function buildRefresh({ provider, yamlBytes, manifest, series, vocabulary
     const newUnknown = catalog.cards.filter(card => card.resolvedArchetypes === null && old.get(card.id)?.resolvedArchetypes !== null);
     if (newUnknown.length > 25) throw new Error('Unexpected unresolved membership regression');
     const membership = auditMembership(provider.data.filter(card => exclusionReason(card) === null));
-    const oldNames = new Map(previousNames.names);
-    const nameChanges = names.names.filter(([id, name]) => oldNames.get(id) !== name)
-        .map(([id, name]) => ({ id, before: oldNames.get(id) ?? null, after: name }));
-    return { catalog, names, snapshot, audit: { changes, nameChanges, identityChanges: stabilized.identityChanges, candidates, membership, localizedNames: nameAudit,
-        example: nameAudit.example, source: manifest } };
+    return { catalog, names, snapshots, audit: { version: 2, changes, nameChanges, identityChanges: stabilized.identityChanges,
+        candidates, membership, localizedNames, source: manifest } };
 }
 
 export async function refresh(input, root = '.', minimumCards, minimumEligible) {
@@ -91,43 +102,35 @@ export async function refresh(input, root = '.', minimumCards, minimumEligible) 
     catch (error) { if (error.code !== 'ENOENT') throw error; }
     const exampleBytes = await readFile(at('YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json'), 'utf8');
     const example = JSON.parse(exampleBytes);
+    const locales = await readJson(at('YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json'));
+    const previousNames = {};
+    for (const { id: locale } of locales.filter(locale => locale.id !== 'en')) {
+        previousNames[locale] = await readJson(at(`${dataRoot}/card-names.${locale}.v1.json`));
+    }
     const result = buildRefresh({ provider: await readJson(resolve(input, 'cardinfo.json')),
         yamlBytes: await readFile(resolve(input, 'yaml-cards.json')), manifest,
         series: await readJson(resolve(input, 'series.json')), vocabulary: await readJson(resolve(input, 'archetypes.json')),
         previousCatalog: await readJson(at(`${dataRoot}/card-catalog.v1.json`)),
-        previousNames: await readJson(at(`${dataRoot}/card-names.de.v1.json`)),
+        previousNames,
         previousCandidates: previousAudit?.candidates.names,
         example,
         minimumCards, minimumEligible });
-    // Other locales retain their manually reviewed sources and assets. Re-audit
-    // those sources against the new catalog without rewriting historical evidence.
-    const locales = await readJson(at('YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json'));
-    const snapshots = await readdir(at('infrastructure/card-catalog/snapshots'));
-    result.audit.retainedLocales = {};
-    for (const { id: locale } of locales.filter(locale => !['en', 'de'].includes(locale.id))) {
-        const matches = snapshots.filter(name => new RegExp(`^names\\.${locale}\\.yaml-yugi\\.\\d{4}-\\d{2}-\\d{2}\\.json$`).test(name));
-        if (matches.length !== 1) throw new Error(`Expected one retained snapshot for ${locale}`);
-        const path = `infrastructure/card-catalog/snapshots/${matches[0]}`;
-        const snapshot = await readJson(at(path));
-        const previous = await readJson(at(`${dataRoot}/card-names.${locale}.v1.json`));
-        if (snapshot.locale !== locale || previous.locale !== locale) throw new Error(`Mismatched retained locale: ${locale}`);
-        const { asset, audit } = buildLocalizedNames(snapshot, result.catalog, example);
-        assertNoNameRegression(previous, asset);
-        if (json(asset) !== json(previous)) throw new Error(`Retained ${locale} names changed; refresh that locale explicitly`);
-        result.audit.retainedLocales[locale] = { snapshot: path, audit };
-    }
     result.audit.canonicalSha256 = hash(serializeCatalog(result.catalog));
     result.audit.exampleSha256 = hash(exampleBytes.replace(/\r\n/g, '\n'));
     // Compare useful state, excluding retrieval dates, raw upstream noise and relative diffs.
     const fingerprint = hash(json({ catalog: result.catalog, names: result.names,
-        retainedLocales: result.audit.retainedLocales, exampleSha256: result.audit.exampleSha256,
+        localizedNames: Object.fromEntries(Object.entries(result.audit.localizedNames).map(([locale, { source, ...audit }]) => [locale, audit])),
+        exampleSha256: result.audit.exampleSha256,
         candidates: result.audit.candidates.names, membership: result.audit.membership }));
     if (previousAudit?.fingerprint === fingerprint) return false;
     result.audit.fingerprint = fingerprint;
-    const summary = `Monthly card-data refresh\n\nCards: ${result.catalog.cards.length}; added: ${result.audit.changes.filter(change => !change.before).length}; changed: ${result.audit.changes.filter(change => change.before).length}.\nGerman labels: ${result.names.names.length}; missing: ${result.audit.localizedNames.missingIds.length}.\nArchetype candidates requiring review: ${result.audit.candidates.reviewRequired.length}; unresolved declarations: ${result.audit.membership.unresolved.length}.\n\nReview infrastructure/card-catalog/snapshots/refresh/audit.json for identities, membership changes, conflicts, overlaps, candidate evidence and example coverage. Policy files are never generated.\n`;
+    const localeSummary = Object.entries(result.audit.localizedNames).map(([locale, audit]) =>
+        `${locale}: labels: ${audit.matchedRecords}; missing: ${audit.missingIds.length}; added/changed: ${result.audit.nameChanges[locale].length}.`).join('\n');
+    const summary = `Monthly card-data refresh\n\nCards: ${result.catalog.cards.length}; added: ${result.audit.changes.filter(change => !change.before).length}; changed: ${result.audit.changes.filter(change => change.before).length}.\n${localeSummary}\nArchetype candidates requiring review: ${result.audit.candidates.reviewRequired.length}; unresolved declarations: ${result.audit.membership.unresolved.length}.\n\nReview infrastructure/card-catalog/snapshots/refresh/audit.json for identities, per-locale name changes, missing labels, source and normalization evidence, membership changes, conflicts, overlaps, candidates and example coverage. Policy files are never generated.\n`;
     const files = [[`${dataRoot}/card-catalog.v1.json`, serializeCatalog(result.catalog)],
-        [`${dataRoot}/card-names.de.v1.json`, json(result.names)],
-        [`${auditRoot}/names.de.json`, json(result.snapshot)], [`${auditRoot}/audit.json`, json(result.audit)]];
+        ...Object.entries(result.names).flatMap(([locale, names]) => [[`${dataRoot}/card-names.${locale}.v1.json`, json(names)],
+            [`${auditRoot}/names.${locale}.json`, json(result.snapshots[locale])]]),
+        [`${auditRoot}/audit.json`, json(result.audit)]];
     // Stage the complete validated bundle. Failure cannot publish a partial bundle: the workflow commits only on success.
     try {
         for (const [path, bytes] of files) { await mkdir(dirname(at(path)), { recursive: true }); await writeFile(at(path + '.refresh-tmp'), bytes); }
