@@ -97,11 +97,13 @@
             handoff = null;
         },
         hasPendingEdits() {
-            const workspace = root.document.querySelector('.calculator-workspace');
+            const workspace = root.document.querySelector('[data-language-workspace]');
             if (!workspace) return false;
-            if (workspace.querySelector('[data-language-edit="true"], .simulation-editor, .category-rule-editor, .category-rename-input, .ydke-import-form')) return true;
-            const drafts = workspace.querySelectorAll('#quickCardName, .category-management .editor-add-row input, .combo-group-management .editor-add-row input, select[id^="cardCategory"]');
-            const numbers = workspace.querySelectorAll('#handSize, input[id^="cardCopies"]');
+            if (workspace.querySelector('[data-language-edit="true"]')) return true;
+            // Editors declare their draft contract independently of layout. Read the
+            // live controls: empty/invalid numbers may never update accepted C# state.
+            const drafts = workspace.querySelectorAll('[data-language-draft-input]');
+            const numbers = workspace.querySelectorAll('[data-language-number-input]');
             return [...drafts].some(input => input.value.length > 0)
                 || [...numbers].some(input => input.value === '' || !input.validity.valid);
         },

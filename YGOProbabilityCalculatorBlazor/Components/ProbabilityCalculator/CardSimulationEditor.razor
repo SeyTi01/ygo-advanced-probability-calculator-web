@@ -94,7 +94,7 @@
         </div>
     }
     @if (_draft is not null) {
-        <div id="simulationEditor@(Index)" class="simulation-editor">
+        <div id="simulationEditor@(Index)" class="simulation-editor" data-language-edit="true">
             <div class="small fw-semibold mb-2">@(UiText.Get("Ui.CustomSimulation"))</div>
             @if (_draft.PostDrawDeckMillCount > 0) {
                 <div class="form-text simulation-mill-note">@(UiText.Format("Effect.PreservedMill", _draft.PostDrawDeckMillCount))</div>

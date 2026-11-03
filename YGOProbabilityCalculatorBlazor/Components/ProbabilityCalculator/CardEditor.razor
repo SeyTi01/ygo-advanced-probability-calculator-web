@@ -65,7 +65,7 @@
                     </div>
                     <div class="card-copies-field">
                         <label for="cardCopies@(Index)" class="form-label">@(UiText.Get("Ui.Copies"))</label>
-                        <input id="cardCopies@(Index)" class="form-control" type="number" min="1"
+                        <input id="cardCopies@(Index)" class="form-control" type="number" min="1" data-language-number-input="true"
                                value="@Card.Copies"
                                @oninput="e => ChangeCopies(e.Value)"/>
                     </div>
@@ -79,7 +79,7 @@
             <div class="editor-add-row layout-row layout-input-action mb-3">
                 <div class="editor-select-field">
                     <label for="cardCategory@(Index)" class="form-label">@(UiText.Get("Ui.Category"))</label>
-                    <select id="cardCategory@(Index)" class="form-select"
+                    <select id="cardCategory@(Index)" class="form-select" data-language-draft-input="true"
                             value="@_selectedCategory"
                             @onchange="e => _selectedCategory = e.Value?.ToString() ?? string.Empty">
                         <option value="">@(UiText.Get("Ui.SelectCategory"))</option>

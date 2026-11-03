@@ -1,7 +1,7 @@
 @inject YGOProbabilityCalculatorBlazor.Services.Interface.ICardInfoService CardInfoService
 @using YGOProbabilityCalculatorBlazor.Models
 
-<section class="category-rule-editor border rounded p-3 mt-3" aria-label="@(UiText.Format("Category.RuleLabel", Category.Name))" @onkeydown="KeyDown">
+<section class="category-rule-editor border rounded p-3 mt-3" data-language-edit="true" aria-label="@(UiText.Format("Category.RuleLabel", Category.Name))" @onkeydown="KeyDown">
     <h5 class="fs-6" tabindex="-1" @ref="_heading">@(UiText.Format("Category.RuleHeading", Category.Name))</h5>
     @for (int index = 0; index < _alternatives.Count; index++) {
         int branch = index;

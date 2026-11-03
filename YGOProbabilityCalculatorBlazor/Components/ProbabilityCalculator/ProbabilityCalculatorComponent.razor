@@ -13,7 +13,7 @@
 @inject IJSRuntime SessionLoadingJS
 
 <LocalizedCardNames Cards="_cards" OnChanged="revision => _cardDisplayNamesRevision = revision" />
-<div class="calculator-workspace" @oninput="ObserveWorkspaceEdit">
+<div class="calculator-workspace" data-language-workspace="true" @oninput="ObserveWorkspaceEdit">
     <div class="session-controls layout-row layout-section">
         <div class="session-toolbar layout-row">
             <ActionMenu @ref="_importMenu" Text="@(UiText.Get("Ui.Import"))" Label="@(UiText.Get("Ui.ImportDeck"))">
@@ -38,7 +38,7 @@
             <div class="hand-size-control layout-row">
                 <label for="handSize">@(UiText.Get("Ui.HandSize"))</label>
                 <input type="number"
-                       id="handSize"
+                       id="handSize" data-language-number-input="true"
                        class="form-control"
                        @bind="_handSize"
                        @bind:after="OnHandSizeChanged"
@@ -59,7 +59,7 @@
             </div>
         }
         @if (_isYdkeImportOpen) {
-            <form class="ydke-import-form"
+            <form class="ydke-import-form" data-language-edit="true"
                   aria-label="@(UiText.Get("Ui.YDKeDeckImport"))"
                   @onsubmit="ImportYdkeAsync"
                   @onsubmit:preventDefault="true">
