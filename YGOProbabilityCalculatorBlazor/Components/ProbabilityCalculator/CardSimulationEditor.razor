@@ -349,9 +349,7 @@
             return;
         }
 
-        bool missingCategory = plan.HandCostSelector.CategoryIdentities.Concat(plan.RemovalSelector.CategoryIdentities)
-            .Concat(plan.Search?.Selector.CategoryIdentities ?? [])
-            .Concat(plan.Search?.Modes?.SelectMany(mode => mode.Selector.CategoryIdentities) ?? [])
+        bool missingCategory = plan.EnumerateCategoryIdentities()
             .Any(identity => identity.StartsWith("user:", StringComparison.Ordinal) && !CategoryBases.Any(category => category.Identity == identity));
         if (missingCategory) {
             _errors["selector"] = UiText.Get("Ui.ASelectedCategoryWasRemovedUpdateTheEligibilityFilter");
@@ -531,11 +529,10 @@
         _effect = EffectDescriptions.Describe(Card);
     }
 
-    private static Card RenameFilters(Card card, CategoryRenameNotice rename) => card.WithEffect(card.EffectPlan with {
-        HandCostSelector = card.PreDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
-        RemovalSelector = card.PostDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
-        Search = card.Search?.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}")
-    }, card.EffectProfile);
+    private static Card RenameFilters(Card card, CategoryRenameNotice rename) => card.WithEffect(
+        card.EffectPlan.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
+        card.EffectProfile
+    );
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_focusDraw && _draft is not null) {

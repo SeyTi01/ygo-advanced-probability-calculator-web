@@ -77,6 +77,30 @@ public readonly record struct DrawEffectPlan(
 
     public bool RequiresHandResolution => HandCost > 0 || RemovalCount > 0;
 
+    // Mode selectors remain authored inputs even when their derived union is Any.
+    public IEnumerable<CardSelector> EnumerateSelectors() {
+        yield return HandCostSelector;
+        yield return RemovalSelector;
+        if (Search is { } search) {
+            foreach (CardSelector selector in search.EnumerateSelectors()) {
+                yield return selector;
+            }
+        }
+    }
+
+    public IEnumerable<string> EnumerateCategoryIdentities() => EnumerateSelectors()
+        .SelectMany(selector => selector.CategoryIdentities)
+        .Distinct(StringComparer.Ordinal);
+
+    public DrawEffectPlan TransformSelectors(Func<CardSelector, CardSelector> transform) => this with {
+        HandCostSelector = transform(HandCostSelector),
+        RemovalSelector = transform(RemovalSelector),
+        Search = Search?.TransformSelectors(transform)
+    };
+
+    public DrawEffectPlan RenameCategory(string previous, string replacement) =>
+        TransformSelectors(selector => selector.RenameCategory(previous, replacement));
+
     public string Describe() {
         if (DrawCount is null && Search is null && Excavation is null) {
             return "No effect";
