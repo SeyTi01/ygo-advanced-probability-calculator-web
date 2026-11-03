@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: '23 4 3 * *'
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: 'Optional earlier refresh run ID whose downloaded inputs should be reused'
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -49,19 +54,24 @@ jobs:
           else
             git switch -c "$REFRESH_BRANCH" origin/dev
           fi
-      - name: Acquire pinned sources
-        run: python infrastructure/card-catalog/fetch-refresh.py --output "$SOURCE_DIR"
-      - name: Generate and validate offline
-        run: |
-          node infrastructure/card-catalog/refresh-card-data.mjs "$SOURCE_DIR"
-          node --test infrastructure/card-catalog/*.test.mjs
-      - name: Retain replay inputs and review evidence
-        if: always()
+      - name: Restore or acquire pinned sources
+        id: sources
+        env:
+          REUSE_RUN_ID: ${{ inputs.source_run_id }}
+        run: node infrastructure/card-catalog/prepare-refresh-sources.mjs
+      # Persist successful acquisition before generation, tests or publication can fail.
+      # Reruns reuse the immutable checkpoint rather than overwriting it.
+      - name: Retain replay inputs
+        if: steps.sources.outputs.checkpoint-exists != 'true'
         uses: actions/upload-artifact@v6
         with:
           name: card-data-refresh-${{ github.run_id }}
           path: ${{ env.SOURCE_DIR }}
           retention-days: 90
-          if-no-files-found: ignore
+          if-no-files-found: error
+      - name: Generate and validate offline
+        run: |
+          node infrastructure/card-catalog/refresh-card-data.mjs "$SOURCE_DIR"
+          node --test infrastructure/card-catalog/*.test.mjs
       - name: Publish review PR and request existing CI
         run: node infrastructure/card-catalog/publish-refresh.mjs
