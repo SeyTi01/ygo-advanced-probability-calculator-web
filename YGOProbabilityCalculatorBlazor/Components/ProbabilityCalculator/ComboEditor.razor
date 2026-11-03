@@ -98,8 +98,8 @@
                     }
                 }
                 <ExpressionSeparator Operator="AND" Symbol="+" InputLabel="@(UiText.Get(ConstraintCount == 0 ? "Ui.AddRequirement.2d4936b2" : "Ui.AddASeparateCopyRequirement"))"
-                                     AddButtonClass="add-top-level-group" AddExpanded="_editingNewRequirement" OnAdd="BeginTopLevelRequirement" @ref="_newRequirementButton" />
-                @if (_editingNewRequirement) { @RequirementForm() }
+                                     AddButtonClass="add-top-level-group" AddExpanded="_draft.IsNewRequirement" OnAdd="BeginTopLevelRequirement" @ref="_newRequirementButton" />
+                @if (_draft.IsNewRequirement) { @RequirementForm() }
             </div>
 
             <div class="combo-footer">
@@ -130,7 +130,7 @@
         @ref="_rowButtons[RowKey(requirement, index, groupIndex)]" data-requirement="@RowKey(requirement, index, groupIndex)"
         OnEdit="() => BeginEdit(requirement, index, groupIndex)">
         <ChildContent>
-            @if (requirement.Category is { } category) { @CategoryBadge(category, operation => ConvertSameCard(requirement, index, groupIndex, operation), SameCardOperators(requirement, index, groupIndex), ConnectorError($"same:{RowKey(requirement, index, groupIndex)}"), showParentheses: false, editProperty: property => BeginEdit(requirement, index, groupIndex, property), activeProperty: IsOpenRow(requirement, index, groupIndex) ? _editingProperty : null) }
+            @if (requirement.Category is { } category) { @CategoryBadge(category, operation => ConvertSameCard(requirement, index, groupIndex, operation), SameCardOperators(requirement, index, groupIndex), ConnectorError($"same:{RowKey(requirement, index, groupIndex)}"), showParentheses: false, editProperty: property => BeginEdit(requirement, index, groupIndex, property), activeProperty: IsOpenRow(requirement, index, groupIndex) ? _draft.Values.ActiveProperty : null) }
             else { @CardBadge(requirement.Card!) }
         </ChildContent>
         <EditorContent>
@@ -156,7 +156,7 @@
                         <span data-requirement="@RowKey(leaf, leafIndex, groupIndex)">
                         @CategoryBadge(leaf.Category!, showParentheses: true,
                             editProperty: property => BeginEdit(leaf, leafIndex, groupIndex, property),
-                            activeProperty: IsOpenRow(leaf, leafIndex, groupIndex) ? _editingProperty : null)
+                            activeProperty: IsOpenRow(leaf, leafIndex, groupIndex) ? _draft.Values.ActiveProperty : null)
                         </span>
                     }
                     else {
@@ -174,9 +174,9 @@
     </ExpressionRow>;
 
     private RenderFragment RequirementForm() => @<RequirementEditForm @key="_formVersion"
-        Mode="@(_editingRequirement is not null ? "edit" : AndScope ? "AND" : AlternativeScope ? "OR" : "add")"
-        UpdateExisting="@(_editingRequirement is null && !AuthoringScope && HasSelectedConstraint)"
-        ShowActions="@(_editingRequirement is not null)" ActionOperators="@(_selectedKind == "Category" ? new[] { "AND", "OR" } : new[] { "OR" })"
+        Mode="@(_draft.Editing is not null ? "edit" : AndScope ? "AND" : AlternativeScope ? "OR" : "add")"
+        UpdateExisting="@(_draft.Editing is null && !AuthoringScope && HasSelectedConstraint)"
+        ShowActions="@(_draft.Editing is not null)" ActionOperators="@(_draft.Values.Target.Kind == ComboDraftTargetKind.Category ? new[] { "AND", "OR" } : new[] { "OR" })"
         OnAddAlternative="ExtendWithAlternative" OnAddProperty="ExtendWithProperty" OnRemoveRequirement="DeleteEditingRequirement"
         OperandCount="1" OperandKey="FormOperandKey" Error="@PropertyError" OnSubmit="AddConstraint" OnCancel="CancelRequirement">
         <OperandContent Context="position">
@@ -189,17 +189,17 @@
         </OperandContent>
         <QuantityContent>
             <label for="minCount@(Index)" class="form-label">@(UiText.Get("Ui.AtLeast"))</label>
-            <input id="minCount@(Index)" class="form-control" type="number" min="0" step="1" value="@_minCount"
+            <input id="minCount@(Index)" class="form-control" type="number" min="0" step="1" value="@_draft.Values.Minimum"
                    @ref="_minimumInput"
-                   @oninput="e => _minCount = e.Value?.ToString() ?? string.Empty" />
+                   @oninput="e => _draft.Values.Minimum = e.Value?.ToString() ?? string.Empty" />
         </QuantityContent>
         <AfterContent>
-        <details class="requirement-bounds" open="@(_maxCount.Length > 0)">
-            <summary class="control-focus-ring">@(string.IsNullOrEmpty(_maxCount) ? UiText.Get("Requirement.MaximumAny") : UiText.Format("Requirement.MaximumCount", _maxCount))</summary>
+        <details class="requirement-bounds" open="@(_draft.Values.Maximum.Length > 0)">
+            <summary class="control-focus-ring">@(string.IsNullOrEmpty(_draft.Values.Maximum) ? UiText.Get("Requirement.MaximumAny") : UiText.Format("Requirement.MaximumCount", _draft.Values.Maximum))</summary>
             <div class="requirement-max">
                 <label for="maxCount@(Index)" class="form-label">@(UiText.Get("Ui.AtMost"))</label>
                 <input id="maxCount@(Index)" class="form-control" type="number" min="0" step="1" placeholder="@(UiText.Get("Ui.Any"))"
-                       title="@(UiText.Get("Ui.LeaveEmptyForAny"))" value="@_maxCount" @oninput="e => _maxCount = e.Value?.ToString() ?? string.Empty" />
+                       title="@(UiText.Get("Ui.LeaveEmptyForAny"))" value="@_draft.Values.Maximum" @oninput="e => _draft.Values.Maximum = e.Value?.ToString() ?? string.Empty" />
                 <small class="text-body-secondary">@(UiText.Get("Ui.LeaveEmptyForAnyNumberSetBothCountsTo0ToExcludeMatchingCards"))</small>
             </div>
         </details>
@@ -230,44 +230,28 @@
     private CategoryCatalogOptions _categoryOptions = CategoryCatalogOptions.Empty;
 
     private string? _error;
-    private string _selectedCategory = string.Empty;
-    private string _selectedCardId = string.Empty;
-    private string _selectedKind = "Category";
-    private string _minCount = "1";
-    private string _maxCount = string.Empty;
+    private readonly ComboEditorDraft _draft = new();
     private readonly Dictionary<int, RequirementPropertyPicker> _propertyPickers = [];
     private readonly Dictionary<int, string> _propertyErrors = [];
     private readonly Dictionary<string, CategoryBase> _numericCategories = new(StringComparer.Ordinal);
     private int _formVersion;
     private readonly List<object> _propertyKeys = [];
     private bool _focusAlternativeEntry;
-    private (string Kind, string Category, string Card, string Min, string Max)? _suspendedDraft;
-    private ComboAlternativeGroup? _alternativeGroup;
-    private int? _alternativeGroupIndex;
-    private int? _alternativeInsertIndex;
-    private object? _alternativeTermIdentity;
-    private ComboAlternative? _alternativeSeed;
-    private int? _alternativeSeedIndex;
-    private ComboCategory? _andSeed;
-    private int? _andSeedIndex;
-    private ComboAlternativeGroup? _andGroup;
-    private int? _andGroupIndex;
-    private int? _andAlternativeIndex;
     private Combo? _previousCombo;
     private int _previousCategoryRenameVersion;
 
     private string CategoryCssClass(CategoryBase category) => CategoryChipPalette.GetCssClass(category, CategoryColorIndices);
 
     // The shell blocks language reloads while this form owns unsubmitted state.
-    private bool HasUnsubmittedEdit => _editingRequirement is not null || AuthoringScope || _editingNewRequirement
-        || _selectedCategory.Length > 0 || _selectedCardId.Length > 0 || _minCount != "1" || _maxCount.Length > 0 || _propertyErrors.Count > 0;
+    private bool HasUnsubmittedEdit => _draft.Operation is not null
+        || _draft.Values.Target.Identity.Length > 0 || _draft.Values.Minimum != "1" || _draft.Values.Maximum.Length > 0 || _propertyErrors.Count > 0;
 
-    private bool AlternativeScope => _alternativeGroupIndex is not null || _alternativeSeed is not null;
-    private bool AndScope => _andSeed is not null;
-    private bool AuthoringScope => AlternativeScope || AndScope;
+    private bool AlternativeScope => _draft.Alternative is not null;
+    private bool AndScope => _draft.Property is not null;
+    private bool AuthoringScope => _draft.IsAuthoring;
     private IReadOnlyList<CategoryBase> _availableCategories => _categoryOptions.All;
 
-    private IEnumerable<CategoryBase> SelectableCategories => AndScope && _andSeed is { } seed
+    private IEnumerable<CategoryBase> SelectableCategories => _draft.Property?.Seed is { } seed
         ? _availableCategories.Where(category => !seed.Selector.CategoryIdentities.Contains(category.Identity, StringComparer.Ordinal))
         : _availableCategories;
     private string AlternativeRange(ComboAlternative alternative) => alternative.Category is { } category
@@ -289,7 +273,14 @@
         return UiText.Format("Requirement.WithRange", subject, AlternativeRange(alternative));
     }
 
-    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null, bool showParentheses = true, Action<int>? editProperty = null, int? activeProperty = null) => @<span class="@(category.CategoryBases.Count > 1 ? (showParentheses ? "composite-alternative same-card-group" : "same-card-group") : "single-card-group") @(category.CategoryBases.Count > 1 && !showParentheses && changeOperator is not null ? "centered-same-card-group" : null)">
+    private static string CategoryBadgeClass(ComboCategory category, bool showParentheses, bool interactive) {
+        if (category.CategoryBases.Count == 1) { return "single-card-group"; }
+        if (showParentheses) { return "composite-alternative same-card-group"; }
+
+        return interactive ? "same-card-group centered-same-card-group" : "same-card-group";
+    }
+
+    private RenderFragment CategoryBadge(ComboCategory category, Func<string, Task>? changeOperator = null, IReadOnlyList<string>? allowedOperators = null, string? operatorError = null, bool showParentheses = true, Action<int>? editProperty = null, int? activeProperty = null) => @<span class="@CategoryBadgeClass(category, showParentheses, changeOperator is not null)">
         @if (category.CategoryBases.Count == 1) { @PropertyBadge(category, 0) }
         else {
             <ExpressionTerm Count="category.CategoryBases.Count" Compact="@(showParentheses && editProperty is null)" CenterOperands="@(!showParentheses && changeOperator is not null)" OperandKey="index => category.CategoryBases[index].Identity"
@@ -347,140 +338,63 @@
         _connectorErrorKey = null;
         _connectorError = null;
         _focusAlternativeEntry = true;
-        _editingNewRequirement = false;
-        _editingRequirement = null;
-        _editingIndex = null;
-        _editingGroupIndex = null;
-        _draftProperties.Clear();
-        _alternativeGroup = null;
-        _alternativeGroupIndex = null;
-        _alternativeInsertIndex = null;
-        _alternativeTermIdentity = null;
-        _alternativeSeed = null;
-        _alternativeSeedIndex = null;
-        _andSeed = null;
-        _andSeedIndex = null;
-        _andGroup = null;
-        _andGroupIndex = null;
-        _andAlternativeIndex = null;
-        _selectedCategory = string.Empty;
-        _selectedCardId = string.Empty;
-        ResetEditorDefaults();
-
-        if (_suspendedDraft is { } draft) {
-            (_selectedKind, _selectedCategory, _selectedCardId, _minCount, _maxCount) = draft;
-            _suspendedDraft = null;
-        }
-
+        _draft.Cancel();
         _error = null;
     }
 
-    private void BeginAlternativeDraft(
-        ComboAlternative? seed,
-        int? seedIndex,
-        ComboAlternativeGroup? group,
-        int? groupIndex
-    ) {
-        _suspendedDraft ??= (_selectedKind, _selectedCategory, _selectedCardId, _minCount, _maxCount);
-        _andSeed = null;
-        _andSeedIndex = null;
-        _andGroup = null;
-        _andGroupIndex = null;
-        _andAlternativeIndex = null;
-        _alternativeSeed = seed;
-        _alternativeSeedIndex = seedIndex;
-        _alternativeGroup = group;
-        _alternativeGroupIndex = groupIndex;
-        _selectedCategory = string.Empty;
-        _selectedCardId = string.Empty;
-        ResetEditorDefaults();
+    private void BeginAlternativeDraft(ComboAlternativeAnchor anchor) {
+        _draft.BeginAlternative(anchor);
         _error = null;
         _focusAlternativeEntry = true;
     }
 
-    private void BeginAndDraft(
-        ComboCategory seed,
-        int? seedIndex,
-        ComboAlternativeGroup? group,
-        int? groupIndex,
-        int? alternativeIndex
-    ) {
-        _suspendedDraft ??= (_selectedKind, _selectedCategory, _selectedCardId, _minCount, _maxCount);
-        _alternativeGroup = null;
-        _alternativeGroupIndex = null;
-        _alternativeSeed = null;
-        _alternativeSeedIndex = null;
-        _andSeed = seed;
-        _andSeedIndex = seedIndex;
-        _andGroup = group;
-        _andGroupIndex = groupIndex;
-        _andAlternativeIndex = alternativeIndex;
-        _selectedKind = "Category";
-        _selectedCategory = string.Empty;
-        _selectedCardId = string.Empty;
-        _minCount = seed.MinCount.ToString();
-        _maxCount = seed.MaximumMode == RequirementMaximumMode.HandSize ? string.Empty : seed.MaxCount.ToString();
+    private void BeginAndDraft(ComboCategory seed, ComboDraftLocation location, ComboAlternativeGroup? group) {
+        _draft.BeginProperty(seed, location, group);
         _error = null;
         _focusAlternativeEntry = true;
     }
 
     private Task CommitAnd() {
-        if (!AndScope || !AndTargetIsCurrent) {
+        if (_draft.Property is not { } draft || !AndTargetIsCurrent) {
             CancelScopedAuthoring();
-
             return Task.CompletedTask;
         }
 
-        if (!int.TryParse(_minCount, out int minimum) || minimum < 0 || !TryMaximum(minimum, out int maximum)) {
+        if (!int.TryParse(_draft.Values.Minimum, out int minimum) || minimum < 0 || !TryMaximum(minimum, out int maximum)) {
             _error = UiText.Get("Ui.EnterValidMinimumAndMaximumCounts");
-
             return Task.CompletedTask;
         }
 
-        CategoryBase? category = FindRequirementCategory(_selectedCategory);
-        if (category is not null && _andSeed!.CategoryBases.Any(existing => existing.Identity == category.Identity)) { category = null; }
-
+        CategoryBase? category = FindRequirementCategory(_draft.Values.Target.CategoryIdentity);
+        if (category is not null && draft.Seed.CategoryBases.Any(existing => existing.Identity == category.Identity)) { category = null; }
         if (category is null) {
             _error = UiText.Get("Ui.SelectACategoryToAddAsAnANDCondition");
-
             return Task.CompletedTask;
         }
 
         ComboCategory updatedRequirement = ComboCategory.SameCard(
-            _andSeed!.CategoryBases.Append(category),
+            draft.Seed.CategoryBases.Append(category),
             minimum,
             maximum,
             MaximumMode
         );
-        Combo updated;
-
-        if (_andGroup is not null && _andGroupIndex is int groupIndex && _andAlternativeIndex is int alternativeIndex) {
-            updated = ComboRequirementEditing.ReplaceAlternative(Combo, groupIndex, alternativeIndex, ComboAlternative.For(updatedRequirement));
-        }
-        else if (_andSeedIndex is int seedIndex) {
-            updated = ComboRequirementEditing.Replace(Combo, new(ComboRequirementKind.Category, seedIndex), ComboAlternative.For(updatedRequirement));
-        }
-        else {
-            CancelScopedAuthoring();
-
-            return Task.CompletedTask;
-        }
-
-        _returnRowKey = _andGroupIndex is int savedGroup
-            ? $"alternative:{savedGroup}:{_andAlternativeIndex}" : $"category:{_andSeedIndex}";
+        ComboAlternative replacement = ComboAlternative.For(updatedRequirement);
+        Combo updated = draft.Location.GroupIndex is int groupIndex
+            ? ComboRequirementEditing.ReplaceAlternative(Combo, groupIndex, draft.Location.Index, replacement)
+            : ComboRequirementEditing.Replace(Combo, draft.Location.Position, replacement);
+        _returnRowKey = RowKey(replacement, draft.Location.Index, draft.Location.GroupIndex);
         CancelScopedAuthoring();
-
         return OnReplaceCombo.InvokeAsync((Index, updated));
     }
 
     private Task CommitAlternative() {
-        if (!AlternativeScope || !AlternativeTargetIsCurrent) {
+        if (_draft.Alternative is not { } draft || !AlternativeTargetIsCurrent) {
             CancelScopedAuthoring();
 
             return Task.CompletedTask;
         }
 
-        if (!int.TryParse(_minCount, out int minimum) || minimum < 0 || !TryMaximum(minimum, out int maximum)) {
+        if (!int.TryParse(_draft.Values.Minimum, out int minimum) || minimum < 0 || !TryMaximum(minimum, out int maximum)) {
             _error = UiText.Get("Ui.EnterValidMinimumAndMaximumCounts");
 
             return Task.CompletedTask;
@@ -488,10 +402,10 @@
 
         ComboAlternative leaf;
 
-        if (_selectedKind == "Card" && Cards.Any(card => card.Id == _selectedCardId)) {
-            leaf = ComboAlternative.For(new ComboCard(_selectedCardId, minimum, maximum, MaximumMode));
+        if (_draft.Values.Target.Kind == ComboDraftTargetKind.Card && Cards.Any(card => card.Id == _draft.Values.Target.CardId)) {
+            leaf = ComboAlternative.For(new ComboCard(_draft.Values.Target.CardId, minimum, maximum, MaximumMode));
         }
-        else if (_selectedKind == "Category" && FindRequirementCategory(_selectedCategory) is { } category) {
+        else if (_draft.Values.Target.Kind == ComboDraftTargetKind.Category && FindRequirementCategory(_draft.Values.Target.CategoryIdentity) is { } category) {
             leaf = ComboAlternative.For(new ComboCategory(category, minimum, maximum, MaximumMode));
         }
         else {
@@ -501,23 +415,25 @@
         }
 
         Combo updated = Combo;
-        int insertedIndex = _alternativeInsertIndex ?? _alternativeGroup?.Alternatives.Count ?? 1;
+        int insertedIndex = draft.InsertIndex ?? (draft.Anchor as ComboAlternativeGroupAnchor)?.Group.Alternatives.Count ?? 1;
 
-        if (_alternativeGroup is ComboAlternativeGroup currentGroup && _alternativeGroupIndex is int groupIndex) {
+        if (draft.Anchor is ComboAlternativeGroupAnchor groupAnchor) {
+            ComboAlternativeGroup currentGroup = groupAnchor.Group;
+            int groupIndex = groupAnchor.GroupIndex;
             List<ComboAlternative> alternatives = currentGroup.Alternatives.ToList();
             alternatives.Insert(insertedIndex, leaf);
             updated = ComboRequirementEditing.WithAlternatives(Combo, groupIndex, alternatives);
         }
-        else if (_alternativeSeed is { } seed) {
-            ComboRequirementKind kind = seed.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
-            ComboRequirementPosition position = new(kind, _alternativeSeedIndex!.Value);
+        else if (draft.Anchor is ComboAlternativeSeedAnchor seedAnchor) {
+            ComboAlternative seed = seedAnchor.Seed;
+            ComboRequirementPosition position = seedAnchor.Location.Position;
             int authoredPosition = Combo.RequirementOrder.ToList().IndexOf(position);
             updated = ComboRequirementEditing.AppendGroup(Combo.WithoutRequirement(position), [seed, leaf], authoredPosition);
         }
 
-        int savedGroup = _alternativeGroupIndex ?? updated.AlternativeGroups.Count - 1;
+        int savedGroup = (draft.Anchor as ComboAlternativeGroupAnchor)?.GroupIndex ?? updated.AlternativeGroups.Count - 1;
         _returnRowKey = $"alternative:{savedGroup}:{insertedIndex}";
-        if (_alternativeTermIdentity is { } term) {
+        if (draft.TermIdentity is { } term) {
             TransferRowIdentities(updated);
             _termIdentities[RowIdentity(leaf, insertedIndex, savedGroup)] = term;
         }
@@ -526,46 +442,18 @@
         return OnReplaceCombo.InvokeAsync((Index, updated));
     }
 
-    private bool AlternativeTargetIsCurrent {
-        get {
-            if (_alternativeGroup is ComboAlternativeGroup currentGroup && _alternativeGroupIndex is int groupIndex) {
-                return groupIndex >= 0
-                    && groupIndex < Combo.AlternativeGroups.Count
-                    && ReferenceEquals(Combo.AlternativeGroups[groupIndex], currentGroup);
-            }
+    private bool AlternativeTargetIsCurrent => _draft.Alternative?.Anchor switch {
+        ComboAlternativeGroupAnchor anchor => anchor.GroupIndex >= 0
+            && anchor.GroupIndex < Combo.AlternativeGroups.Count
+            && ReferenceEquals(Combo.AlternativeGroups[anchor.GroupIndex], anchor.Group),
+        ComboAlternativeSeedAnchor anchor => anchor.Location.Find(Combo) is { } current && SameRequirement(current, anchor.Seed),
+        _ => false
+    };
 
-            if (_alternativeSeedIndex is not int seedIndex || seedIndex < 0) {
-                return false;
-            }
-
-            if (_alternativeSeed?.Category is ComboCategory category) {
-                return seedIndex < Combo.Categories.Count
-                    && ReferenceEquals(Combo.Categories[seedIndex], category);
-            }
-
-            return _alternativeSeed?.Card is ComboCard card
-                && seedIndex < Combo.Cards.Count
-                && ReferenceEquals(Combo.Cards[seedIndex], card);
-        }
-    }
-
-    private bool AndTargetIsCurrent {
-        get {
-            if (_andGroup is ComboAlternativeGroup group && _andGroupIndex is int groupIndex && _andAlternativeIndex is int alternativeIndex) {
-                return groupIndex >= 0
-                    && groupIndex < Combo.AlternativeGroups.Count
-                    && ReferenceEquals(Combo.AlternativeGroups[groupIndex], group)
-                    && alternativeIndex >= 0
-                    && alternativeIndex < group.Alternatives.Count
-                    && ReferenceEquals(group.Alternatives[alternativeIndex].Category, _andSeed);
-            }
-
-            return _andSeedIndex is int seedIndex
-                && seedIndex >= 0
-                && seedIndex < Combo.Categories.Count
-                && ReferenceEquals(Combo.Categories[seedIndex], _andSeed);
-        }
-    }
+    private bool AndTargetIsCurrent => _draft.Property is { } draft
+        && draft.Location.Find(Combo)?.Category is { } current
+        && ReferenceEquals(current, draft.Seed)
+        && (draft.Location.GroupIndex is not int group || ReferenceEquals(Combo.AlternativeGroups[group], draft.Group));
 
     private Task RemoveAlternative(
         ComboAlternativeGroup group,
@@ -591,7 +479,7 @@
 
         Combo updated = ComboRequirementEditing.RemoveAlternative(Combo, groupIndex, leafIndex);
 
-        if (_alternativeGroupIndex == groupIndex && ReferenceEquals(_alternativeGroup, group)) {
+        if (_draft.Alternative?.Anchor is ComboAlternativeGroupAnchor anchor && anchor.GroupIndex == groupIndex && ReferenceEquals(anchor.Group, group)) {
             CancelScopedAuthoring();
         }
 
@@ -604,14 +492,14 @@
         ? ComboGroups.FirstOrDefault(group => group.Id == groupId)
         : null;
 
-    private bool HasSelectedConstraint => _selectedKind == "Card"
-        ? Combo.Cards.Any(card => card.CardId == _selectedCardId)
-        : Combo.Categories.Any(category => category.CategoryBases.Count == 1 && category.BaseCategory.Identity == _selectedCategory);
+    private bool HasSelectedConstraint => _draft.Values.Target.Kind == ComboDraftTargetKind.Card
+        ? Combo.Cards.Any(card => card.CardId == _draft.Values.Target.CardId)
+        : Combo.Categories.Any(category => category.CategoryBases.Count == 1 && category.BaseCategory.Identity == _draft.Values.Target.CategoryIdentity);
 
     private int ConstraintCount => Combo.RequirementCount;
     private int HiddenHeaderCategoriesCount => Math.Max(0, ConstraintCount - MaxHeaderBadges);
 
-    private RequirementMaximumMode MaximumMode => string.IsNullOrWhiteSpace(_maxCount)
+    private RequirementMaximumMode MaximumMode => string.IsNullOrWhiteSpace(_draft.Values.Maximum)
         ? RequirementMaximumMode.HandSize
         : RequirementMaximumMode.Fixed;
 
@@ -662,7 +550,7 @@
 
     private Task AddConstraint() {
         if (PropertyError is not null) { _error = PropertyError; return Task.CompletedTask; }
-        if (_editingRequirement is not null) {
+        if (_draft.Editing is not null) {
             return CommitEdit();
         }
 
@@ -674,17 +562,17 @@
             return CommitAlternative();
         }
 
-        if (_selectedKind == "Card") {
+        if (_draft.Values.Target.Kind == ComboDraftTargetKind.Card) {
             return AddCard();
         }
 
-        if (string.IsNullOrWhiteSpace(_selectedCategory)) {
+        if (string.IsNullOrWhiteSpace(_draft.Values.Target.CategoryIdentity)) {
             _error = UiText.Get("Ui.PleaseSelectACategoryToAdd");
 
             return Task.CompletedTask;
         }
 
-        CategoryBase? categoryBase = FindRequirementCategory(_selectedCategory);
+        CategoryBase? categoryBase = FindRequirementCategory(_draft.Values.Target.CategoryIdentity);
 
         if (categoryBase is null) {
             _error = UiText.Get("Ui.SelectedCategoryNotFound");
@@ -692,7 +580,7 @@
             return Task.CompletedTask;
         }
 
-        if (!int.TryParse(_minCount, out int minimum) || minimum < 0) {
+        if (!int.TryParse(_draft.Values.Minimum, out int minimum) || minimum < 0) {
             _error = UiText.Get("Ui.MinimumCountMustBeANonNegativeWholeNumber");
 
             return Task.CompletedTask;
@@ -716,7 +604,7 @@
         }
 
         Combo newCombo = Combo.WithCategories(newCategories);
-        _selectedCategory = string.Empty;
+        _draft.Values.Target = ComboDraftTarget.Category(string.Empty);
         _error = null;
         ResetEditorDefaults();
         FinishNewRequirement($"category:{(existingIndex >= 0 ? existingIndex : newCategories.Count - 1)}");
@@ -725,13 +613,13 @@
     }
 
     private Task AddCard() {
-        if (string.IsNullOrEmpty(_selectedCardId) || !Cards.Any(card => card.Id == _selectedCardId)) {
+        if (string.IsNullOrEmpty(_draft.Values.Target.CardId) || !Cards.Any(card => card.Id == _draft.Values.Target.CardId)) {
             _error = UiText.Get("Ui.PleaseSelectACardToAdd");
 
             return Task.CompletedTask;
         }
 
-        if (!int.TryParse(_minCount, out int minimum) || minimum < 0) {
+        if (!int.TryParse(_draft.Values.Minimum, out int minimum) || minimum < 0) {
             _error = UiText.Get("Ui.MinimumCountMustBeANonNegativeWholeNumber");
 
             return Task.CompletedTask;
@@ -744,8 +632,8 @@
         }
 
         List<ComboCard> newCards = Combo.Cards.ToList();
-        int existingIndex = newCards.FindIndex(card => card.CardId == _selectedCardId);
-        ComboCard constraint = new(_selectedCardId, minimum, maximum, MaximumMode);
+        int existingIndex = newCards.FindIndex(card => card.CardId == _draft.Values.Target.CardId);
+        ComboCard constraint = new(_draft.Values.Target.CardId, minimum, maximum, MaximumMode);
 
         if (existingIndex >= 0) {
             newCards[existingIndex] = constraint;
@@ -754,7 +642,7 @@
             newCards.Add(constraint);
         }
 
-        _selectedCardId = string.Empty;
+        _draft.Values.Target = ComboDraftTarget.Card(string.Empty);
         _error = null;
         ResetEditorDefaults();
         FinishNewRequirement($"card:{(existingIndex >= 0 ? existingIndex : newCards.Count - 1)}");
@@ -770,7 +658,7 @@
             return Task.CompletedTask;
         }
 
-        if (ReferenceEquals(_alternativeSeed?.Card, card) && _alternativeSeedIndex == index) {
+        if (_draft.Alternative?.Anchor is ComboAlternativeSeedAnchor anchor && ReferenceEquals(anchor.Seed.Card, card) && anchor.Location.Index == index) {
             CancelScopedAuthoring();
         }
 
@@ -778,13 +666,13 @@
     }
 
     private void OnSelectCard(string? value) {
-        _selectedCardId = value ?? string.Empty;
+        _draft.Values.Target = ComboDraftTarget.Card(value ?? string.Empty);
         _error = null;
-        ComboCard? existing = AlternativeScope || _editingRequirement is not null ? null : Combo.Cards.FirstOrDefault(card => card.CardId == _selectedCardId);
+        ComboCard? existing = AlternativeScope || _draft.Editing is not null ? null : Combo.Cards.FirstOrDefault(card => card.CardId == _draft.Values.Target.CardId);
 
         if (existing is not null) {
-            _minCount = existing.MinCount.ToString();
-            _maxCount = existing.MaximumMode == RequirementMaximumMode.HandSize ? string.Empty : existing.MaxCount.ToString();
+            _draft.Values.Minimum = existing.MinCount.ToString();
+            _draft.Values.Maximum = existing.MaximumMode == RequirementMaximumMode.HandSize ? string.Empty : existing.MaxCount.ToString();
         }
     }
 
@@ -797,7 +685,7 @@
             return Task.CompletedTask;
         }
 
-        if (ReferenceEquals(_alternativeSeed?.Category, category) && _alternativeSeedIndex == index) {
+        if (_draft.Alternative?.Anchor is ComboAlternativeSeedAnchor anchor && ReferenceEquals(anchor.Seed.Category, category) && anchor.Location.Index == index) {
             CancelScopedAuthoring();
         }
 
@@ -805,26 +693,26 @@
     }
 
     private void OnSelectCategory(string? value) {
-        _selectedCategory = value ?? string.Empty;
+        _draft.Values.Target = ComboDraftTarget.Category(value ?? string.Empty);
         _error = null;
 
         if (AndScope) {
             return;
         }
 
-        ComboCategory? existing = AlternativeScope || _editingRequirement is not null
+        ComboCategory? existing = AlternativeScope || _draft.Editing is not null
             ? null
-            : Combo.Categories.FirstOrDefault(category => category.CategoryBases.Count == 1 && category.BaseCategory.Identity == _selectedCategory);
+            : Combo.Categories.FirstOrDefault(category => category.CategoryBases.Count == 1 && category.BaseCategory.Identity == _draft.Values.Target.CategoryIdentity);
 
         if (existing is not null) {
-            _minCount = existing.MinCount.ToString();
-            _maxCount = existing.MaximumMode == RequirementMaximumMode.HandSize ? string.Empty : existing.MaxCount.ToString();
+            _draft.Values.Minimum = existing.MinCount.ToString();
+            _draft.Values.Maximum = existing.MaximumMode == RequirementMaximumMode.HandSize ? string.Empty : existing.MaxCount.ToString();
         }
     }
 
     private void ResetEditorDefaults() {
-        _minCount = "1";
-        _maxCount = string.Empty;
+        _draft.Values.Minimum = "1";
+        _draft.Values.Maximum = string.Empty;
     }
 
     private bool TryMaximum(int minimum, out int maximum) {
@@ -833,7 +721,7 @@
             return true;
         }
 
-        return int.TryParse(_maxCount, out maximum) && maximum >= minimum && maximum >= 0;
+        return int.TryParse(_draft.Values.Maximum, out maximum) && maximum >= minimum && maximum >= 0;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -858,7 +746,7 @@
                 _returnRowKey = null;
                 await button.FocusAsync(preventScroll: true);
             }
-            else if (_editingNewRequirement || _editingRequirement is not null || AuthoringScope) {
+            else if (_draft.IsNewRequirement || _draft.Editing is not null || AuthoringScope) {
                 if (_propertyPickers.TryGetValue(0, out RequirementPropertyPicker? picker)) { await picker.FocusAsync(); }
             }
             else if (_newRequirementButton is not null) { await _newRequirementButton.FocusAsync(); }
@@ -874,42 +762,35 @@
         ReconcileTermIdentities();
         _categoryOptions = CategoryCatalog.BuildOptions(CategoryBases, Cards, [Combo], RelevantMetadataCategoryIdentities);
         if (CategoryRename is CategoryRenameNotice rename && rename.Version != _previousCategoryRenameVersion) {
-            if (_selectedCategory.Equals($"user:{rename.OldName}", StringComparison.Ordinal)) {
-                _selectedCategory = $"user:{rename.NewName}";
-            }
+            string oldIdentity = $"user:{rename.OldName}";
+            string newIdentity = $"user:{rename.NewName}";
+            _draft.Values.RenameCategory(oldIdentity, newIdentity);
+            _draft.SuspendedValues?.RenameCategory(oldIdentity, newIdentity);
 
-            if (_suspendedDraft is { } draft && draft.Category == $"user:{rename.OldName}") {
-                _suspendedDraft = (draft.Kind, $"user:{rename.NewName}", draft.Card, draft.Min, draft.Max);
-            }
-
-            if (_alternativeSeed?.Category is ComboCategory seed && seed.Selector.CategoryIdentities.Contains($"user:{rename.OldName}")) {
-                int index = _alternativeSeedIndex ?? -1;
+            if (_draft.Alternative?.Anchor is ComboAlternativeSeedAnchor anchor
+                && anchor.Seed.Category is { } seed && seed.Selector.CategoryIdentities.Contains(oldIdentity)) {
+                ComboAlternative? replacement = anchor.Location.Find(Combo);
                 bool isCurrentRenamedSeed = ReferenceEquals(_previousCombo, Combo)
-                    && index >= 0
-                    && index < Combo.Categories.Count
-                    && Combo.Categories[index].Selector.Equals(seed.Selector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"))
-                    && Combo.Categories[index].MinCount == seed.MinCount
-                    && Combo.Categories[index].MaxCount == seed.MaxCount
-                    && Combo.Categories[index].MaximumMode == seed.MaximumMode;
-
+                    && replacement?.Category is { } renamed
+                    && renamed.Selector.Equals(seed.Selector.RenameCategory(oldIdentity, newIdentity))
+                    && renamed.MinCount == seed.MinCount && renamed.MaxCount == seed.MaxCount
+                    && renamed.MaximumMode == seed.MaximumMode;
                 if (isCurrentRenamedSeed) {
-                    _alternativeSeed = ComboAlternative.For(Combo.Categories[index]);
+                    _draft.Alternative.Anchor = anchor with { Seed = replacement! };
                 }
             }
 
-            if (_andSeed is { } andSeed && ReferenceEquals(_previousCombo, Combo)) {
-                ComboAlternativeGroup? replacementGroup = _andGroupIndex is int andGroup
-                    ? Combo.AlternativeGroups.ElementAtOrDefault(andGroup)
-                    : null;
-                ComboCategory? replacement = replacementGroup is not null
-                    ? replacementGroup.Alternatives.ElementAtOrDefault(_andAlternativeIndex ?? -1)?.Category
-                    : Combo.Categories.ElementAtOrDefault(_andSeedIndex ?? -1);
-                CardSelector renamed = andSeed.Selector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}");
+            if (_draft.Property is { } propertyDraft && ReferenceEquals(_previousCombo, Combo)) {
+                ComboAlternativeGroup? replacementGroup = propertyDraft.Location.GroupIndex is int groupIndex
+                    ? Combo.AlternativeGroups.ElementAtOrDefault(groupIndex) : null;
+                ComboCategory? replacement = propertyDraft.Location.Find(Combo)?.Category;
+                ComboCategory propertySeed = propertyDraft.Seed;
+                CardSelector renamed = propertySeed.Selector.RenameCategory(oldIdentity, newIdentity);
                 if (replacement is not null && replacement.Selector.Equals(renamed)
-                    && replacement.MinCount == andSeed.MinCount && replacement.MaxCount == andSeed.MaxCount
-                    && replacement.MaximumMode == andSeed.MaximumMode) {
-                    _andSeed = replacement;
-                    _andGroup = replacementGroup;
+                    && replacement.MinCount == propertySeed.MinCount && replacement.MaxCount == propertySeed.MaxCount
+                    && replacement.MaximumMode == propertySeed.MaximumMode) {
+                    propertyDraft.Seed = replacement;
+                    propertyDraft.Group = replacementGroup;
                 }
             }
             _previousCategoryRenameVersion = rename.Version;
