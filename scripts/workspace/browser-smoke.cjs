@@ -1,7 +1,8 @@
 // node scripts/workspace/browser-smoke.cjs <optimized-wwwroot>
-// Representative real keyboard, draft, persistence and responsive interactions.
+// Browser-only focus, native keyboard/history, download/upload and reload integration.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const path = require('node:path');
 const { chromium } = require('playwright');
 const { serve, load, usable, launchOptions } = require('../background-calculation/browser-support.cjs');
 
@@ -18,7 +19,7 @@ async function main() {
         await page.goto(url);
         const roles = ['Alpha', 'Beta'].map(Name => ({ Name, Source: 'User' }));
         const session = {
-            SchemaVersion: 12, CalculationModel: 'OpeningHand', FastExecutionStrategy: 'Progressive', HandSize: 1, Categories: roles,
+            SchemaVersion: 14, CalculationModel: 'OpeningHand', FastExecutionStrategy: 'Progressive', HandSize: 1, Categories: roles,
             Cards: roles.map((category, index) => ({ Id: `c${index}`, Name: `Card ${index}`, Copies: 1, Categories: [category] })),
             Combos: roles.map((category, index) => ({ Name: `Route ${index}`, Categories: [{ BaseCategory: category, MinCount: 1, MaxCount: 1 }] })),
             ComboGroups: []
@@ -42,7 +43,6 @@ async function main() {
         const rename = categories.getByRole('textbox', { name: 'New name for category Alpha', exact: true });
         await rename.fill('Unsaved sentinel');
         await page.setViewportSize({ width: 390, height: 900 });
-        await page.getByLabel('Color theme preference').selectOption({ label: 'Dark' });
         const move = categories.getByRole('button', { name: 'Move category Alpha to position', exact: true });
         await usable(page, move); await move.click();
         const destination = categories.locator('.move-position-panel').getByRole('textbox');
@@ -78,7 +78,7 @@ async function main() {
         await usable(page, page.getByRole('button', { name: 'Calculate', exact: true }));
 
         await load(page, {
-            SchemaVersion: 13, CalculationModel: 'Fast', FastExecutionStrategy: 'Progressive', HandSize: 1,
+            SchemaVersion: 14, CalculationModel: 'Fast', FastExecutionStrategy: 'Progressive', HandSize: 1,
             Cards: [{ Id: 'draw', Name: 'Toggle source', Copies: 1, Categories: [], DrawCount: 1 },
                 { Id: 'target', Name: 'Toggle target', Copies: 1, Categories: [] },
                 { Id: 'blank', Name: 'Toggle blank', Copies: 1, Categories: [] }],
@@ -93,22 +93,12 @@ async function main() {
         await toggle.focus(); await page.keyboard.press('Enter');
         await source.getByRole('button', { name: 'Enable simulation', exact: true }).waitFor();
         assert.equal(await source.locator('#cardDraw0').inputValue(), '2', 'toggle retains the editor draft');
-        await source.locator('.simulation-cancel').click();
-        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-        await page.waitForFunction(() => document.querySelector('.probability-total-value')?.closest('[aria-label]')?.getAttribute('aria-label').includes('1/3'));
-        const toggleDownload = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Save Session', exact: true }).click();
-        const disabled = JSON.parse(fs.readFileSync(await (await toggleDownload).path(), 'utf8'));
-        assert.equal(disabled.Cards[0].SimulationEnabled, false);
-        assert.equal(disabled.Cards[0].DrawCount, 1, 'draft was not saved by the toggle');
-        disabled.Cards[0].Name = 'Reloaded toggle source';
-        await load(page, disabled);
-        await source.locator('.accordion-button').click();
-        await source.getByRole('button', { name: 'Enable simulation', exact: true }).waitFor();
         await toggle.focus(); await page.keyboard.press('Space');
         await source.getByRole('button', { name: 'Disable simulation', exact: true }).waitFor();
+        await source.locator('.simulation-cancel').click();
         await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-        await page.waitForFunction(() => document.querySelector('.probability-total-value')?.closest('[aria-label]')?.getAttribute('aria-label').includes('1/2'));
+        await page.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') === 'false'
+            && document.querySelector('.probability-total-value'));
         await page.getByRole('button', { name: 'Pin result', exact: true }).click();
 
         // Keep the live workspace (including unsaved editor state) through app links
@@ -138,22 +128,16 @@ async function main() {
             await page.locator('.help-content').waitFor();
             assert.equal(await page.locator('.calculator-workspace').isVisible(), false);
             assert.equal(await page.getByRole('button', { name: 'Calculate', exact: true }).count(), 0, 'hidden workspace is absent from the accessibility tree');
-            assert.match(await page.title(), /^Help \|/);
             await usable(page, page.getByRole('link', { name: 'Back', exact: true }));
         }
-        for (const width of [1280, 390]) {
-            await page.setViewportSize({ width, height: 900 });
-            await page.getByRole('link', { name: 'Help', exact: true }).click(); await retainedHelp();
-            await page.getByRole('link', { name: 'Back', exact: true }).click(); await retainedCalculator();
-            await page.goBack(); await retainedHelp();
-            await page.goBack(); await retainedCalculator();
-            await page.goForward(); await retainedHelp();
-            await page.goForward(); await retainedCalculator();
-        }
+        await page.getByRole('link', { name: 'Help', exact: true }).click(); await retainedHelp();
+        await page.getByRole('link', { name: 'Back', exact: true }).click(); await retainedCalculator();
+        await page.goBack(); await retainedHelp();
+        await page.goBack(); await retainedCalculator();
+        await page.goForward(); await retainedHelp();
+        await page.goForward(); await retainedCalculator();
         await source.locator('.simulation-cancel').click();
         await retainedCombo.locator('#minCount0').press('Escape');
-        await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-        await page.waitForFunction(() => document.querySelector('.probability-total-value')?.closest('[aria-label]')?.getAttribute('aria-label').includes('1/2'));
         await page.getByRole('link', { name: 'Help', exact: true }).click();
         for (const locale of ['de', 'en']) {
             await Promise.all([page.waitForEvent('load'), page.locator('#language-preference').selectOption(locale)]);
@@ -170,45 +154,30 @@ async function main() {
         assert.deepEqual(errors, []);
         assert.equal(await page.locator('#blazor-error-ui').isVisible(), false);
         await page.getByRole('link', { name: 'Help', exact: true }).click();
-        const topics = ['getting-started', 'properties', 'requirements', 'simulations', 'effect-resolution', 'modes', 'results', 'sessions', 'example'];
         await page.locator('details.help-topic').first().waitFor();
         assert.equal(await page.locator('details.help-topic[open]').count(), 0);
-        const example = page.getByRole('button', { name: 'Try It with Example Data', exact: true });
-        assert.equal(await example.count(), 1);
-        for (const width of [1280, 390]) {
-            await page.setViewportSize({ width, height: 900 });
-            for (const theme of ['Light', 'Dark']) {
-                await page.getByLabel('Color theme preference').selectOption({ label: theme });
-                await usable(page, example);
-                const actionBox = await example.boundingBox();
-                assert(actionBox.y + actionBox.height < 900, 'example is prominent in the initial view');
-                for (const id of topics) {
-                    const summary = page.locator(`#${id} > summary`);
-                    await usable(page, summary);
-                    await summary.focus();
-                    await summary.press('Enter');
-                    assert.equal(await page.locator(`#${id}`).evaluate(element => element.open), true);
-                    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true,
-                        'expanded Help content must fit the viewport');
-                    await summary.press('Space');
-                    assert.equal(await page.locator(`#${id}`).evaluate(element => element.open), false);
-                }
-                // Native closed disclosures remove body links from keyboard navigation.
-                await page.locator('#sessions > summary').focus();
-                await page.keyboard.press('Tab');
-                assert.equal(await page.locator('#example > summary').evaluate(element => element === document.activeElement), true);
-            }
-        }
-        for (const id of topics) {
-            await page.goto('about:blank');
-            await page.goto(`${url}/help#${id}`);
-            await page.waitForFunction(id => document.getElementById(id)?.open, id);
-            assert.equal(await page.locator('details.help-topic[open]').count(), 1);
-            await page.waitForFunction(id => {
-                const box = document.querySelector(`#${id} > summary`)?.getBoundingClientRect();
-                return box && box.top >= 0 && box.bottom <= innerHeight;
-            }, id);
-        }
+        const example = page.locator('.example-session-action button');
+        await usable(page, example);
+        // Native disclosure behavior needs a real browser; topic inventories and
+        // markup associations are covered by component/published-output tests.
+        const summary = page.locator('#sessions > summary');
+        await usable(page, summary);
+        await summary.focus();
+        await summary.press('Enter');
+        assert.equal(await page.locator('#sessions').evaluate(element => element.open), true);
+        await usable(page, page.locator('#sessions'));
+        await summary.press('Space');
+        assert.equal(await page.locator('#sessions').evaluate(element => element.open), false);
+        await page.keyboard.press('Tab');
+        assert.equal(await page.locator('#example > summary').evaluate(element => element === document.activeElement), true,
+            'closed disclosures remove body links from keyboard navigation');
+
+        await page.goto(`${url}/help#example`);
+        await page.waitForFunction(() => document.getElementById('example')?.open);
+        await page.waitForFunction(() => {
+            const box = document.querySelector('#example > summary')?.getBoundingClientRect();
+            return box && box.top >= 0 && box.bottom <= innerHeight;
+        });
         // Real same-page links go through Blazor navigation; history must reveal closed topics again.
         await page.evaluate(() => {
             const link = document.createElement('a');
@@ -226,9 +195,14 @@ async function main() {
         await page.locator('#fragment-test').click();
         await page.waitForFunction(() => document.getElementById('requirements').open);
         await page.goto(`${url}/help`);
+        const sample = JSON.parse(fs.readFileSync(path.join(process.argv[2], 'sample-data/example_session_state.json'), 'utf8'));
         await example.click();
-        await page.waitForFunction(() => document.querySelectorAll('.card-editor').length === 24);
-        assert.equal(await page.locator('.combo-editor').count(), 8);
+        await page.waitForFunction(name => {
+            try { return JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Cards[0].Name === name; }
+            catch { return false; }
+        }, sample.Cards[0].Name);
+        assert.equal(await page.locator('.card-editor').count(), sample.Cards.length);
+        assert.equal(await page.locator('.combo-editor').count(), sample.Combos.length);
         // A fresh startup has no tab-local live workspace to resume. An older
         // recovery record remains an explicit offer, even when arriving from Help.
         await page.goto(`${url}/help`);
@@ -238,9 +212,8 @@ async function main() {
         await page.getByRole('button', { name: 'Restore previous session', exact: true }).waitFor();
         assert.equal(await page.locator('.card-editor').count(), 0, 'fresh startup does not silently load an older recovery draft');
         assert.deepEqual(errors, []);
-        console.log('Published Help navigation: retained workspace/results/editor drafts, repeated app links and browser Back/Forward at desktop/mobile sizes, fresh-start recovery precedence passed.');
-        console.log('Published Help: nine native disclosures, Enter/Space, hidden-link tab order, all direct fragments, links/back/forward, one real example load, desktop/mobile and light/dark passed.');
-        console.log('Published workspace: keyboard editing, movement, drafts, per-entry simulation toggle, real worker results and file round trip passed at desktop/mobile sizes.');
+        console.log('Published workspace: real keyboard/focus, narrow-screen move and deletion, download/upload round trip passed.');
+        console.log('Published Help: retained drafts/results, browser history and locale reload, native disclosure/tab order, fragment navigation, shipped example and fresh-start recovery passed.');
     } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

@@ -44,7 +44,7 @@ during startup is supported while retaining the browser's numeric culture.
    At two production locales the global header selector appears automatically
    on both routes. English alone keeps the existing header.
 3. Run the localization/editor tests, optimized publish, prerendered SEO checks,
-   and the isolated published browser workflow described below.
+   and the published browser workflow described below.
 
 ## Website preference and startup
 
@@ -122,28 +122,21 @@ from normal explicit recovery and never changes session schema or worker bytes.
 
 ## Published integration check
 
-`node scripts/localization/prepare-test-host.cjs` makes an ignored source copy
-under `bin/localization-test-host`, adding the test-only pseudo satellite under
-`eo` plus an isolated registry, retaining the real production satellites. Neither pseudo resource nor registry
-is included in production. Publish that copy with the same stripped-IL AOT
-configuration as the production app. Use `--refresh` to recreate a previously
-marked generated copy after source changes, then run:
+Run the JavaScript localization tests and the browser smoke against an optimized
+production publish:
 
 ```sh
 node --test scripts/localization/locale.test.mjs
 dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release -o YGOProbabilityCalculatorBlazor/bin/language-publish
-node scripts/localization/prepare-test-host.cjs
-dotnet publish bin/localization-test-host/YGOProbabilityCalculatorBlazor.csproj -c Release -o bin/localization-test-publish
-node scripts/localization/browser-smoke.cjs YGOProbabilityCalculatorBlazor/bin/language-publish/wwwroot bin/localization-test-publish/wwwroot
+node scripts/localization/browser-smoke.cjs YGOProbabilityCalculatorBlazor/bin/language-publish/wwwroot
 ```
 
-Playwright and a Chromium browser are external test dependencies; set
-`YGO_BROWSER_EXECUTABLE` or `YGO_BROWSER_CHANNEL` as for the existing smoke tests.
-The optional third browser-script argument is a frozen dev publish for startup
-transfer comparison. The script checks first visible interactive language,
-satellite requests, real reload/restoration, saved English on a German browser,
-invalid preferences, navigation, accepted results, blocked unfinished edits, protected recovery/share state,
-storage failure, and desktop/mobile header usability. Run the regular .NET/JS
+Playwright and Chromium are external test dependencies; set
+`YGO_BROWSER_EXECUTABLE` or `YGO_BROWSER_CHANNEL` as for the other browser checks.
+The smoke checks production satellites, first visible language, on-demand localized
+card names, numeric culture, and real reload/restoration of accepted workspace and
+results. It also checks representative blocked edits and pending operations,
+protected recovery/share state, and storage failure. Run the regular .NET/JS
 suites and `PublishedOutputSeoTest` against the production publish as well.
 
 The test project's `Localization/Strings.fr.resx` is an intentionally artificial

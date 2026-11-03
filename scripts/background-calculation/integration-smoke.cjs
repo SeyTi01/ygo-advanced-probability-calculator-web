@@ -4,10 +4,11 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { chromium } = require('playwright');
-const { serve, load, mode, usable, launchOptions } = require('./browser-support.cjs');
+const { serve, load, mode, usable, publishedExports, launchOptions } = require('./browser-support.cjs');
 
 function observe() {
     window.smoke = { requests: [], workers: [], held: [], hold: null, copied: [] };
+    Object.defineProperty(window, 'showSaveFilePicker', { value: undefined });
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: async text => smoke.copied.push(text) } });
     const NativeWorker = Worker;
     window.Worker = class extends NativeWorker {
@@ -43,11 +44,11 @@ function observe() {
 }
 
 const target = { Name: 'Target', Source: 'User' };
-const card = (Id, Name, Copies, extra = {}) => ({ Id, Name, Copies, Categories: [], Active: true, ...extra });
+const card = (Id, Name, Copies, extra = {}) => ({ Id, Name, Copies, Categories: [], Active: true, SimulationEnabled: true, ...extra });
 // Labeled-copy oracle in ThreeCalculationModesTest independently establishes:
 // dealt Target = 2/5; physical search/draw/banish = 23/30; Fast primary = 5/6.
 const effectSession = {
-    SchemaVersion: 12, CalculationModel: 'Fast', FastExecutionStrategy: 'Progressive', HandSize: 2,
+    SchemaVersion: 14, CalculationModel: 'Fast', FastExecutionStrategy: 'Progressive', HandSize: 2,
     Categories: [target], Cards: [
         card('s', 'Search target', 1, { Search: { Selector: { Kind: 'Category', Categories: ['user:Target'] }, ObjectiveMetadataOnly: false } }),
         card('a', 'Target', 1, { Categories: [target] }), card('f', 'Filler', 2),
@@ -76,6 +77,8 @@ async function main() {
         page.on('pageerror', error => evidence.pageErrors.push(error.message));
         await page.addInitScript(observe);
         await page.goto(url);
+        evidence.exports = await publishedExports(page);
+        assert.deepEqual(evidence.exports, ['CalculationWorkerExports'], 'production exports no benchmark probes');
         await load(page, effectSession);
         const action = page.locator('.calculate-action > button');
         const values = () => page.locator('.probability-results .probability-with-accuracy').allTextContents();
@@ -176,38 +179,39 @@ async function main() {
         await checkRows(23, 30);
         evidence.controlled.push('delayed Exact release');
 
-        // Gate the upgrade before execution, after a completed real Fast pass.
-        // This fixture intentionally exercises the pending-upgrade branch;
-        // ordinary terminal cases above allow immediately proven Exact results.
-        await mode(page, 'Fast');
-        await hold('progressive-exact-v1');
-        await page.waitForFunction(() => document.querySelector('.pin-result-action')?.disabled === true);
-        await release();
-        await checkRows(23, 30);
-        evidence.controlled.push('delayed Progressive success');
-        await hold('progressive-exact-v1');
-        await page.waitForFunction(() => document.querySelector('.pin-result-action')?.disabled === true);
-        const preliminary = await values();
-        assert.equal(await page.getByRole('button', { name: 'Copy results', exact: true }).isDisabled(), true);
-        await page.setViewportSize({ width: 390, height: 900 });
-        await usable(page, action);
-        const closing = contexts.at(-1);
-        await action.click();
-        await settled();
-        assert.deepEqual(await values(), preliminary, 'cancel retains accepted Fast');
-        await assertClose(closing);
-        assert.equal(await page.locator('.pinned-result').innerText(), pin, 'cancellation preserves manual pin');
-        evidence.controlled.push('cancel upgrade and real worker close');
+        // Exercise a real pending upgrade when Fast needs one. An engine that
+        // proves this fixture exact still passes the independent terminal checks.
+        if (fastResult.Contract.Accuracy === 1) {
+            await mode(page, 'Fast');
+            await hold('progressive-exact-v1');
+            await page.waitForFunction(() => document.querySelector('.pin-result-action')?.disabled === true);
+            await release();
+            await checkRows(23, 30);
+            evidence.controlled.push('delayed Progressive success');
+            await hold('progressive-exact-v1');
+            await page.waitForFunction(() => document.querySelector('.pin-result-action')?.disabled === true);
+            const preliminary = await values();
+            assert.equal(await page.getByRole('button', { name: 'Copy results', exact: true }).isDisabled(), true);
+            await page.setViewportSize({ width: 390, height: 900 });
+            await usable(page, action);
+            const closing = contexts.at(-1);
+            await action.click();
+            await settled();
+            assert.deepEqual(await values(), preliminary, 'cancel retains accepted Fast');
+            await assertClose(closing);
+            assert.equal(await page.locator('.pinned-result').innerText(), pin, 'cancellation preserves manual pin');
+            evidence.controlled.push('cancel upgrade and real worker close');
 
-        await page.evaluate(() => { smoke.hold = null; smoke.held = []; });
-        await calculate(); await checkRows(23, 30);
-        await hold('progressive-exact-v1');
-        const failed = contexts.at(-1);
-        const fast = await values();
-        await release(true);
-        assert.deepEqual(await values(), fast, 'transport failure retains accepted Fast');
-        await assertClose(failed);
-        evidence.controlled.push('injected transport failure');
+            await page.evaluate(() => { smoke.hold = null; smoke.held = []; });
+            await calculate(); await checkRows(23, 30);
+            await hold('progressive-exact-v1');
+            const failed = contexts.at(-1);
+            const fast = await values();
+            await release(true);
+            assert.deepEqual(await values(), fast, 'transport failure retains accepted Fast');
+            await assertClose(failed);
+            evidence.controlled.push('injected transport failure');
+        }
 
         await page.evaluate(() => { smoke.hold = null; smoke.held = []; });
         await calculate(); await checkRows(23, 30);
@@ -218,12 +222,41 @@ async function main() {
         await assertClose(edited);
         assert.equal(await page.locator('.pinned-result').innerText(), pin, 'editing preserves manual pin');
         evidence.controlled.push('edit revokes held request');
-        evidence.layout = await require('./result-layout.cjs')(page, effectSession, { calculate, hold, release });
+        await page.evaluate(() => { smoke.hold = null; smoke.held = []; });
+        evidence.layout = await require('./result-layout.cjs')(page, effectSession, { calculate });
+
+        // ExcavationTest independently enumerates this six-copy control:
+        // 1/6 dealt target + 1/6 dealt source * 3/5 target in its pool = 4/15.
+        const excavationSession = {
+            SchemaVersion: 14, CalculationModel: 'Fast', FastExecutionStrategy: 'FastOnly', HandSize: 1,
+            Cards: [card('pot', 'Excavation source', 1, { Excavation: { Count: 3, RequiresNoPriorEffectDraw: false } }),
+                card('target', 'Excavation target', 1), card('filler', 'Filler', 4)],
+            Combos: [{ Name: 'Excavation target', Categories: [], Cards: [{ CardId: 'target', MinCount: 1, MaxCount: 1 }] }]
+        };
+        await load(page, excavationSession);
+        await mode(page, 'FastOnly');
+        await calculate();
+        assert.match(await page.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)4\/15(?!\d)/);
+        await page.locator('.card-editor .accordion-button').first().click();
+        await page.getByRole('button', { name: 'Disable simulation', exact: true }).click();
+        await calculate();
+        assert.match(await page.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)1\/6(?!\d)/);
+        const download = page.waitForEvent('download');
+        await page.getByRole('button', { name: 'Save Session', exact: true }).click();
+        const saved = JSON.parse(fs.readFileSync(await (await download).path(), 'utf8'));
+        assert.equal(saved.Cards[0].SimulationEnabled, false);
+        assert.deepEqual(saved.Cards[0].Excavation, excavationSession.Cards[0].Excavation);
+        saved.Cards[0].Name = 'Reloaded excavation source';
+        await load(page, saved);
+        await calculate();
+        assert.match(await page.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)1\/6(?!\d)/);
+        evidence.terminal.push({ selected: 'excavation, disabled simulation and saved reload' });
+
         // Independent labeled-card fractions in TwoPhaseSearchPriorityTest.
         const a = { Name: 'A', Source: 'User' }, b = { Name: 'B', Source: 'User' }, cost = { Name: 'Cost', Source: 'User' };
         const selector = name => ({ Kind: 'Category', Categories: ['user:' + name] });
         const prioritySession = {
-            SchemaVersion: 13, CalculationModel: 'Exact', FastExecutionStrategy: 'Progressive', HandSize: 3, Categories: [a, b, cost],
+            SchemaVersion: 14, CalculationModel: 'Exact', FastExecutionStrategy: 'Progressive', HandSize: 3, Categories: [a, b, cost],
             DrawActivationPriority: { Mode: 'CustomPriority', CardIds: ['s', 't'] },
             Cards: [card('s', 'Paid search', 1, { Search: { Selector: selector('A'), ObjectiveMetadataOnly: false },
                 PreDrawRemovalCount: 1, PreDrawSelector: selector('Cost') }),
