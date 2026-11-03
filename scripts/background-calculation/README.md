@@ -25,12 +25,17 @@ The serial entrypoint fails on the first failed child and runs:
 
 - `integration-smoke.cjs`: actual production worker bootstrap, optimized WASM,
   request decoding, all four UI modes and rational total/combo/group binding.
+  A separate inspection rejects benchmark probes in the published worker exports.
   Small independently enumerated controls distinguish dealt-hand `2/5`, Fast
   primary `5/6`, and physical Exact `23/30`. It checks usable controls, keyboard
   evidence disclosure, pins and copied fractions at representative desktop/mobile
   sizes. Ordinary completion never requires a spinner, Cancel or Preliminary frame.
   Explicit outgoing transport gates separately exercise pending Exact/Progressive
-  success, cancellation, editing and failure. Gates never fabricate probabilities;
+  success, cancellation, editing and failure; upgrade checks run when the real
+  Fast result needs an upgrade. A six-copy excavation control also verifies the
+  optimized wire, simulation toggle and saved-session reload without benchmark
+  exports. Current and pinned rows must remain readable on desktop/mobile.
+  Gates never fabricate probabilities;
   real worker close events confirm retired execution contexts. These gated cases
   establish lifecycle behavior, **not natural CPU responsiveness or latency**.
 - `../workspace/browser-smoke.cjs`: real keyboard edit/cancel/focus, move validation,
@@ -38,8 +43,11 @@ The serial entrypoint fails on the first failed child and runs:
   Desktop and one narrow layout catch unusable controls/overflow. Precise spacing,
   incidental markup and exhaustive theme/viewport matrices are manual UI review.
 - `../workspace/session-loading-smoke.cjs`: a controlled Blob-read handshake proves
-  accessible pending status and delayed replacement; a separate immediate small
-  load checks the terminal state without imposing a minimum visible duration.
+  accessible pending status and delayed replacement through the actual browser
+  InputFile boundary. Immediate completion and supersession stay in bUnit.
+- `../localization/browser-smoke.cjs`: production satellite and on-demand card-name
+  loading, numeric culture and real language reload/restoration. It uses the same
+  production publish; pseudo-resource validation stays in the regular tests.
 
 For the distinct physical idle-owner lifecycle, run this optional check once;
 it intentionally waits for the unchanged production 60-second idle timer:
@@ -48,7 +56,8 @@ it intentionally waits for the unchanged production 60-second idle timer:
 node scripts/background-calculation/lifecycle-smoke.cjs <published-wwwroot>
 ```
 
-It observes worker-context reuse, expiry, recreation and navigation teardown.
+It observes worker-context reuse, expiry, recreation, Help deactivation and a
+successful calculation after returning to the retained workspace.
 Normal smoke cancellation also observes real closure, but held transport is not
 evidence of stopping a CPU-bound engine. Do not infer CPU shutdown from a button
 returning to idle or a call to `terminate()` alone.
@@ -112,7 +121,7 @@ successful calculations or Storage failures. Never commit generated output.
 | Ordered throughput | `OrderedStorageBenchmark`, `prepare-ordered-throughput.py` | `paired-ordered-throughput.cs` / `paired-ordered-throughput.cjs` |
 | Search throughput | `SelectiveSurvivorTest`, `search-throughput-benchmark-probe.cs` | `paired-search-throughput.cs` / `paired-search-throughput.cjs` |
 | Session loading | published sample session | `../workspace/measure-session-loading.cjs` |
-| Single excavation | `ExcavationBenchmark` | `excavation-workers.cjs` / `excavation-ui-smoke.cjs` |
+| Single excavation | `ExcavationBenchmark` | `excavation-workers.cjs` |
 
 The paired native programs compile in a temporary dependency-free `net10.0`
 console with implicit usings and nullable enabled. Use test-bin directories to
@@ -133,13 +142,13 @@ WASM linear-memory capacity is not live managed heap.
 `DOTNET_TieredCompilation=0`. The export includes the actual session/worker input,
 native response and exact row fractions, and saves after each fixture/mode.
 
-Both browser scripts take `<clean-published-wwwroot> <native-export.json>
+The worker replay takes `<clean-published-wwwroot> <native-export.json>
 <output.json>`. The worker benchmark uses the shipped worker with no measurement
 exports, checks complete response/fraction parity, and separates runtime bootstrap
 from the first calculation and three warm calculations. Its external 60-second
 cutoff records a censored timeout; it is not a production calculation deadline.
-The UI check uses the exported two-Pot fixture for model notes, keyboard controls,
-desktop/mobile layout, simulation toggles and a saved-session round trip.
+The routine integration smoke uses a small independent excavation control for
+browser correctness; the 40-card measurement fixture is not a UI requirement.
 
 Measured on Windows with .NET 10.0.401 and Edge 156.0.4314.58 on 2026-11-01,
 using a clean Release AOT publish with stripped IL. Native and browser jobs ran
@@ -166,15 +175,12 @@ Exact. These desktop measurements do not establish mobile CPU performance or a
 universal completion guarantee. The fixed phase/source policy and single-activation
 restriction remain semantic limitations regardless of the reported accuracy.
 
-`bounded-search-wire-smoke.cjs <clean-wwwroot> <fixtures.json>
-<native-measurements.json> <output.json>` remains a specialized post-benchmark
-check of full shipped-worker response parity, typed failures without fractions,
-and absence of measurement exports. It is not needed for the normal small smoke
-set, and requires frozen measured references.
-
 Historical feature acceptance scripts, old copy/layout comparisons, removed
 certification-toggle experiments, and source-rewriting physical-enumeration
 variants were deleted. Git history preserves those one-time investigations.
+The benchmark-fed bounded-search and excavation UI smokes were also retired:
+regular tests, the small production smoke and retained research replayers cover
+their reusable contracts without preserving old measurement file shapes.
 
 ## Runtime contracts
 

@@ -4,21 +4,33 @@ const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 const { serve, load, launchOptions } = require('./browser-support.cjs');
 
+async function waitForClose(worker, milliseconds, message) {
+    let timeout;
+    try {
+        await Promise.race([worker.closed, new Promise((resolve, reject) => {
+            timeout = setTimeout(() => reject(new Error(message)), milliseconds);
+        })]);
+    } finally { clearTimeout(timeout); }
+}
+
 async function main() {
     const { server, url } = await serve(process.argv[2]);
     const browser = await chromium.launch(launchOptions()).catch(error => { server.close(); throw error; });
     try {
         const page = await browser.newPage({ locale: 'en-US' });
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
         const workers = [];
         page.on('worker', worker => {
             if (!worker.url().includes('calculation-worker.js')) return;
-            const entry = { closed: false };
+            const entry = { isClosed: false, closed: new Promise(resolve => {
+                worker.once('close', () => { entry.isClosed = true; resolve(); });
+            }) };
             workers.push(entry);
-            worker.on('close', () => { entry.closed = true; });
         });
         await page.goto(url);
         const role = { Name: 'Target', Source: 'User' };
-        await load(page, { SchemaVersion: 12, CalculationModel: 'OpeningHand', FastExecutionStrategy: 'Progressive', HandSize: 1, Categories: [role],
+        await load(page, { SchemaVersion: 14, CalculationModel: 'OpeningHand', FastExecutionStrategy: 'Progressive', HandSize: 1, Categories: [role],
             Cards: [{ Id: 'a', Name: 'Lifecycle target', Copies: 1, Categories: [role] }, { Id: 'b', Name: 'Filler', Copies: 1, Categories: [] }],
             Combos: [{ Name: 'Target route', Categories: [{ BaseCategory: role, MinCount: 1, MaxCount: 1 }] }], ComboGroups: [] });
         async function calculate() {
@@ -30,16 +42,21 @@ async function main() {
         await calculate(); await calculate();
         assert.equal(workers.length, 1, 'repeat success reuses runtime');
         const idle = workers[0];
-        const deadline = Date.now() + 70000;
-        while (!idle.closed && Date.now() < deadline) await page.waitForTimeout(250);
-        assert.equal(idle.closed, true, 'real idle runtime expires');
+        assert.equal(idle.isClosed, false, 'successful requests retain their physical runtime');
+        await waitForClose(idle, 70000, 'real idle runtime did not expire');
         await calculate();
         assert.equal(workers.length, 2, 'expired owner recreates runtime');
+        const beforeHelp = workers.at(-1);
+        // Help keeps editor DOM mounted but deactivates the calculator and
+        // disposes its owner. Returning must resolve a fresh usable owner.
         await page.getByRole('link', { name: 'Help', exact: true }).click();
-        const disposalDeadline = Date.now() + 10000;
-        while (!workers.at(-1).closed && Date.now() < disposalDeadline) await page.waitForTimeout(25);
-        assert(workers.every(worker => worker.closed), 'navigation disposes idle owner');
-        console.log('Real worker reuse, 60-second idle expiry, recreation and navigation teardown passed.');
+        await waitForClose(beforeHelp, 10000, 'Help did not close the calculator worker');
+        assert(workers.every(worker => worker.isClosed), 'Help releases the physical idle owner');
+        await page.getByRole('link', { name: 'Back', exact: true }).click();
+        await calculate();
+        assert.equal(workers.length, 3, 'retained calculator acquires a fresh runtime on return');
+        assert.deepEqual(errors, []);
+        console.log('Real worker reuse, 60-second idle expiry, recreation, Help teardown and successful return passed.');
     } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
