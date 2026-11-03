@@ -8,12 +8,7 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 /// <summary>Formats an accepted probability result as a readable, shareable plain-text summary.</summary>
 internal static class ProbabilityResultSummaryFormatter {
     public static string Format(ProbabilityCalculationResult result, int handSize, CultureInfo culture, string? modeDescription = null) {
-        List<GroupProbabilityResult> groups = (result.GroupProbabilities ?? [])
-            .Where(group => group.ActiveComboCount > 0).ToList();
-        HashSet<string> knownGroupIds = groups.Select(group => group.GroupId).ToHashSet(StringComparer.Ordinal);
-        List<ComboProbabilityResult> ungrouped = result.ComboProbabilities
-            .Where(combo => combo.GroupId is null || !knownGroupIds.Contains(combo.GroupId))
-            .ToList();
+        ProbabilityResultProjection projection = ProbabilityResultProjection.Create(result);
 
         List<string> lines = [
             UiText.Get("Ui.ProbabilityResults"),
@@ -41,36 +36,35 @@ internal static class ProbabilityResultSummaryFormatter {
                 for (int index = 0; index < fractions.Combos.Length; index++) {
                     lines.Add(UiText.Format("Ui.0Combo12", fractionLabel, index + 1, Ratio(fractions.Combos[index])));
                 }
-                for (int index = 0; index < fractions.Groups.Length; index++) {
-                    if (index < (result.GroupProbabilities?.Count ?? 0) && result.GroupProbabilities![index].ActiveComboCount > 0) {
-                        lines.Add(UiText.Format("Ui.0Group12", fractionLabel, index + 1, Ratio(fractions.Groups[index])));
+                foreach (ProbabilityGroupRow group in projection.Groups) {
+                    if (group.Index < fractions.Groups.Length) {
+                        lines.Add(UiText.Format("Ui.0Group12", fractionLabel, group.Index + 1, Ratio(fractions.Groups[group.Index])));
                     }
                 }
             }
         }
 
-        if (groups.Count == 0 && ungrouped.Count > 0) {
+        if (projection.Groups.Length == 0 && projection.Ungrouped.Length > 0) {
             lines.Add(string.Empty);
             lines.Add(UiText.Get("Ui.IndividualCombos.dc8d9abb"));
-            lines.AddRange(result.ComboProbabilities.Select(combo => FormatCombo(combo)));
+            lines.AddRange(projection.Ungrouped.Select(combo => FormatCombo(combo)));
         }
-        else if (groups.Count > 0) {
+        else if (projection.Groups.Length > 0) {
             lines.Add(string.Empty);
             lines.Add(UiText.Get("Ui.GroupProbabilities"));
 
-            foreach (GroupProbabilityResult group in groups) {
-                lines.Add(UiText.Format("Ui.012Active", NormalizeLabel(group.GroupName), Display(group.Probability, ProbabilityRow.Group, ProbabilityPresentation.GroupIndex(result.GroupProbabilities, group.GroupId)), group.ActiveComboCount));
-                IEnumerable<ComboProbabilityResult> groupCombos = result.ComboProbabilities.Where(combo => StringComparer.Ordinal.Equals(combo.GroupId, group.GroupId));
+            foreach (ProbabilityGroupRow group in projection.Groups) {
+                lines.Add(UiText.Format("Ui.012Active", NormalizeLabel(group.Label), Display(group.Probability, ProbabilityRow.Group, group.Index), group.ActiveCount));
 
-                foreach (ComboProbabilityResult combo in groupCombos) {
+                foreach (ProbabilityComboRow combo in group.Members) {
                     lines.Add(FormatCombo(combo, "  "));
                 }
             }
 
-            if (ungrouped.Count > 0) {
+            if (projection.Ungrouped.Length > 0) {
                 lines.Add(string.Empty);
                 lines.Add(UiText.Get("Ui.UngroupedCombos.ec9c0ff4"));
-                lines.AddRange(ungrouped.Select(combo => FormatCombo(combo)));
+                lines.AddRange(projection.Ungrouped.Select(combo => FormatCombo(combo)));
             }
         }
 
@@ -87,11 +81,8 @@ internal static class ProbabilityResultSummaryFormatter {
             return display.Summary + (display.Evidence is { } evidence ? $" ({evidence})" : "");
         }
 
-        string FormatCombo(ComboProbabilityResult combo, string indent = "") {
-            string name = string.IsNullOrWhiteSpace(combo.ComboName) ? UiText.Format("Ui.UnnamedCombo0", combo.ComboIndex + 1) : combo.ComboName;
-
-            return $"{indent}- **{NormalizeLabel(name)}** — {Display(combo.Probability, ProbabilityRow.Combo, combo.ComboIndex)}";
-        }
+        string FormatCombo(ProbabilityComboRow combo, string indent = "") =>
+            $"{indent}- **{NormalizeLabel(combo.Label)}** — {Display(combo.Probability, ProbabilityRow.Combo, combo.Index)}";
     }
 
     private static string Ratio(ProbabilityFraction fraction) => $"{fraction.Numerator}/{fraction.Denominator}";

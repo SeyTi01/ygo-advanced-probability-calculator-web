@@ -1,5 +1,4 @@
 .pinned-result { min-width: 0; container: result-panel / inline-size; }
 .pinned-heading { display: flex; justify-content: space-between; }
 .pinned-heading button { flex-shrink: 0; }
-.pinned-row span { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 575.98px) { .pinned-result { padding: .75rem; } }

@@ -1,0 +1,18 @@
+.probability-groups { margin-bottom: .75rem; }
+.probability-groups-last { margin-bottom: 0; }
+
+.combo-probability-row.probability-group-heading {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.combo-probability-name, .pinned-row span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.result-value-group { display: flex; justify-content: flex-end; min-width: 0; }
+
+@container result-panel (max-width: 14rem) {
+    .result-value-group { justify-self: end; max-width: 100%; }
+}
